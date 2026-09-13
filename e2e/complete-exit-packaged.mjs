@@ -176,7 +176,7 @@ async function requestProductCompleteExit(instance) {
   await rm(triggerPath, { force: true });
 }
 
-async function seedRuntimeSession(sessionId) {
+async function verifyRuntimeSession(sessionId) {
   const previousKodaxHome = process.env.KODAX_HOME;
   process.env.KODAX_HOME = profileDir;
   let runtime;
@@ -191,13 +191,8 @@ async function seedRuntimeSession(sessionId) {
         version: spaceVersion,
       },
     });
-    await runtime.sessions.create({
-      sessionId,
-      projectPath: projectDir,
-      gitRoot: projectDir,
-      surface: 'space-desktop',
-      tag: 'code',
-    });
+    const session = await runtime.sessions.load(sessionId);
+    if (session.id !== sessionId) throw new Error('Space created an unexpected Runtime identity');
   } finally {
     await runtime?.close();
     if (previousKodaxHome === undefined) delete process.env.KODAX_HOME;
@@ -245,9 +240,9 @@ try {
   );
   if (!created.ok) throw new Error(`session.create failed: ${created.error?.message}`);
   sessionId = created.data.sessionId;
-  // Materialize the product-created Coder identity in Runtime without sending
-  // an LLM request; the rest of the test stays on the real Space IPC path.
-  await seedRuntimeSession(sessionId);
+  // Creation now persists the Coder identity itself. Verify that product behavior
+  // instead of creating a second Session in the test harness.
+  await verifyRuntimeSession(sessionId);
   const noticeText = 'complete-exit persistence sentinel';
   const appended = await first.window.evaluate(
     async ({ id, text }) =>
