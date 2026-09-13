@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-09-08
+Last Updated: 2026-09-13
 
 > Historical issue details are preserved as investigation evidence. Resolved items older than 30 days move to [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md) without losing their investigation record. The latest published Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) artifact uses exact npm Registry KodaX 0.7.95 and requires `conversationHistory:2`, `runtimeExitSettlement:2`, and `sandboxRuntime:5`. Start from the [documentation hub](README.md) for current behavior and status.
 
@@ -206,8 +206,239 @@ Last Updated: 2026-09-08
 | 208 | High     | In Progress         | Assistant-side transcript disorder survived the Issue 207 hotfix: answer content painted above its own/previous query, whole turns swallowed, tool chips lost — cured only by manual reload                 | <= v0.1.46-alpha.6 live/canonical dual-plane reconciliation    | 2026-09-07 |
 | 209 | High     | Resolved in source  | The KodaX daemon never consulted the scoped credential broker for compaction summarizer requests, so keychain-only Providers still failed `/compact` and managed compaction after the Issue 199 client fix | KodaX 0.7.96-alpha.3 scoped credential runtime (Issue 199)    | 2026-09-07 |
 | 210 | High | Resolved in v0.1.46-alpha.8 | Manual compact preflight races its own echo write; beta.3 SDK recovery and bundled sandbox need Space integration | <= v0.1.46-alpha.7 | 2026-09-08 |
+| 211 | High | Resolved in source | Blocker: a pre-admission history timeout made unchanged sends replay the same cached failure | Observed v0.1.46-beta.1 / SDK 0.7.96-rc.3 | 2026-09-13 |
+| 212 | Medium | Resolved in source | Pending-send spinner reset elapsed time on rerender and attributed local preparation to the LLM | Observed v0.1.46-beta.1 | 2026-09-13 |
+| 213 | Medium | ready | SDK Full RepoIntel routing can rebuild for 9–16 seconds before model work begins | Observed SDK 0.7.96-rc.3 / Space v0.1.46-beta.1 | 2026-09-13 |
+| 214 | High | Resolved in source | New Session event-journal initialization scanned all historical Run logs and blocked concurrent history reads | Observed v0.1.46-beta.1 / SDK 0.7.96-rc.3 | 2026-09-13 |
 
 ## Issue Details
+
+## Issue 214: New Session initialization scanned all historical Run logs and blocked history reads
+
+- Priority: High
+- Status: Resolved in SDK 0.7.96-rc.4; integrated in Space source
+- Introduced: Observed in Space v0.1.46-beta.1 with SDK 0.7.96-rc.3; regression introduction not established
+- Fixed: Unreleased Space creation path and SDK event-journal initialization
+- Created: 2026-09-13
+
+### Original Problem
+
+A new Coder Session displayed `HANDLER_ERROR: [session.send] handler threw: Session history read
+timed out after 15000ms`. The reported ID was `20260913_210229_mv5e9cd35a24bc`. A fresh Session
+should be created directly, without recovering history for an identity that was just generated.
+
+Reproduction reported by the user: open a new Coder Session in KodaX-Space, send its first query,
+and wait. The screenshot selected Full RepoIntel. That setting alone does not establish the cause
+of the history timeout.
+
+### Context and Evidence
+
+- Read-only inspection found no persisted record for the reported ID. The running `coder` daemon
+  used SDK 0.7.96-rc.3. Attach-only `runtime.sessions.load` took 12,751.7ms on the first measured
+  read and returned `Session not found`; the next read took 223ms, and a later read took 20ms.
+- In an independent Node process, SDK strict `readSessionCapture` returned missing in 7ms / 2ms.
+  Other new missing IDs in the running daemon took 102–147ms.
+- A concurrent daemon `sessions.list({ limit: 200 })` took 4.65s; missing-ID reads during that
+  operation took 991ms / 325ms / 62ms. This shows load-sensitive latency, not a confirmed cause of
+  the original timeout.
+- A diagnostic read with a 1ms budget returned `read_timeout`; a subsequent normal-budget read
+  completed in 20ms. This did not reproduce a permanently poisoned daemon Session.
+
+### Confirmed Root Cause
+
+The failing admission boundary is `runtime.sessions.load` through SDK `admission.loadRequired`
+and `manager.storage.read` (strict). Space's separate SDK `loadSession` helper catches storage
+errors and returns null, so it cannot directly propagate this timeout message. The SDK daemon
+transport preserves `read_timeout` as a typed error code.
+
+SDK `readSessionJournalEpochLocked` generated a new journal epoch without initializing its
+sequence. The first event/cursor request then invoked `findMaxPersistedEventSeq`. This traversed
+every Run log; `readPersistedEventSeqTail` doubled its read window until it found a matching
+Session/epoch or consumed the entire file. A new epoch cannot match any historical event, so it
+repeatedly read and parsed all unrelated logs synchronously in the daemon.
+
+The affected data contained 924 event logs totaling 1,887,316,469 bytes. A read-only mapping of
+those logs into an isolated Runtime reproduced new-Session creation in 18–20 seconds. One paired
+sample took 18,306ms and performed 3,123 event reads totaling 4,436,993,608 bytes. A strict history
+read started at the journal-commit boundary failed with the exact reported message:
+`Session history read timed out after 15000ms`. Its timer ran late because synchronous parsing
+occupied the event loop. This reproduces both the slow creation and the timeout mechanism,
+without accessing a Provider or changing the user's persisted data.
+
+### Fix
+
+- Initialize the new journal's sequence under the existing sequence lock, avoiding recovery
+  scans for a newly generated epoch. Preserve recovery for an existing epoch with a missing or
+  invalid sequence, and validate cached floors against their epoch.
+- Space asks the daemon to allocate and persist new Coder Session IDs. It no longer allocates
+  a placeholder ID and sends it through the generic load-or-create admission path. Partner and
+  embedded paths retain their existing ownership. Subsequent Coder ownership checks remain.
+- Keep Issue 211's retry recovery so a separate future pre-admission failure cannot permanently
+  trap the draft behind the same cached IPC error.
+
+The paired fixed-source sample created the Session in 362ms, read zero unrelated event bytes,
+completed the concurrent strict history read in 15ms, and observed the Session in 97ms. The
+separate Full RepoIntel rebuild cost in Issue 213 is not the cause of this synchronous blockage.
+
+Space now pins the published Registry package `@kodax-ai/kodax@0.7.96-rc.4`, with integrity in
+`package-lock.json`. SDK commit `5a702844` contains the source fix and regression tests and is
+included in this release. The installed Registry package passes the fresh-Session regression
+and the standard release integrity/content gate. Against the same large-history fixture,
+creation took 361ms with zero unrelated event reads; the concurrent strict read took 13ms.
+The temporary SDK tarball and patch are no longer required.
+
+### Verification
+
+See [Issue 214 diagnostic guide](test-guides/ISSUE_214_v0.1.46_REGRESSION_GUIDE.md).
+
+## Issue 213: SDK Full RepoIntel routing can rebuild for 9–16 seconds before model work begins
+
+- Priority: Medium
+- Status: ready
+- Introduced: Observed with SDK 0.7.96-rc.3 in Space v0.1.46-beta.1; regression introduction not established
+- Fixed: Not fixed
+- Created: 2026-09-13
+
+### Original Problem
+
+The user reported several seconds, sometimes about ten seconds, of first-query preparation in
+each new Session. Independent SDK timing against this repository reproduced a long Full
+RepoIntel routing computation before model output. Expected behavior is that repository context
+preparation has a deliberate latency budget and does not obscure which phase is running.
+
+Reproduce by measuring `getRepoRoutingSignals` with Full mode in a fresh Node process, then repeat
+within the same process and compare Light mode against the same repository. Keep module import
+and setup outside the operation timer.
+
+### Context and Evidence
+
+- Full routing in separate fresh processes took 15.837s and 9.143s. An immediate same-process
+  repeated call took approximately 0ms; Light routing took 984ms and capability resolution 181ms.
+- Full mode used a worker; measured parent event-loop delay peaked around 24ms. The measured
+  routing operation therefore did not block its caller's JavaScript loop for the entire 9–16s.
+- Forced worker rebuild samples took 9.721s / 9.675s, with CPU profiling identifying TypeScript
+  program/type analysis as the main cost. After the persistent index stabilized, a fresh-process
+  routing call took 1.252s. This does not establish that every new Session necessarily rebuilds.
+- These measurements used local SDK calls, not a Provider response. They are distinct from the
+  daemon strict-history read evidence in Issue 214; a common cause has not been established.
+
+### Proposed Solution
+
+SDK 0.7.96-rc.4 also fixes a confirmed cache omission: prewarming filled the Full bundle
+cache but did not fill the routing cache. A later routing request could repeat the worker query
+after the inner 1.5-second cache expired. Prewarming now fills both 60-second caches from the
+same result. A test separated prewarm and routing by five seconds: the old code queried twice,
+the fixed code once. This preserves the complete Full result and does not eliminate a genuinely
+cold TypeScript rebuild.
+
+The SDK already applies a two-second wait budget to preturn context enrichment, but the earlier
+routing-signals read waits for the full build without that bound. Investigate applying a bounded
+wait specifically to this optional routing enrichment while allowing its worker to finish and
+populate the cache. Preserve explicit Full semantics for operations that require complete results,
+and measure cold/rebuild behavior before choosing a budget. This is a candidate SDK change, not
+an implemented Space fix or a guarantee that selecting Light fixes history reads.
+
+### Verification
+
+See [Issue 213 performance guide](test-guides/ISSUE_213_v0.1.46_REGRESSION_GUIDE.md).
+
+## Issue 212: Pending-send spinner reset elapsed time on rerender and attributed local preparation to the LLM
+
+- Priority: Medium
+- Status: Resolved in source
+- Introduced: Observed in Space v0.1.46-beta.1; regression introduction not established
+- Fixed: Unreleased (working-tree change; installed applications are unaffected)
+- Created: 2026-09-13
+- Resolution Date: 2026-09-13
+
+### Original Problem
+
+While a send remained pending, the spinner's derived snapshot received a new start timestamp on
+rerenders. Its elapsed label could consequently fail to show the actual wait. The long-wait text
+also said it was waiting for the LLM while the request could still be reading local history or
+preparing admission. Expected behavior is a clock anchored to the send action and phase wording
+that does not infer a Provider request from an unacknowledged send.
+
+Reproduce with a held pending send: advance the clock by five seconds, rerender, advance another
+five seconds, and rerender. Then reject the send and retry. The original timer must reach 5s / 10s;
+the retry must start its own clock.
+
+### Resolution
+
+`ActivitySpinner` reads the stable `pendingSendRuntimeBaselineBySession.startedAt` recorded by the
+store's send action. Pending wording now describes preparation without attributing the delay to
+the LLM. The fix improves the display; it does not shorten SDK work or repair history timeouts.
+
+### Files Changed and Tests Added
+
+- `apps/desktop/renderer/src/shell/ActivitySpinner.tsx`
+- `apps/desktop/renderer/src/i18n/messages.ts`
+- `apps/desktop/renderer/src/shell/ActivitySpinner.test.ts`: deterministic 5s / 10s rerenders and
+  a fresh 3s retry clock, using the store's actual pending-send action.
+
+### Verification
+
+See [Issue 212 regression guide](test-guides/ISSUE_212_v0.1.46_REGRESSION_GUIDE.md). Packaged-app
+acceptance is separate from the working-tree fix.
+
+## Issue 211: Blocker — a pre-admission history timeout made unchanged sends replay the same cached failure
+
+- Priority: High
+- Severity: Blocker (the affected Session could not retry the unchanged query)
+- Status: Resolved in source (focused E2E passed; packaged acceptance pending)
+- Introduced: Observed in Space v0.1.46-beta.1 with SDK 0.7.96-rc.3; regression introduction not established
+- Fixed: Unreleased (working-tree change; installed applications are unaffected)
+- Created: 2026-09-13
+- Resolution Date: 2026-09-13
+
+### Original Problem
+
+After the first send failed with `Session history read timed out after 15000ms`, the user could
+not send again in the same Session. Before Runtime admission, the history error escaped as
+`HANDLER_ERROR`. Space treated this generic failure as an uncertain send and retained the exact
+operation identity; repeating the unchanged draft could replay that operation's cached failure
+instead of retrying the recovered backend.
+
+Expected behavior: a failure known to precede Run admission restores the draft, clears pending
+state, and permits a new attempt in the same Session. Truly uncertain outcomes after admission
+must retain their exact-operation protection against duplicate execution.
+
+Reproduce deterministically by making the Runtime admission history read fail once, then recover,
+and submitting the same draft twice. Separately verify that generic uncertain failures still
+retain their prior retry semantics.
+
+### Resolution
+
+The pre-admission Runtime catch recognizes typed `read_timeout` and the exact SDK history-timeout
+message and returns `accepted: false, reason: session_history_unavailable`. Main composer and
+Quick Ask consume the structured rejection, show an actionable error, and release pending state.
+The main composer restores its draft and a subsequent send receives a new operation ID.
+
+This fix is restricted to the known pre-admission boundary. It neither automatically resubmits
+queries nor treats an arbitrary post-admission timeout as proof that a Run was never accepted.
+The underlying long history read remains tracked separately in Issue 214.
+
+### Files Changed and Tests Added
+
+- `apps/desktop/electron/kodax/real-session.ts`
+- `packages/space-ipc-schema/src/channels/session.ts`
+- `apps/desktop/renderer/src/store/appStore.ts`
+- `apps/desktop/renderer/src/shell/BottomBar.tsx`
+- `apps/desktop/renderer/src/features/quick-ask/QuickAskPopover.tsx`
+- `apps/desktop/renderer/src/i18n/messages.ts`
+- `apps/desktop/electron/test/real-session-runtime-queue.test.ts` and
+  `packages/space-ipc-schema/test/session.test.ts`: pre-admission rejection and schema coverage.
+- `tests/e2e/session-send-retry.spec.ts`: structured rejection, restored draft, same-Session retry
+  with a new operation ID, one visible query, and Quick Ask recovery. This test substitutes the
+  IPC handler; it does not reproduce the real daemon's slow filesystem operation.
+
+### Verification
+
+See [Issue 211 regression guide](test-guides/ISSUE_211_v0.1.46_REGRESSION_GUIDE.md). The source fix
+passed 238 related focused tests, TypeScript checks, targeted lint, and the production smoke build.
+Focused Electron E2E passed 2/2 (ordinary send/reply plus timeout-rejection retry and Quick Ask
+recovery). These tests do not reproduce the original daemon storage delay. The source fix must
+not be presented as a deployed repair of the user's currently running application.
 
 ## Issue 210: Manual compact preflight races its echo write; integrate beta.3 recovery and sandbox fixes
 
@@ -14932,13 +15163,14 @@ misclassified as missing before the durable mutation is attempted.
 
 ## Summary
 
-- Total: 190
+- Total: 202
 - Open: 1
 - Ready: 1
+- Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved: 177
-- High: 98
-- Medium: 80
+- Resolved (including source-only fixes): 189
+- High: 106
+- Medium: 84
 - Low: 12
-- Next to resolve: 199
+- Next ready to resolve: 213
