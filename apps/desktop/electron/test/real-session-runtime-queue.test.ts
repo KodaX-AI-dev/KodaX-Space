@@ -676,6 +676,98 @@ test('daemon Coder restores the draft when the persisted boundary changes before
   assert.deepEqual(events, []);
 });
 
+test('daemon Coder can retry the same Session after a pre-admission history timeout', async (t) => {
+  let identityReads = 0;
+  let admittedInputs = 0;
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  t.mock.method(runtimeHostAdapter, 'initialize', async () => undefined);
+  t.mock.method(runtimeHostAdapter, 'ensureSession', async () => {
+    identityReads += 1;
+    if (identityReads === 1) {
+      throw Object.assign(new Error('Session history read timed out after 15000ms'), {
+        code: 'read_timeout',
+      });
+    }
+    return false;
+  });
+  t.mock.method(runtimeHostAdapter, 'ensureObserved', async () => undefined);
+  t.mock.method(runtimeHostAdapter, 'activeRunId', () => undefined);
+  t.mock.method(runtimeHostAdapter, 'findActiveRunId', async () => undefined);
+  t.mock.method(runtimeHostAdapter, 'updateSessionSettings', async () => undefined);
+  t.mock.method(runtimeHostAdapter, 'startManagedRun', async () => {
+    admittedInputs += 1;
+    return {
+      runId: 'run_retry',
+      result: Promise.resolve({
+        runId: 'run_retry',
+        sessionId: 'session_history_timeout_retry',
+        phase: 'completed' as const,
+      }),
+    };
+  });
+  const session = new RealKodaXSession({
+    sessionId: 'session_history_timeout_retry',
+    projectRoot: process.cwd(),
+    provider: 'test-provider',
+    reasoningMode: 'balanced',
+    permissionMode: 'accept-edits',
+    surface: 'code',
+    emit: () => undefined,
+    requestPermission: async () => 'allow_once',
+  });
+  assert.deepEqual(await session.send('retry this draft', undefined, { queueMode: 'after-turn' }), {
+    accepted: false,
+    reason: 'session_history_unavailable',
+    queueMode: 'after-turn',
+  });
+  assert.equal(admittedInputs, 0);
+  assert.equal(session.isRunning(), false);
+  assert.deepEqual(await session.send('retry this draft', undefined, { queueMode: 'after-turn' }), {
+    accepted: true,
+    queued: false,
+    runId: 'run_retry',
+  });
+  assert.equal(identityReads, 2);
+  assert.equal(admittedInputs, 1);
+  await waitForTest(() => !session.isRunning());
+
+  // Once Runtime submission begins, even the same error must remain ambiguous:
+  // a definitive rejection here could duplicate an input accepted before transport failure.
+  t.mock.method(runtimeHostAdapter, 'activeRunId', () => 'run_recovered');
+  t.mock.method(runtimeHostAdapter, 'submitInput', async () => {
+    throw Object.assign(new Error('Session history read timed out after 15000ms'), {
+      code: 'read_timeout',
+    });
+  });
+  await assert.rejects(
+    session.send('uncertain submission', undefined, { queueMode: 'after-turn' }),
+    { code: 'read_timeout' },
+  );
+});
+
+test('daemon Coder recognizes a history timeout preserved only as a transport message', async (t) => {
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  t.mock.method(runtimeHostAdapter, 'initialize', async () => undefined);
+  t.mock.method(runtimeHostAdapter, 'ensureSession', async () => {
+    throw new Error('Session history read timed out after 15000ms');
+  });
+  const session = new RealKodaXSession({
+    sessionId: 'session_history_timeout_transport',
+    projectRoot: process.cwd(),
+    provider: 'test-provider',
+    reasoningMode: 'balanced',
+    permissionMode: 'accept-edits',
+    surface: 'code',
+    emit: () => undefined,
+    requestPermission: async () => 'allow_once',
+  });
+  assert.deepEqual(await session.send('preserve this draft'), {
+    accepted: false,
+    reason: 'session_history_unavailable',
+    queueMode: 'interrupt',
+  });
+});
+
 test('daemon Coder restores the draft when Runtime preparation crosses a changed boundary', async (t) => {
   const adapter = runtimeHostAdapter as unknown as Record<string, unknown>;
   const patchedMethods = new Map<string, { readonly existed: boolean; readonly value: unknown }>();

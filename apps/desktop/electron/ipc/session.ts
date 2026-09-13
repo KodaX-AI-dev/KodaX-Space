@@ -954,7 +954,17 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
           agentMode: input.agentMode,
         },
       });
-      const allocatedSessionId = await generateKodaxSessionId();
+      const allocatedSessionId =
+        (input.surface ?? 'code') === 'code' &&
+        input.provider !== 'mock' &&
+        process.env.KODAX_FORCE_MOCK !== '1' &&
+        runtimeHostAdapter.isRuntimeSelected()
+          ? await runtimeHostAdapter.createSession({
+              projectRoot,
+              surface: 'code',
+              ephemeral: input.ephemeral ?? false,
+            })
+          : await generateKodaxSessionId();
       const { sessionId, createdAt } = kodaxHost.createSession({
         sessionId: allocatedSessionId,
         projectRoot,

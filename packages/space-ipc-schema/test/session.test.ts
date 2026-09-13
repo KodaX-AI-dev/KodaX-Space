@@ -719,6 +719,14 @@ test('session.send distinguishes accepted acknowledgements from factual Runtime 
   assert.equal(
     sessionSendChannel.output.safeParse({
       accepted: false,
+      reason: 'session_history_unavailable',
+      queueMode: 'interrupt',
+    }).success,
+    true,
+  );
+  assert.equal(
+    sessionSendChannel.output.safeParse({
+      accepted: false,
       reason: 'unknown_rejection',
       queueMode: 'interrupt',
     }).success,

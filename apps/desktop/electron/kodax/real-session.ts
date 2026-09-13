@@ -109,6 +109,16 @@ function isSessionPreAdmissionDataChanged(error: unknown): boolean {
   return code === 'data_changed' || code === 'resync_required';
 }
 
+function isSessionHistoryReadTimeout(error: unknown): boolean {
+  if (error && typeof error === 'object' && 'code' in error && error.code === 'read_timeout') {
+    return true;
+  }
+  // Also recognize the exact SDK message when a wrapper does not preserve the typed code.
+  return (
+    error instanceof Error && /^Session history read timed out after \d+ms$/.test(error.message)
+  );
+}
+
 import type {
   AskUserAnswer as SdkAskUserAnswer,
   AskUserSelectionAnswer as SdkAskUserSelectionAnswer,
@@ -806,6 +816,9 @@ export class RealKodaXSession implements ManagedSession {
         // uncertain. Here no Runtime input has been submitted, so restoring the draft is factual.
         if (isSessionPreAdmissionDataChanged(error)) {
           return { accepted: false, reason: 'session_data_changed', queueMode };
+        }
+        if (isSessionHistoryReadTimeout(error)) {
+          return { accepted: false, reason: 'session_history_unavailable', queueMode };
         }
         throw error;
       }

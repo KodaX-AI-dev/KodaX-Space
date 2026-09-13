@@ -3392,6 +3392,30 @@ export class RuntimeHostAdapter {
     return true;
   }
 
+  async createSession(input: Omit<RuntimeSessionIdentity, 'sessionId'>): Promise<string> {
+    if (input.surface !== 'code') {
+      throw new Error('Partner sessions must remain on the inline Partner owner.');
+    }
+    const runtime = await this.requireRuntime();
+    // Omitting sessionId selects the SDK's generated-session storage path. Supplying a newly
+    // allocated ID would first search historical storage to prove that the ID does not exist.
+    const session = await runtime.sessions.create({
+      projectPath: input.projectRoot,
+      gitRoot: input.projectRoot,
+      surface: 'space-desktop',
+      tag: input.ephemeral ? SPACE_EPHEMERAL_SESSION_TAG : 'code',
+    });
+    assertRuntimeSessionIdentity(session, {
+      sessionId: session.id,
+      projectRoot: input.projectRoot,
+    });
+    if (this.runtime !== runtime || this.state !== 'ready') {
+      throw new Error('Coder daemon connection changed while creating a Session.');
+    }
+    this.scheduleProfileRefresh(this.currentProfileCursor());
+    return session.id;
+  }
+
   async ensureSession(input: RuntimeSessionIdentity): Promise<boolean> {
     if (input.surface !== 'code') {
       throw new Error(

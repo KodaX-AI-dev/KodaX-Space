@@ -7006,6 +7006,118 @@ test('Runtime session mutations invalidate the Space transcript compatibility ca
   assert.equal(transcriptReads, 3);
 });
 
+test('new Coder Sessions use daemon allocation without a historical ID lookup', async () => {
+  const fake = createFakeRuntime();
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    for (const ephemeral of [false, true]) {
+      const sessionId = await adapter.createSession({
+        projectRoot: 'C:\\repo',
+        surface: 'code',
+        ephemeral,
+      });
+      assert.ok(fake.sessions.has(sessionId));
+      assert.deepEqual(fake.calls.loaded, []);
+      assert.deepEqual(fake.calls.created.at(-1), {
+        projectPath: 'C:\\repo',
+        gitRoot: 'C:\\repo',
+        surface: 'space-desktop',
+        tag: ephemeral ? 'space-ephemeral' : 'code',
+      });
+    }
+    for (const sessionId of fake.sessions) {
+      assert.equal(
+        await adapter.ensureSession({
+          sessionId,
+          projectRoot: 'C:\\repo',
+          surface: 'code',
+          ephemeral: false,
+        }),
+        false,
+        'first-send admission must reuse the already persisted Session',
+      );
+    }
+    await assert.rejects(
+      adapter.createSession({ projectRoot: 'C:\\repo', surface: 'partner', ephemeral: false }),
+      /Partner.*inline/i,
+    );
+    assert.equal(fake.calls.created.length, 2);
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('daemon allocated Session identity is checked before Space adopts its ID', async () => {
+  const fake = createFakeRuntime();
+  fake.runtime.sessions.create = async () => ({
+    id: 's_wrong_project',
+    title: '',
+    workspaceRoot: 'C:\\other',
+    surface: 'space-desktop',
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    await assert.rejects(
+      adapter.createSession({ projectRoot: 'C:\\repo', surface: 'code', ephemeral: false }),
+      /does not match projectRoot/,
+    );
+    fake.runtime.sessions.create = async () => ({
+      id: 's_wrong_surface',
+      title: '',
+      workspaceRoot: 'C:\\repo',
+      surface: 'partner',
+    });
+    await assert.rejects(
+      adapter.createSession({ projectRoot: 'C:\\repo', surface: 'code', ephemeral: false }),
+      /Partner.*inline/,
+    );
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('daemon allocated Sessions still reject a persisted Partner retag before first send', async () => {
+  const records = new Map<string, Readonly<Record<string, unknown>>>();
+  installPersistedSessionLookup(records);
+  const fake = createFakeRuntime();
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    const sessionId = await adapter.createSession({
+      projectRoot: 'C:\\repo',
+      surface: 'code',
+      ephemeral: false,
+    });
+    records.set(sessionId, { tag: 'partner', gitRoot: 'C:\\repo', messages: [] });
+    await assert.rejects(
+      adapter.ensureSession({
+        sessionId,
+        projectRoot: 'C:\\repo',
+        surface: 'code',
+        ephemeral: false,
+      }),
+      /inline Partner surface/,
+    );
+    assert.deepEqual(fake.calls.loaded, []);
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('ensureSession accepts Coder only and rejects Partner before daemon access', async () => {
   installPersistedSessionLookup();
   const fake = createFakeRuntime();
