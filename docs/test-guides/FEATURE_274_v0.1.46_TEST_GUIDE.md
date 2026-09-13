@@ -169,3 +169,44 @@ Observed results:
   tests prove native image-block fidelity to the Provider interface, not the
   correctness of real provider wire delivery or visual interpretation. Further
   attribution of the live vision discrepancy remains open.
+
+## Follow-up attribution checks (2026-09-13)
+
+The retained PNG is 165 bytes, SHA-256
+`8fe50d4ede83760a7f7126f87ab94103b282417c2c660472d611865c9d706210`.
+An isolated fetch-boundary probe inspected serialized requests without recording
+credentials. Direct user images and images nested in `tool_result` both become
+Anthropic base64 image blocks containing exactly these bytes.
+
+Live checks against `https://api.deepseek.com/anthropic/v1/messages`:
+
+- Three direct HTTP calls returned blue.
+- SDK Provider, managed root `read`, and native child `read` returned blue, with
+  matching image hashes in the actual outgoing requests.
+- Repeating with AMA and `effort:minimal` retained the same image bytes. The SDK
+  maps minimal to `thinking:disabled`; a raw HTTP `output_config.effort:minimal`
+  is invalid and is not the request Space/SDK sends.
+- The original two-child read/write objective through the SDK completed. Every
+  outgoing image matched the PNG hash. The outputs said blue and light blue;
+  the latter is an inaccurate shade description despite correct image bytes.
+- A fresh packaged-desktop Session also completed both child read/write turns,
+  both outputs said blue, and reload passed. The attempted preload observer was
+  not loaded by that package, so this run does not prove packaged HTTP payloads.
+  Wire-byte evidence above belongs to the isolated SDK runs.
+
+These checks do not reproduce or explain the earlier green/purple outputs under
+the same failing desktop history. Keep those failed samples; no Space image
+transformation fix or SDK vision defect is established. Evidence remains in
+`artifacts/rc2-live-acceptance/{wire-probe,wire-probe-minimal,vision-compare,vision-compare-minimal,vision-compare-fanout}.json`
+and `artifacts/rc2-daemon-vision/report.json`.
+
+A new isolated daemon independently reported rc.2, no `sessionCancellation` or
+`toolInvocation`, and `runLifecycleControl:1`. Using a real created Session,
+`runs.start({options:{toolInvocation:...}})` and `sessions.cancel(...)` both rejected
+with `client_upgrade_required` before dispatch. Published code contains the
+`session.cancel` schema/handler and the explicit invocation option; inline
+`createKodaXRuntime` advertises both capabilities, while `runtimeDaemonCapabilities`
+does not include them by default. This points to an existing daemon capability
+exposure/alignment gap, not a need to design new APIs. The SDK fix must verify
+actual daemon execution/cancellation before advertising support; adding flags
+alone is not acceptance. Space must retain its honest capability gate meanwhile.
