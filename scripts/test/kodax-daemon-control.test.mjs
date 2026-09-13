@@ -11,19 +11,21 @@ import { connectKodaXRuntime } from '@kodax-ai/kodax/runtime';
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 
 async function fixture(t) {
-  // rc.3's daemon write policy refuses workspaces whose ancestor chain
-  // overlaps the protected native text state root, which lives under the
-  // system temp area on POSIX. Keep the fixture beside the repo instead
-  // (same reason kodax-permission-authority avoids OS-temp fixtures).
+  // rc.3's daemon write policy refuses a workspace that contains the
+  // daemon's protected native text state root, which lives under the
+  // daemon home. Keep the workspace a sibling of homeDir instead of
+  // pointing both at the same directory.
   const scratch = path.join(repository, 'scratch');
   await mkdir(scratch, { recursive: true });
   const root = await realpath(await mkdtemp(path.join(scratch, 'space-daemon-control-')));
+  const workspace = path.join(root, 'workspace');
+  await mkdir(workspace);
   const profile = 'control-regression';
   const packageRoot = path.dirname(
     createRequire(import.meta.url).resolve('@kodax-ai/kodax/package.json'),
   );
   const runtime = await connectKodaXRuntime({
-    homeDir: root,
+    homeDir: path.join(root, 'home'),
     profile,
     autoStart: true,
     defaultProvider: 'anthropic',
@@ -55,7 +57,7 @@ async function fixture(t) {
   assert.equal(runtime.capabilities.sessionCancellation?.version, 1);
   assert.equal(runtime.capabilities.sessionCancellation?.durableFrontier, true);
   assert.equal(runtime.capabilities.toolInvocation?.version, 1);
-  const session = await runtime.sessions.create({ projectPath: root });
+  const session = await runtime.sessions.create({ projectPath: workspace });
   await runtime.sessions.updateSettings(session.id, { permissionMode: 'full-access' });
   const start = (toolInvocation) =>
     runtime.runs.start({
@@ -63,7 +65,7 @@ async function fixture(t) {
       prompt: 'Explicit offline acceptance',
       options: { lsp: false, toolInvocation },
     });
-  return { runtime, root, sessionId: session.id, start };
+  return { runtime, workspace, sessionId: session.id, start };
 }
 
 async function waitForFile(file) {
@@ -83,8 +85,8 @@ test(
   'published daemon executes explicit tools and cancels only the accepted Session frontier',
   { timeout: 90000 },
   async (t) => {
-    const { runtime, root, sessionId, start } = await fixture(t);
-    const firstFile = path.join(root, 'first.txt');
+    const { runtime, workspace, sessionId, start } = await fixture(t);
+    const firstFile = path.join(workspace, 'first.txt');
     const first = await start({
       name: 'write',
       input: { path: firstFile, content: 'explicit tool completed' },
@@ -93,7 +95,7 @@ test(
     assert.equal(firstResult.phase, 'completed', firstResult.result?.lastText);
     assert.equal(await readFile(firstFile, 'utf8'), 'explicit tool completed');
 
-    const gateScript = path.join(root, 'gate.cjs');
+    const gateScript = path.join(workspace, 'gate.cjs');
     await writeFile(
       gateScript,
       "require('node:fs').writeFileSync(process.argv[2], 'running'); setTimeout(() => {}, Number(process.argv[3]));\n",
@@ -103,10 +105,10 @@ test(
         name: 'bash',
         input: { command: `"${process.execPath}" "${gateScript}" "${marker}" ${delay}` },
       });
-    const marker = path.join(root, 'active.txt');
+    const marker = path.join(workspace, 'active.txt');
     const active = await launchGate(marker, 30000);
     await waitForFile(marker);
-    const forbidden = path.join(root, 'queued-must-not-run.txt');
+    const forbidden = path.join(workspace, 'queued-must-not-run.txt');
     const queued = await start({
       name: 'write',
       input: { path: forbidden, content: 'must not exist' },
@@ -126,7 +128,7 @@ test(
     );
     await assert.rejects(readFile(forbidden), { code: 'ENOENT' });
 
-    const successorMarker = path.join(root, 'successor.txt');
+    const successorMarker = path.join(workspace, 'successor.txt');
     const successor = await launchGate(successorMarker, 2000);
     await waitForFile(successorMarker);
     const replay = await runtime.sessions.cancel(request);
