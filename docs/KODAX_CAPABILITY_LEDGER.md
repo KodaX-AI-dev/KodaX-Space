@@ -1,7 +1,7 @@
 # KodaX Capability Ledger
 
 > Last reviewed: 2026-09-13
-> Space baseline: current source `0.1.46-alpha.11`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical)
+> Space baseline: current source `0.1.46-beta.1`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical)
 > Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.96-rc.3` (`sha512-0oQg2QtGwqpY82IOfckFPba9UdK1haV+/Y3Wpz2ED9OuZlNwdcnjUvFn8LEsnTt/GrgIlz5BABGXQbuFT4O53Q==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
 > Workspace dependency: root and Desktop manifests, lockfile, and installed bytes resolve rc.3. The Windows packaged ASAR passed the same exact Registry URL/integrity gate, native/Worker probes, boot and complete-exit acceptance.
@@ -63,7 +63,7 @@ daemon admission requirements and connected Runtime checks additionally require
 `commandLifetimeFilesystemLease:false`. The release dependency gate requires the
 complete universal native bundle. Electron packaging unpacks the whole
 `dist/native` directory, and packaged smoke validates each manifest-pinned file
-before running the real sandbox path. Space uses package version 0.1.46-alpha.11
+before running the real sandbox path. Space uses package version 0.1.46-beta.1
 for this source candidate. Alpha.6/alpha.7 move Windows readiness to protected-cache
 generation 10, keep broad ACL repair inside explicit Setup, extend exact-authority
 proxy capacity, isolate each command's temporary leaf, and require real no-side-effect

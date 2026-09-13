@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+---
+
+## [0.1.46-beta.1] - 2026-09-13
+
 ### Fixed
 
 - Pin KodaX `0.7.96-rc.3` and require daemon `sessionCancellation:1` with a durable
