@@ -16,6 +16,8 @@ export default [
       '**/tmp/**',
       // Local diagnostics and scratch runs; gitignored, never shipped.
       'scratch/**',
+      // Local packaged-app build outputs; gitignored, never shipped.
+      'artifacts/**',
       '**/dist/**',
       '**/dist-electron/**',
       '**/out/**',
