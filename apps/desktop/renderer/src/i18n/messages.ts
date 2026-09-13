@@ -29,7 +29,7 @@ export const messages = {
     'renderer.renderError': 'KodaX Space hit a render error',
     'renderer.reload': 'Reload',
     'activity.sending': 'Sending...',
-    'activity.sendingWaiting': 'Sending... · waiting for LLM',
+    'activity.sendingWaiting': 'Sending... · waiting for the session to start',
     'activity.thinking': 'Thinking...',
     'activity.runningTool': 'Running {tool}...',
     'activity.processingResult': 'Processing result...',
@@ -2278,6 +2278,8 @@ export const messages = {
       'Message not sent: the active run has passed its final safe insertion point. Your draft was restored; retry after the run finishes.',
     'bottom.sendRejected.sessionDataChanged':
       'Message not sent: the Session persistence boundary changed while Space was preparing the request. Your draft was restored; retry now.',
+    'bottom.sendRejected.sessionHistoryUnavailable':
+      'Message not sent: reading the session history timed out. Your draft was restored; you can retry.',
     'bottom.sendRejected.cancelledBeforeAdmission':
       'Message not sent: the request was cancelled before a Run started. Your draft was restored.',
     'bottom.sendRejected.skillRequiresIdle':
@@ -2574,7 +2576,7 @@ export const messages = {
     'renderer.renderError': 'KodaX Space 渲染出错',
     'renderer.reload': '重新加载',
     'activity.sending': '发送中...',
-    'activity.sendingWaiting': '发送中... · 等待 LLM',
+    'activity.sendingWaiting': '发送中... · 等待会话启动',
     'activity.thinking': '思考中...',
     'activity.runningTool': '正在运行 {tool}...',
     'activity.processingResult': '正在处理结果...',
@@ -4535,6 +4537,8 @@ export const messages = {
       '消息未发送：当前任务已越过最后一个安全插入点。草稿已恢复，请在任务结束后重试。',
     'bottom.sendRejected.sessionDataChanged':
       '消息未发送：Space 准备请求时 Session 的持久化边界发生了变化。草稿已恢复，请立即重试。',
+    'bottom.sendRejected.sessionHistoryUnavailable':
+      '消息未发送：读取会话历史超时。草稿已恢复，可以重新发送。',
     'bottom.sendRejected.cancelledBeforeAdmission':
       '消息未发送：请求已在任务启动前取消。草稿已恢复。',
     'bottom.sendRejected.skillRequiresIdle':

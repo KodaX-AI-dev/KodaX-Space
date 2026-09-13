@@ -120,6 +120,8 @@ export function rejectedSessionSendText(result: RejectedSessionSend, t: Translat
       return t('bottom.sendRejected.interruptWindowClosed');
     case 'session_data_changed':
       return t('bottom.sendRejected.sessionDataChanged');
+    case 'session_history_unavailable':
+      return t('bottom.sendRejected.sessionHistoryUnavailable');
     case 'cancelled_before_admission':
       return t('bottom.sendRejected.cancelledBeforeAdmission');
     case 'skill_requires_idle':

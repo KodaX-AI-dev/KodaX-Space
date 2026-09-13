@@ -226,12 +226,17 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
       expectedProjectRoot: currentProjectPath,
       expectedSurface: 'code',
     });
-    if (!sendResult.ok) {
+    if (!sendResult.ok || !sendResult.data.accepted) {
       unsubscribe();
+      if (sendResult.ok && isActiveRun()) setPrompt(prompt);
       setActiveState({
         kind: 'error',
         sessionId,
-        message: sendResult.error?.message ?? t('quickAsk.sendFailed'),
+        message: !sendResult.ok
+          ? (sendResult.error?.message ?? t('quickAsk.sendFailed'))
+          : !sendResult.data.accepted && sendResult.data.reason === 'session_history_unavailable'
+            ? t('bottom.sendRejected.sessionHistoryUnavailable')
+            : t('quickAsk.sendFailed'),
       });
       return;
     }

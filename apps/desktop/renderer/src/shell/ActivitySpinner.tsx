@@ -717,6 +717,11 @@ export function ActivitySpinner(): ReactJSX.Element | null {
   const pending = useAppStore((s) =>
     currentSessionId ? Boolean(s.pendingSendBySession[currentSessionId]) : false,
   );
+  const pendingStartedAt = useAppStore((s) =>
+    currentSessionId
+      ? s.pendingSendRuntimeBaselineBySession[currentSessionId]?.startedAt
+      : undefined,
+  );
   const managedPhase = useAppStore((s) =>
     currentSessionId ? s.managedTaskStatusBySession[currentSessionId]?.phase : undefined,
   );
@@ -755,8 +760,12 @@ export function ActivitySpinner(): ReactJSX.Element | null {
 
   if (!snap.streaming) return null;
 
+  // Pending snapshots are recomputed on every timer tick. Measure from the send action so the
+  // elapsed label survives rerenders and Session switches, and a retry starts its own clock.
+  const startedAt =
+    snap.status === 'Sending…' ? (pendingStartedAt ?? snap.startedAt) : snap.startedAt;
   const elapsedSec =
-    snap.startedAt !== null ? Math.max(0, Math.round((Date.now() - snap.startedAt) / 1000)) : 0;
+    startedAt !== null ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : 0;
   const elapsedStr = elapsedSec > 0 ? formatElapsed(elapsedSec) : '';
 
   const iterStr = snap.iter ? `iter ${snap.iter.current}/${snap.iter.max}` : '';
@@ -771,7 +780,7 @@ export function ActivitySpinner(): ReactJSX.Element | null {
     }
   }
 
-  // Sending 阶段 > 2s 时补 "waiting for LLM"，让长 TTFB 不像卡死
+  // Pending includes local history reads and initialization before the model is contacted.
   const sendingTooLong = snap.status === 'Sending…' && elapsedSec >= 2;
   const statusBase = formatActivityStatus(snap.status, sendingTooLong, t);
 

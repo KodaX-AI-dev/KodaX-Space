@@ -510,6 +510,7 @@ interface RuntimeSnapshotEventBarrier extends SpaceRuntimeCursorT {
 
 interface PendingSendRuntimeBaseline {
   readonly requestGeneration: number;
+  readonly startedAt: number;
   readonly runtimeId?: string;
   /** Per-Session observation sequence; never compare it with the aggregate profile cursor. */
   readonly liveCursorSeq: number;
@@ -4670,7 +4671,7 @@ function pendingSendRuntimeBaseline(
     !runtimeConnectionHasFreshLiveAuthority(state.runtimeConnection) ||
     state.runtimeConnection.runtimeId === undefined
   ) {
-    return { requestGeneration, liveCursorSeq: -1, profileCursorSeq: -1 };
+    return { requestGeneration, startedAt: Date.now(), liveCursorSeq: -1, profileCursorSeq: -1 };
   }
   const runtimeId = state.runtimeConnection.runtimeId;
   const live = state.liveProjectionBySession[sessionId];
@@ -4685,6 +4686,7 @@ function pendingSendRuntimeBaseline(
   const profileSeq = profile?.cursor?.runtimeId === runtimeId ? profile.cursor.seq : -1;
   return {
     requestGeneration,
+    startedAt: Date.now(),
     runtimeId,
     liveCursorSeq: liveSeq,
     profileCursorSeq: profileSeq,
@@ -6592,6 +6594,7 @@ export const useAppStore = create<AppState>((setState) => {
         if (!state.pendingSendBySession[sessionId]) return state;
         const currentBaseline = state.pendingSendRuntimeBaselineBySession[sessionId] ?? {
           requestGeneration: 0,
+          startedAt: Date.now(),
           liveCursorSeq: -1,
           profileCursorSeq: -1,
         };
@@ -8589,6 +8592,7 @@ export const useAppStore = create<AppState>((setState) => {
           Object.keys(state.pendingSendBySession).map((sessionId) => {
             const baseline = state.pendingSendRuntimeBaselineBySession[sessionId] ?? {
               requestGeneration: 0,
+              startedAt: Date.now(),
               liveCursorSeq: -1,
               profileCursorSeq: -1,
             };
