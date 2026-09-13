@@ -1,4 +1,4 @@
-// Opt-in live acceptance: node --import tsx e2e/rc2-live-acceptance.mjs
+// Opt-in live acceptance: node --import tsx e2e/sdk-live-acceptance.mjs
 // Uses an isolated desktop profile and the existing DeepSeek credential in memory.
 import assert from 'node:assert/strict';
 import path from 'node:path';
@@ -7,13 +7,18 @@ import { randomUUID } from 'node:crypto';
 import * as keyring from '@napi-rs/keyring/keytar.js';
 import { launchSpace } from '../tests/e2e/fixtures.ts';
 
-const reportDir = path.resolve('artifacts/rc2-live-acceptance');
+const reportDir = path.resolve('artifacts/sdk-live-acceptance');
 await mkdir(reportDir, { recursive: true });
 const credential =
   process.env.DEEPSEEK_API_KEY || (await keyring.getPassword('kodax-space', 'deepseek'));
 assert.ok(credential, 'A configured DeepSeek credential is required for live acceptance');
 const report = {
-  sdk: '0.7.96-rc.2',
+  sdk: JSON.parse(
+    await readFile(
+      new URL('../node_modules/@kodax-ai/kodax/package.json', import.meta.url),
+      'utf8',
+    ),
+  ).version,
   provider: 'deepseek',
   model: 'deepseek-flash',
   checks: [],
@@ -89,12 +94,15 @@ async function waitTerminal(sessionId, runId) {
 }
 
 async function shot(name) {
+  await space.page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   await space.page.screenshot({ path: path.join(reportDir, `${name}.png`) });
 }
 
 try {
   step('launch packaged Space with real provider and isolated profile');
-  space = await launchSpace(`rc2-live-${Date.now()}`, {
+  space = await launchSpace(`sdk-live-${Date.now()}`, {
     executablePath: path.resolve('out/win-unpacked/KodaX Space.exe'),
     env: { KODAX_FORCE_MOCK: '0', DEEPSEEK_API_KEY: credential },
     onPageError: (error) => report.errors.push(error.message),
@@ -124,7 +132,7 @@ try {
     surface: 'code',
   });
   report.sessionId = session.sessionId;
-  await invoke('session.setTitle', { sessionId: session.sessionId, title: 'rc.2 live acceptance' });
+  await invoke('session.setTitle', { sessionId: session.sessionId, title: 'SDK live acceptance' });
   await space.page.reload();
   await space.page.waitForSelector('[data-space-shell-ready]', { timeout: 45000 });
   await space.page
@@ -133,7 +141,7 @@ try {
   await shot('01-ready');
 
   step('real DeepSeek response');
-  await send('只回复 LIVE_RC2_READY，不调用工具。');
+  await send('只回复 LIVE_SDK_READY，不调用工具。');
   const first = await waitStarted(session.sessionId);
   const firstEnd = await waitTerminal(session.sessionId, first.runId);
   assert.equal(firstEnd.phase, 'completed');
@@ -142,33 +150,36 @@ try {
     requestId: randomUUID(),
   });
   assert.ok(
-    history.items.some((item) => item.kind === 'assistant' && item.text.includes('LIVE_RC2_READY')),
+    history.items.some((item) => item.kind === 'assistant' && item.text.includes('LIVE_SDK_READY')),
   );
   report.checks.push({ name: 'real-provider', runId: first.runId, phase: firstEnd.phase });
   await shot('02-real-response');
 
-  step('verify unsupported daemon explicit command is rejected before a new Run');
-  await send('!node -e "process.stdout.write(\'EXPLICIT_TOOL_SHOULD_NOT_RUN\')"');
-  await waitFor(
-    'explicit command capability rejection',
-    async () =>
-      (await space.page.getByTestId('conversation-stream').innerText()).includes(
-        'toolInvocation v1',
-      ),
-    30000,
+  step('explicit command executes through a managed Run');
+  await send(
+    "!node -e \"require('node:fs').writeFileSync('explicit.txt', 'EXPLICIT_TOOL_OK'); process.stdout.write('EXPLICIT_TOOL_OK')\"",
   );
-  const rejectedCommand = await live(session.sessionId);
-  assert.ok(!rejectedCommand.activeRun);
-  assert.equal(rejectedCommand.lastTerminalRun?.runId, first.runId);
-  report.unsupportedCapabilities = [
-    'daemon toolInvocation v1: explicit commands unavailable; Space rejects before admission',
-  ];
+  const explicitEnd = await waitFor('explicit command settlement', async () => {
+    const snapshot = await live(session.sessionId);
+    return !snapshot.activeRun && snapshot.lastTerminalRun?.runId !== first.runId
+      ? snapshot.lastTerminalRun
+      : null;
+  });
+  assert.equal(explicitEnd.phase, 'completed');
+  assert.equal(await readFile(path.join(projectRoot, 'explicit.txt'), 'utf8'), 'EXPLICIT_TOOL_OK');
+  const explicitHistory = await invoke('session.history', {
+    sessionId: session.sessionId,
+    requestId: randomUUID(),
+  });
+  assert.ok(JSON.stringify(explicitHistory.items).includes('EXPLICIT_TOOL_OK'));
+  report.explicitHistory = explicitHistory;
+  report.checks.push({ name: 'explicit-tool', runId: explicitEnd.runId, phase: explicitEnd.phase });
 
   step('UI Stop during a real running tool');
   await send(
     '请使用 bash 工具执行并等待完成，不要后台执行、不要启动子代理：node -e "setTimeout(() => process.stdout.write(\'UNEXPECTED_LONG_FINISH\'), 90000)"',
   );
-  const stopped = await waitStarted(session.sessionId, first.runId);
+  const stopped = await waitStarted(session.sessionId, explicitEnd.runId);
   await waitFor(
     'running shell tool',
     async () => (await live(session.sessionId)).activeTools?.some((tool) => tool.name === 'bash'),
@@ -203,8 +214,8 @@ try {
       requestId: randomUUID(),
       retry: 'unconfirmed',
     });
-    assert.equal(replay.stop?.runId, stopped.runId);
-    report.retryPath = 'IPC stale request (initial Stop already confirmed)';
+    assert.equal(replay.stop, undefined);
+    report.retryPath = 'IPC fresh stale request is a no-op (initial Stop already confirmed)';
   }
   const successorEnd = await waitTerminal(session.sessionId, successor.runId);
   assert.equal(successorEnd.phase, 'completed');
@@ -214,6 +225,19 @@ try {
     successorRunId: successor.runId,
     phase: successorEnd.phase,
   });
+  report.afterSuccessor = {
+    history: await invoke('session.history', {
+      sessionId: session.sessionId,
+      requestId: randomUUID(),
+    }),
+    live: await live(session.sessionId),
+    rows: await space.page.locator('[data-msg-id]').evaluateAll((elements) =>
+      elements.map((element) => ({
+        id: element.getAttribute('data-msg-id'),
+        text: element.innerText,
+      })),
+    ),
+  };
   await shot('04-successor-survived');
 
   step('two native child agents read PNGs and write verifiable outputs');
@@ -276,11 +300,48 @@ try {
   await waitFor(
     'restored history',
     async () =>
-      (await space.page.getByTestId('conversation-stream').innerText()).includes('LIVE_RC2_READY'),
+      (await space.page.getByTestId('conversation-stream').innerText()).includes('LIVE_SDK_READY'),
     30000,
   );
+  report.afterReload = {
+    history: await invoke('session.history', {
+      sessionId: session.sessionId,
+      requestId: randomUUID(),
+    }),
+    rows: await space.page.locator('[data-msg-id]').evaluateAll((elements) =>
+      elements.map((element) => ({
+        id: element.getAttribute('data-msg-id'),
+        text: element.innerText,
+      })),
+    ),
+  };
   await shot('06-reloaded');
   report.checks.push({ name: 'renderer-reload' });
+  const explicitTool = explicitHistory.items.find(
+    (item) => item.kind === 'tool_call' && item.input?.command?.includes('explicit.txt'),
+  );
+  assert.ok(explicitTool, 'Explicit command must have a canonical tool identity');
+  for (const [stage, snapshot] of [
+    ['after successor', report.afterSuccessor],
+    ['after reload', report.afterReload],
+  ]) {
+    const explicitRows = snapshot.rows.filter((row) => row.text.startsWith('!node -e'));
+    assert.equal(explicitRows.length, 1, `Explicit command input must appear once ${stage}`);
+    assert.equal(
+      snapshot.rows.filter((row) => row.id.includes(explicitTool.toolId)).length,
+      1,
+      `Explicit tool output must appear once ${stage}`,
+    );
+    const commandIndex = snapshot.rows.indexOf(explicitRows[0]);
+    const successorIndex = snapshot.rows.findIndex((row) =>
+      row.text.startsWith('SUCCESSOR_SURVIVED'),
+    );
+    assert.ok(
+      commandIndex < successorIndex,
+      `Explicit command must precede its successor ${stage}`,
+    );
+  }
+  report.checks.push({ name: 'explicit-command-history-ownership' });
   assert.deepEqual(report.errors, []);
   assert.ok(report.vision.passed, 'A child misidentified the blue PNG; see childFiles');
   report.passed = true;

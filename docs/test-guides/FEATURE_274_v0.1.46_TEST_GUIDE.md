@@ -1,87 +1,133 @@
-# Space / KodaX 0.7.96-rc.2 alignment
+# Space / KodaX 0.7.96-rc.3 alignment
 
-Baseline: Space 0.1.46-alpha.11 source, exact Registry SDK 0.7.96-rc.2. Scope is the
-beta.7–rc.2 increment applicable to Space, not every previously planned SDK UX.
+Baseline: Space 0.1.46-alpha.11 source, exact Registry SDK 0.7.96-rc.3. Scope is the
+beta.7–rc.3 increment applicable to Space, not every previously planned SDK UX.
+The package SRI is
+`sha512-0oQg2QtGwqpY82IOfckFPba9UdK1haV+/Y3Wpz2ED9OuZlNwdcnjUvFn8LEsnTt/GrgIlz5BABGXQbuFT4O53Q==`.
 
 ## Acceptance requirements
 
-- Owners advertising `sessionCancellation:1` use one
-  `sessions.cancel({ sessionId, expectedRunId, requestId })` operation. The SDK owns its durable queue frontier; later submissions survive.
-  Transport retries retain the same identity and binding. After the active Run
-  becomes terminal, rc.2 replays accepted requests or atomically rejects a stale
-  first request with `conflict / stale_run / retryable:false`. Space treats that
-  exact rejection as a settled no-op and never substitutes a successor.
-  No client acceptance ledger or preliminary Run-status check is required.
-  Preserve every returned receipt, and never present an unknown outcome as stopped.
-  Narrow Run cleanup, redirection and forced-exit ownership retain `runs.abort`.
-- Resolve extension commands from the owner catalog. Canonical names and aliases
-  route to `extension_command__<name>` using `toolInvocation`; `!command` routes
-  to `bash` with the original command text. Both use ordinary Run settings,
+- A ready daemon must advertise `sessionCancellation:1` with a durable frontier
+  and `toolInvocation:1`. SDK execution-connection fencing owns safe old-owner
+  replacement. Space validates the connected capabilities and adds no private
+  daemon recovery manager. The rc.2 Run-only Session Stop fallback is removed.
+- Session Stop uses one
+  `sessions.cancel({ sessionId, expectedRunId, requestId })` operation. The owner
+  fixes its durable queue frontier; later submissions survive. Transport retries
+  retain the same identity and Run binding. Accepted requests replay after their
+  Run becomes terminal; a stale first request rejects with
+  `conflict / stale_run / retryable:false`. Space recognizes both direct facts and
+  daemon facts under `error.data`, settles that rejection as a no-op, and never
+  substitutes a successor. Preserve every returned receipt; unknown is not stopped.
+  No client acceptance ledger or new replay API is required. Narrow Run cleanup,
+  redirection and forced-exit ownership still use `runs.abort`.
+- Resolve managed extension commands from the owner catalog. Canonical names and
+  aliases route to `extension_command__<name>` using `toolInvocation`; `!command`
+  routes to `bash` with the original command text. Both use ordinary Run settings,
   credentials, permissions, events, history, cancellation and operation identity.
-  This requires an advertised `toolInvocation:1`. A real rc.2 daemon omits it
-  and rejects explicit commands; `runLifecycleControl` is not a substitute.
-  No model guesses dispatch and no ungoverned local-process fallback is allowed.
-  Space currently requires an idle Session for explicit commands, as for Skills;
-  the Runtime remains authoritative if another client races admission.
-- Validate connected capabilities. The rc.2 daemon exposes `runLifecycleControl`
-  but still omits `sessionCancellation`; its public Session Stop guard rejects
-  the call. Preserve the existing exact-Run `runs.abort` fallback in this mode,
-  including terminal receipt retries. This fallback does not cancel queued Runs.
+  `runLifecycleControl` is not a substitute for `toolInvocation:1`. Space requires
+  an idle Session for explicit commands; the Runtime owns raced admission.
 - `/repair-identity <source-entry> <target-entry> <revision> <run> <input> <event>
-<confirmation-ref>` is an explicit Coder repair operation. Forward the original
-  delivery proof and expected revision; the SDK validates and audits them. Never
-  infer an alias from text/time or retry a changed revision automatically. Clear
-  Space's history cache after success; reloading displays the canonical history.
+  <confirmation-ref>` is an explicit Coder repair operation. Forward original
+  delivery proof and expected revision for SDK validation/audit. Never infer
+  aliases or retry a changed revision. Clear history caches after success.
 - Preserve permission authority v6, native text/image results, local-execution
   error facts, interrupt provenance and large-metadata paging from the SDK.
 
-## SDK boundary and corrected scope
+## Scope and earlier corrections
 
-rc.2 fixes the stale first-request race inside the existing cancellation API.
-The rc.1 proposal to require a new replay-only or request-status API is withdrawn.
-Space persists the original request identity in the renderer for transport retries;
-the owner alone determines whether that request was accepted.
+rc.2 fixed stale first-request cancellation inside the existing API; it did not
+advertise Session cancellation or explicit tool invocation on the daemon. rc.3
+makes those existing public contracts available there. The prior proposal for a
+new replay-only or request-status API remains withdrawn. Space's incorrect
+inference from lifecycle receipts to explicit-tool support was its own bug and
+was corrected before this upgrade; it must not return.
 
-A real isolated rc.2 daemon probe reports `sessionCancellation: null` (absent)
-and `runLifecycleControl.version:1`. Calling its public `sessions.cancel` returns
-`client_upgrade_required` before request delivery. Thus the embedded SDK fix is
-verified, but it does not make daemon Session-frontier Stop usable by Space.
-Space retains its exact-Run fallback and does not patch the SDK capability object
-or bypass the public client. This is separate from the stale-run fix.
+Configuration-only extension commands remain excluded from Space's executable
+catalog. They run in the extension host without a Session Run, and no concrete
+new desktop requirement has been established. Trusted project Exec Policy is an
+owner-bootstrap input with an existing SDK creation API, not a missing client
+connection option. Neither is an additional SDK repair request.
 
-`execution: 'configuration'` commands deliberately run in their extension host
-without a Session Run. They have no public daemon command-execution endpoint in
-rc.2 and remain excluded from Space's executable catalog. No concrete desktop
-requirement was established for them: the earlier claim that SDK must add such
-an endpoint is withdrawn. Managed extension commands use toolInvocation only
-when the connected owner advertises that capability; rc.2 daemon does not.
+## rc.3 verification (2026-09-13)
 
-## Automated verification
+- Final `npm test`: 3385 passed, 5 skipped, 0 failed (62 release contracts,
+  3005 Desktop tests passed, 318 IPC schema tests). Type checking, source lint,
+  formatting of changed code and `build:smoke` pass. The 8 added store regressions
+  use the real public history shape and cover explicit tool identity, replay,
+  ambiguous/mixed ownership and preservation of late unmatched work.
+- `node --test scripts/test/kodax-daemon-control.test.mjs` passes against the
+  installed, published Registry package and a real isolated daemon. It verifies
+  advertised capabilities, explicit write/bash execution, cancellation of the
+  active and already queued Runs, original-request replay, rejection of a new
+  stale request, and survival of a later successor. No real model is required for
+  these deterministic tool/control checks.
+- Space handles stale rejection nested in daemon `error.data`, requires both
+  connected capabilities, and removes the rc.2 Session Stop downgrade. The SDK's
+  existing connection fence handles execution-owner version compatibility.
+- Upstream source tests (9 files, 141 tests) are separate source-level evidence;
+  they do not replace the installed-package daemon test above.
+- Windows packaging passes the exact Registry bytes/integrity gate, native/Worker
+  probes, packaged boot and complete exit (two clean product exits and restored
+  Session history).
+- A real isolated rc.2 idle daemon was replaced by rc.3 through the existing SDK
+  execution connection: new PID/Runtime identity, both capabilities available,
+  old PID exited. No user profile or Space recovery code was involved.
+- Packaged live DeepSeek checks pass real response, explicit shell execution,
+  UI Stop, an actual pending-request retry while a successor survives, two native
+  children reading PNG/writing their files, and history after renderer reload.
+  Blue-PNG accuracy still fails: initial samples blue/red and blue/white; the
+  final rebuilt package reports white/white. All six child turns completed;
+  this is not the original agent crash.
+  Preserve these samples in `artifacts/rc3-live-initial` and
+  `artifacts/rc3-live-identity-repro`; do not report overall live acceptance passed.
+- The second live sample exposes a Space projection defect: the same exact tool
+  UUID appears in canonical and live renderer rows. SDK history is resolved and
+  correctly ordered; explicit execution is documented to skip a model turn, so
+  absent `turnId` is valid. Space now uses the existing tool identity to match its
+  unique canonical input boundary and reuse the existing display merge. It does
+  not manufacture a retirement receipt or request a new SDK interface. The live harness now checks input/tool uniqueness and order both
+  before and after reload.
+- The final rebuilt Windows package passes that added ownership check: exactly
+  one explicit input and one tool output in original order, before the successor,
+  both before and after reload. The new screenshot also visibly confirms the fix.
+  Final report: `artifacts/sdk-live-acceptance/report.json` (SDK rc.3,
+  seven execution/display checks passed, no renderer errors, overall `passed:false`
+  solely because the two blue-PNG color answers are white). The underlying image
+  accuracy issue remains unassigned; these answers alone do not prove another SDK
+  interface gap. Earlier wire-byte investigations remain below.
 
-- `npm test`: release-package contracts plus Desktop and IPC schema regressions.
-- `npm run typecheck`, `npm run build:smoke`.
-- `npm run lint -- --ignore-pattern 'scratch/**'`: exclude pre-existing untracked
-  review copies; no source lint rules are weakened.
-- Runtime adapter tests exercise stable cancellation identity, receipt retention,
-  exact Run ownership, and original identity-repair revision/proof forwarding.
-- `runtime-command*.test.ts` checks aliases, quoted path arguments, shell command
-  preservation, Skill separation and actual `session.send` Run admission.
-- F121 retains seven installed-package PNG/child/local-error regression cases.
+### Standards review
 
-## Desktop acceptance
+0 hard violations and 0 actionable smells against the `07bb75e8` baseline.
+The change removes the rc.2 fallback and reuses capability checks and history
+projection; it adds no recovery manager, configuration surface or private SDK state.
 
-1. With an owner exposing Session cancellation, start a task and queue a continuation:
-   Stop settles the accepted frontier; later Runs survive. Retry after disconnect.
-   In rc.2 daemon mode, verify the narrower existing behavior: only the bound Run
-   is stopped, and a retry for an already terminal Run returns its terminal receipt.
-2. With an owner exposing `toolInvocation:1`, load a trusted managed extension
-   command. Invoke its alias with a quoted path; verify tool progress/history and
-   permission decisions. Run `!git status --short`. With the rc.2 daemon, verify
-   an explicit command is rejected before admission with no new Run created.
-3. With reviewed historical delivery IDs, invoke `/repair-identity`. A stale revision
-   or conflicting claim must fail; a confirmed repair must converge after reload.
-4. Repeat the original DeepSeek image/child task to evaluate live model behavior.
-   Offline contract tests do not claim a live-provider or packaged-desktop run.
+### Spec review
+
+0 actionable findings against F274 and the identity-preserving FEATURE_275
+requirements. The extra explicit-command display repair is justified by the real
+packaged duplicate-row evidence and uses existing public identity. It does not
+invent physical retirement authority. Both review axes completed with no open finding.
+
+## Desktop acceptance procedure
+
+Run `node --import tsx e2e/sdk-live-acceptance.mjs` after building the rc.3 Windows
+package. Use its fresh isolated profile, real executable and existing credential
+passed only in memory. Verify:
+
+1. Real provider response and canonical history, followed by a successful explicit
+   shell command with tool output and a completed Run.
+2. UI Stop during execution, including the original pending Stop retry when
+   available. A new requestId bound to an old terminal Run must settle as stale
+   without stopping the successor; it is not accepted-request replay.
+3. Two native children independently read the PNG and write their outputs; check
+   Actor/tool facts and file contents, then reload and verify history restoration.
+   Preserve incorrect color samples without attributing a model/transport defect
+   solely from the child's prose.
+4. Packaged native/Worker checks, boot and complete-exit smokes.
+5. The explicit input and its tool output each appear once, before their
+   successor, both before and after renderer reload.
 
 ## Verification result (2026-09-12)
 
@@ -119,10 +165,11 @@ when the connected owner advertises that capability; rc.2 daemon does not.
 - Standards review: 0 remaining findings after shortening the Stop method and
   correcting the manual. Spec review: 0 actionable findings.
 
-## Packaged live acceptance (2026-09-13)
+## Historical rc.2 packaged live acceptance (2026-09-13)
 
-Run `node --import tsx e2e/rc2-live-acceptance.mjs` after building the Windows
-package. The opt-in harness launches the real executable with mock disabled,
+The rc.2 run used `node --import tsx e2e/rc2-live-acceptance.mjs` after building
+the Windows package. The current harness is `e2e/sdk-live-acceptance.mjs`.
+The opt-in harness launches the real executable with mock disabled,
 a fresh isolated profile and the existing DeepSeek credential passed only in
 memory. It checks the running daemon version, uses real `deepseek-flash` calls,
 clicks UI Stop and the pending retry button when available, verifies canonical
@@ -170,7 +217,7 @@ Observed results:
   correctness of real provider wire delivery or visual interpretation. Further
   attribution of the live vision discrepancy remains open.
 
-## Follow-up attribution checks (2026-09-13)
+## Historical rc.2 follow-up attribution checks (2026-09-13)
 
 The retained PNG is 165 bytes, SHA-256
 `8fe50d4ede83760a7f7126f87ab94103b282417c2c660472d611865c9d706210`.

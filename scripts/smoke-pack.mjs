@@ -1448,9 +1448,13 @@ try {
     throw new Error('packaged lifecycle probe did not enable daemon ownership');
   }
   daemonRuntime = await createDaemonProbeRuntime('kodax-space-pack-lifecycle-smoke');
-  // rc.2 daemon transports still expose exact-Run lifecycle receipts as
-  // runLifecycleControl; the embedded-facade sessionCancellation object is
-  // absent by design here.
+  const cancellation = daemonRuntime.capabilities?.sessionCancellation;
+  if (cancellation?.version !== 1 || cancellation.durableFrontier !== true) {
+    throw new Error('packaged daemon does not support sessionCancellation v1 durableFrontier');
+  }
+  if (daemonRuntime.capabilities?.toolInvocation?.version !== 1) {
+    throw new Error('packaged daemon does not support toolInvocation v1');
+  }
   const lifecycle = daemonRuntime.capabilities?.runLifecycleControl;
   if (
     lifecycle?.version !== 1 ||

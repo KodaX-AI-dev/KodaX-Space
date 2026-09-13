@@ -3811,6 +3811,70 @@ function retireMatchedTranscriptUnits(
   for (const id of retired) tail.coverage?.delete(id);
 }
 
+/** Keep unknown or multi-input work out of the explicit tool-call identity path. */
+function toolOnlyRunCall(unit: TranscriptUnit): string | undefined {
+  const user = unit.user;
+  if (
+    user.entryId !== undefined ||
+    !user.runtimeRunId ||
+    (user.turnId !== undefined && !user.turnId.startsWith(LOCAL_TERMINAL_TURN_PREFIX))
+  )
+    return;
+  const tools = unit.events.filter((event) => event.kind === 'tool_start');
+  if (tools.length !== 1) return;
+  const tool = tools[0]!;
+  const origin = tool.runtimeEvent;
+  if (!origin || !unit.events.some((event) => isTranscriptTerminal(event))) return;
+  const mixed = unit.events.some((event) => {
+    if (
+      event.kind === 'text_delta' ||
+      event.kind === 'thinking_delta' ||
+      event.kind === 'mid_turn_user_prompt' ||
+      event.kind === 'queued_user_prompt_started'
+    )
+      return true;
+    if ('toolId' in event && event.toolId !== tool.toolId) return true;
+    const source = 'runtimeEvent' in event ? event.runtimeEvent : undefined;
+    return (
+      source === undefined ||
+      source.runId !== user.runtimeRunId ||
+      source.runtimeId !== origin.runtimeId ||
+      source.journalEpoch !== origin.journalEpoch
+    );
+  });
+  return mixed ? undefined : tool.toolId;
+}
+
+/** Explicit tool Runs have no model turn; the SDK tool-call identity anchors their input. */
+function bindToolOnlyRunInputs(
+  canonical: readonly TranscriptUnit[],
+  live: readonly TranscriptUnit[],
+): TranscriptUnit[] {
+  return live.map((unit) => {
+    const toolId = toolOnlyRunCall(unit);
+    if (
+      !toolId ||
+      live.filter((other) => other.user.runtimeRunId === unit.user.runtimeRunId).length !== 1
+    )
+      return unit;
+    const matches = canonical.filter((candidate) => {
+      const owner = candidate.user;
+      const calls = candidate.events.filter((event) => event.kind === 'tool_start');
+      return (
+        owner.entryId !== undefined &&
+        owner.canonicalIndex !== undefined &&
+        owner.turnId === undefined &&
+        !owner.leadingPartialHistory &&
+        !owner.hiddenHistoryAnchor &&
+        calls.length === 1 &&
+        calls[0]!.toolId === toolId
+      );
+    });
+    if (matches.length !== 1) return unit;
+    return { ...unit, user: { ...unit.user, entryId: matches[0]!.user.entryId } };
+  });
+}
+
 function projectSessionTranscript(
   sessionId: string,
   page: CanonicalTranscriptPage,
@@ -3818,7 +3882,7 @@ function projectSessionTranscript(
   const canonical = transcriptUnits(page);
   const tail = liveTailBySession.get(sessionId);
   if (!page.includeLiveProjection || !tail) return renderTranscriptUnits(canonical);
-  const live = transcriptUnits(tail);
+  const live = bindToolOnlyRunInputs(canonical, transcriptUnits(tail));
   if (canonical.length === 0 && live.length === 0) return { userMessages: [], events: tail.events };
   const matches = matchTranscriptUnits(page, canonical, live, runtimeRunTerminalIndex(tail.events));
   const retired = recordCanonicalCoverage(sessionId, page, tail, live, matches);

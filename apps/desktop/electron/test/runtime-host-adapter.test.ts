@@ -118,6 +118,13 @@ test('terminal Stop retries delegate acceptance to the owner and never retarget 
     };
     assert.equal(await adapter.cancelSessionRuns('s_1', 'old-run', 'fresh-request'), undefined);
     fake.runtime.sessions.cancel = async () => {
+      throw Object.assign(new Error('Expected Run is terminal'), {
+        code: 'conflict',
+        data: { denialSource: 'stale_run', retryable: false },
+      });
+    };
+    assert.equal(await adapter.cancelSessionRuns('s_1', 'old-run', 'daemon-request'), undefined);
+    fake.runtime.sessions.cancel = async () => {
       throw new Error('transport unavailable');
     };
     await assert.rejects(
@@ -129,99 +136,37 @@ test('terminal Stop retries delegate acceptance to the owner and never retarget 
   }
 });
 
-test('daemon Stop retry reads the exact terminal Run receipt without retargeting', async () => {
-  const fake = createFakeRuntime();
-  fake.sessions.add('s_1');
-  assert.ok(fake.runtime.capabilities);
-  Object.assign(fake.runtime.capabilities, {
-    sessionCancellation: undefined,
-    runLifecycleControl: {
-      version: 1,
-      structuredStopReceipt: true,
-      protocolCancellation: true,
-      responseAcknowledgement: true,
-    },
-  });
-  fake.runtime.runs.get = async (runId) => ({
-    runId,
-    sessionId: 's_1',
-    phase: 'completed',
-    provider: 'mock',
-    startedAt: '2026-09-12T00:00:00.000Z',
-  });
-  fake.runtime.runs.abort = async (runId) => {
-    fake.calls.aborted.push(runId);
-    return {
-      runId,
-      sessionId: 's_1',
-      accepted: false,
-      state: 'confirmed',
-      outcome: 'completed',
-      phase: 'completed',
-      revision: 1,
-    };
-  };
-  fake.runtime.sessions.cancel = async () => {
-    throw new Error('unsupported daemon operation');
-  };
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-  });
-  await adapter.initialize();
-  try {
-    const receipt = await adapter.cancelSessionRuns(
-      's_1',
-      'old-run',
-      'lost-response',
-      'unconfirmed',
-    );
-    assert.equal(receipt?.outcome, 'completed');
-    assert.equal(receipt?.sessionCancellation, undefined);
-    assert.deepEqual(fake.calls.aborted, ['old-run']);
-  } finally {
-    await adapter.close();
-  }
-});
-
-test('daemon lifecycle receipts do not authorize explicit tool invocation', async () => {
-  const fake = createFakeRuntime();
-  fake.sessions.add('s_1');
-  assert.ok(fake.runtime.capabilities);
-  Object.assign(fake.runtime.capabilities, {
-    toolInvocation: undefined,
-    runLifecycleControl: {
-      version: 1,
-      structuredStopReceipt: true,
-      protocolCancellation: true,
-      responseAcknowledgement: true,
-    },
-  });
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-  });
-  await adapter.initialize();
-  try {
-    await assert.rejects(
-      adapter.startManagedRun({
-        sessionId: 's_1',
-        prompt: '!pwd',
-        options: { toolInvocation: { name: 'bash', input: { command: 'pwd' } } },
-      }),
-      /toolInvocation v1/,
-    );
+for (const [capability, value] of [
+  ['sessionCancellation', undefined],
+  ['sessionCancellation', { version: 1, durableFrontier: false }],
+  ['toolInvocation', undefined],
+] as const) {
+  test(`initialization requires usable ${capability}: ${JSON.stringify(value)}`, async () => {
+    const fake = createFakeRuntime();
+    assert.ok(fake.runtime.capabilities);
+    Object.assign(fake.runtime.capabilities, {
+      [capability]: value,
+      runLifecycleControl: {
+        version: 1,
+        structuredStopReceipt: true,
+        protocolCancellation: true,
+        responseAcknowledgement: true,
+      },
+    });
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      profileRoot: path.resolve('C:/isolated-profile'),
+      runtimeFactory: async () => fake.runtime,
+      identityStore: testIdentityStore,
+      runtimeEventParser: testRuntimeEventParser,
+    });
+    await assert.rejects(adapter.initialize(), new RegExp(capability));
+    assert.equal(adapter.snapshot().state, 'failed');
+    assert.equal(fake.calls.close, 1);
     assert.deepEqual(fake.calls.started, []);
-  } finally {
-    await adapter.close();
-  }
-});
+    assert.deepEqual(fake.calls.aborted, []);
+  });
+}
 
 test('Session Stop uses one durable queue frontier and retries the same request after transport loss', async () => {
   const fake = createFakeRuntime();

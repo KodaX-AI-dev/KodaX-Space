@@ -6,11 +6,11 @@
 
 > 当前发布精确锁定 KodaX `0.7.95`，要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。同一 boot 的临时 `unconfirmed-owner` 会自动重试；Space 不要求用户删除标记，且只在缺少安全证明时阻断有竞争风险的 sandbox/owner 操作。
 >
-> 当前源码候选为 Space `0.1.46-alpha.11`，精确锁定 KodaX `0.7.96-rc.2`，并要求 `sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
+> 当前源码候选为 Space `0.1.46-alpha.11`，精确锁定 KodaX `0.7.96-rc.3`，并要求 `sessionCancellation:1`（durable frontier）、`toolInvocation:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
 > Windows 既有安装首次迁移可能需要用户在 Settings → Runtime 明确执行一次 Sandbox Setup；
 > 普通启动、Refresh 和工具调用不会隐式提升权限。正式发布版的 0.7.95 说明保留为历史事实。
-> 支持会话取消的 owner 会停止其接受请求时固定队列边界内的任务；rc.2 原子拒绝针对已结束 Run 的首次请求，已接受请求仍可原样重试。Daemon 模式下 Space 目前保留指定 Run 的停止操作，不会取消整个排队列表。未知结果保留重试按钮，刷新界面后仍绑定原 Session/Run/requestId；已结束的指定 Run 可正常返回终态，不会转向后继任务。
-> 只有 owner 公布 `toolInvocation:1` 时，受管扩展命令与 `!command` 才能在会话空闲时通过正常 Run 执行。rc.2 daemon 尚未公布该能力，这些显式入口暂不可用；正常模型调用工具不受影响。纯配置型扩展命令请在 KodaX CLI owner 中执行。
+> 当前源码要求 daemon 支持会话原子取消：停止其接受请求时固定队列边界内的任务，之后提交的新任务保留。未知结果保留重试按钮，刷新后仍绑定原 Session/Run/requestId；已接受请求可原样重放，针对已结束 Run 的首次请求被拒绝且不会转向后继任务。rc.3 已通过发布包 daemon 及打包版真实任务执行验收；子代理读图写文件可完成，但图片颜色识别仍有不一致样本。旧 owner 由 SDK 连接层按其安全条件升级，Space 不再降级为只停一个 Run。
+> 当前源码要求 owner 公布 `toolInvocation:1`，受管扩展命令与 `!command` 可在会话空闲时通过正常 Run 执行，沿用权限、事件、历史和取消语义。rc.3 发布包 daemon 的显式 write/bash 测试已通过；正常模型调用工具不受影响。纯配置型扩展命令请在 KodaX CLI owner 中执行。
 > beta.8 能在重新读取历史时应用已经明确确认的旧消息身份修复记录。未经确认的历史身份不会自动合并；当前源码提供 `/repair-identity <source-entry> <target-entry> <revision> <run> <input> <event> <confirmation-ref>`，由用户显式提交核实过的投递凭据与版本，SDK 验证并记录审计。SDK 报告修复记录无效时，仍显示可读历史和部分可用提示。
 >
 > 已发布产品基线：KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45)（package `0.1.45`）/ npm 正式发布的精确 KodaX `0.7.95`。ask_user 与 guardrail 授权以对话流内的聚焦提问卡呈现：全部待答卡并存可答，composer 上方有带计数与定位闪光的召回停靠条，队首卡支持 1-9/Enter/Esc 键盘操作，对话历史保持可滚动。
@@ -486,7 +486,7 @@ v0.1.46-alpha.9 起使用 KodaX 0.7.96-beta.4：手动与自动压缩共用同�
 
 v0.1.46-alpha.10 起使用 KodaX 0.7.96-beta.6：内置 deepseek 别名改走 DeepSeek 官方 Anthropic 兼容端点（api.deepseek.com/anthropic），默认模型为 `deepseek-flash`（DeepSeek-V4.1-Flash，1M 上下文、384000 最大输出、原生图片输入）；纯文本的 `deepseek-v4-pro` 仍可在 /model 中选择，视觉实验模型 `deepseek-v4-flash-vision-exp` 从目录移除（其图片能力并入 deepseek-flash）。恢复的会话历史重放到严格端点不再报 400：被打断的孤儿工具调用会以显式中断标记补答，而不是悄悄丢弃。Windows 沙箱 setup generation 升到 11，profile 与 SSH 依赖的 ACL 排除对齐 Codex 语义；公开能力版本不变。
 
-v0.1.46-alpha.11 起使用 KodaX 0.7.96-rc.1 并把权限 authority 门禁升到 v6：Runtime 与直接 SDK 的文本写权限对齐，Auto 档经审查允许的工作区外写入会真实生效，Full Access 直写，被拒路径保持隔离，会话内切换权限模式立即生效。停止正在运行的会话时，一次停止只会取消该 owner 既有队列边界内的任务，之后发出的新任务不会被误停；结果未知时会保留原样重试入口（沿用原 Session/Run 标识），当前源码已升级到 rc.2，SDK 会原子拒绝绑定已结束 Run 的首次停止请求，已接受的旧请求仍可原样重试，无需新增重放接口。Daemon 模式下 rc.2 的公开会话取消操作仍不可用于 daemon 客户端，Space 退回为停止绑定的当前 Run（后继任务由 Runtime 保留），与 v0.1.45 的停止行为一致。转录可靠性修复（FEATURE_275）：同一 Run 内 settle 一条输入不再误删同 Run 的其他输入，已绘制内容不会因为分页/淘汰竞争而消失；`/repair-identity` 只提交用户核实过的身份映射并经 SDK 审计。SDK 报 `identity_repair_invalid` 时保留可读历史；`local_execution` 失败显示结构化错误，不再误导用户去配置 Provider 或自动重试。
+v0.1.46-alpha.11 起使用 KodaX 0.7.96-rc.1 并把权限 authority 门禁升到 v6：Runtime 与直接 SDK 的文本写权限对齐，Auto 档经审查允许的工作区外写入会真实生效，Full Access 直写，被拒路径保持隔离，会话内切换权限模式立即生效。停止正在运行的会话时，一次停止只会取消该 owner 既有队列边界内的任务，之后发出的新任务不会被误停；结果未知时会保留原样重试入口（沿用原 Session/Run 标识），当前源码已升级到 rc.3，SDK 会原子拒绝绑定已结束 Run 的首次停止请求，已接受的旧请求仍可原样重试，无需新增重放接口。rc.2 daemon 缺能力时曾只停止指定 Run；rc.3 已通过发布包会话队列取消验证，Space 现在要求对应能力并移除该降级。daemon 结构化错误位于 error.data 时，Space 也会正确识别过期首次请求。打包版真实执行、停止、重试与历史显示验收已通过，图片颜色识别仍有不一致样本。转录可靠性修复（FEATURE_275）：同一 Run 内 settle 一条输入不再误删同 Run 的其他输入，已绘制内容不会因为分页/淘汰竞争而消失；`/repair-identity` 只提交用户核实过的身份映射并经 SDK 审计。SDK 报 `identity_repair_invalid` 时保留可读历史；`local_execution` 失败显示结构化错误，不再误导用户去配置 Provider 或自动重试。
 
 底部“上下文窗口”显示压缩影响的当前主 Agent 活动输入；“会话 Token 用量”是已经发生的根/子 Agent Provider 调用累计值，不会因 Compact 回退。两者的完整区别见[上下文窗口与会话 Token 用量](#52-上下文窗口与会话-token-用量)。
 

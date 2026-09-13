@@ -16,15 +16,30 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Fixed
 
-- Packaged live DeepSeek acceptance exercises Stop/retry, successor survival,
+- Pin KodaX `0.7.96-rc.3` and require daemon `sessionCancellation:1` with a durable
+  frontier plus `toolInvocation:1`. Published-package daemon tests verify explicit
+  write/bash execution, current and queued Run cancellation, accepted-request
+  replay, stale first-request rejection, and successor survival. Space recognizes
+  structured stale errors under daemon `error.data` and removes the rc.2 Run-only
+  Session Stop fallback. SDK connection fencing owns safe stale-owner replacement;
+  no Space recovery manager is added. rc.3 packaged Runtime, boot, exit and live control paths pass; blue-PNG color recognition remains inconsistent.
+
+- Fix duplicate/out-of-order explicit command messages before a renderer reload.
+  Explicit tool Runs legally omit a model turn ID; match their single completed
+  tool invocation to the unique canonical input by the existing tool-call ID.
+  Keep ambiguous inputs and unrelated late events visible, and reuse the existing
+  history merge without new SDK interfaces or retirement authority.
+
+- Earlier rc.2 packaged live DeepSeek acceptance exercises Stop/retry, successor survival,
   two native PNG-reading child agents, and renderer reload. Fix Space's incorrect
   assumption that daemon lifecycle receipts imply explicit tool-invocation support;
   require the actual capability before admitting an explicit command.
 
-- Pin KodaX `0.7.96-rc.2`; verify stale first Session Stop requests reject without
+- The preceding KodaX `0.7.96-rc.2` verification confirmed stale first Session Stop requests reject without
   cancelling successor Runs. Delegate accepted-request replay to the owner, remove
   obsolete client acceptance bookkeeping, and settle exact-Run daemon retries from
-  terminal receipts. The daemon fallback remains narrower than Session queue Stop.
+  terminal receipts. That daemon fallback was narrower than Session queue Stop
+  and is superseded by the rc.3 integration above.
 
 ---
 

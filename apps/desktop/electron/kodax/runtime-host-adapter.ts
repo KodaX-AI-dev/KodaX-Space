@@ -1438,27 +1438,6 @@ function runtimeCapabilityVersion(runtime: KodaXDaemonRuntime, name: string): nu
   return Number.isSafeInteger(version) && Number(version) > 0 ? Number(version) : 0;
 }
 
-/**
- * rc.2 daemon transports expose request lifecycle receipts under
- * runLifecycleControl. This permits exact-Run abort, but does not advertise
- * the embedded facade's durable Session cancellation frontier.
- */
-function runtimeSupportsRequestLifecycle(runtime: KodaXDaemonRuntime): boolean {
-  const control = runtime.capabilities?.runLifecycleControl;
-  if (typeof control !== 'object' || control === null) return false;
-  const flags = control as {
-    structuredStopReceipt?: unknown;
-    protocolCancellation?: unknown;
-    responseAcknowledgement?: unknown;
-  };
-  return (
-    runtimeCapabilityVersion(runtime, 'runLifecycleControl') === 1 &&
-    flags.structuredStopReceipt === true &&
-    flags.protocolCancellation === true &&
-    flags.responseAcknowledgement === true
-  );
-}
-
 function projectSessionStopReceipt(
   input: RuntimeSessionCancelInput,
   receipt: RuntimeSessionCancelReceipt,
@@ -1484,6 +1463,19 @@ function projectSessionStopReceipt(
 }
 
 function assertSpaceDaemonRequiredCapabilities(runtime: KodaXDaemonRuntime): void {
+  const cancellation = runtimeEventRecord(runtime.capabilities?.sessionCancellation);
+  if (cancellation?.version !== 1 || cancellation.durableFrontier !== true) {
+    throw new Error(
+      'KodaX Runtime does not support the required sessionCancellation v1 durableFrontier capability. ' +
+        'Install a compatible KodaX package and restart the Coder daemon.',
+    );
+  }
+  if (runtimeCapabilityVersion(runtime, 'toolInvocation') !== 1) {
+    throw new Error(
+      'KodaX Runtime does not support the required toolInvocation v1 capability. ' +
+        'Install a compatible KodaX package and restart the Coder daemon.',
+    );
+  }
   if (runtimeCapabilityVersion(runtime, 'providerCredentialBroker') < 2) {
     throw new Error(
       'KodaX Runtime does not support the required providerCredentialBroker v2 capability. ' +
@@ -6035,14 +6027,6 @@ export class RuntimeHostAdapter {
     _retry?: 'accepted' | 'unconfirmed',
   ): Promise<SpaceRuntimeRunStopReceiptT | undefined> {
     const runtime = await this.requireRuntime();
-    if (runtimeCapabilityVersion(runtime, 'sessionCancellation') !== 1) {
-      // rc.2 still omits sessionCancellation from daemon negotiation. Keep the
-      // existing exact-Run fallback; it does not cancel a Session queue frontier.
-      if (!runtimeSupportsRequestLifecycle(runtime)) {
-        throw new Error('Session Stop requires sessionCancellation v1; upgrade the Runtime owner.');
-      }
-      return this.cancelBoundRunWithRunAbort(runtime, sessionId, expectedRunId);
-    }
     const runId = expectedRunId ?? (await this.findActiveRunId(sessionId));
     if (!runId) return undefined;
     if (this.runtime !== runtime || this.state !== 'ready') {
@@ -6056,14 +6040,15 @@ export class RuntimeHostAdapter {
       expectedRunId: runId,
       requestId: requestId ?? `space-stop-${stableId}`,
     };
-    // rc.2 atomically rejects stale first requests and replays accepted ones.
+    // The owner atomically rejects stale first requests and replays accepted ones.
     // The owner decides acceptance even when the first response was lost.
     const receipt = await runtime.sessions.cancel(input).catch((error: unknown) => {
       const detail = runtimeEventRecord(error);
+      const denial = runtimeEventRecord(detail?.data) ?? detail;
       if (
         detail?.code === 'conflict' &&
-        detail.denialSource === 'stale_run' &&
-        detail.retryable === false
+        denial?.denialSource === 'stale_run' &&
+        denial.retryable === false
       ) {
         this.scheduleProfileRefresh(this.currentProfileCursor());
         return undefined;
@@ -6074,33 +6059,6 @@ export class RuntimeHostAdapter {
     const stop = projectSessionStopReceipt(input, receipt);
     this.scheduleProfileRefresh(this.currentProfileCursor());
     return stop;
-  }
-
-  /**
-   * The rc.2 daemon client still cannot negotiate sessionCancellation.
-   * Exact-Run abort is repeatable after settlement and retains successor Runs.
-   */
-  private async cancelBoundRunWithRunAbort(
-    runtime: KodaXDaemonRuntime,
-    sessionId: string,
-    expectedRunId: string | undefined,
-  ): Promise<SpaceRuntimeRunStopReceiptT | undefined> {
-    const runId = expectedRunId ?? (await this.findActiveRunId(sessionId));
-    if (!runId) return undefined;
-    if (this.runtime !== runtime || this.state !== 'ready') {
-      throw new Error('Coder Runtime changed before Session Stop.');
-    }
-    const status = await runtime.runs.get(runId);
-    if (!status) return undefined;
-    if (status.sessionId !== sessionId || status.runId !== runId) {
-      throw new Error('Session Stop Run belongs to a different Session.');
-    }
-    const receipt = await runtime.runs.abort(runId);
-    if (receipt.sessionId !== sessionId || receipt.runId !== runId) {
-      throw new Error('Coder daemon returned a Session Stop receipt for a different request.');
-    }
-    this.scheduleProfileRefresh(this.currentProfileCursor());
-    return receipt;
   }
 
   /**
