@@ -10,7 +10,7 @@
 > Windows 既有安装首次迁移可能需要用户在 Settings → Runtime 明确执行一次 Sandbox Setup；
 > 普通启动、Refresh 和工具调用不会隐式提升权限。正式发布版的 0.7.95 说明保留为历史事实。
 > 支持会话取消的 owner 会停止其接受请求时固定队列边界内的任务；rc.2 原子拒绝针对已结束 Run 的首次请求，已接受请求仍可原样重试。Daemon 模式下 Space 目前保留指定 Run 的停止操作，不会取消整个排队列表。未知结果保留重试按钮，刷新界面后仍绑定原 Session/Run/requestId；已结束的指定 Run 可正常返回终态，不会转向后继任务。
-> 受管扩展命令与 `!command` 在会话空闲时通过正常 Run 执行；纯配置型扩展命令没有远程执行接口，请在 KodaX CLI owner 中执行。
+> 只有 owner 公布 `toolInvocation:1` 时，受管扩展命令与 `!command` 才能在会话空闲时通过正常 Run 执行。rc.2 daemon 尚未公布该能力，这些显式入口暂不可用；正常模型调用工具不受影响。纯配置型扩展命令请在 KodaX CLI owner 中执行。
 > beta.8 能在重新读取历史时应用已经明确确认的旧消息身份修复记录。未经确认的历史身份不会自动合并；当前源码提供 `/repair-identity <source-entry> <target-entry> <revision> <run> <input> <event> <confirmation-ref>`，由用户显式提交核实过的投递凭据与版本，SDK 验证并记录审计。SDK 报告修复记录无效时，仍显示可读历史和部分可用提示。
 >
 > 已发布产品基线：KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45)（package `0.1.45`）/ npm 正式发布的精确 KodaX `0.7.95`。ask_user 与 guardrail 授权以对话流内的聚焦提问卡呈现：全部待答卡并存可答，composer 上方有带计数与定位闪光的召回停靠条，队首卡支持 1-9/Enter/Esc 键盘操作，对话历史保持可滚动。
