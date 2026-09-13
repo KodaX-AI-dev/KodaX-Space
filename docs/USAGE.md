@@ -16,7 +16,7 @@
 > 当前已发布版本为 KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) / 精确 Registry KodaX `0.7.95`。
 > 本版本把 ask_user 与 guardrail 授权改为对话流内的聚焦提问卡（全屏模态移除，召回停靠条与队首卡 1-9/Enter/Esc 键盘操作），对齐 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`，并恢复 daemon 重连后已准入的 Runs、保证幂等发送只产生一个气泡；同时保留 v0.1.44 的 F145 原生 Session 角标、后台 complete-exit settlement、安静的普通成功退出、previous-boot Windows ACL 恢复指引与 canonical page-head、Task Dock、Repointel、外部任务恢复态对齐，以及 crash-resumable exit、crash-outcome v2、SDK 有效输出 segment 和既有多 Session/Actor/Turn 安全边界。
 >
-> 当前源码候选为 Space `0.1.46-beta.1`，精确锁定 KodaX `0.7.96-rc.3` / `sandboxRuntime:11` / `runtimeAutoModeGuardrail:6` / `sharedSessionSettings:2` / `providerCredentialBroker:2` / `effectiveConfig:1`。Beta.5 把 Windows setup generation 提升到 11（profile/SSH ACL 排除对齐 Codex 语义），显式 doctor/setup 会证明一次真实 target start/exit，宽 profile ACL 仅由 setup 收敛，逐命令使用私有 Temp，网络 broker 扩到 64 端口，并继续安全替换空闲旧 daemon；内置 deepseek 别名走官方 Anthropic 兼容端点，默认模型 deepseek-flash。
+> 当前源码候选为 Space `0.1.46-beta.2`，精确锁定 KodaX `0.7.96-rc.4` / `sandboxRuntime:11` / `runtimeAutoModeGuardrail:6` / `sharedSessionSettings:2` / `providerCredentialBroker:2` / `effectiveConfig:1`。Beta.5 把 Windows setup generation 提升到 11（profile/SSH ACL 排除对齐 Codex 语义），显式 doctor/setup 会证明一次真实 target start/exit，宽 profile ACL 仅由 setup 收敛，逐命令使用私有 Temp，网络 broker 扩到 64 端口，并继续安全替换空闲旧 daemon；内置 deepseek 别名走官方 Anthropic 兼容端点，默认模型 deepseek-flash。
 > 打包必须整体解包 `@kodax-ai/kodax/dist/native`；发布检查会验证 universal native
 > 文件集合和 manifest hash，再运行真实 sandbox smoke。正式 v0.1.45 说明仍对应 KodaX 0.7.95。
 
@@ -83,22 +83,22 @@ flowchart TD
     Root --> Runtime["runtime/<br/>Runtime daemon run/event journal"]
 ```
 
-| 路径或变量                               | 作用                                                           | 说明                                                                                        |
-| ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `~/.kodax/config.json`                   | Provider、permission、compaction 等核心配置                    | CLI/SDK/Space 共用；旧 Auto engine/timing 与 `sandbox.envPass` 输入已失效；不再把 MCP/A2A/Extension 当作新写入字段 |
-| `~/.kodax/integrations/mcp.json`         | 用户 MCP server 声明                                           | 严格 `version: 1` + `servers`；CLI/SDK/Space 共用                                           |
-| `~/.kodax/integrations/extensions.json`  | 受管理 Extension 路径                                          | 严格 `version: 1` + `paths`；Space 加载仍需 `KODAX_SPACE_ENABLE_SDK_EXTENSIONS=1`           |
-| `~/.kodax/integrations/a2a.json`         | Runtime A2A registration                                       | 由 KodaX Runtime 持有                                                                       |
-| `<project>/.kodax/integrations/mcp.json` | 项目 MCP 覆盖                                                  | Space 项目兼容层；同名项目 server 优先                                                      |
-| `~/.kodax/sessions/`                     | 会话历史                                                       | CLI/SDK/Space 共用                                                                          |
-| `~/.kodax/skills/`                       | 用户 Skills                                                    | 项目也可有项目级 Skills                                                                     |
-| `~/.kodax/handoffs/`                     | 桌面 handoff inbox                                             | 用于上下文连续性                                                                            |
-| `~/.kodax/space/`                        | Space UI 和桌面专属状态                                        | 包含 logs、state 等                                                                         |
-| `~/.kodax/space/settings.json`           | Space versioned preferences                                    | version 3 保存 `coderRuntimeMode`；不属于 KodaX 核心配置或 integrations                     |
-| `<profile-root>/runtime/`                | Shared Runtime state/journal                                   | Coder daemon runs；默认实际为 `~/.kodax/runtime/`                                           |
-| `KODAX_HOME=<abs>`                       | 改变 SDK 共享数据根                                            | 必须在应用启动前设置                                                                        |
-| `KODAX_PROFILE_DIR=<abs>`                | 让 Space 和 SDK 使用一个独立 profile                           | 该绝对路径本身就是 profile 根，不再追加 `.kodax`                                            |
-| `KODAX_TEST_ONBOARDING=1\|<safe-id>`     | 测试隔离 profile                                               | 强制写入系统临时目录，禁止指向真实用户数据                                                  |
+| 路径或变量                               | 作用                                        | 说明                                                                                                               |
+| ---------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `~/.kodax/config.json`                   | Provider、permission、compaction 等核心配置 | CLI/SDK/Space 共用；旧 Auto engine/timing 与 `sandbox.envPass` 输入已失效；不再把 MCP/A2A/Extension 当作新写入字段 |
+| `~/.kodax/integrations/mcp.json`         | 用户 MCP server 声明                        | 严格 `version: 1` + `servers`；CLI/SDK/Space 共用                                                                  |
+| `~/.kodax/integrations/extensions.json`  | 受管理 Extension 路径                       | 严格 `version: 1` + `paths`；Space 加载仍需 `KODAX_SPACE_ENABLE_SDK_EXTENSIONS=1`                                  |
+| `~/.kodax/integrations/a2a.json`         | Runtime A2A registration                    | 由 KodaX Runtime 持有                                                                                              |
+| `<project>/.kodax/integrations/mcp.json` | 项目 MCP 覆盖                               | Space 项目兼容层；同名项目 server 优先                                                                             |
+| `~/.kodax/sessions/`                     | 会话历史                                    | CLI/SDK/Space 共用                                                                                                 |
+| `~/.kodax/skills/`                       | 用户 Skills                                 | 项目也可有项目级 Skills                                                                                            |
+| `~/.kodax/handoffs/`                     | 桌面 handoff inbox                          | 用于上下文连续性                                                                                                   |
+| `~/.kodax/space/`                        | Space UI 和桌面专属状态                     | 包含 logs、state 等                                                                                                |
+| `~/.kodax/space/settings.json`           | Space versioned preferences                 | version 3 保存 `coderRuntimeMode`；不属于 KodaX 核心配置或 integrations                                            |
+| `<profile-root>/runtime/`                | Shared Runtime state/journal                | Coder daemon runs；默认实际为 `~/.kodax/runtime/`                                                                  |
+| `KODAX_HOME=<abs>`                       | 改变 SDK 共享数据根                         | 必须在应用启动前设置                                                                                               |
+| `KODAX_PROFILE_DIR=<abs>`                | 让 Space 和 SDK 使用一个独立 profile        | 该绝对路径本身就是 profile 根，不再追加 `.kodax`                                                                   |
+| `KODAX_TEST_ONBOARDING=1\|<safe-id>`     | 测试隔离 profile                            | 强制写入系统临时目录，禁止指向真实用户数据                                                                         |
 
 若同时使用 `KODAX_PROFILE_DIR`，Space 会在首次加载 SDK 前将 `KODAX_HOME` 对齐到该 profile。相对路径会被忽略；测试模式优先级最高。
 

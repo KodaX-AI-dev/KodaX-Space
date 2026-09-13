@@ -2,8 +2,8 @@
 
 > **2026-08-24 当前发布基线**：v0.1.45 使用 root/Desktop/lockfile 精确锁定的 npm Registry KodaX `0.7.95`，并要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。Space 在 SDK 启动门、daemon 协商、IPC status 与打包 smoke 四个边界保持同一版本；同一 boot 的临时 `unconfirmed-owner` 自动重试，等待会在应用退出时取消。
 >
-> **2026-09-13 当前源码候选**：Space package 为 `0.1.46-beta.1`，root/Desktop/lockfile 精确锁定 KodaX
-> `0.7.96-rc.3`。SDK 包启动门要求 `effectiveConfig:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6` 与 `sharedSessionSettings:2`；`providerCredentialBroker:2` 由 daemon 准入 requirements 和连接后 Runtime capability
+> **2026-09-13 当前源码候选**：Space package 为 `0.1.46-beta.2`，root/Desktop/lockfile 精确锁定 KodaX
+> `0.7.96-rc.4`。SDK 包启动门要求 `effectiveConfig:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6` 与 `sharedSessionSettings:2`；`providerCredentialBroker:2` 由 daemon 准入 requirements 和连接后 Runtime capability
 > 两层门禁验证，因为 SDK 的静态 capability 常量不发布该字段。`dist/native` 整体位于 `app.asar.unpacked`；dependency gate
 > 验证 universal native 集合，packaged smoke 按每个 manifest 的 SHA-256 验证物理 sidecar。
 > Space 只投影 Plan、Edits、Auto[LLM]、Full Access 四个 canonical profile。Beta.5 把 Windows setup generation 提升到 11（profile/SSH ACL 排除对齐 Codex 语义），真实 target-start doctor 证明、setup-only profile ACL 收敛、逐命令私有 Temp 与扩大后的网络 broker 边界仍由 v11 隔离；Space
@@ -700,7 +700,7 @@ Space → CLI:
 | 终端组件    | xterm.js + node-pty                                                                                                                        |
 | KodaX 集成  | **双 owner**：Coder 通过 Runtime facade 连接 profile daemon；Partner 在 Electron main inline；均不走 ACP（[v0.1.32](features/v0.1.32.md)） |
 | Native 加速 | 仅按 profile 引入 NAPI-RS 热路径；无已承诺 native-helper feature ([ADR-002](ADR/ADR-002-rust-integration-napi.md))                         |
-| IPC schema  | zod，验证所有 renderer↔main channel                                                                                                       |
+| IPC schema  | zod，验证所有 renderer↔main channel                                                                                                        |
 | Keychain    | `@napi-rs/keyring`（Win Credential Manager / macOS Keychain / Linux Secret Service）                                                       |
 | 自动更新    | Squirrel.Mac + Squirrel.Windows                                                                                                            |
 | 安装包      | NSIS (Win) + DMG/ZIP (macOS x64/arm64) + AppImage/deb (Linux x64); signing/notarization/channel trust tracked by F101                      |

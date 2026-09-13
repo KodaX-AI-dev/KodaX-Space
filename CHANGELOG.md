@@ -16,6 +16,41 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.46-beta.2] - 2026-09-13
+
+### Fixed
+
+- **KodaX 0.7.96-rc.4 integration** — Pin the exact published candidate. rc.4 initializes new
+  Session event journals at sequence zero instead of scanning unrelated Run logs, removing the
+  synchronous startup stall that could push concurrent Session history reads past their
+  15-second timeout (Issue 214); binds cached event-sequence floors to their journal epoch so
+  missing or corrupt sequence files recover the durable log maximum without duplicating
+  sequences or losing replay progress (SDK Issue 334); and populates Full RepoIntel routing and
+  preturn caches during startup prewarm from one worker result. Every rc.3 contract is retained.
+
+- **Issue 211 — retry after a pre-admission history timeout** — A strict-history timeout before
+  Run admission now returns `accepted: false` with the new `session_history_unavailable`
+  rejection reason instead of a generic uncertain handler error. The main composer restores the
+  exact draft; retrying unchanged text reuses the same Session with a new operation ID and
+  produces exactly one visible user query. Quick Ask restores its prompt and enables another
+  attempt.
+
+- **Issue 211 — new Session admission without historical lookup** — In rc.3 both `sessions.load`
+  and `sessions.create({sessionId})` locate an existing Session, so a missing locally allocated
+  ID triggered a global history scan. Real Coder sessions now ask the Runtime to allocate and
+  persist the Session and construct the Space host Session from the returned daemon-generated
+  ID; the adapter supplies project identity, the `space-desktop` surface and the existing tag,
+  never a `sessionId`, and validates the returned project and surface. Partner, embedded Coder,
+  mock providers and forced-mock runs keep local SDK ID allocation; resume, fork and existing
+  Session admission keep persisted ownership and identity checks.
+
+- **Issue 212 — honest pending-send spinner** — The pending-send spinner reset its elapsed time
+  on every rerender and attributed local preparation (credential binding, history admission) to
+  the model. The active phase keeps its own start time across rerenders, and the
+  local-preparation phase is labeled as preparation in the main composer and Quick Ask.
+
+---
+
 ## [0.1.46-beta.1] - 2026-09-13
 
 ### Fixed
