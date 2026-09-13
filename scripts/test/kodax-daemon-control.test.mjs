@@ -81,7 +81,8 @@ test(
       name: 'write',
       input: { path: firstFile, content: 'explicit tool completed' },
     });
-    assert.equal((await first.result).phase, 'completed');
+    const firstResult = await first.result;
+    assert.equal(firstResult.phase, 'completed', firstResult.result?.lastText);
     assert.equal(await readFile(firstFile, 'utf8'), 'explicit tool completed');
 
     const gateScript = path.join(root, 'gate.cjs');
@@ -109,7 +110,12 @@ test(
       new Set([active.runId, queued.runId]),
     );
     const outcomes = await Promise.all([active.result, queued.result]);
-    assert.ok(outcomes.every((outcome) => ['interrupted', 'cancelled'].includes(outcome.phase)));
+    assert.ok(
+      outcomes.every((outcome) => ['interrupted', 'cancelled'].includes(outcome.phase)),
+      JSON.stringify(
+        outcomes.map((outcome) => ({ phase: outcome.phase, lastText: outcome.result?.lastText })),
+      ),
+    );
     await assert.rejects(readFile(forbidden), { code: 'ENOENT' });
 
     const successorMarker = path.join(root, 'successor.txt');
