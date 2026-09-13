@@ -1,15 +1,23 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
-import os from 'node:os';
+import { mkdir, mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { connectKodaXRuntime } from '@kodax-ai/kodax/runtime';
 
+const repository = fileURLToPath(new URL('../../', import.meta.url));
+
 async function fixture(t) {
-  const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'space-daemon-control-')));
+  // rc.3's daemon write policy refuses workspaces whose ancestor chain
+  // overlaps the protected native text state root, which lives under the
+  // system temp area on POSIX. Keep the fixture beside the repo instead
+  // (same reason kodax-permission-authority avoids OS-temp fixtures).
+  const scratch = path.join(repository, 'scratch');
+  await mkdir(scratch, { recursive: true });
+  const root = await realpath(await mkdtemp(path.join(scratch, 'space-daemon-control-')));
   const profile = 'control-regression';
   const packageRoot = path.dirname(
     createRequire(import.meta.url).resolve('@kodax-ai/kodax/package.json'),
@@ -40,7 +48,7 @@ async function fixture(t) {
       ],
       { windowsHide: true, timeout: 20000 },
     );
-    assert.equal(path.dirname(root), await realpath(os.tmpdir()));
+    assert.equal(path.dirname(root), await realpath(scratch));
     assert.ok(path.basename(root).startsWith('space-daemon-control-'));
     await rm(root, { recursive: true, force: true, maxRetries: 3 });
   });
