@@ -160,12 +160,26 @@ async function waitForDocumentTask(
   id: string,
   predicate: (task: PartnerNativeDocumentTaskSummaryT) => boolean,
 ): Promise<PartnerNativeDocumentTaskSummaryT> {
-  for (let attempt = 0; attempt < 100; attempt++) {
+  // Shared CI runners run the real browser suites beside this suite; keep the
+  // poll bounded but contention-tolerant there.
+  const attempts = process.env.CI ? 2_000 : 400;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const task = (await service.records(context)).documentTasks.find((item) => item.id === id);
     if (task && predicate(task)) return task;
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
   throw new Error(`document task ${id} did not reach the expected verification state`);
+}
+
+/**
+ * The persisted task state and the change notification are separate writes; on
+ * loaded runners the verified change can land after the task poll matched.
+ * Wait bounded for the expected count, then let the strict assert check it.
+ */
+async function waitForChangeCount(changes: unknown[], expected: number): Promise<void> {
+  for (let attempt = 0; attempt < 400 && changes.length < expected; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
 }
 
 test('a single Feishu account creates and privately verifies one native document task', async (t) => {
@@ -264,6 +278,7 @@ test('a single Feishu account creates and privately verifies one native document
   assert.deepEqual(persistedReceipt.proposals, []);
   assert.deepEqual(persistedReceipt.receipts, []);
   assert.deepEqual(persistedReceipt.sources, []);
+  await waitForChangeCount(f.changes, before + 4);
   const changes = f.changes.slice(before);
   assert.equal(changes.length, 4);
   assert.ok(changes.every((change) => change.documentTaskId === task.id));

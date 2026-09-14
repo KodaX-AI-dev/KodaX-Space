@@ -99,7 +99,9 @@ createRoot(document.getElementById('root')).render(<I18nProvider><SpaceExtension
   const browser = await chromium.launch({ executablePath: browserPath, headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage({ locale: 'zh-CN' });
-  page.setDefaultTimeout(3_000);
+  // Shared CI runners can pause between browser launch, render, and click;
+  // keep a bounded but contention-tolerant budget there.
+  page.setDefaultTimeout(process.env.CI ? 15_000 : 3_000);
   page.on('pageerror', (error) => t.diagnostic(error.message));
   await page.route('**/*', (route) =>
     route.fulfill({ body: '<div id="root"></div>', contentType: 'text/html' }),

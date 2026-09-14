@@ -57,7 +57,10 @@ async function openLibrary(
   const page = await browser.newPage();
   // CI runs the real browser beside the complete unit suite on shared runners.
   // Match the bounded Partner flow budget without relaxing local assertions.
-  page.setDefaultTimeout(process.env.CI ? 5000 : 2000);
+  // Shared macOS runners can pause this long between browser launch, iframe
+  // srcdoc render, and the first click; 15s stays bounded and far below the
+  // suite budget while absorbing runner contention.
+  page.setDefaultTimeout(process.env.CI ? 15_000 : 2_000);
   const requests: ExtensionFrameRequest[] = [];
   let experts = initialExperts;
   let connected = false;
