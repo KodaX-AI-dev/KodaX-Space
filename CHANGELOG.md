@@ -46,8 +46,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - v0.1.46-beta.3 was a transitional release: it bundled the Partner library (PR #5) without
   the rc.5/Issue 215 work in this section, and its CI needed reruns for shared-runner Partner
   test flakes. Its GitHub release was withdrawn at maintainer decision (the tag remains as
-  history); beta.4 is being prepared to carry both the Partner integration and the rc.5
-  alignment.
+  history); beta.4 is the first published release carrying both the Partner integration and
+  the rc.5 alignment.
 
 ---
 
