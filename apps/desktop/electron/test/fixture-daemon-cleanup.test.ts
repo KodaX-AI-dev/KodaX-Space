@@ -1,6 +1,6 @@
 import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -62,4 +62,28 @@ test('test daemon cleanup signals the validated isolated PID and ignores missing
   );
   assert.deepEqual(signals, [{ pid: daemonPid, signal: 'SIGTERM' }]);
   assert.equal(await stopOwnedTestDaemon(`${root}-missing`, () => true), false);
+});
+
+test('test daemon cleanup recognizes its physical profile through a temporary path alias', async () => {
+  const parent = await mkdtemp(path.join(os.tmpdir(), 'kodax-fixture-daemon-cleanup-'));
+  roots.push(parent);
+  const profile = path.join(parent, 'profile');
+  const alias = path.join(parent, 'alias');
+  const descriptorDir = path.join(profile, 'runtime', 'daemon', 'coder');
+  await mkdir(descriptorDir, { recursive: true });
+  await symlink(profile, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const daemonPid = process.pid + 1;
+  await writeFile(
+    path.join(descriptorDir, 'daemon.json'),
+    JSON.stringify({ pid: daemonPid, profile: 'coder', configHome: await realpath(profile) }),
+  );
+  const signalled: number[] = [];
+  assert.equal(
+    await stopOwnedTestDaemon(alias, (pid) => {
+      signalled.push(pid);
+      return true;
+    }),
+    true,
+  );
+  assert.deepEqual(signalled, [daemonPid]);
 });

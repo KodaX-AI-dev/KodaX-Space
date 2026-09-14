@@ -51,7 +51,11 @@ export async function stopOwnedTestDaemon(
   const descriptorPath = path.join(testDataDir, 'runtime', 'daemon', 'coder', 'daemon.json');
   const raw = await fs.readFile(descriptorPath, 'utf8').catch(() => null);
   if (raw === null) return false;
-  const pid = parseOwnedTestDaemonPid(raw, testDataDir);
+  // The child uses the physical macOS temp path while the fixture may retain
+  // /var's alias. Accept only that same directory's canonical identity as well.
+  const pid =
+    parseOwnedTestDaemonPid(raw, testDataDir) ??
+    parseOwnedTestDaemonPid(raw, await fs.realpath(testDataDir));
   if (pid === undefined) return false;
   try {
     killProcess(pid, 'SIGTERM');

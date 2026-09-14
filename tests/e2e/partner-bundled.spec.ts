@@ -2,6 +2,40 @@ import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { launchSpace } from './fixtures.js';
 
+test('bundled Partner is available with the default Coder runtime', async () => {
+  test.setTimeout(60_000);
+  const space = await launchSpace(`partner-default-runtime-${Date.now()}`, {
+    executablePath: process.env.SPACE_BUNDLED_TEST_EXECUTABLE,
+  });
+  try {
+    const { page } = space;
+    await expect
+      .poll(
+        async () => {
+          const profile = await page.evaluate(() =>
+            window.kodaxSpace!.invoke('runtime.profileSnapshot', undefined),
+          );
+          if (!profile.ok) throw new Error(profile.error.message);
+          return profile.data.connection.state;
+        },
+        { timeout: 20_000 },
+      )
+      .toBe('ready');
+    await page.getByRole('button', { name: 'Partner', exact: true }).click();
+    await expect(page.getByTestId('partner-plugins-nav')).toBeVisible();
+    await page
+      .getByTestId('partner-starter-tasks')
+      .getByRole('button', { name: /Polish your writing/ })
+      .click();
+    await expect(page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await page.getByRole('button', { name: 'Coder', exact: true }).click();
+    await expect(page.getByTestId('coder-workspace')).toBeVisible();
+    await expect(page.getByTestId('partner-plugins-nav')).toHaveCount(0);
+  } finally {
+    await space.close();
+  }
+});
+
 test('a fresh Space profile can select and use the bundled Partner expert', async () => {
   const space = await launchSpace(`partner-bundled-${Date.now()}`, {
     executablePath: process.env.SPACE_BUNDLED_TEST_EXECUTABLE,
@@ -21,14 +55,23 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     );
 
     await page.getByRole('button', { name: 'Partner', exact: true }).click();
+    const composer = page.locator('textarea:visible').first();
+    await page
+      .getByTestId('partner-starter-tasks')
+      .getByRole('button', { name: /Polish your writing/ })
+      .click();
+    await expect(page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await expect(composer).not.toHaveValue('');
+    const starterDraft = await composer.inputValue();
+    await expect(page.getByTestId('sidebar-session-row')).toHaveCount(0);
     await page.getByTestId('partner-plugins-nav').click();
     const library = page.frameLocator('[data-testid="space-extension-frame"]');
     await library.getByRole('button', { name: '查看 营销文案 详情', exact: true }).click();
     await expect(library.getByRole('checkbox', { name: '使用默认方法' })).toBeChecked();
     await library.getByRole('button', { name: '使用专家', exact: true }).click();
     await expect(page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await expect(composer).toHaveValue(starterDraft);
 
-    const composer = page.locator('textarea:visible').first();
     await expect(composer).toBeEnabled();
     await composer.fill('请为测试产品起草一段首页文案。');
     await composer.press('Enter');
