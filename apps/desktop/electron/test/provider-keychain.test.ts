@@ -6,11 +6,13 @@
 
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import {
   setKey,
   getKey,
   deleteKey,
   listAccounts,
+  listConfiguredAccounts,
   getBackendStatus,
   _resetMemoryStoreForTesting,
 } from '../providers/keychain.js';
@@ -44,6 +46,15 @@ test('listAccounts returns all set accounts', async () => {
   await setKey('c', 'k3');
   const accounts = await listAccounts();
   assert.deepEqual([...accounts].sort(), ['a', 'b', 'c']);
+});
+
+test('candidate account discovery respects the isolated memory backend', async () => {
+  const selected = `space-memory-test-${randomUUID()}`;
+  const absent = `space-memory-test-${randomUUID()}`;
+  await setKey(selected, 'fixture-only-secret');
+  assert.deepEqual(await listConfiguredAccounts([absent, selected, selected]), [selected]);
+  await deleteKey(selected);
+  assert.deepEqual(await listConfiguredAccounts([selected]), []);
 });
 
 test('overwrite: second set replaces value', async () => {

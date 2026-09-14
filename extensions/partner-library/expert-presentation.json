@@ -1,0 +1,166 @@
+{
+  "avatarIds": [
+    "copywriter",
+    "product",
+    "research",
+    "project",
+    "deep-research",
+    "data",
+    "communication",
+    "meeting",
+    "support",
+    "process",
+    "knowledge",
+    "report",
+    "sales",
+    "hr",
+    "training",
+    "presentation"
+  ],
+  "experts": {
+    "writing-mentor": {
+      "avatar": "copywriter",
+      "tags": [
+        "首页文案",
+        "卖点提炼",
+        "文案改写"
+      ],
+      "method": "从受众、产品事实与证据出发组织文案，检查每项表达是否有依据。"
+    },
+    "product-management": {
+      "avatar": "product",
+      "tags": [
+        "需求梳理",
+        "产品方案",
+        "验收标准"
+      ],
+      "method": "围绕用户问题梳理目标、范围、取舍与可验证的产品交付。"
+    },
+    "user-research": {
+      "avatar": "research",
+      "tags": [
+        "用户访谈",
+        "反馈归纳",
+        "研究计划"
+      ],
+      "method": "归纳用户证据、识别重复样本与研究缺口，保留不同观点。"
+    },
+    "project-management": {
+      "avatar": "project",
+      "tags": [
+        "任务拆解",
+        "依赖排期",
+        "风险跟进"
+      ],
+      "method": "结合工作量与依赖检查可行性，明确里程碑、风险和待决事项。"
+    },
+    "deep-research": {
+      "avatar": "deep-research",
+      "tags": [
+        "主题研究",
+        "来源核验",
+        "对比分析"
+      ],
+      "method": "围绕研究问题寻找证据，对比来源、标明不确定性并形成结论。"
+    },
+    "data-analysis": {
+      "avatar": "data",
+      "tags": [
+        "数据检查",
+        "指标分析",
+        "图表呈现"
+      ],
+      "method": "先检查数据质量和统计口径，再计算、分析并解释结果。"
+    },
+    "email-editing": {
+      "avatar": "communication",
+      "tags": [
+        "邮件起草",
+        "语气调整",
+        "沟通润色"
+      ],
+      "method": "按受众和沟通目的组织表达，保留事实与原有承诺强度。"
+    },
+    "meeting-minutes": {
+      "avatar": "meeting",
+      "tags": [
+        "会议纪要",
+        "行动清单",
+        "待决事项"
+      ],
+      "method": "从原始记录区分讨论、决定与行动，不补造责任人或日期。"
+    },
+    "customer-support": {
+      "avatar": "support",
+      "tags": [
+        "客户回复",
+        "投诉沟通",
+        "升级建议"
+      ],
+      "method": "区分客户描述、已确认状态和待核实项，分开客户正文与内部建议。"
+    },
+    "process-documentation": {
+      "avatar": "process",
+      "tags": [
+        "流程梳理",
+        "责任分工",
+        "SOP编写"
+      ],
+      "method": "还原实际步骤、审批条件与异常路径，再单列优化建议。"
+    },
+    "knowledge-synthesis": {
+      "avatar": "knowledge",
+      "tags": [
+        "资料去重",
+        "知识条目",
+        "来源索引"
+      ],
+      "method": "按主题综合多份资料，保留来源、版本差异与未解决的冲突。"
+    },
+    "status-report": {
+      "avatar": "report",
+      "tags": [
+        "周报月报",
+        "进展摘要",
+        "风险呈现"
+      ],
+      "method": "按周期和真实口径整理进展与数字，区分已完成事项、建议和承诺。"
+    },
+    "call-preparation": {
+      "avatar": "sales",
+      "tags": [
+        "客户拜访",
+        "需求发现",
+        "异议准备"
+      ],
+      "method": "从已知客户证据和会议目标出发，设计议程、发现问题与下一步建议。"
+    },
+    "interview-design": {
+      "avatar": "hr",
+      "tags": [
+        "面试方案",
+        "能力问题",
+        "评分锚点"
+      ],
+      "method": "把岗位能力映射到一致的问题、可观察的行为评分锚点和证据记录。"
+    },
+    "new-hire-onboarding": {
+      "avatar": "training",
+      "tags": [
+        "入职清单",
+        "首周安排",
+        "阶段目标"
+      ],
+      "method": "按入职前、首日、首周和阶段目标梳理任务，核对负责人、依赖及完成证据。"
+    },
+    "presentation-html": {
+      "avatar": "presentation",
+      "tags": [
+        "叙事结构",
+        "HTML演示",
+        "逐页讲稿"
+      ],
+      "method": "先组织受众与叙事，再用现有幻灯片方法制作固定比例的 HTML 页面并检查可读性。"
+    }
+  }
+}

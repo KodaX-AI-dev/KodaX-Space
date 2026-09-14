@@ -15,6 +15,16 @@ test('frozen v0.1.31 Coder entrypoint list covers every relevant registered invo
   assert.deepEqual(frozen, registered);
 });
 
+test('Partner-only expert selection is excluded without hiding shared Session entrypoints', () => {
+  assert.equal(isCoderEntrypointNamespace('session.partnerExpert.get'), false);
+  assert.equal(isCoderEntrypointNamespace('session.partnerExpert.set'), false);
+  assert.equal(isCoderEntrypointNamespace('session.partnerConnectors.get'), false);
+  assert.equal(isCoderEntrypointNamespace('session.partnerConnectors.set'), false);
+  assert.equal(isCoderEntrypointNamespace('session.create'), true);
+  assert.equal(isCoderEntrypointNamespace('session.send'), true);
+  assert.equal(isCoderEntrypointNamespace('skill.invoke'), true);
+});
+
 test('Coder action manifest has one explicit non-inline disposition per entrypoint', () => {
   const entrypoints = CODER_ACTION_MANIFEST.map((entry) => entry.entrypoint);
   assert.equal(new Set(entrypoints).size, entrypoints.length);

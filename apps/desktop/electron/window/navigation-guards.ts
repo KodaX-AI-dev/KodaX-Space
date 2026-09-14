@@ -12,9 +12,12 @@
 // `import type` only — no runtime electron import, so this module is safe to pull
 // into the tsx test loader.
 
-import type { WebContents } from 'electron';
+import { PARTNER_BROWSER_FRAME_NAME_PREFIX } from '@kodax-space/space-ipc-schema';
+import type { WebContents, WebFrameMain } from 'electron';
+import { isSafeRemoteFrameUrl } from '../csp-config.js';
 import { isArtifactHtmlFrameUrl } from './app-protocol-policy.js';
 import { isProjectWebPreviewUrl } from './project-web-preview.js';
+import { isSpaceExtensionFrameUrl } from './space-extension-frame.js';
 
 export interface NavGuardDeps {
   /** Vite dev-server URL when running in dev; undefined in production. */
@@ -25,6 +28,71 @@ export interface NavGuardDeps {
   readonly allowedDataUrls?: readonly string[];
   /** Open an external https URL in the system browser (inject shell.openExternal). */
   readonly openExternal: (url: string) => void;
+  /** Enable sandboxed remote Partner frames for the main application window only. */
+  readonly allowPartnerBrowserFrames?: boolean;
+  /** Publish a committed remote-frame navigation to the trusted renderer. */
+  readonly onPartnerBrowserNavigated?: (payload: {
+    readonly frameName: string;
+    readonly url: string;
+  }) => void;
+  /** Resolve the frame that emitted a completed navigation. */
+  readonly resolveFrame?: (processId: number, routingId: number) => WebFrameMain | null | undefined;
+  /** Resolve a frame's immutable, creation-time Partner browser name. */
+  readonly resolvePartnerBrowserFrameName?: (frame: WebFrameMain | null) => string | null;
+}
+
+interface FrameIdentity {
+  readonly frameTreeNodeId: number;
+  readonly name: string;
+  readonly parent: FrameIdentity | null;
+}
+
+const PARTNER_BROWSER_FRAME_SUFFIX_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isPartnerBrowserFrame(
+  frame: FrameIdentity | null | undefined,
+  mainFrame: FrameIdentity,
+): boolean {
+  return Boolean(
+    frame &&
+    frame.name.startsWith(PARTNER_BROWSER_FRAME_NAME_PREFIX) &&
+    PARTNER_BROWSER_FRAME_SUFFIX_RE.test(
+      frame.name.slice(PARTNER_BROWSER_FRAME_NAME_PREFIX.length),
+    ) &&
+    frame.parent?.frameTreeNodeId === mainFrame.frameTreeNodeId,
+  );
+}
+
+/**
+ * Bind Partner frames at creation time, before child content can mutate
+ * `window.name`. Later policy checks use the stable frame tree node id and the
+ * original trusted name instead of treating the current mutable name as a
+ * capability.
+ */
+export class PartnerBrowserFrameRegistry {
+  private readonly originalNameByFrameTreeNodeId = new Map<number, string | null>();
+
+  register(frame: FrameIdentity | null | undefined, mainFrame: FrameIdentity): boolean {
+    if (!frame || frame.parent?.frameTreeNodeId !== mainFrame.frameTreeNodeId) return false;
+    const existingName = this.originalNameByFrameTreeNodeId.get(frame.frameTreeNodeId);
+    if (existingName !== undefined) return existingName !== null;
+    // Keep a null tombstone for every non-Partner direct frame. If Electron
+    // reports the same tree node again after content changes window.name, it
+    // cannot be promoted into the trusted set.
+    const originalName = isPartnerBrowserFrame(frame, mainFrame) ? frame.name : null;
+    this.originalNameByFrameTreeNodeId.set(frame.frameTreeNodeId, originalName);
+    return originalName !== null;
+  }
+
+  resolveName(frame: FrameIdentity | null | undefined, mainFrame: FrameIdentity): string | null {
+    if (!frame || frame.parent?.frameTreeNodeId !== mainFrame.frameTreeNodeId) return null;
+    return this.originalNameByFrameTreeNodeId.get(frame.frameTreeNodeId) ?? null;
+  }
+
+  clear(): void {
+    this.originalNameByFrameTreeNodeId.clear();
+  }
 }
 
 /** Lock a window's top-level navigation + window.open to the app's own assets. */
@@ -35,6 +103,10 @@ export function installNavigationGuards(wc: WebContents, deps: NavGuardDeps): vo
   });
 
   wc.on('will-navigate', (event, url) => {
+    if (isSpaceExtensionFrameUrl(url)) {
+      event.preventDefault();
+      return;
+    }
     let parsedUrl: URL | null = null;
     try {
       parsedUrl = new URL(url);
@@ -61,13 +133,63 @@ export function installNavigationGuards(wc: WebContents, deps: NavGuardDeps): vo
     if (url.startsWith('https://')) deps.openExternal(url);
   });
 
-  // A project preview intentionally has a same-origin child document so local
-  // modules/storage work. Confine every subframe navigation to capability URLs;
-  // otherwise authored code could navigate itself to app://space and become
-  // same-origin with the privileged parent renderer.
-  wc.on('will-frame-navigate', (details) => {
+  // Project previews use capability URLs; Partner's browser uses sandboxed
+  // credential-free HTTP(S) frames. All other child-frame targets stay denied,
+  // especially app://space, file:, data:, and javascript: URLs that could cross
+  // the privileged renderer boundary.
+  const canNavigateSubframe = (url: string, frame: WebFrameMain | null): boolean => {
+    if (isProjectWebPreviewUrl(url) || isArtifactHtmlFrameUrl(url) || isSpaceExtensionFrameUrl(url))
+      return true;
+    return Boolean(
+      deps.allowPartnerBrowserFrames &&
+      isSafeRemoteFrameUrl(url) &&
+      Boolean(deps.resolvePartnerBrowserFrameName?.(frame)),
+    );
+  };
+
+  const guardSubframeNavigation = (details: {
+    readonly url: string;
+    readonly isMainFrame: boolean;
+    readonly frame: WebFrameMain | null;
+    preventDefault(): void;
+  }): void => {
     if (details.isMainFrame) return;
-    if (isProjectWebPreviewUrl(details.url) || isArtifactHtmlFrameUrl(details.url)) return;
+    if (canNavigateSubframe(details.url, details.frame)) return;
     details.preventDefault();
+  };
+
+  wc.on('will-frame-navigate', guardSubframeNavigation);
+  wc.on('will-redirect', guardSubframeNavigation);
+
+  const publishPartnerNavigation = (
+    url: string,
+    isMainFrame: boolean,
+    frameProcessId: number,
+    frameRoutingId: number,
+  ): void => {
+    if (
+      isMainFrame ||
+      !deps.allowPartnerBrowserFrames ||
+      !deps.onPartnerBrowserNavigated ||
+      !deps.resolveFrame ||
+      !isSafeRemoteFrameUrl(url)
+    ) {
+      return;
+    }
+    const frame = deps.resolveFrame(frameProcessId, frameRoutingId);
+    if (!frame) return;
+    const frameName = deps.resolvePartnerBrowserFrameName?.(frame);
+    if (!frameName) return;
+    deps.onPartnerBrowserNavigated({ frameName, url });
+  };
+
+  wc.on(
+    'did-frame-navigate',
+    (_event, url, _httpResponseCode, _httpStatusText, isMainFrame, processId, routingId) => {
+      publishPartnerNavigation(url, isMainFrame, processId, routingId);
+    },
+  );
+  wc.on('did-navigate-in-page', (_event, url, isMainFrame, processId, routingId) => {
+    publishPartnerNavigation(url, isMainFrame, processId, routingId);
   });
 }

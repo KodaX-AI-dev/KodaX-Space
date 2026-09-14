@@ -53,6 +53,7 @@ KodaX/Electron 执行控制变量仍被阻止。旧 `sandbox.envPass` 输入已�
 | 理解进程、IPC、Runtime 和数据所有权 | [HLD](HLD.md)                                                                                                                                                             |
 | 查看 KodaX 能力是否已接入           | [KodaX 能力台账](KODAX_CAPABILITY_LEDGER.md)                                                                                                                              |
 | 查看当前和未来 Feature              | [Feature List](FEATURE_LIST.md)                                                                                                                                           |
+| 了解或开发 Partner 产品线           | [Partner 文档中心](partner/README.md)                                                                                                                                     |
 | 查看 v0.1.31 的设计与实施           | [版本设计](features/v0.1.31.md) / [实施计划](features/v0.1.31-implementation-plan.md) / [人工测试指导](test-guides/FEATURE_116_v0.1.31_TEST_GUIDE.md)                     |
 | 查看 v0.1.32 的设计与发布证据       | [版本设计与实施状态](features/v0.1.32.md) / [发布记录](releases/v0.1.32-release-readiness.md) / [Feature List](FEATURE_LIST.md)                                           |
 | 查看 v0.1.33 的设计与发布证据       | [版本设计与实施状态](features/v0.1.33.md) / [发布记录](releases/v0.1.33-release-readiness.md) / [Feature List](FEATURE_LIST.md)                                           |
@@ -75,6 +76,7 @@ KodaX/Electron 执行控制变量仍被阻止。旧 `sandbox.envPass` 输入已�
 | `HLD.md`                                             | 当前高层架构                  | 反映真实 owner、边界和降级策略                                           |
 | `KODAX_CAPABILITY_LEDGER.md`                         | 能力接入事实                  | 每次 SDK/Runtime 接入后更新状态与证据                                    |
 | `FEATURE_LIST.md`                                    | 版本路线图                    | 只有可交付、可验证的版本项进入 active list                               |
+| `partner/README.md`                                  | Partner 产品线文档中心        | Partner 内部产品、架构、Feature、测试与融合证据从这里进入                 |
 | `KNOWN_ISSUES.md`                                    | 当前问题                      | 已解决项保留结论，新增问题需有复现和状态                                 |
 | `BUILTIN_SKILLS.md`                                  | builtin 分发维护              | 固定来源、许可、补丁、更新和打包完整性                                   |
 | `features/v0.1.45.md`                                | current release design        | Inline ask-user conversation cards and exact KodaX 0.7.95 boundary       |

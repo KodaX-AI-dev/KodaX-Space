@@ -12,6 +12,28 @@
 //   - 显式两个 map 让类型 + 运行时 allowlist 同源派生，preload 拿来直接用
 
 import { versionChannel } from './version.js';
+import { connectorInvokeChannels, connectorPushChannels } from './partner-connector.js';
+import {
+  connectorOnboardingInvokeChannels,
+  connectorOnboardingPushChannels,
+} from './partner-connector-onboarding.js';
+import {
+  spaceExtensionsListChannel,
+  spaceExtensionsInstallChannel,
+  spaceExtensionsSetEnabledChannel,
+  spaceExtensionsUninstallChannel,
+  spaceExtensionsViewChannel,
+  spaceExtensionsChangedChannel,
+} from './space-extension.js';
+import {
+  spaceExtensionsCatalogChannel,
+  spaceExtensionsResolveExpertChannel,
+  spaceExtensionsExpertSaveChannel,
+  spaceExtensionsExpertDeleteChannel,
+  sessionPartnerExpertGetChannel,
+  sessionPartnerExpertSetChannel,
+  sessionPartnerExpertChangedChannel,
+} from './partner-expert.js';
 import { sandboxRefreshChannel, sandboxSetupChannel, sandboxStatusChannel } from './sandbox.js';
 import {
   runtimeConnectionChangedChannel,
@@ -164,6 +186,7 @@ import {
   partnerFileProposalsApplyChannel,
   partnerFileProposalsRejectChannel,
   partnerFileProposalsExportChannel,
+  partnerFileProposalsChangedChannel,
 } from './partner-file-proposal.js';
 import {
   partnerDeliveriesListChannel,
@@ -202,6 +225,7 @@ import {
 } from './license.js';
 import { notificationShowChannel, notificationClickedChannel } from './notification.js';
 import {
+  partnerBrowserNavigatedChannel,
   windowActivityChannel,
   windowCompleteExitProgressChannel,
   windowControlChannel,
@@ -286,7 +310,21 @@ import {
 import { diagnosticsExportChannel, diagnosticsReportChannel } from './diagnostics.js';
 import { spaceControlRequestedChannel, spaceControlResolveChannel } from './space-control.js';
 
-export const invokeChannels = {
+const extensionInvokeChannels = {
+  [spaceExtensionsListChannel.name]: spaceExtensionsListChannel,
+  [spaceExtensionsInstallChannel.name]: spaceExtensionsInstallChannel,
+  [spaceExtensionsSetEnabledChannel.name]: spaceExtensionsSetEnabledChannel,
+  [spaceExtensionsUninstallChannel.name]: spaceExtensionsUninstallChannel,
+  [spaceExtensionsViewChannel.name]: spaceExtensionsViewChannel,
+  [spaceExtensionsCatalogChannel.name]: spaceExtensionsCatalogChannel,
+  [spaceExtensionsResolveExpertChannel.name]: spaceExtensionsResolveExpertChannel,
+  [spaceExtensionsExpertSaveChannel.name]: spaceExtensionsExpertSaveChannel,
+  [spaceExtensionsExpertDeleteChannel.name]: spaceExtensionsExpertDeleteChannel,
+  [sessionPartnerExpertGetChannel.name]: sessionPartnerExpertGetChannel,
+  [sessionPartnerExpertSetChannel.name]: sessionPartnerExpertSetChannel,
+} as const;
+
+const sessionInvokeChannels = {
   [versionChannel.name]: versionChannel,
   [sandboxStatusChannel.name]: sandboxStatusChannel,
   [sandboxRefreshChannel.name]: sandboxRefreshChannel,
@@ -429,6 +467,9 @@ export const invokeChannels = {
   [settingsSetTerminalShellChannel.name]: settingsSetTerminalShellChannel,
   [settingsSetWindowCloseBehaviorChannel.name]: settingsSetWindowCloseBehaviorChannel,
   [settingsSetRuntimeDefaultsChannel.name]: settingsSetRuntimeDefaultsChannel,
+} as const;
+
+const coreInvokeChannels = {
   [settingsKodaxConfigGetChannel.name]: settingsKodaxConfigGetChannel,
   [settingsKodaxConfigSetCompactionChannel.name]: settingsKodaxConfigSetCompactionChannel,
   [settingsKodaxConfigPlanIntegrationMigrationChannel.name]:
@@ -499,7 +540,25 @@ export const invokeChannels = {
   [learningAcknowledgeChannel.name]: learningAcknowledgeChannel,
 } as const;
 
+// Keep the declaration type in named parts: flattening the growing registry exceeds
+// TypeScript's declaration serialization limit while losing none of the channel types.
+export const invokeChannels: typeof sessionInvokeChannels &
+  typeof coreInvokeChannels &
+  typeof extensionInvokeChannels &
+  typeof connectorInvokeChannels &
+  typeof connectorOnboardingInvokeChannels = {
+  ...sessionInvokeChannels,
+  ...coreInvokeChannels,
+  ...extensionInvokeChannels,
+  ...connectorInvokeChannels,
+  ...connectorOnboardingInvokeChannels,
+};
+
 export const pushChannels = {
+  ...connectorOnboardingPushChannels,
+  ...connectorPushChannels,
+  [spaceExtensionsChangedChannel.name]: spaceExtensionsChangedChannel,
+  [sessionPartnerExpertChangedChannel.name]: sessionPartnerExpertChangedChannel,
   [runtimeConnectionChangedChannel.name]: runtimeConnectionChangedChannel,
   [runtimeProfileChangedChannel.name]: runtimeProfileChangedChannel,
   [sessionLiveChangedChannel.name]: sessionLiveChangedChannel,
@@ -508,6 +567,7 @@ export const pushChannels = {
   [spaceControlRequestedChannel.name]: spaceControlRequestedChannel,
   [sessionEventChannel.name]: sessionEventChannel,
   [artifactChangedChannel.name]: artifactChangedChannel,
+  [partnerFileProposalsChangedChannel.name]: partnerFileProposalsChangedChannel,
   [partnerDeliveriesChangedChannel.name]: partnerDeliveriesChangedChannel,
   [partnerCheckpointsChangedChannel.name]: partnerCheckpointsChangedChannel,
   [permissionRequestChannel.name]: permissionRequestChannel,
@@ -516,6 +576,7 @@ export const pushChannels = {
   [askUserCancelledChannel.name]: askUserCancelledChannel,
   [kodaxQueueChangedChannel.name]: kodaxQueueChangedChannel,
   [notificationClickedChannel.name]: notificationClickedChannel,
+  [partnerBrowserNavigatedChannel.name]: partnerBrowserNavigatedChannel,
   [windowActivityChannel.name]: windowActivityChannel,
   [windowCompleteExitProgressChannel.name]: windowCompleteExitProgressChannel,
   [updaterStatusChannel.name]: updaterStatusChannel,

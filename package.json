@@ -21,6 +21,7 @@
     "build:packages": "npm run build -w @kodax-space/space-ipc-schema && npm run build -w @kodax-space/space-ui-kit",
     "build:renderer": "npm run build -w @kodax-space/desktop",
     "build:main": "node scripts/build-main.mjs",
+    "build:partner-extension": "node scripts/build-partner-extension.mjs",
     "build:pack": "node scripts/pack.mjs",
     "build:pack:test-kodax": "node scripts/pack.mjs --allow-local-kodax",
     "build:win": "npm run build:smoke && node scripts/pack.mjs --win",

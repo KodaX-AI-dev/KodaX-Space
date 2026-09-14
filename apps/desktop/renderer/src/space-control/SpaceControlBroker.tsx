@@ -46,6 +46,7 @@ const SETTINGS_TABS = new Set<SettingsTab>([
   'runtime',
   'diagnostics',
   'license',
+  'extensions',
 ]);
 const WIDTH_PRESETS = new Set<TaskDockWidthPreset>(['default', 'half', 'max']);
 const RENDERER_INSTANCE_ID = globalThis.crypto.randomUUID();

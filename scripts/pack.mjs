@@ -25,6 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertKodaxReleaseDependencyState } from './kodax-runtime-release-gate.mjs';
 import { inspectKodaxDevLink } from './kodax-dev-link-state.mjs';
+import { resolveFeishuCliBuildPlan } from './feishu-cli-build-plan.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SPACE_ROOT = path.resolve(__dirname, '..');
@@ -125,10 +126,22 @@ const passthrough = packArgs.filter((arg) => {
   console.warn(`[pack] 忽略不在白名单内的参数: ${arg}`);
   return false;
 });
+const feishuCliBuildPlan = resolveFeishuCliBuildPlan(passthrough);
 const manifestSnapshot = readManifestSnapshot();
 const link = inspectKodaxDevLink(SPACE_ROOT, SDK_DIR);
 if (allowLocalTarball) {
   console.warn('[pack] explicit local KodaX test-tarball mode enabled; not for formal releases.');
+}
+
+function runElectronBuilder() {
+  run(
+    'node',
+    ['scripts/prepare-feishu-cli.mjs', ...feishuCliBuildPlan.targets],
+    'prepare bundled Feishu CLI',
+  );
+  run('npx', ['electron-builder', '-p', 'never', ...passthrough], 'electron-builder', {
+    KODAX_BUILD_TARGET_PLATFORM: feishuCliBuildPlan.platform,
+  });
 }
 
 if (!link.linked) {
@@ -139,7 +152,7 @@ if (!link.linked) {
     ['scripts/ensure-sqlite-native.mjs', 'electron'],
     'ensure better-sqlite3 electron ABI',
   );
-  run('npx', ['electron-builder', '-p', 'never', ...passthrough], 'electron-builder');
+  runElectronBuilder();
   runProductSmokes();
   assertManifestUnchanged(manifestSnapshot, 'pack');
   process.exit(0);
@@ -168,7 +181,7 @@ try {
     ['scripts/ensure-sqlite-native.mjs', 'electron'],
     'ensure better-sqlite3 electron ABI',
   );
-  run('npx', ['electron-builder', '-p', 'never', ...passthrough], 'electron-builder');
+  runElectronBuilder();
   // Run against the exact locked install before finally restoring the local
   // development staging package.
   runProductSmokes();

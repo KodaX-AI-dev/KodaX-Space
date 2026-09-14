@@ -67,13 +67,13 @@ test('buildSkillsPrompt: returns a string for an empty project root', async () =
   // without injecting an undefined/null value mid-spread.
 });
 
-test('buildSkillsPromptForSurface: Partner does not advertise an unavailable SDK skill tool', async () => {
+test('buildSkillsPromptForSurface: Partner advertises safe installed skills through the admitted loader', async () => {
   const skillsDir = path.join(tmpRootA, '.kodax', 'skills');
   fs.mkdirSync(skillsDir, { recursive: true });
-  const name = `tmp-partner-hidden-${Date.now()}`;
-  writeSkill(skillsDir, name, `name: ${name}\ndescription: must remain hidden`, 'body');
+  const name = `tmp-partner-safe-${Date.now()}`;
+  writeSkill(skillsDir, name, `name: ${name}\ndescription: safe Partner capability`, 'body');
 
-  assert.equal(await buildSkillsPromptForSurface('partner', tmpRootA), '');
+  assert.match(await buildSkillsPromptForSurface('partner', tmpRootA), new RegExp(name));
   assert.match(await buildSkillsPromptForSurface('code', tmpRootA), new RegExp(name));
 });
 

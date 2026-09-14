@@ -1672,7 +1672,10 @@ test('appendLocalNotice surfaces durable IPC failure while keeping bounded optim
     assert.equal(useToastStore.getState().toasts.length, 1);
     assert.equal(useToastStore.getState().toasts[0]?.tone, 'error');
     assert.equal(useToastStore.getState().toasts[0]?.ttl, 0);
-    assert.equal(errors.length, 2);
+    assert.equal(
+      errors.filter(([message]) => message === '[local-notice] durable persistence failed').length,
+      2,
+    );
 
     persistenceOk = true;
     useAppStore.getState().appendLocalNotice(SID, '/persistence-recovered', 1005);

@@ -22,6 +22,7 @@ directories:
 
 files:
   - 'dist-electron/**/*'
+  - '!dist-electron/bundled-extensions/**/*'
   - 'apps/desktop/dist/**/*'
   - 'packages/*/dist/**/*'
   # Runtime-loaded native keychain module. The Electron main bundle imports this
@@ -91,6 +92,17 @@ electronLanguages:
   - zh-CN
 
 extraResources:
+  - from: dist-electron/bundled-extensions/kodax.partner-library.space-extension
+    to: bundled-extensions/kodax.partner-library.space-extension
+  # Feishu's official CLI is a host-managed component, never plugin code. The
+  # pack wrapper prepares exactly the selected target archive from the pinned
+  # release lock; the app performs only local verified extraction on first use.
+  - from: .managed-components/feishu-cli/1.0.92/${env.KODAX_BUILD_TARGET_PLATFORM}-${arch}
+    to: managed-components/feishu-cli/1.0.92/${env.KODAX_BUILD_TARGET_PLATFORM}-${arch}
+    filter:
+      - 'lark-cli.*'
+  - from: resources/partner-connectors/feishu-cli/LICENSE
+    to: managed-components/feishu-cli/LICENSE
   - from: resources/kodax-license-policy.json
     to: kodax-license-policy.json
   # BrowserWindow needs a real runtime path for the native Windows

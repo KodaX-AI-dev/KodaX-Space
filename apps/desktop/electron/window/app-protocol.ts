@@ -18,6 +18,7 @@ import {
   projectWebPreviewResponseHeaders,
 } from './project-web-preview.js';
 import { handleSessionAttachmentProtocolRequest } from './session-attachment-protocol.js';
+import { spaceExtensionFrameResponse } from './space-extension-frame.js';
 
 let privilegesRegistered = false;
 let handlerInstalled = false;
@@ -45,6 +46,8 @@ export function registerAppSchemePrivileges(): void {
 export function installAppProtocolHandler(rendererRoot: string): void {
   if (handlerInstalled) return;
   protocol.handle(APP_PROTOCOL_SCHEME, async (request) => {
+    const extensionFrameResponse = spaceExtensionFrameResponse(request.url, request.method);
+    if (extensionFrameResponse !== null) return extensionFrameResponse;
     const attachmentResponse = await handleSessionAttachmentProtocolRequest(
       request.url,
       request.method,

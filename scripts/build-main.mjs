@@ -17,6 +17,7 @@ import esbuild from 'esbuild';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
+import { buildPartnerExtension } from './build-partner-extension.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -24,6 +25,13 @@ const electronDir = path.join(root, 'apps/desktop/electron');
 const outDir = path.join(root, 'dist-electron');
 
 fs.mkdirSync(outDir, { recursive: true });
+
+const bundledExtensionsDir = path.join(outDir, 'bundled-extensions');
+const partnerLibrary = await buildPartnerExtension({ outDir: bundledExtensionsDir });
+fs.renameSync(
+  partnerLibrary.archivePath,
+  path.join(bundledExtensionsDir, `${partnerLibrary.manifest.id}.space-extension`),
+);
 
 // 根 package.json 是 "type": "module"，但 esbuild 这里输出 CJS。
 // 在 dist-electron/ 放一个 package.json 把该目录标记为 CommonJS，

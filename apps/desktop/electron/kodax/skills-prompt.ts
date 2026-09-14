@@ -241,16 +241,15 @@ export async function buildSkillsPrompt(projectRoot: string): Promise<string> {
 }
 
 /**
- * Partner deliberately does not receive the SDK skills addendum yet. Its tool
- * policy blocks the SDK `skill` executor, so advertising discovered skills
- * would instruct the model to call a capability it cannot use. Partner's
- * workbench capability packs are prompt playbooks, not SDK/plugin skills.
+ * Both surfaces discover Skills through the same SDK registry. Partner admits only the
+ * instruction-loading `skill` tool; loaded instructions never widen its independent tool policy.
+ * Dynamic-context shell tokens remain disabled by the Partner run policy in real-session.ts.
  */
 export function buildSkillsPromptForSurface(
-  surface: Surface,
+  _surface: Surface,
   projectRoot: string,
 ): Promise<string> {
-  return surface === 'partner' ? Promise.resolve('') : buildSkillsPrompt(projectRoot);
+  return buildSkillsPrompt(projectRoot);
 }
 
 /**

@@ -47,13 +47,7 @@ export type PartnerWorkbenchSkillPackId =
   | 'communication-drafting';
 
 export type PartnerWorkbenchOutputId =
-  | 'run-workspace'
-  | 'docx'
-  | 'pdf'
-  | 'pptx'
-  | 'xlsx'
-  | 'file-md'
-  | 'file-txt';
+  'run-workspace' | 'docx' | 'pdf' | 'pptx' | 'xlsx' | 'file-md' | 'file-txt';
 
 export type PartnerWorkbenchOutputPreferenceId = 'auto' | PartnerWorkbenchOutputId;
 
@@ -66,6 +60,7 @@ export interface PartnerWorkbenchSourceRef {
 export interface PartnerWorkbenchPendingSourceRef {
   readonly path: string;
   readonly label?: string | null;
+  readonly targetKind?: 'file' | 'dir';
 }
 
 export interface PartnerWorkbenchScenarioPreset {
@@ -843,11 +838,16 @@ function readPartnerPendingSourceEntries(): readonly PartnerPendingSourceEntry[]
         typeof candidate.label === 'string' && candidate.label.trim().length > 0
           ? candidate.label
           : undefined;
+      const targetKind =
+        candidate.targetKind === 'file' || candidate.targetKind === 'dir'
+          ? candidate.targetKind
+          : undefined;
       return [
         {
           projectRoot: candidate.projectRoot,
           path: candidate.path,
           ...(label !== undefined ? { label } : {}),
+          ...(targetKind !== undefined ? { targetKind } : {}),
         },
       ];
     });
@@ -875,6 +875,7 @@ export function readPartnerPendingSources(
     .map((entry) => ({
       path: entry.path,
       ...(entry.label !== undefined ? { label: entry.label } : {}),
+      ...(entry.targetKind !== undefined ? { targetKind: entry.targetKind } : {}),
     }));
 }
 
@@ -895,6 +896,7 @@ export function stagePartnerPendingSource(
       projectRoot,
       path: source.path,
       ...(source.label !== undefined && source.label !== null ? { label: source.label } : {}),
+      ...(source.targetKind !== undefined ? { targetKind: source.targetKind } : {}),
     },
   ]);
   return readPartnerPendingSources(projectRoot);

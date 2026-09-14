@@ -89,6 +89,27 @@ async function writeLock(
   );
 }
 
+async function writeFirstPartySources(sourcePath) {
+  const sources = {
+    schemaVersion: 1,
+    skills: [{ name: 'test-skill', sourcePath }],
+  };
+  await fs.writeFile(
+    path.join(fixtureRoot, 'resources', 'builtin-skills.sources.json'),
+    `${JSON.stringify(sources, null, 2)}\n`,
+    'utf8',
+  );
+}
+
+async function writeFirstPartySkill(directory) {
+  await fs.mkdir(directory, { recursive: true });
+  await fs.writeFile(
+    path.join(directory, 'SKILL.md'),
+    '---\nname: test-skill\ndescription: first-party fixture skill\n---\ntrusted local body\n',
+    'utf8',
+  );
+}
+
 before(async () => {
   fixtureRoot = await fs.mkdtemp(path.join(repositoryRoot, '.sync-builtin-test-'));
   fixtureScript = path.join(fixtureRoot, 'scripts', 'sync-builtin-skills.mjs');
@@ -212,4 +233,136 @@ test('snapshot update checks out an exact commit with canonical LF bytes on Wind
   const lock = JSON.parse(await fs.readFile(fixtureLockPath, 'utf8'));
   assert.equal(lock.skills[0].revision, revision);
   assert.equal(runCheck().status, 0);
+});
+
+test('first-party sources update without Git and remain content-addressed in release checks', async () => {
+  const sourceDirectory = path.join(fixtureRoot, 'resources', 'first-party-skills', 'test-skill');
+  const skillContent =
+    '---\nname: test-skill\ndescription: first-party fixture skill\n---\ntrusted local body\n';
+  await fs.mkdir(sourceDirectory, { recursive: true });
+  await fs.writeFile(path.join(sourceDirectory, 'SKILL.md'), skillContent, 'utf8');
+  const sources = {
+    schemaVersion: 1,
+    skills: [{ name: 'test-skill', sourcePath: 'first-party-skills/test-skill' }],
+  };
+  await fs.writeFile(
+    path.join(fixtureRoot, 'resources', 'builtin-skills.sources.json'),
+    `${JSON.stringify(sources, null, 2)}\n`,
+    'utf8',
+  );
+
+  const update = runUpdate();
+  assert.equal(update.status, 0, update.stderr);
+  const lock = JSON.parse(await fs.readFile(fixtureLockPath, 'utf8'));
+  assert.equal(lock.skills[0].sourcePath, 'first-party-skills/test-skill');
+  assert.match(lock.skills[0].revision, /^first-party:[a-f0-9]{64}$/);
+  assert.equal(
+    await fs.readFile(
+      path.join(fixtureRoot, 'resources', 'builtin-skills', 'test-skill', 'SKILL.md'),
+      'utf8',
+    ),
+    skillContent,
+  );
+  assert.equal(runCheck().status, 0);
+
+  await fs.writeFile(path.join(sourceDirectory, 'SKILL.md'), `${skillContent}changed\n`, 'utf8');
+  const drifted = runCheck();
+  assert.notEqual(drifted.status, 0);
+  assert.match(drifted.stderr, /first-party source differs from the locked revision/);
+});
+
+test('source declarations cannot mix a first-party path with remote Git fields', async () => {
+  const sources = {
+    schemaVersion: 1,
+    skills: [
+      {
+        name: 'test-skill',
+        sourcePath: 'first-party-skills/test-skill',
+        repository: 'https://example.invalid/test-skill.git',
+        ref: 'a'.repeat(40),
+      },
+    ],
+  };
+  await fs.writeFile(
+    path.join(fixtureRoot, 'resources', 'builtin-skills.sources.json'),
+    `${JSON.stringify(sources, null, 2)}\n`,
+    'utf8',
+  );
+  const result = runCheck();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /exactly one of first-party sourcePath or remote Git source/);
+});
+
+test('first-party source paths cannot escape their dedicated root with parent traversal', async () => {
+  const outsideSource = path.join(fixtureRoot, 'resources', 'outside-first-party-root');
+  await writeFirstPartySkill(outsideSource);
+  await writeFirstPartySources('first-party-skills/../outside-first-party-root');
+
+  const result = runUpdate();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /first-party sourcePath escapes first-party-skills/);
+});
+
+test('first-party source paths reject absolute paths', async () => {
+  const absoluteSource = path.join(fixtureRoot, 'absolute-first-party-source');
+  await writeFirstPartySkill(absoluteSource);
+  await writeFirstPartySources(absoluteSource);
+
+  const result = runUpdate();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /first-party sourcePath must be relative/);
+});
+
+test('first-party source paths must identify a skill below the dedicated root', async () => {
+  await writeFirstPartySources('first-party-skills');
+
+  const result = runUpdate();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must identify a skill below first-party-skills/);
+});
+
+test('first-party source paths reject a symbolic-link source root', async (t) => {
+  const sourceRoot = path.join(fixtureRoot, 'resources', 'first-party-skills');
+  const outsideRoot = path.join(fixtureRoot, 'linked-first-party-root');
+  await fs.rm(sourceRoot, { recursive: true, force: true });
+  await writeFirstPartySkill(path.join(outsideRoot, 'test-skill'));
+  try {
+    await fs.symlink(outsideRoot, sourceRoot, 'dir');
+  } catch (error) {
+    await fs.mkdir(sourceRoot, { recursive: true });
+    t.skip(`symlink unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+
+  try {
+    await writeFirstPartySources('first-party-skills/test-skill');
+    const result = runUpdate();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /symbolic link/);
+  } finally {
+    await fs.rm(sourceRoot, { recursive: true, force: true });
+    await fs.mkdir(sourceRoot, { recursive: true });
+  }
+});
+
+test('first-party source paths reject symbolic links in nested path segments', async (t) => {
+  const sourceRoot = path.join(fixtureRoot, 'resources', 'first-party-skills');
+  const linkedParent = path.join(sourceRoot, 'linked-parent');
+  const outsideParent = path.join(fixtureRoot, 'linked-first-party-parent');
+  await writeFirstPartySkill(path.join(outsideParent, 'test-skill'));
+  try {
+    await fs.symlink(outsideParent, linkedParent, 'dir');
+  } catch (error) {
+    t.skip(`symlink unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+
+  try {
+    await writeFirstPartySources('first-party-skills/linked-parent/test-skill');
+    const result = runUpdate();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /symbolic link/);
+  } finally {
+    await fs.rm(linkedParent, { force: true });
+  }
 });

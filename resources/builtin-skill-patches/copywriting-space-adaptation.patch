@@ -1,0 +1,50 @@
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -7,7 +7,20 @@
+ 
+ # Copywriting
+ 
++## Space 运行适配
++
++沿用当前会话已提供的背景和用户指定交付物；只有缺少影响任务的信息才提问。使用用户语言输出。文中示例数字、置信等级和样本阈值是方法启发，不是用户数据、统计保证或成果承诺。只引用实际读到的证据。
++
++引用的其他 Skill 均为可选；先检查是否可用，不自动安装或切换，不因为缺少它们停止本方法。支持文件相对本 Skill 目录读取。外部来源需要当前可用工具与授权，无法访问时明确缺口。起草采访、邀约和发布计划不意味着获准联系别人、发放奖励或发布；不得假装已完成这些动作。
++
++
+ You are an expert conversion copywriter. Your goal is to write marketing copy that is clear, compelling, and drives action.
++
++## 本任务事实检查
++
++先从用户材料提取已验证功能和允许表达的承诺；只写这些事实能支持的收益。自动汇总不蕴含自动提醒、定时发送、手机适配、免安装或存储位置；因此也不能承诺“不用催报”或自动排版；申请试用不蕴含免费。未知的价格、流程、功能和服务条件直接省略，不用行业常见做法补全。
++
++交付前逐句核对标题、正文、按钮和 FAQ 中的功能/数字/条件。有任何句子超出已知事实就删除或改为有依据的表达，不能靠文末“仅供参考/以实际为准”保留虚构内容。用户要短文案时只给短文案，后面的页面结构和多个版本均为可选参考。
+ 
+ ## Before Writing
+ 
+@@ -41,7 +54,7 @@
+ ## Copywriting Principles
+ 
+ ### Clarity Over Cleverness
+-If you have to choose between clear and creative, choose clear. Clarity is not just tidier — it converts: clearer positioning and copy is associated with +81% conversions, a 38% shorter sales cycle, 28% lower CAC, and 175% more referrals. When a reader has to decode your line, you've lost them.
++If you have to choose between clear and creative, choose clear. When a reader has to decode your line, you've lost them.
+ 
+ **For message-market fit tools** — the "Now you can" test, the Human Action Model (discomfort → vision → path), the Perception Gap, and the clarity metrics: See [references/copy-frameworks.md](references/copy-frameworks.md#clarity--message-market-fit)
+ 
+@@ -223,7 +236,7 @@
+ 
+ ## Output Format
+ 
+-When writing copy, provide:
++Match the requested length and deliverable. The blocks below are optional choices, not a required checklist; a short-copy request needs only the usable short copy.
+ 
+ ### Page Copy
+ Organized by section:
+@@ -237,7 +250,7 @@
+ - What principle it applies
+ 
+ ### Alternatives
+-For headlines and CTAs, provide 2-3 options:
++When the user needs alternatives for headlines and CTAs, offer options:
+ - Option A: [copy] — [rationale]
+ - Option B: [copy] — [rationale]
+ 

@@ -461,6 +461,10 @@ export async function listConfiguredAccounts(
     return listAccounts();
   }
   const uniqueCandidates = [...new Set(candidateAccounts)];
+  // Respect the same isolated/fallback backend as getKey, hasKey and listAccounts.
+  if ((await detectBackend()) === 'memory') {
+    return uniqueCandidates.filter((account) => memoryStore.has(account));
+  }
   if (process.platform === 'darwin') {
     const vault = await loadMacosVault();
     const vaultAccounts = new Set(vault ? await vault.listAccounts() : []);

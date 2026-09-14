@@ -64,14 +64,26 @@ async function saveScreenshot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: path.join(AUDIT_DIR, `${name}.png`), fullPage: false });
 }
 
+async function dragRightSidebarBy(page: Page, deltaX: number): Promise<void> {
+  const resizeHandle = page.getByRole('separator', { name: 'Resize right sidebar' });
+  const handleBox = await resizeHandle.boundingBox();
+  expect(handleBox, 'Right sidebar resize handle').not.toBeNull();
+  const startX = handleBox!.x + handleBox!.width / 2;
+  const pointerY = handleBox!.y + Math.min(20, handleBox!.height / 2);
+  await page.mouse.move(startX, pointerY);
+  await page.mouse.down();
+  await page.mouse.move(startX + deltaX, pointerY);
+  await page.mouse.up();
+}
+
 async function snapshotLayout(page: Page): Promise<LayoutSnapshot> {
   return page.evaluate(() => {
     const selectors: Record<string, string> = {
       left: '[data-testid="left-sidebar"]',
       workspace: '[data-testid="partner-workspace"]',
-      sources: '[data-testid="partner-sources-panel"]',
+      context: '[data-testid="partner-context-rail"]',
       conversation: '[data-testid="partner-conversation"]',
-      artifact: '[data-testid="partner-artifact-panel"]',
+      detail: '[data-testid="right-sidebar"]',
       stream: '[data-testid="conversation-stream"]',
       textarea: 'textarea',
       send: '[aria-label="Send message"]',
@@ -81,7 +93,9 @@ async function snapshotLayout(page: Page): Promise<LayoutSnapshot> {
     const rectFor = (selector: string): Rect | null => {
       const element = document.querySelector(selector);
       if (!element) return null;
+      if (window.getComputedStyle(element).display === 'none') return null;
       const rect = element.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return null;
       return {
         x: rect.x,
         y: rect.y,
@@ -134,20 +148,19 @@ async function expectUsablePartnerLayout(page: Page): Promise<void> {
       true,
     );
   }
-  if (rects.sources) {
+  if (rects.context) {
     expect(
-      horizontallySeparated(rects.sources, conversation),
-      'sources rail overlaps conversation',
+      horizontallySeparated(conversation, rects.context),
+      'context rail overlaps conversation',
     ).toBe(true);
   }
-  if (rects.artifact) {
-    expect(insideViewport(rects.artifact, viewport), 'artifact panel is clipped by viewport').toBe(
+  if (rects.detail) {
+    expect(insideViewport(rects.detail, viewport), 'detail panel is clipped by viewport').toBe(
       true,
     );
-    expect(
-      horizontallySeparated(conversation, rects.artifact),
-      'conversation overlaps artifact rail',
-    ).toBe(true);
+    expect(horizontallySeparated(workspace, rects.detail), 'workspace overlaps detail panel').toBe(
+      true,
+    );
   }
 }
 
@@ -194,77 +207,150 @@ test('Partner layout remains usable without panel overlap across common widths',
 
     await page.setViewportSize({ width: 1280, height: 760 });
     await saveScreenshot(page, '01-desktop-welcome');
-    await expect(page.getByTestId('partner-workbench-mode-strip')).toBeVisible();
-    await expect(page.getByTestId('partner-workbench-route-preview')).toBeVisible();
+    await expect(page.getByTestId('partner-workbench')).toHaveCount(0);
+    const sceneShortcuts = page.getByTestId('partner-scene-shortcuts');
+    await expect(sceneShortcuts).toBeVisible();
     const composer = page.locator('textarea').first();
     await expect(composer).toHaveAttribute(
       'placeholder',
-      /Document processing task - sending will create a Partner session/,
+      /Describe a task - sending will create a Partner session/,
     );
-    await page.getByTestId('partner-workbench').getByRole('button', { name: 'Slides' }).click();
-    await expect(composer).toHaveAttribute(
-      'placeholder',
-      /Slides task - sending will create a Partner session/,
-    );
-    await page
-      .getByTestId('partner-workbench')
-      .getByRole('button', { name: 'Data analysis' })
-      .click();
-    await expect(composer).toHaveAttribute(
-      'placeholder',
-      /Data analysis task - sending will create a Partner session/,
-    );
-    await page
-      .getByTestId('partner-workbench')
-      .getByRole('button', { name: 'Document processing' })
-      .click();
-    await expect(page.getByTestId('partner-workbench-brief')).toHaveCount(0);
-    await expect(
-      page.getByTestId('partner-workbench').getByRole('button', { name: /^Start$/ }),
-    ).toHaveCount(0);
-    await expect(page.getByTestId('partner-workbench').getByText('Capabilities:')).toHaveCount(0);
-    await expect(page.getByTestId('partner-workbench').getByText('Deliverables:')).toHaveCount(0);
-    await expect(
-      page.getByTestId('partner-workbench').getByText(/Choose the work mode here/),
-    ).toHaveCount(0);
-    await expect(
-      page.getByTestId('partner-conversation').getByText(/Describe a task below/),
-    ).toHaveCount(0);
-    await page.getByTestId('partner-workbench').getByRole('button', { name: 'Advanced' }).click();
-    await expect(page.getByTestId('partner-workbench').getByText('Capabilities:')).toBeVisible();
-    await expect(page.getByTestId('partner-workbench').getByText('Deliverables:')).toBeVisible();
-    await expect(page.getByTestId('partner-workbench').getByText('Output override')).toBeVisible();
-    await page.getByTestId('partner-workbench').getByRole('button', { name: 'Advanced' }).click();
-    await expect(page.getByTestId('partner-workbench').getByText('Capabilities:')).toHaveCount(0);
-    await expect(page.getByTestId('partner-sources-panel')).toBeVisible();
-    await expect(page.getByTestId('partner-artifact-panel')).toBeVisible();
+    await sceneShortcuts.getByRole('button', { name: 'Slides' }).click();
+    await expect(composer).toHaveValue(/Create a presentation/);
+    await sceneShortcuts.getByRole('button', { name: 'Data analysis' }).click();
+    await expect(composer).toHaveValue(/Analyze the attached data/);
+    await sceneShortcuts.getByRole('button', { name: 'Document processing' }).click();
+    await expect(composer).toHaveValue(/Use the attached material/);
+    await composer.fill('');
+    const contextRail = page.getByTestId('partner-context-rail');
+    await expect(contextRail).toBeVisible();
+    await expect(contextRail).toHaveCSS('width', '300px');
+    await expect(page.getByTestId('right-sidebar')).toBeHidden();
     await expectUsablePartnerLayout(page);
 
-    await page.setViewportSize({ width: 980, height: 680 });
-    await saveScreenshot(page, '02-narrow-welcome');
-    await expect(page.getByTestId('partner-sources-panel')).toBeVisible();
-    await expect(page.getByTestId('partner-artifact-panel')).toHaveCount(0);
+    await page.getByTestId('partner-detail-toggle').click();
+    await expect(page.getByTestId('right-sidebar')).toBeVisible();
+    await expect(contextRail).toHaveCount(0);
+    await expect(page.getByTestId('partner-detail-launcher')).toBeVisible();
+    await saveScreenshot(page, '02-desktop-detail');
     await expectUsablePartnerLayout(page);
+
+    await page.getByTestId('partner-context-toggle').click();
+    await expect(page.getByTestId('right-sidebar')).toBeHidden();
+    await expect(contextRail).toBeVisible();
 
     await sendPrompt(page, 'partner visual overlap audit prompt');
-    await saveScreenshot(page, '03-narrow-after-send');
+    await expect(page.getByTestId('right-sidebar')).toBeHidden();
+    await saveScreenshot(page, '03-desktop-after-send');
     await expectUsablePartnerLayout(page);
 
+    await page.getByTestId('partner-context-add-material').click();
     const sourcesPanel = page.getByTestId('partner-sources-panel');
+    await expect(sourcesPanel).toBeVisible();
     await sourcesPanel.getByRole('button', { name: 'brief.md' }).click();
     await expect(page.getByTestId('file-viewer')).toBeVisible();
-    await page.getByTestId('partner-artifact-toggle').click();
+    await page
+      .getByTestId('partner-detail-tabs')
+      .getByRole('tab', { name: 'Materials', exact: true })
+      .click();
     await expect(sourcesPanel).toBeVisible();
     await sourcesPanel.getByRole('button', { name: 'Attach selected file' }).click();
     await expect(sourcesPanel.getByText('brief.md').first()).toBeVisible();
     await saveScreenshot(page, '04-source-attached');
     await expectUsablePartnerLayout(page);
 
-    await page.setViewportSize({ width: 820, height: 620 });
-    await saveScreenshot(page, '05-compact-width');
-    await expect(page.getByTestId('partner-sources-panel')).toBeHidden();
-    await expect(page.getByTestId('partner-artifact-panel')).toHaveCount(0);
+    await page.getByTestId('partner-context-toggle').click();
+    await expect(page.getByTestId('right-sidebar')).toBeHidden();
+    await expect(contextRail).toBeVisible();
+
+    await page.setViewportSize({ width: 980, height: 680 });
+    await saveScreenshot(page, '05-narrow-width');
+    await expect(page.getByTestId('partner-context-rail')).toBeVisible();
+    await expect(page.getByTestId('partner-context-toggle')).toBeVisible();
+    await expect(page.getByTestId('partner-detail-toggle')).toBeVisible();
     await expectUsablePartnerLayout(page);
+
+    await page.setViewportSize({ width: 820, height: 620 });
+    await saveScreenshot(page, '06-compact-width');
+    await expect(page.getByTestId('partner-context-rail')).toHaveCount(0);
+    await expect(page.getByTestId('right-sidebar')).toBeHidden();
+    await expect(page.getByTestId('partner-context-toggle')).toBeVisible();
+    await expect(page.getByTestId('partner-detail-toggle')).toBeVisible();
+    await expectUsablePartnerLayout(page);
+
+    await page.getByTestId('partner-context-toggle').click();
+    await expect(page.getByTestId('right-sidebar')).toBeVisible();
+    await expect(page.getByTestId('partner-sources-panel')).toBeVisible();
+    await expectUsablePartnerLayout(page);
+  } finally {
+    await space.close();
+    await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});
+  }
+});
+
+test('Partner detail history and width survive a Coder round trip without changing Coder width', async () => {
+  test.setTimeout(60_000);
+  const testId = `partner-detail-round-trip-${Date.now()}`;
+  const projectDir = await createProject(testId);
+  const space = await launchSpace(testId);
+
+  try {
+    const { page } = space;
+    await space.seedProject(projectDir);
+    await page.setViewportSize({ width: 1440, height: 760 });
+    await page.evaluate(() => {
+      window.localStorage.setItem('kodax-space.currentSurface', 'code');
+    });
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.getByLabel('Show right sidebar').click();
+    const coderDock = page.locator('[data-dock-kind="task-dock"]');
+    await expect(coderDock).toBeVisible();
+    await dragRightSidebarBy(page, -36);
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem('kodax-space.rightSidebarWidth')))
+      .not.toBeNull();
+    const coderPersistedWidth = await page.evaluate(() =>
+      window.localStorage.getItem('kodax-space.rightSidebarWidth'),
+    );
+    expect(coderPersistedWidth).not.toBeNull();
+    await expect(coderDock).toHaveCSS('width', `${coderPersistedWidth}px`);
+    const coderWidthBefore = (await coderDock.boundingBox())?.width ?? 0;
+    expect(coderWidthBefore).toBeGreaterThan(0);
+
+    await switchToPartner(page);
+    await page.getByTestId('partner-detail-toggle').click();
+    const partnerDock = page.locator('[data-dock-kind="partner-detail-dock"]');
+    await expect(partnerDock).toBeVisible();
+    await page.getByTestId('partner-detail-open-browser').click();
+    await expect(
+      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Browser' }),
+    ).toBeVisible();
+
+    await dragRightSidebarBy(page, -48);
+
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem('kodax-space.rightSidebarWidth')))
+      .toBe(coderPersistedWidth);
+
+    await page.getByRole('button', { name: 'Coder', exact: true }).click();
+    await expect(page.getByTestId('coder-workspace')).toBeVisible();
+    await expect(partnerDock).toHaveCount(1);
+    await expect(partnerDock).toBeHidden();
+    await expect(
+      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Browser' }),
+    ).toHaveCount(1);
+    await expect(coderDock).toBeVisible();
+    await expect
+      .poll(async () => (await coderDock.boundingBox())?.width ?? 0)
+      .toBeCloseTo(coderWidthBefore, 0);
+
+    await switchToPartner(page);
+    await expect(partnerDock).toBeVisible();
+    await expect(
+      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Browser' }),
+    ).toBeVisible();
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

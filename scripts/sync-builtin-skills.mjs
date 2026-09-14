@@ -9,6 +9,7 @@ import YAML from 'yaml';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
 const resourcesRoot = path.join(repoRoot, 'resources');
+const firstPartySourcesRoot = path.join(resourcesRoot, 'first-party-skills');
 const sourcesPath = path.join(resourcesRoot, 'builtin-skills.sources.json');
 const lockPath = path.join(resourcesRoot, 'builtin-skills.lock.json');
 const vendorRoot = path.join(resourcesRoot, 'builtin-skills');
@@ -42,6 +43,43 @@ function safeJoin(root, relativePath) {
   const relative = path.relative(resolvedRoot, resolved);
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
     throw new Error(`Path escapes its root: ${relativePath}`);
+  }
+  return resolved;
+}
+
+async function resolveFirstPartySource(sourcePath) {
+  if (path.isAbsolute(sourcePath) || path.win32.isAbsolute(sourcePath)) {
+    throw new Error('first-party sourcePath must be relative');
+  }
+  if (sourcePath === 'first-party-skills' || sourcePath === 'first-party-skills/') {
+    throw new Error('first-party sourcePath must identify a skill below first-party-skills');
+  }
+  const prefix = 'first-party-skills/';
+  if (!sourcePath.startsWith(prefix)) {
+    throw new Error('first-party sourcePath must be under first-party-skills/');
+  }
+
+  let resolved;
+  try {
+    resolved = safeJoin(firstPartySourcesRoot, sourcePath.slice(prefix.length));
+  } catch {
+    throw new Error('first-party sourcePath escapes first-party-skills');
+  }
+  if (resolved === path.resolve(firstPartySourcesRoot)) {
+    throw new Error('first-party sourcePath must identify a skill below first-party-skills');
+  }
+
+  let current = path.resolve(firstPartySourcesRoot);
+  const segments = path.relative(current, resolved).split(path.sep);
+  for (const segment of ['', ...segments]) {
+    if (segment) current = path.join(current, segment);
+    const stat = await fs.lstat(current);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`first-party sourcePath traverses a symbolic link: ${sourcePath}`);
+    }
+    if (!stat.isDirectory()) {
+      throw new Error(`first-party sourcePath must traverse directories: ${sourcePath}`);
+    }
   }
   return resolved;
 }
@@ -125,6 +163,10 @@ async function hashFiles(root) {
     });
   }
   return records;
+}
+
+async function firstPartyRevision(skillRoot) {
+  return `first-party:${sha256(JSON.stringify(await hashFiles(skillRoot)))}`;
 }
 
 function validateFrontmatter(skillName, markdown) {
@@ -233,9 +275,45 @@ async function readSources() {
       throw new Error(`Invalid builtin skill name: ${skill.name}`);
     }
     if (names.has(skill.name)) throw new Error(`Duplicate builtin skill name: ${skill.name}`);
+    const hasFirstPartySource = typeof skill.sourcePath === 'string';
+    const hasRemoteSource = ['repository', 'ref', 'installedPath', 'sourceSubdir', 'license'].some(
+      (field) => skill[field] !== undefined,
+    );
+    if (hasFirstPartySource === hasRemoteSource) {
+      throw new Error(
+        `${skill.name}: declare exactly one of first-party sourcePath or remote Git source`,
+      );
+    }
+    if (hasFirstPartySource) {
+      await resolveFirstPartySource(skill.sourcePath);
+    }
     names.add(skill.name);
   }
   return parsed;
+}
+
+async function validateLockedSource(source, locked) {
+  if (source.sourcePath) {
+    if (locked.sourcePath !== source.sourcePath) {
+      throw new Error(`${locked.name}: locked sourcePath differs from source declaration`);
+    }
+    const sourceRoot = await resolveFirstPartySource(source.sourcePath);
+    if (locked.revision !== (await firstPartyRevision(sourceRoot))) {
+      throw new Error(`${locked.name}: first-party source differs from the locked revision`);
+    }
+    return;
+  }
+  if (locked.repository !== source.repository) {
+    throw new Error(`${locked.name}: locked repository differs from source declaration`);
+  }
+  const auditableGitRevision =
+    typeof locked.revision === 'string' && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(locked.revision);
+  if (!auditableGitRevision && !(allowInstalled && locked.revision?.startsWith('installed:'))) {
+    throw new Error(
+      `${locked.name}: lock revision is not an auditable Git commit; ` +
+        'regenerate with npm run skills:update before release',
+    );
+  }
 }
 
 async function checkSnapshot(sources) {
@@ -275,18 +353,7 @@ async function checkSnapshot(sources) {
   for (const locked of lock.skills) {
     const source = sources.skills.find((skill) => skill.name === locked.name);
     if (!source) throw new Error(`${locked.name}: missing source declaration`);
-    if (locked.repository !== source.repository) {
-      throw new Error(`${locked.name}: locked repository differs from source declaration`);
-    }
-    const auditableGitRevision =
-      typeof locked.revision === 'string' &&
-      /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(locked.revision);
-    if (!auditableGitRevision && !(allowInstalled && locked.revision?.startsWith('installed:'))) {
-      throw new Error(
-        `${locked.name}: lock revision is not an auditable Git commit; ` +
-          'regenerate with npm run skills:update before release',
-      );
-    }
+    await validateLockedSource(source, locked);
     const patches = [];
     for (const patchPath of source.patches ?? []) {
       const absolutePath = safeJoin(resourcesRoot, patchPath);
@@ -320,7 +387,10 @@ async function updateSnapshot(sources) {
     for (const skill of sources.skills) {
       let checkoutRoot;
       let revision;
-      if (fromInstalled) {
+      if (skill.sourcePath) {
+        checkoutRoot = await resolveFirstPartySource(skill.sourcePath);
+        revision = await firstPartyRevision(checkoutRoot);
+      } else if (fromInstalled) {
         checkoutRoot = safeJoin(path.join(homedir(), '.agents', 'skills'), skill.installedPath);
         revision = `installed:${sha256(await fs.readFile(path.join(checkoutRoot, 'SKILL.md')))}`;
       } else {
@@ -363,21 +433,29 @@ async function updateSnapshot(sources) {
         }
       }
 
-      const licenseSource = safeJoin(checkoutRoot, skill.license.sourcePath);
-      const licenseHash = sha256(await fs.readFile(licenseSource));
-      if (licenseHash !== skill.license.sha256) {
-        throw new Error(
-          `${skill.name}: license changed (${licenseHash}); review it before updating the approved hash`,
-        );
+      let licenseSource;
+      if (!skill.sourcePath) {
+        licenseSource = safeJoin(checkoutRoot, skill.license.sourcePath);
+        const licenseHash = sha256(await fs.readFile(licenseSource));
+        if (licenseHash !== skill.license.sha256) {
+          throw new Error(
+            `${skill.name}: license changed (${licenseHash}); ` +
+              'review it before updating the approved hash',
+          );
+        }
       }
 
-      const sourceRoot = safeJoin(checkoutRoot, skill.sourceSubdir);
+      const sourceRoot = skill.sourcePath
+        ? checkoutRoot
+        : safeJoin(checkoutRoot, skill.sourceSubdir);
       const destinationRoot = safeJoin(stagingRoot, skill.name);
       await fs.mkdir(destinationRoot, { recursive: true });
       await copyTree(sourceRoot, destinationRoot, skill.exclude ?? []);
-      const licenseDestination = safeJoin(destinationRoot, skill.license.destinationPath);
-      await fs.mkdir(path.dirname(licenseDestination), { recursive: true });
-      await fs.copyFile(licenseSource, licenseDestination);
+      if (licenseSource) {
+        const licenseDestination = safeJoin(destinationRoot, skill.license.destinationPath);
+        await fs.mkdir(path.dirname(licenseDestination), { recursive: true });
+        await fs.copyFile(licenseSource, licenseDestination);
+      }
       const patches = [];
       for (const patchPath of skill.patches ?? []) {
         const absolutePatchPath = safeJoin(resourcesRoot, patchPath);
@@ -411,7 +489,7 @@ async function updateSnapshot(sources) {
       await validateSkill(skill.name, destinationRoot, skill.forbiddenText ?? []);
       lockSkills.push({
         name: skill.name,
-        repository: skill.repository,
+        ...(skill.sourcePath ? { sourcePath: skill.sourcePath } : { repository: skill.repository }),
         revision,
         patches,
         files: await hashFiles(destinationRoot),

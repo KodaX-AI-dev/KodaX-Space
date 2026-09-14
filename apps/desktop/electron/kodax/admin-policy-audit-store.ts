@@ -45,7 +45,7 @@ function defaultPolicy(): AdminPolicyT {
     schema: adminPolicySchemaVersion,
     providers: { allow: [], deny: [] },
     mcp: { allow: [], deny: [] },
-    connectors: { allow: [], deny: [], writesAllowed: false },
+    connectors: { allow: [], deny: [], writesAllowed: true },
     artifact: { generateOfficeAllowed: true, exportAllowed: true },
     workspaceFileProposals: {
       createAllowed: true,

@@ -4,14 +4,20 @@ import path from 'node:path';
 import { z } from 'zod';
 import type {
   AgentMode,
+  PartnerExpertSnapshotT,
+  PartnerConnectorSnapshotT,
   PermissionMode,
   ReasoningMode,
 } from '@kodax-space/space-ipc-schema';
-import { reasoningModeSchema } from '@kodax-space/space-ipc-schema';
+import {
+  partnerExpertSnapshotSchema,
+  partnerConnectorSnapshotsSchema,
+  reasoningModeSchema,
+} from '@kodax-space/space-ipc-schema';
 import { getSpaceDataDir } from './data-paths.js';
 import { replaceFileIfUnchanged, writeNewFileExclusive } from './atomic-file.js';
 
-const MAX_RUNTIME_FILE_BYTES = 64 * 1024;
+const MAX_RUNTIME_FILE_BYTES = 256 * 1024;
 const persistedAgentModeSchema = z.preprocess(
   (value) => (value === 'amaw' || value === 'ama-workflow' ? 'ama' : value),
   z.enum(['ama', 'sa']),
@@ -29,6 +35,8 @@ const sessionRuntimeSchema = z
     autoModeEngine: z.enum(['llm', 'rules']).optional(),
     reasoningMode: reasoningModeSchema.optional(),
     agentMode: persistedAgentModeSchema.optional(),
+    partnerExpert: partnerExpertSnapshotSchema.optional(),
+    partnerConnectors: partnerConnectorSnapshotsSchema.optional(),
     updatedAt: z.string().min(1),
   })
   .strict();
@@ -40,6 +48,8 @@ export interface SessionRuntimeSettings {
   readonly permissionMode?: PermissionMode;
   readonly reasoningMode?: ReasoningMode;
   readonly agentMode?: AgentMode;
+  readonly partnerExpert?: PartnerExpertSnapshotT;
+  readonly partnerConnectors?: readonly PartnerConnectorSnapshotT[];
 }
 
 interface SessionRuntimeFile extends SessionRuntimeSettings {
@@ -75,6 +85,10 @@ function settingsFromParsed(parsed: z.infer<typeof sessionRuntimeSchema>): Sessi
     ...(parsed.permissionMode !== undefined ? { permissionMode: parsed.permissionMode } : {}),
     ...(parsed.reasoningMode !== undefined ? { reasoningMode: parsed.reasoningMode } : {}),
     ...(parsed.agentMode !== undefined ? { agentMode: parsed.agentMode } : {}),
+    ...(parsed.partnerExpert !== undefined ? { partnerExpert: parsed.partnerExpert } : {}),
+    ...(parsed.partnerConnectors !== undefined
+      ? { partnerConnectors: parsed.partnerConnectors }
+      : {}),
   };
 }
 
@@ -107,6 +121,10 @@ function buildSessionRuntimeFile(
     ...(settings.permissionMode !== undefined ? { permissionMode: settings.permissionMode } : {}),
     ...(settings.reasoningMode !== undefined ? { reasoningMode: settings.reasoningMode } : {}),
     ...(settings.agentMode !== undefined ? { agentMode: settings.agentMode } : {}),
+    ...(settings.partnerExpert !== undefined ? { partnerExpert: settings.partnerExpert } : {}),
+    ...(settings.partnerConnectors !== undefined
+      ? { partnerConnectors: settings.partnerConnectors }
+      : {}),
     updatedAt,
   };
 }
@@ -205,8 +223,11 @@ export class SessionRuntimeStore {
       }
       const merged = { ...(previous.kind === 'valid' ? previous.settings : {}), ...patch };
       const next = buildSessionRuntimeFile(sessionId, merged, new Date().toISOString());
-      await fs.mkdir(this.dir, { recursive: true, mode: 0o700 });
       const bytes = Buffer.from(JSON.stringify(next, null, 2), 'utf-8');
+      if (bytes.length > MAX_RUNTIME_FILE_BYTES) {
+        throw new Error('session runtime metadata exceeds size limit');
+      }
+      await fs.mkdir(this.dir, { recursive: true, mode: 0o700 });
       if (previous.kind === 'missing') {
         await writeNewFileExclusive(filePath, bytes, 'session runtime state changed concurrently');
       } else {
