@@ -97,6 +97,47 @@ const NORMALIZE_THROWS = {
   },
 };
 
+test('saveImage: refuses confirmed corrupt bytes after normalization fails', async () => {
+  await assert.rejects(
+    saveClipboardImage(
+      { sessionId: 'sess-corrupt', base64: 'bm90LWFuLWltYWdl', mediaType: 'image/jpeg' },
+      {
+        ...NORMALIZE_THROWS,
+        validateImageBytes: async () => ({ status: 'invalid' as const }),
+      },
+    ),
+    /cannot be decoded/,
+  );
+});
+
+test('saveImage: preserves valid WebP when normalization lacks its codec', async () => {
+  const base64 =
+    'UklGRjoAAABXRUJQVlA4IC4AAADQAQCdASoCAAIAAUAmJaACdLoB+AADsAD+771X/rgPzgPzgP5lv/zYEDND50AA';
+  const saved = await saveClipboardImage(
+    { sessionId: 'sess-webp', base64, mediaType: 'image/jpeg' },
+    {
+      ...NORMALIZE_THROWS,
+      validateImageBytes: async () => ({ status: 'valid' as const, mediaType: 'image/webp' }),
+    },
+  );
+  assert.equal(saved.mediaType, 'image/webp');
+  assert.deepEqual(await fs.readFile(saved.path), Buffer.from(base64, 'base64'));
+});
+
+test('saveImage: a missing validation backend preserves the existing attachment fallback', async () => {
+  const saved = await saveClipboardImage(
+    { sessionId: 'sess-no-codec', base64: TINY_PNG_BASE64, mediaType: 'image/png' },
+    {
+      ...NORMALIZE_THROWS,
+      validateImageBytes: async () => ({
+        status: 'unverified' as const,
+        reason: 'decoder_unavailable',
+      }),
+    },
+  );
+  assert.deepEqual(await fs.readFile(saved.path), Buffer.from(TINY_PNG_BASE64, 'base64'));
+});
+
 test('clipboard owner admission accepts loaded and asynchronously resumed Sessions', async () => {
   await assertClipboardImageOwnerSession('sess-loaded', (sessionId) => {
     assert.equal(sessionId, 'sess-loaded');

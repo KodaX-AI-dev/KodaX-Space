@@ -53,6 +53,14 @@ type MediaSdk = {
     options: { readonly directory: string; readonly fileNamePrefix: string },
   ): Promise<NativeImageBlock>;
   normalizePastedImage(input: Buffer): Promise<NormalizedImage>;
+  // Optional while hosts migrate from SDK versions predating image validation.
+  validateImageBytes?(
+    input: Buffer,
+  ): Promise<
+    | { status: 'valid'; mediaType: string }
+    | { status: 'invalid' }
+    | { status: 'unverified'; reason: string; mediaType?: string }
+  >;
 };
 
 let mediaSdkCache: Promise<MediaSdk> | null = null;
@@ -148,7 +156,7 @@ export async function saveClipboardImage(
     readonly base64: string;
     readonly mediaType: 'image/png' | 'image/jpeg' | 'image/webp';
   },
-  sdk: Pick<MediaSdk, 'normalizePastedImage'> | undefined = undefined,
+  sdk: Pick<MediaSdk, 'normalizePastedImage' | 'validateImageBytes'> | undefined = undefined,
 ): Promise<{
   path: string;
   mediaType: 'image/png' | 'image/jpeg' | 'image/webp';
@@ -174,11 +182,12 @@ export async function saveClipboardImage(
   // C6: 粘贴 / 拖拽路径过去只做体积上限、原样写盘，绕过了 SDK 的图片规范化（尺寸降采样到
   // MAX_DIMENSION、目标字节数、canonical mediaType）——与原生剪贴板读取路径不一致，一张全分辨率
   // 4K 截图会超规格发给模型。这里补跑 normalizePastedImage 对齐媒体契约。best-effort：媒体子包
-  // 不可用（测试环境）或解码失败时回退原始 buffer，保证附图仍可用。
+  // 不可用或不支持某种格式时保留原始 buffer；新 SDK 在写盘前独立检查真实损坏。
   let outBuf: Buffer = rawBuf;
   let outMediaType: 'image/png' | 'image/jpeg' | 'image/webp' = input.mediaType;
+  let media = sdk;
   try {
-    const media = sdk ?? (await loadMediaSdk());
+    media ??= await loadMediaSdk();
     const normalized = await media.normalizePastedImage(rawBuf);
     if (normalized?.buffer?.length) {
       outBuf = normalized.buffer;
@@ -194,8 +203,28 @@ export async function saveClipboardImage(
       );
     }
     console.warn(
-      `[clipboard.saveImage] normalizePastedImage failed; writing raw buffer: ${err instanceof Error ? err.message : err}`,
+      `[clipboard.saveImage] normalizePastedImage failed; checking raw fallback: ${err instanceof Error ? err.message : err}`,
     );
+  }
+
+  const validation = await media?.validateImageBytes?.(outBuf);
+  if (validation?.status === 'invalid') {
+    throw new Error(
+      'clipboard.saveImage: image cannot be decoded. Re-extract or replace this image.',
+    );
+  }
+  if (validation?.status === 'unverified') {
+    console.warn(
+      `[clipboard.saveImage] image validation unavailable (${validation.reason}); retaining original bytes`,
+    );
+  }
+  if (
+    validation &&
+    (validation.mediaType === 'image/png' ||
+      validation.mediaType === 'image/jpeg' ||
+      validation.mediaType === 'image/webp')
+  ) {
+    outMediaType = validation.mediaType;
   }
   if (outBuf.length > MAX_NORMALIZED_IMAGE_BYTES) {
     throw new Error(
