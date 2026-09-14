@@ -1,3 +1,5 @@
+import type { ResolveHookSync } from 'node:module';
+
 const stubs = new Map([
   ['FilesPanel', 'FilesPanel'],
   ['ArtifactPanel', 'ArtifactPanel'],
@@ -12,7 +14,7 @@ const stubs = new Map([
   ['PartnerSkillDetails', 'PartnerSkillDetails'],
 ]);
 
-export async function resolve(specifier, context, nextResolve) {
+export const resolve: ResolveHookSync = (specifier, context, nextResolve) => {
   const exportName = [...stubs].find(([fileName]) =>
     new RegExp(`(?:/|\\./)${fileName}\\.(?:js|tsx)(?:\\?.*)?$`).test(specifier),
   )?.[1];
@@ -23,4 +25,4 @@ export async function resolve(specifier, context, nextResolve) {
     };
   }
   return nextResolve(specifier, context);
-}
+};

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { register } from 'node:module';
+import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { PartnerDeliveryRefT } from '@kodax-space/space-ipc-schema';
@@ -7,7 +7,9 @@ import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { PartnerRemoteRecordsProvider } from '../extensions/usePartnerRemoteRecords.js';
 import type { PartnerDetailOpenTarget } from './partnerDetailWorkspace.js';
 
-register(new URL('./ArtifactPanelTestLoader.mjs', import.meta.url));
+import { resolve } from './ArtifactPanelTestLoader.js';
+
+registerHooks({ resolve });
 const { ArtifactPanel, openPartnerOutputDelivery, PartnerOutputDeliveryList } =
   await import('./ArtifactPanel.js');
 

@@ -1,4 +1,6 @@
-export async function resolve(specifier, context, nextResolve) {
+import type { ResolveHookSync } from 'node:module';
+
+export const resolve: ResolveHookSync = (specifier, context, nextResolve) => {
   if (/(?:\/|\.\/)ArtifactsView\.(?:js|tsx)(?:\?.*)?$/.test(specifier)) {
     return {
       url: 'data:text/javascript,export function ArtifactsView(){return null}',
@@ -6,4 +8,4 @@ export async function resolve(specifier, context, nextResolve) {
     };
   }
   return nextResolve(specifier, context);
-}
+};

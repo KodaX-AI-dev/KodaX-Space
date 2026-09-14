@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { register } from 'node:module';
+import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { PartnerRemoteRecordsProvider } from '../extensions/usePartnerRemoteRecords.js';
 
-register(new URL('./PartnerComponentTestLoader.mjs', import.meta.url));
+import { resolve } from './PartnerComponentTestLoader.js';
+
+registerHooks({ resolve });
 const { PartnerWorkspace } = await import('./PartnerWorkspace.js');
 
 test('Partner mounts only direct native document delivery, never the legacy create-proposal opener', async () => {

@@ -198,7 +198,7 @@ async function expectSelectorInViewport(
 test('Partner layout remains usable without panel overlap across common widths', async () => {
   const testId = `partner-layout-${Date.now()}`;
   const projectDir = await createProject(testId);
-  const space = await launchSpace(testId);
+  const space = await launchSpace(testId, { env: { KODAX_SPACE_RUNTIME_HOST: 'legacy' } });
 
   try {
     const { page } = space;
@@ -208,21 +208,18 @@ test('Partner layout remains usable without panel overlap across common widths',
     await page.setViewportSize({ width: 1280, height: 760 });
     await saveScreenshot(page, '01-desktop-welcome');
     await expect(page.getByTestId('partner-workbench')).toHaveCount(0);
-    const sceneShortcuts = page.getByTestId('partner-scene-shortcuts');
-    await expect(sceneShortcuts).toBeVisible();
+    const starterTasks = page.getByTestId('partner-starter-tasks');
+    await expect(starterTasks).toBeVisible();
+    await expect(starterTasks.getByRole('button')).toHaveCount(6);
     const composer = page.locator('textarea').first();
     await expect(composer).toHaveAttribute(
       'placeholder',
       /Describe a task - sending will create a Partner session/,
     );
-    await sceneShortcuts.getByRole('button', { name: 'Slides' }).click();
-    await expect(composer).toHaveValue(/Create a presentation/);
-    await sceneShortcuts.getByRole('button', { name: 'Data analysis' }).click();
-    await expect(composer).toHaveValue(/Analyze the attached data/);
-    await sceneShortcuts.getByRole('button', { name: 'Document processing' }).click();
-    await expect(composer).toHaveValue(/Use the attached material/);
-    await composer.fill('');
+    await expect(composer).toHaveValue('');
     const contextRail = page.getByTestId('partner-context-rail');
+    await expect(contextRail).toHaveCount(0);
+    await page.getByTestId('partner-context-toggle').click();
     await expect(contextRail).toBeVisible();
     await expect(contextRail).toHaveCSS('width', '300px');
     await expect(page.getByTestId('right-sidebar')).toBeHidden();
@@ -251,7 +248,7 @@ test('Partner layout remains usable without panel overlap across common widths',
     await expect(page.getByTestId('file-viewer')).toBeVisible();
     await page
       .getByTestId('partner-detail-tabs')
-      .getByRole('tab', { name: 'Materials', exact: true })
+      .getByRole('tab', { name: 'Task materials', exact: true })
       .click();
     await expect(sourcesPanel).toBeVisible();
     await sourcesPanel.getByRole('button', { name: 'Attach selected file' }).click();
@@ -292,7 +289,7 @@ test('Partner detail history and width survive a Coder round trip without changi
   test.setTimeout(60_000);
   const testId = `partner-detail-round-trip-${Date.now()}`;
   const projectDir = await createProject(testId);
-  const space = await launchSpace(testId);
+  const space = await launchSpace(testId, { env: { KODAX_SPACE_RUNTIME_HOST: 'legacy' } });
 
   try {
     const { page } = space;
@@ -339,7 +336,9 @@ test('Partner detail history and width survive a Coder round trip without changi
     await expect(partnerDock).toHaveCount(1);
     await expect(partnerDock).toBeHidden();
     await expect(
-      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Browser' }),
+      partnerDock
+        .getByTestId('partner-detail-tabs')
+        .getByRole('tab', { name: 'Browser', includeHidden: true }),
     ).toHaveCount(1);
     await expect(coderDock).toBeVisible();
     await expect
@@ -360,7 +359,7 @@ test('Partner detail history and width survive a Coder round trip without changi
 test('Partner menu and delete dialog stay above layout and inside the viewport', async () => {
   const testId = `partner-overlays-${Date.now()}`;
   const projectDir = await createProject(testId);
-  const space = await launchSpace(testId);
+  const space = await launchSpace(testId, { env: { KODAX_SPACE_RUNTIME_HOST: 'legacy' } });
 
   try {
     const { page } = space;

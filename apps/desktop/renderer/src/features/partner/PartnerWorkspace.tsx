@@ -104,8 +104,12 @@ export function PartnerWorkspace({
       return;
     }
     if (!currentSessionId) {
-      if (contextRailAutoHidden) onToggleRightSidebar();
-      setHomeContextOpen((open) => !open);
+      if (contextRailAutoHidden) {
+        setHomeContextOpen(true);
+        onToggleRightSidebar();
+      } else {
+        setHomeContextOpen((open) => !open);
+      }
       return;
     }
     if (contextRailAutoHidden) {

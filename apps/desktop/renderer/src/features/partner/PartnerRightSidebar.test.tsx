@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
-import { register } from 'node:module';
+import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { PartnerFeishuBaseCreateTaskT } from '@kodax-space/space-ipc-schema';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { PartnerRemoteRecordsProvider } from '../extensions/usePartnerRemoteRecords.js';
 
-register(new URL('./PartnerComponentTestLoader.mjs', import.meta.url));
+import { resolve } from './PartnerComponentTestLoader.js';
+
+registerHooks({ resolve });
 const { PartnerRightSidebar, handlePartnerDetailTabKeyDown } =
   await import('./PartnerRightSidebar.js');
 

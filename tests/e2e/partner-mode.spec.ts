@@ -300,6 +300,8 @@ test('Partner context rail and detail launcher follow the dual-button layout', a
     const contextToggle = page.getByTestId('partner-context-toggle');
     const detailToggle = page.getByTestId('partner-detail-toggle');
     const contextRail = page.getByTestId('partner-context-rail');
+    await expect(contextRail).toHaveCount(0);
+    await contextToggle.click();
     await expect(contextRail).toBeVisible();
     await expect(contextRail).toHaveCSS('width', '300px');
     await expect(contextToggle).toHaveAttribute('aria-pressed', 'true');
@@ -360,6 +362,7 @@ test('Partner supports normal composer use, slash clear, mode shortcut, and resu
       BrowserWindow.getAllWindows()[0]?.setSize(1440, 880);
     });
     await expect(page.getByTestId('partner-workspace')).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId('partner-context-toggle').click();
     await expect(page.getByTestId('partner-context-rail')).toBeVisible();
     await expect(page.getByTestId('partner-context-add-material')).toBeVisible();
     await expect(page.getByTestId('partner-add-material')).toHaveCount(0);
@@ -397,8 +400,9 @@ test('Partner supports normal composer use, slash clear, mode shortcut, and resu
     await expect(page.getByTestId('partner-workspace')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('partner-context-toggle')).toHaveAttribute(
       'aria-pressed',
-      'true',
+      'false',
     );
+    await page.getByTestId('partner-context-toggle').click();
     await page.getByTestId('partner-context-add-material').click();
     await expect(page.getByTestId('partner-sources-panel')).toBeVisible();
     await expect(page.getByTestId('right-sidebar')).toBeVisible();
@@ -504,25 +508,17 @@ test('Partner artifact card updates without stealing focus and opens typed file 
     await expect(artifactsCard).toHaveAttribute('aria-label', 'Task artifacts: 3', {
       timeout: 15_000,
     });
-    await expect(page.getByTestId('partner-task-artifacts-card')).toContainText(
-      'partner-note.txt',
-    );
+    await expect(page.getByTestId('partner-task-artifacts-card')).toContainText('partner-note.txt');
     await expect(page.getByTestId('right-sidebar')).toBeHidden();
     await expect(page.getByTestId('partner-conversation')).toBeVisible();
 
-    await artifactsCard.click();
+    await page
+      .getByTestId('partner-task-artifacts-card')
+      .getByRole('button', { name: 'partner-note.txt', exact: true })
+      .click();
     await expect(page.getByTestId('right-sidebar')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('partner-artifact-panel')).toBeVisible();
-    const artifactsTab = page
-      .getByTestId('partner-detail-tabs')
-      .getByRole('tab', { name: 'Task artifacts', exact: true });
-    await expect(artifactsTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('partner-result-destinations')).toHaveCount(0);
     await expect(page.getByTestId('partner-results-files-tab')).toHaveCount(0);
-    const outputList = page.getByTestId('partner-output-deliveries');
-    await expect(outputList).toBeVisible({ timeout: 10_000 });
-    await expect(outputList.getByTestId('partner-output-delivery')).toHaveCount(3);
-    await outputList.getByRole('button', { name: 'partner-note.txt', exact: true }).click();
     await expect(page.getByTestId('file-viewer')).toBeVisible();
     await expect(
       page
@@ -531,8 +527,11 @@ test('Partner artifact card updates without stealing focus and opens typed file 
     ).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('text-file-viewer')).toContainText('after checkpoint content');
 
-    await artifactsTab.click();
-    await outputList.getByRole('button', { name: 'partner-preview.md', exact: true }).click();
+    await page.getByTestId('partner-context-toggle').click();
+    await page
+      .getByTestId('partner-task-artifacts-card')
+      .getByRole('button', { name: 'partner-preview.md', exact: true })
+      .click();
     const activeFileViewer = page
       .locator('[role="tabpanel"]:not([hidden])')
       .getByTestId('file-viewer');
@@ -560,7 +559,7 @@ test('Partner material picker keeps its selection while switching detail tabs', 
       BrowserWindow.getAllWindows()[0]?.setSize(1440, 880);
     });
 
-    await page.getByTestId('partner-context-add-material').click();
+    await page.getByRole('button', { name: 'Add work materials', exact: true }).click();
     const sourcesPanel = page.getByTestId('partner-sources-panel');
     await expect(sourcesPanel).toBeVisible({ timeout: 10_000 });
     const sourcePicker = sourcesPanel.getByTestId('partner-source-picker');
@@ -698,7 +697,7 @@ test('Partner can stage sources before the first composer send creates the sessi
     });
 
     await expect.poll(() => readSessions(page, projectDir, 'partner')).toHaveLength(0);
-    await page.getByTestId('partner-context-add-material').click();
+    await page.getByRole('button', { name: 'Add work materials', exact: true }).click();
     const sourcesPanel = page.getByTestId('partner-sources-panel');
     const sourcePicker = sourcesPanel.getByTestId('partner-source-picker');
     await expect(sourcePicker).toBeVisible();
