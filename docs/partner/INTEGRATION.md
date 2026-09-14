@@ -49,15 +49,21 @@ Partner 开发：Planned -> InProgress -> Completed
 Partner 融合：Local -> Ready -> Proposed -> Integrated
 ```
 
-| Partner Feature | Space Feature | Target   | Development | Integration | Evidence                                         | Updated    |
-| --------------- | ------------- | -------- | ----------- | ----------- | ------------------------------------------------ | ---------- |
-| PF001           | F146          | `v0.1.0` | InProgress  | Local       | [PF001 design](features/v0.1.0.md#feature-pf001) | 2026-09-04 |
-| PF002           | F146          | `v0.1.0` | InProgress  | Local       | [PF002 design](features/v0.1.0.md#feature-pf002) | 2026-09-04 |
-| PF003           | F146          | `v0.1.0` | InProgress  | Local       | [PF003 design](features/v0.1.0.md#feature-pf003) | 2026-09-04 |
-| PF004           | —             | `v0.1.0` | Completed   | Local       | [PF004 design](features/v0.1.0.md#feature-pf004) | 2026-09-07 |
-| PF008           | —             | `v0.1.0` | Completed   | Local       | [PF008 design](features/v0.1.0.md#feature-pf008) | 2026-09-07 |
-
-| PF005 | — | `v0.1.0` | Completed | Local | [PF005 design](features/v0.1.0.md#feature-pf005) | 2026-09-07 |
+| Partner Feature | Space Feature | Target | Development | Integration | Evidence | Updated |
+| --- | --- | --- | --- | --- | --- | --- |
+| PF001 | F146 | `v0.1.0` | InProgress | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF002 | F146 | `v0.1.0` | InProgress | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF003 | F146 | `v0.1.0` | InProgress | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF004 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF005 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF006 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF007 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF008 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF009 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF010 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF011 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF012 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF013 | — | `v0.1.0` | Completed | Integrated | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
 
 ```text
 F146 <- PF001, PF002, PF003
@@ -71,6 +77,10 @@ F146 <- PF001, PF002, PF003
 - 一个 Space F-ID 可以承接多个 PF；映射不改变两边各自的状态权威。
 
 ## 6. 当前集成快照
+
+2026-09-14：PF001–PF013 的既有实现已通过 [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5) 合入组织 `main@a2f7a1b0`，并由 [tag workflow](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/34826263946) 发布 [Space 0.1.46-beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3)。Partner library 保持 `0.1.0` / host API 4，SDK 精确 `0.7.96-rc.4`。开发状态与集成状态独立：PF001–PF003 仍为 InProgress，其余仍为 Completed。真实外部账号、手动安装升级及 Coder 专家/连接器共享不因此视为完成。验证细节见 [release readiness](../releases/v0.1.46-beta.3-release-readiness.md)。
+
+### 历史快照（2026-09-04，保留原始基线）
 
 | 项目                   | 当前证据                                                                 |
 | ---------------------- | ------------------------------------------------------------------------ |
@@ -86,7 +96,7 @@ F146 <- PF001, PF002, PF003
 
 ## 7. 待协调的上游差异
 
-2026-09-14 随包集成候选：以组织 `main@09bee3b7`（Space `0.1.46-beta.2` / KodaX `0.7.96-rc.4`）融合个人分支 `193e7ebf`，本地分支 `integration/partner-bundled-release`。本轮目标是安装新版 Space 即可使用现有 Partner，Coder 共享能力后续处理。随包默认启用及兼容修正见 [交付与验证记录](releases/space-bundled-integration.md)；来源分支已上传；现准备 `feature/partner-bundled-release` 的 mainline PR 与 beta.3 验收。实际合并前不变更 PF 的 `Integrated` 状态。上节旧表保留为历史快照。
+2026-09-14 集成前记录（以下候选状态已由第 6 节发布结果取代）：以组织 `main@09bee3b7`（Space `0.1.46-beta.2` / KodaX `0.7.96-rc.4`）融合个人分支 `193e7ebf`，本地分支 `integration/partner-bundled-release`。本轮目标是安装新版 Space 即可使用现有 Partner，Coder 共享能力后续处理。随包默认启用及兼容修正见 [交付与验证记录](releases/space-bundled-integration.md)；来源分支已上传；现准备 `feature/partner-bundled-release` 的 mainline PR 与 beta.3 验收。实际合并前不变更 PF 的 `Integrated` 状态。上节旧表保留为历史快照。
 
 - Space F130 与 PF003 对 Partner 统一详情工作区、任务卡和右侧资源打开的产品描述需要在集成时统一。
 - PF004 触及 IPC schema、聊天链接与 Shell/详情共享接缝；必须验证 Coder 链接行为与浏览器策略，不能据此自动宣告 F096 或 F146 完成。
@@ -125,6 +135,10 @@ F146 <- PF001, PF002, PF003
 - Partner 详细文档只在 `docs/partner/**` 维护。
 - Space README/PRD/HLD 只保留 Partner 定位和共享契约；接受融合后才更新相关句子与链接。
 - Space `FEATURE_LIST.md` 保留 F146 的总体状态和 Partner PF 链接，不复制 P1–P9 细节。
+
+## 历史开发验收记录（2026-09-07）
+
+以下保留各切片当时的本地验收和未发布状态；当前主线集成和 beta.3 发布证据以第 5、6 节为准。
 
 2026-09-07 增量：PF005 腾讯文档与个人邮箱首批能力已完成本地开发验收，状态 `Completed / Local`；新增三家真实账号均未验收。详见 [PF005 验收记录](features/PF005-tencent-mail-validation.md)，未发布或合并 Space。
 
