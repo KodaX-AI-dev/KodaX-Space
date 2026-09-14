@@ -11,13 +11,47 @@ import {
   runManagedTask,
 } from '@kodax-ai/kodax/coding';
 import { KodaXBaseProvider, registerModelProvider } from '@kodax-ai/kodax/llm';
+import { validateImageBytes } from '@kodax-ai/kodax/media';
 
 const providerName = 'space-image-contract-fixture';
 const keyName = 'SPACE_IMAGE_CONTRACT_KEY';
 const pixel = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aRZkAAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
   'base64',
 );
+
+test('published SDK decoder accepts PNG and rejects a JPEG with headers but no frame', async (t) => {
+  const broken = Buffer.from(
+    'ffd8ffe000104a46494600010100000100010000ffe10008457869660000ffd9',
+    'hex',
+  );
+  assert.deepEqual(await validateImageBytes(pixel), { status: 'valid', mediaType: 'image/png' });
+  assert.deepEqual(await validateImageBytes(broken), { status: 'invalid' });
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'space-sdk-image-'));
+  t.after(async () => {
+    assert.equal(path.dirname(root), path.resolve(os.tmpdir()));
+    assert.ok(path.basename(root).startsWith('space-sdk-image-'));
+    await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });
+  });
+  const imagePath = path.join(root, 'header.jpg');
+  await fs.writeFile(imagePath, broken);
+  const result = await executeTool('read', { path: imagePath }, { executionCwd: root });
+  assert.equal(typeof result, 'string');
+  assert.match(result, /Image cannot be decoded.*Re-extract/);
+  assert.deepEqual(await fs.readFile(imagePath), broken);
+  // Replacing the same file must allow a subsequent read, with its actual MIME.
+  await fs.writeFile(imagePath, pixel);
+  const repaired = await executeTool('read', { path: imagePath }, { executionCwd: root });
+  assert.ok(Array.isArray(repaired));
+  assert.deepEqual(
+    repaired.find((block) => block.type === 'image'),
+    {
+      type: 'image',
+      path: imagePath,
+      mediaType: 'image/png',
+    },
+  );
+});
 
 function registerImageProvider(imagePath, route, expected, onDelivery) {
   class Provider extends KodaXBaseProvider {
@@ -92,9 +126,20 @@ function imageOptions(root, expected, fail, onGuard) {
 
 async function fixture(t, route = 'read', fail = false) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'space-sdk-image-'));
+  t.after(async () => {
+    assert.equal(path.dirname(root), path.resolve(os.tmpdir()));
+    assert.ok(path.basename(root).startsWith('space-sdk-image-'));
+    await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });
+  });
   const imagePath = path.join(root, 'pixel.png');
   await fs.writeFile(imagePath, pixel);
   const previous = new Map(['KODAX_HOME', keyName].map((key) => [key, process.env[key]]));
+  t.after(() => {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
   process.env.KODAX_HOME = path.join(root, 'home');
   process.env[keyName] = 'offline-fixture';
   const expected = await executeTool('read', { path: imagePath }, { executionCwd: root });
@@ -112,16 +157,7 @@ async function fixture(t, route = 'read', fail = false) {
   const unregister = registerImageProvider(imagePath, route, expected, () => {
     delivered += 1;
   });
-  t.after(async () => {
-    unregister();
-    for (const [key, value] of previous) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    assert.equal(path.dirname(root), path.resolve(os.tmpdir()));
-    assert.ok(path.basename(root).startsWith('space-sdk-image-'));
-    await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });
-  });
+  t.after(unregister);
   const options = imageOptions(root, expected, fail, () => {
     guarded += 1;
   });

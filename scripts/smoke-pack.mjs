@@ -15,7 +15,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { resolvePackagedLifecycleHome } from './packaged-lifecycle-home.mjs';
 import { createPackagedShellProbeToolInput } from './packaged-shell-probe.mjs';
 
@@ -1205,12 +1205,15 @@ try {
   if (process.platform === 'darwin') ok('both packaged esbuild entry points execute and transform TypeScript');
 }
 
-function checkKodaxWorkersExecuteFromAsar(asarPath) {
+async function checkKodaxWorkersExecuteFromAsar(asarPath) {
   const runtimeModuleUrl = pathToFileURL(
     path.join(asarPath, 'node_modules', '@kodax-ai', 'kodax', 'dist', 'sdk-runtime.js'),
   ).href;
   const codingModuleUrl = pathToFileURL(
     path.join(asarPath, 'node_modules', '@kodax-ai', 'kodax', 'dist', 'sdk-coding.js'),
+  ).href;
+  const mediaModuleUrl = pathToFileURL(
+    path.join(asarPath, 'node_modules', '@kodax-ai', 'kodax', 'dist', 'sdk-media.js'),
   ).href;
   const sandboxModuleUrl = pathToFileURL(
     path.join(asarPath, 'node_modules', '@kodax-ai', 'kodax', 'dist', 'sdk-sandbox.js'),
@@ -1233,6 +1236,7 @@ import {
   settleKodaXRuntimeExit,
 } from ${JSON.stringify(runtimeModuleUrl)};
 import { loadHandler } from ${JSON.stringify(codingModuleUrl)};
+import { validateImageBytes } from ${JSON.stringify(mediaModuleUrl)};
 import {
   KODAX_ASRT_VERSION,
   doctorKodaXSandbox,
@@ -1542,6 +1546,18 @@ async function enableDaemonOwnerWhenReady() {
 }
 try {
   await Promise.all(${JSON.stringify(publicFacadeUrls)}.map((moduleUrl) => import(moduleUrl)));
+  // Exercise the lazy decoder Worker and its WASM from the actual archive.
+  // An unavailable decoder returns unverified, which must fail this release probe.
+  const validImage = await validateImageBytes(Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64',
+  ));
+  const corruptImage = await validateImageBytes(Buffer.from(
+    'ffd8ffe000104a46494600010100000100010000ffe10008457869660000ffd9', 'hex',
+  ));
+  if (validImage.status !== 'valid' || validImage.mediaType !== 'image/png' || corruptImage.status !== 'invalid') {
+    throw new Error('packaged image decoder failed: ' + JSON.stringify({ validImage, corruptImage }));
+  }
   const sandboxCapability = getKodaXSandboxCapability();
   if (
     sandboxCapability.version !== 11 ||
@@ -1984,10 +2000,12 @@ try {
 }
 `;
 
+  // A real module entry avoids leaking --input-type=module into SDK eval Workers.
+  const probePath = path.join(outDir, `.kodax-worker-probe-${randomUUID()}.mjs`);
+  await fs.writeFile(probePath, probeSource, { flag: 'wx' });
   const runProbe = () =>
-    spawnSync(electronBin, ['--input-type=module', '-'], {
+    spawnSync(electronBin, [probePath], {
       cwd: rootDir,
-      input: probeSource,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 1_100_000,
@@ -1997,17 +2015,22 @@ try {
         ELECTRON_RUN_AS_NODE: '1',
       },
     });
-  let result = runProbe();
-  const probeOutput = `${result.stderr || ''}\n${result.stdout || ''}`;
-  if (
-    process.platform === 'win32' &&
-    result.status !== 0 &&
-    /(?:EPERM.*rename|rename.*EPERM)/i.test(probeOutput)
-  ) {
-    // Windows file-handle release can race the daemon's atomic owner-state
-    // rename when the packaged probe exits. Retry the disposable smoke probe;
-    // this does not alter Runtime behavior or weaken the ownership contract.
+  let result;
+  try {
     result = runProbe();
+    const probeOutput = `${result.stderr || ''}\n${result.stdout || ''}`;
+    if (
+      process.platform === 'win32' &&
+      result.status !== 0 &&
+      /(?:EPERM.*rename|rename.*EPERM)/i.test(probeOutput)
+    ) {
+      // Windows file-handle release can race the daemon's atomic owner-state
+      // rename when the packaged probe exits. Retry the disposable smoke probe;
+      // this does not alter Runtime behavior or weaken the ownership contract.
+      result = runProbe();
+    }
+  } finally {
+    await fs.rm(probePath, { force: true });
   }
   if (result.error) {
     fail(`packaged KodaX Worker probe could not start: ${result.error.message}`);
@@ -2033,7 +2056,7 @@ async function main() {
     await checkPackagedFeishuCliResources(asarPath);
     await checkAsarContents(asarPath);
     checkPackagedSqliteExecutesFromAsar(asarPath);
-    checkKodaxWorkersExecuteFromAsar(asarPath);
+    await checkKodaxWorkersExecuteFromAsar(asarPath);
   }
   console.log('\n[smoke-pack] all checks passed');
 }

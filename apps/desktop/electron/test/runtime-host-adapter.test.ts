@@ -11878,65 +11878,67 @@ test('daemon bridge preserves Runtime turn identity on live transcript events', 
   await adapter.close();
 });
 
-test('daemon bridge projects root Provider recovery with Runtime provenance', async () => {
-  const sessionEvents: unknown[] = [];
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    push: (channel, payload) => {
-      if (channel === 'session.event') sessionEvents.push(payload);
-    },
-  });
-  const bridgeRuntimeEvent = bindTestRuntimeEventBridge(adapter);
-
-  bridgeRuntimeEvent(
-    {
-      id: 'event_provider_recovery',
-      seq: 41,
-      time: '2026-08-14T00:00:00.000Z',
-      type: 'provider.recovery',
-      sessionId: 's_recovery',
-      runId: 'run_recovery',
-      turnId: 'turn_recovery',
-      payload: {
-        event: {
-          stage: 'mid_stream_text',
-          errorClass: 'connection_failure',
-          attempt: 1,
-          maxAttempts: 4,
-          delayMs: 250,
-          recoveryAction: 'stable_boundary_retry',
-          ladderStep: 2,
-          fallbackUsed: false,
-        },
-        meta: { contextKind: 'root' },
+for (const recoveryAction of ['stable_boundary_retry', 'text_diagnosis'] as const) {
+  test(`daemon bridge projects root Provider ${recoveryAction} with Runtime provenance`, async () => {
+    const sessionEvents: unknown[] = [];
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      push: (channel, payload) => {
+        if (channel === 'session.event') sessionEvents.push(payload);
       },
-    },
-    'runtime_recovery',
-  );
+    });
+    const bridgeRuntimeEvent = bindTestRuntimeEventBridge(adapter);
 
-  assert.deepEqual(sessionEvents, [
-    {
-      runtimeEvent: {
-        runtimeId: 'runtime_recovery',
-        runId: 'run_recovery',
-        journalEpoch: 'journal_epoch_1',
+    bridgeRuntimeEvent(
+      {
+        id: 'event_provider_recovery',
         seq: 41,
+        time: '2026-08-14T00:00:00.000Z',
+        type: 'provider.recovery',
+        sessionId: 's_recovery',
+        runId: 'run_recovery',
+        turnId: 'turn_recovery',
+        payload: {
+          event: {
+            stage: 'mid_stream_text',
+            errorClass: 'connection_failure',
+            attempt: 1,
+            maxAttempts: 4,
+            delayMs: 250,
+            recoveryAction,
+            ladderStep: 2,
+            fallbackUsed: false,
+          },
+          meta: { contextKind: 'root' },
+        },
       },
-      turnId: 'turn_recovery',
-      kind: 'provider_recovery',
-      sessionId: 's_recovery',
-      stage: 'mid_stream_text',
-      errorClass: 'connection_failure',
-      attempt: 1,
-      maxAttempts: 4,
-      delayMs: 250,
-      recoveryAction: 'stable_boundary_retry',
-      ladderStep: 2,
-      fallbackUsed: false,
-    },
-  ]);
-  await adapter.close();
-});
+      'runtime_recovery',
+    );
+
+    assert.deepEqual(sessionEvents, [
+      {
+        runtimeEvent: {
+          runtimeId: 'runtime_recovery',
+          runId: 'run_recovery',
+          journalEpoch: 'journal_epoch_1',
+          seq: 41,
+        },
+        turnId: 'turn_recovery',
+        kind: 'provider_recovery',
+        sessionId: 's_recovery',
+        stage: 'mid_stream_text',
+        errorClass: 'connection_failure',
+        attempt: 1,
+        maxAttempts: 4,
+        delayMs: 250,
+        recoveryAction,
+        ladderStep: 2,
+        fallbackUsed: false,
+      },
+    ]);
+    await adapter.close();
+  });
+}
 
 test('daemon bridge rejects malformed and transient child Provider recovery events', async () => {
   const sessionEvents: unknown[] = [];
