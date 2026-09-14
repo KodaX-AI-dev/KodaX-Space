@@ -51,7 +51,7 @@
     "e2e": "npm run build:smoke && npm run e2e:run",
     "e2e:run": "node scripts/ensure-sqlite-native.mjs electron && playwright test",
     "e2e:headed": "playwright test --headed",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps && node scripts/ensure-node-pty-helpers.mjs",
     "smoke:boot": "node e2e/boot-smoke-packaged.mjs",
     "smoke:complete-exit": "node e2e/complete-exit-packaged.mjs"
   },

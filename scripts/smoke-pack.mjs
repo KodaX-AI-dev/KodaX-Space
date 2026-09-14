@@ -1130,6 +1130,15 @@ async function checkAsarContents(asarPath) {
     }
   }
   ok('node-pty native runtime present in filesystem resources');
+  if (process.platform !== 'win32') {
+    for (const helper of nativeFilesystemFiles.filter((file) =>
+      /\/node-pty\/prebuilds\/darwin-(arm64|x64)\/spawn-helper$/.test(file),
+    )) {
+      if (((await fs.stat(helper)).mode & 0o111) !== 0o111) {
+        fail(`node-pty spawn helper is not executable: ${helper}`);
+      }
+    }
+  }
 
   if (leaks.length > 0) {
     console.warn(

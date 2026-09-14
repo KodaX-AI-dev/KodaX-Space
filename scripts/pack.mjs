@@ -134,6 +134,7 @@ if (allowLocalTarball) {
 }
 
 function runElectronBuilder() {
+  run('node', ['scripts/ensure-node-pty-helpers.mjs'], 'ensure node-pty helper permissions');
   run(
     'node',
     ['scripts/prepare-feishu-cli.mjs', ...feishuCliBuildPlan.targets],
