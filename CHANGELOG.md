@@ -14,6 +14,18 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Fixed
+
+- **Issue 215 — pasted-image fallback validation**: Use the optional new SDK media
+  validator before saving attachments. Reject confirmed corrupt images with a recovery
+  instruction, preserve valid WebP when normalization lacks its codec, and retain the
+  existing fallback with older SDKs or an unavailable validator.
+- **KodaX 0.7.96-rc.5 integration**: Pin the official Registry package in both manifests
+  and the lockfile. SDK image admission and evidence-backed text recovery now reach Space
+  through the existing Runtime; retain all rc.4 capability requirements. Release checks
+  exercise the actual packaged image decoder, including its Worker and WASM dependency,
+  and verify repaired image files can be read again without changing original history.
+
 ---
 
 ## [0.1.46-beta.3] - 2026-09-14
