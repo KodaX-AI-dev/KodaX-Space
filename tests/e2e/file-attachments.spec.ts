@@ -106,6 +106,8 @@ test('sent image renders in the user bubble and opens in Task Dock', async () =>
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
     await page.getByTestId('file-attachment-input').setInputFiles(pngPath);
     await textarea.fill('inspect the attached image');
+    // setInputFiles dispatches change before asynchronous attachment admission finishes.
+    await expect(page.getByRole('button', { name: 'Send message', exact: true })).toBeEnabled();
     await textarea.press('Enter');
 
     const thumbnail = page.getByTestId('user-image-thumbnail');

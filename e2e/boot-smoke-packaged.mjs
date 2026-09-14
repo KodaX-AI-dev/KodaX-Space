@@ -1,7 +1,8 @@
 // Packaged boot smoke: start the real unpacked executable with an isolated
 // profile, then verify the app's own Runtime and renderer readiness records.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +15,10 @@ const exe = path.join(outDir, 'win-unpacked', 'KodaX Space.exe');
 const testId = `boot-smoke-${process.pid}-${Date.now()}`;
 const profileDir = path.join(tmpdir(), `kodax-test-${testId}`);
 await mkdir(profileDir, { recursive: true });
+// Real users retain unresolved Run child records across upgrades. An empty
+// profile missed a Windows regression: 122 extinct records caused hundreds of
+// synchronous process queries before the daemon could publish readiness.
+const historicalRecords = await seedHistoricalChildren(profileDir);
 const diagnosticsPath = path.join(
   profileDir,
   'space',
@@ -57,6 +62,41 @@ delete env.KODAX_PROFILE_DIR;
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+async function seedHistoricalChildren(configHome) {
+  const pid = 2_147_483_000;
+  try {
+    process.kill(pid, 0);
+    throw new Error('Historical child fixture requires a definitively absent PID');
+  } catch (error) {
+    if (error.code !== 'ESRCH') throw error;
+  }
+  const directory = path.join(configHome, 'runtime', 'processes', 'children');
+  await mkdir(directory, { recursive: true });
+  const records = [];
+  for (let index = 0; index < 122; index += 1) {
+    const registrationId = randomUUID();
+    const file = path.join(directory, `${pid}.${registrationId}.json`);
+    const contents = JSON.stringify({
+      version: 4,
+      pid,
+      ownerPid: pid,
+      registrationId,
+      registeredAtMs: 100,
+      kind: 'bash',
+      command: 'packaged-boot-fixture',
+      runtimeRunId: `historical-${index}`,
+      runCleanupRequired: true,
+      processStartIdentity: '1',
+      ownerProcessStartIdentity: 'windows:1',
+      processTreeComplete: false,
+      processTreeIdentities: [{ pid, creationTime: '1' }],
+    });
+    await writeFile(file, contents);
+    records.push({ file, contents });
+  }
+  return records;
+}
+
 async function readJson(pathname) {
   try {
     return JSON.parse(await readFile(pathname, 'utf8'));
@@ -96,6 +136,10 @@ try {
     }
     daemon = await readJson(daemonPath);
     diagnostics = await readDiagnostics();
+    const failure = diagnostics.find(
+      (event) => event.component === 'runtime' && event.event === 'host_initialization_failed',
+    );
+    if (failure) throw new Error(failure.data?.message ?? 'Packaged Runtime initialization failed');
     const runtimeReady = diagnostics.some(
       (event) => event.component === 'runtime' && event.event === 'host_initialized',
     );
@@ -151,6 +195,11 @@ try {
   if (path.resolve(daemon.configHome) !== path.resolve(profileDir)) {
     throw new Error(`packaged daemon used the wrong config home: ${daemon.configHome}`);
   }
+  for (const { file, contents } of historicalRecords) {
+    if ((await readFile(file, 'utf8')) !== contents) {
+      throw new Error('Startup changed unresolved historical Run cleanup evidence');
+    }
+  }
   const finalDiagnostics = await readDiagnostics();
   if (
     !finalDiagnostics.some(
@@ -171,7 +220,8 @@ try {
   }
   console.log(
     `[boot-smoke] PASS | renderer ready in ${rendererReadyMs}ms | ` +
-      `KodaX ${expectedKodaxVersion} Runtime ready in ${runtimeReadyMs}ms after deterministic hold`,
+      `KodaX ${expectedKodaxVersion} Runtime ready in ${runtimeReadyMs}ms after deterministic hold; ` +
+      `${historicalRecords.length} historical child records preserved`,
   );
 } catch (error) {
   console.error('[boot-smoke] FAIL:', error instanceof Error ? error.message : String(error));

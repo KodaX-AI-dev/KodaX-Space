@@ -14,6 +14,16 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Fixed
+
+- **Windows Coder Runtime startup**: Align the SDK integration with KodaX
+  0.7.96-rc.6, whose shared process cleanup avoids repeated expensive queries for
+  definitively absent historical targets while preserving unresolved Run evidence.
+  The packaged boot regression now includes 122 historical child records, checks
+  Runtime readiness within the existing budget, and verifies the records remain
+  unchanged. This covers the startup timeout that left all Coder sessions waiting
+  for Runtime history in beta.4.
+
 ---
 
 ## [0.1.46-beta.4] - 2026-09-14

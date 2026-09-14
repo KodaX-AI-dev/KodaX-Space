@@ -14,7 +14,7 @@
 - Current Partner Release: `0.1.0` (Pre-release)
 - Planned Partner Version: `v0.1.0`
 - Partner Library Target: `0.1.0`
-- Current Source Baseline: KodaX Space `v0.1.46-beta.4` / KodaX `0.7.96-rc.5`，尚未发布。历史 `v0.1.46-beta.3` tag 保留 `0.7.96-rc.4`，其 GitHub Release 已撤回；见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。
+- Current Source Baseline: KodaX Space `v0.1.46-beta.4` / KodaX `0.7.96-rc.6`，尚未发布。历史 `v0.1.46-beta.3` tag 保留 `0.7.96-rc.4`，其 GitHub Release 已撤回；见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。
 - Active Baseline: `origin/main`; future work uses `feature/partner-<topic>`
 - Current Git Snapshot: main merge `a2f7a1b0` via [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5); source `f8daed67` preserved; beta.3 status: [release readiness](../releases/v0.1.46-beta.3-release-readiness.md)
 - Last Updated: 2026-09-14
