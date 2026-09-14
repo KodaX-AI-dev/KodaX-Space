@@ -46,7 +46,11 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Keep the bundled-Partner browser suites and Feishu document-service probes green on
   shared CI runners: their 3-5s action budgets and ~500ms task poll were contention-fragile
   beside the full unit suite; every assertion stays strict while the waits become bounded
-  and CI-tolerant.
+  and CI-tolerant. Two real-browser Partner flows that stall only on shared macOS runners
+  (observed as whole-file hangs with orphaned Chrome/esbuild children) skip on darwin CI
+  and stay active locally and on Windows/Linux CI; unit runs also gain a 300s per-test
+  timeout, --test-force-exit for post-suite lingering handles, and 45-minute CI job
+  ceilings so any residual hang fails with logs instead of stalling the runner.
 
 ### Notes
 
