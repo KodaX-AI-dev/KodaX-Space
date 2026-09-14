@@ -16,7 +16,7 @@ import {
   PARTNER_FEISHU_BASE_CREATE,
   PARTNER_FEISHU_DOCUMENT_CREATE,
 } from './partner-connector-runtime.js';
-import type { ExtensionRuntimeContract } from '@kodax-ai/kodax/coding';
+import type { ExtensionRuntimeContract, KodaXExtensionRuntime } from '@kodax-ai/kodax/coding';
 
 const connectionId = randomUUID();
 const binding: PartnerConnectorSnapshotT = {
@@ -700,7 +700,25 @@ test('a proposal creates only a review record and a live switch to plan blocks l
 
 test('the run adapter preserves existing MCP capability and lifecycle methods without taking ownership', async () => {
   const calls: string[] = [];
-  const base: ExtensionRuntimeContract = {
+  const owners = [{}];
+  const base: ExtensionRuntimeContract & Pick<KodaXExtensionRuntime, 'emit' | 'runHook'> = {
+    async emit(event) {
+      assert.equal(this, base);
+      calls.push(event);
+    },
+    async runHook(hook) {
+      assert.equal(this, base);
+      calls.push(hook);
+      return undefined;
+    },
+    getToolRegistrationOwners() {
+      assert.equal(this, base);
+      return owners;
+    },
+    pinExecutionContributions() {
+      assert.equal(this, base);
+      calls.push('pinned');
+    },
     getDefaults: () => ({ modelSelection: { provider: 'unchanged' } }),
     hydrateSession: async (id) => {
       calls.push(id);
@@ -737,6 +755,12 @@ test('the run adapter preserves existing MCP capability and lifecycle methods wi
   assert.deepEqual(runtime.getDefaults?.(), { modelSelection: { provider: 'unchanged' } });
   await runtime.hydrateSession?.('same-session');
   assert.deepEqual(calls, ['same-session']);
+  assert.equal(runtime.getToolRegistrationOwners?.(), owners);
+  runtime.pinExecutionContributions?.();
+  assert.deepEqual(calls, ['same-session', 'pinned']);
+  await runtime.emit?.('session:start', { provider: 'mock', sessionId: 'same-session' });
+  await runtime.runHook?.('todo:before-create', { seed: { subject: 'Preserved hook' } });
+  assert.deepEqual(calls, ['same-session', 'pinned', 'session:start', 'todo:before-create']);
   assert.equal(runtime.hasCapabilityProvider?.('existing'), true);
   assert.equal(runtime.hasCapabilityProvider?.('other'), false);
   assert.deepEqual(await runtime.searchCapabilities('mcp', 'query'), ['existing-search']);

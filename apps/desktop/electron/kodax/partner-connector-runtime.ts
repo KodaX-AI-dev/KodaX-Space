@@ -23,7 +23,11 @@ import {
   type PartnerNativeDocumentTaskT,
   type PartnerNativeDocumentEligibilityT,
 } from '@kodax-space/space-ipc-schema';
-import type { ExtensionRuntimeContract, RunScopedToolDefinition } from '@kodax-ai/kodax/coding';
+import type {
+  ExtensionRuntimeContract,
+  KodaXExtensionRuntime,
+  RunScopedToolDefinition,
+} from '@kodax-ai/kodax/coding';
 import type { PartnerConnectorContext } from '../partner-connectors/service.js';
 
 export const PARTNER_CONNECTOR_READ = 'partner_connector_read';
@@ -40,6 +44,8 @@ type ExecuteCapability = NonNullable<ExtensionRuntimeContract['executeCapability
 type CapabilityProvider = Parameters<ExecuteCapability>[0];
 type CapabilityArgs = Parameters<ExecuteCapability>[2];
 type CapabilityResult = Awaited<ReturnType<ExecuteCapability>>;
+type PartnerBaseRuntime = ExtensionRuntimeContract &
+  Partial<Pick<KodaXExtensionRuntime, 'emit' | 'runHook'>>;
 interface PartnerCapabilityExecutionOptions {
   readonly base: ExtensionRuntimeContract | undefined;
   readonly context: PartnerConnectorContext;
@@ -402,15 +408,24 @@ async function executePartnerCapability({
 }
 
 function partnerRuntimeContract(
-  base: ExtensionRuntimeContract | undefined,
+  base: PartnerBaseRuntime | undefined,
   context: PartnerConnectorContext,
   service: PartnerConnectorRunService,
   tools: readonly RunScopedToolDefinition[],
-): ExtensionRuntimeContract {
+): PartnerBaseRuntime {
   const unavailable = (): never => {
     throw new Error('Capability is not active in this Partner run.');
   };
   return {
+    ...(base?.getToolRegistrationOwners
+      ? { getToolRegistrationOwners: base.getToolRegistrationOwners.bind(base) }
+      : {}),
+    ...(base?.pinExecutionContributions
+      ? { pinExecutionContributions: base.pinExecutionContributions.bind(base) }
+      : {}),
+    ...(typeof base?.emit === 'function' && typeof base.runHook === 'function'
+      ? { emit: base.emit.bind(base), runHook: base.runHook.bind(base) }
+      : {}),
     getDefaults: () => base?.getDefaults?.() ?? { modelSelection: {} },
     bindController: (controller) => base?.bindController?.(controller),
     hydrateSession: async (sessionId) => {
@@ -444,10 +459,10 @@ function partnerRuntimeContract(
 
 /** Materialize only this run's connectors. Never touches the SDK's global tool registry. */
 export async function createPartnerConnectorRunRuntime(
-  base: ExtensionRuntimeContract | undefined,
+  base: PartnerBaseRuntime | undefined,
   input: PartnerConnectorContext,
   suppliedService?: PartnerConnectorRunService,
-): Promise<ExtensionRuntimeContract | undefined> {
+): Promise<PartnerBaseRuntime | undefined> {
   if (input.surface !== 'partner' || input.bindings.length === 0) return base;
   const service =
     suppliedService ??
