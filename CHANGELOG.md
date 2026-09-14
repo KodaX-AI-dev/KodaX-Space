@@ -29,6 +29,7 @@ Release candidate; publication is tracked in [release readiness](https://github.
 - Preserve existing installations and users' disable/uninstall choices when provisioning the bundled Partner library. Forward SDK extension ownership, pinned contributions, and lifecycle hooks through the Partner runtime adapter.
 - Restore the Partner home materials panel when its auto-hidden layout is reopened, and ensure packaged macOS terminal helpers remain executable for prebuilt and source-built node-pty installations.
 - Serialize connector record reads with atomic writes so saving a task cannot interrupt a simultaneous refresh or briefly appear as an empty database. Use xz for Linux AppImage and maximum macOS compression; ship only the target node-pty prebuilds while retaining the complete SDK native bundle and the 200 MiB package limit.
+- Deduplicate the identical macOS esbuild CLI binary with a relative link while retaining both executable entry points; packaged checks exercise version reporting and TypeScript transformation through each path.
 
 ### Changed
 

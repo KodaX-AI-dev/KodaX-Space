@@ -10,9 +10,35 @@
 //    filesystem path. Files are only added back from the exact locked install
 //    in node_modules — nothing is overwritten or removed.
 // 2. On Windows, patch exe version/icon resources (see after-pack-win-rcedit.cjs).
+// 3. On macOS, retain both esbuild entry points without storing a duplicate binary.
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { Arch } = require('builder-util');
+
+function deduplicateMacEsbuild(context) {
+  if (context.electronPlatformName !== 'darwin') return;
+  const modules = path.join(
+    context.appOutDir,
+    `${context.packager.appInfo.productFilename}.app`,
+    'Contents',
+    'Resources',
+    'app.asar.unpacked',
+    'node_modules',
+  );
+  const cli = path.join(modules, 'esbuild', 'bin', 'esbuild');
+  const binary = path.join(modules, '@esbuild', `darwin-${Arch[context.arch]}`, 'bin', 'esbuild');
+  if (!fs.existsSync(cli) || !fs.existsSync(binary)) return;
+  if (!fs.lstatSync(cli).isFile() || !fs.lstatSync(binary).isFile()) return;
+  if (!fs.readFileSync(cli).equals(fs.readFileSync(binary))) return;
+  // esbuild's postinstall replaces its CLI wrapper with a binary copy. A
+  // relative link preserves that CLI and the JS API's native path. Native
+  // macOS zip preserves symlinks, including the existing framework links.
+  const temporary = `${cli}.space-link`;
+  fs.symlinkSync(path.relative(path.dirname(cli), binary), temporary);
+  fs.renameSync(temporary, cli);
+  process.stdout.write('[afterPack] linked duplicate macOS esbuild CLI to its native binary\n');
+}
 
 function listFilesRecursive(root) {
   const out = [];
@@ -78,5 +104,6 @@ function restorePrunedNativeFiles(context) {
 
 module.exports = async function afterPack(context) {
   restorePrunedNativeFiles(context);
+  deduplicateMacEsbuild(context);
   await require('./after-pack-win-rcedit.cjs')(context);
 };

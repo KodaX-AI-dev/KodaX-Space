@@ -1162,6 +1162,18 @@ try {
   const result = database.prepare('select 42 as value').get();
   database.close();
   if (result?.value !== 42) throw new Error('unexpected query result');
+  if (process.platform === 'darwin') {
+    const version = requireFromPackage('esbuild/package.json').version;
+    const cli = ${JSON.stringify(path.join(`${asarPath}.unpacked`, 'node_modules', 'esbuild', 'bin', 'esbuild'))};
+    const binary = ${JSON.stringify(path.join(`${asarPath}.unpacked`, 'node_modules', '@esbuild'))} + '/darwin-' + process.arch + '/bin/esbuild';
+    for (const executable of [cli, binary]) {
+      const execFileSync = require('node:child_process').execFileSync;
+      const options = { encoding: 'utf8', timeout: 10_000 };
+      if (execFileSync(executable, ['--version'], options).trim() !== version) throw new Error('packaged esbuild version mismatch');
+      const transformed = execFileSync(executable, ['--loader=ts'], { ...options, input: 'const value: number = 42;' });
+      if (!transformed.includes('const value = 42;')) throw new Error('packaged esbuild transform failed');
+    }
+  }
   process.stdout.write(${JSON.stringify(marker)});
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
@@ -1190,6 +1202,7 @@ try {
     );
   }
   ok('better-sqlite3 opens and queries :memory: from packaged app.asar');
+  if (process.platform === 'darwin') ok('both packaged esbuild entry points execute and transform TypeScript');
 }
 
 function checkKodaxWorkersExecuteFromAsar(asarPath) {
