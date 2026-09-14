@@ -248,6 +248,8 @@ KodaX `0.7.84`。本版本同步已落地的 Session 重新激活修复、Agent 
 
 ## 配置模型
 
+本集成分支将 Partner 插件库随 Space 一起打包。首次启动后进入 **Partner → 插件**，即可选择专家及默认方法；使用外部服务时，仍需连接自己的账号并授权资料范围。用户停用、卸载及已有手动安装包的选择会保留。验证和发布状态见[集成与交付记录](docs/partner/releases/space-bundled-integration.md)；Coder 共用能力另行推进。
+
 KodaX Space 会尽量复用 KodaX 生态状态；桌面 UI 特有状态则由 Space 自己管理。
 
 | 状态                                     | 行为                                                                                                                      |

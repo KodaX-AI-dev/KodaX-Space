@@ -297,7 +297,7 @@ fileAssociations:
 # electron-updater 在 main 进程通过本配置定位 release feed。
 publish:
   - provider: github
-    owner: icetomoyo
+    owner: KodaX-AI-dev
     repo: KodaX-Space
     releaseType: release
 

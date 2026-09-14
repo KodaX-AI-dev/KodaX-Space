@@ -55,7 +55,7 @@ Partner 融合：Local -> Ready -> Proposed -> Integrated
 | PF002           | F146          | `v0.1.0` | InProgress  | Local       | [PF002 design](features/v0.1.0.md#feature-pf002) | 2026-09-04 |
 | PF003           | F146          | `v0.1.0` | InProgress  | Local       | [PF003 design](features/v0.1.0.md#feature-pf003) | 2026-09-04 |
 | PF004           | —             | `v0.1.0` | Completed   | Local       | [PF004 design](features/v0.1.0.md#feature-pf004) | 2026-09-07 |
-| PF008 | — | `v0.1.0` | Completed | Local | [PF008 design](features/v0.1.0.md#feature-pf008) | 2026-09-07 |
+| PF008           | —             | `v0.1.0` | Completed   | Local       | [PF008 design](features/v0.1.0.md#feature-pf008) | 2026-09-07 |
 
 | PF005 | — | `v0.1.0` | Completed | Local | [PF005 design](features/v0.1.0.md#feature-pf005) | 2026-09-07 |
 
@@ -86,6 +86,8 @@ F146 <- PF001, PF002, PF003
 
 ## 7. 待协调的上游差异
 
+2026-09-14 随包集成候选：以组织 `main@09bee3b7`（Space `0.1.46-beta.2` / KodaX `0.7.96-rc.4`）融合个人分支 `193e7ebf`，本地分支 `integration/partner-bundled-release`。本轮目标是安装新版 Space 即可使用现有 Partner，Coder 共享能力后续处理。随包默认启用及兼容修正见 [交付与验证记录](releases/space-bundled-integration.md)；尚未推送、合入组织主线或发布，不变更 PF 的 `Integrated` 状态。上节旧表保留为历史快照。
+
 - Space F130 与 PF003 对 Partner 统一详情工作区、任务卡和右侧资源打开的产品描述需要在集成时统一。
 - PF004 触及 IPC schema、聊天链接与 Shell/详情共享接缝；必须验证 Coder 链接行为与浏览器策略，不能据此自动宣告 F096 或 F146 完成。
 - Space F096 仍管理通用 Connector foundation；PF002 的连接器预览、可信宿主和平台切片不能自动把 F096 标记完成。
@@ -94,11 +96,11 @@ F146 <- PF001, PF002, PF003
 
 ## 8. 上游同步与合并门槛
 
-1. 从干净的 F146 创建 `integration/partner-upstream-YYYYMMDD`。
-2. 合入最新 `upstream/main`，解决共享代码和文档冲突。
+1. 在当前组织集成 checkout 保存本地修改，确认分支和工作区干净。
+2. 从组织 `origin` 获取最新主线，将 `origin/main` 合入集成分支，解决共享代码和文档冲突。
 3. 验证 Partner Extension、Partner/Coder desktop、IPC、类型、lint 和打包。
 4. 记录真实服务人工项与自动 fixture 的差异。
-5. 验证通过后再合回 F146；准备进入 Space 时使用明确 PR/目标分支。
+5. 用户通知后向组织推送集成分支并提交 PR；主线接收后，后续功能从最新组织主线建立短分支。
 6. 只有目标提交进入 Space 主线后才将 PF 标记 `Integrated`。
 
 详细命令见 [Development](DEVELOPMENT.md)。

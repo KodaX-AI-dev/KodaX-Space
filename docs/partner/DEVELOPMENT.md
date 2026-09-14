@@ -41,27 +41,17 @@
 
 ## 仓库与分支职责
 
-- `upstream`：同事维护的 `icetomoyo/KodaX-Space`，只拉取，不推送。
-- `origin`：自己的 `poppersamhar/KodaX-Space-Partner`，准备好后才推送。
-- `main`：只跟随 `upstream/main`，不直接开发 Partner。
-- `feature/f146-partner-plugin-library`：F146 Partner 的长期集成分支。
-- `feature/partner-host-<slice>`：Partner 主体、Host API、IPC、会话、安全执行与宿主适配的短期分支。
-- `feature/partner-library-<slice>`：独立插件包、专家目录、连接器声明、插件 UI 与品牌资源的短期分支。
-- `integration/partner-upstream-<date>`：临时验证某次上游同步，验证完成后再并回 F146。
-- `archive/local-only-*`：只保存在本机的恢复分支，不合并、不推送。
+从 2026-09-14 起，交付目标统一为组织仓库 `KodaX-AI-dev/KodaX-Space`：
 
-从 2026-09-04 起，现有交叉历史不再重写。首批两个开发起点都从同一个已验证 F146 基线创建：
+- `origin`：组织 Space 仓库，作为拉取和以后提交 PR 的目标。
+- `main` / `origin/main`：组织主线，不直接开发或覆盖。
+- `integration/partner-bundled-release`：本次随 Space 分发 Partner 的本地集成候选。
+- `feature/partner-<topic>`：后续短期开发分支；本次主线接收后，从最新 `origin/main` 创建。
+- 旧个人仓库和旧 F146 分支只作来源及恢复历史，不再作为产品分发入口。
 
-- `feature/partner-host-foundation`：用于稳定 Partner 宿主边界与融合接口。
-- `feature/partner-library-foundation`：用于继续整理专家、连接器和插件库产品能力。
+当前用户要求先完成本地修改、测试、打包和发布说明，明确通知后才向组织推送或发布。因而本地 `origin.pushurl` 暂设为 `DISABLED`；没有新的发布授权时，不解除它，不创建远端分支、PR、标签或 Release。
 
-它们初始内容相同是正常的；分离的是从此之后的提交责任，不代表可以从任一分支删除另一侧已经依赖的代码。后续优先创建带具体主题的短分支，不把这两个起点继续扩张成互相长期漂移的第二、第三集成干线。
-
-2026-09-04 的已知恢复点：
-
-- Partner 可集成基线：`7c869d1`。
-- 未审核本地材料归档：`archive/local-only-f146-unreviewed-20260904`，提交 `1b45875`。
-- 当次上游基线：`upstream/main` 的 `0376cb4`，标签 `v0.1.46-alpha.5`；本地合并提交为 `ea7d61c`。
+开发使用当前组织集成 checkout。旧 Partner checkout 仅保留历史；集成仓库已复制全部需要的 Git 对象，不依赖旧目录的对象存储。具体目录、提交和备份证据记录在本地交付报告，不把个人电脑路径写入公共产品配置。
 
 ## 每次开始和结束开发
 
@@ -105,57 +95,24 @@ docs/partner/INTEGRATION.md
 
 PF 使用 `PF###` 编号，并分别管理开发状态 `Planned → InProgress → Completed` 与集成状态 `Local → Ready → Proposed → Integrated`。该 Skill 不修改 Space 总 `docs/FEATURE_LIST.md`；需要新的 Space `F###` 时走全局 Feature 流程。
 
-## Partner 短分支生命周期
+## 短分支与组织主线同步
 
-先从干净、最新的 F146 集成分支创建一个具体切片：
-
-```sh
-git switch feature/f146-partner-plugin-library
-git status --short --branch
-git switch -c feature/partner-host-<slice>
-```
-
-插件库切片则使用 `feature/partner-library-<slice>`。一个切片只承担一个可说明、可验证的结果；如果功能同时需要宿主能力和插件声明，先完成并合入宿主接缝，再从更新后的 F146 创建插件库切片。
-
-完成代码、评审和验证后合回 F146，并删除已完成的本地短分支：
+本次融合完成前，在 `integration/partner-bundled-release` 保存可评审的小提交。后续主线接收后，从最新组织主线开始具体功能：
 
 ```sh
-git switch feature/f146-partner-plugin-library
-git merge --no-ff feature/partner-host-<slice>
-git branch -d feature/partner-host-<slice>
+git fetch origin main
+git switch -c feature/partner-<topic> origin/main
 ```
 
-不要直接在两个功能分支之间互相合并；共同依赖统一先进入 F146，再由新的切片从最新 F146 开始。
-
-## 同步同事的 Coder / Space 改动
-
-只在工作区已经提交干净时同步。长期 Partner 分支采用 merge，不反复 rebase 改写历史：
+同步时先提交当前工作并确认目录干净，再把组织主线合入集成分支；不重写已经共享的历史：
 
 ```sh
-git fetch --all --prune
-git switch feature/f146-partner-plugin-library
-git switch -c integration/partner-upstream-YYYYMMDD
-git merge --no-ff --no-commit upstream/main
+git fetch origin main
+git switch integration/partner-bundled-release
+git merge --no-ff --no-commit origin/main
 ```
 
-解决冲突、暂存合并结果并完成验证后：
-
-```sh
-git add <已解决的路径>
-NODE_OPTIONS=--no-experimental-webstorage npm test
-npm run typecheck
-npm run lint
-npm run build:smoke
-git diff --check
-git commit -m "chore(integration): merge upstream baseline"
-git switch feature/f146-partner-plugin-library
-git merge --ff-only integration/partner-upstream-YYYYMMDD
-git branch -d integration/partner-upstream-YYYYMMDD
-```
-
-推荐至少每周同步一次，并在每次准备可安装版本之前再同步一次。不要在脏工作区直接执行 `git pull`。
-
-易变化的上游提交、冲突预演和兼容差异不在本稳定指南维护；它们记录在 [Integration 当前快照](INTEGRATION.md#6-当前集成快照)。即使 Git 自动合并，也要复查 Host、Session、Shell、IPC、package/lockfile 和打包脚本；文本无冲突不等于行为兼容。
+解决冲突后复查 Session、Host、IPC、Shell、package/lockfile 和打包脚本，完成测试再创建合并提交。最新基线和验证证据见 [Integration](INTEGRATION.md) 与 [本次随包交付](releases/space-bundled-integration.md)。每次准备上传组织前都检查主线是否继续更新；不要在脏目录执行 `git pull`。
 
 ## Partner 与 Coder 的长期代码边界
 
@@ -176,18 +133,16 @@ Space Trusted Host
 
 共享的 `real-session.ts`、Shell 和 schema 只依赖稳定接口。新增 Partner 能力优先落在 Partner adapter、connector service 和 Partner UI 目录；不要继续让 Coder manifest 逐个排除 Partner channel，也不要在共享文件里无限增加 `surface === 'partner'` 分支。
 
-日常 Host API、IPC 和 Partner 宿主兼容改造归入 `feature/partner-host-*`；只有吸收一份新的 `upstream/main` 并处理其冲突时，才使用 `integration/partner-upstream-*`。插件包不应通过修改 Coder 业务逻辑来获得能力。
+日常 Host API、IPC 和 Partner 宿主兼容改造归入 `feature/partner-host-*`；只有吸收一份新的 `origin/main` 并处理其冲突时，才使用 `integration/partner-bundled-release`。插件包不应通过修改 Coder 业务逻辑来获得能力。
 
-## 版本号
+## 版本号与分发
 
-- Partner 产品线使用独立 SemVer；当前首个整理目标为 `v0.1.0`。其范围和 PF 边界以 [Partner v0.1.0 设计](features/v0.1.0.md)为准。
-- Partner Library 也使用独立 SemVer；首个候选与产品版本对齐为 `0.1.0`，归档名为 `kodax.partner-library-0.1.0.space-extension`。以后 library 可以按兼容性需要独立演进，不能反向决定 Space 版本。
-- Space 应用版本只跟随实际合入的 `upstream` 发布线；当前兼容基线为 `v0.1.46-alpha.5`，KodaX 为 `0.7.96-beta.1`。整理或发布 Partner `v0.1.0` 时不得修改根 `package.json`、Desktop package 或 lockfile 中的 Space/KodaX 版本来配合名称。
-- `hostApiVersion` 只在宿主协议出现不兼容变化时升级。
-- 功能可用性通过 `requiredHostCapabilities` 与宿主能力握手判断，不按应用或插件版本字符串猜测。
-- Partner Git 标签固定使用 `partner-vX.Y.Z`，例如 `partner-v0.1.0`；不要使用 Space 的 `vX.Y.Z` 命名空间，也不要执行会把全部上游标签一起推送的 `git push --tags`。
-
-历史阶段文档仍会出现 fork `v0.1.61-p.1` 和 Partner Library `0.9.1` / `0.9.0` / `0.5.1`；它们只描述当时证据，不是当前发布入口。当前目标以 [Partner Feature List](FEATURE_LIST.md)、[v0.1.0 设计](features/v0.1.0.md)和 [Release Readiness](releases/v0.1.0-release-readiness.md)为准，不能根据历史片段直接打标签。
+- 用户下载的产品是官方 Space。Space 版本、SDK 精确版本和 lockfile 由组织发布线统一管理，禁止为了 Partner 修改 SDK 版本或改回个人更新地址。
+- 当前集成基线为 Space `0.1.46-beta.2` / KodaX `0.7.96-rc.4`；本地验收包保留基线版本。正式发布时核对最新组织版本，由维护者分配未使用的新版本并同步 manifests、CHANGELOG 和更新元数据，不覆盖既有同版本 Release 资产。
+- Partner Library 当前为 `0.1.0`，随官方安装包包含并在首次启动注册。宿主、插件归档与方法 Skill 必须一起验证；只上传 `.space-extension` 不代表用户已经获得宿主能力。
+- `hostApiVersion` 管理宿主协议兼容性；`requiredHostCapabilities` 声明需要的能力。
+- 本次不创建新的个人 `partner-v*` 发布线。历史标签保留作证据，不执行 `git push --tags`。
+- 新版本对已有同 ID 包的自动升级策略不在本次首次随包注册范围；必须保留用户停用、卸载和手动安装选择。
 
 ## 测试与验证矩阵
 
@@ -211,31 +166,32 @@ npm test -w @kodax-space/desktop
 NODE_OPTIONS=--no-experimental-webstorage npm test
 npm run typecheck
 npm run lint
-npm run format:check
 npm run build:smoke
 git diff --check
 ```
 
-正式可安装包还需运行当前平台对应的构建与安装 smoke。独立 Partner Extension 不包含在普通主应用 smoke 的全部断言中，因此 `build:smoke` 与 `build:partner-extension` 都要验证。真实第三方账号/资源验收必须单独记录，不能由 fixture 代替。
+还需显式运行默认 glob 未收集的 TSX 组件测试，以及相关 Electron E2E：
+
+```sh
+node --test --import tsx 'apps/desktop/renderer/src/**/*.test.tsx'
+npm run e2e:run -- tests/e2e/partner-bundled.spec.ts tests/e2e/partner-mode.spec.ts tests/e2e/partner-layout.spec.ts
+```
+
+开发 Node 版本采用 `.nvmrc`，测试加载器使用同步 `registerHooks`（Node 22.15+）。构建会自动生成随包插件，打包 smoke 验证归档字节与宿主依赖。正式安装包仍需各支持平台的构建、安装、首次启动与已有 profile 升级验证。真实第三方账号/资源验收单列，不能用 fixture 代替。
+
+Node 与 Electron 使用不同 SQLite ABI；不要同时运行会重建原生依赖的单元测试和打包/E2E 命令。
 
 ## 推送与发布门槛
 
-准备把功能分支备份到自己的 GitHub 时，显式执行：
+当前只完成本地准备，等待用户明确通知。通知到达后按顺序执行：
 
-```sh
-git push -u origin feature/f146-partner-plugin-library
-```
+1. 核对组织最新主线、目标分支和已完成验证，确认当前工作区没有未提交的产品改动。
+2. 核对即将提交的内容没有凭据、真实账号运行数据或个人环境配置；只包含可复核的产品代码、资产和文档。
+3. 为这次授权恢复组织的 push URL，只推送明确的功能/集成分支，提交 PR；不直接覆盖组织主线。
+4. 组织 CI 及各平台验收通过后，由维护者合并，再按 Space 原有发布流程更新版本、创建对应标签与 Release。
+5. 从正式 Release 下载验证，确认用户首次启动看到 Partner，账号连接仍由用户授权，Coder 运行不受影响。
 
-首次推送前必须重新检查：
-
-- 工作区干净，且没有 `.env`、密钥、真实账号数据、本机绝对路径或未经审核截图。
-- 已同步并验证最新 `upstream/main`。
-- 完整自动测试、类型检查、lint 和打包 smoke 通过。
-- 真实连接器验收与自动夹具结果分开记录；夹具不能宣称第三方真实成功。
-- 根/Desktop package 与 lockfile 仍准确表达 Space `v0.1.46-alpha.5` / KodaX `0.7.96-beta.1`；Partner manifest、归档、CHANGELOG 和 release-readiness 准确表达 Partner `v0.1.0`。
-- 已核对仓库 `LICENSE`，并取得覆盖目标接收方、用途和分发物的适用书面授权；没有该证据时只能保留本地候选，不能发布公开安装包、Extension、Git tag 或 GitHub Release。
-
-正式发布时再创建唯一的 release commit、`partner-v0.1.0` annotated tag 和 GitHub Release，并逐个推送明确的 Partner 标签；不要使用 plain `v0.1.0`，也不要给仍处于 `InProgress / Local` 的候选冒充最终发布。当前整理阶段只建立本地 Release Candidate，直到技术、人工、集成和授权门槛都有可复核证据。
+本地 `git commit`、组织分支、合入主线、正式 Release 是四个不同状态。只有目标提交被组织主线接收后，才将对应 PF 标记为 `Integrated`。本次用户已明确选择组织发布路线；个人仓库删除状态单独记录，不影响本地代码保留。
 
 ## 恢复本地归档材料
 

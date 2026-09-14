@@ -316,6 +316,8 @@ See [CHANGELOG.md](CHANGELOG.md) and [docs/features/v0.1.29.md](docs/features/v0
 
 ## Configuration Model
 
+This integration branch bundles the Partner library with Space. On first launch, open **Partner → Plugins** to select an expert and its default method, or connect a supported service with your own account and resource authorization. Disabled, uninstalled, and previously hand-installed packages retain the user's choices. See the [integration and release notes](docs/partner/releases/space-bundled-integration.md) for validation and publication status; Coder sharing is planned separately.
+
 KodaX Space intentionally reuses KodaX ecosystem state where it should, and owns desktop-only state where the UI needs it.
 
 | State                                    | Behavior                                                                                                                                                                                                                                              |
