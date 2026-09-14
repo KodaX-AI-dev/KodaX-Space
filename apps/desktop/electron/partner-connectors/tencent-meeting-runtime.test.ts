@@ -82,7 +82,7 @@ test('Tencent Meeting default inspection does not install, spawn or create a cre
   assert.deepEqual(await readdir(root), []);
 });
 
-test('Tencent Meeting native verification rejects missing, truncated, modified, linked and cancelled artifacts', async (context) => {
+test('Tencent Meeting native verification rejects missing, truncated, modified and cancelled artifacts', async (context) => {
   const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'space-tmeet-hash-')));
   context.after(() => rm(root, { recursive: true, force: true }));
   const file = path.join(root, 'untrusted-tmeet');
@@ -91,12 +91,26 @@ test('Tencent Meeting native verification rejects missing, truncated, modified, 
   assert.equal(await verifyTencentMeetingBinary(file), false);
   await writeFile(file, Buffer.alloc(6978882));
   assert.equal(await verifyTencentMeetingBinary(file), false);
-  const link = path.join(root, 'linked-tmeet');
-  await symlink(file, link);
-  assert.equal(await verifyTencentMeetingBinary(link), false);
   const controller = new AbortController();
   controller.abort();
   await assert.rejects(verifyTencentMeetingBinary(file, controller.signal), { code: 'cancelled' });
+});
+
+test('Tencent Meeting native verification rejects linked artifacts', async (context) => {
+  const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'space-tmeet-link-')));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const file = path.join(root, 'tmeet');
+  const link = path.join(root, 'linked-tmeet');
+  await writeFile(file, 'fixture');
+  try {
+    await symlink(file, link, 'file');
+  } catch (error) {
+    if (process.platform !== 'win32' || (error as NodeJS.ErrnoException).code !== 'EPERM')
+      throw error;
+    context.skip('Windows file symlinks require Developer Mode or symlink privileges');
+    return;
+  }
+  assert.equal(await verifyTencentMeetingBinary(link), false);
 });
 
 test('Tencent Meeting never dispatches an unverified native binary', async (context) => {
@@ -189,7 +203,8 @@ test('Tencent Meeting never authorizes into existing metadata, encrypted data or
     const config = path.join(base, 'config');
     const data = path.join(base, 'data');
     await mkdir(base, { recursive: true, mode: 0o700 });
-    if (occupied === 'linked-directory') await symlink(root, config);
+    if (occupied === 'linked-directory')
+      await symlink(root, config, process.platform === 'win32' ? 'junction' : 'dir');
     else {
       await mkdir(config, { mode: 0o700 });
       await mkdir(data, { mode: 0o700 });

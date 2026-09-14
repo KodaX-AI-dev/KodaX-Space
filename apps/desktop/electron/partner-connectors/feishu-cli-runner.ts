@@ -21,7 +21,7 @@ export type FeishuCliRunner = (request: FeishuCliRequest) => Promise<FeishuCliRe
 const ERROR_MESSAGES = {
   cancelled: '飞书操作已取消。',
   invalid_input: '飞书连接器参数无效。',
-  cli_missing: '飞书连接组件不可用，请更新或重新安装 KodaX Space。',
+  cli_missing: '飞书连接组件不可用，请在设置 → 扩展 → 连接器组件中安装或修复。',
   unsupported_version: '飞书连接组件版本不兼容，请更新 KodaX Space。',
   not_connected: '飞书账号未连接或验证失败，请重新连接。',
   identity_changed: '飞书账户已改变，请重新连接后再操作。',

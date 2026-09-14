@@ -147,7 +147,9 @@ test('subprocess runner preserves argument boundaries and stdin without inheriti
   assert.equal(result.exitCode, 0);
   assert.equal(value.arg, 'x;$(touch /not-executed)');
   assert.equal(value.input, 'plain body');
-  assert.ok(value.keys.includes('PATH'));
+  assert.ok(
+    value.keys.some((key) => (process.platform === 'win32' ? key.toUpperCase() : key) === 'PATH'),
+  );
   assert.ok(value.keys.includes('USERPROFILE'));
   assert.equal(value.update, '1');
   assert.equal(value.skills, '1');

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   chmod,
   lstat,
@@ -377,26 +377,6 @@ async function publishBinary(input: {
   }
 }
 
-async function publishArchive(input: {
-  data: Buffer;
-  digest: string;
-  bytes?: number;
-  executable: string;
-  parent: string;
-  platform: NodeJS.Platform;
-  signal: AbortSignal;
-  verify: (file: string, signal: AbortSignal) => Promise<boolean>;
-}): Promise<string> {
-  const binary = await verifiedArchiveBinary(input);
-  return publishBinary({
-    binary,
-    executable: input.executable,
-    parent: input.parent,
-    signal: input.signal,
-    verify: input.verify,
-  });
-}
-
 async function existingMatchesBinary(file: string, binary: Buffer): Promise<boolean> {
   if (!(await existingBinary(file))) return false;
   const stat = await lstat(file);
@@ -421,8 +401,28 @@ async function bundledBinary(input: {
   });
 }
 
+async function publishDownloadedArchive(
+  data: Buffer,
+  parent: string,
+  cachedArchive: string,
+  signal: AbortSignal,
+  installBundled: (archive: string, signal: AbortSignal) => Promise<string>,
+): Promise<string> {
+  const temporary = path.join(parent, `.archive-${randomUUID()}`);
+  try {
+    await writeFile(temporary, data, { mode: 0o600, flag: 'wx' });
+    active(signal);
+    const installed = await installBundled(temporary, signal);
+    await rename(temporary, cachedArchive);
+    return installed;
+  } finally {
+    await rm(temporary, { force: true });
+  }
+}
+
 export function createFeishuCliInstaller(options: FeishuCliInstallerOptions): {
   executable: string;
+  cachedArchive: string;
   install: (signal: AbortSignal) => Promise<string>;
   installBundled: (archive: string, signal: AbortSignal) => Promise<string>;
 } {
@@ -436,52 +436,53 @@ export function createFeishuCliInstaller(options: FeishuCliInstallerOptions): {
       throw new Error('invalid root');
     return privateParent(options.root);
   };
-  const prepare = async (signal: AbortSignal): Promise<string | undefined> => {
-    const parent = await prepareParent();
-    if (await existingBinary(executable)) {
-      if (await (options.verifyBinary ?? verifyNative)(executable, signal)) {
-        active(signal);
-        return undefined;
-      }
-    }
-    await resetManagedPlatformDirectory(executable);
-    return parent;
-  };
-  const publish = (data: Buffer, parent: string, signal: AbortSignal) =>
-    publishArchive({
-      data,
-      digest: options.expectedDigest ?? asset!.digest,
-      bytes:
-        options.expectedBytes ?? (options.expectedDigest === undefined ? asset!.bytes : undefined),
-      executable,
-      parent,
-      platform,
-      signal,
-      verify: options.verifyBinary ?? verifyNative,
-    });
-  return {
+  const cachedArchive = path.join(
+    path.dirname(path.dirname(executable)),
+    `${platform}-${arch}.archive`,
+  );
+  const api = {
     executable,
-    install: async (signal) => {
+    cachedArchive,
+    install: async (signal: AbortSignal): Promise<string> => {
       active(signal);
       const timeout = AbortSignal.timeout(INSTALL_TIMEOUT_MS);
       const bounded = AbortSignal.any([signal, timeout]);
       try {
-        const parent = await prepare(bounded);
-        if (!parent) return executable;
+        const parent = await prepareParent();
+        // Reject a replaced managed destination before contacting the network.
+        await existingBinary(executable);
+        try {
+          const stat = await lstat(cachedArchive);
+          if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('unsafe cached archive');
+          return await api.installBundled(cachedArchive, bounded);
+        } catch (error) {
+          if (
+            (error as NodeJS.ErrnoException).code !== 'ENOENT' &&
+            !(error instanceof FeishuOnboardingError && error.code === 'component_unavailable')
+          )
+            throw error;
+        }
         const data = await download(
           `https://github.com/larksuite/cli/releases/download/v${FEISHU_CLI_VERSION}/lark-cli-${FEISHU_CLI_VERSION}-${asset.name}`,
           bounded,
           options.fetch ?? fetch,
         );
-        return await publish(data, parent, bounded);
+        return await publishDownloadedArchive(
+          data,
+          parent,
+          cachedArchive,
+          bounded,
+          api.installBundled,
+        );
       } catch (error) {
         if (signal.aborted) throw new FeishuOnboardingError('cancelled');
         if (timeout.aborted) throw new FeishuOnboardingError('download_timeout');
-        if (error instanceof FeishuOnboardingError) throw error;
+        if (error instanceof FeishuOnboardingError && error.code !== 'component_unavailable')
+          throw error;
         throw new FeishuOnboardingError('installation_failed');
       }
     },
-    installBundled: async (archive, signal) => {
+    installBundled: async (archive: string, signal: AbortSignal): Promise<string> => {
       active(signal);
       try {
         if (!asset) throw new FeishuOnboardingError('unsupported_platform');
@@ -518,4 +519,5 @@ export function createFeishuCliInstaller(options: FeishuCliInstallerOptions): {
       }
     },
   };
+  return api;
 }

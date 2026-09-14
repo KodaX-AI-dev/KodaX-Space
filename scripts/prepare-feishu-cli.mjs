@@ -66,6 +66,41 @@ function assertReleaseUrl(value) {
   return url;
 }
 
+async function readArchiveResponse(response, asset, bounded, assertActive, progressed) {
+  const contentLength = response.headers.get('content-length');
+  if (contentLength !== null) {
+    const declaredBytes = Number(contentLength);
+    if (!Number.isSafeInteger(declaredBytes) || declaredBytes !== asset.bytes)
+      throw new Error('Feishu CLI archive integrity mismatch');
+  }
+  const reader = response.body.getReader();
+  const cancelReader = () => void reader.cancel();
+  bounded.addEventListener('abort', cancelReader, { once: true });
+  const chunks = [];
+  let bytes = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      assertActive();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > asset.bytes) {
+        await reader.cancel();
+        throw new Error('Feishu CLI archive integrity mismatch');
+      }
+      if (value.byteLength) progressed();
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    bounded.removeEventListener('abort', cancelReader);
+    await reader.cancel();
+  }
+  const data = Buffer.concat(chunks);
+  if (data.byteLength !== asset.bytes || sha256(data) !== asset.sha256)
+    throw new Error('Feishu CLI archive integrity mismatch');
+  return data;
+}
+
 async function downloadArchive(initialUrl, asset, fetcher, totalTimeoutMs, idleTimeoutMs) {
   const total = AbortSignal.timeout(totalTimeoutMs);
   const idle = new AbortController();
@@ -102,38 +137,7 @@ async function downloadArchive(initialUrl, asset, fetcher, totalTimeoutMs, idleT
         continue;
       }
       if (!response.ok || !response.body) throw new Error('Feishu CLI archive download failed');
-      const contentLength = response.headers.get('content-length');
-      if (contentLength !== null) {
-        const declaredBytes = Number(contentLength);
-        if (!Number.isSafeInteger(declaredBytes) || declaredBytes !== asset.bytes)
-          throw new Error('Feishu CLI archive integrity mismatch');
-      }
-      const reader = response.body.getReader();
-      const cancelReader = () => void reader.cancel();
-      bounded.addEventListener('abort', cancelReader, { once: true });
-      const chunks = [];
-      let bytes = 0;
-      try {
-        for (;;) {
-          const { value, done } = await reader.read();
-          assertActive();
-          if (done) break;
-          bytes += value.byteLength;
-          if (bytes > asset.bytes) {
-            await reader.cancel();
-            throw new Error('Feishu CLI archive integrity mismatch');
-          }
-          if (value.byteLength) progressed();
-          chunks.push(Buffer.from(value));
-        }
-      } finally {
-        bounded.removeEventListener('abort', cancelReader);
-        await reader.cancel();
-      }
-      const data = Buffer.concat(chunks);
-      if (data.byteLength !== asset.bytes || sha256(data) !== asset.sha256)
-        throw new Error('Feishu CLI archive integrity mismatch');
-      return data;
+      return await readArchiveResponse(response, asset, bounded, assertActive, progressed);
     }
     throw new Error('too many Feishu CLI release redirects');
   } finally {

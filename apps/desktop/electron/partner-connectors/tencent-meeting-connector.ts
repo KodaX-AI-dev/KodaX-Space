@@ -7,6 +7,7 @@ import {
 } from './tencent-meeting-auth.js';
 import {
   createTencentMeetingInstaller,
+  verifyTencentMeetingBinary,
   createTencentMeetingPrivateProcess,
   TENCENT_MEETING_PROVIDER as PROVIDER,
   TENCENT_MEETING_VERSION as VERSION,
@@ -281,6 +282,12 @@ export function createTencentMeetingConnector(
   const claimedProfiles = new Set<string>();
   return {
     id: PROVIDER,
+    component: {
+      version: VERSION,
+      supported: platform === 'darwin' && arch === 'arm64',
+      inspect: (signal) => verifyTencentMeetingBinary(installer.executable, signal),
+      install: (signal) => installer.install(signal, true),
+    },
     inspect: (profile, signal) => inspectProfile(host, profile, signal),
     acceptsResource: (value) => MEETING_REFERENCE.test(value),
     isAuthorizationUrl: isTencentMeetingAuthorizationUrl,

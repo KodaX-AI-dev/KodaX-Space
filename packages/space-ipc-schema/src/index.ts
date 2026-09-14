@@ -629,10 +629,6 @@ export {
 export { notificationShowChannel, notificationClickedChannel } from './channels/notification.js';
 
 export {
-  PARTNER_BROWSER_FRAME_NAME_PREFIX,
-  PARTNER_BROWSER_MAX_URL_LENGTH,
-  PARTNER_BROWSER_PARTITION,
-  partnerBrowserNavigatedChannel,
   windowActivityChannel,
   windowActivityStateSchema,
   windowCompleteExitProgressChannel,
@@ -642,7 +638,6 @@ export {
   windowStateChannel,
   windowStateSchema,
   type WindowActivityPayload,
-  type PartnerBrowserNavigatedPayload,
   type WindowActivityStateT,
   type WindowCompleteExitProgressPayload,
   type WindowControlActionT,
@@ -833,3 +828,5 @@ export {
   type PartnerExpertSnapshotT,
   type PartnerExpertStateT,
 } from './channels/partner-expert.js';
+
+export * from './channels/partner-components.js';

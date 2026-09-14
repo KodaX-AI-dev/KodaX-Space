@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
-import { FileText, Globe2, Plus, X } from 'lucide-react';
+import { FileText, Plus, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import { FilesPanel } from '../../shell/popouts/FilesPanel.js';
 import { ArtifactPanel } from './ArtifactPanel.js';
-import { PartnerBrowserPanel } from './PartnerBrowserPanel.js';
+import { openExternalUrl } from '../../lib/openPath.js';
 import { PartnerRemoteSourcePanel } from './PartnerRemoteSourcePanel.js';
 import { FileViewer } from '../preview/FileViewer.js';
 import { SourcesPanel } from './SourcesPanel.js';
@@ -11,7 +11,6 @@ import {
   createPartnerDetailTab,
   createPartnerDetailWorkspaceState,
   reducePartnerDetailWorkspace,
-  samePartnerBrowserDestination,
   type PartnerDetailOpenRequest,
   type PartnerDetailOpenTarget,
   type PartnerDetailTabKind,
@@ -109,11 +108,7 @@ export function PartnerRightSidebar({
   useEffect(() => {
     if (!openRequest || !initialTab) return;
     const currentTab = state.tabs.find((tab) => tab.id === state.activeId);
-    if (
-      !currentTab ||
-      (currentTab.id !== initialTab.id && !samePartnerBrowserDestination(currentTab, initialTab))
-    )
-      return;
+    if (!currentTab || currentTab.id !== initialTab.id) return;
     onConsumeOpenRequest?.(openRequest.revision);
   }, [initialTab, onConsumeOpenRequest, openRequest, state.activeId, state.tabs]);
 
@@ -138,7 +133,7 @@ export function PartnerRightSidebar({
       tab: createPartnerDetailTab(target, detailTitle(target.kind, t), nextUniqueIdRef.current),
     });
   };
-  const launch = (kind: 'files' | 'browser'): void => openLocalDetail({ kind });
+  const launch = (kind: 'files'): void => openLocalDetail({ kind });
 
   const closeTab = (id: string): void => {
     focusAfterStateChangeRef.current = true;
@@ -176,7 +171,7 @@ export function PartnerRightSidebar({
               tab.kind === 'baseTask' ||
               tab.kind === 'remoteProposal' ||
               tab.kind === 'remoteSource' ||
-              tab.kind === 'browser'
+              tab.kind === 'remoteResult'
                 ? tab.title
                 : detailTitle(tab.kind, t);
             const tabbable = active || (state.activeId === null && index === 0);
@@ -286,9 +281,7 @@ export function PartnerRightSidebar({
           .filter((tab) => tab.kind === 'remoteSource' && tab.sourceId)
           .map((tab) => (
             <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
-              {activeTab?.id === tab.id && (
-                <PartnerRemoteSourcePanel sourceId={tab.sourceId!} onOpenDetail={openLocalDetail} />
-              )}
+              {activeTab?.id === tab.id && <PartnerRemoteSourcePanel sourceId={tab.sourceId!} />}
             </DetailTabPanel>
           ))}
 
@@ -310,11 +303,7 @@ export function PartnerRightSidebar({
               tab.baseTask!;
             return (
               <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
-                {task.status === 'succeeded' && task.url ? (
-                  <PartnerBrowserPanel initialUrl={task.url} />
-                ) : (
-                  <PartnerFeishuBaseTaskPanel task={task} />
-                )}
+                <PartnerFeishuBaseTaskPanel task={task} />
               </DetailTabPanel>
             );
           })}
@@ -383,13 +372,22 @@ export function PartnerRightSidebar({
           })}
 
         {state.tabs
-          .filter((tab) => tab.kind === 'browser')
+          .filter((tab) => tab.kind === 'remoteResult')
           .map((tab) => (
             <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
-              <PartnerBrowserPanel
-                initialUrl={tab.browserUrl}
-                navigationRevision={tab.browserNavigationRevision}
-              />
+              <section className="space-y-3 p-4" data-testid="partner-remote-result-detail">
+                <h3 className="text-sm font-medium">{tab.title}</h3>
+                <p className="break-all text-xs text-fg-muted">{tab.externalUrl}</p>
+                {tab.externalUrl && (
+                  <button
+                    type="button"
+                    className="rounded-md border border-border-default px-2 py-1 text-xs"
+                    onClick={() => void openExternalUrl(tab.externalUrl!)}
+                  >
+                    {t('partner.browser.openExternal')}
+                  </button>
+                )}
+              </section>
             </DetailTabPanel>
           ))}
       </div>
@@ -438,14 +436,13 @@ function detailTitle(kind: PartnerDetailTabKind, t: ReturnType<typeof useI18n>['
   if (kind === 'baseTask') return t('partner.baseTask.title');
   if (kind === 'remoteProposal') return t('connectors.remoteReviews');
   if (kind === 'remoteSource') return t('connectors.remoteSources');
-  if (kind === 'browser') return t('partner.detail.browser');
-  return t('partner.detail.browser');
+  return t('partner.taskCards.artifacts');
 }
 
 function PartnerDetailLauncher({
   onLaunch,
 }: {
-  readonly onLaunch: (kind: 'files' | 'browser') => void;
+  readonly onLaunch: (kind: 'files') => void;
 }): JSX.Element {
   const { t } = useI18n();
   return (
@@ -461,18 +458,12 @@ function PartnerDetailLauncher({
           {t('partner.detail.launcherBody')}
         </div>
       </div>
-      <div className="grid w-full max-w-sm grid-cols-2 gap-2">
+      <div className="grid w-full max-w-sm grid-cols-1 gap-2">
         <LauncherButton
           icon={<FileText className="h-5 w-5" strokeWidth={1.7} aria-hidden />}
           label={t('partner.detail.files')}
           onClick={() => onLaunch('files')}
           testId="partner-detail-open-files"
-        />
-        <LauncherButton
-          icon={<Globe2 className="h-5 w-5" strokeWidth={1.7} aria-hidden />}
-          label={t('partner.detail.browser')}
-          onClick={() => onLaunch('browser')}
-          testId="partner-detail-open-browser"
         />
       </div>
     </div>

@@ -1,10 +1,10 @@
 # KodaX Space 产品需求文档（PRD）
 
-> **2026-09-14 beta.3 Partner integration candidate**: Users of a Space build containing this change can open Partner and choose a bundled expert without installing a separate extension. The expert and method stay bound to the Partner session; service connections require explicit account and resource authorization. Existing user install/disable/uninstall choices survive restart. This is a beta delivery candidate, not a declaration that every external account or planned Coder integration has been accepted. See [user guide](USER_MANUAL.zh-CN.md#121-使用内置专家) and [release readiness](releases/v0.1.46-beta.3-release-readiness.md).
+> **2026-09-14 beta.3 Partner integration candidate（过渡版，发布已撤回，随 beta.4 一同发布）**: Users of a Space build containing this change can open Partner and choose a bundled expert without installing a separate extension. The expert and method stay bound to the Partner session; service connections require explicit account and resource authorization. Existing user install/disable/uninstall choices survive restart. This is a beta delivery candidate, not a declaration that every external account or planned Coder integration has been accepted. See [user guide](USER_MANUAL.zh-CN.md#121-使用内置专家) and [release readiness](releases/v0.1.46-beta.3-release-readiness.md).
 
 > **2026-08-24 当前正式发布基线**：KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) 对齐 npm 正式发布的精确 KodaX `0.7.95`，要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。Session 历史在 Runtime-ready 重验时保留已加载 canonical 前缀；排队输入、live 回复、分页加载和当前 Runtime 身份保持同一因果投影。退出恢复自动重试临时 `unconfirmed-owner`，不要求人工删除标记，也不阻塞无关工作。v0.1.45 还把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡（召回停靠条与队首卡 1-9/Enter/Esc 键盘操作），恢复 daemon 重连后已准入的 Runs，并保证幂等发送只产生一个气泡。
 >
-> **2026-09-14 当前源码候选**：Space package 为 `0.1.46-beta.3`，精确依赖锁定已发布的 KodaX `0.7.96-rc.4`，
+> **2026-09-14 当前源码候选**：Space package 为 `0.1.46-beta.4`，精确依赖锁定已发布的 KodaX `0.7.96-rc.5`，
 > SDK 包启动检查要求 `sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 与 `effectiveConfig:1`；`providerCredentialBroker:2` 由 daemon 准入 requirements 与连接后
 > Runtime capability 两层门禁验证。跨平台 native bundle 必须整体解包并通过 manifest hash smoke；
 > 权限档位保持 Plan、Edits、Auto[LLM]、Full Access。Beta.5 把 Windows setup generation 提升到 11（profile/SSH ACL 排除对齐 Codex 语义），连同显式 doctor/setup 的真实 target-start 证明、setup-only profile ACL 收敛、逐命令私有 Temp 与 64 端口 broker 范围；内置 deepseek 别名走官方 Anthropic 兼容端点，默认模型 deepseek-flash；Space

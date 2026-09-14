@@ -2,6 +2,45 @@ import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { launchSpace } from './fixtures.js';
 
+test('Partner host switches the same library between connectors and experts', async () => {
+  const space = await launchSpace(`partner-library-navigation-${Date.now()}`, {
+    env: { KODAX_SPACE_RUNTIME_HOST: 'legacy' },
+  });
+  try {
+    const { page } = space;
+    await page.getByRole('button', { name: 'Partner', exact: true }).click();
+    await page.getByTestId('partner-plugins-nav').click();
+    const library = page.frameLocator('[data-testid="space-extension-frame"]');
+    await expect(
+      library.getByRole('button', { name: '查看 营销文案 详情', exact: true }),
+    ).toBeVisible();
+    await library.locator('body').evaluate((body) => {
+      body.dataset.navigationProbe = 'retained';
+    });
+    for (const kind of ['connector', 'expert', 'connector', 'expert']) {
+      await page.evaluate((kind) => {
+        window.dispatchEvent(
+          new CustomEvent(`kodax-space.partner-${kind}-manage`, {
+            detail: {
+              context: {
+                surface: 'partner',
+                projectRoot: localStorage.getItem('kodax-space.currentProjectPath'),
+                sessionId: null,
+              },
+            },
+          }),
+        );
+      }, kind);
+      await expect(
+        library.locator(kind === 'connector' ? '#connectors-tab' : '#experts-tab'),
+      ).toHaveAttribute('aria-selected', 'true');
+    }
+    await expect(library.locator('body')).toHaveAttribute('data-navigation-probe', 'retained');
+  } finally {
+    await space.close();
+  }
+});
+
 test('bundled Partner is available with the default Coder runtime', async () => {
   test.setTimeout(60_000);
   const space = await launchSpace(`partner-default-runtime-${Date.now()}`, {

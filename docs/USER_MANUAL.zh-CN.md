@@ -6,11 +6,11 @@
 
 > 当前发布精确锁定 KodaX `0.7.95`，要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。同一 boot 的临时 `unconfirmed-owner` 会自动重试；Space 不要求用户删除标记，且只在缺少安全证明时阻断有竞争风险的 sandbox/owner 操作。
 >
-> 当前源码候选为 Space `0.1.46-beta.2`，精确锁定 KodaX `0.7.96-rc.4`，并要求 `sessionCancellation:1`（durable frontier）、`toolInvocation:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
+> 当前源码候选为 Space `0.1.46-beta.4`，精确锁定 KodaX `0.7.96-rc.5`，并要求 `sessionCancellation:1`（durable frontier）、`toolInvocation:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
 > Windows 既有安装首次迁移可能需要用户在 Settings → Runtime 明确执行一次 Sandbox Setup；
 > 普通启动、Refresh 和工具调用不会隐式提升权限。正式发布版的 0.7.95 说明保留为历史事实。
-> v0.1.46-beta.2 要求 daemon 支持会话原子取消：停止其接受请求时固定队列边界内的任务，之后提交的新任务保留。未知结果保留重试按钮，刷新后仍绑定原 Session/Run/requestId；已接受请求可原样重放，针对已结束 Run 的首次请求被拒绝且不会转向后继任务。rc.3 已通过发布包 daemon 及打包版真实任务执行验收；子代理读图写文件可完成，但图片颜色识别仍有不一致样本。旧 owner 由 SDK 连接层按其安全条件升级，Space 不再降级为只停一个 Run。
-> v0.1.46-beta.2 要求 owner 公布 `toolInvocation:1`，受管扩展命令与 `!command` 可在会话空闲时通过正常 Run 执行，沿用权限、事件、历史和取消语义。rc.3 发布包 daemon 的显式 write/bash 测试已通过；正常模型调用工具不受影响。纯配置型扩展命令请在 KodaX CLI owner 中执行。
+> v0.1.46-beta.4 要求 daemon 支持会话原子取消：停止其接受请求时固定队列边界内的任务，之后提交的新任务保留。未知结果保留重试按钮，刷新后仍绑定原 Session/Run/requestId；已接受请求可原样重放，针对已结束 Run 的首次请求被拒绝且不会转向后继任务。rc.3 已通过发布包 daemon 及打包版真实任务执行验收；子代理读图写文件可完成，但图片颜色识别仍有不一致样本。旧 owner 由 SDK 连接层按其安全条件升级，Space 不再降级为只停一个 Run。
+> v0.1.46-beta.4 要求 owner 公布 `toolInvocation:1`，受管扩展命令与 `!command` 可在会话空闲时通过正常 Run 执行，沿用权限、事件、历史和取消语义。rc.3 发布包 daemon 的显式 write/bash 测试已通过；正常模型调用工具不受影响。纯配置型扩展命令请在 KodaX CLI owner 中执行。
 > beta.8 能在重新读取历史时应用已经明确确认的旧消息身份修复记录。未经确认的历史身份不会自动合并；当前源码提供 `/repair-identity <source-entry> <target-entry> <revision> <run> <input> <event> <confirmation-ref>`，由用户显式提交核实过的投递凭据与版本，SDK 验证并记录审计。SDK 报告修复记录无效时，仍显示可读历史和部分可用提示。
 >
 > 已发布产品基线：KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45)（package `0.1.45`）/ npm 正式发布的精确 KodaX `0.7.95`。ask_user 与 guardrail 授权以对话流内的聚焦提问卡呈现：全部待答卡并存可答，composer 上方有带计数与定位闪光的召回停靠条，队首卡支持 1-9/Enter/Esc 键盘操作，对话历史保持可滚动。
@@ -277,7 +277,7 @@ Daemon 模式还会核对 daemon 的实际能力，而不只看已经安装的 n
 
 ### Runtime 失败详情
 
-beta.3 的安装包同时携带 SDK 内置的 Windows WFP 探针端口分配修复。Space 直接复制该运行库及其依赖，构建时跳过安装脚本也不会丢失修复；Windows native protocol/setup generation 和公开能力版本均不变。
+beta.4 的安装包同时携带 SDK 内置的 Windows WFP 探针端口分配修复。Space 直接复制该运行库及其依赖，构建时跳过安装脚本也不会丢失修复；Windows native protocol/setup generation 和公开能力版本均不变。
 
 当前源码候选继续接入 KodaX 0.7.96 beta 线的凭据安全
 `RuntimeFailureDetail`。真实 Run 失败时，错误条优先显示 SDK 固定且有界的
@@ -537,7 +537,7 @@ Partner 已支持 Sources、KB、workspace-first Outputs、checkpointed writes�
 
 ### 12.1 使用内置专家
 
-`0.1.46-beta.3` 候选新增随 Space 分发的 Partner 插件库。安装包含本次改动的版本后，首次启动会安装并启用内置库，无需单独下载 `.space-extension`。正式发布状态见 [版本验收记录](releases/v0.1.46-beta.3-release-readiness.md)；稳定版 `v0.1.45` 不包含这一增量。
+`0.1.46-beta.4` 候选新增随 Space 分发的 Partner 插件库。安装包含本次改动的版本后，首次启动会安装并启用内置库，无需单独下载 `.space-extension`。正式发布状态见 [版本验收记录](releases/v0.1.46-beta.3-release-readiness.md)；稳定版 `v0.1.45` 不包含这一增量。
 
 1. 切换到 **Partner**，从首页任务卡直接选择专家，或通过 **Plugins（插件）** 打开专家库选择。
 2. 选择专家，说明目标并添加资料。专家的方法会用于当前 Partner 会话，继续使用 Space 中配置的模型。
@@ -546,6 +546,12 @@ Partner 已支持 Sources、KB、workspace-first Outputs、checkpointed writes�
 ### 12.2 连接外部资料
 
 连接器目录提供已实现服务的入口；每个服务支持的读取、创建或修改范围不同，以连接器详情和当前可用操作为准。先连接自己的账号，再为当前会话选择允许使用的账号与资料范围。安装内置库不会自动登录、授权全部资料或授予远端写入权限。
+
+需要本地运行组件的连接器，可在设置的扩展页面查看组件状态并按需安装或修复。组件安装和账号授权分开；未安装或下载失败不会阻止 Coder、Partner 启动。各组件支持的平台以界面实际状态为准。
+
+Coder 和 Partner 的普通网页链接均由系统浏览器打开。本地文件继续使用现有文件查看器；Partner 已保存的资料快照、成果卡和审核记录仍在 Space 内查看。在线文档或表格的成果卡提供明确的外部打开操作，恢复历史不会自动弹出网页。
+
+当前随包专家库可在专家和连接器管理之间直接切换。已安装的旧版库通过重新初始化页面兼容管理导航；请先保存页面中的编辑。此操作保留已安装的库、已保存专家和连接账号。
 
 远端创建需要明确的任务意图和对应权限，修改已有资源仍遵循该操作的审核流程。连接成功、创建成功与内容回读验证是不同状态；以任务回执及验证结果为准。目录中的连接器尚未全部通过真实账号验收，受服务权限、网络和账号配置影响。Coder 直接复用 Partner 专家、会话绑定和连接器入口留待后续集成。
 

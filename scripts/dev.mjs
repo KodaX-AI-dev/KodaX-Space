@@ -13,7 +13,6 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import waitOn from 'wait-on';
-import { resolveFeishuCliBuildPlan } from './feishu-cli-build-plan.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -181,12 +180,6 @@ if (await isPortOpen(VITE_HOST, VITE_PORT)) {
 // it compiled for plain Node, while Electron needs its own ABI. Check before
 // opening the desktop window so artifact catalog load does not fail mid-run.
 try {
-  const feishuCliBuildPlan = resolveFeishuCliBuildPlan([]);
-  run(
-    NODE,
-    [path.join(root, 'scripts/prepare-feishu-cli.mjs'), ...feishuCliBuildPlan.targets],
-    'prepare bundled Feishu CLI',
-  );
   run(
     NODE,
     [path.join(root, 'scripts/ensure-sqlite-native.mjs'), 'electron'],

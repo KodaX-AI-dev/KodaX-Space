@@ -78,13 +78,13 @@ test('task output details include verified direct documents and historical appen
     ],
   );
   assert.deepEqual(partnerDetailTargetForRemoteResult(entries[0]!), {
-    kind: 'browser',
+    kind: 'remoteResult',
     initialUrl: 'https://test.feishu.cn/docx/NewDocument',
     resourceKey: 'native-document-6:feishu:NewDocument',
     title: '新建文档',
   });
   assert.deepEqual(partnerDetailTargetForRemoteResult(entries[1]!), {
-    kind: 'browser',
+    kind: 'remoteResult',
     initialUrl: 'https://test.feishu.cn/docx/ExistingDocument',
     resourceKey: 'native-document-6:feishu:ExistingDocument',
     title: '已追加文档',

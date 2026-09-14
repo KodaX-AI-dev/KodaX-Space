@@ -3,6 +3,7 @@ import type {
   PartnerFeishuBaseCreateTaskT,
 } from '@kodax-space/space-ipc-schema';
 import { Database, ShieldCheck } from 'lucide-react';
+import { openExternalUrl } from '../../lib/openPath.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
 
 function fieldTypeLabel(field: FeishuBaseCreateFieldT, t: ReturnType<typeof useI18n>['t']): string {
@@ -79,6 +80,15 @@ export function PartnerFeishuBaseTaskPanel({
       <BaseTaskHeader task={task} />
       <BaseTaskMetadata task={task} />
       <BaseTaskFields fields={task.fields} />
+      {task.status === 'succeeded' && task.url && (
+        <button
+          type="button"
+          className="mt-4 rounded-md border border-border-default px-2 py-1 text-xs"
+          onClick={() => void openExternalUrl(task.url!)}
+        >
+          {t('partner.browser.openExternal')}
+        </button>
+      )}
 
       {task.error ? (
         <p role="alert" className="mt-4 break-words text-xs text-danger">

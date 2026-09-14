@@ -288,6 +288,7 @@ export interface FeishuOnboardingCliOptions {
   authProcessFactory?: (executable: string) => FeishuAuthProcess;
   installer?: {
     executable: string;
+    cachedArchive?: string;
     install: (signal: AbortSignal) => Promise<string>;
     installBundled?: (archive: string, signal: AbortSignal) => Promise<string>;
   };
@@ -296,6 +297,8 @@ export interface FeishuOnboardingCliOptions {
 /** Host-only dependencies are injectable; no caller-supplied shell, URL or scopes enter run. */
 export function createFeishuOnboardingCli(options: FeishuOnboardingCliOptions): {
   runner: FeishuCliRunner;
+  installComponent: (signal: AbortSignal) => Promise<void>;
+  inspectComponent: (signal: AbortSignal) => Promise<boolean>;
   run: (input: FeishuOnboardingInput) => Promise<void>;
 } {
   const source = options.env ?? process.env;
@@ -328,10 +331,37 @@ export function createFeishuOnboardingCli(options: FeishuOnboardingCliOptions): 
   const authFactory =
     options.authProcessFactory ??
     ((file) => createFeishuAuthProcess({ executable: file, env: source }));
-  const ensureManaged = async (signal: AbortSignal): Promise<string> => {
-    if (!options.bundledArchive) return executable();
-    if (!installer.installBundled) throw new FeishuOnboardingError('component_unavailable');
-    if (managedReady) return privatePath;
+  const restoreManaged = async (signal: AbortSignal): Promise<string> => {
+    if (!options.bundledArchive || !installer.installBundled)
+      throw new FeishuOnboardingError('component_unavailable');
+    try {
+      return await installer.installBundled(options.bundledArchive, signal);
+    } catch (error) {
+      if (
+        !(error instanceof FeishuOnboardingError) ||
+        error.code !== 'component_unavailable' ||
+        !installer.cachedArchive
+      )
+        throw error;
+      active(signal);
+      return installer.installBundled(installer.cachedArchive, signal);
+    }
+  };
+  const installFromSettings = async (signal: AbortSignal): Promise<string> => {
+    try {
+      await restoreManaged(signal);
+    } catch (error) {
+      if (!(error instanceof FeishuOnboardingError) || error.code !== 'component_unavailable')
+        throw error;
+      await installer.install(signal);
+    }
+    installedPrivate = true;
+    active(signal);
+    if (!(await compatible(runnerFactory(privatePath), signal)))
+      throw new FeishuOnboardingError('installation_failed');
+    return privatePath;
+  };
+  const prepareManaged = async (signal: AbortSignal, install = false): Promise<string> => {
     if (managedPreparation?.controller.signal.aborted) {
       const abandoned = managedPreparation;
       await abandoned.promise.catch(() => undefined);
@@ -342,7 +372,7 @@ export function createFeishuOnboardingCli(options: FeishuOnboardingCliOptions): 
       const controller = new AbortController();
       const preparation = {
         controller,
-        promise: installer.installBundled(options.bundledArchive, controller.signal),
+        promise: (install ? installFromSettings : restoreManaged)(controller.signal),
         waiters: 0,
         settled: false,
       };
@@ -367,6 +397,12 @@ export function createFeishuOnboardingCli(options: FeishuOnboardingCliOptions): 
       preparation.waiters--;
       if (!preparation.settled && preparation.waiters === 0) preparation.controller.abort();
     }
+  };
+  const ensureManaged = async (signal: AbortSignal): Promise<string> => {
+    if (!options.bundledArchive) return executable();
+    if (!installer.installBundled) throw new FeishuOnboardingError('component_unavailable');
+    if (managedReady) return privatePath;
+    return prepareManaged(signal);
   };
   const managedRunner: FeishuCliRunner = async (request) => {
     const signal = request.signal ?? NEVER_ABORTED_SIGNAL;
@@ -397,6 +433,29 @@ export function createFeishuOnboardingCli(options: FeishuOnboardingCliOptions): 
   };
   return {
     runner: managedRunner,
+    inspectComponent: async (signal) => {
+      if (
+        options.bundledArchive &&
+        !existsSync(options.bundledArchive) &&
+        (!installer.cachedArchive || !existsSync(installer.cachedArchive))
+      )
+        return false;
+      await ensureManaged(signal);
+      return compatible(runnerFactory(privatePath), signal);
+    },
+    installComponent: async (signal) => {
+      active(signal);
+      managedReady = false;
+      try {
+        await prepareManaged(signal, true);
+      } catch (error) {
+        active(signal);
+        // A pre-existing local preparation may have failed before Settings joined it.
+        if (!(error instanceof FeishuOnboardingError) || error.code !== 'component_unavailable')
+          throw error;
+        await prepareManaged(signal, true);
+      }
+    },
     run: async (input) => {
       try {
         active(input.signal);

@@ -7,6 +7,9 @@ import { chromium } from 'playwright';
 
 const browserPath = [
   chromium.executablePath(),
+  ...(process.platform === 'win32'
+    ? ['C:/Program Files/Google/Chrome/Application/chrome.exe']
+    : []),
   ...(process.platform === 'darwin'
     ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
     : []),
@@ -26,7 +29,7 @@ import {useSurfaceStore} from '../../store/surface.ts';
 import {useToastStore} from '../../store/toastStore.ts';
 import {Markdown} from '../session/messages/Markdown.tsx';
 import {usePartnerLinkDetails} from './partnerLinkDetails.ts';
-import {PARTNER_LINK_DETAIL_EVENT} from './partnerLinkEvents.ts';
+import {openConversationLink, PARTNER_LINK_DETAIL_EVENT} from './partnerLinkEvents.ts';
 const owner={sessionId:'resource-session',projectRoot:'/project'};
 const refs=['https://example.feishu.cn/docx/Doc1','notion://page/'+'a'.repeat(32),'airtable://base/app12345678901234/table/tbl12345678901234'];
 const sources=['Feishu note','Notion note','Airtable rows'].map((title,index)=>({
@@ -53,16 +56,17 @@ window.kodaxSpace={platform:'darwin',on:()=>()=>{},invoke:async(channel,input)=>
   const source=sources.find(source=>source.id===input.id);
   return ok({source:window.missingSource?null:window.wrongOwner?{...source,sessionId:'other-session'}:source});
  }
- if(channel==='shell.openExternal')return ok({opened:true});
+ if(channel==='shell.openExternal')return ok({opened: !window.externalFailure});
  return {ok:false,error:{message:'Fixture did not allow '+channel}};
 }};
 useSurfaceStore.getState().setSurface('partner');useAppStore.getState().setCurrentProject(owner.projectRoot);useAppStore.getState().setCurrentSession(owner.sessionId);
+window.openRawLink=openConversationLink;
 window.switchSession=()=>useAppStore.getState().setCurrentSession('other-session');
 window.switchSurface=surface=>useSurfaceStore.getState().setSurface(surface);
 window.getToasts=()=>useToastStore.getState().toasts;
 window.requestMailLink=()=>window.dispatchEvent(new CustomEvent(PARTNER_LINK_DETAIL_EVENT,{detail:{context:owner,href:'mail://qq/inbox/99/42'}}));
 window.requestStaleLink=()=>window.dispatchEvent(new CustomEvent(PARTNER_LINK_DETAIL_EVENT,{detail:{context:owner,href:'https://stale.test/'}}));
-function App(){const [request,setRequest]=useState(null);const revision=useRef(0);const onOpen=useCallback(target=>{window.lastTarget=target;setRequest({revision:++revision.current,target});},[]);usePartnerLinkDetails(onOpen);return <><Markdown content={'[Created document]('+createdTask.canonicalUrl+') [Web page](https://example.org/guide) [Saved Feishu]('+refs[0]+') [Saved Notion]('+refs[1]+') [Saved Airtable]('+refs[2]+') [Missing Notion](notion://page/'+'b'.repeat(32)+') [Unsafe URL](https://user:password@example.org/) [Script](javascript:alert(1))'+(window.apiSources?apiSources.map(([id,title,url])=>' [Chat '+title+']('+url+')').join(''):'')}/><PartnerRemoteRecords kind="results" onOpenDetail={onOpen}/><PartnerContextRail onAddMaterial={()=>{}} onOpenDetail={onOpen}/><PartnerRightSidebar open openRequest={request} onConsumeOpenRequest={consumed=>{window.consumed.push(consumed);setRequest(current=>current?.revision===consumed?null:current);}}/></>;}
+function App(){const [request,setRequest]=useState(null);const revision=useRef(0);const onOpen=useCallback(target=>{window.lastTarget=target;setRequest({revision:++revision.current,target});},[]);usePartnerLinkDetails(onOpen);return <><Markdown content={'[Created document]('+createdTask.canonicalUrl+') [Chinese URL](https://example.org/中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中) [Web page](https://example.org/guide) [Saved Feishu]('+refs[0]+') [Saved Notion]('+refs[1]+') [Saved Airtable]('+refs[2]+') [Missing Notion](notion://page/'+'b'.repeat(32)+') [Unsafe URL](https://user:password@example.org/) [Script](javascript:alert(1))'+(window.apiSources?apiSources.map(([id,title,url])=>' [Chat '+title+']('+url+')').join(''):'')}/><PartnerRemoteRecords kind="results" onOpenDetail={onOpen}/><PartnerContextRail onAddMaterial={()=>{}} onOpenDetail={onOpen}/><PartnerRightSidebar open openRequest={request} onConsumeOpenRequest={consumed=>{window.consumed.push(consumed);setRequest(current=>current?.revision===consumed?null:current);}}/></>;}
 createRoot(document.getElementById('root')).render(<I18nProvider><PartnerRemoteRecordsProvider><App/></PartnerRemoteRecordsProvider></I18nProvider>);
 `;
 
@@ -154,7 +158,7 @@ for (const title of ['Feishu note', 'Notion note', 'Airtable rows']) {
       await panel.getByText('Saved ' + title + ' body.', { exact: true }).waitFor();
       assert.equal(await page.getByTestId('partner-browser-webview').count(), 0);
       assert.equal(
-        await panel.getByRole('button', { name: 'Open webpage', exact: true }).count(),
+        await panel.getByRole('button', { name: 'Open in system browser', exact: true }).count(),
         title === 'Feishu note' ? 1 : 0,
       );
       const calls = await page.evaluate(() => Reflect.get(window, 'calls'));
@@ -213,136 +217,58 @@ test(
 );
 
 test(
-  'chat HTTP links use the production Partner event and typed browser details',
+  'ordinary chat links open externally without creating a browser tab',
   { skip: !browserPath },
   async (t) => {
     const page = await openFixture(t);
     await page.getByRole('link', { name: 'Web page', exact: true }).click();
-    const webview = page.getByTestId('partner-browser-webview');
-    await webview.waitFor({ state: 'attached' });
-    assert.equal(await webview.getAttribute('src'), 'https://example.org/guide');
-    await page.getByRole('link', { name: 'Web page', exact: true }).click();
-    assert.equal(await page.getByTestId('partner-browser-panel').count(), 1);
-    assert.equal(
-      (await page.evaluate(() => Reflect.get(window, 'calls'))).filter(
+    const calls = await page.evaluate(() =>
+      Reflect.get(window, 'calls').filter(
         (call: { channel: string }) => call.channel === 'shell.openExternal',
-      ).length,
+      ),
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].input.url, 'https://example.org/guide');
+    assert.equal(await page.locator('webview').count(), 0);
+  },
+);
+
+test(
+  'restored connector results remain local until explicitly opened in the system browser',
+  { skip: !browserPath },
+  async (t) => {
+    const page = await openFixture(t);
+    const card = page.getByTestId('partner-remote-results');
+    await card.getByRole('button', { name: 'View details', exact: true }).click();
+    const detail = page.getByTestId('partner-remote-result-detail');
+    await detail.getByText('https://example.feishu.cn/docx/NewDocument', { exact: true }).waitFor();
+    assert.equal(
+      await page.evaluate(
+        () =>
+          Reflect.get(window, 'calls').filter(
+            (call: { channel: string }) => call.channel === 'shell.openExternal',
+          ).length,
+      ),
       0,
     );
-    await page.getByRole('button', { name: 'Open in system browser', exact: true }).click();
+    await detail.getByRole('button', { name: 'Open in system browser', exact: true }).click();
     assert.equal(
-      (await page.evaluate(() => Reflect.get(window, 'calls'))).filter(
-        (call: { channel: string }) => call.channel === 'shell.openExternal',
-      ).length,
+      await page.evaluate(
+        () =>
+          Reflect.get(window, 'calls').filter(
+            (call: { channel: string }) => call.channel === 'shell.openExternal',
+          ).length,
+      ),
       1,
     );
-  },
-);
-
-test(
-  'reopening a created result after address navigation returns to its URL and retains browser history',
-  { skip: !browserPath },
-  async (t) => {
-    const page = await openFixture(t);
-    await page
-      .getByTestId('partner-remote-results')
-      .getByRole('button', { name: 'View details', exact: true })
-      .click();
-    const webview = page.getByTestId('partner-browser-webview');
-    await webview.waitFor({ state: 'attached' });
-    const tabId = await page.getByRole('tab', { selected: true }).getAttribute('id');
-    const address = page.getByRole('textbox', { name: 'Web address', exact: true });
-    await address.fill('https://example.org/other');
-    await address.press('Enter');
-    await page.waitForFunction(
-      () => document.querySelector('webview')?.getAttribute('src') === 'https://example.org/other',
-    );
-    await page.getByRole('link', { name: 'Created document', exact: true }).click();
-    await page.waitForFunction(
-      () =>
-        document.querySelector('webview')?.getAttribute('src') ===
-        'https://example.feishu.cn/docx/NewDocument',
-    );
+    await card.getByRole('button', { name: 'View details', exact: true }).click();
     assert.equal(await page.getByRole('tab').count(), 1);
-    assert.equal(await page.getByRole('tab', { selected: true }).getAttribute('id'), tabId);
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    assert.equal(await webview.getAttribute('src'), 'https://example.org/other');
-    await page.getByRole('button', { name: 'Forward', exact: true }).click();
-    assert.equal(await webview.getAttribute('src'), 'https://example.feishu.cn/docx/NewDocument');
+    assert.equal(await page.locator('webview').count(), 0);
   },
 );
 
 test(
-  'reopening a result after guest link navigation sends the existing tab back to its URL',
-  { skip: !browserPath },
-  async (t) => {
-    const page = await openFixture(t);
-    await page
-      .getByTestId('partner-remote-results')
-      .getByRole('button', { name: 'View details', exact: true })
-      .click();
-    const webview = page.getByTestId('partner-browser-webview');
-    await webview.waitFor({ state: 'attached' });
-    const originalGuest = await webview.elementHandle();
-    assert.ok(originalGuest);
-    // In-page navigation changes getURL while the host's src attribute stays unchanged.
-    await originalGuest.evaluate((element) => {
-      Reflect.set(element, 'getURL', () => 'https://example.org/guest-destination');
-      element.dispatchEvent(new Event('did-stop-loading'));
-    });
-    await page.waitForFunction(
-      () =>
-        document.querySelector<HTMLInputElement>('input[inputmode="url"]')?.value ===
-        'https://example.org/guest-destination',
-    );
-    await page.getByRole('link', { name: 'Created document', exact: true }).click();
-    await page.waitForFunction(
-      () =>
-        document.querySelector<HTMLInputElement>('input[inputmode="url"]')?.value ===
-        'https://example.feishu.cn/docx/NewDocument',
-    );
-    assert.equal(
-      await originalGuest.evaluate((element) => element.isConnected),
-      false,
-      'Reopening must navigate the guest, not only change the address field.',
-    );
-    assert.equal(await page.getByRole('tab').count(), 1);
-    assert.equal(await webview.getAttribute('src'), 'https://example.feishu.cn/docx/NewDocument');
-  },
-);
-
-for (const first of ['result', 'chat'] as const) {
-  test(
-    `created results and chat links reuse their existing browser tab and consume both requests: ${first} first`,
-    { skip: !browserPath },
-    async (t) => {
-      const page = await openFixture(t);
-      const result = page
-        .getByTestId('partner-remote-results')
-        .getByRole('button', { name: 'View details', exact: true });
-      const chat = page.getByRole('link', { name: 'Created document', exact: true });
-      await (first === 'result' ? result : chat).click();
-      await page.getByTestId('partner-browser-webview').waitFor({ state: 'attached' });
-      const tab = page.getByRole('tab', { selected: true });
-      const id = await tab.getAttribute('id');
-      const title = await tab.textContent();
-      await page.waitForFunction(() => Reflect.get(window, 'consumed').length === 1);
-      await (first === 'result' ? chat : result).click();
-      await page.waitForFunction(() => Reflect.get(window, 'consumed').length === 2);
-      assert.equal(await page.getByRole('tab').count(), 1);
-      assert.equal(await page.getByRole('tab', { selected: true }).getAttribute('id'), id);
-      assert.equal(await page.getByRole('tab', { selected: true }).textContent(), title);
-      assert.equal(await page.getByTestId('partner-browser-panel').count(), 1);
-      assert.equal(
-        await page.getByTestId('partner-browser-webview').getAttribute('src'),
-        'https://example.feishu.cn/docx/NewDocument',
-      );
-    },
-  );
-}
-
-test(
-  'chat source links reuse saved Feishu, Notion and Airtable details without remote reads',
+  'internal chat source links reuse saved Notion and Airtable details without remote reads',
   { skip: !browserPath },
   async (t) => {
     const page = await openFixture(t);
@@ -351,7 +277,6 @@ test(
       .getByRole('button', { name: 'Notion note', exact: true })
       .waitFor();
     for (const [label, title] of [
-      ['Saved Feishu', 'Feishu note'],
       ['Saved Notion', 'Notion note'],
       ['Saved Airtable', 'Airtable rows'],
     ]) {
@@ -372,7 +297,7 @@ test(
     );
     assert.equal(
       channels.filter((channel: string) => channel === 'partner.connectors.sources.get').length,
-      3,
+      2,
     );
     assert.equal(
       channels.some(
@@ -387,13 +312,12 @@ test(
 );
 
 test(
-  'unrecorded internal references provide feedback and unsafe links never open a view',
+  'unrecorded internal references provide feedback and script links never open a view',
   { skip: !browserPath },
   async (t) => {
     const page = await openFixture(t);
     await page.getByRole('link', { name: 'Missing Notion', exact: true }).click();
     assert.equal((await page.evaluate(() => Reflect.get(window, 'getToasts')())).length, 1);
-    await page.getByRole('link', { name: 'Unsafe URL', exact: true }).click();
     assert.equal(await page.getByTestId('partner-browser-panel').count(), 0);
     assert.equal(await page.getByTestId('partner-remote-source-panel').count(), 0);
     assert.equal(await page.getByText('Script', { exact: true }).getAttribute('href'), '');
@@ -492,7 +416,7 @@ test(
 );
 
 test(
-  'Slack, Zoom and GitHub sources and chat links reuse shared details without remote connector dispatch',
+  'Slack, Zoom and GitHub saved sources stay visible while webpage links open externally',
   { skip: !browserPath },
   async (t) => {
     const page = await openFixture(t, { apiSources: true });
@@ -501,13 +425,19 @@ test(
       ['Zoom snapshot', 'https://zoom.us/j/12345678901'],
       ['GitHub snapshot', 'https://github.com/octocat/repo/issues/1'],
     ]) {
-      await page.getByTestId('partner-context-rail').getByRole('button', { name, exact: true }).click();
+      await page
+        .getByTestId('partner-context-rail')
+        .getByRole('button', { name, exact: true })
+        .click();
       const panel = page.getByTestId('partner-remote-source-panel');
       await panel.getByText('Saved ' + name + ' body.', { exact: true }).waitFor();
-      await panel.getByRole('button', { name: 'Open webpage', exact: true }).click();
-      const browserPanel = page.locator('[data-testid=partner-browser-panel]:visible');
-      await browserPanel.waitFor();
-      assert.equal(await browserPanel.locator('input').inputValue(), url);
+      await panel.getByRole('button', { name: 'Open in system browser', exact: true }).click();
+      const external = await page.evaluate(() =>
+        Reflect.get(window, 'calls').filter(
+          (call: { channel: string }) => call.channel === 'shell.openExternal',
+        ),
+      );
+      assert.equal(external.at(-1).input.url, url);
       await page.getByRole('link', { name: 'Chat ' + name, exact: true }).click();
       await panel.getByText('Saved ' + name + ' body.', { exact: true }).waitFor();
       const target = await page.evaluate(() => Reflect.get(window, 'lastTarget'));
@@ -535,11 +465,11 @@ test(
     for (const next of ['none', 'web', 'session'])
       await t.test(next, async (t) => {
         const page = await openFixture(t, { apiSources: true, holdRecords: true });
-        await page.getByRole('link', { name: 'Chat GitHub snapshot', exact: true }).waitFor();
+        await page.getByRole('link', { name: 'Saved Notion', exact: true }).waitFor();
         await page.waitForFunction(
           () => typeof Reflect.get(window, 'finishRecords') === 'function',
         );
-        await page.getByRole('link', { name: 'Chat GitHub snapshot', exact: true }).click();
+        await page.getByRole('link', { name: 'Saved Notion', exact: true }).click();
         assert.equal(await page.evaluate(() => Reflect.get(window, 'lastTarget')), undefined);
         if (next === 'web') await page.getByRole('link', { name: 'Web page', exact: true }).click();
         if (next === 'session') await page.evaluate(() => Reflect.get(window, 'switchSession')());
@@ -547,16 +477,13 @@ test(
         if (next === 'none')
           await page
             .getByTestId('partner-remote-source-panel')
-            .getByText('Saved GitHub snapshot body.', { exact: true })
+            .getByText('Saved Notion note body.', { exact: true })
             .waitFor();
         else {
           await page.waitForFunction(() => !Reflect.get(window, 'holdRecords'));
           const target = await page.evaluate(() => Reflect.get(window, 'lastTarget'));
-          assert.equal(target?.kind, next === 'web' ? 'browser' : undefined);
-          assert.equal(
-            await page.getByText('Saved GitHub snapshot body.', { exact: true }).count(),
-            0,
-          );
+          assert.equal(target?.kind, undefined);
+          assert.equal(await page.getByText('Saved Notion note body.', { exact: true }).count(), 0);
         }
         assert.equal(
           await page.evaluate(
@@ -568,5 +495,58 @@ test(
           0,
         );
       });
+  },
+);
+
+for (const surface of ['coder', 'partner']) {
+  test(
+    `ordinary Chinese HTTP links open in the system browser in ${surface}`,
+    { skip: !browserPath },
+    async (t) => {
+      const page = await openFixture(t);
+      await page.evaluate((surface) => Reflect.get(window, 'switchSurface')(surface), surface);
+      await page.getByRole('link', { name: 'Chinese URL', exact: true }).click();
+      await page.waitForFunction(() =>
+        Reflect.get(window, 'calls').some(
+          (call: { channel: string }) => call.channel === 'shell.openExternal',
+        ),
+      );
+      const calls = await page.evaluate(() =>
+        Reflect.get(window, 'calls').filter(
+          (call: { channel: string }) => call.channel === 'shell.openExternal',
+        ),
+      );
+      assert.equal(calls.length, 1);
+      assert.equal(decodeURI(calls[0].input.url), 'https://example.org/' + '中'.repeat(240));
+      await page.evaluate(
+        (url) => Reflect.get(window, 'openRawLink')(url),
+        'https://example.org/' + '中'.repeat(240),
+      );
+      const raw = await page.evaluate(() =>
+        Reflect.get(window, 'calls')
+          .filter((call: { channel: string }) => call.channel === 'shell.openExternal')
+          .at(-1),
+      );
+      assert.equal(raw.input.url, 'https://example.org/' + '中'.repeat(240));
+      assert.equal(await page.locator('webview').count(), 0);
+    },
+  );
+}
+
+test(
+  'a failed system-browser launch shows feedback and keeps saved source details usable',
+  { skip: !browserPath },
+  async (t) => {
+    const page = await openFixture(t, { externalFailure: true });
+    await page.getByRole('link', { name: 'Web page', exact: true }).click();
+    assert.equal((await page.evaluate(() => Reflect.get(window, 'getToasts')())).length, 1);
+    await page
+      .getByTestId('partner-context-rail')
+      .getByRole('button', { name: 'Feishu note', exact: true })
+      .click();
+    await page
+      .getByTestId('partner-remote-source-panel')
+      .getByText('Saved Feishu note body.', { exact: true })
+      .waitFor();
   },
 );

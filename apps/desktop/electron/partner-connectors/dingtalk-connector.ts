@@ -241,6 +241,12 @@ export function createDingtalkConnector(options: DingtalkOptions): ReadConnector
   };
   return {
     id: 'dingtalk-cli',
+    component: {
+      version: VERSION,
+      supported,
+      inspect: verifyInstall,
+      install: (signal) => installer.install(signal, true),
+    },
     acceptsResource(value) {
       try {
         dingtalkNodeId(value);

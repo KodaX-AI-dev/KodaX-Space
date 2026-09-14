@@ -1,14 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  symlink,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -16,6 +8,7 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import JSZip from 'jszip';
 import { createFeishuCliInstaller } from './feishu-cli-install.js';
 import { FeishuOnboardingError } from './feishu-auth-process.js';
+import { createFeishuOnboardingCli } from './feishu-onboarding-cli.js';
 
 function archive(contents: string, name = 'lark-cli', type = '0'): Buffer {
   const body = Buffer.from(contents);
@@ -32,6 +25,61 @@ function archive(contents: string, name = 'lark-cli', type = '0'): Buffer {
     Buffer.concat([header, body, Buffer.alloc(((512 - (body.length % 512)) % 512) + 1024)]),
   );
 }
+
+test('Settings installation remains available after restart without a bundled archive or network', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'space-feishu-settings-'));
+  const data = archive('settings native executable');
+  let downloads = 0;
+  const options = {
+    root,
+    platform: 'darwin' as const,
+    arch: 'arm64',
+    expectedDigest: createHash('sha256').update(data).digest('hex'),
+    fetch: async () => {
+      assert.equal(downloads++, 0, 'restart and normal requests must not download');
+      return new Response(new Uint8Array(data));
+    },
+    verifyBinary: async (file: string) =>
+      (await readFile(file, 'utf8')) === 'settings native executable',
+  };
+  const make = () =>
+    createFeishuOnboardingCli({
+      root,
+      bundledArchive: path.join(root, 'missing-bundle.tar.gz'),
+      installer: createFeishuCliInstaller(options),
+      env: { KODAX_SPACE_FEISHU_CLI: 'untrusted-path' },
+      runnerFactory:
+        (file) =>
+        async ({ args }) => {
+          assert.equal(file, createFeishuCliInstaller(options).executable);
+          assert.deepEqual(
+            args,
+            ['--version'],
+            'component installation never creates an app or authorizes',
+          );
+          return { exitCode: 0, stdout: 'lark-cli version 1.0.92', stderr: '' };
+        },
+      authProcessFactory: () => async () => {
+        throw new Error('must not authorize');
+      },
+    });
+  try {
+    await make().installComponent(new AbortController().signal);
+    const restarted = make();
+    await restarted.runner({ args: ['--version'] });
+    await restarted.runner({ args: ['--version'] });
+    assert.equal(downloads, 1);
+    await writeFile(path.join(root, 'missing-bundle.tar.gz'), 'damaged packaged archive');
+    await writeFile(createFeishuCliInstaller(options).executable, 'damaged');
+    await make().runner({ args: ['--version'] });
+    assert.equal(
+      await readFile(createFeishuCliInstaller(options).executable, 'utf8'),
+      'settings native executable',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('installer verifies and atomically publishes only the pinned native binary to its private directory', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'space-feishu-install-test-'));
@@ -436,7 +484,11 @@ test('checksum, path traversal, links, foreign redirects, cancelled downloads an
 test('private installation rejects a symlinked tool directory instead of modifying its target', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'space-feishu-install-test-'));
   const outside = await mkdtemp(path.join(tmpdir(), 'space-feishu-outside-test-'));
-  await symlink(outside, path.join(root, 'feishu-cli'));
+  await symlink(
+    outside,
+    path.join(root, 'feishu-cli'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
   const installer = createFeishuCliInstaller({
     root,
     platform: 'linux',
@@ -461,7 +513,11 @@ test('an existing binary behind a symlinked platform directory is not executed f
   const outside = await mkdtemp(path.join(tmpdir(), 'space-feishu-outside-test-'));
   await mkdir(path.join(root, 'feishu-cli', '1.0.92'), { recursive: true });
   await writeFile(path.join(outside, 'lark-cli'), 'untrusted executable');
-  await symlink(outside, path.join(root, 'feishu-cli', '1.0.92', 'darwin-arm64'));
+  await symlink(
+    outside,
+    path.join(root, 'feishu-cli', '1.0.92', 'darwin-arm64'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
   let probes = 0;
   const installer = createFeishuCliInstaller({
     root,

@@ -597,7 +597,7 @@ test(
     );
     await dialog
       .getByText(
-        'The Feishu connection component is unavailable. Update or reinstall KodaX Space.',
+        'The Feishu connection component is unavailable. Install or repair it in Settings → Extensions → Connector components.',
         { exact: true },
       )
       .waitFor();

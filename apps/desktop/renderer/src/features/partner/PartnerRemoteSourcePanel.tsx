@@ -11,16 +11,10 @@ import {
   requestPartnerConnectorDetail,
   usePartnerConnectors,
 } from '../extensions/PartnerConnectorProvider.js';
-import type { PartnerDetailOpenTarget } from './partnerDetailWorkspace.js';
+import { openExternalUrl } from '../../lib/openPath.js';
 
 /** Loads the authorized local snapshot, independently of the provider's web URL format. */
-export function PartnerRemoteSourcePanel({
-  sourceId,
-  onOpenDetail,
-}: {
-  readonly sourceId: string;
-  readonly onOpenDetail: (target: PartnerDetailOpenTarget) => void;
-}): JSX.Element {
+export function PartnerRemoteSourcePanel({ sourceId }: { readonly sourceId: string }): JSX.Element {
   const { t } = useI18n();
   const projectRoot = useAppStore((state) => state.currentProjectPath);
   const sessionId = useAppStore((state) => state.currentSessionId);
@@ -121,16 +115,9 @@ export function PartnerRemoteSourcePanel({
               <button
                 type="button"
                 className="rounded-md border border-border-default px-2 py-1"
-                onClick={() =>
-                  onOpenDetail({
-                    kind: 'browser',
-                    initialUrl: resource.webUrl,
-                    resourceKey: `web-${resource.webUrl}`,
-                    title: source.title,
-                  })
-                }
+                onClick={() => void openExternalUrl(resource.webUrl!)}
               >
-                {t('connectors.openWebpage')}
+                {t('partner.browser.openExternal')}
               </button>
             )}
             {catalogEntry && (

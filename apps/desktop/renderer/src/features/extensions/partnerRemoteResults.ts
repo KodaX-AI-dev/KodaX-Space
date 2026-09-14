@@ -61,7 +61,7 @@ export function partnerDetailTargetForRemoteResult(
   entry: PartnerRemoteResultEntry,
 ): PartnerDetailOpenTarget {
   return {
-    kind: 'browser',
+    kind: 'remoteResult',
     initialUrl: entry.url,
     resourceKey: entry.resourceKey,
     title: entry.title,

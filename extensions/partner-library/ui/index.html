@@ -1346,9 +1346,9 @@
           } else if (
             message.type === 'space-extension.navigate.v1' &&
             message.token === token &&
-            message.tab === 'connectors'
+            (message.tab === 'connectors' || message.tab === 'experts')
           ) {
-            selectTab(document.getElementById('connectors-tab'));
+            selectTab(document.getElementById(`${message.tab}-tab`));
           } else if (message.type === 'space-extension.response.v1' && message.token === token) {
             const entry = pending.get(message.requestId);
             if (!entry) return;
@@ -1388,7 +1388,7 @@
             expertTypeTabs[index].focus();
           });
         }
-        window.parent.postMessage({ type: 'space-extension.ready.v1' }, '*');
+        window.parent.postMessage({ type: 'space-extension.ready.v1', supportsBidirectionalNavigation: true }, '*');
         const tabs = [...document.querySelectorAll('.tabs > [role="tab"]')];
         function selectTab(selected) {
           for (const tab of tabs) {

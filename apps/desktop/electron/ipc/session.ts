@@ -1253,6 +1253,9 @@ function retainedConnectorBindings(
       binding.extensionId !== selection.extensionId ||
       binding.connectorId !== selection.connectorId ||
       binding.connectionRevision !== selection.connectionRevision ||
+      binding.adapter !== selection.adapter ||
+      binding.mailbox !== selection.mailbox ||
+      binding.allowCreateDocument !== selection.allowCreateDocument ||
       binding.createFolderUrl !== selection.createFolderUrl ||
       binding.createBaseFolderUrl !== selection.createBaseFolderUrl ||
       binding.documents.length !== selection.documents.length ||

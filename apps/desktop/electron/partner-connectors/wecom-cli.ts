@@ -300,6 +300,12 @@ export function createWecomConnector(options: WecomConnectorOptions): ReadConnec
   };
   return {
     id: 'wecom-cli',
+    component: {
+      version: VERSION,
+      supported,
+      inspect: installed,
+      install: (signal) => installer.install(signal, true),
+    },
     inspect,
     isAuthorizationUrl: isWecomAuthorizationUrl,
     acceptsResource: (value) => !!documentId(value),

@@ -1068,6 +1068,6 @@ test('inspect refuses unverified users, foreign brands, unsupported versions and
   });
   assert.deepEqual(await missing.inspect('partner'), {
     installed: false,
-    reason: '飞书连接组件不可用，请更新或重新安装 KodaX Space。',
+    reason: '飞书连接组件不可用，请在设置 → 扩展 → 连接器组件中安装或修复。',
   });
 });

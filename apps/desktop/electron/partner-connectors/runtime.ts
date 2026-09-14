@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { PartnerConnectorComponents } from './components.js';
+import { FEISHU_CLI_RELEASE, FEISHU_CLI_VERSION } from './feishu-cli-release.js';
 import { fileURLToPath } from 'node:url';
 import { getSpaceDataDir } from '../kodax/data-paths.js';
 import { adminPolicyAuditStore } from '../kodax/admin-policy-audit-store.js';
@@ -68,6 +70,30 @@ const cli = () =>
       ...runtimeEnvironment,
     }),
   }));
+let privateConnectors: ReturnType<typeof createPrivateConnectors> | undefined;
+function createPrivateConnectors() {
+  const options = { root: path.join(getSpaceDataDir(), 'partner-connectors') };
+  return {
+    'wecom-cli': createWecomConnector(options),
+    'dingtalk-cli': createDingtalkConnector(options),
+    'tencent-meeting-cli': createTencentMeetingConnector(options),
+  };
+}
+const getPrivateConnectors = () => (privateConnectors ??= createPrivateConnectors());
+let components: PartnerConnectorComponents | undefined;
+export function getPartnerConnectorComponents(): PartnerConnectorComponents {
+  return (components ??= new PartnerConnectorComponents({
+    'feishu-cli': {
+      version: FEISHU_CLI_VERSION,
+      supported: `${process.platform}-${process.arch}` in FEISHU_CLI_RELEASE.assets,
+      inspect: (signal) => cli().inspectComponent(signal),
+      install: (signal) => cli().installComponent(signal),
+    },
+    ...Object.fromEntries(
+      Object.entries(getPrivateConnectors()).map(([id, adapter]) => [id, adapter.component!]),
+    ),
+  }));
+}
 let policyRevision = 0;
 export function invalidateConnectorPolicy(): void {
   policyRevision++;
@@ -92,15 +118,7 @@ export function getPartnerConnectorService(): PartnerConnectorService {
         ...createOfficialRemoteConnectorBundle({
           root: path.join(getSpaceDataDir(), 'partner-connectors'),
         }),
-        'wecom-cli': createWecomConnector({
-          root: path.join(getSpaceDataDir(), 'partner-connectors'),
-        }),
-        'dingtalk-cli': createDingtalkConnector({
-          root: path.join(getSpaceDataDir(), 'partner-connectors'),
-        }),
-        'tencent-meeting-cli': createTencentMeetingConnector({
-          root: path.join(getSpaceDataDir(), 'partner-connectors'),
-        }),
+        ...getPrivateConnectors(),
       },
       revokeConnections: (extensionId) =>
         tasks?.cancelForExtension(extensionId) ?? Promise.resolve(),
@@ -144,5 +162,5 @@ export function getPartnerConnectorTasks(): PartnerConnectorTasks {
 }
 
 export async function disposePartnerConnectorTasks(): Promise<void> {
-  await tasks?.dispose();
+  await Promise.all([tasks?.dispose(), components?.dispose()]);
 }

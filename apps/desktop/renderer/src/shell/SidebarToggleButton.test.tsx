@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { afterEach, beforeEach, mock } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '../i18n/I18nProvider.js';
 import { SidebarToggleButton } from './SidebarToggleButton.js';
+
+beforeEach(() => mock.getter(globalThis, 'navigator', () => ({ languages: ['en-US'] })));
+afterEach(() => mock.restoreAll());
 
 function renderToggle(open: boolean): string {
   return renderToStaticMarkup(

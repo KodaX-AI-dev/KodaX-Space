@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstat, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { ReadConnectorError } from './read-connector.js';
@@ -17,7 +17,7 @@ export interface ProviderCliAsset {
 }
 export interface ProviderCliInstaller {
   executable: string;
-  install: (signal: AbortSignal) => Promise<string>;
+  install: (signal: AbortSignal, repair?: boolean) => Promise<string>;
 }
 export interface ProviderCliInstallerOptions {
   root: string;
@@ -50,7 +50,7 @@ function extract(archive: Buffer, asset: ProviderCliAsset): Buffer {
   const seen = new Set<string>();
   let binary: Buffer | undefined;
   let offset = 0;
-  for (; offset + 512 <= tar.length;) {
+  for (; offset + 512 <= tar.length; ) {
     const header = tar.subarray(offset, offset + 512);
     if (header.every((byte) => byte === 0)) break;
     const name = header.subarray(0, 100).toString('utf8').split('\0')[0];
@@ -198,7 +198,7 @@ export function createProviderCliInstaller(
   const executable = path.join(directory, executableName);
   return {
     executable,
-    install: async (signal) => {
+    install: async (signal, repair = false) => {
       active(signal);
       if (!options.asset) throw new ReadConnectorError('unsupported_platform');
       const deadline = new AbortController();
@@ -210,10 +210,11 @@ export function createProviderCliInstaller(
         await ensureProviderDirectory(parent);
         if (await existing(executable)) {
           await ensureProviderDirectory(directory);
-          if (!(await options.verifyBinary(executable, bounded)))
-            throw new ReadConnectorError('installation_failed');
-          active(bounded);
-          return executable;
+          if (await options.verifyBinary(executable, bounded)) {
+            active(bounded);
+            return executable;
+          }
+          if (!repair) throw new ReadConnectorError('installation_failed');
         }
         const archive = await download(options.asset, bounded, options.fetch ?? globalThis.fetch);
         const binary = extract(archive, options.asset);
@@ -224,6 +225,14 @@ export function createProviderCliInstaller(
         if (!(await options.verifyBinary(temporary, bounded)))
           throw new ReadConnectorError('installation_failed');
         active(bounded);
+        if (await existing(executable)) {
+          await ensureProviderDirectory(directory);
+          const entries = await readdir(directory);
+          if (entries.length !== 1 || entries[0] !== executableName)
+            throw new ReadConnectorError('installation_failed');
+          await rm(executable);
+          await rmdir(directory);
+        }
         await rename(staging, directory);
         staging = undefined;
         active(bounded);

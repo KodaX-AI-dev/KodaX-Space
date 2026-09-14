@@ -25,6 +25,57 @@ const granted = [
   'offline_access',
 ];
 
+test('Settings repair shares one preparation with existing session requests and survives one waiter cancellation', async () => {
+  let installations = 0;
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let preparationSignal: AbortSignal | undefined;
+  const cli = createFeishuOnboardingCli({
+    root: '/private',
+    bundledArchive: '/bundle/archive',
+    env: {},
+    installer: {
+      executable: '/private/lark-cli',
+      install: async () => {
+        throw new Error('must not download');
+      },
+      installBundled: async (_archive, signal) => {
+        installations++;
+        preparationSignal = signal;
+        await gate;
+        assert.equal(signal.aborted, false);
+        return '/private/lark-cli';
+      },
+    },
+    runnerFactory: () => async () => ({
+      exitCode: 0,
+      stdout: 'lark-cli version 1.0.92',
+      stderr: '',
+    }),
+  });
+  const installing = cli.installComponent(new AbortController().signal);
+  const requestAbort = new AbortController();
+  const request = cli.runner({ args: ['profile', 'list'], signal: requestAbort.signal });
+  try {
+    await Promise.resolve();
+    assert.equal(installations, 1, 'only one preparation may replace the shared binary');
+    requestAbort.abort();
+    await assert.rejects(request, { code: 'cancelled' });
+    assert.equal(
+      preparationSignal?.aborted,
+      false,
+      'a cancelled request does not cancel Settings installation',
+    );
+  } finally {
+    release!();
+    await Promise.allSettled([request, installing]);
+  }
+  await cli.runner({ args: ['--version'] });
+  assert.equal(installations, 1);
+});
+
 test('public onboarding runs app creation then exact document and Base authorization and emits only safe progress', async () => {
   const calls: readonly string[][] = [];
   const commands: string[][] = [...calls];

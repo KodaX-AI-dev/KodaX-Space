@@ -14,8 +14,19 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+---
+
+## [0.1.46-beta.4] - 2026-09-14
+
 ### Fixed
 
+- **Coder/Partner integration compatibility**: Keep ordinary web links in the system
+  browser and remove the Partner embedded browser. Preserve file previews, saved source
+  snapshots and result cards. Correct connector permission changes when another binding
+  is removed, and allow the existing library frame to switch back from connectors to experts.
+- **Optional connector components**: Development startup no longer downloads Feishu.
+  Settings provides explicit component preparation separately from account authorization;
+  installed components retain their version/integrity checks and work after restart.
 - **Issue 215 — pasted-image fallback validation**: Use the optional new SDK media
   validator before saving attachments. Reject confirmed corrupt images with a recovery
   instruction, preserve valid WebP when normalization lacks its codec, and retain the
@@ -25,12 +36,25 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
   through the existing Runtime; retain all rc.4 capability requirements. Release checks
   exercise the actual packaged image decoder, including its Worker and WASM dependency,
   and verify repaired image files can be read again without changing original history.
+- Keep the bundled-Partner browser suites and Feishu document-service probes green on
+  shared CI runners: their 3-5s action budgets and ~500ms task poll were contention-fragile
+  beside the full unit suite; every assertion stays strict while the waits become bounded
+  and CI-tolerant.
+
+### Notes
+
+- v0.1.46-beta.3 was a transitional release: it bundled the Partner library (PR #5) without
+  the rc.5/Issue 215 work in this section, and its CI needed reruns for shared-runner Partner
+  test flakes. Its GitHub release was withdrawn at maintainer decision (the tag remains as
+  history); beta.4 is being prepared to carry both the Partner integration and the rc.5
+  alignment.
 
 ---
 
 ## [0.1.46-beta.3] - 2026-09-14
 
-Release candidate; publication is tracked in [release readiness](https://github.com/KodaX-AI-dev/KodaX-Space/blob/main/docs/releases/v0.1.46-beta.3-release-readiness.md).
+Transitional release; tag retained as history, GitHub release withdrawn in favor of
+v0.1.46-beta.4. Readiness record: [release readiness](https://github.com/KodaX-AI-dev/KodaX-Space/blob/main/docs/releases/v0.1.46-beta.3-release-readiness.md).
 
 ### Added
 

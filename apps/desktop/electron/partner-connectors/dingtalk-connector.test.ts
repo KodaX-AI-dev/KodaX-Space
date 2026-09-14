@@ -342,7 +342,7 @@ test('DingTalk cannot reuse an onboarding profile or follow a replaced credentia
   );
   const credentialDir = path.join(f.root, 'dingtalk', 'profiles', profile, 'keychain');
   await rm(credentialDir, { recursive: true });
-  await symlink(f.root, credentialDir);
+  await symlink(f.root, credentialDir, process.platform === 'win32' ? 'junction' : 'dir');
   assert.equal((await f.connector.inspect(profile)).reason, 'invalid_response');
 });
 

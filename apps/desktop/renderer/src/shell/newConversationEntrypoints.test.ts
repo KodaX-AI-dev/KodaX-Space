@@ -147,13 +147,19 @@ test(
           await page.getByTestId('selected-expert').filter({ hasText: 'Draft editor' }).waitFor();
           await page.locator('textarea').fill('Preserve this draft');
           await page.getByTestId('partner-plugins-nav').click();
+          const primaryKey = await page.evaluate(() =>
+            /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ||
+            /Mac OS X/i.test(navigator.userAgent)
+              ? 'Meta'
+              : 'Control',
+          );
           if (entry === 'file-menu') {
             await page.getByRole('button', { name: 'File', exact: true }).click();
             await page.getByRole('menuitem', { name: /^New Session/ }).click();
           } else if (entry === 'keyboard') {
-            await page.keyboard.press('Meta+n');
+            await page.keyboard.press(`${primaryKey}+n`);
           } else if (entry === 'command-palette') {
-            await page.keyboard.press('Meta+Shift+p');
+            await page.keyboard.press(`${primaryKey}+Shift+p`);
             await page
               .getByRole('dialog')
               .getByRole('button', { name: /New session/ })

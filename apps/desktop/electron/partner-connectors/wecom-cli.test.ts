@@ -421,15 +421,13 @@ test('WeCom returns no document after identity mismatch or a revoked local read 
   }
 });
 
-test('WeCom reads large returned text only from its own private tmp and rejects symlinks', async () => {
-  let unsafe = false;
+test('WeCom reads large returned text from its own private tmp', async () => {
   const setup = await fixture(async (input, root) => {
     if (input.args[0] === 'auth') return auth();
     if (input.args[0] === 'identity') return ok('{"opaque":true}');
     const directory = path.join(root, 'wecom-cli', 'profiles', profile, 'tmp');
-    const file = path.join(directory, unsafe ? 'link' : 'content.md');
-    if (unsafe) await symlink(path.join(root, 'outside.md'), file);
-    else await writeFile(file, 'large text');
+    const file = path.join(directory, 'content.md');
+    await writeFile(file, 'large text');
     return ok(
       JSON.stringify({
         url: 'https://doc.weixin.qq.com/doc/w3_doc',
@@ -440,7 +438,6 @@ test('WeCom reads large returned text only from its own private tmp and rejects 
     );
   });
   try {
-    await writeFile(path.join(setup.root, 'outside.md'), 'SECRET');
     const request = {
       profile,
       expected: identity,
@@ -449,8 +446,47 @@ test('WeCom reads large returned text only from its own private tmp and rejects 
       assertRead: () => {},
     };
     assert.equal((await setup.connector.read(request)).content, 'large text');
-    unsafe = true;
-    await assert.rejects(setup.connector.read(request), errorCode('invalid_response'));
+  } finally {
+    await setup.close();
+  }
+});
+
+test('WeCom rejects returned text symlinks outside its private tmp', async (context) => {
+  const setup = await fixture(async (input, root) => {
+    if (input.args[0] === 'auth') return auth();
+    if (input.args[0] === 'identity') return ok('{"opaque":true}');
+    return ok(
+      JSON.stringify({
+        url: 'https://doc.weixin.qq.com/doc/w3_doc',
+        name: 'title',
+        file_path: path.join(root, 'wecom-cli', 'profiles', profile, 'tmp', 'link'),
+        version: 0,
+      }),
+    );
+  });
+  try {
+    const directory = path.join(setup.root, 'wecom-cli', 'profiles', profile, 'tmp');
+    const outside = path.join(setup.root, 'outside.md');
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await writeFile(outside, 'SECRET');
+    try {
+      await symlink(outside, path.join(directory, 'link'), 'file');
+    } catch (error) {
+      if (process.platform !== 'win32' || (error as NodeJS.ErrnoException).code !== 'EPERM')
+        throw error;
+      context.skip('Windows file symlinks require Developer Mode or symlink privileges');
+      return;
+    }
+    await assert.rejects(
+      setup.connector.read({
+        profile,
+        expected: identity,
+        documentUrl: 'wecom://document/w3_doc',
+        beforeRead: async () => {},
+        assertRead: () => {},
+      }),
+      errorCode('invalid_response'),
+    );
   } finally {
     await setup.close();
   }

@@ -75,7 +75,12 @@ import { SpaceExtensionsProvider } from '../extensions/SpaceExtensionsProvider.j
 import { ExtensionSettingsPanel } from '../extensions/ExtensionSettingsPanel.js';
 
 export type SettingsTab =
-  'providers' | 'preferences' | 'runtime' | 'diagnostics' | 'license' | 'extensions';
+  | 'providers'
+  | 'preferences'
+  | 'runtime'
+  | 'diagnostics'
+  | 'license'
+  | 'extensions';
 
 interface SettingsModalProps {
   readonly initialTab?: SettingsTab;
@@ -297,7 +302,7 @@ function SettingsModalContent({
               hidden={tab !== 'extensions'}
               className="h-full"
             >
-              <ExtensionSettingsPanel />
+              <ExtensionSettingsPanel active={tab === 'extensions'} />
             </div>
             <div
               id="settings-panel-diagnostics"

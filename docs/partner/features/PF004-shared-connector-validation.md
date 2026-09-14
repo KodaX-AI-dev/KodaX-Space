@@ -56,3 +56,9 @@
 - 桌面产物：`out/connector-foundation-20260907/mac-arm64/KodaX Space.app`；未替换系统已安装应用。
 - 截图：本机证据目录的 `electron-source-1.png`、`electron-source-2.png`、`electron-source-3.png`、`electron-chat-web-link.png`、`electron-webpage-reopened.png`。
 - 本次未对 Notion、Airtable 或其他服务执行真实登录、远端读取/写入，也未声明跨服务旧快照自动入模或完整分页已经实现。
+
+## 2026-09-14 链接行为修订
+
+按用户确认的 Coder 公共路径撤销 Partner 内置网页浏览器。两模式普通 HTTP(S) 链接使用既有系统浏览器入口；本地文件、成果文件复用 File Viewer，任务资料仍可查看本会话保存的来源快照。Notion、Airtable、邮件等内部引用只解析当前会话快照，不交给系统浏览器。
+
+在线文档和 Base 保留本地成果／任务详情与明确的“在系统浏览器打开”按钮。恢复历史记录不自动打开外部网页。移除网页标签、webview、专用导航及其 IPC，不删除现有用户网页登录数据。以上覆盖本文先前关于内置 browser target、网页标签复用及内嵌网页登录的验收描述；连接器授权、远端读写和资料快照能力保留。

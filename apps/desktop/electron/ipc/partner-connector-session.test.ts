@@ -169,6 +169,9 @@ test('removing an unavailable connection retains the other unavailable snapshot 
     },
     { ...remaining, createFolderUrl: 'https://example.feishu.cn/drive/folder/New' },
     { ...remaining, createBaseFolderUrl: 'https://example.feishu.cn/drive/folder/NewBase' },
+    { ...remaining, adapter: 'tencent-docs-mcp' as const },
+    { ...remaining, mailbox: 'inbox' as const },
+    { ...remaining, allowCreateDocument: true },
   ]) {
     await assert.rejects(
       () =>
@@ -179,8 +182,41 @@ test('removing an unavailable connection retains the other unavailable snapshot 
       /Extension disabled/,
     );
   }
-  assert.equal(resolutions, 8);
+  assert.equal(resolutions, 11);
   assert.deepEqual(kodaxHost.get(session.sessionId)?.partnerConnectors, [binding, other]);
+});
+
+test('removing a connector while revoking document creation persists the new authority', async () => {
+  const current: PartnerConnectorSnapshotT = {
+    ...binding,
+    adapter: 'tencent-docs-mcp',
+    connectorId: 'tencent-docs',
+    documents: [],
+    allowCreateDocument: true,
+  };
+  const session = kodaxHost.createSession({
+    projectRoot: directory,
+    provider: 'mock',
+    surface: 'partner',
+    partnerConnectors: [current, { ...binding, connectionId: randomUUID() }],
+  });
+  const revoked = { ...current, allowCreateDocument: false };
+  let resolutions = 0;
+  const access = {
+    ...service,
+    resolveSelections: async () => {
+      resolutions++;
+      return [revoked];
+    },
+  };
+  const state = await ipc.setPartnerConnectorsForIpc(
+    { sessionId: session.sessionId, connectors: [revoked] },
+    access,
+  );
+  assert.equal(resolutions, 1);
+  assert.equal(state.connectors[0]?.binding.allowCreateDocument, false);
+  assert.deepEqual(kodaxHost.get(session.sessionId)?.partnerConnectors, [revoked]);
+  assert.deepEqual((await store.read(session.sessionId))?.partnerConnectors, [revoked]);
 });
 
 test('invalid Coder/temporary binding rejects without contacting a connector', async () => {

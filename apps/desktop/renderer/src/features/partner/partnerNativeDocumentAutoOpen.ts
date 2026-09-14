@@ -51,7 +51,7 @@ export function partnerDetailTargetForNativeDocument(
   if (!key || !task.canonicalUrl || !task.title)
     throw new Error('Native document task is not a verified success');
   return {
-    kind: 'browser',
+    kind: 'remoteResult',
     initialUrl: task.canonicalUrl,
     resourceKey: key,
     title: task.title,

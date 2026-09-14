@@ -5,7 +5,6 @@ import { useSurfaceStore } from '../../store/surface.js';
 import { pushToast } from '../../store/toastStore.js';
 import { translateMessage } from '../../i18n/I18nProvider.js';
 import { usePartnerRemoteRecords } from '../extensions/usePartnerRemoteRecords.js';
-import { normalizePartnerBrowserUrl } from './partnerBrowserNavigation.js';
 import type { PartnerDetailOpenTarget } from './partnerDetailWorkspace.js';
 import { PARTNER_LINK_DETAIL_EVENT, type PartnerLinkDetailRequest } from './partnerLinkEvents.js';
 
@@ -32,6 +31,7 @@ export function usePartnerLinkDetails(onOpen: (target: PartnerDetailOpenTarget) 
         detail.context.sessionId !== sessionId
       )
         return;
+      if (/^https?:\/\//i.test(detail.href)) return;
       const resource = projectPartnerConnectorResource(detail.href);
       // Wait only for local source metadata. A newer click or context change supersedes this intent.
       if (resource && !loaded && !error) {
@@ -50,10 +50,7 @@ export function usePartnerLinkDetails(onOpen: (target: PartnerDetailOpenTarget) 
           resource.resourceKey === saved.resourceKey
         );
       });
-      if (
-        !/^https?:\/\//i.test(detail.href) &&
-        new Set(matches.map((source) => source.connectionId)).size > 1
-      ) {
+      if (new Set(matches.map((source) => source.connectionId)).size > 1) {
         pushToast(translateMessage('connectors.ambiguousSource'), 'info');
         return;
       }
@@ -63,27 +60,17 @@ export function usePartnerLinkDetails(onOpen: (target: PartnerDetailOpenTarget) 
         return;
       }
       // Internal provider references can only open a recorded source in this conversation.
-      if (!/^https?:\/\//i.test(detail.href)) {
-        if (resource)
-          pushToast(
-            translateMessage(
-              error
-                ? 'connectors.unavailable'
-                : loaded
-                  ? 'connectors.sourceNotInSession'
-                  : 'common.loading',
-            ),
-            'info',
-          );
-        return;
-      }
-      const normalized = normalizePartnerBrowserUrl(detail.href);
-      if (normalized.ok)
-        onOpen({
-          kind: 'browser',
-          initialUrl: normalized.url,
-          resourceKey: `web-${normalized.url}`,
-        });
+      if (resource)
+        pushToast(
+          translateMessage(
+            error
+              ? 'connectors.unavailable'
+              : loaded
+                ? 'connectors.sourceNotInSession'
+                : 'common.loading',
+          ),
+          'info',
+        );
     };
     const listener = (event: Event): void =>
       open((event as CustomEvent<PartnerLinkDetailRequest>).detail);

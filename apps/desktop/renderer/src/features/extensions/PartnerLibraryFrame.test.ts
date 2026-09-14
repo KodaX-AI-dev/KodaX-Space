@@ -54,7 +54,9 @@ async function openLibrary(
 ) {
   const browser = await chromium.launch({ executablePath: browserPath, headless: true });
   t.after(() => browser.close());
-  const page = await browser.newPage();
+  // Keep the 1200px fixture frame inside the host viewport, as it is in Space.
+  // An oversized offscreen iframe causes Chromium clicks to miss its modal controls.
+  const page = await browser.newPage({ viewport: { width: 1200, height: 1300 } });
   // CI runs the real browser beside the complete unit suite on shared runners.
   // Match the bounded Partner flow budget without relaxing local assertions.
   // Shared macOS runners can pause this long between browser launch, iframe
@@ -232,12 +234,27 @@ async function openLibrary(
   return {
     frame,
     requests,
+    navigate: (tab: 'experts' | 'connectors') =>
+      page.evaluate((tab) => {
+        document
+          .querySelector('iframe')!
+          .contentWindow!.postMessage(
+            { type: 'space-extension.navigate.v1', token: 'test-frame', tab },
+            '*',
+          );
+      }, tab),
     setTheme: (colorScheme: 'light' | 'dark') => page.emulateMedia({ colorScheme }),
     finishConfiguration: () => finishConfiguration?.(),
     resize: async (width: number) => {
       await page.locator('iframe').evaluate((element, width) => {
         element.style.width = `${width}px`;
       }, width);
+      await frame.locator('body').evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          }),
+      );
     },
     changeConnected: async () => {
       connected = true;
@@ -252,6 +269,24 @@ async function openLibrary(
     },
   };
 }
+
+test(
+  'host navigation returns from connectors to experts without rebuilding the library',
+  { skip: !browserPath },
+  async (t) => {
+    const { frame, navigate } = await openLibrary(t, [preset], 'connectors');
+    await frame.locator('body').evaluate((body) => {
+      body.dataset.navigationProbe = 'retained';
+    });
+    for (let cycle = 0; cycle < 2; cycle++) {
+      await navigate('experts');
+      await frame.getByRole('heading', { name: '写作导师', exact: true }).waitFor();
+      await navigate('connectors');
+      await frame.getByRole('heading', { name: '飞书', exact: true }).waitFor();
+    }
+    assert.equal(await frame.locator('body').getAttribute('data-navigation-probe'), 'retained');
+  },
+);
 
 test(
   'each implemented provider has its own offline brand and exact trusted configure action',

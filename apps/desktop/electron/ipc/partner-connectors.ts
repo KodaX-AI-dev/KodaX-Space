@@ -2,6 +2,7 @@ import { canonProjectRoot } from '@kodax-space/space-ipc-schema';
 import { kodaxHost } from '../kodax/host.js';
 import { projectStore } from '../projects/store.js';
 import {
+  getPartnerConnectorComponents,
   getPartnerConnectorService,
   getPartnerConnectorTasks,
 } from '../partner-connectors/runtime.js';
@@ -38,7 +39,21 @@ async function context(input: {
 export function registerPartnerConnectorChannels(
   register = registerChannelWithEvent,
   getTasks = getPartnerConnectorTasks,
+  getComponents = getPartnerConnectorComponents,
 ): void {
+  register('partner.components.list', async (input, event) => {
+    assertSpaceExtensionSender(event);
+    return { components: await getComponents().list(input.refresh) };
+  });
+  register('partner.components.install', (input, event) => {
+    assertSpaceExtensionSender(event);
+    if (getTasks().hasActiveTask()) throw new Error('请先完成或取消账号连接，再安装连接组件。');
+    return { component: getComponents().install(input.id) };
+  });
+  register('partner.components.cancel', async (input, event) => {
+    assertSpaceExtensionSender(event);
+    return { component: await getComponents().cancel(input.id) };
+  });
   register('partner.connectors.accounts', async (input, event) => {
     assertSpaceExtensionSender(event);
     return {
@@ -50,6 +65,7 @@ export function registerPartnerConnectorChannels(
   });
   register('partner.connectors.onboarding.start', (input, event) => {
     assertSpaceExtensionSender(event);
+    if (getComponents().isInstalling()) throw new Error('请先完成或取消组件安装，再连接账号。');
     return { job: getTasks().start(input) };
   });
   register('partner.connectors.onboarding.get', (input, event) => {

@@ -52,6 +52,10 @@ export class PartnerConnectorTasks {
   private disposed = false;
   constructor(private readonly deps: Dependencies) {}
 
+  hasActiveTask(): boolean {
+    return [...this.tasks.values()].some((task) => !terminal(task.job));
+  }
+
   start(input: Owner & { installCli?: boolean }): PartnerConnectorOnboardingT {
     if (this.disposed) throw new Error('连接服务已关闭');
     const active = [...this.tasks.values()].find((task) => !terminal(task.job));

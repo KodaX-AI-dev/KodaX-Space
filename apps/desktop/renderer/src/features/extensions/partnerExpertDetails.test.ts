@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { afterEach, beforeEach, mock } from 'node:test';
 import type { PartnerExpertSnapshotT } from '@kodax-space/space-ipc-schema';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -9,6 +9,9 @@ import {
   projectPartnerExpertDetails,
   PartnerExpertDetailsContent,
 } from './PartnerExpertDetails.js';
+
+beforeEach(() => mock.getter(globalThis, 'navigator', () => ({ languages: ['en-US'] })));
+afterEach(() => mock.restoreAll());
 
 test('expert details expose inputs, deliverables, quality checks and optional versus required capabilities', () => {
   const html = renderToStaticMarkup(

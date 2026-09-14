@@ -88,7 +88,7 @@ test('proposal history stays outside the task rail while direct tasks become bro
   assert.deepEqual(loaded.artifacts[0]?.action, {
     kind: 'detail',
     target: {
-      kind: 'browser',
+      kind: 'remoteResult',
       initialUrl: 'https://test.feishu.cn/docx/Document1',
       resourceKey: 'native-document-6:feishu:Document1',
       title: '项目备忘',

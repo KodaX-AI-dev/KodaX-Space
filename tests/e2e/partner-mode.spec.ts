@@ -315,14 +315,20 @@ test('Partner context rail and detail launcher follow the dual-button layout', a
     await expect(contextRail).toHaveCount(0);
     await expect(page.getByTestId('partner-detail-launcher')).toBeVisible();
     await expect(page.getByTestId('partner-detail-open-files')).toBeVisible();
-    await expect(page.getByTestId('partner-detail-open-browser')).toBeVisible();
+    await expect(page.getByTestId('partner-detail-open-browser')).toHaveCount(0);
     await expect(page.getByTestId('partner-detail-open-terminal')).toHaveCount(0);
 
     await page.getByTestId('partner-detail-open-files').click();
     await expect(page.getByTestId('files-panel')).toBeVisible();
     await page.getByTestId('partner-detail-launcher-toggle').click();
-    await page.getByTestId('partner-detail-open-browser').click();
-    await expect(page.getByTestId('partner-browser-panel')).toBeVisible();
+    await expect(page.getByTestId('partner-detail-launcher')).toBeVisible();
+    await expect(page.locator('webview')).toHaveCount(0);
+    await page.getByTestId('partner-detail-open-files').click();
+    await expect(page.getByTestId('files-panel')).toBeVisible();
+    await expect(sidebar.getByRole('tab', { name: 'Project Files', exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
 
     // At 1280px the detail dock takes priority. The context button closes it
     // and restores the 300px summary rail instead of squeezing conversation.
@@ -337,8 +343,11 @@ test('Partner context rail and detail launcher follow the dual-button layout', a
     await detailToggle.click();
     await expect(sidebar).toBeVisible();
     await expect(
-      page.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Browser' }),
+      page
+        .getByTestId('partner-detail-tabs')
+        .getByRole('tab', { name: 'Project Files', exact: true }),
     ).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('files-panel')).toBeVisible();
     await contextToggle.click();
     await expect(sidebar).toBeHidden();
   } finally {

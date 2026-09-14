@@ -7,7 +7,6 @@ import type {
   SpaceConnectorDefinitionT,
 } from '@kodax-space/space-ipc-schema';
 import { partnerDeliveryPreviewVersion } from '../../lib/generatedResourceRef.js';
-import { normalizePartnerBrowserUrl } from './partnerBrowserNavigation.js';
 
 export type PartnerDetailTabKind =
   | 'materials'
@@ -19,7 +18,7 @@ export type PartnerDetailTabKind =
   | 'baseTask'
   | 'remoteProposal'
   | 'remoteSource'
-  | 'browser'
+  | 'remoteResult'
   | 'expert'
   | 'skill'
   | 'connector';
@@ -33,8 +32,7 @@ export interface PartnerDetailTab {
   readonly baseTask?: PartnerFeishuBaseCreateTaskT;
   readonly proposalId?: string;
   readonly sourceId?: string;
-  readonly browserUrl?: string;
-  readonly browserNavigationRevision?: number;
+  readonly externalUrl?: string;
   readonly resourceKey?: string;
   readonly expert?: PartnerExpertSnapshotT;
   readonly skill?: SkillMeta;
@@ -64,7 +62,7 @@ export type PartnerDetailOpenTarget =
   | { readonly kind: 'remoteProposal'; readonly proposalId: string; readonly title: string }
   | { readonly kind: 'remoteSource'; readonly sourceId: string; readonly title: string }
   | {
-      readonly kind: 'browser';
+      readonly kind: 'remoteResult';
       readonly initialUrl?: string;
       readonly resourceKey?: string;
       readonly title?: string;
@@ -160,7 +158,7 @@ export function createPartnerDetailTab(
                   ? `partner-detail-remote-proposal-${target.proposalId}`
                   : target.kind === 'baseTask'
                     ? `partner-detail-base-task-${target.task.id}`
-                    : target.kind === 'browser' && target.resourceKey
+                    : target.kind === 'remoteResult' && target.resourceKey
                       ? `partner-detail-${target.resourceKey}`
                       : (staticId ?? `partner-detail-${target.kind}-${uniqueId}`),
     kind: target.kind,
@@ -177,7 +175,7 @@ export function createPartnerDetailTab(
                 ? target.title
                 : target.kind === 'baseTask'
                   ? target.task.baseName
-                  : target.kind === 'browser' && target.title
+                  : target.kind === 'remoteResult' && target.title
                     ? target.title
                     : target.kind === 'file'
                       ? target.snapshot.title
@@ -189,8 +187,8 @@ export function createPartnerDetailTab(
     ...(target.kind === 'baseTask' ? { baseTask: target.task } : {}),
     ...(target.kind === 'remoteProposal' ? { proposalId: target.proposalId } : {}),
     ...(target.kind === 'remoteSource' ? { sourceId: target.sourceId } : {}),
-    ...(target.kind === 'browser'
-      ? { browserUrl: target.initialUrl, resourceKey: target.resourceKey }
+    ...(target.kind === 'remoteResult'
+      ? { externalUrl: target.initialUrl, resourceKey: target.resourceKey }
       : {}),
     ...(target.kind === 'expert' ? { expert: target.expert } : {}),
     ...(target.kind === 'skill' ? { skill: target.skill } : {}),
@@ -230,34 +228,12 @@ export function partnerDetailWorkspaceContextKey(context: PartnerDetailWorkspace
   return JSON.stringify([context.projectRoot, context.sessionId]);
 }
 
-export function samePartnerBrowserDestination(
-  left: PartnerDetailTab,
-  right: PartnerDetailTab,
-): boolean {
-  if (left.kind !== 'browser' || right.kind !== 'browser' || !left.browserUrl || !right.browserUrl)
-    return false;
-  const leftUrl = normalizePartnerBrowserUrl(left.browserUrl);
-  const rightUrl = normalizePartnerBrowserUrl(right.browserUrl);
-  return leftUrl.ok && rightUrl.ok && leftUrl.url === rightUrl.url;
-}
-
 export function reducePartnerDetailWorkspace(
   state: PartnerDetailWorkspaceState,
   action: PartnerDetailWorkspaceAction,
 ): PartnerDetailWorkspaceState {
   switch (action.type) {
     case 'open': {
-      const browser = state.tabs.find((tab) => samePartnerBrowserDestination(tab, action.tab));
-      if (browser) {
-        return {
-          tabs: state.tabs.map((tab) =>
-            tab.id === browser.id
-              ? { ...tab, browserNavigationRevision: (tab.browserNavigationRevision ?? 0) + 1 }
-              : tab,
-          ),
-          activeId: browser.id,
-        };
-      }
       const existingIndex = state.tabs.findIndex((tab) => tab.id === action.tab.id);
       const tabs =
         existingIndex === -1

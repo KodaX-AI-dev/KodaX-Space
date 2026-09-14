@@ -220,7 +220,14 @@ test('views and enablement reject a replaced on-disk HTML symlink', async (t) =>
   const outside = path.join(directory, 'outside.html');
   await fs.writeFile(outside, HTML);
   await fs.unlink(viewPath);
-  await fs.symlink(outside, viewPath);
+  try {
+    await fs.symlink(outside, viewPath, 'file');
+  } catch (error) {
+    if (process.platform !== 'win32' || (error as NodeJS.ErrnoException).code !== 'EPERM')
+      throw error;
+    t.skip('Windows file symlink creation requires Developer Mode or elevation');
+    return;
+  }
 
   await assert.rejects(store.getView(installed.id), /regular|symlink/i);
   await store.setEnabled(installed.id, false);
@@ -237,7 +244,11 @@ test('a substituted package-directory symlink cannot read or delete files outsid
   const ownedPackages = path.join(rootDir, 'packages');
   const outsidePackages = path.join(directory, 'outside-packages');
   await fs.rename(ownedPackages, outsidePackages);
-  await fs.symlink(outsidePackages, ownedPackages, 'dir');
+  await fs.symlink(
+    outsidePackages,
+    ownedPackages,
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
 
   await assert.rejects(store.getView(installed.id), /directory|symlink/i);
   await assert.rejects(store.uninstall(installed.id), /directory|symlink/i);
@@ -414,7 +425,7 @@ test('a symlinked extension root is never used for installation or deletion', as
   const { directory, rootDir } = await fixture(t);
   const outside = path.join(directory, 'outside');
   await fs.mkdir(outside);
-  await fs.symlink(outside, rootDir, 'dir');
+  await fs.symlink(outside, rootDir, process.platform === 'win32' ? 'junction' : 'dir');
   const store = new SpaceExtensionStore(rootDir);
   await assert.rejects(store.install(await archive(directory)), /directory|symlink/i);
   await assert.rejects(store.uninstall('partner-library'), /directory|symlink/i);
@@ -491,7 +502,7 @@ test('an unsafe displaced bundle rejects an update before its registry entry cha
   const packagePath = path.join(packageRoot, packageDirectory);
   const outside = path.join(directory, 'outside-package');
   await fs.rename(packagePath, outside);
-  await fs.symlink(outside, packagePath, 'dir');
+  await fs.symlink(outside, packagePath, process.platform === 'win32' ? 'junction' : 'dir');
 
   const update = await archive(directory, { manifest: { version: '0.2.0' } });
   await assert.rejects(store.install(update), /directory|symlink/i);

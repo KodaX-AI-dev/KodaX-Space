@@ -320,9 +320,11 @@ test('Partner detail history and width survive a Coder round trip without changi
     await page.getByTestId('partner-detail-toggle').click();
     const partnerDock = page.locator('[data-dock-kind="partner-detail-dock"]');
     await expect(partnerDock).toBeVisible();
-    await page.getByTestId('partner-detail-open-browser').click();
+    await page.getByTestId('partner-detail-open-files').click();
+    await expect(partnerDock.getByTestId('files-panel')).toBeVisible();
+    await expect(partnerDock.locator('webview')).toHaveCount(0);
     await expect(
-      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Browser' }),
+      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Files' }),
     ).toBeVisible();
 
     await dragRightSidebarBy(page, -48);
@@ -338,7 +340,7 @@ test('Partner detail history and width survive a Coder round trip without changi
     await expect(
       partnerDock
         .getByTestId('partner-detail-tabs')
-        .getByRole('tab', { name: 'Browser', includeHidden: true }),
+        .getByRole('tab', { name: 'Files', includeHidden: true }),
     ).toHaveCount(1);
     await expect(coderDock).toBeVisible();
     await expect
@@ -348,7 +350,7 @@ test('Partner detail history and width survive a Coder round trip without changi
     await switchToPartner(page);
     await expect(partnerDock).toBeVisible();
     await expect(
-      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Browser' }),
+      partnerDock.getByTestId('partner-detail-tabs').getByRole('tab', { name: 'Files' }),
     ).toBeVisible();
   } finally {
     await space.close();

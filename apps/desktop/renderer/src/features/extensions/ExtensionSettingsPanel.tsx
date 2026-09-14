@@ -1,3 +1,4 @@
+import { ConnectorComponentsPanel } from './ConnectorComponentsPanel.js';
 import { useState } from 'react';
 import { Loader2, PackageOpen, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { SpaceExtensionT } from '@kodax-space/space-ipc-schema';
@@ -16,7 +17,11 @@ interface ExtensionSettingsContentProps {
   readonly onUninstall: (extension: SpaceExtensionT) => void;
 }
 
-export function ExtensionSettingsPanel(): JSX.Element {
+export function ExtensionSettingsPanel({
+  active = true,
+}: {
+  readonly active?: boolean;
+}): JSX.Element {
   const { t } = useI18n();
   const { catalog, snapshot } = useSpaceExtensions();
   const [busy, setBusy] = useState<string | null>(null);
@@ -47,17 +52,20 @@ export function ExtensionSettingsPanel(): JSX.Element {
   }
 
   return (
-    <ExtensionSettingsContent
-      snapshot={snapshot}
-      busy={busy}
-      actionError={actionError}
-      onInstall={() => void run('install', catalog.install)}
-      onRefresh={() => void run('refresh', catalog.refresh)}
-      onSetEnabled={(extension) =>
-        void run(extension.id, () => catalog.setEnabled(extension.id, !extension.enabled))
-      }
-      onUninstall={(extension) => void uninstall(extension)}
-    />
+    <>
+      <ExtensionSettingsContent
+        snapshot={snapshot}
+        busy={busy}
+        actionError={actionError}
+        onInstall={() => void run('install', catalog.install)}
+        onRefresh={() => void run('refresh', catalog.refresh)}
+        onSetEnabled={(extension) =>
+          void run(extension.id, () => catalog.setEnabled(extension.id, !extension.enabled))
+        }
+        onUninstall={(extension) => void uninstall(extension)}
+      />
+      <ConnectorComponentsPanel active={active} />
+    </>
   );
 }
 

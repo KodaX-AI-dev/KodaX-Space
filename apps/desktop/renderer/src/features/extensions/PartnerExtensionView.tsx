@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, PackageOpen, Settings2 } from 'lucide-react';
 import {
   SPACE_EXTENSION_FRAME_MESSAGE_TYPE,
@@ -34,22 +34,40 @@ interface PartnerExtensionViewProps {
   readonly navigationRevision?: number;
 }
 
-/** Only a bounded, source-checked business bridge is exposed to the opaque package frame. */
-export function ExtensionFrame({
-  html,
-  title,
-  onRequest,
-  initialTab = 'experts',
-  navigationRevision = 0,
-  connectorStatusKey = '',
-}: {
+interface ExtensionFrameProps {
   readonly html: string;
   readonly title: string;
   readonly onRequest?: (request: ExtensionFrameRequest) => Promise<unknown>;
   readonly initialTab?: 'experts' | 'connectors';
   readonly navigationRevision?: number;
   readonly connectorStatusKey?: string;
-}): JSX.Element {
+}
+
+/** Legacy installed libraries need a fresh document and request bridge on management navigation. */
+export function ExtensionFrame(props: ExtensionFrameProps): JSX.Element {
+  const capability = useRef<boolean | null>(null);
+  const [generation, setGeneration] = useState(0);
+  const onReady = useCallback((supportsNavigation: boolean): void => {
+    capability.current = supportsNavigation;
+  }, []);
+  useEffect(() => {
+    if (capability.current !== false) return;
+    capability.current = null;
+    setGeneration((current) => current + 1);
+  }, [props.initialTab, props.navigationRevision]);
+  return <ExtensionFrameDocument key={generation} {...props} onReady={onReady} />;
+}
+
+/** Only a bounded, source-checked business bridge is exposed to the opaque package frame. */
+function ExtensionFrameDocument({
+  html,
+  title,
+  onRequest,
+  initialTab = 'experts',
+  navigationRevision = 0,
+  connectorStatusKey = '',
+  onReady,
+}: ExtensionFrameProps & { readonly onReady: (supportsNavigation: boolean) => void }): JSX.Element {
   const documentHtml = useMemo(() => buildRestrictedExtensionDocument(html), [html]);
   const sentDocument = useRef<string | null>(null);
   const frame = useRef<HTMLIFrameElement | null>(null);
@@ -70,6 +88,7 @@ export function ExtensionFrame({
     const onMessage = (event: MessageEvent): void => {
       if (!frame.current?.contentWindow || event.source !== frame.current.contentWindow) return;
       if (event.data?.type === 'space-extension.ready.v1') {
+        onReady(event.data.supportsBidirectionalNavigation === true);
         frame.current.contentWindow.postMessage(
           { type: 'space-extension.init.v1', token, initialTab: tabRef.current },
           '*',
@@ -83,7 +102,7 @@ export function ExtensionFrame({
       bridge.dispose();
       window.removeEventListener('message', onMessage);
     };
-  }, [token]);
+  }, [onReady, token]);
   useEffect(() => {
     frame.current?.contentWindow?.postMessage(
       { type: 'space-extension.connectors.changed.v1', token },
@@ -91,11 +110,10 @@ export function ExtensionFrame({
     );
   }, [token, connectorStatusKey]);
   useEffect(() => {
-    if (initialTab === 'connectors')
-      frame.current?.contentWindow?.postMessage(
-        { type: 'space-extension.navigate.v1', token, tab: 'connectors' },
-        '*',
-      );
+    frame.current?.contentWindow?.postMessage(
+      { type: 'space-extension.navigate.v1', token, tab: initialTab },
+      '*',
+    );
   }, [token, initialTab, navigationRevision]);
   return (
     <iframe
@@ -114,7 +132,7 @@ export function ExtensionFrame({
           '*',
         );
         event.currentTarget.contentWindow?.postMessage(
-          { type: 'space-extension.init.v1', token, initialTab },
+          { type: 'space-extension.init.v1', token, initialTab: tabRef.current },
           '*',
         );
       }}

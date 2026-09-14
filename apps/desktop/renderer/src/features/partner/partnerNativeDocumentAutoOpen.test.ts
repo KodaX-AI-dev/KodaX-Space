@@ -66,7 +66,7 @@ test('only a newly signalled succeeded task opens its verified provider URL once
   });
   assert.deepEqual(result.event, { kind: 'native-document', task: succeeded });
   assert.deepEqual(partnerDetailTargetForNativeDocument(result.event!), {
-    kind: 'browser',
+    kind: 'remoteResult',
     initialUrl: 'https://test.feishu.cn/docx/NewDoc',
     resourceKey: 'native-document-6:feishu:NewDoc',
     title: '周报',
@@ -93,8 +93,8 @@ test('the same opener contract accepts current and future provider canonical URL
       { id: current.id, revision: 1 },
     );
     const target = partnerDetailTargetForNativeDocument(result.event!);
-    assert.equal(target.kind, 'browser');
-    assert.equal(target.kind === 'browser' ? target.initialUrl : undefined, url);
+    assert.equal(target.kind, 'remoteResult');
+    assert.equal(target.kind === 'remoteResult' ? target.initialUrl : undefined, url);
   }
 });
 
@@ -112,7 +112,7 @@ test('a trusted create receipt still opens when content verification is non-bloc
   );
 
   assert.deepEqual(result.event, { kind: 'native-document', task: created });
-  assert.equal(partnerDetailTargetForNativeDocument(result.event!).kind, 'browser');
+  assert.equal(partnerDetailTargetForNativeDocument(result.event!).kind, 'remoteResult');
 });
 
 test('provider and resource boundaries cannot collide in a generic resource key', () => {

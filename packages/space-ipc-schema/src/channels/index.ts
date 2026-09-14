@@ -1,3 +1,4 @@
+import { partnerComponentInvokeChannels } from './partner-components.js';
 // Channel registry — single source of truth.
 //
 // 新加 channel 步骤：
@@ -225,7 +226,6 @@ import {
 } from './license.js';
 import { notificationShowChannel, notificationClickedChannel } from './notification.js';
 import {
-  partnerBrowserNavigatedChannel,
   windowActivityChannel,
   windowCompleteExitProgressChannel,
   windowControlChannel,
@@ -546,7 +546,9 @@ export const invokeChannels: typeof sessionInvokeChannels &
   typeof coreInvokeChannels &
   typeof extensionInvokeChannels &
   typeof connectorInvokeChannels &
-  typeof connectorOnboardingInvokeChannels = {
+  typeof connectorOnboardingInvokeChannels &
+  typeof partnerComponentInvokeChannels = {
+  ...partnerComponentInvokeChannels,
   ...sessionInvokeChannels,
   ...coreInvokeChannels,
   ...extensionInvokeChannels,
@@ -576,7 +578,6 @@ export const pushChannels = {
   [askUserCancelledChannel.name]: askUserCancelledChannel,
   [kodaxQueueChangedChannel.name]: kodaxQueueChangedChannel,
   [notificationClickedChannel.name]: notificationClickedChannel,
-  [partnerBrowserNavigatedChannel.name]: partnerBrowserNavigatedChannel,
   [windowActivityChannel.name]: windowActivityChannel,
   [windowCompleteExitProgressChannel.name]: windowCompleteExitProgressChannel,
   [updaterStatusChannel.name]: updaterStatusChannel,

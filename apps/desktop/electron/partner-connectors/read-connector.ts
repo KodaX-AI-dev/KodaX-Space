@@ -77,6 +77,7 @@ export function checkReadConnectorDocument(document: ReadConnectorDocument): Rea
   return document;
 }
 export interface ReadConnector {
+  readonly component?: import('./components.js').ConnectorComponent;
   readonly id: ReadConnectorId;
   inspect(profile: string, signal?: AbortSignal): Promise<ReadConnectorStatus>;
   run(input: FeishuOnboardingInput): Promise<void>;

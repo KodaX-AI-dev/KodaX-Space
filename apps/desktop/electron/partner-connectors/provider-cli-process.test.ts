@@ -134,7 +134,11 @@ test('provider process refuses symlink ancestors, inherited dotenv files, invali
   const root = await realpath(await mkdtemp(path.join(tmpdir(), 'space-provider-invalid-')));
   try {
     await mkdir(path.join(root, 'target'));
-    await symlink(path.join(root, 'target'), path.join(root, 'linked'));
+    await symlink(
+      path.join(root, 'target'),
+      path.join(root, 'linked'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     await assert.rejects(
       createProviderCliProcess({
         executable: process.execPath,

@@ -713,7 +713,22 @@ for (const redirected of ['root', 'extension', 'file'] as const) {
           : filePath;
     const outside = path.join(directory, 'outside-data');
     await fs.rename(target, outside);
-    await fs.symlink(outside, target, redirected === 'file' ? 'file' : 'dir');
+    try {
+      await fs.symlink(
+        outside,
+        target,
+        redirected === 'file' ? 'file' : process.platform === 'win32' ? 'junction' : 'dir',
+      );
+    } catch (error) {
+      if (
+        redirected !== 'file' ||
+        process.platform !== 'win32' ||
+        (error as NodeJS.ErrnoException).code !== 'EPERM'
+      )
+        throw error;
+      t.skip('Windows file symlink creation requires Developer Mode or elevation');
+      return;
+    }
     await assert.rejects(catalog.list('test.library'), /directory|symlink|regular/i);
     await assert.rejects(
       catalog.save({ extensionId: 'test.library', values }),

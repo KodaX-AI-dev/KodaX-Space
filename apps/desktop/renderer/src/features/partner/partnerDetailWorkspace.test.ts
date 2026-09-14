@@ -40,10 +40,10 @@ const collaborationTab: PartnerDetailTab = {
   title: '任务协作',
 };
 
-const browserTab: PartnerDetailTab = {
-  id: 'browser-1',
-  kind: 'browser',
-  title: '浏览器',
+const resultTab: PartnerDetailTab = {
+  id: 'result-1',
+  kind: 'remoteResult',
+  title: '在线成果',
 };
 
 const baseTask: PartnerFeishuBaseCreateTaskT = {
@@ -85,42 +85,32 @@ test('Partner detail launcher keeps existing tabs and clears only the active sel
   assert.equal(state.activeId, null);
 });
 
-test('chat and connector results reuse one normalized browser destination without replacing the existing identity', () => {
+test('reopening a connector result reuses its stable local detail card', () => {
   const result = createPartnerDetailTab(
     {
-      kind: 'browser',
+      kind: 'remoteResult',
       initialUrl: 'https://example.feishu.cn/docx/NewDocument',
       resourceKey: 'native-document-6:feishu:NewDocument',
       title: 'Created document',
     },
-    'Browser',
+    'Result',
     1,
   );
-  const chat = createPartnerDetailTab(
-    {
-      kind: 'browser',
-      initialUrl: 'https://EXAMPLE.feishu.cn:443/docx/NewDocument',
-      resourceKey: 'web-https://example.feishu.cn/docx/NewDocument',
-    },
-    'Browser',
-    2,
-  );
-  for (const [first, second] of [
-    [result, chat],
-    [chat, result],
-  ] as const) {
-    let state = reducePartnerDetailWorkspace(createPartnerDetailWorkspaceState(), {
-      type: 'open',
-      tab: first,
-    });
-    state = reducePartnerDetailWorkspace(state, { type: 'open', tab: materialsTab });
-    state = reducePartnerDetailWorkspace(state, { type: 'open', tab: second });
-    assert.deepEqual(state.tabs, [{ ...first, browserNavigationRevision: 1 }, materialsTab]);
-    assert.equal(state.activeId, first.id);
-  }
+  let state = reducePartnerDetailWorkspace(createPartnerDetailWorkspaceState(), {
+    type: 'open',
+    tab: result,
+  });
+  state = reducePartnerDetailWorkspace(state, { type: 'open', tab: materialsTab });
+  state = reducePartnerDetailWorkspace(state, {
+    type: 'open',
+    tab: { ...result, title: 'Updated title' },
+  });
+  assert.equal(state.tabs.length, 2);
+  assert.equal(state.activeId, result.id);
+  assert.equal(state.tabs[0]?.title, 'Updated title');
 });
 
-test('browser reuse leaves distinct historical source snapshots independently addressable', () => {
+test('distinct historical source snapshots independently addressable', () => {
   const first = createPartnerDetailTab(
     { kind: 'remoteSource', sourceId: 'snapshot-a', title: 'Saved document' },
     'Sources',
@@ -144,14 +134,14 @@ test('closing the active tab selects the next tab, then falls back to the previo
   let state = createPartnerDetailWorkspaceState();
   state = reducePartnerDetailWorkspace(state, { type: 'open', tab: materialsTab });
   state = reducePartnerDetailWorkspace(state, { type: 'open', tab: outputsTab });
-  state = reducePartnerDetailWorkspace(state, { type: 'open', tab: browserTab });
+  state = reducePartnerDetailWorkspace(state, { type: 'open', tab: resultTab });
   state = reducePartnerDetailWorkspace(state, { type: 'select', id: outputsTab.id });
 
   state = reducePartnerDetailWorkspace(state, { type: 'close', id: outputsTab.id });
-  assert.deepEqual(state.tabs, [materialsTab, browserTab]);
-  assert.equal(state.activeId, browserTab.id);
+  assert.deepEqual(state.tabs, [materialsTab, resultTab]);
+  assert.equal(state.activeId, resultTab.id);
 
-  state = reducePartnerDetailWorkspace(state, { type: 'close', id: browserTab.id });
+  state = reducePartnerDetailWorkspace(state, { type: 'close', id: resultTab.id });
   assert.deepEqual(state.tabs, [materialsTab]);
   assert.equal(state.activeId, materialsTab.id);
 });
@@ -159,11 +149,11 @@ test('closing the active tab selects the next tab, then falls back to the previo
 test('closing a background tab preserves the active tab', () => {
   let state = createPartnerDetailWorkspaceState();
   state = reducePartnerDetailWorkspace(state, { type: 'open', tab: materialsTab });
-  state = reducePartnerDetailWorkspace(state, { type: 'open', tab: browserTab });
+  state = reducePartnerDetailWorkspace(state, { type: 'open', tab: resultTab });
   state = reducePartnerDetailWorkspace(state, { type: 'close', id: materialsTab.id });
 
-  assert.deepEqual(state.tabs, [browserTab]);
-  assert.equal(state.activeId, browserTab.id);
+  assert.deepEqual(state.tabs, [resultTab]);
+  assert.equal(state.activeId, resultTab.id);
 });
 
 test('an artifact request becomes a stable, directly addressable detail tab', () => {
@@ -283,19 +273,19 @@ test('Base task and verified resource targets keep host-owned task identity and 
   assert.deepEqual(
     createPartnerDetailTab(
       {
-        kind: 'browser',
+        kind: 'remoteResult',
         initialUrl: 'https://www.feishu.cn/base/baseToken',
         resourceKey: `base-task-${baseTask.id}`,
         title: baseTask.baseName,
       },
-      'Browser',
+      'Result',
       13,
     ),
     {
       id: `partner-detail-base-task-${baseTask.id}`,
-      kind: 'browser',
+      kind: 'remoteResult',
       title: baseTask.baseName,
-      browserUrl: 'https://www.feishu.cn/base/baseToken',
+      externalUrl: 'https://www.feishu.cn/base/baseToken',
       resourceKey: `base-task-${baseTask.id}`,
     },
   );

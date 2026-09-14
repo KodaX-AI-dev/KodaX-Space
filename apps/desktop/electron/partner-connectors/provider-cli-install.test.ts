@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink } from 'node:fs/promises';
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -46,6 +56,29 @@ function releaseArchive(directory: Buffer, additional: Buffer[] = []): Buffer {
     ]),
   );
 }
+
+test('explicit component installation repairs only its damaged managed binary', async () => {
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'space-component-repair-')));
+  const data = archive('fixture native');
+  const installer = createProviderCliInstaller({
+    root,
+    provider: 'fixture',
+    version: '1.0.0',
+    platform: 'darwin',
+    arch: 'arm64',
+    asset: pinned(data),
+    fetch: async () => new Response(new Uint8Array(data)),
+    verifyBinary: async (file) => (await readFile(file, 'utf8')) === 'fixture native',
+  });
+  try {
+    await mkdir(path.dirname(installer.executable), { recursive: true });
+    await writeFile(installer.executable, 'damaged');
+    await installer.install(new AbortController().signal, true);
+    assert.equal(await readFile(installer.executable, 'utf8'), 'fixture native');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('provider installer accepts the exact DingTalk release inventory without extracting its empty root directory', async () => {
   const root = await realpath(await mkdtemp(path.join(tmpdir(), 'space-provider-dingtalk-')));
@@ -273,7 +306,11 @@ test('provider installer clears staging after rejected native bytes or cancellat
     assert.deepEqual(await readdir(path.dirname(path.dirname(installer.executable))), []);
     const linked = path.join(root, 'linked');
     await mkdir(path.join(root, 'outside'));
-    await symlink(path.join(root, 'outside'), linked);
+    await symlink(
+      path.join(root, 'outside'),
+      linked,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     const unsafe = createProviderCliInstaller({
       root: linked,
       provider: 'test',

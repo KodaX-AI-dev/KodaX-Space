@@ -5,6 +5,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { IpcMainInvokeEvent, WebContents, WebFrameMain } from 'electron';
 import {
+  partnerComponentInvokeChannels,
   connectorInvokeChannels,
   connectorOnboardingInvokeChannels,
   type ChannelInput,
@@ -33,10 +34,74 @@ after(async () => {
   await fs.rm(getKodaxDir(), { recursive: true, force: true });
 });
 
+test('Settings component IPC never authorizes accounts and excludes concurrent onboarding', async (t) => {
+  const { PartnerConnectorComponents } = await import('../partner-connectors/components.js');
+  const { PartnerConnectorTasks } = await import('../partner-connectors/connection-tasks.js');
+  let authorizations = 0;
+  const components = new PartnerConnectorComponents({
+    'feishu-cli': {
+      version: '1.0.92',
+      supported: true,
+      inspect: async () => false,
+      install: (signal) =>
+        new Promise((resolve) =>
+          signal.addEventListener('abort', () => resolve(undefined), { once: true }),
+        ),
+    },
+  });
+  const tasks = new PartnerConnectorTasks({
+    service: {
+      assertConnectionAllowed: async () => undefined,
+      connect: async () => {
+        throw new Error('must not connect');
+      },
+    },
+    run: async (input) => {
+      authorizations++;
+      await new Promise<void>((resolve) =>
+        input.signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+    },
+    openExternal: async () => {
+      throw new Error('must not open browser');
+    },
+  });
+  t.after(async () => {
+    await components.dispose();
+    await tasks.dispose();
+  });
+  const routes = new Map<string, Handler>();
+  registerPartnerConnectorChannels(
+    (name, handler) => routes.set(name, handler as Handler),
+    () => tasks,
+    () => components,
+  );
+  const event = { sender, senderFrame: mainFrame } as IpcMainInvokeEvent;
+  await routes.get('partner.components.install')!({ id: 'feishu-cli' }, event);
+  assert.equal(authorizations, 0);
+  const owner = { extensionId: 'partner.library', connectorId: 'feishu' };
+  await assert.rejects(
+    async () =>
+      routes.get('partner.connectors.onboarding.start')!({ ...owner, installCli: false }, event),
+    /组件安装/,
+  );
+  await routes.get('partner.components.cancel')!({ id: 'feishu-cli' }, event);
+  const job = tasks.start(owner);
+  await assert.rejects(
+    async () => routes.get('partner.components.install')!({ id: 'feishu-cli' }, event),
+    /账号连接/,
+  );
+  await tasks.cancel(job);
+});
+
 test('all account, scope, content and apply handlers reject extension/subframes before inspecting input', async () => {
   assert.deepEqual(
     [...handlers.keys()].sort(),
-    Object.keys({ ...connectorInvokeChannels, ...connectorOnboardingInvokeChannels })
+    Object.keys({
+      ...connectorInvokeChannels,
+      ...connectorOnboardingInvokeChannels,
+      ...partnerComponentInvokeChannels,
+    })
       .filter((name) => !name.startsWith('session.'))
       .sort(),
   );
