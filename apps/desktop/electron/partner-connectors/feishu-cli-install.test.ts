@@ -158,6 +158,8 @@ test('the official release archive metadata is accepted but only the native bina
   );
   const installer = createFeishuCliInstaller({
     root,
+    platform: 'darwin',
+    arch: 'arm64',
     expectedDigest: createHash('sha256').update(data).digest('hex'),
     fetch: async () => new Response(new Uint8Array(data)),
     verifyBinary: async () => true,
@@ -215,6 +217,8 @@ test('a progressing eight-minute official download completes instead of failing 
   let part = 0;
   const installer = createFeishuCliInstaller({
     root,
+    platform: 'darwin',
+    arch: 'arm64',
     expectedDigest: createHash('sha256').update(data).digest('hex'),
     fetch: async () =>
       new Response(
@@ -251,6 +255,8 @@ test('a valid official redirect counts as download progress before the next resp
   let requests = 0;
   const installer = createFeishuCliInstaller({
     root,
+    platform: 'darwin',
+    arch: 'arm64',
     expectedDigest: createHash('sha256').update(data).digest('hex'),
     fetch: async (_url, options) => {
       requests++;

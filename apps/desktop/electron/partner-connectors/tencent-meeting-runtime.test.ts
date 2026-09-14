@@ -213,7 +213,14 @@ test('Tencent Meeting installer selects only the pinned native private path and 
   });
   assert.equal(
     installer.executable,
-    '/private/space-connectors/tencent-meeting-cli/cli/1.0.15/darwin-arm64/tmeet',
+    path.join(
+      '/private/space-connectors',
+      'tencent-meeting-cli',
+      'cli',
+      '1.0.15',
+      'darwin-arm64',
+      'tmeet',
+    ),
   );
   const unsupported = createTencentMeetingInstaller({
     root: '/private/space-connectors',

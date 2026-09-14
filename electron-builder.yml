@@ -131,7 +131,9 @@ extraResources:
     filter:
       - 'package.json'
       - 'lib/**/*'
-      - 'prebuilds/**/*'
+      # node-pty loads only the running platform/arch; foreign prebuilds are
+      # unused (unlike the SDK's separately verified, complete native bundle).
+      - 'prebuilds/${env.KODAX_BUILD_TARGET_PLATFORM}-${arch}/**/*'
       - 'build/Release/*.node'
       - 'build/Release/conpty/**/*'
       - 'build/Release/spawn-helper'
@@ -206,6 +208,7 @@ asarUnpack:
 afterPack: scripts/after-pack.cjs
 
 mac:
+  compression: maximum
   category: public.app-category.developer-tools
   target:
     - target: dmg
@@ -268,6 +271,11 @@ linux:
   description: KodaX Space — desktop client for the KodaX ecosystem (Coder + Partner dual-panel).
   maintainer: icetomoyo <icetomoyo@gmail.com>
   vendor: icetomoyo
+
+appImage:
+  # Keep the complete runtime below the 200 MiB installer gate. The pinned
+  # FUSE2 AppImage toolset supports xz with a 1 MiB SquashFS block size.
+  compression: xz
 
 extraMetadata:
   main: dist-electron/main.js

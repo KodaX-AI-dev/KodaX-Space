@@ -32,7 +32,7 @@ test('development Feishu CLI uses the build-prepared component beside the reposi
       platform: 'win32',
       arch: 'x64',
     }),
-    path.join(
+    path.resolve(
       '/workspace',
       '.managed-components',
       'feishu-cli',

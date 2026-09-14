@@ -842,9 +842,18 @@ test(
     );
     await dialog.getByLabel('使用默认方法').uncheck();
     await dialog.getByRole('button', { name: '使用专家', exact: true }).click();
-    await frame.getByText('专家已选择，请在 Partner 中继续对话。', { exact: true }).waitFor();
-    const selection = requests.find((request) => request.method === 'expert.select');
+    // Closing the briefing acknowledges the host response. Allow the same
+    // bounded IPC/UI budget as the other Partner flow tests on busy CI hosts.
+    await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+    assert.equal(
+      await frame.locator('#expert-status').textContent(),
+      '专家已选择，请在 Partner 中继续对话。',
+    );
+    const selections = requests.filter((request) => request.method === 'expert.select');
+    assert.equal(selections.length, 1);
+    const selection = selections[0];
     assert.ok(selection?.method === 'expert.select');
+    assert.equal(selection.expertId, expert.id);
     assert.equal(selection.useSkill, false);
     assert.equal(selection.revision, expert.revision);
   },

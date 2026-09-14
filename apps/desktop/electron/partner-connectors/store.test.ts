@@ -3,6 +3,10 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import {
+  replaceFileWithoutFollowingAliases,
+  withFileTransactionLock,
+} from '../kodax/atomic-file.js';
 import { PartnerConnectorStore } from './store.js';
 
 test('connector records migrate from v1 to v2 without losing an existing account', async (t) => {
@@ -100,4 +104,77 @@ test('Base recovery fails abandoned preparation but preserves live work and unce
     (await new PartnerConnectorStore(root).readReconciled()).baseTasks,
     recovered.baseTasks,
   );
+});
+
+test('connector record reads stay consistent while another store publishes updates', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'partner-store-concurrent-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const writer = new PartnerConnectorStore(root);
+  const reader = new PartnerConnectorStore(root);
+  await writer.mutate(() => undefined);
+  const writing = (async () => {
+    for (let revision = 0; revision < 100; revision += 1) {
+      await writer.mutate(() => undefined);
+    }
+  })();
+  const reading = (async () => {
+    let previousRevision = 1;
+    for (let index = 0; index < 200; index += 1) {
+      const snapshot = await reader.read();
+      assert.ok(snapshot.recordRevision >= previousRevision);
+      previousRevision = snapshot.recordRevision;
+    }
+  })();
+  const results = await Promise.allSettled([writing, reading]);
+  for (const result of results) {
+    if (result.status === 'rejected') throw result.reason;
+  }
+  assert.equal((await reader.read()).recordRevision, 101);
+});
+
+test('connector reads wait through the Windows atomic replacement gap instead of returning an empty database', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'partner-store-replacement-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const store = new PartnerConnectorStore(root);
+  await store.mutate(() => undefined);
+  const next = { ...(await store.read()), recordRevision: 2 };
+  const file = path.join(root, 'records.json');
+  let entered!: () => void;
+  let release!: () => void;
+  const displaced = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const writing = withFileTransactionLock(file, 'test writer busy', () =>
+    replaceFileWithoutFollowingAliases(
+      file,
+      Buffer.from(JSON.stringify(next)),
+      'test replacement changed',
+      {
+        forceRenameFallback: true,
+        beforeFallbackInstall: async () => {
+          entered();
+          await released;
+        },
+      },
+    ),
+  );
+  let reading: ReturnType<PartnerConnectorStore['read']> | undefined;
+  try {
+    await displaced;
+    reading = new PartnerConnectorStore(root).read();
+    const early = await Promise.race([
+      reading,
+      new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 100)),
+    ]);
+    assert.equal(early, undefined, 'a reader must wait for the active writer');
+    release();
+    await writing;
+    assert.deepEqual(await reading, next);
+  } finally {
+    release();
+    await Promise.allSettled([writing, reading]);
+  }
 });

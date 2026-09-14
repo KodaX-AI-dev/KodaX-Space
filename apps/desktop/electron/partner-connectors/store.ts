@@ -99,10 +99,10 @@ export class PartnerConnectorStore {
     this.file = path.join(root, 'records.json');
   }
   async read(): Promise<ConnectorDatabase> {
-    const initial = await this.readUnlocked();
-    if (!initial.migrated) return initial.database;
     await assertOwnedDirectory(this.root, true);
-    return withFileTransactionLock(this.file, '连接器记录正在迁移，请稍后再试', async () => {
+    // Share the writer lock so an atomic replacement cannot race the bounded
+    // reader's lstat/open identity check. Keep the symlink checks intact.
+    return withFileTransactionLock(this.file, '连接器记录正在更新，请稍后再试', async () => {
       const current = await this.readUnlocked();
       if (current.migrated) await this.writeUnlocked(current.database);
       return current.database;

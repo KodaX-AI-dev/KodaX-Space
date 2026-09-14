@@ -42,7 +42,7 @@ test('provider process confines cwd, arguments, stdin and environment to the tru
     assert.equal(result.exitCode, 0);
     assert.equal(value.arg, 'x;$(touch /not-run)');
     assert.equal(value.s, 'body');
-    assert.ok(value.cwd.endsWith('/work'));
+    assert.equal(value.cwd, await realpath(cwd));
     assert.ok(value.keys.includes('WECOM_CLI_CONFIG_DIR'));
     assert.ok(!value.keys.includes('WECOM_CLI_ACCESS_TOKEN'));
     assert.ok(!value.keys.includes('NODE_OPTIONS'));
@@ -165,17 +165,24 @@ test('provider process refuses symlink ancestors, inherited dotenv files, invali
   }
 });
 
-test('provider process refuses a private working directory made accessible to other users', async () => {
-  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'space-provider-mode-')));
-  try {
-    await chmod(root, 0o755);
-    await assert.rejects(
-      createProviderCliProcess({ executable: process.execPath, cwd: root })({
-        args: ['-e', 'process.exit(0)'],
-      }),
-      code('invalid_response'),
-    );
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
+test(
+  'provider process refuses a private working directory made accessible to other users',
+  {
+    skip:
+      process.platform === 'win32' ? 'POSIX permission bits are not supported on Windows' : false,
+  },
+  async () => {
+    const root = await realpath(await mkdtemp(path.join(tmpdir(), 'space-provider-mode-')));
+    try {
+      await chmod(root, 0o755);
+      await assert.rejects(
+        createProviderCliProcess({ executable: process.execPath, cwd: root })({
+          args: ['-e', 'process.exit(0)'],
+        }),
+        code('invalid_response'),
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+);
