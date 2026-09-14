@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminAuditEventT, AdminPolicyT } from '@kodax-space/space-ipc-schema';
-import { AlertTriangle, Download, FileJson, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  Download,
+  FileJson,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  Wrench,
+} from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider.js';
+import { useAppStore } from '../../store/appStore.js';
 
 function downloadText(filename: string, content: string, mime: string): void {
   const blob = new Blob([content], { type: mime });
@@ -19,9 +28,12 @@ function compactTime(ts: number): string {
 
 export function AdminAuditPanel(): JSX.Element {
   const { t } = useI18n();
+  const currentProjectPath = useAppStore((state) => state.currentProjectPath);
   const [policy, setPolicy] = useState<AdminPolicyT | null>(null);
   const [events, setEvents] = useState<readonly AdminAuditEventT[]>([]);
   const [busy, setBusy] = useState(false);
+  const [maintenanceBusy, setMaintenanceBusy] = useState(false);
+  const [maintenanceNotice, setMaintenanceNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback((): (() => void) | void => {
@@ -67,6 +79,30 @@ export function AdminAuditPanel(): JSX.Element {
     else if (result) setError(result.error.message);
   }
 
+  async function runKbMaintenance(): Promise<void> {
+    const bridge = window.kodaxSpace;
+    if (!bridge || !currentProjectPath) return;
+    setMaintenanceBusy(true);
+    setMaintenanceNotice(null);
+    setError(null);
+    try {
+      const result = await bridge.invoke('partner.kb.maintenance.run', {
+        projectRoot: currentProjectPath,
+      });
+      if (result.ok) {
+        setMaintenanceNotice(
+          t('partner.kb.maintenanceResult', { count: result.data.report.issueCount }),
+        );
+      } else {
+        setError(result.error.message);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setMaintenanceBusy(false);
+    }
+  }
+
   return (
     <section className="border-b border-border-default" data-testid="partner-admin-audit-panel">
       <div className="px-3 py-2 flex items-center gap-2">
@@ -83,7 +119,21 @@ export function AdminAuditPanel(): JSX.Element {
         )}
         <button
           type="button"
-          className="ml-auto w-5 h-5 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg"
+          className="ml-auto w-6 h-6 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg disabled:opacity-40"
+          title={t('partner.kb.maintenance')}
+          aria-label={t('partner.kb.maintenance')}
+          disabled={!currentProjectPath || maintenanceBusy}
+          onClick={() => void runKbMaintenance()}
+        >
+          {maintenanceBusy ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={1.75} aria-hidden />
+          ) : (
+            <Wrench className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden />
+          )}
+        </button>
+        <button
+          type="button"
+          className="w-6 h-6 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg"
           title={t('partner.audit.refresh')}
           aria-label={t('partner.audit.refresh')}
           onClick={() => void load()}
@@ -92,7 +142,7 @@ export function AdminAuditPanel(): JSX.Element {
         </button>
         <button
           type="button"
-          className="w-5 h-5 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg"
+          className="w-6 h-6 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg"
           title={t('partner.audit.exportPolicy')}
           aria-label={t('partner.audit.exportPolicy')}
           onClick={() => void exportPolicy()}
@@ -101,7 +151,7 @@ export function AdminAuditPanel(): JSX.Element {
         </button>
         <button
           type="button"
-          className="w-5 h-5 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg"
+          className="w-6 h-6 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg"
           title={t('partner.audit.exportAudit')}
           aria-label={t('partner.audit.exportAudit')}
           onClick={() => void exportAudit()}
@@ -144,6 +194,7 @@ export function AdminAuditPanel(): JSX.Element {
             <span>{error}</span>
           </div>
         )}
+        {maintenanceNotice && <div className="text-[10px] text-ok">{maintenanceNotice}</div>}
       </div>
     </section>
   );

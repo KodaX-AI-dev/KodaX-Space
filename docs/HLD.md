@@ -1,8 +1,10 @@
 # KodaX Space 高层设计（HLD）
 
+> **2026-09-14 beta.3 Partner integration candidate**: Partner library 0.1.0 is packaged outside ASAR and provisioned once by Electron main through the existing Extension Store. Existing same-ID packages, disablement and uninstall intent are preserved. Renderer and the extension frame use typed/zod IPC; credentials, connector authorization and remote writes remain in the trusted host. Partner keeps its embedded owner and public SDK adapter; Coder daemon ownership and SDK 0.7.96-rc.4 contracts remain unchanged. See [integration boundaries](partner/releases/space-bundled-integration.md) and [release readiness](releases/v0.1.46-beta.3-release-readiness.md).
+
 > **2026-08-24 当前发布基线**：v0.1.45 使用 root/Desktop/lockfile 精确锁定的 npm Registry KodaX `0.7.95`，并要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。Space 在 SDK 启动门、daemon 协商、IPC status 与打包 smoke 四个边界保持同一版本；同一 boot 的临时 `unconfirmed-owner` 自动重试，等待会在应用退出时取消。
 >
-> **2026-09-13 当前源码候选**：Space package 为 `0.1.46-beta.2`，root/Desktop/lockfile 精确锁定 KodaX
+> **2026-09-14 当前源码候选**：Space package 为 `0.1.46-beta.3`，root/Desktop/lockfile 精确锁定 KodaX
 > `0.7.96-rc.4`。SDK 包启动门要求 `effectiveConfig:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6` 与 `sharedSessionSettings:2`；`providerCredentialBroker:2` 由 daemon 准入 requirements 和连接后 Runtime capability
 > 两层门禁验证，因为 SDK 的静态 capability 常量不发布该字段。`dist/native` 整体位于 `app.asar.unpacked`；dependency gate
 > 验证 universal native 集合，packaged smoke 按每个 manifest 的 SHA-256 验证物理 sidecar。

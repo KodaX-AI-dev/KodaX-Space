@@ -1,6 +1,6 @@
 {
   "name": "kodax-space",
-  "version": "0.1.46-beta.2",
+  "version": "0.1.46-beta.3",
   "description": "KodaX Space — Provider-neutral, local-first AI agent desktop client (KodaX 生态桌面客户端)",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
   "author": "icetomoyo <icetomoyo@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/icetomoyo/KodaX-Space.git"
+    "url": "https://github.com/KodaX-AI-dev/KodaX-Space.git"
   },
   "workspaces": [
     "apps/*",
@@ -21,6 +21,7 @@
     "build:packages": "npm run build -w @kodax-space/space-ipc-schema && npm run build -w @kodax-space/space-ui-kit",
     "build:renderer": "npm run build -w @kodax-space/desktop",
     "build:main": "node scripts/build-main.mjs",
+    "build:partner-extension": "node scripts/build-partner-extension.mjs",
     "build:pack": "node scripts/pack.mjs",
     "build:pack:test-kodax": "node scripts/pack.mjs --allow-local-kodax",
     "build:win": "npm run build:smoke && node scripts/pack.mjs --win",
@@ -50,7 +51,7 @@
     "e2e": "npm run build:smoke && npm run e2e:run",
     "e2e:run": "node scripts/ensure-sqlite-native.mjs electron && playwright test",
     "e2e:headed": "playwright test --headed",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps && node scripts/ensure-node-pty-helpers.mjs",
     "smoke:boot": "node e2e/boot-smoke-packaged.mjs",
     "smoke:complete-exit": "node e2e/complete-exit-packaged.mjs"
   },

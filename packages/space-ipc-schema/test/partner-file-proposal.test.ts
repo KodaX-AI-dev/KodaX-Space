@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   invokeChannels,
+  pushChannels,
+  partnerFileProposalsChangedChannel,
   partnerFileProposalSchema,
   partnerFileProposalsApplyChannel,
   partnerFileProposalsExportChannel,
@@ -20,6 +22,29 @@ test('partner file proposal channels are registered', () => {
   ]) {
     assert.ok(invokeChannels[name as keyof typeof invokeChannels], `${name} should be registered`);
   }
+  assert.equal(pushChannels['partner.fileProposals.changed'], partnerFileProposalsChangedChannel);
+});
+
+test('partner file proposal changed push carries only scoped review metadata', () => {
+  assert.equal(
+    partnerFileProposalsChangedChannel.payload.safeParse({
+      sessionId: 's_partner',
+      projectRoot: '/workspace/project',
+      id: 'pfp_1',
+      status: 'pending',
+      reason: 'created',
+    }).success,
+    true,
+  );
+  assert.equal(
+    partnerFileProposalsChangedChannel.payload.safeParse({
+      sessionId: 's_partner',
+      id: 'pfp_1',
+      status: 'pending',
+      reason: 'created',
+    }).success,
+    false,
+  );
 });
 
 test('partner file proposal schemas accept pending reviewed file proposal', () => {

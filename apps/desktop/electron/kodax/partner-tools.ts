@@ -49,6 +49,12 @@ export interface PartnerSpaceToolPolicy {
 export const PARTNER_NETWORK_ALLOW: ReadonlySet<string> = new Set(['web_fetch', 'web_search']);
 
 /**
+ * Instruction-only capability loaders. Loading a Skill changes model context, not Partner
+ * authority: every tool requested by the loaded instructions still passes this policy again.
+ */
+export const PARTNER_CAPABILITY_LOADER_ALLOW: ReadonlySet<string> = new Set(['skill']);
+
+/**
  * Partner 显式允许的 Space 自有工具（F058）。`create_artifact` 是 Space 注册的
  * in-process 工具（sideEffect='mutates-state'，写 Space 自有 artifact store，不碰项目 FS），
  * resolveToolCapability 对它 fail-closed 到 'subagent' → 不显式放行就会被拦。Partner 产出
@@ -144,6 +150,7 @@ export function isPartnerToolAllowed(
   capability: string,
   registeredTool?: PartnerRegisteredToolMetadata,
 ): boolean {
+  if (PARTNER_CAPABILITY_LOADER_ALLOW.has(toolName)) return true;
   if (PARTNER_NETWORK_ALLOW.has(toolName)) return true;
   if (PARTNER_SPACE_TOOL_ALLOW.has(toolName)) return true;
   if (partnerPolicyAllows(toolName)) return true;

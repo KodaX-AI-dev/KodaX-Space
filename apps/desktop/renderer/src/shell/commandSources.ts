@@ -13,6 +13,7 @@
 
 import { pushToast } from '../store/toastStore.js';
 import { useAppStore } from '../store/appStore.js';
+import { startNewConversation } from '../store/newConversation.js';
 import type { SupportedLocaleT } from '@kodax-space/space-ipc-schema';
 import { slashCommandDescription, type Translate } from './slashCommandDescriptions.js';
 import { setSpaceTheme } from '../space-control/semanticActions.js';
@@ -57,8 +58,7 @@ function actionCommands(ctx: CommandContext): readonly CommandItem[] {
       ctx.close();
       // 让 BottomBar 自动创建 session — 把焦点回到 textarea，
       // 用户打字时 BottomBar 的 sendMessage 会触发 createSession 路径。
-      // 这里仅清掉当前 sessionId 指引 BottomBar 进入 "no session" 状态。
-      store.setCurrentSession(null);
+      startNewConversation();
     },
   });
 

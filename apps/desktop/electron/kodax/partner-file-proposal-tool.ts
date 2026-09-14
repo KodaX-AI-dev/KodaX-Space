@@ -1,3 +1,5 @@
+import type { PushPayload } from '@kodax-space/space-ipc-schema';
+import { pushToRenderer } from '../ipc/push.js';
 import { registerPartnerSpaceToolPolicy } from './partner-tools.js';
 import {
   resolveSessionRunContext,
@@ -13,6 +15,12 @@ type ToolHandler = (
   input: Record<string, unknown>,
   context?: SdkToolExecutionContextLike,
 ) => Promise<string>;
+
+type FileProposalChangedNotifier = (payload: PushPayload<'partner.fileProposals.changed'>) => void;
+
+const notifyRenderer: FileProposalChangedNotifier = (payload) => {
+  pushToRenderer('partner.fileProposals.changed', payload);
+};
 
 export const CREATE_FILE_PROPOSAL_TOOL = {
   name: 'create_file_proposal',
@@ -86,6 +94,7 @@ function sourceRefsFromInput(input: Record<string, unknown>): string[] {
 export function makeFileProposalHandler(
   store: PartnerFileProposalStore,
   operation: 'create' | 'update',
+  notifyChanged: FileProposalChangedNotifier = notifyRenderer,
 ): ToolHandler {
   return async (input, toolContext) => {
     const ctx = requirePartnerContext(toolContext);
@@ -108,6 +117,13 @@ export function makeFileProposalHandler(
         content,
         ...(rationale !== undefined ? { rationale } : {}),
         sourceRefs: sourceRefsFromInput(input),
+      });
+      notifyChanged({
+        sessionId: proposal.sessionId,
+        projectRoot: proposal.projectRoot,
+        id: proposal.id,
+        status: proposal.status,
+        reason: 'created',
       });
       await adminPolicyAuditStore.record({
         category: 'workspace-file',

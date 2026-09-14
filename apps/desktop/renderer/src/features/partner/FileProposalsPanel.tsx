@@ -178,6 +178,16 @@ export function FileProposalsPanel(): JSX.Element {
 
   useEffect(() => {
     const bridge = window.kodaxSpace;
+    if (!bridge) return;
+    return bridge.on('partner.fileProposals.changed', (payload) => {
+      if (payload.sessionId === currentSessionId && payload.projectRoot === currentProjectPath) {
+        void loadList({ quiet: true });
+      }
+    });
+  }, [currentProjectPath, currentSessionId, loadList]);
+
+  useEffect(() => {
+    const bridge = window.kodaxSpace;
     if (
       !bridge ||
       !currentProjectPath ||
@@ -374,7 +384,11 @@ export function FileProposalsPanel(): JSX.Element {
             )}
           </button>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-1 rounded bg-surface-2 p-0.5">
+        <div
+          className="mt-2 grid grid-cols-2 gap-1 rounded bg-surface-2 p-0.5"
+          role="group"
+          aria-label={t('partner.fileProposals.filter.label')}
+        >
           {(['pending', 'all'] as const).map((item) => (
             <button
               key={item}

@@ -41,6 +41,13 @@ test('web research tools are explicitly allowed even when tier is not "read"', (
   assert.ok(PARTNER_NETWORK_ALLOW.has('web_search'));
 });
 
+test('Partner admits skill as an instruction loader without admitting shell or mutation tools', () => {
+  assert.equal(isPartnerToolAllowed('skill', 'subagent'), true);
+  assert.equal(isPartnerToolAllowed('bash', 'bash:mutating'), false);
+  assert.equal(isPartnerToolAllowed('write', 'edit'), false);
+  assert.equal(isPartnerToolAllowed('run_workflow', 'subagent'), false);
+});
+
 test('fail-closed: unknown tool (SDK resolves to "subagent") is blocked', () => {
   // SDK resolveToolCapability 对未知/MCP 工具 fail-closed 到 'subagent'；Partner 也拦。
   assert.equal(isPartnerToolAllowed('mystery_mcp_tool', 'subagent'), false);
@@ -126,6 +133,14 @@ test('Partner tool visibility policy mirrors the execution whitelist', () => {
       name: 'create_office_artifact',
       sideEffect: 'mutates-state',
       planModeAllowed: false,
+    }),
+    true,
+  );
+  assert.equal(
+    partnerToolVisibilityPolicy({
+      name: 'skill',
+      sideEffect: 'mutates-state',
+      planModeAllowed: true,
     }),
     true,
   );

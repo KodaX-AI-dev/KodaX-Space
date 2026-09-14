@@ -156,6 +156,9 @@ export async function launchSpace(
   // 启动期立刻报 "bad option" 失败。这里显式剥掉。
   const baseEnv = { ...process.env } as Record<string, string | undefined>;
   delete baseEnv.ELECTRON_RUN_AS_NODE;
+  // macOS aliases /var to /private/var. Runtime exit recovery requires a
+  // canonical profile root, so give isolated test profiles the physical temp path.
+  if (process.platform === 'darwin') baseEnv.TMPDIR = await fs.realpath(os.tmpdir());
 
   let app: ElectronApplication;
   try {

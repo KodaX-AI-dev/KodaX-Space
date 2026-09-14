@@ -18,7 +18,11 @@ test('S4: Shift+Tab cycles through all four permission profiles', async () => {
   const projectDir = path.join(os.tmpdir(), `kodax-test-${testId}-project`);
   await fs.mkdir(projectDir, { recursive: true });
 
-  const space = await launchSpace(testId);
+  // This spec verifies renderer permission controls, not the shared daemon
+  // lifecycle. Keep its isolated profile on the deterministic embedded host.
+  const space = await launchSpace(testId, {
+    env: { KODAX_SPACE_RUNTIME_HOST: 'legacy' },
+  });
   try {
     // 先把 project 注入让 ModeSelector / textarea 都活 (fixture 共享 helper)
     await space.seedProject(projectDir);

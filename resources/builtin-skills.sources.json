@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "skills": [
     {
+      "name": "feishu-office-suite",
+      "sourcePath": "first-party-skills/feishu-office-suite"
+    },
+    {
       "name": "frontend-slides",
       "repository": "https://github.com/zarazhangrui/frontend-slides.git",
       "ref": "9906a34d640d2111f724544cbc50f7f130569ae1",
@@ -25,7 +29,13 @@
         "destinationPath": "LICENSE",
         "sha256": "6d6a2a9caf2e6d2b76974050427053b2892d8aa4c33fd168ce63a537fcee9d96"
       },
-      "exclude": [".git/**", ".gitignore", "README.md", "README.en.md", "test-prompts.json"],
+      "exclude": [
+        ".git/**",
+        ".gitignore",
+        "README.md",
+        "README.en.md",
+        "test-prompts.json"
+      ],
       "patches": [
         "builtin-skill-patches/huashu-design-no-watermark.patch",
         "builtin-skill-patches/huashu-design-builtin-portability.patch",
@@ -43,6 +53,178 @@
         "写作/.env",
         "/path/to/claude-design",
         "design-philosophy skill"
+      ]
+    },
+    {
+      "name": "partner-product-management",
+      "sourcePath": "first-party-skills/partner-product-management"
+    },
+    {
+      "name": "partner-deep-research",
+      "sourcePath": "first-party-skills/partner-deep-research"
+    },
+    {
+      "name": "copywriting",
+      "repository": "https://github.com/coreyhaines31/marketingskills.git",
+      "ref": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "installedPath": "copywriting",
+      "sourceSubdir": "skills/copywriting",
+      "license": {
+        "sourcePath": "LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591"
+      },
+      "exclude": [
+        "evals/**"
+      ],
+      "patches": [
+        "builtin-skill-patches/copywriting-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "customer-research",
+      "repository": "https://github.com/coreyhaines31/marketingskills.git",
+      "ref": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "installedPath": "customer-research",
+      "sourceSubdir": "skills/customer-research",
+      "license": {
+        "sourcePath": "LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591"
+      },
+      "exclude": [
+        "evals/**"
+      ],
+      "patches": [
+        "builtin-skill-patches/customer-research-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "partner-project-management",
+      "sourcePath": "first-party-skills/partner-project-management"
+    },
+    {
+      "name": "partner-data-analysis",
+      "sourcePath": "first-party-skills/partner-data-analysis"
+    },
+    {
+      "name": "partner-meeting-minutes",
+      "sourcePath": "first-party-skills/partner-meeting-minutes"
+    },
+    {
+      "name": "partner-business-communication",
+      "sourcePath": "first-party-skills/partner-business-communication"
+    },
+    {
+      "name": "process-doc",
+      "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "installedPath": "process-doc",
+      "sourceSubdir": "operations/skills/process-doc",
+      "license": {
+        "sourcePath": "LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+      },
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/process-doc-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "draft-response",
+      "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "installedPath": "draft-response",
+      "sourceSubdir": "customer-support/skills/draft-response",
+      "license": {
+        "sourcePath": "customer-support/LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/draft-response-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "knowledge-synthesis",
+      "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "installedPath": "knowledge-synthesis",
+      "sourceSubdir": "enterprise-search/skills/knowledge-synthesis",
+      "license": {
+        "sourcePath": "enterprise-search/LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/knowledge-synthesis-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "status-report",
+      "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "installedPath": "status-report",
+      "sourceSubdir": "operations/skills/status-report",
+      "license": {
+        "sourcePath": "LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+      },
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/status-report-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "call-prep",
+      "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "installedPath": "call-prep",
+      "sourceSubdir": "sales/skills/call-prep",
+      "license": {
+        "sourcePath": "LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+      },
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/call-prep-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "interview-prep",
+      "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "installedPath": "interview-prep",
+      "sourceSubdir": "human-resources/skills/interview-prep",
+      "license": {
+        "sourcePath": "LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+      },
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/interview-prep-space-adaptation.patch"
+      ]
+    },
+    {
+      "name": "onboarding",
+      "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "installedPath": "onboarding",
+      "sourceSubdir": "human-resources/skills/onboarding",
+      "license": {
+        "sourcePath": "LICENSE",
+        "destinationPath": "LICENSE",
+        "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+      },
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/onboarding-space-adaptation.patch"
       ]
     }
   ]

@@ -7,6 +7,10 @@
 //
 // FEATURE_001 时这里只有一个最小 versionChannel；FEATURE_002 起完整 envelope + registry。
 
+export * from './channels/partner-connector.js';
+export * from './channels/partner-connector-onboarding.js';
+export * from './partner-connector-capabilities.js';
+
 export {
   IPC_ERROR_CODES,
   ipcErrorSchema,
@@ -497,6 +501,7 @@ export {
   partnerFileProposalsApplyChannel,
   partnerFileProposalsRejectChannel,
   partnerFileProposalsExportChannel,
+  partnerFileProposalsChangedChannel,
   MAX_PARTNER_FILE_PROPOSAL_CONTENT_BYTES,
   MAX_PARTNER_FILE_PROPOSAL_DIFF_BYTES,
   type PartnerFileProposalOperationT,
@@ -624,6 +629,10 @@ export {
 export { notificationShowChannel, notificationClickedChannel } from './channels/notification.js';
 
 export {
+  PARTNER_BROWSER_FRAME_NAME_PREFIX,
+  PARTNER_BROWSER_MAX_URL_LENGTH,
+  PARTNER_BROWSER_PARTITION,
+  partnerBrowserNavigatedChannel,
   windowActivityChannel,
   windowActivityStateSchema,
   windowCompleteExitProgressChannel,
@@ -633,6 +642,7 @@ export {
   windowStateChannel,
   windowStateSchema,
   type WindowActivityPayload,
+  type PartnerBrowserNavigatedPayload,
   type WindowActivityStateT,
   type WindowCompleteExitProgressPayload,
   type WindowControlActionT,
@@ -779,3 +789,47 @@ export {
   type ChannelOutput,
   type PushPayload,
 } from './registry.js';
+
+export {
+  SPACE_EXTENSION_FRAME_URL,
+  SPACE_EXTENSION_FRAME_MESSAGE_TYPE,
+  SPACE_EXTENSION_MAX_HTML_BYTES,
+  SPACE_EXTENSION_MAX_FRAME_DOCUMENT_CHARACTERS,
+  spaceExtensionIdSchema,
+  spaceExtensionHostCapabilitySchema,
+  spaceExtensionManifestSchema,
+  spaceExtensionSchema,
+  spaceExtensionsListChannel,
+  spaceExtensionsInstallChannel,
+  spaceExtensionsSetEnabledChannel,
+  spaceExtensionsUninstallChannel,
+  spaceExtensionsViewChannel,
+  spaceExtensionsChangedChannel,
+  type SpaceExtensionHostCapabilityT,
+  type SpaceExtensionManifestT,
+  type SpaceExtensionT,
+} from './channels/space-extension.js';
+export {
+  spaceExpertTypeSchema,
+  spaceExpertListingTypeSchema,
+  spaceExpertCategorySchema,
+  spaceExpertDefinitionSchema,
+  spaceExpertDraftSchema,
+  spaceExpertSaveInputSchema,
+  spaceExpertRefSchema,
+  partnerExpertSnapshotSchema,
+  partnerExpertStateSchema,
+  spaceExtensionsCatalogChannel,
+  spaceExtensionsResolveExpertChannel,
+  spaceExtensionsExpertSaveChannel,
+  spaceExtensionsExpertDeleteChannel,
+  sessionPartnerExpertGetChannel,
+  sessionPartnerExpertSetChannel,
+  sessionPartnerExpertChangedChannel,
+  type SpaceExpertDefinitionT,
+  type SpaceExpertDraftT,
+  type SpaceExpertSaveInputT,
+  type SpaceExpertRefT,
+  type PartnerExpertSnapshotT,
+  type PartnerExpertStateT,
+} from './channels/partner-expert.js';

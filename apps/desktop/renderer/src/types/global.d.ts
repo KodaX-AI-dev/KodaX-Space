@@ -8,6 +8,7 @@ import type {
   ChannelOutput,
   IpcResult,
 } from '@kodax-space/space-ipc-schema';
+import type { DetailedHTMLProps, HTMLAttributes } from 'react';
 
 type BridgePlatform =
   | 'aix'
@@ -25,6 +26,15 @@ type BridgePlatform =
 export {};
 
 declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: DetailedHTMLProps<HTMLAttributes<Electron.WebviewTag>, Electron.WebviewTag> & {
+        readonly src?: string;
+        readonly partition?: string;
+      };
+    }
+  }
+
   interface KodaXSpaceBridge {
     /**
      * Renderer-to-main request/response. Always returns an envelope.

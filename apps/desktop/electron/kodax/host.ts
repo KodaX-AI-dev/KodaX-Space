@@ -198,6 +198,8 @@ export type ListMergedItem =
       readonly agentMode: ManagedSession['agentMode'];
       /** F045: 工作面归属（来自 runtime ManagedSession.surface）。*/
       readonly surface: ManagedSession['surface'];
+      readonly partnerExpert?: ManagedSession['partnerExpert'];
+      readonly partnerConnectors?: ManagedSession['partnerConnectors'];
       /** v0.7.42 wired: 用户 /model 设的值（undefined = provider 默认）。*/
       readonly model?: string;
       /** v0.7.42 wired: 用户 /thinking 设的值（undefined = KodaX 默认）。*/
@@ -255,6 +257,8 @@ class KodaXHost {
     agentMode?: import('@kodax-space/space-ipc-schema').AgentMode;
     /** F045: 工作面（'code' = Coder / 'partner' = Partner）。缺省 'code'。持久化为 SDK session tag。*/
     surface?: import('@kodax-space/space-ipc-schema').Surface;
+    partnerExpert?: ManagedSession['partnerExpert'];
+    partnerConnectors?: ManagedSession['partnerConnectors'];
     /** Host-only temporary session hidden from normal lists until promoted. */
     ephemeral?: boolean;
     /** 生效 model（创建即带）。undefined = provider 默认。让 SDK 应用 per-model 能力。*/
@@ -271,6 +275,18 @@ class KodaXHost {
       throw new Error('Space cannot create a Session while the host is disposing.');
     }
     const surface = opts.surface ?? 'code';
+    if (opts.partnerExpert && surface !== 'partner') {
+      throw new Error('Experts are only available in Partner sessions');
+    }
+    if (opts.partnerExpert && opts.ephemeral) {
+      throw new Error('Partner experts require a persistent session');
+    }
+    if (opts.partnerConnectors?.length && surface !== 'partner') {
+      throw new Error('Connectors are only available in Partner sessions');
+    }
+    if (opts.partnerConnectors?.length && opts.ephemeral) {
+      throw new Error('Partner connectors require a persistent session');
+    }
     if (
       surface === 'code' &&
       runtimeHostAdapter.selectedHost() === 'legacy' &&
@@ -299,6 +315,8 @@ class KodaXHost {
       permissionMode: opts.permissionMode ?? 'accept-edits',
       agentMode: opts.agentMode ?? 'ama',
       surface,
+      partnerExpert: opts.partnerExpert,
+      partnerConnectors: opts.partnerConnectors,
       ephemeral: opts.ephemeral ?? false,
       parentSessionId: opts.parentSessionId,
       forkPointTurnIdx: opts.forkPointTurnIdx,
@@ -349,6 +367,8 @@ class KodaXHost {
       reasoningMode: session.reasoningMode,
       permissionMode: session.permissionMode,
       agentMode: session.agentMode,
+      partnerExpert: session.partnerExpert,
+      partnerConnectors: session.partnerConnectors,
     });
   }
 
@@ -374,6 +394,75 @@ class KodaXHost {
     return outcome;
   }
 
+  /** Persist first: an in-flight turn and concurrent sends never observe an uncommitted role. */
+  async setPartnerExpert(
+    sessionId: string,
+    expert: NonNullable<ManagedSession['partnerExpert']> | null,
+  ): Promise<'ok' | 'session-not-found' | 'persist-failed'> {
+    const snapshot = expert === null ? undefined : structuredClone(expert);
+    let outcome: 'ok' | 'session-not-found' | 'persist-failed' = 'session-not-found';
+    const previous = this.runtimeMutationLocks.get(sessionId) ?? Promise.resolve();
+    const current = previous
+      .catch(() => undefined)
+      .then(async () => {
+        if (this.disposePromise !== null || this.deletePromises.has(sessionId)) return;
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+        if (session.surface !== 'partner')
+          throw new Error('Experts are only available in Partner sessions');
+        if (session.ephemeral) throw new Error('Partner experts require a persistent session');
+        if (!(await getSessionRuntimeStore().set(sessionId, { partnerExpert: snapshot }))) {
+          outcome = 'persist-failed';
+          return;
+        }
+        session.partnerExpert = snapshot;
+        outcome = 'ok';
+      });
+    this.runtimeMutationLocks.set(sessionId, current);
+    try {
+      await current;
+    } finally {
+      if (this.runtimeMutationLocks.get(sessionId) === current) {
+        this.runtimeMutationLocks.delete(sessionId);
+      }
+    }
+    return outcome;
+  }
+
+  /** Durable scope changes share the same session queue as expert/model changes. */
+  async setPartnerConnectors(
+    sessionId: string,
+    bindings: NonNullable<ManagedSession['partnerConnectors']>,
+  ): Promise<'ok' | 'session-not-found' | 'persist-failed'> {
+    const snapshot = structuredClone(bindings);
+    let outcome: 'ok' | 'session-not-found' | 'persist-failed' = 'session-not-found';
+    const previous = this.runtimeMutationLocks.get(sessionId) ?? Promise.resolve();
+    const current = previous
+      .catch(() => undefined)
+      .then(async () => {
+        if (this.disposePromise !== null || this.deletePromises.has(sessionId)) return;
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+        if (session.surface !== 'partner')
+          throw new Error('Connectors are only available in Partner sessions');
+        if (session.ephemeral) throw new Error('Partner connectors require a persistent session');
+        if (!(await getSessionRuntimeStore().set(sessionId, { partnerConnectors: snapshot }))) {
+          outcome = 'persist-failed';
+          return;
+        }
+        session.partnerConnectors = snapshot;
+        outcome = 'ok';
+      });
+    this.runtimeMutationLocks.set(sessionId, current);
+    try {
+      await current;
+    } finally {
+      if (this.runtimeMutationLocks.get(sessionId) === current)
+        this.runtimeMutationLocks.delete(sessionId);
+    }
+    return outcome;
+  }
+
   private async commitRuntimeMutationUnlocked(
     sessionId: string,
     mutate: () => boolean,
@@ -387,6 +476,8 @@ class KodaXHost {
       reasoningMode: session.reasoningMode,
       permissionMode: session.permissionMode,
       agentMode: session.agentMode,
+      partnerExpert: session.partnerExpert,
+      partnerConnectors: session.partnerConnectors,
     };
     const restore = (): void => {
       session.provider = before.provider;
@@ -395,6 +486,8 @@ class KodaXHost {
       session.reasoningMode = before.reasoningMode;
       session.permissionMode = before.permissionMode;
       session.agentMode = before.agentMode;
+      session.partnerExpert = before.partnerExpert;
+      session.partnerConnectors = before.partnerConnectors;
     };
     try {
       this.runtimeMutationsInProgress.add(sessionId);
@@ -609,6 +702,12 @@ class KodaXHost {
       // session 会被默认成 Coder，in-flight 项又因 dedup 优先覆盖 persisted 项，整段
       // resumed 生命周期都串面（code-review MEDIUM）。无 tag 的历史 session 归 'code'。
       surface: sdkTagToSurface(rec.tag),
+      ...(sdkTagToSurface(rec.tag) === 'partner' && persistedRuntime?.partnerExpert
+        ? { partnerExpert: persistedRuntime.partnerExpert }
+        : {}),
+      ...(sdkTagToSurface(rec.tag) === 'partner' && persistedRuntime?.partnerConnectors
+        ? { partnerConnectors: persistedRuntime.partnerConnectors }
+        : {}),
       existingSessionId: sessionId,
     });
     // 把 persisted title 同步到 ManagedSession，避免 list 里两边 title 不一致
@@ -709,6 +808,8 @@ class KodaXHost {
       permissionMode: s.permissionMode,
       agentMode: s.agentMode,
       surface: s.surface,
+      partnerExpert: s.partnerExpert,
+      partnerConnectors: s.partnerConnectors,
       model: s.model,
       thinking: s.thinking,
       title: s.title,
@@ -1073,6 +1174,8 @@ class KodaXHost {
         agentMode: src.agentMode,
         // F045: fork child 继承 source 的工作面——Coder fork 仍是 Coder，Partner fork 仍是 Partner。
         surface: src.surface,
+        partnerExpert: src.partnerExpert,
+        partnerConnectors: src.partnerConnectors,
         parentSessionId: sourceSessionId,
         forkPointTurnIdx,
         emit: (event: SessionEvent) => {

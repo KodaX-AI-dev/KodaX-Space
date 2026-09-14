@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { PushPayload } from '@kodax-space/space-ipc-schema';
 import {
   CREATE_FILE_PROPOSAL_TOOL,
   UPDATE_FILE_PROPOSAL_TOOL,
@@ -27,7 +28,9 @@ function harness() {
 }
 
 test('file proposal tool creates a pending proposal in a Partner run context', async () => {
-  const { dir, root, store, create } = harness();
+  const { dir, root, store } = harness();
+  const changes: PushPayload<'partner.fileProposals.changed'>[] = [];
+  const create = makeFileProposalHandler(store, 'create', (payload) => changes.push(payload));
   try {
     const out = await withSessionRunContext(
       { sessionId: 's1', surface: 'partner', projectRoot: root },
@@ -41,7 +44,17 @@ test('file proposal tool creates a pending proposal in a Partner run context', a
     );
     assert.match(out, /File proposal created: pfp_/);
     assert.match(out, /workspace has not been modified/i);
-    assert.equal((await store.list({ sessionId: 's1', status: 'pending' })).length, 1);
+    const pending = await store.list({ sessionId: 's1', status: 'pending' });
+    assert.equal(pending.length, 1);
+    assert.deepEqual(changes, [
+      {
+        sessionId: 's1',
+        projectRoot: root,
+        id: pending[0]?.id,
+        status: 'pending',
+        reason: 'created',
+      },
+    ]);
   } finally {
     store.invalidate();
     rmSync(dir, { recursive: true, force: true });

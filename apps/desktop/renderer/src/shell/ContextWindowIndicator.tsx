@@ -104,8 +104,10 @@ function useResolvedContextWindow(
 
 export function ContextWindowIndicator({
   compacting = false,
+  attentionOnly = false,
 }: {
   readonly compacting?: boolean;
+  readonly attentionOnly?: boolean;
 }): JSX.Element | null {
   const { t } = useI18n();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
@@ -389,6 +391,10 @@ export function ContextWindowIndicator({
     setContextOpen(false);
     setSessionUsageOpen(false);
   }, [currentSessionId]);
+
+  // Partner is task-first: token detail appears only when it can affect the task.
+  // Coder retains the always-visible diagnostic control.
+  if (attentionOnly && (!currentSessionId || (!compacting && displayPercent < 70))) return null;
 
   return (
     <div className="relative flex items-center gap-1">

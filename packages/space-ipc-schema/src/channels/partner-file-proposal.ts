@@ -139,6 +139,18 @@ export const partnerFileProposalsExportChannel = {
   }),
 } as const;
 
+export const partnerFileProposalsChangedChannel = {
+  name: 'partner.fileProposals.changed',
+  direction: 'push',
+  payload: z.object({
+    sessionId: sessionIdSchema,
+    projectRoot: safePathSchema,
+    id: idSchema,
+    status: partnerFileProposalStatusSchema,
+    reason: z.enum(['created', 'updated']),
+  }),
+} as const;
+
 export type PartnerFileProposalOperationT = z.infer<typeof partnerFileProposalOperationSchema>;
 export type PartnerFileProposalStatusT = z.infer<typeof partnerFileProposalStatusSchema>;
 export type PartnerFileProposalSafetyT = z.infer<typeof partnerFileProposalSafetySchema>;

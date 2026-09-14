@@ -195,17 +195,21 @@ Randomized early boot splash result: passed
 
 ### Source visual truth
 
-- Loading: `C:/Users/ADMIN/.codex/generated_images/01a019aa-ca04-7f01-9894-68873687b850/exec-a39c07ac-4327-4002-83c4-7cdd43c79916.png`
-- Empty: `C:/Users/ADMIN/.codex/generated_images/01a019aa-ca04-7f01-9894-68873687b850/exec-1cd5a910-b5a8-43a8-856f-869ab0289726.png`
-- Two tasks: `C:/Users/ADMIN/.codex/generated_images/01a019aa-ca04-7f01-9894-68873687b850/exec-90c8fbdf-7490-4064-a7b4-05e23480003e.png`
-- Recoverable error: `C:/Users/ADMIN/.codex/generated_images/01a019aa-ca04-7f01-9894-68873687b850/exec-a61e3327-ced8-4230-9684-c70b97790ae1.png`
+The generated-image files were machine-local; original absolute paths are intentionally omitted.
+
+- Loading: `exec-a39c07ac-4327-4002-83c4-7cdd43c79916.png`
+- Empty: `exec-1cd5a910-b5a8-43a8-856f-869ab0289726.png`
+- Two tasks: `exec-90c8fbdf-7490-4064-a7b4-05e23480003e.png`
+- Recoverable error: `exec-a61e3327-ced8-4230-9684-c70b97790ae1.png`
 
 ### Rendered implementation
 
-- Loading: `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-loading-implementation.png`
-- Empty: `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-empty-implementation.png`
-- Two tasks: `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-tasks-implementation.png`
-- Recoverable error: `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-error-implementation.png`
+The rendered files were machine-local; original absolute paths are intentionally omitted.
+
+- Loading: `external-agent-loading-implementation.png`
+- Empty: `external-agent-empty-implementation.png`
+- Two tasks: `external-agent-tasks-implementation.png`
+- Recoverable error: `external-agent-error-implementation.png`
 
 ### Capture normalization
 
@@ -221,17 +225,19 @@ Randomized early boot splash result: passed
 
 Full-view comparisons:
 
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-loading-comparison.png`
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-empty-comparison.png`
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-tasks-comparison.png`
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-error-comparison.png`
+- `external-agent-loading-comparison.png`
+- `external-agent-empty-comparison.png`
+- `external-agent-tasks-comparison.png`
+- `external-agent-error-comparison.png`
 
 Focused Task Dock comparisons:
 
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-loading-focused-comparison.png`
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-empty-focused-comparison.png`
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-tasks-focused-comparison.png`
-- `C:/Users/ADMIN/.codex/visualizations/2026/08/19/01a019aa-ca04-7f01-9894-68873687b850/external-agent-error-focused-comparison.png`
+- `external-agent-loading-focused-comparison.png`
+- `external-agent-empty-focused-comparison.png`
+- `external-agent-tasks-focused-comparison.png`
+- `external-agent-error-focused-comparison.png`
+
+These comparison files were also machine-local; original absolute paths are intentionally omitted.
 
 ## Findings
 
@@ -250,5 +256,221 @@ No actionable P0, P1, or P2 differences remain in the four external-task states.
 2. Initial error state used a full amber card, which visually competed with the completed Run summary. Fixed by using a transparent warning row and neutral outlined Retry button. Earlier capture: `external-agent-error-implementation-iteration0.png`; post-fix evidence: `external-agent-error-focused-comparison.png`.
 
 ## Final result
+
+final result: passed
+
+---
+
+# Partner Context and Detail Workspace
+
+## Comparison target
+
+- Source visual truth: `outputs/kodax-space-standalone.html`.
+- Implementation: Partner workspace at `http://127.0.0.1:5174/`.
+- Viewport and state: `1280 x 720`, active task/workspace with the detail-tool launcher open.
+- Reference capture: `artifacts/design-qa/reference-right-tools.png`.
+- Implementation capture: `artifacts/design-qa/implementation-right-tools.png`.
+- Combined comparison: `artifacts/design-qa/comparison-right-tools.png` (reference left, implementation right).
+
+## Intentional product decisions
+
+- The first Partner header control owns Materials, Results, and Pending review context cards.
+- The second header control owns the detail workspace for Files, Browser, and Terminal.
+- The Partner composer does not duplicate the Materials action. “Add material” remains in the Materials context card.
+- The implementation retains KodaX Space theme tokens and existing left navigation instead of copying the standalone prototype's visual theme.
+
+## Findings
+
+No actionable P0, P1, or P2 visual differences remain.
+
+- Hierarchy: the center is limited to conversation and composer; contextual records and detail tools stay in the two right-side surfaces.
+- Interaction: Files, Browser, and Terminal are real detail tabs. Materials, Results, and Pending review open their corresponding live panels.
+- Responsiveness: at `1280 x 720`, the left navigation, center composer, and detail workspace remain usable without overlap. Compact layouts retain both header entry points.
+- Accessibility: both header controls are labelled toggle buttons, detail tabs have unique tab/tabpanel relationships, and externally opened detail tabs receive focus.
+- Composer: Partner exposes Skill, execution permission, delivery format, model, and send/stop controls; the redundant “Add material” control is absent. Coder's attachment control is unaffected.
+- Browser safety: only creation-registered, sandboxed HTTP(S) Partner frames are allowed; their stable frame IDs remain authoritative even if child content mutates `window.name`.
+
+## Verification
+
+- Combined reference/implementation visual review: passed.
+- Focused Partner and navigation tests: passed (`46/46`).
+- Renderer and Electron TypeScript: passed.
+- Production renderer and Electron main builds: passed.
+- Electron accessibility-tree and full-window visual inspection: passed.
+
+final result: passed
+
+---
+
+# Partner Independent Context Cards
+
+## Comparison target
+
+- Source visual truth: machine-local `kodax-space-standalone.html` (original absolute path intentionally omitted), including its 28px header/menu controls and 300px context rail behavior.
+- User override: the Partner context rail must contain three independent cards in the order 资料 → 待审核 → 成果, even though the standalone reference groups its sample 产物/来源 content.
+- Implementation: `http://127.0.0.1:5174/?qa=partner-context-cards`.
+- State: Partner active, context cards visible, detail sidebar closed, dark theme, no project selected.
+- CSS viewport: `1280 x 720`; browser `devicePixelRatio: 2`.
+- Source and implementation captures: `1280 x 720` PNG, normalized by the browser capture to one output pixel per CSS pixel.
+
+## Evidence
+
+- Reference capture: `artifacts/design-qa/reference-context-cards.png`.
+- Implementation capture: `artifacts/design-qa/implementation-context-cards.png`.
+- Full-view comparison: `artifacts/design-qa/comparison-context-cards.png` (reference left, implementation right).
+- Focused context comparison: `artifacts/design-qa/comparison-context-cards-focused.png`.
+- Focused vertical-ellipsis comparison: `artifacts/design-qa/comparison-vertical-ellipsis-focused.png`.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Icons: the first Partner header control now uses the existing Lucide `EllipsisVertical` icon inside the product's 28px control. The focused comparison confirms the same vertical three-dot affordance used by the standalone reference.
+- Spacing and layout rhythm: the 300px rail contains three 268px independent cards with 12px gaps, 12px corner radii, and the existing Partner card padding. Measured gaps are exactly `12px`.
+- Divider: the context rail's computed left border is `0px`; there is no vertical separator between the conversation and the cards.
+- Fonts and typography: the implementation intentionally retains KodaX Space's current font stack and Partner text tokens. Title, count, and summary hierarchy remain consistent across all three cards.
+- Colors and visual tokens: dark/light behavior continues to use the existing semantic surface, foreground, border, hover, and focus tokens instead of hard-coded reference colors.
+- Image quality and asset fidelity: this change contains no raster assets or bespoke illustrations. All controls use the product's existing Lucide icon dependency and render sharply at the captured density.
+- Copy and content: the required order is 资料 → 待审核 → 成果. Each card retains its live count and empty-state copy; 添加资料 remains only inside the 资料 card.
+- Interaction: clicking each card opens its real 资料, 待审核, or 成果 detail panel. At widths where the detail panel needs space, the context rail auto-hides and remains reachable from the vertical-ellipsis control.
+- Runtime: browser logs contain only Vite debug and React development information; there are no warnings or errors.
+
+## Comparison history
+
+- Pre-capture measurement found an 8px provisional card gap. It was aligned to the standalone reference's 12px rhythm before the final source/implementation captures.
+- The standalone sample combines 产物 and 来源 in one card. The three-card implementation is an intentional user-requested override, not unresolved visual drift.
+- Theme and sample-content differences are expected product-state differences; structure, controls, spacing, and interaction were compared directly.
+
+## Verification
+
+- Focused Partner regressions: passed (`45/45`).
+- Focused ESLint: passed.
+- Full renderer and Electron TypeScript checks: passed.
+- Production renderer build: passed.
+- Browser structure check: three cards, correct order, `12px` gaps, `0px` left border.
+- Browser interaction check: 资料, 待审核, and 成果 each open the expected detail panel.
+
+final result: passed
+
+---
+
+# Partner Context Header Removal
+
+## Comparison target
+
+- User-provided deletion target: temporary clipboard reference (original machine-local path intentionally omitted).
+- User decision: remove both the duplicated “文档工作区 · 知识工作” label and manual refresh control above the three context cards.
+- Before capture: `artifacts/design-qa/implementation-context-cards.png`.
+- Implementation capture: `artifacts/design-qa/implementation-context-header-removed.png`.
+- Full-view comparison: `artifacts/design-qa/comparison-context-header-removal.png` (before left, implementation right).
+- Focused comparison: `artifacts/design-qa/comparison-context-header-removal-focused.png`.
+- State and viewport: Partner active, context cards visible, detail sidebar closed, dark theme, `1280 x 720` CSS pixels and `1280 x 720` output pixels.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Spacing and layout rhythm: the first card now begins 12px below the rail top; the removed row leaves no dead placeholder height or accidental gap.
+- Copy and content: the duplicated subtitle is absent from the card rail while the primary Partner header remains unchanged.
+- Interaction: the manual refresh button is absent. Initial loading, source-change events, artifact changes, delivery changes, proposal changes, and project/session changes still invoke the existing automatic refresh path.
+- Fonts and typography: no card text styles changed; 资料, 待审核, and 成果 retain their established hierarchy.
+- Colors and visual tokens: card surfaces, borders, hover states, and focus rings remain on existing KodaX Space semantic tokens.
+- Image quality and asset fidelity: no image or icon assets were added, changed, or approximated.
+- Accessibility: the rail retains `aria-busy` for automatic loading state, and all three detail-entry buttons keep their accessible names and counts.
+- Runtime: no browser warnings or errors were present after hot reload.
+
+## Verification
+
+- Browser structure check: subtitle absent, refresh control absent, first-card top inset `12px`.
+- Focused Partner regressions: passed (`45/45`).
+- Focused ESLint: passed.
+- Full renderer and Electron TypeScript checks: passed.
+- Production renderer build: passed.
+
+final result: passed
+
+---
+
+# Partner Context List Icon
+
+## Comparison target
+
+- Source/current icon capture: temporary clipboard reference (original machine-local path intentionally omitted).
+- User target: replace the standalone vertical ellipsis with three vertically stacked “dot + horizontal line” rows.
+- Before capture: `artifacts/design-qa/implementation-context-header-removed.png`.
+- Implementation capture: `artifacts/design-qa/implementation-context-list-icon.png`.
+- Full-view comparison: `artifacts/design-qa/comparison-context-list-icon.png` (before left, implementation right).
+- Focused comparison: `artifacts/design-qa/comparison-context-list-icon-focused.png` (source/current icon left, implementation right).
+- State and viewport: Partner active, context cards visible, detail sidebar closed, dark theme, `1280 x 720` CSS pixels and `1280 x 720` output pixels.
+- Focused density normalization: the implementation header region was cropped and normalized to the source capture's `90 x 86` pixels.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Icon fidelity: the control now uses Lucide `List`, whose six paths render three point marks and three corresponding horizontal lines at matching vertical positions.
+- Affordance: the list-shaped icon communicates that the control owns a stack of context cards more clearly than the former overflow-menu ellipsis.
+- Spacing and layout rhythm: the icon remains centered in the existing 30px header control; adjacent detail-panel control spacing is unchanged.
+- Fonts and typography: no text or type hierarchy changed.
+- Colors and visual tokens: active, hover, focus, and muted states continue to use the existing Partner header tokens.
+- Image quality and asset fidelity: the established Lucide dependency supplies the icon; no handcrafted SVG, CSS drawing, raster replacement, or text glyph was introduced.
+- Copy and content: accessible show/hide labels remain unchanged.
+- Interaction: clicking the new icon hides the context rail, and clicking it again restores the three cards.
+- Runtime: no browser warnings or errors were present after the icon replacement.
+
+## Verification
+
+- Browser structure check: `lucide-list` present with three dot paths and three line paths; `lucide-ellipsis-vertical` absent.
+- Browser interaction check: hide and restore both passed.
+- Focused Partner regressions: passed (`45/45`).
+- Focused ESLint: passed.
+- Full renderer and Electron TypeScript checks: passed.
+- Production renderer build: passed.
+
+final result: passed
+
+---
+
+# Partner Feishu Connector Card — 2026-09-01
+
+## Comparison target and evidence
+
+- Source visual truth: user-supplied WorkBuddy connected Feishu card (original temporary clipboard path intentionally omitted).
+- Implementation: `artifacts/partner-feishu-brand/electron-card.jpg` — actual packaged Electron, host 0.1.45, independent extension 0.5.1, light theme, connector connected, management modal closed.
+- Full-view evidence: `artifacts/partner-feishu-brand/reference-full.png` and `artifacts/partner-feishu-brand/electron-card.jpg`, opened together in the same comparison input.
+- Focused evidence: `artifacts/partner-feishu-brand/reference-card.png` and `artifacts/partner-feishu-brand/implementation-card.png`, opened together in that same input.
+- Source capture: 2400 × 1600 pixels; Electron capture: 1229 × 768 pixels. Source CSS viewport and device density were not supplied, and Computer Use's capture does not establish an exact CSS viewport. No pixel-perfect whole-window claim is made.
+- Normalization: source full view reduced to 1229px wide; source card cropped to 880 × 198 and implementation card to 430 × 130, both resized proportionally to 440px wide. Component tests independently exercise 1100px and 390px frame widths, with a 400–460px desktop card and a 128px minimum height.
+
+## Intentional product differences
+
+The requested match is the horizontal connector card, brand icon and display name, not WorkBuddy's full navigation or catalog. Space retains its existing typography, 12px card radius, border, accessible visible status text and roomier padding. The description accurately limits the connector to supported document operations; it does not claim WorkBuddy's full Feishu product coverage. The pre-existing post-dialog helper line and library header are unchanged and outside this card restyling.
+
+## Findings
+
+No actionable P0, P1 or P2 differences remain within the requested scope.
+
+- Fonts and typography: existing system stack, 16px heading and 13px two-line description remain legible; title and action do not collide. No font package or unrelated expert styling changed.
+- Spacing and layout rhythm: official logo left, name/status and description center, round action right now share a horizontal card. Two columns fit on wide frames; narrow frames stack cards without pushing the action outside the card.
+- Colors and tokens: neutral Space surfaces, border and amber focus treatment are retained. Connected text now uses separate light/dark colors; measured component tests require at least 4.5:1 contrast, including the hovered surface.
+- Image quality and asset fidelity: the unmodified official 700 × 700 transparent Feishu PNG is clear at 32px on the card. The same local asset is used by trusted modal, menu and details; the isolated HTML embeds identical bytes and remains network-free. Plus and chevron shapes are sourced from the existing Lucide icon family.
+- Copy and content: the catalog name is `飞书`; stable internal IDs and the accurate document description remain unchanged. Existing user-defined names and saved snapshots are not rewritten.
+- Interaction/accessibility: card click and Enter open only trusted configuration; focus is visible, busy actions disable, and connection status is readable without relying on color. Decorative brand images have empty alternative text.
+
+## Verification and comparison history
+
+- Actual Electron inspection confirmed extension 0.5.1, the horizontal official-brand card and the existing connected state. Opening “管理连接” displayed the matching Feishu logo/name and connected account; closing returned to the library. No authorization, document read/write, disconnect or permission change was performed.
+- The extension update preserved the connection-record file byte for byte. The account was not disconnected or re-authorized.
+- Implementation-stage contrast regression first measured a failing 4.36:1 on the previous status color. Theme-specific colors fixed it before the final visual comparison; both light and dark component assertions pass.
+- Final full-view and focused comparisons were performed together once. No further visual correction was required. Desktop dark/narrow states are covered by isolated component checks, not claimed as additional native-window captures.
+- Independent targeted review: 24 tests passed. Full suite: 3516 passed, 4 conditional skips, 0 failures. Typecheck, final full lint, production build, independent archive and macOS arm64 package smoke passed.
+- Initial parallel lint hit a deleted release-test temporary directory; lint was rerun successfully after that test phase. No lint rule or test assertion was relaxed.
+- Packaged startup reached renderer dom-ready and visual-ready. Component fixtures recorded no page errors; this is not a claim to have inspected a complete native DevTools console.
+
+## Review and remaining scope
+
+- Standards: 0 actionable findings in an independent diff review.
+- Spec: 0 actionable findings against the requested long card, official icon, shortened name, independent extension and preserved connection boundaries.
+- Windows/Linux desktop visuals, complete F146/P6 and real remote document operations remain outside this pass.
 
 final result: passed

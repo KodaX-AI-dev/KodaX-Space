@@ -9,19 +9,20 @@
 import { useAppStore } from '../../store/appStore.js';
 import { ConversationStreamV2 } from '../../shell/ConversationStreamV2.js';
 import { BottomBar } from '../../shell/BottomBar.js';
-import { PartnerWelcome } from './PartnerWelcome.js';
-import { PartnerWorkbenchPanel } from './PartnerWorkbenchPanel.js';
+import { PartnerWelcome, PartnerWelcomeStarters } from './PartnerWelcome.js';
 
 export function PartnerConversation(): JSX.Element {
   const currentSessionId = useAppStore((s) => s.currentSessionId);
   return (
     <div
-      className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden relative"
+      className={`flex-1 flex flex-col min-h-0 min-w-0 relative ${currentSessionId ? 'overflow-hidden' : 'overflow-y-auto justify-start py-4'}`}
       data-testid="partner-conversation"
     >
-      <PartnerWorkbenchPanel />
       {currentSessionId ? <ConversationStreamV2 key={currentSessionId} /> : <PartnerWelcome />}
-      <BottomBar />
+      <div className={currentSessionId ? 'shrink-0' : 'mx-auto w-full max-w-[784px] shrink-0'}>
+        <BottomBar />
+      </div>
+      {!currentSessionId && <PartnerWelcomeStarters />}
     </div>
   );
 }

@@ -130,6 +130,7 @@ import type {
   KodaXInputArtifact,
   KodaXShellExecutionContract,
   KodaXSessionStorage,
+  ExtensionRuntimeContract,
 } from '@kodax-ai/kodax/coding';
 import type {
   RuntimeDaemonKodaXOptions,
@@ -243,6 +244,13 @@ import { runWithSessionQueueScope } from './session-queue-guard.js';
 import { getSessionStorageHandle, SPACE_EPHEMERAL_SESSION_TAG } from './session-store.js';
 import { wrapSdkError } from './sdk-errors.js';
 import { buildSkillsPromptForSurface } from './skills-prompt.js';
+import { getSpaceExpertCatalog } from '../space-extensions/runtime.js';
+import {
+  createPartnerConnectorRunRuntime,
+  isPartnerConnectorTool,
+  isPartnerConnectorWriteTool,
+  type PartnerConnectorRunService,
+} from './partner-connector-runtime.js';
 import {
   createSpaceSdkExtensionRuntime,
   getSpaceSdkExtensionConfigGeneration,
@@ -441,6 +449,8 @@ export class RealKodaXSession implements ManagedSession {
    * 决定它出现在哪个面的列表，并将来驱动工具集裁剪（F047）。
    */
   readonly surface: Surface;
+  partnerExpert?: ManagedSession['partnerExpert'];
+  partnerConnectors?: ManagedSession['partnerConnectors'];
   ephemeral: boolean;
   /** SDK 0.7.42 wired: 用户 /model 设的覆盖；undefined 走 provider 默认。*/
   model?: string;
@@ -469,7 +479,10 @@ export class RealKodaXSession implements ManagedSession {
   private readonly extensionRuntimeDisposePromises = new WeakMap<object, Promise<void>>();
   private shellExecutionFingerprint: string | undefined;
 
-  constructor(opts: SessionCreateOptions) {
+  constructor(
+    opts: SessionCreateOptions,
+    private readonly dependencies: { connectorService?: PartnerConnectorRunService } = {},
+  ) {
     this.sessionId = opts.sessionId;
     this.projectRoot = opts.projectRoot;
     this.provider = opts.provider;
@@ -478,6 +491,10 @@ export class RealKodaXSession implements ManagedSession {
     this.permissionMode = opts.permissionMode;
     this.agentMode = opts.agentMode ?? 'ama';
     this.surface = opts.surface ?? 'code';
+    this.partnerExpert = opts.partnerExpert ? structuredClone(opts.partnerExpert) : undefined;
+    this.partnerConnectors = opts.partnerConnectors
+      ? structuredClone(opts.partnerConnectors)
+      : undefined;
     this.ephemeral = opts.ephemeral ?? false;
     this.createdAt = Date.now();
     this.lastActivityAt = this.createdAt;
@@ -489,6 +506,19 @@ export class RealKodaXSession implements ManagedSession {
 
   isRunning(): boolean {
     return this.currentAbort !== null;
+  }
+
+  private async requirePartnerExpertAvailable(
+    expert: ManagedSession['partnerExpert'] | null,
+  ): Promise<void> {
+    if (this.surface !== 'partner' || !expert) return;
+    try {
+      await getSpaceExpertCatalog().requireAvailable(expert);
+    } catch (error) {
+      throw new Error(
+        `Partner expert unavailable: ${error instanceof Error ? error.message : 'extension unavailable'}`,
+      );
+    }
   }
 
   private async resolveCurrentWireEffort(): Promise<string | undefined> {
@@ -711,6 +741,34 @@ export class RealKodaXSession implements ManagedSession {
     }
   }
 
+  private async preparePartnerExpertSkill(
+    rawUserInput: string,
+    expert: ManagedSession['partnerExpert'] | null,
+    runPermissionMode: PermissionMode,
+    admissionSignal?: AbortSignal,
+  ): Promise<ExplicitSkillPreparation | undefined> {
+    if (this.surface !== 'partner' || expert?.useSkill === false || !expert?.expert.skillRef) {
+      return undefined;
+    }
+    try {
+      // The package explicitly names this one existing Skill. Do not search for a match,
+      // install a dependency, or prepare it when the user selected a different slash Skill.
+      const registry = await getSkillRegistry(this.projectRoot);
+      return this.prepareExplicitSkillExecution(
+        rawUserInput,
+        {
+          name: expert.expert.skillRef,
+          argumentsText: rawUserInput,
+          registered: registry.get(expert.expert.skillRef) !== undefined,
+        },
+        runPermissionMode,
+        admissionSignal,
+      );
+    } catch {
+      return { rejectionReason: 'skill_preparation_failed' };
+    }
+  }
+
   async send(
     prompt: string,
     artifacts?: readonly InputArtifact[],
@@ -754,6 +812,8 @@ export class RealKodaXSession implements ManagedSession {
     // embedded run. Daemon Coder intentionally ignores this snapshot and keeps
     // Runtime settings live for the next concrete tool call.
     const runPermissionMode = this.permissionMode;
+    const runPartnerExpert = this.partnerExpert ? structuredClone(this.partnerExpert) : null;
+    const runPartnerConnectors = structuredClone(this.partnerConnectors ?? []);
     const toolInvocation =
       this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()
         ? await runtimeHostAdapter.resolveToolInvocation(prompt, this.projectRoot)
@@ -902,6 +962,8 @@ export class RealKodaXSession implements ManagedSession {
         options?.operationId,
         true,
         skillPreparation?.prepared,
+        runPartnerExpert,
+        runPartnerConnectors,
         toolInvocation,
       );
       const outcome = admission ? await admission.promise : 'admitted';
@@ -940,6 +1002,9 @@ export class RealKodaXSession implements ManagedSession {
       this.lastActivityAt = Date.now();
       return { accepted: true, queued: true, queueId, queueMode };
     }
+    // A current SDK run keeps its captured role (including interrupt delivery). Only a
+    // fresh run needs availability/preparation here; queued new runs do it at startRun.
+    if (runPartnerExpert) await this.requirePartnerExpertAvailable(runPartnerExpert);
     const skillPreparation =
       explicitSkillReference !== undefined
         ? await this.prepareExplicitSkillExecution(
@@ -948,7 +1013,12 @@ export class RealKodaXSession implements ManagedSession {
             runPermissionMode,
             admissionSignal,
           )
-        : undefined;
+        : await this.preparePartnerExpertSkill(
+            prompt,
+            runPartnerExpert,
+            runPermissionMode,
+            admissionSignal,
+          );
     if (admissionSignal?.aborted || this.disposed) {
       await skillPreparation?.prepared?.finalize(
         new Error('Session send cancelled before admission'),
@@ -970,6 +1040,8 @@ export class RealKodaXSession implements ManagedSession {
       options?.operationId,
       false,
       skillPreparation?.prepared,
+      runPartnerExpert,
+      runPartnerConnectors,
     );
     return { accepted: true, queued: false };
   }
@@ -999,6 +1071,12 @@ export class RealKodaXSession implements ManagedSession {
     operationId?: string,
     restoreDraftOnBoundaryConflict = false,
     explicitSkill?: PreparedExplicitSkillExecution,
+    runPartnerExpert: ManagedSession['partnerExpert'] | null = this.partnerExpert
+      ? structuredClone(this.partnerExpert)
+      : null,
+    runPartnerConnectors: NonNullable<ManagedSession['partnerConnectors']> = structuredClone(
+      this.partnerConnectors ?? [],
+    ),
     toolInvocation?: RuntimeDaemonKodaXOptions['toolInvocation'],
   ): RuntimeAdmissionState | null {
     const abort = new AbortController();
@@ -1010,24 +1088,68 @@ export class RealKodaXSession implements ManagedSession {
     this.runtimeAdmission = runtimeAdmission;
     this.lastActivityAt = Date.now();
     let runFailure: Error | undefined;
+    let preparedSkill = explicitSkill;
+    let streamStarted = false;
 
-    void this.runRealStream(
-      prompt,
-      abort.signal,
-      artifacts,
-      promptOverlay,
-      runtimeAdmission,
-      runPermissionMode,
-      operationId,
-      explicitSkill,
-      toolInvocation,
-    )
+    // Fresh sends arrive preflighted so they can reject before ACK. Internal queued
+    // turns enter here directly and must prepare the expert's one Skill as well.
+    const prepareAndRun = async (): Promise<Error | undefined> => {
+      if (
+        preparedSkill === undefined &&
+        this.surface === 'partner' &&
+        runPartnerExpert?.useSkill !== false &&
+        runPartnerExpert?.expert.skillRef
+      ) {
+        await this.requirePartnerExpertAvailable(runPartnerExpert);
+        const preparation = await this.preparePartnerExpertSkill(
+          prompt,
+          runPartnerExpert,
+          runPermissionMode,
+          abort.signal,
+        );
+        if (preparation?.rejectionReason) {
+          throw new Error(
+            `Partner expert Skill could not be prepared: ${preparation.rejectionReason}. Choose prompt-only or repair the configured Skill.`,
+          );
+        }
+        preparedSkill = preparation?.prepared;
+        if (this.disposed || abort.signal.aborted) {
+          throw new Error('Session run cancelled during expert Skill preparation');
+        }
+      }
+      streamStarted = true;
+      return this.runRealStream(
+        prompt,
+        abort.signal,
+        artifacts,
+        promptOverlay,
+        runtimeAdmission,
+        runPermissionMode,
+        operationId,
+        preparedSkill,
+        runPartnerExpert,
+        runPartnerConnectors,
+        toolInvocation,
+      );
+    };
+    void prepareAndRun()
       .then((failure) => {
         runFailure = failure;
       })
       .catch((error: unknown) => {
         runFailure = error instanceof Error ? error : new Error(String(error));
-        if (this.disposed || abort.signal.aborted) return;
+        if (this.disposed) return;
+        if (abort.signal.aborted) {
+          if (!streamStarted)
+            this.emit({
+              kind: 'session_error',
+              sessionId: this.sessionId,
+              error: 'cancelled',
+              category: 'cancelled',
+              retriable: true,
+            });
+          return;
+        }
         const wrapped = wrapSdkError(error);
         console.warn(
           `[real-session ${this.sessionId}] stream preflight error ` +
@@ -1043,8 +1165,8 @@ export class RealKodaXSession implements ManagedSession {
         });
       })
       .finally(async () => {
-        if (explicitSkill !== undefined) {
-          await explicitSkill.finalize(runFailure).catch((error: unknown) => {
+        if (preparedSkill !== undefined) {
+          await preparedSkill.finalize(runFailure).catch((error: unknown) => {
             console.warn(
               `[real-session ${this.sessionId}] Skill finalization failed: ${
                 error instanceof Error ? error.message : String(error)
@@ -1071,6 +1193,8 @@ export class RealKodaXSession implements ManagedSession {
       queueMode: nextPrompt.queueMode,
       content: clampSessionEventText(nextPrompt.content) ?? nextPrompt.content,
     });
+    // Queued work starts a new turn: capture the latest committed expert here.
+    // Interrupts already consumed inside the previous SDK run keep its original profile.
     this.startRun(nextPrompt.content, undefined, nextPrompt.promptOverlay);
   }
 
@@ -1429,6 +1553,8 @@ export class RealKodaXSession implements ManagedSession {
     runPermissionMode: PermissionMode = this.permissionMode,
     operationId?: string,
     explicitSkill?: PreparedExplicitSkillExecution,
+    runPartnerExpert?: ManagedSession['partnerExpert'] | null,
+    runPartnerConnectors: NonNullable<ManagedSession['partnerConnectors']> = [],
     toolInvocation?: RuntimeDaemonKodaXOptions['toolInvocation'],
   ): Promise<Error | undefined> {
     if (this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()) {
@@ -1446,6 +1572,7 @@ export class RealKodaXSession implements ManagedSession {
     if (this.surface === 'code') {
       await runtimeHostAdapter.ensureLegacyOwner();
     }
+    await this.requirePartnerExpertAvailable(runPartnerExpert ?? null);
     const sid = this.sessionId;
     // Embedded mode changes are documented as next-run settings. The immutable
     // mode was captured by send()/startRun() before any owner-recovery await.
@@ -1739,6 +1866,13 @@ export class RealKodaXSession implements ManagedSession {
     // 但 LLM 在实际 invoke 前 mode 被改成 'accept-edits'，broker 短路又允许。
     // 这里再 snapshot 一次 mode 用于审计 (broker 仍用现行 mode 决定)。
     let autoGuardrailInstalled = false;
+    let runExtensionRuntime: ExtensionRuntimeContract | undefined;
+    const connectorToolAllowed = (tool: string): boolean =>
+      this.surface === 'partner' &&
+      isPartnerConnectorTool(tool) &&
+      sdk.lookupRunScopedTool(runExtensionRuntime, tool) !== undefined &&
+      (!isPartnerConnectorWriteTool(tool) ||
+        (runPermissionMode !== 'plan' && this.permissionMode !== 'plan'));
     const beforeToolExecute: NonNullable<KodaXEvents['beforeToolExecute']> = async (
       tool,
       input,
@@ -1749,11 +1883,14 @@ export class RealKodaXSession implements ManagedSession {
       // planModeBlockCheck 的调用路径（如 MCP 工具），Partner 仍不会执行非白名单工具。
       let partnerToolAllowed: boolean | undefined;
       if (this.surface === 'partner') {
-        partnerToolAllowed = isPartnerToolAllowed(
-          tool,
-          sdk.resolveToolCapability(tool),
-          sdk.getRegisteredToolDefinition(tool),
-        );
+        partnerToolAllowed =
+          connectorToolAllowed(tool) ||
+          (!isPartnerConnectorTool(tool) &&
+            isPartnerToolAllowed(
+              tool,
+              sdk.resolveToolCapability(tool),
+              sdk.getRegisteredToolDefinition(tool),
+            ));
         if (!partnerToolAllowed) return false;
       }
       // KodaX runs tool guardrails before beforeToolExecute. Once this run's Auto
@@ -1798,14 +1935,18 @@ export class RealKodaXSession implements ManagedSession {
     // tier（resolveToolCapability==='read'）+ 显式 web 研究工具；Coder 行为不变（plan-mode 原样）。
     // SDK 查询走 thunk 保持惰性。
     const planModeBlockCheck = (tool: string, _input: Record<string, unknown>): string | null =>
-      computeToolBlockReason({
-        surface: this.surface,
-        permissionMode: runPermissionMode,
-        tool,
-        resolveCapability: () => sdk.resolveToolCapability(tool),
-        resolveRegisteredTool: () => sdk.getRegisteredToolDefinition(tool),
-        isPlanModeAllowed: () => sdk.isToolPlanModeAllowed(tool),
-      });
+      this.surface === 'partner' && isPartnerConnectorTool(tool)
+        ? connectorToolAllowed(tool)
+          ? null
+          : '[partner] Connector tool is not available in this run or is blocked by plan mode.'
+        : computeToolBlockReason({
+            surface: this.surface,
+            permissionMode: runPermissionMode,
+            tool,
+            resolveCapability: () => sdk.resolveToolCapability(tool),
+            resolveRegisteredTool: () => sdk.getRegisteredToolDefinition(tool),
+            isPlanModeAllowed: () => sdk.isToolPlanModeAllowed(tool),
+          });
 
     // Exit plan mode — KodaX 的 exit_plan_mode 工具调用这个让 host 审批 plan 文本。
     // 返回 true → KodaX 退出 plan mode，开始执行；false → 留在 plan mode；
@@ -2412,7 +2553,10 @@ export class RealKodaXSession implements ManagedSession {
             return [];
           })
         : undefined;
-    const partnerAgentProfile = this.surface === 'partner' ? buildPartnerAgentProfile() : undefined;
+    const partnerAgentProfile =
+      this.surface === 'partner'
+        ? buildPartnerAgentProfile(runPartnerExpert ?? undefined)
+        : undefined;
     const partnerRuntimeContextOverlay =
       this.surface === 'partner'
         ? buildPartnerRuntimeContextOverlay({ sources: partnerSources })
@@ -2438,6 +2582,20 @@ export class RealKodaXSession implements ManagedSession {
       .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
       .join('\n\n');
     const extensionRuntimeHandle = await this.ensureExtensionRuntime();
+    runExtensionRuntime = await createPartnerConnectorRunRuntime(
+      extensionRuntimeHandle?.runtime,
+      {
+        sessionId: sid,
+        projectRoot: this.projectRoot,
+        surface: this.surface,
+        permissionMode: runPermissionMode,
+        bindings: runPartnerConnectors,
+        getCurrentBindings: () =>
+          this.disposed || signal.aborted ? [] : (this.partnerConnectors ?? []),
+        getCurrentPermissionMode: () => this.permissionMode,
+      },
+      this.dependencies.connectorService,
+    );
     const inputArtifacts = buildInputArtifacts(sdk, artifacts);
     const workflowPolicy = workflowPolicyStore.get();
 
@@ -2504,7 +2662,14 @@ export class RealKodaXSession implements ManagedSession {
           : {}),
         ...(externalAgentBinding !== undefined ? { agentExecutorPlane: externalAgentBinding } : {}),
         ...(partnerAgentProfile ? { agentProfile: partnerAgentProfile } : {}),
-        ...(partnerAgentProfile ? { toolVisibilityPolicy: partnerToolVisibilityPolicy } : {}),
+        ...(partnerAgentProfile
+          ? {
+              toolVisibilityPolicy: (tool) =>
+                isPartnerConnectorTool(tool.name)
+                  ? connectorToolAllowed(tool.name)
+                  : partnerToolVisibilityPolicy(tool),
+            }
+          : {}),
         ...(combinedPromptOverlay ? { promptOverlay: combinedPromptOverlay } : {}),
         // skillsPrompt 仅在非空时挂——避免在 SDK 视角注入空字符串字段。
         ...(skillsPrompt ? { skillsPrompt } : {}),
@@ -2566,9 +2731,7 @@ export class RealKodaXSession implements ManagedSession {
         ...(this.thinking !== undefined ? { thinking: this.thinking } : {}),
         compaction: runConfig.compaction,
         events,
-        ...(extensionRuntimeHandle !== undefined
-          ? { extensionRuntime: extensionRuntimeHandle.runtime }
-          : {}),
+        ...(runExtensionRuntime !== undefined ? { extensionRuntime: runExtensionRuntime } : {}),
         abortSignal: signal,
         // scope: 'user' 让 SDK FileSessionStorage 把 session 当成用户对话面板的
         // first-class session 落盘。storage 是 SDK 当前要求的字段——不传则
@@ -2674,6 +2837,7 @@ export class RealKodaXSession implements ManagedSession {
           }
         } else {
           // Partner inline driver, or the explicitly selected legacy Coder rollback driver.
+          await this.requirePartnerExpertAvailable(runPartnerExpert ?? null);
           await runWithSpaceProviderCredentialLease(this.provider, () =>
             withSessionRunContext(
               {

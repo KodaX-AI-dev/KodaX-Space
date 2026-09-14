@@ -1789,6 +1789,73 @@ html:not(.q-minimal) .collapse-track {
     opacity var(--motion-slow) var(--ease-expo);
 }
 
+/* Partner can share as little as one quarter of the workspace with the detail rail.
+   Let its composer controls respond to the composer itself instead of the window so
+   resizing the rail progressively shortens labels without changing Coder. */
+.partner-composer-panel {
+  container-name: partner-composer;
+  container-type: inline-size;
+}
+
+@container partner-composer (max-width: 620px) {
+  .partner-composer-footer,
+  .partner-composer-footer__primary,
+  .partner-composer-footer__secondary {
+    flex-wrap: nowrap;
+  }
+
+  .partner-composer-footer {
+    gap: 0.375rem;
+  }
+
+  .partner-composer-footer__primary,
+  .partner-composer-footer__secondary {
+    gap: 0.25rem;
+  }
+
+  .partner-permission-selector__full {
+    display: none;
+  }
+
+  .partner-permission-selector__compact {
+    display: inline;
+  }
+
+  .partner-model-selector {
+    max-width: 9rem;
+  }
+
+  .partner-model-selector__effort,
+  .partner-model-selector__separator {
+    display: none;
+  }
+}
+
+@container partner-composer (max-width: 450px) {
+  .partner-composer-footer {
+    gap: 0.25rem;
+  }
+
+  .partner-permission-selector,
+  .partner-model-selector {
+    width: 1.75rem;
+    min-width: 1.75rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .partner-permission-selector__compact,
+  .partner-model-selector__model,
+  .partner-model-selector__chevron {
+    display: none;
+  }
+
+  .partner-permission-selector__icon {
+    display: block;
+  }
+
+}
+
 /* reduced-motion 兜底：所有 F068 入场/状态动画在用户偏好减少动效时全禁用（瞬切）。
    用 !important 无条件胜出——这是 W3C/MDN 推荐的无障碍覆盖模式：reduced-motion
    必须压过任何 specificity 的动画规则（包括 html:not(.q-minimal) .xxx 的 0,2,1）。

@@ -3,9 +3,10 @@
 // MVP: attach workspace files to the current Partner session. The agent sees
 // source ids in the Partner prompt overlay and can read them through the
 // readonly partner_source_read tool.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PartnerKnowledgeScopeT, PartnerProjectSourceT } from '@kodax-space/space-ipc-schema';
 import {
+  Ellipsis,
   FileText,
   FolderOpen,
   Link2,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   Trash2,
   Unlink,
+  X,
 } from 'lucide-react';
 import { useAppStore } from '../../store/appStore.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
@@ -21,9 +23,10 @@ import { FileNameText } from '../../components/FileNameText.js';
 import { previewFileInViewer } from '../../lib/openPath.js';
 import { requestConfirm } from '../../store/confirmStore.js';
 import { FileTree } from '../code/FileTree.js';
-import { AdminAuditPanel } from './AdminAuditPanel.js';
 import { KnowledgeBasePanel } from './KnowledgeBasePanel.js';
+import { PartnerRemoteRecords } from '../extensions/PartnerRemoteRecords.js';
 import { activatePartnerProjectFile } from './partnerProjectFileActivation.js';
+import type { PartnerDetailOpenTarget } from './partnerDetailWorkspace.js';
 import {
   PARTNER_SOURCES_CHANGED_EVENT,
   readPartnerPendingSources,
@@ -36,8 +39,33 @@ function notifySourcesChanged(): void {
   window.dispatchEvent(new Event(PARTNER_SOURCES_CHANGED_EVENT));
 }
 
-export function SourcesPanel(): JSX.Element {
+export function handleSourcePickerOpenRequest(
+  request: number,
+  projectPath: string | null,
+  openPicker: () => void,
+  onConsumed?: () => void,
+): boolean {
+  if (request === 0 || !projectPath) return false;
+  openPicker();
+  onConsumed?.();
+  return true;
+}
+
+interface SourcesPanelProps {
+  readonly onOpenDetail?: (target: PartnerDetailOpenTarget) => void;
+  readonly openPickerRequest?: number;
+  readonly onOpenPickerRequestConsumed?: () => void;
+  readonly variant?: 'rail' | 'detail';
+}
+
+export function SourcesPanel({
+  onOpenDetail,
+  openPickerRequest = 0,
+  onOpenPickerRequestConsumed,
+  variant = 'rail',
+}: SourcesPanelProps): JSX.Element {
   const { t } = useI18n();
+  const sourceActionsRef = useRef<HTMLDivElement | null>(null);
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
   const lastSessionEventKind = useAppStore((state) => {
@@ -46,6 +74,8 @@ export function SourcesPanel(): JSX.Element {
   });
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [selectedTargetKind, setSelectedTargetKind] = useState<'file' | 'dir'>('file');
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
+  const [sourceActionsId, setSourceActionsId] = useState<string | null>(null);
   const [sources, setSources] = useState<readonly PartnerProjectSourceT[]>([]);
   const [activeSourceIds, setActiveSourceIds] = useState<ReadonlySet<string>>(new Set());
   const [usedSourceIds, setUsedSourceIds] = useState<ReadonlySet<string>>(new Set());
@@ -57,9 +87,27 @@ export function SourcesPanel(): JSX.Element {
   const [loadingSources, setLoadingSources] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sourcePickerCloseRef = useRef<HTMLButtonElement | null>(null);
+  const sourcePickerReturnFocusRef = useRef<HTMLElement | null>(null);
   const folderName = currentProjectPath
     ? (currentProjectPath.split(/[\\/]/).filter(Boolean).pop() ?? currentProjectPath)
     : null;
+
+  const openSourcePicker = useCallback((): void => {
+    sourcePickerReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setSelectedPath(null);
+    setSelectedTargetKind('file');
+    setSourcePickerOpen(true);
+  }, []);
+
+  const closeSourcePicker = useCallback((): void => {
+    setSourcePickerOpen(false);
+    setSelectedPath(null);
+    setSelectedTargetKind('file');
+    const returnTarget = sourcePickerReturnFocusRef.current;
+    requestAnimationFrame(() => returnTarget?.focus({ preventScroll: true }));
+  }, []);
 
   const loadSources = useCallback((): (() => void) | void => {
     const bridge = window.kodaxSpace;
@@ -127,7 +175,24 @@ export function SourcesPanel(): JSX.Element {
   useEffect(() => {
     setSelectedPath(null);
     setSelectedTargetKind('file');
+    setSourcePickerOpen(false);
+    setSourceActionsId(null);
   }, [currentProjectPath, currentSessionId]);
+
+  useEffect(() => {
+    handleSourcePickerOpenRequest(
+      openPickerRequest,
+      currentProjectPath,
+      openSourcePicker,
+      onOpenPickerRequestConsumed,
+    );
+  }, [currentProjectPath, onOpenPickerRequestConsumed, openPickerRequest, openSourcePicker]);
+
+  useEffect(() => {
+    if (!sourcePickerOpen) return;
+    const frame = requestAnimationFrame(() => sourcePickerCloseRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [sourcePickerOpen]);
 
   useEffect(() => loadSources(), [loadSources]);
 
@@ -151,12 +216,34 @@ export function SourcesPanel(): JSX.Element {
     return () => window.removeEventListener(PARTNER_SOURCES_CHANGED_EVENT, onSourcesChanged);
   }, [loadPendingSources]);
 
+  useEffect(() => {
+    if (sourceActionsId === null) return;
+    const closeOnOutsideClick = (event: MouseEvent): void => {
+      if (!sourceActionsRef.current?.contains(event.target as Node)) setSourceActionsId(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setSourceActionsId(null);
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [sourceActionsId]);
+
   async function addSelectedSource(): Promise<void> {
     const bridge = window.kodaxSpace;
     if (!currentProjectPath || !selectedPath) return;
     if (!currentSessionId) {
-      setPendingSources(stagePartnerPendingSource(currentProjectPath, { path: selectedPath }));
+      setPendingSources(
+        stagePartnerPendingSource(currentProjectPath, {
+          path: selectedPath,
+          targetKind: selectedTargetKind,
+        }),
+      );
       notifySourcesChanged();
+      closeSourcePicker();
       return;
     }
     if (!bridge) return;
@@ -173,6 +260,7 @@ export function SourcesPanel(): JSX.Element {
       if (result.ok) {
         void loadSources();
         notifySourcesChanged();
+        closeSourcePicker();
       } else {
         setError(result.error.message);
       }
@@ -322,7 +410,7 @@ export function SourcesPanel(): JSX.Element {
         available: false,
         used: false,
         pending: true,
-        targetKind: null,
+        targetKind: source.targetKind ?? 'file',
       }));
   const selectedAlreadyAdded = Boolean(
     selectedPath &&
@@ -350,243 +438,378 @@ export function SourcesPanel(): JSX.Element {
 
   return (
     <aside
-      className="w-60 flex-shrink-0 border-r border-border-default flex flex-col bg-surface"
+      className={
+        variant === 'detail'
+          ? 'relative w-full h-full min-w-0 flex flex-col bg-surface'
+          : 'relative w-60 flex-shrink-0 border-r border-border-default flex flex-col bg-surface'
+      }
       data-testid="partner-sources-panel"
     >
-      <div className="px-3 h-9 flex items-center gap-2 border-b border-border-default flex-shrink-0">
-        <FolderOpen className="w-3.5 h-3.5 text-fg-muted" strokeWidth={1.75} aria-hidden />
-        <span className="text-[11px] uppercase tracking-wider text-fg-muted">
-          {t('partner.sources.title')}
-        </span>
-      </div>
-
-      <div className="flex-shrink-0 p-2 border-b border-border-default">
-        {folderName ? (
-          <div
-            className="text-xs text-fg-secondary flex items-center gap-1.5 px-1 py-0.5"
-            title={currentProjectPath ?? ''}
-          >
-            <FolderOpen
-              className="w-3.5 h-3.5 flex-shrink-0 text-fg-muted"
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <span className="truncate">{folderName}</span>
-          </div>
-        ) : (
-          <div className="text-[11px] text-fg-muted px-1 py-2 leading-relaxed">
-            {t('partner.sources.openFolderHint')}
-          </div>
-        )}
-      </div>
-
-      <KnowledgeBasePanel />
-      <AdminAuditPanel />
-
-      <div className="flex-shrink-0 border-b border-border-default">
-        <div className="px-3 py-2 flex items-center justify-between">
+      <div className={sourcePickerOpen ? 'hidden' : 'contents'} aria-hidden={sourcePickerOpen}>
+        <div className="max-h-[60%] shrink-0 overflow-y-auto">
+          <PartnerRemoteRecords kind="sources" onOpenDetail={onOpenDetail} />
+        </div>
+        <div className="px-3 h-9 flex items-center gap-2 border-b border-border-default flex-shrink-0">
+          <FolderOpen className="w-3.5 h-3.5 text-fg-muted" strokeWidth={1.75} aria-hidden />
           <span className="text-[11px] uppercase tracking-wider text-fg-muted">
-            {t('partner.sources.projectMaterials')}
+            {t('partner.sources.title')}
           </span>
-          {loadingSources && (
-            <Loader2
-              className="w-3.5 h-3.5 text-fg-muted animate-spin"
-              strokeWidth={1.75}
-              aria-hidden
-            />
+        </div>
+
+        <div className="flex-shrink-0 p-2 border-b border-border-default">
+          {folderName ? (
+            <div
+              className="text-xs text-fg-secondary flex items-center gap-1.5 px-1 py-0.5"
+              title={currentProjectPath ?? ''}
+            >
+              <FolderOpen
+                className="w-3.5 h-3.5 flex-shrink-0 text-fg-muted"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <span className="truncate">{folderName}</span>
+            </div>
+          ) : (
+            <div className="text-[11px] text-fg-muted px-1 py-2 leading-relaxed">
+              {t('partner.sources.openFolderHint')}
+            </div>
           )}
         </div>
-        <div className="max-h-36 overflow-y-auto pb-1">
-          {visibleSources.length > 0 ? (
-            visibleSources.map((source) => (
-              <div
-                key={source.id}
-                className="group px-2 py-1 flex items-center gap-1.5 text-xs text-fg-secondary"
-                title={source.path}
-              >
-                <FileText
-                  className="w-3.5 h-3.5 text-fg-muted flex-shrink-0"
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-                {source.targetKind === 'file' ? (
-                  <FileNameText name={source.label ?? source.path} className="flex-1" />
-                ) : (
-                  <span className="min-w-0 flex-1 truncate">{source.label ?? source.path}</span>
-                )}
-                <span className="flex flex-wrap gap-1 text-[10px]">
-                  <span
-                    className={
-                      source.status === 'failed' || source.status === 'unavailable'
-                        ? 'text-danger'
-                        : 'text-fg-faint'
-                    }
-                  >
-                    {source.available ? statusLabel(source.status) : t('partner.sources.removed')}
-                  </span>
-                  {source.available && (
-                    <span className="text-fg-faint">{t('partner.sources.available')}</span>
-                  )}
-                  {source.selected && (
-                    <span className="text-accent-ink">{t('partner.sources.selected')}</span>
-                  )}
-                  {source.used && <span className="text-ok">{t('partner.sources.used')}</span>}
-                </span>
-                {!source.pending && (
-                  <div className="ml-auto flex items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+
+        <KnowledgeBasePanel />
+
+        <div className="flex-shrink-0 border-b border-border-default">
+          <div className="px-3 py-2 flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wider text-fg-muted">
+              {t('partner.sources.projectMaterials')}
+            </span>
+            {loadingSources && (
+              <Loader2
+                className="w-3.5 h-3.5 text-fg-muted animate-spin"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            )}
+          </div>
+          <div className="max-h-36 overflow-y-auto pb-1">
+            {visibleSources.length > 0 ? (
+              visibleSources.map((source) => (
+                <div
+                  key={source.id}
+                  ref={sourceActionsId === source.id ? sourceActionsRef : undefined}
+                  className="px-2 py-1 text-xs text-fg-secondary"
+                >
+                  <div className="flex items-center gap-1.5" title={source.path}>
+                    <FileText
+                      className="w-3.5 h-3.5 text-fg-muted flex-shrink-0"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                    {source.targetKind === 'file' ? (
+                      <FileNameText name={source.label ?? source.path} className="flex-1" />
+                    ) : (
+                      <span className="min-w-0 flex-1 truncate">{source.label ?? source.path}</span>
+                    )}
                     <button
                       type="button"
-                      className="w-5 h-5 inline-flex items-center justify-center rounded hover:bg-hover-bg text-fg-muted"
-                      onClick={() => void selectSource(source.id, !source.selected)}
-                      disabled={busy || (!source.available && !source.selected)}
+                      className="w-7 h-7 flex-shrink-0 inline-flex items-center justify-center rounded hover:bg-hover-bg text-fg-muted disabled:opacity-40"
+                      onClick={() =>
+                        void selectSource(source.id, source.pending ? false : !source.selected)
+                      }
+                      disabled={busy || (!source.pending && !source.available && !source.selected)}
                       title={
-                        source.selected
-                          ? t('partner.sources.detach')
-                          : t('partner.sources.selectForTask')
+                        source.pending
+                          ? t('partner.sources.remove')
+                          : source.selected
+                            ? t('partner.sources.detach')
+                            : t('partner.sources.selectForTask')
+                      }
+                      aria-label={
+                        source.pending
+                          ? t('partner.sources.remove')
+                          : source.selected
+                            ? t('partner.sources.detach')
+                            : t('partner.sources.selectForTask')
                       }
                     >
-                      {source.selected ? (
+                      {source.pending || source.selected ? (
                         <Unlink className="w-3.5 h-3.5" aria-hidden />
                       ) : (
                         <Link2 className="w-3.5 h-3.5" aria-hidden />
                       )}
                     </button>
-                    <button
-                      type="button"
-                      className="w-5 h-5 inline-flex items-center justify-center rounded hover:bg-hover-bg text-fg-muted"
-                      onClick={() => void refreshSource(source.id)}
-                      disabled={busy || !source.available}
-                      title={t('partner.sources.refresh')}
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="w-5 h-5 inline-flex items-center justify-center rounded hover:bg-hover-bg text-fg-muted"
-                      onClick={() => void removeProjectMaterial(source.id)}
-                      disabled={busy || !source.available}
-                      title={t('partner.sources.removeProject')}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" aria-hidden />
-                    </button>
+                    {!source.pending && (
+                      <button
+                        type="button"
+                        className="w-7 h-7 flex-shrink-0 inline-flex items-center justify-center rounded hover:bg-hover-bg text-fg-muted"
+                        title={t('partner.sources.actions', { name: source.label ?? source.path })}
+                        aria-label={t('partner.sources.actions', {
+                          name: source.label ?? source.path,
+                        })}
+                        aria-haspopup="menu"
+                        aria-expanded={sourceActionsId === source.id}
+                        onClick={() =>
+                          setSourceActionsId((current) =>
+                            current === source.id ? null : source.id,
+                          )
+                        }
+                      >
+                        <Ellipsis className="w-4 h-4" strokeWidth={1.75} aria-hidden />
+                      </button>
+                    )}
                   </div>
-                )}
+                  <div className="ml-5 flex flex-wrap gap-1 text-[10px]">
+                    <span
+                      className={
+                        source.status === 'failed' || source.status === 'unavailable'
+                          ? 'text-danger'
+                          : 'text-fg-faint'
+                      }
+                    >
+                      {source.pending || source.available
+                        ? statusLabel(source.status)
+                        : t('partner.sources.removed')}
+                    </span>
+                    {source.available && (
+                      <span className="text-fg-faint">{t('partner.sources.available')}</span>
+                    )}
+                    {source.selected && (
+                      <span className="text-accent-ink">{t('partner.sources.selected')}</span>
+                    )}
+                    {source.used && <span className="text-ok">{t('partner.sources.used')}</span>}
+                  </div>
+                  {!source.pending && sourceActionsId === source.id && (
+                    <div
+                      role="menu"
+                      className="mt-1 ml-5 overflow-hidden rounded-md border border-border-default bg-surface-3 py-0.5"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="w-full px-2 py-1 flex items-center gap-2 text-left text-[11px] text-fg-secondary hover:bg-hover-bg hover:text-fg-primary disabled:opacity-40"
+                        onClick={() => {
+                          setSourceActionsId(null);
+                          void refreshSource(source.id);
+                        }}
+                        disabled={busy || !source.available}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" aria-hidden />
+                        <span>{t('partner.sources.refresh')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="w-full px-2 py-1 flex items-center gap-2 text-left text-[11px] text-danger hover:bg-hover-bg disabled:opacity-40"
+                        onClick={() => {
+                          setSourceActionsId(null);
+                          void removeProjectMaterial(source.id);
+                        }}
+                        disabled={busy || !source.available}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden />
+                        <span>{t('partner.sources.removeProject')}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="px-3 pb-2 text-[11px] text-fg-faint">
+                {currentSessionId ? t('partner.sources.none') : t('partner.sources.noneStaged')}
               </div>
-            ))
-          ) : (
-            <div className="px-3 pb-2 text-[11px] text-fg-faint">
-              {currentSessionId ? t('partner.sources.none') : t('partner.sources.noneStaged')}
-            </div>
-          )}
-          {catalogTruncated && (
-            <div className="px-3 pb-2 text-[10px] text-warning">
-              {t('partner.sources.catalogTruncated')}
-            </div>
-          )}
+            )}
+            {catalogTruncated && (
+              <div className="px-3 pb-2 text-[10px] text-warning">
+                {t('partner.sources.catalogTruncated')}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {currentSessionId && (
+          <div className="flex-shrink-0 px-3 py-2 border-b border-border-default">
+            <label
+              className="block text-[10px] uppercase tracking-wider text-fg-muted mb-1"
+              htmlFor="partner-retrieval-scope"
+            >
+              {t('partner.sources.retrievalScope')}
+            </label>
+            <select
+              id="partner-retrieval-scope"
+              value={scope}
+              onChange={(event) => void updateScope(event.target.value as PartnerKnowledgeScopeT)}
+              className="w-full rounded border border-border-default bg-surface-2 px-2 py-1 text-xs text-fg-secondary"
+            >
+              <option value="project-grounded">{t('partner.sources.scope.project')}</option>
+              <option value="selected-only">{t('partner.sources.scope.selected')}</option>
+              <option value="general">{t('partner.sources.scope.general')}</option>
+            </select>
+            <p className="mt-1 text-[10px] text-fg-faint">{t('partner.sources.scopeHint')}</p>
+          </div>
+        )}
+
+        <div className="flex-1 min-h-0" />
+
+        {error && (
+          <div className="flex-shrink-0 px-3 py-2 border-t border-border-default text-[11px] text-danger leading-snug">
+            {error}
+          </div>
+        )}
+
+        <div className="flex-shrink-0 p-2 border-t border-border-default">
+          <button
+            type="button"
+            data-testid="partner-source-picker-open"
+            disabled={!currentProjectPath || busy}
+            onClick={openSourcePicker}
+            className={`w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-1.5 ${
+              currentProjectPath && !busy
+                ? 'text-fg-secondary hover:bg-hover-bg'
+                : 'text-fg-muted cursor-not-allowed'
+            }`}
+            title={
+              currentProjectPath
+                ? t('partner.sources.chooseMaterial')
+                : t('partner.sources.openFolderHint')
+            }
+          >
+            {busy ? (
+              <Loader2
+                className="w-3.5 h-3.5 flex-shrink-0 animate-spin"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            ) : (
+              <Plus className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} aria-hidden />
+            )}
+            <span className="truncate">{t('partner.sources.add')}</span>
+          </button>
         </div>
       </div>
 
-      {currentSessionId && (
-        <div className="flex-shrink-0 px-3 py-2 border-b border-border-default">
-          <label
-            className="block text-[10px] uppercase tracking-wider text-fg-muted mb-1"
-            htmlFor="partner-retrieval-scope"
-          >
-            {t('partner.sources.retrievalScope')}
-          </label>
-          <select
-            id="partner-retrieval-scope"
-            value={scope}
-            onChange={(event) => void updateScope(event.target.value as PartnerKnowledgeScopeT)}
-            className="w-full rounded border border-border-default bg-surface-2 px-2 py-1 text-xs text-fg-secondary"
-          >
-            <option value="project-grounded">{t('partner.sources.scope.project')}</option>
-            <option value="selected-only">{t('partner.sources.scope.selected')}</option>
-            <option value="general">{t('partner.sources.scope.general')}</option>
-          </select>
-          <p className="mt-1 text-[10px] text-fg-faint">{t('partner.sources.scopeHint')}</p>
-        </div>
-      )}
-
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {currentProjectPath ? (
-          <FileTree
-            projectRoot={currentProjectPath}
-            selectedPath={selectedPath}
-            onSelect={(path) => {
-              activatePartnerProjectFile(path, {
-                selectFile: (selectedFile) => {
-                  setSelectedPath(selectedFile);
-                  setSelectedTargetKind('file');
-                },
-                openFile: (selectedFile) => {
-                  void previewFileInViewer(selectedFile, {
-                    projectRoot: currentProjectPath,
-                    notifyOnError: true,
-                  });
-                },
-              });
-            }}
-            onSelectDirectory={(path) => {
-              setSelectedPath(path);
-              setSelectedTargetKind('dir');
-            }}
-          />
-        ) : null}
-      </div>
-
-      {error && (
-        <div className="flex-shrink-0 px-3 py-2 border-t border-border-default text-[11px] text-danger leading-snug">
-          {error}
-        </div>
-      )}
-
-      <div className="flex-shrink-0 p-2 border-t border-border-default">
-        <button
-          type="button"
-          disabled={!canAdd}
-          onClick={() => void addSelectedSource()}
-          className={`w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-1.5 ${
-            canAdd ? 'text-fg-secondary hover:bg-hover-bg' : 'text-fg-muted cursor-not-allowed'
-          }`}
-          title={
-            selectedPath
-              ? currentSessionId
-                ? selectedTargetKind === 'dir'
-                  ? t('partner.sources.attachSelectedDirectory')
-                  : t('partner.sources.attachSelectedTitle')
-                : selectedTargetKind === 'dir'
-                  ? t('partner.sources.stageSelectedDirectory')
-                  : t('partner.sources.stageSelectedTitle')
-              : currentSessionId
-                ? t('partner.sources.selectFile')
-                : t('partner.sources.selectFile')
-          }
+      {sourcePickerOpen && currentProjectPath && (
+        <div
+          className="absolute inset-0 z-40 flex flex-col bg-surface"
+          data-testid="partner-source-picker"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="partner-source-picker-title"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              closeSourcePicker();
+              return;
+            }
+            if (event.key !== 'Tab') return;
+            const focusable = Array.from(
+              event.currentTarget.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+              ),
+            ).filter((element) => !element.hidden);
+            const first = focusable[0];
+            const last = focusable.at(-1);
+            if (!first || !last) return;
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          }}
         >
-          {busy ? (
-            <Loader2
-              className="w-3.5 h-3.5 flex-shrink-0 animate-spin"
-              strokeWidth={1.75}
-              aria-hidden
+          <div className="h-10 flex-shrink-0 px-3 flex items-center gap-2 border-b border-border-default">
+            <FolderOpen className="w-3.5 h-3.5 text-fg-muted" strokeWidth={1.75} aria-hidden />
+            <span
+              id="partner-source-picker-title"
+              className="min-w-0 flex-1 truncate text-xs font-medium text-fg-primary"
+            >
+              {t('partner.sources.chooseMaterial')}
+            </span>
+            <button
+              ref={sourcePickerCloseRef}
+              type="button"
+              className="w-7 h-7 inline-flex items-center justify-center rounded text-fg-muted hover:bg-hover-bg hover:text-fg-primary"
+              title={t('partner.sources.closePicker')}
+              aria-label={t('partner.sources.closePicker')}
+              onClick={closeSourcePicker}
+            >
+              <X className="w-4 h-4" strokeWidth={1.75} aria-hidden />
+            </button>
+          </div>
+          <p className="flex-shrink-0 px-3 py-2 text-[11px] leading-relaxed text-fg-muted border-b border-border-default">
+            {t('partner.sources.chooseMaterialHint')}
+          </p>
+          <div className="flex-1 min-h-0 overflow-y-auto py-1">
+            <FileTree
+              projectRoot={currentProjectPath}
+              selectedPath={selectedPath}
+              onSelect={(path) => {
+                activatePartnerProjectFile(path, {
+                  selectFile: (selectedFile) => {
+                    setSelectedPath(selectedFile);
+                    setSelectedTargetKind('file');
+                  },
+                  openFile: (selectedFile) => {
+                    void previewFileInViewer(selectedFile, {
+                      projectRoot: currentProjectPath,
+                      notifyOnError: true,
+                    });
+                  },
+                });
+              }}
+              onSelectDirectory={(path) => {
+                setSelectedPath(path);
+                setSelectedTargetKind('dir');
+              }}
             />
-          ) : (
-            <Plus className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} aria-hidden />
+          </div>
+          {selectedPath && (
+            <div
+              className="flex-shrink-0 px-3 py-2 border-t border-border-default text-[10px] text-fg-muted truncate"
+              title={selectedPath}
+            >
+              {t('partner.sources.selectedMaterial', { path: selectedPath })}
+            </div>
           )}
-          <span className="truncate">
-            {selectedPath
-              ? currentSessionId
-                ? selectedTargetKind === 'dir'
-                  ? t('partner.sources.attachSelectedDirectory')
-                  : t('partner.sources.attachSelected')
+          {error && (
+            <div className="flex-shrink-0 px-3 py-2 border-t border-border-default text-[11px] text-danger leading-snug">
+              {error}
+            </div>
+          )}
+          <div className="flex-shrink-0 p-2 border-t border-border-default flex items-center gap-2">
+            <button
+              type="button"
+              className="flex-1 px-2 py-1.5 rounded text-xs text-fg-secondary hover:bg-hover-bg"
+              onClick={closeSourcePicker}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              disabled={!canAdd}
+              onClick={() => void addSelectedSource()}
+              className={`flex-1 px-2 py-1.5 rounded text-xs ${
+                canAdd
+                  ? 'border border-ok/50 bg-ok/15 text-ok hover:bg-ok/25'
+                  : 'bg-surface-3 text-fg-muted cursor-not-allowed'
+              }`}
+            >
+              {busy
+                ? t('partner.sources.adding')
                 : selectedAlreadyAdded
                   ? t('partner.sources.alreadyAttached')
-                  : selectedTargetKind === 'dir'
-                    ? t('partner.sources.stageSelectedDirectory')
-                    : t('partner.sources.stageSelected')
-              : t('partner.sources.add')}
-          </span>
-        </button>
-      </div>
+                  : currentSessionId
+                    ? selectedTargetKind === 'dir'
+                      ? t('partner.sources.attachSelectedDirectory')
+                      : t('partner.sources.attachSelected')
+                    : selectedTargetKind === 'dir'
+                      ? t('partner.sources.stageSelectedDirectory')
+                      : t('partner.sources.stageSelected')}
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

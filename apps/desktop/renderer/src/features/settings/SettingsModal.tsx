@@ -22,6 +22,7 @@ import {
   Loader2,
   LogOut,
   Network,
+  PackageOpen,
   Pencil,
   Play,
   Plus,
@@ -70,8 +71,11 @@ import {
 import { WorkflowPolicySection } from '../workflow/WorkflowPolicySection.js';
 import { setSpaceLanguage } from '../../space-control/semanticActions.js';
 import { requestSpaceVersionRefresh } from '../../lib/versionEvents.js';
+import { SpaceExtensionsProvider } from '../extensions/SpaceExtensionsProvider.js';
+import { ExtensionSettingsPanel } from '../extensions/ExtensionSettingsPanel.js';
 
-export type SettingsTab = 'providers' | 'preferences' | 'runtime' | 'diagnostics' | 'license';
+export type SettingsTab =
+  'providers' | 'preferences' | 'runtime' | 'diagnostics' | 'license' | 'extensions';
 
 interface SettingsModalProps {
   readonly initialTab?: SettingsTab;
@@ -108,6 +112,12 @@ const TABS: readonly SettingsTabMeta[] = [
     Icon: Database,
   },
   {
+    id: 'extensions',
+    labelKey: 'extensions.title',
+    descriptionKey: 'extensions.settingsDescription',
+    Icon: PackageOpen,
+  },
+  {
     id: 'license',
     labelKey: 'settings.license',
     descriptionKey: 'settings.license.description',
@@ -121,7 +131,15 @@ const TABS: readonly SettingsTabMeta[] = [
   },
 ];
 
-export function SettingsModal({
+export function SettingsModal(props: SettingsModalProps): JSX.Element {
+  return (
+    <SpaceExtensionsProvider>
+      <SettingsModalContent {...props} />
+    </SpaceExtensionsProvider>
+  );
+}
+
+function SettingsModalContent({
   initialTab = 'preferences',
   onTabChange,
   onClose,
@@ -271,6 +289,15 @@ export function SettingsModal({
               className="h-full"
             >
               <RuntimePanel />
+            </div>
+            <div
+              id="settings-panel-extensions"
+              role="tabpanel"
+              aria-labelledby="settings-tab-extensions"
+              hidden={tab !== 'extensions'}
+              className="h-full"
+            >
+              <ExtensionSettingsPanel />
             </div>
             <div
               id="settings-panel-diagnostics"
