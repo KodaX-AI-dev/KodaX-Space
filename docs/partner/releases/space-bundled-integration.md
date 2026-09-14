@@ -1,4 +1,4 @@
-# Partner 随 Space 分发：集成候选
+# Partner 随 Space 分发：beta.3 已交付
 
 2026-09-14 用户范围：先发布现有 Partner 能力，让用户下载新版 Space 后即可看到并使用。Coder 共享专家和连接器留到后续。
 
@@ -22,6 +22,10 @@
 6. Partner 既有会话与连接器回归通过，Coder 保持当前运行语义。
 
 ## 当前状态
+
+2026-09-14 最终结果：[PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5) 已合入 `main@a2f7a1b0`，[Space 0.1.46-beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) 已发布。四个平台安装包、更新清单与实际发布 workflow 均通过验证；详情见 [beta.3 readiness](../../releases/v0.1.46-beta.3-release-readiness.md)。PF001–PF013 的集成状态已记为 Integrated，开发状态保持原样。普通用户的稳定默认下载仍为 v0.1.45，使用 Partner 请明确下载 beta.3。
+
+### 历史候选记录（以下保留当时状态）
 
 2026-09-14 后续：用户已授权按贡献规范提交到 main，并确认 `0.1.46-beta.3`。来源 39 条历史保留于原分支，`feature/partner-bundled-release` 准备带完整正文和 GitHub 作者身份的 mainline contribution。新增官方用户手册与应用内帮助，四个 workspace 和 lockfile 同步 beta.3；本节以下旧记录保留最初候选验收事实。当前 PR、完整验证与发布结果以 [beta.3 readiness](../../releases/v0.1.46-beta.3-release-readiness.md) 为准。
 

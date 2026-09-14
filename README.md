@@ -32,7 +32,7 @@
 
 ### Download a release
 
-Stable installers are published on the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest) page. Partner library delivery is prepared for `0.1.46-beta.3`; after publication, select that version from [all releases](https://github.com/KodaX-AI-dev/KodaX-Space/releases). A beta does not replace the default stable download. See the [release readiness record](docs/releases/v0.1.46-beta.3-release-readiness.md).
+Stable installers are published on the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest) page. The Partner library is included in [Space 0.1.46-beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3); download that prerelease to use it. A beta does not replace the default stable download. See the [release readiness record](docs/releases/v0.1.46-beta.3-release-readiness.md).
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |
@@ -316,7 +316,7 @@ See [CHANGELOG.md](CHANGELOG.md) and [docs/features/v0.1.29.md](docs/features/v0
 
 ## Configuration Model
 
-The `0.1.46-beta.3` candidate bundles the Partner library with Space. On first launch, open **Partner → Plugins** to select an expert and its default method, or connect a supported service with your own account and resource authorization. Disabled, uninstalled, and previously hand-installed packages retain the user's choices. See the [integration and release notes](docs/partner/releases/space-bundled-integration.md) for validation and publication status; Coder sharing is planned separately.
+Space `0.1.46-beta.3` bundles the Partner library with Space. On first launch, open **Partner → Plugins** to select an expert and its default method, or connect a supported service with your own account and resource authorization. Disabled, uninstalled, and previously hand-installed packages retain the user's choices. See the [integration and release notes](docs/partner/releases/space-bundled-integration.md) for validation and publication status; Coder sharing is planned separately.
 
 KodaX Space intentionally reuses KodaX ecosystem state where it should, and owns desktop-only state where the UI needs it.
 
