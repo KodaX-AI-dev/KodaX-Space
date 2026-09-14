@@ -53,7 +53,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [0.1.46-beta.3] - 2026-09-14
 
-Transitional release; tag retained as history, GitHub release withdrawn in favor of
+Originally published as a prerelease on 2026-09-14. Transitional release; tag retained as history, GitHub release withdrawn in favor of
 v0.1.46-beta.4. Readiness record: [release readiness](https://github.com/KodaX-AI-dev/KodaX-Space/blob/main/docs/releases/v0.1.46-beta.3-release-readiness.md).
 
 ### Added

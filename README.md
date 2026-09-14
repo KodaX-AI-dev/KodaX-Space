@@ -32,7 +32,7 @@
 
 ### Download a release
 
-Stable installers are published on the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest) page. Partner library delivery is prepared for `0.1.46-beta.3`; after publication, select that version from [all releases](https://github.com/KodaX-AI-dev/KodaX-Space/releases). A beta does not replace the default stable download. See the [release readiness record](docs/releases/v0.1.46-beta.3-release-readiness.md).
+Stable installers are published on the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest) page. The Partner library originally shipped in Space 0.1.46-beta.3, whose GitHub release was withdrawn while its tag remains as history. The current beta.4 candidate retains Partner and adds the rc.5 compatibility repairs; it has not been published. A beta does not replace the default stable download. See the [release readiness record](docs/releases/v0.1.46-beta.4-release-readiness.md).
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |

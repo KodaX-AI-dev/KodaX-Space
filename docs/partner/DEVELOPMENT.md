@@ -46,8 +46,8 @@
 - `origin`：组织 Space 仓库，作为拉取和以后提交 PR 的目标。
 - `main` / `origin/main`：组织主线，不直接开发或覆盖。
 - `integration/partner-bundled-release`：保留原始 39 条提交的来源分支。
-- `feature/partner-bundled-release`：面向组织 main 的规范化贡献与 beta.3 发布候选。
-- `feature/partner-<topic>`：后续短期开发分支；本次主线接收后，从最新 `origin/main` 创建。
+- `feature/partner-bundled-release`：已通过 [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5) 合入组织 main 的 beta.3 贡献分支，保留作历史。
+- `feature/partner-<topic>`：后续短期开发分支，从最新 `origin/main` 创建。
 - 旧个人仓库和旧 F146 分支只作来源及恢复历史，不再作为产品分发入口。
 
 2026-09-14 来源分支已上传。随后用户授权按贡献规范提交到组织主线，并确认 Space `0.1.46-beta.3`；通过 PR、完整验证及既有发布 workflow 交付。主线使用署名 `poppersamhar` 且带完整正文的整合提交，来源分支不改写。实际合并、标签和发布状态见 [beta.3 readiness](../releases/v0.1.46-beta.3-release-readiness.md)。
@@ -98,18 +98,18 @@ PF 使用 `PF###` 编号，并分别管理开发状态 `Planned → InProgress �
 
 ## 短分支与组织主线同步
 
-本次融合完成前，在 `integration/partner-bundled-release` 保存可评审的小提交。后续主线接收后，从最新组织主线开始具体功能：
+本次融合已进入组织主线。后续从最新组织主线建立短功能分支：
 
 ```sh
 git fetch origin main
 git switch -c feature/partner-<topic> origin/main
 ```
 
-同步时先提交当前工作并确认目录干净，再把组织主线合入集成分支；不重写已经共享的历史：
+同步时先提交当前工作并确认目录干净，再把组织主线合入当前功能分支；不重写已经共享的历史：
 
 ```sh
 git fetch origin main
-git switch integration/partner-bundled-release
+git switch feature/partner-<topic>
 git merge --no-ff --no-commit origin/main
 ```
 
@@ -134,12 +134,12 @@ Space Trusted Host
 
 共享的 `real-session.ts`、Shell 和 schema 只依赖稳定接口。新增 Partner 能力优先落在 Partner adapter、connector service 和 Partner UI 目录；不要继续让 Coder manifest 逐个排除 Partner channel，也不要在共享文件里无限增加 `surface === 'partner'` 分支。
 
-日常 Host API、IPC 和 Partner 宿主兼容改造归入 `feature/partner-host-*`；只有吸收一份新的 `origin/main` 并处理其冲突时，才使用 `integration/partner-bundled-release`。插件包不应通过修改 Coder 业务逻辑来获得能力。
+日常 Host API、IPC 和 Partner 宿主兼容改造归入 `feature/partner-host-*`；需要吸收新的 `origin/main` 时，在当前功能分支同步并处理冲突；`integration/partner-bundled-release` 仅保留来源历史。插件包不应通过修改 Coder 业务逻辑来获得能力。
 
 ## 版本号与分发
 
 - 用户下载的产品是官方 Space。Space 版本、SDK 精确版本和 lockfile 由组织发布线统一管理，禁止为了 Partner 修改 SDK 版本或改回个人更新地址。
-- 当前集成基线为 Space `0.1.46-beta.2` / KodaX `0.7.96-rc.4`；本地验收包保留基线版本。正式发布时核对最新组织版本，由维护者分配未使用的新版本并同步 manifests、CHANGELOG 和更新元数据，不覆盖既有同版本 Release 资产。
+- 历史交付基线为 Space `0.1.46-beta.3` / KodaX `0.7.96-rc.4`，该 GitHub Release 已撤回，tag 保留。当前源码为 Space `0.1.46-beta.4` / KodaX `0.7.96-rc.5`，尚未发布；修复和验证见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。后续发布使用未占用的新版本，同步 manifests、CHANGELOG 和更新元数据，不覆盖既有 tag 或 Release 资产。
 - Partner Library 当前为 `0.1.0`，随官方安装包包含并在首次启动注册。宿主、插件归档与方法 Skill 必须一起验证；只上传 `.space-extension` 不代表用户已经获得宿主能力。
 - `hostApiVersion` 管理宿主协议兼容性；`requiredHostCapabilities` 声明需要的能力。
 - 本次不创建新的个人 `partner-v*` 发布线。历史标签保留作证据，不执行 `git push --tags`。
@@ -184,11 +184,11 @@ Node 与 Electron 使用不同 SQLite ABI；不要同时运行会重建原生依
 
 ## 推送与发布门槛
 
-当前进入已授权的 mainline PR 和 beta.3 发布流程。按以下步骤区分代码交付和产品发布：
+Space beta.3 曾通过组织主线和既有发布流程交付，随后由维护者撤回 Release；发布与撤回记录均保留。以下门槛适用于后续功能与新版本：
 
 1. 核对组织最新主线、目标分支和已完成验证，确认当前工作区没有未提交的产品改动。
 2. 核对即将提交的内容没有凭据、真实账号运行数据或个人环境配置；只包含可复核的产品代码、资产和文档。
-3. 恢复组织 push URL，只推送明确的集成分支；随后按双方安排提交 PR，不直接覆盖组织主线。
+3. 核对 `origin` 指向组织仓库，推送当前已确认的 `feature/partner-*` 功能分支并向 `main` 提交 PR，不直接覆盖组织主线。
 4. 组织 CI 及各平台验收通过后，由维护者合并，再按 Space 原有发布流程更新版本、创建对应标签与 Release。
 5. 从正式 Release 下载验证，确认用户首次启动看到 Partner，账号连接仍由用户授权，Coder 运行不受影响。
 

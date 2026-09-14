@@ -32,7 +32,7 @@
 
 ### 下载安装包
 
-稳定版安装包位于 [最新稳定版](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)。Partner 插件库计划随 `0.1.46-beta.3` 交付；发布后请从 [全部版本](https://github.com/KodaX-AI-dev/KodaX-Space/releases) 选择该测试版。beta 不会替换普通用户默认下载的稳定版。实际发布状态见 [版本验收记录](docs/releases/v0.1.46-beta.3-release-readiness.md)。
+稳定版安装包位于 [最新稳定版](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)。Partner 插件库曾随 Space 0.1.46-beta.3 发布，该 GitHub Release 已撤回，tag 保留作历史。当前 beta.4 候选保留 Partner 并加入 rc.5 兼容修复，尚未发布。beta 不会替换普通用户默认下载的稳定版。实际发布状态见 [版本验收记录](docs/releases/v0.1.46-beta.4-release-readiness.md)。
 
 | 平台    | 安装包                                            |
 | ------- | ------------------------------------------------- |
