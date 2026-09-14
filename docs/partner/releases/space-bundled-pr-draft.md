@@ -17,7 +17,7 @@
 
 ## 验证
 
-全量单元测试 4,153 通过、5 跳过；后续增量补验额外 TSX 组件、Partner 交互、默认 Coder Runtime 就绪及退出、路径别名清理和 helper 权限。类型检查、lint、构建和 macOS arm64 打包 smoke 通过；实际打包应用通过清洁 profile 下的默认运行模式及专家 mock 会话验收。详细范围及曾失败后修复的用例见 [集成记录](space-bundled-integration.md)。
+收尾全量单元测试及单独收集的 TSX 组件合计 4,180 通过、5 跳过、0 失败；TSX 组件已纳入默认 `npm test`，随现有组织 CI/Release 执行。Partner 交互、默认 Coder Runtime 就绪及退出、路径别名清理和 helper 权限经过验证。类型检查、lint、构建和 macOS arm64 打包 smoke 通过；实际打包应用通过清洁 profile 下的默认运行模式及专家 mock 会话验收。详细范围及曾失败后修复的用例见 [集成记录](space-bundled-integration.md)。
 
 ## 发布前仍需执行
 

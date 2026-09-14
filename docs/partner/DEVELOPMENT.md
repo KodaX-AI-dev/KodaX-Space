@@ -170,7 +170,7 @@ npm run build:smoke
 git diff --check
 ```
 
-还需显式运行默认 glob 未收集的 TSX 组件测试，以及相关 Electron E2E：
+默认 `npm test` 已包含 TSX 组件测试，组织 CI 与 Release 的现有测试步骤会自动执行。单独调试组件时可以使用下面的定向命令；相关 Electron E2E 另行运行：
 
 ```sh
 node --test --import tsx 'apps/desktop/renderer/src/**/*.test.tsx'
