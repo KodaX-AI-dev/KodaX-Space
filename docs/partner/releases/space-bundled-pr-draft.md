@@ -1,6 +1,6 @@
 # PR 草稿：随 Space 分发 Partner 专家与连接器库
 
-目标仓库：`KodaX-AI-dev/KodaX-Space`；目标分支：`main`。本文件只作本地准备，尚未创建 PR 或发布。
+目标仓库：`KodaX-AI-dev/KodaX-Space`；目标分支：`main`。本文件是随集成分支提供的 PR 草稿，尚未创建 PR 或发布。
 
 ## 用户效果
 
@@ -21,6 +21,6 @@
 
 ## 发布前仍需执行
 
-用户通知后才推送本分支及创建 PR。组织主线可能继续变化，上传前需重新核对基线。组织 CI 和 Windows/macOS x64/Linux 安装升级验收、真实外部账号验收仍待执行。
+用户已授权上传 `integration/partner-bundled-release`，创建 PR、合并主线和正式发布另行安排。组织主线可能继续变化，合并前需重新核对基线。组织 CI 和 Windows/macOS x64/Linux 安装升级验收、真实外部账号验收仍待执行。
 
 本地安装包沿用已存在的 `0.1.46-beta.2`，仅供本地验收。主线维护者需分配未使用的版本号并同步版本文件、CHANGELOG、标签及 Release，不能覆盖同版本官方资产。只有主线发布包含本次集成的版本，用户下载的新版 Space 才会获得这些能力。
