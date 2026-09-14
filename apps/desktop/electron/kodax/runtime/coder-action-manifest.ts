@@ -7,14 +7,9 @@ import type { InvokeChannelName } from '@kodax-space/space-ipc-schema';
 
 export type CoderActionReleasedState = 'ga' | 'capability-gated' | 'unavailable';
 export type CoderActionTargetOwner =
-  | 'coder-daemon'
-  | 'space-host-provider'
-  | 'space-ui-only'
-  | 'reviewed-out';
+  'coder-daemon' | 'space-host-provider' | 'space-ui-only' | 'reviewed-out';
 export type CoderActionUnavailableBehavior =
-  | 'disable-with-reason'
-  | 'observe-only'
-  | 'not-applicable';
+  'disable-with-reason' | 'observe-only' | 'not-applicable';
 
 export interface CoderActionDisposition {
   readonly actionId: string;
@@ -30,7 +25,12 @@ const CODER_NAMESPACE =
   /^(runtime|session|askUser|permission|slash|skill|agent|mcp|mcpb|kodax|provider|settings|workflow|memory|artifact|diagnostics|handoff|notification)\./;
 
 export function isCoderEntrypointNamespace(name: string): name is InvokeChannelName {
-  return CODER_NAMESPACE.test(name);
+  // F146 bindings belong to embedded Partner, not the Coder daemon surface.
+  return (
+    CODER_NAMESPACE.test(name) &&
+    !name.startsWith('session.partnerExpert.') &&
+    !name.startsWith('session.partnerConnectors.')
+  );
 }
 
 export const FROZEN_V0131_CODER_ENTRYPOINTS = [

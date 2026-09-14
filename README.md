@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/icetomoyo/KodaX-Space/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/icetomoyo/KodaX-Space?style=flat-square"></a>
+  <a href="https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/KodaX-AI-dev/KodaX-Space?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-KAI--FCL-orange?style=flat-square"></a>
-  <a href="https://github.com/icetomoyo/KodaX-Space/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/icetomoyo/KodaX-Space/ci.yml?style=flat-square&label=ci"></a>
-  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.96--rc.1-2ea44f?style=flat-square">
+  <a href="https://github.com/KodaX-AI-dev/KodaX-Space/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/KodaX-AI-dev/KodaX-Space/ci.yml?style=flat-square&label=ci"></a>
+  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.96--rc.4-2ea44f?style=flat-square">
   <img alt="platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-34495e?style=flat-square">
 </p>
 
@@ -32,12 +32,12 @@
 
 ### Download a release
 
-Prebuilt installers are published on the [KodaX Space Releases](https://github.com/icetomoyo/KodaX-Space/releases/latest) page.
+Stable installers are published on the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest) page. Partner library delivery is prepared for `0.1.46-beta.3`; after publication, select that version from [all releases](https://github.com/KodaX-AI-dev/KodaX-Space/releases). A beta does not replace the default stable download. See the [release readiness record](docs/releases/v0.1.46-beta.3-release-readiness.md).
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |
 | Windows  | NSIS `Setup.exe`, `Portable.exe`, plus zipped fallbacks |
-| macOS    | universal `.dmg`                                        |
+| macOS    | Intel / Apple Silicon `.dmg`                                        |
 | Linux    | `AppImage` and `.deb`                                   |
 
 Current public builds are unsigned. On first launch, Windows SmartScreen or macOS Gatekeeper may ask for manual confirmation. Only install builds from a trusted KodaX-AI distribution channel.
@@ -45,7 +45,7 @@ Current public builds are unsigned. On first launch, Windows SmartScreen or macO
 ### Run from source
 
 ```bash
-git clone https://github.com/icetomoyo/KodaX-Space.git
+git clone https://github.com/KodaX-AI-dev/KodaX-Space.git
 cd KodaX-Space
 npm install --include=dev
 npm run dev
@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**The current source is Space 0.1.46-beta.2, pins the published prerelease KodaX 0.7.96-rc.4, and requires `sandboxRuntime:11`, `runtimeAutoModeGuardrail:6`, `sharedSessionSettings:2`, `providerCredentialBroker:2`, and `effectiveConfig:1`; support is never inferred from SemVer.** Root/Desktop manifests, lockfile, installed bytes, packaged ASAR, and the fully unpacked universal native bundle resolve one Registry URL and SRI. Space exposes the canonical Plan, Edits, Auto[LLM], and Full Access profiles. The 0.7.96 beta line retains sandbox-first execution and carries Windows wire protocol 10 with setup generation 11 (Codex-compatible profile/SSH ACL exclusions since beta.5), real target-start proof during explicit doctor/setup, setup-owned broad profile ACL convergence, a 64-port broker range for up to 32 exact network authorities, private per-command Temp roots, and version-safe daemon replacement behind `sandboxRuntime:11`. Run `kodax sandbox doctor` directly in a host terminal—or use Space Settings—not through a model-issued Bash tool. Space consumes the exact Registry bytes without patching them. The latest stable Space release remains v0.1.45 with KodaX 0.7.95; that historical artifact is unchanged.
+**The current source is Space 0.1.46-beta.3, pins the published prerelease KodaX 0.7.96-rc.4, and requires `sandboxRuntime:11`, `runtimeAutoModeGuardrail:6`, `sharedSessionSettings:2`, `providerCredentialBroker:2`, and `effectiveConfig:1`; support is never inferred from SemVer.** Root/Desktop manifests, lockfile, installed bytes, packaged ASAR, and the fully unpacked universal native bundle resolve one Registry URL and SRI. Space exposes the canonical Plan, Edits, Auto[LLM], and Full Access profiles. The 0.7.96 beta line retains sandbox-first execution and carries Windows wire protocol 10 with setup generation 11 (Codex-compatible profile/SSH ACL exclusions since beta.5), real target-start proof during explicit doctor/setup, setup-owned broad profile ACL convergence, a 64-port broker range for up to 32 exact network authorities, private per-command Temp roots, and version-safe daemon replacement behind `sandboxRuntime:11`. Run `kodax sandbox doctor` directly in a host terminal—or use Space Settings—not through a model-issued Bash tool. Space consumes the exact Registry bytes without patching them. The latest stable Space release remains v0.1.45 with KodaX 0.7.95; that historical artifact is unchanged.
 
 KodaX 0.7.95 retains `conversationHistory:2`, `actorSettlementConvergence:2`, and `crashOutcomeModel:2`, and advances exit settlement to v2 and the Windows sandbox to v5. Same-boot `unconfirmed-owner` tickets are self-healing: the SDK retries process drain, ACL reset, and effect-fence release automatically, clearing the ticket only after an exact sandbox-user SID probe proves the account idle. A failed proof stays diagnosable and fail-closed for sandbox work without blocking unrelated non-sandbox work. Stale zero-byte authority locks are reclaimed through unchanged-byte/stat proof, and valid live or successor owners remain protected. The existing `sessionEventJournal:1` cursor `(sessionId, journalEpoch, seq)` remains explicit. Runtime Shell is sandbox-first; unavailable containment follows the existing permission policy without replay or a second classifier decision, and catastrophic destructive operations remain hard denials. `worker.configuredA2A` remains a KodaX CLI Worker-hosted embedded-runtime option, not a Space Settings toggle.
 
@@ -116,7 +116,7 @@ official Registry package without vendoring an SDK patch. See
 
 **v0.1.45 - Inline Ask-User Cards and Exact KodaX 0.7.95**
 
-Released on 2026-08-24 as [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45), with package version `0.1.45` and the latest npm `@kodax-ai/kodax` release pinned exactly to `0.7.95`. The release replaces the full-screen ask-user modal with inline conversation cards, aligns to `conversationHistory:2`/`runtimeExitSettlement:2`/`sandboxRuntime:5`, and recovers admitted Runs after a daemon reconnect.
+Released on 2026-08-24 as [`v0.1.45`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.45), with package version `0.1.45` and the latest npm `@kodax-ai/kodax` release pinned exactly to `0.7.95`. The release replaces the full-screen ask-user modal with inline conversation cards, aligns to `conversationHistory:2`/`runtimeExitSettlement:2`/`sandboxRuntime:5`, and recovers admitted Runs after a daemon reconnect.
 
 | Area             | Summary                                                                                                                                                                                                            |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -131,7 +131,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.45 design](docs/features/v0.1.45.md)
 
 **v0.1.44 - Native Attention and Background Settlement**
 
-Released on 2026-08-20 as [`v0.1.44`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.44), with package version `0.1.44` and the latest npm `@kodax-ai/kodax` release pinned exactly to `0.7.93`. The release adds a cross-platform native attention badge, keeps admitted complete-exit settlement in the background, aligns Task Dock and Repointel with live Runtime activity, and improves recoverable external-task and Windows ACL guidance.
+Released on 2026-08-20 as [`v0.1.44`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.44), with package version `0.1.44` and the latest npm `@kodax-ai/kodax` release pinned exactly to `0.7.93`. The release adds a cross-platform native attention badge, keeps admitted complete-exit settlement in the background, aligns Task Dock and Repointel with live Runtime activity, and improves recoverable external-task and Windows ACL guidance.
 
 | Area              | Summary                                                                                                                                                |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -145,7 +145,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.44 design](docs/features/v0.1.44.md)
 
 **v0.1.43 - Runtime Exit and Filesystem-Effect Convergence**
 
-Released on 2026-08-19 as [`v0.1.43`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.43), with package version `0.1.43` and exact Registry KodaX `0.7.92`. It introduced SDK-owned crash-resumable complete-exit settlement, sandbox Runtime v4, crash-outcome v2, and SDK effective live-output segments. See the [v0.1.43 design](docs/features/v0.1.43.md) and [release record](docs/releases/v0.1.43-release-readiness.md).
+Released on 2026-08-19 as [`v0.1.43`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.43), with package version `0.1.43` and exact Registry KodaX `0.7.92`. It introduced SDK-owned crash-resumable complete-exit settlement, sandbox Runtime v4, crash-outcome v2, and SDK effective live-output segments. See the [v0.1.43 design](docs/features/v0.1.43.md) and [release record](docs/releases/v0.1.43-release-readiness.md).
 
 **v0.1.42 - Causal Transcript and Latest KodaX Alignment**
 
@@ -161,7 +161,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.42 design](docs/features/v0.1.42.md)
 
 **v0.1.40 - KodaX 0.7.86 Sandbox and Owner-Reconciliation Release**
 
-Released on 2026-08-14 as [`v0.1.40`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.40), with package version `0.1.40` aligned to the exact npm-published KodaX 0.7.86 package. The release requires SDK and Runtime `sandboxRuntime:3`, covers the packaged Electron/ASAR Windows Shell chain, and delegates stale inline-owner recovery to the SDK's atomic owner-policy reconciliation.
+Released on 2026-08-14 as [`v0.1.40`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.40), with package version `0.1.40` aligned to the exact npm-published KodaX 0.7.86 package. The release requires SDK and Runtime `sandboxRuntime:3`, covers the packaged Electron/ASAR Windows Shell chain, and delegates stale inline-owner recovery to the SDK's atomic owner-policy reconciliation.
 
 | Area                 | Summary                                                                                                                                                              |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -175,7 +175,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.40 design](docs/features/v0.1.40.md)
 
 **v0.1.39 - KodaX 0.7.85 Runtime Convergence Maintenance Release**
 
-Released on 2026-08-11 as [`v0.1.39`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.39), with package version `0.1.39` aligned to
+Released on 2026-08-11 as [`v0.1.39`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.39), with package version `0.1.39` aligned to
 the exact npm-published KodaX 0.7.85 package. The release carries Actor
 settlement convergence, Session journal epoch isolation, durable-unknown
 after-turn admission, exact visible-Run Stop validation, input operation
@@ -193,7 +193,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.39 design](docs/features/v0.1.39.md)
 
 **v0.1.38 - KodaX 0.7.84 Maintenance Release**
 
-Released on 2026-08-07 as [`v0.1.38`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.38), with package version `0.1.38` aligned to
+Released on 2026-08-07 as [`v0.1.38`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.38), with package version `0.1.38` aligned to
 the exact npm-published KodaX 0.7.84 package. The release carries the
 already-landed Session reactivation correction, bounded Agent progress and
 same-owner Stop reconciliation contract, tracked icon packaging, and the
@@ -210,7 +210,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.38 design](docs/features/v0.1.38.md)
 
 **v0.1.37 - Recovery and Release Alignment**
 
-Released on 2026-08-06 as [`v0.1.37`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.37), with package version `0.1.37` aligned to the exact npm-published KodaX 0.7.83 package.
+Released on 2026-08-06 as [`v0.1.37`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.37), with package version `0.1.37` aligned to the exact npm-published KodaX 0.7.83 package.
 
 | Area           | Summary                                                                                                                                                  |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -223,11 +223,11 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.37 design](docs/features/v0.1.37.md)
 
 **v0.1.36 - Session and Runtime Reconciliation Hardening**
 
-Released on 2026-08-05 as [`v0.1.36`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.36), with package version `0.1.36` aligned to KodaX 0.7.82. See the [v0.1.36 design](docs/features/v0.1.36.md) and [release record](docs/releases/v0.1.36-release-readiness.md).
+Released on 2026-08-05 as [`v0.1.36`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.36), with package version `0.1.36` aligned to KodaX 0.7.82. See the [v0.1.36 design](docs/features/v0.1.36.md) and [release record](docs/releases/v0.1.36-release-readiness.md).
 
 **v0.1.35 - Durable Managed Runs and Session History Integrity**
 
-Released on 2026-08-05 as [`v0.1.35`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.35), with package version `0.1.35` aligned to the exact npm-published KodaX 0.7.80 package.
+Released on 2026-08-05 as [`v0.1.35`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.35), with package version `0.1.35` aligned to the exact npm-published KodaX 0.7.80 package.
 
 | Area              | Summary                                                                                                                                                                       |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -242,7 +242,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.35 design](docs/features/v0.1.35.md)
 
 **v0.1.34 - Runtime Safety and Desktop Lifecycle Hardening**
 
-Released on 2026-07-30 as [`v0.1.34`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.34), with package version `0.1.34` aligned to the exact npm-published KodaX 0.7.78 package. The required `main`, four-platform preflight, and tagged release workflows all passed; the complete evidence and published artifact digests are recorded in the release-readiness document.
+Released on 2026-07-30 as [`v0.1.34`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.34), with package version `0.1.34` aligned to the exact npm-published KodaX 0.7.78 package. The required `main`, four-platform preflight, and tagged release workflows all passed; the complete evidence and published artifact digests are recorded in the release-readiness document.
 
 | Area               | Summary                                                                                                                                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -257,7 +257,7 @@ See [CHANGELOG.md](CHANGELOG.md), the [v0.1.34 design](docs/features/v0.1.34.md)
 
 **v0.1.32 - Shared Coder and Usable Partner Knowledge**
 
-Released: 2026-07-25 as [`v0.1.32`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.32), aligned to KodaX 0.7.76. It moved Coder to the shared profile daemon, delivered F122-F124 Partner knowledge/citation grounding, vetted builtins, exact-history UX, and the controllable Windows tray owner. See the [v0.1.32 design](docs/features/v0.1.32.md) and [release record](docs/releases/v0.1.32-release-readiness.md).
+Released: 2026-07-25 as [`v0.1.32`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.32), aligned to KodaX 0.7.76. It moved Coder to the shared profile daemon, delivered F122-F124 Partner knowledge/citation grounding, vetted builtins, exact-history UX, and the controllable Windows tray owner. See the [v0.1.32 design](docs/features/v0.1.32.md) and [release record](docs/releases/v0.1.32-release-readiness.md).
 
 **v0.1.31 - Runtime Contract Alignment and Semantic Control**
 
@@ -315,6 +315,8 @@ See [CHANGELOG.md](CHANGELOG.md) and [docs/features/v0.1.29.md](docs/features/v0
 | External Agents    | KodaX 0.7.78 Runtime-configured Coder Agents use exclusive Actor ownership and unified Actor/Turn tasks; Space Reference Agents retain main-window administration and the durable Task Dock intervention path. MCP Tasks and governed HTTP remain gated. |
 
 ## Configuration Model
+
+The `0.1.46-beta.3` candidate bundles the Partner library with Space. On first launch, open **Partner → Plugins** to select an expert and its default method, or connect a supported service with your own account and resource authorization. Disabled, uninstalled, and previously hand-installed packages retain the user's choices. See the [integration and release notes](docs/partner/releases/space-bundled-integration.md) for validation and publication status; Coder sharing is planned separately.
 
 KodaX Space intentionally reuses KodaX ecosystem state where it should, and owns desktop-only state where the UI needs it.
 

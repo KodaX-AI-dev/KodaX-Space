@@ -21,6 +21,7 @@ import { ModeSelector } from './ModeSelector.js';
 import { ContextWindowIndicator } from './ContextWindowIndicator.js';
 import { QueueIndicator } from './QueueIndicator.js';
 import { AttachMenu } from './AttachMenu.js';
+import { PartnerAttachMenu } from './PartnerAttachMenu.js';
 import { AgentPicker } from './AgentPicker.js';
 import { AtPathPopover } from './AtPathPopover.js';
 import { SlashCommandPopover, type SlashPickerItem } from './SlashCommandPopover.js';
@@ -87,15 +88,27 @@ import {
 } from '../features/session/turnIndex.js';
 import {
   PARTNER_SOURCES_CHANGED_EVENT,
-  PARTNER_WORKBENCH_CONTEXT_EVENT,
-  buildPartnerWorkbenchPrompt,
   clearPartnerPendingSources,
-  getPartnerWorkbenchScenario,
   readPartnerPendingSources,
-  readPartnerWorkbenchContext,
-  type PartnerWorkbenchContextDetail,
-  type PartnerWorkbenchSourceRef,
 } from '../features/partner/partnerWorkbench.js';
+import { usePartnerExpert } from '../features/extensions/PartnerExpertProvider.js';
+import { PartnerExpertChip } from '../features/extensions/PartnerExpertChip.js';
+import { PartnerCapabilityBar } from '../features/extensions/PartnerCapabilityBar.js';
+import { PartnerExpertMenuContent } from '../features/extensions/PartnerExpertMenuContent.js';
+import type { PartnerExpertDraftCapture } from '../features/extensions/partnerExpertBinding.js';
+import { usePartnerConnectors } from '../features/extensions/PartnerConnectorProvider.js';
+import {
+  PartnerConnectorChips,
+  PartnerConnectorMenuContent,
+} from '../features/extensions/PartnerConnectorChips.js';
+import type { PartnerConnectorDraftCapture } from '../features/extensions/partnerConnectorBinding.js';
+import { acceptPartnerCreatedDraft } from '../features/extensions/partnerDraftCreation.js';
+import {
+  INSERT_PARTNER_SKILL_DRAFT_EVENT,
+  partnerSkillDraftTextForSurface,
+  type InsertPartnerSkillDraftDetail,
+} from '../features/partner/partnerSkillDraft.js';
+import { startNewConversation } from '../store/newConversation.js';
 
 const SLASH_ARGS_MAX = 20;
 
@@ -494,6 +507,14 @@ export function BottomBar(): JSX.Element {
   const stopPointerSessionIdRef = useRef<string | null | undefined>(undefined);
   // New sessions are tagged with the active surface.
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
+  const partnerExpert = usePartnerExpert();
+  const partnerConnectors = usePartnerConnectors();
+  const partnerExpertBusy =
+    currentSurface === 'partner' &&
+    (partnerExpert?.snapshot.changing === true ||
+      partnerExpert?.snapshot.loading === true ||
+      partnerConnectors?.snapshot.changing === true ||
+      partnerConnectors?.snapshot.loading === true);
   const mascotMode = useAppStore((s) => s.mascotMode);
   const providers = useAppStore((s) => s.providers);
   const defaultProviderId = useAppStore((s) => s.defaultProviderId);
@@ -563,8 +584,6 @@ export function BottomBar(): JSX.Element {
   if (attachmentGateRef.current === null) {
     attachmentGateRef.current = createPendingAttachmentGate(setIsAttaching);
   }
-  const [partnerWorkbenchContext, setPartnerWorkbenchContext] =
-    useState<PartnerWorkbenchContextDetail | null>(() => readPartnerWorkbenchContext());
   const handleSendRef = useRef<
     ((queueMode?: QueueMode, promptOverride?: string) => Promise<void>) | null
   >(null);
@@ -668,18 +687,15 @@ export function BottomBar(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    const onPartnerWorkbenchContext = (event: Event): void => {
-      setPartnerWorkbenchContext(
-        (event as CustomEvent<PartnerWorkbenchContextDetail>).detail ?? null,
-      );
+    const onInsertSkillDraft = (event: Event): void => {
+      const detail = (event as CustomEvent<InsertPartnerSkillDraftDetail>).detail;
+      const text = partnerSkillDraftTextForSurface(currentSurface, detail?.text ?? '');
+      if (text) insertAtCaret(text);
     };
-    window.addEventListener(PARTNER_WORKBENCH_CONTEXT_EVENT, onPartnerWorkbenchContext);
-    const latest = readPartnerWorkbenchContext();
-    if (latest) setPartnerWorkbenchContext(latest);
-    return () => {
-      window.removeEventListener(PARTNER_WORKBENCH_CONTEXT_EVENT, onPartnerWorkbenchContext);
-    };
-  }, []);
+    window.addEventListener(INSERT_PARTNER_SKILL_DRAFT_EVENT, onInsertSkillDraft);
+    return () => window.removeEventListener(INSERT_PARTNER_SKILL_DRAFT_EVENT, onInsertSkillDraft);
+  }, [currentSurface, insertAtCaret]);
+
 
   // and focus it (caret at end). Callers may also request an immediate submit
   // when they are launching a structured task through the normal composer path.
@@ -748,18 +764,39 @@ export function BottomBar(): JSX.Element {
       pendingAgentMode,
       pendingModel,
     });
+    let expertDraft: PartnerExpertDraftCapture | undefined;
+    let connectorDraft: PartnerConnectorDraftCapture | undefined;
+    if (currentSurface === 'partner' && partnerExpert) {
+      try {
+        expertDraft = partnerExpert.binding.captureDraft({
+          surface: 'partner',
+          projectRoot: currentProjectPath,
+          sessionId: null,
+        });
+        connectorDraft = partnerConnectors?.binding.captureDraft({
+          surface: 'partner',
+          projectRoot: currentProjectPath,
+          sessionId: null,
+        });
+      } catch (error) {
+        setErr(error instanceof Error ? error.message : String(error));
+        return null;
+      }
+    }
     const createPayload: ChannelInput<'session.create'> = {
       projectRoot: currentProjectPath,
       provider,
       ...(model ? { model } : {}),
       ...runtimeOverrides,
       surface: currentSurface,
+      ...(expertDraft?.expert ? { partnerExpert: expertDraft.expert } : {}),
+      ...(connectorDraft ? { partnerConnectors: connectorDraft.connectors } : {}),
     };
 
     const applyCreatedSession = (
       data: ChannelOutput<'session.create'>,
       source: 'foreground' | 'late',
-    ): string => {
+    ): string | null => {
       const stub: SessionMeta = {
         sessionId: data.sessionId,
         projectRoot: currentProjectPath,
@@ -769,6 +806,10 @@ export function BottomBar(): JSX.Element {
         permissionMode: data.permissionMode,
         agentMode: data.agentMode,
         surface: currentSurface,
+        ...(data.partnerExpert !== undefined ? { partnerExpert: data.partnerExpert } : {}),
+        ...(data.partnerConnectors !== undefined
+          ? { partnerConnectors: data.partnerConnectors }
+          : {}),
         title: undefined,
         createdAt: data.createdAt,
         lastActivityAt: data.createdAt,
@@ -776,12 +817,25 @@ export function BottomBar(): JSX.Element {
       upsertSession(stub);
       const latest = useAppStore.getState();
       const latestSurface = useSurfaceStore.getState().currentSurface;
-      if (
+      const shouldActivate =
         shouldActivateSessionForCurrentScope(stub, {
           currentProjectPath: latest.currentProjectPath,
           currentSurface: latestSurface,
-        })
-      ) {
+        }) &&
+        (currentSurface !== 'partner' ||
+          !expertDraft ||
+          (latest.currentSessionId === null &&
+            partnerExpert &&
+            acceptPartnerCreatedDraft({
+              experts: partnerExpert.binding,
+              expertCapture: expertDraft,
+              connectors: partnerConnectors?.binding,
+              connectorCapture: connectorDraft,
+              sessionId: data.sessionId,
+              expert: data.partnerExpert,
+              connectorSnapshots: data.partnerConnectors ?? [],
+            })));
+      if (shouldActivate) {
         setCurrentSession(stub.sessionId);
       }
       setPendingProviderId(null);
@@ -803,6 +857,8 @@ export function BottomBar(): JSX.Element {
           }
         })
         .catch(() => {});
+      // A changed Partner draft must not send with an earlier expert or clear the new draft.
+      if (currentSurface === 'partner' && expertDraft && !shouldActivate) return null;
       return stub.sessionId;
     };
 
@@ -820,51 +876,31 @@ export function BottomBar(): JSX.Element {
     return applyCreatedSession(result.data, 'foreground');
   }
 
-  async function attachPendingPartnerSourcesForSend(
-    sessionId: string,
-  ): Promise<readonly PartnerWorkbenchSourceRef[] | null> {
-    const existingSources = partnerWorkbenchContext?.sources ?? [];
-    if (currentSurface !== 'partner' || !currentProjectPath) return existingSources;
-    const pendingSources = partnerWorkbenchContext?.pendingSources?.length
-      ? partnerWorkbenchContext.pendingSources
-      : readPartnerPendingSources(currentProjectPath);
-    if (pendingSources.length === 0) return existingSources;
+  async function attachPendingPartnerSourcesForSend(sessionId: string): Promise<boolean> {
+    if (currentSurface !== 'partner' || !currentProjectPath) return true;
+    const pendingSources = readPartnerPendingSources(currentProjectPath);
+    if (pendingSources.length === 0) return true;
 
-    const attachedSources: PartnerWorkbenchSourceRef[] = [];
     for (const source of pendingSources) {
       const payload: ChannelInput<'partner.sources.add'> = {
         sessionId,
         projectRoot: currentProjectPath,
         path: source.path,
         ...(source.label ? { label: source.label } : {}),
+        ...(source.targetKind ? { targetKind: source.targetKind } : {}),
       };
       const result = await invokeComposerIpc('partner.sources.add', payload);
       if (!result.ok) {
         setErr(
           `${result.error?.code ?? 'ERR_UNKNOWN'}: ${result.error?.message ?? t('common.unknownError')}`,
         );
-        return null;
+        return false;
       }
-      attachedSources.push({
-        id: result.data.source.id,
-        path: result.data.source.path,
-        label: result.data.source.label,
-      });
     }
 
     clearPartnerPendingSources(currentProjectPath);
     window.dispatchEvent(new Event(PARTNER_SOURCES_CHANGED_EVENT));
-    const mergedSources = [...existingSources];
-    for (const source of attachedSources) {
-      if (
-        !mergedSources.some(
-          (existing) => existing.id === source.id || existing.path === source.path,
-        )
-      ) {
-        mergedSources.push(source);
-      }
-    }
-    return mergedSources;
+    return true;
   }
 
   async function attachImages(blobs: readonly File[], source: InputArtifactSource): Promise<void> {
@@ -1242,7 +1278,7 @@ export function BottomBar(): JSX.Element {
     const events = state.eventsBySession[sessionId] ?? [];
 
     if (action === 'new-session') {
-      state.setCurrentSession(null);
+      startNewConversation();
       return;
     }
 
@@ -1988,6 +2024,10 @@ export function BottomBar(): JSX.Element {
   ): Promise<void> {
     if (!window.kodaxSpace) return;
     if (busy || attachmentGateRef.current!.isPending()) return;
+    if (partnerExpertBusy) {
+      setErr(t('extensions.expertSaving'));
+      return;
+    }
     const effectiveQueueMode = queueModeForRuntimePhase(queueMode, currentRuntimePhase);
     const promptAtSend = promptOverride ?? prompt;
     const trimmed = promptAtSend.trim();
@@ -2060,21 +2100,7 @@ export function BottomBar(): JSX.Element {
         pendingFileRefs,
         window.kodaxSpace.platform,
       );
-      const partnerSourcesForOverlay =
-        currentSurface === 'partner' ? await attachPendingPartnerSourcesForSend(sid) : null;
-      if (currentSurface === 'partner' && partnerSourcesForOverlay === null) return;
-      const partnerPromptOverlay =
-        currentSurface === 'partner' && partnerWorkbenchContext
-          ? buildPartnerWorkbenchPrompt({
-              projectRoot: currentProjectPath,
-              hasSession: Boolean(sid),
-              scenarioId: partnerWorkbenchContext.scenarioId,
-              outputPreferenceId: partnerWorkbenchContext.outputPreferenceId,
-              targetPath: partnerWorkbenchContext.targetPath,
-              sources: partnerSourcesForOverlay ?? partnerWorkbenchContext.sources,
-              userBrief: effectivePrompt,
-            })
-          : undefined;
+      if (!(await attachPendingPartnerSourcesForSend(sid))) return;
       const promptForAI = effectivePrompt;
       const imagesAtSend = pendingImages;
       const optimisticAttachmentNonce = Date.now();
@@ -2132,7 +2158,6 @@ export function BottomBar(): JSX.Element {
         queueMode: effectiveQueueMode,
         ...(currentProjectPath ? { expectedProjectRoot: currentProjectPath } : {}),
         expectedSurface: currentSurface,
-        ...(partnerPromptOverlay ? { partnerPromptOverlay } : {}),
         ...(attachmentPathsForSend.length > 0
           ? { attachmentPaths: [...attachmentPathsForSend] }
           : {}),
@@ -2520,6 +2545,7 @@ export function BottomBar(): JSX.Element {
   // Send is enabled for text, inline images, or pending file references.
   const canSend =
     !busy &&
+    !partnerExpertBusy &&
     !isAttaching &&
     runControls.canSendDuringActivity &&
     !!currentProjectPath &&
@@ -2533,16 +2559,12 @@ export function BottomBar(): JSX.Element {
       : busy || isAttaching
         ? t('bottom.sendTitle.busy')
         : t('bottom.sendTitle.empty');
-  const partnerModeLabel =
-    currentSurface === 'partner' && partnerWorkbenchContext
-      ? t(getPartnerWorkbenchScenario(partnerWorkbenchContext.scenarioId).labelKey)
-      : 'Partner';
   const placeholderText = !currentProjectPath
     ? t('bottom.placeholder.openFolder')
     : currentSurface === 'partner'
       ? currentSessionId
-        ? t('bottom.placeholder.partnerWithSession', { mode: partnerModeLabel })
-        : t('bottom.placeholder.partnerNewSession', { mode: partnerModeLabel })
+        ? t('bottom.placeholder.partnerWithSession')
+        : t('bottom.placeholder.partnerNewSession')
       : currentSessionId
         ? t('bottom.placeholder.withSession')
         : t('bottom.placeholder.newSession');
@@ -2562,6 +2584,8 @@ export function BottomBar(): JSX.Element {
       <RetryBanner />
 
       <AskUserDockBar />
+
+      {currentSurface === 'partner' && <PartnerCapabilityBar onInsertDraft={insertAtCaret} />}
 
       <div className="relative">
         {mascotMode === 'legacy' && (
@@ -2584,13 +2608,17 @@ export function BottomBar(): JSX.Element {
           onMouseDownCapture={(e) => focusComposerFromContainer(e.target)}
           className={[
             'glass lift rounded-2xl border bg-surface-2 px-3 pt-2 pb-2 space-y-1.5 transition-colors',
+            currentSurface === 'partner' ? 'partner-composer-panel' : '',
             draggingFiles
               ? 'border-accent/70 bg-accent/5'
               : 'border-border-default focus-within:border-accent/50',
           ].join(' ')}
         >
-          <ChipBar />
-
+          <div data-testid="composer-context-toolbar" className="flex items-center gap-1.5">
+            <ChipBar />
+            {currentSurface === 'partner' && <PartnerConnectorChips />}
+            {currentSurface === 'partner' && <PartnerExpertChip running={isStreaming} />}
+          </div>
           {(pendingImages.length > 0 || pendingFileRefs.length > 0 || imageErr) && (
             <div className="space-y-1">
               {pendingImages.length > 0 && (
@@ -2766,9 +2794,17 @@ export function BottomBar(): JSX.Element {
 
           <div
             data-testid="composer-footer-toolbar"
-            className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]"
+            className={[
+              'flex min-w-0 flex-wrap items-center gap-2 text-[11px]',
+              currentSurface === 'partner' ? 'partner-composer-footer' : '',
+            ].join(' ')}
           >
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div
+              className={[
+                'flex min-w-0 flex-wrap items-center gap-2',
+                currentSurface === 'partner' ? 'partner-composer-footer__primary' : '',
+              ].join(' ')}
+            >
               <div className="relative">
                 <input
                   ref={fileInputRef}
@@ -2785,32 +2821,65 @@ export function BottomBar(): JSX.Element {
                 />
                 <button
                   type="button"
+                  data-testid="composer-attach-menu-trigger"
                   onClick={() => setAttachOpen((v) => !v)}
-                  className="w-6 h-6 rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary flex items-center justify-center"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary"
                   title={t('bottom.attachCommands')}
                   aria-label={t('bottom.openAttachMenu')}
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="h-4 w-4" />
                 </button>
-                <AttachMenu
-                  open={attachOpen}
-                  onClose={() => setAttachOpen(false)}
-                  onAddFiles={() => {
-                    const input = fileInputRef.current;
-                    if (!input) return;
-                    input.value = '';
-                    input.click();
-                  }}
-                  onAddFolder={() => startAttachmentOperation(attachFolder)}
-                  onInsertText={(text) => setPrompt((p) => (p ? `${p} ${text}` : text))}
-                />
+                {currentSurface === 'partner' ? (
+                  <PartnerAttachMenu
+                    open={attachOpen}
+                    onClose={() => setAttachOpen(false)}
+                    onAddFiles={() => {
+                      const input = fileInputRef.current;
+                      if (!input) return;
+                      input.value = '';
+                      input.click();
+                    }}
+                    onAddFolder={() => startAttachmentOperation(attachFolder)}
+                    onInsertText={(text) => setPrompt((p) => (p ? `${p} ${text}` : text))}
+                    partnerConnectorContent={
+                      <PartnerConnectorMenuContent
+                        onClose={() => setAttachOpen(false)}
+                        showHeading={false}
+                      />
+                    }
+                    partnerExpertContent={
+                      <PartnerExpertMenuContent onClose={() => setAttachOpen(false)} />
+                    }
+                  />
+                ) : (
+                  <AttachMenu
+                    open={attachOpen}
+                    onClose={() => setAttachOpen(false)}
+                    onAddFiles={() => {
+                      const input = fileInputRef.current;
+                      if (!input) return;
+                      input.value = '';
+                      input.click();
+                    }}
+                    onAddFolder={() => startAttachmentOperation(attachFolder)}
+                    onInsertText={(text) => setPrompt((p) => (p ? `${p} ${text}` : text))}
+                  />
+                )}
               </div>
               {currentSurface !== 'partner' && <AgentPicker insertAtCaret={insertAtCaret} />}
               <ModeSelector />
               {currentSurface !== 'partner' && <AgentModeSelector />}
             </div>
-            <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-              <ContextWindowIndicator compacting={isCompacting} />
+            <div
+              className={[
+                'ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2',
+                currentSurface === 'partner' ? 'partner-composer-footer__secondary' : '',
+              ].join(' ')}
+            >
+              <ContextWindowIndicator
+                compacting={isCompacting}
+                attentionOnly={currentSurface === 'partner'}
+              />
               <ModelEffortSelector />
               {sessionPendingStops
                 .filter((request) => request.runId !== currentRuntimeStopRunId)

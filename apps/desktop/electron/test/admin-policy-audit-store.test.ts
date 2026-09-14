@@ -15,6 +15,7 @@ test('admin policy store exposes defaults and supports partial local policy upda
   try {
     const initial = await store.getPolicy();
     assert.equal(initial.source, 'default');
+    assert.equal(initial.policy.connectors.writesAllowed, true);
     assert.equal(initial.policy.artifact.exportAllowed, true);
     assert.equal(initial.policy.workspaceDeliveries.writeAllowed, true);
     assert.equal(initial.policy.workspaceDeliveries.workspaceWriteAllowed, false);

@@ -1,5 +1,7 @@
 # KodaX Space 文档中心
 
+> Partner 随包交付、用户入口和验收边界见 [beta.3 发布就绪记录](releases/v0.1.46-beta.3-release-readiness.md)。该版本为测试版候选，不改变以下稳定版发布事实。
+
 > **2026-08-24 当前正式发布基线**：KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45)（package `0.1.45`）使用 npm
 > Registry 的精确 KodaX `0.7.95` 包，要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与
 > `sandboxRuntime:5`；受管理的 Coder daemon 继续协商 `managedRunDurability:1`、
@@ -13,7 +15,7 @@
 > root/Desktop manifest、lockfile、物理安装与打包 ASAR 必须解析到同一个正式 Registry URL/SRI。
 > v0.1.44 / KodaX 0.7.93 及更早的发布记录保持历史事实。
 
-> **2026-09-13 当前源码候选**：Space package 为 `0.1.46-beta.2`，root/Desktop/lockfile 已精确锁定已发布的
+> **2026-09-14 当前源码候选**：Space package 为 `0.1.46-beta.3`，root/Desktop/lockfile 已精确锁定已发布的
 > `@kodax-ai/kodax@0.7.96-rc.4`。SDK 包门要求 `sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 与 `effectiveConfig:1`；daemon 准入与连接后 Runtime 门额外要求 `providerCredentialBroker:2`。Windows wire protocol 10 与 setup generation 11（beta.5 的 Codex 兼容 profile/SSH ACL 排除）、真实 target-start doctor 证明、私有逐命令 Temp 与 64 端口 broker 范围都由 v11 门隔离。KodaX
 > universal native bundle 会整体解包，并在 packaged smoke 中按 manifest hash 校验；权限面仍为 Plan、Edits、Auto[LLM]、Full Access 四档；这不会
 > 把 v0.1.45 / KodaX 0.7.95 的正式发布记录改写成 alpha 版本。
@@ -53,6 +55,7 @@ KodaX/Electron 执行控制变量仍被阻止。旧 `sandbox.envPass` 输入已�
 | 理解进程、IPC、Runtime 和数据所有权 | [HLD](HLD.md)                                                                                                                                                             |
 | 查看 KodaX 能力是否已接入           | [KodaX 能力台账](KODAX_CAPABILITY_LEDGER.md)                                                                                                                              |
 | 查看当前和未来 Feature              | [Feature List](FEATURE_LIST.md)                                                                                                                                           |
+| 了解或开发 Partner 产品线           | [Partner 文档中心](partner/README.md)                                                                                                                                     |
 | 查看 v0.1.31 的设计与实施           | [版本设计](features/v0.1.31.md) / [实施计划](features/v0.1.31-implementation-plan.md) / [人工测试指导](test-guides/FEATURE_116_v0.1.31_TEST_GUIDE.md)                     |
 | 查看 v0.1.32 的设计与发布证据       | [版本设计与实施状态](features/v0.1.32.md) / [发布记录](releases/v0.1.32-release-readiness.md) / [Feature List](FEATURE_LIST.md)                                           |
 | 查看 v0.1.33 的设计与发布证据       | [版本设计与实施状态](features/v0.1.33.md) / [发布记录](releases/v0.1.33-release-readiness.md) / [Feature List](FEATURE_LIST.md)                                           |
@@ -75,6 +78,7 @@ KodaX/Electron 执行控制变量仍被阻止。旧 `sandbox.envPass` 输入已�
 | `HLD.md`                                             | 当前高层架构                  | 反映真实 owner、边界和降级策略                                           |
 | `KODAX_CAPABILITY_LEDGER.md`                         | 能力接入事实                  | 每次 SDK/Runtime 接入后更新状态与证据                                    |
 | `FEATURE_LIST.md`                                    | 版本路线图                    | 只有可交付、可验证的版本项进入 active list                               |
+| `partner/README.md`                                  | Partner 产品线文档中心        | Partner 内部产品、架构、Feature、测试与融合证据从这里进入                 |
 | `KNOWN_ISSUES.md`                                    | 当前问题                      | 已解决项保留结论，新增问题需有复现和状态                                 |
 | `BUILTIN_SKILLS.md`                                  | builtin 分发维护              | 固定来源、许可、补丁、更新和打包完整性                                   |
 | `features/v0.1.45.md`                                | current release design        | Inline ask-user conversation cards and exact KodaX 0.7.95 boundary       |

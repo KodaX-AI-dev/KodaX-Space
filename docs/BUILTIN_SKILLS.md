@@ -30,12 +30,13 @@ IPC result still validates each item and keeps the existing 256-entry cap.
 
 ## Source of truth
 
-- `resources/builtin-skills.sources.json` declares the upstream repository,
-  branch, canonical skill subdirectory, approved license hash, exclusions, and
-  Space-maintained patches.
+- `resources/builtin-skills.sources.json` declares either an upstream repository
+  and its approved redistribution inputs, or a Space-owned path under
+  `resources/first-party-skills/`.
 - `resources/builtin-skill-patches/` contains reviewable Space-specific changes.
-- `resources/builtin-skills.lock.json` records the resolved upstream commit,
-  patch hashes, and SHA-256/size of every shipped file.
+- `resources/builtin-skills.lock.json` records the resolved upstream commit or
+  content-addressed first-party revision, patch hashes, and SHA-256/size of every
+  shipped file.
 - `resources/builtin-skills/` is the generated, vendored snapshot.
 
 Only content whose license permits copying, modification, and redistribution may
@@ -49,9 +50,23 @@ npm run skills:update
 npm run skills:check
 ```
 
-`skills:update` clones the configured upstream branches, verifies the approved
-license hashes, rejects symlinks, secrets, and dynamic-context shell tokens,
-applies Space patches, and rewrites both the vendored tree and integrity lock.
+`skills:update` clones configured upstream branches or reads declared
+first-party sources, verifies approved license hashes where applicable, rejects
+symlinks, secrets, and dynamic-context shell tokens, applies Space patches, and
+rewrites both the vendored tree and integrity lock.
+
+## First-party platform expert skills
+
+`feishu-office-suite` is the first Space-owned platform expert Skill. Its
+editable source lives in `resources/first-party-skills/feishu-office-suite`; the
+generated copy under `resources/builtin-skills/` is the packaged artifact. The
+Skill routes only to Partner's typed Feishu document and Base tools. It does not
+replace connector authorization, expose a raw CLI, or claim support for the
+rest of the Feishu product suite.
+
+First-party revisions use `first-party:<sha256>` over the complete source file
+manifest. `skills:check` therefore fails when either the authored source or the
+generated packaged copy drifts from the lock.
 
 Review the resulting diff before committing:
 

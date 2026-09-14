@@ -14,22 +14,49 @@ import { MapPin, Folder, GitBranch, Check, Settings, Lock } from 'lucide-react';
 import type { RepointelStatusOutput } from '@kodax-space/space-ipc-schema';
 import { isLicenseActive } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
+import { useSurfaceStore } from '../store/surface.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { SettingsModal } from '../features/settings/SettingsModal.js';
+import { projectShellChrome } from './shellChromeProjection.js';
 
 export function ChipBar(): JSX.Element | null {
   const projectPath = useAppStore((s) => s.currentProjectPath);
+  const currentSurface = useSurfaceStore((s) => s.currentSurface);
 
   if (!projectPath) return null;
   const projectName = projectPath.split(/[\\/]/).filter(Boolean).pop() ?? projectPath;
+  const shellChrome = projectShellChrome(currentSurface);
 
   return (
     <div className="flex items-center gap-1.5 text-[11px] text-fg-secondary">
-      <LocalChip />
-      <ProjectChip projectName={projectName} projectPath={projectPath} />
-      <BranchChip />
-      <RepointelChip projectPath={projectPath} />
+      {shellChrome.showLocalEnvironment && <LocalChip />}
+      {shellChrome.showProjectSwitcher ? (
+        <ProjectChip projectName={projectName} projectPath={projectPath} />
+      ) : (
+        <ProjectContext projectName={projectName} projectPath={projectPath} />
+      )}
+      {shellChrome.showPlaceholderBranch && <BranchChip />}
+      {shellChrome.showRepositoryIntelligence && <RepointelChip projectPath={projectPath} />}
     </div>
+  );
+}
+
+/** Read-only fallback for surfaces without a project switcher. */
+function ProjectContext({
+  projectName,
+  projectPath,
+}: {
+  readonly projectName: string;
+  readonly projectPath: string;
+}): JSX.Element {
+  return (
+    <span
+      className="inline-flex max-w-[200px] items-center gap-1 px-1 text-fg-muted"
+      title={projectPath}
+    >
+      <Folder className="h-3 w-3" strokeWidth={2} aria-hidden />
+      <span className="truncate">{projectName}</span>
+    </span>
   );
 }
 

@@ -62,7 +62,7 @@ npm run dev
 
 ### 2.2 正式安装包
 
-普通用户从 [GitHub Releases](https://github.com/icetomoyo/KodaX-Space/releases/latest) 获取安装包：
+普通用户从 [GitHub Releases](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest) 获取安装包：
 
 | 平台    | 产物                        |
 | ------- | --------------------------- |

@@ -30,9 +30,52 @@ const SPACE_VERSION = String(rootPackage.version ?? '').trim();
 const KODAX_VERSION = String(
   packageLock.packages?.['node_modules/@kodax-ai/kodax']?.version ?? '',
 ).trim();
+const FEISHU_CLI_LOCK_PATH = path.join(
+  rootDir,
+  'resources',
+  'partner-connectors',
+  'feishu-cli.lock.json',
+);
+const FEISHU_CLI_LICENSE_PATH = path.join(
+  rootDir,
+  'resources',
+  'partner-connectors',
+  'feishu-cli',
+  'LICENSE',
+);
 const SIZE_LIMIT_BYTES = 200 * 1024 * 1024;
 const require = createRequire(import.meta.url);
 const electronBin = require('electron');
+
+export async function verifyPackagedPartnerLibrary({
+  asarPath,
+  sourceArchivePath = path.join(
+    rootDir,
+    'dist-electron',
+    'bundled-extensions',
+    'kodax.partner-library.space-extension',
+  ),
+}) {
+  const packaged = path.join(
+    path.dirname(asarPath),
+    'bundled-extensions',
+    'kodax.partner-library.space-extension',
+  );
+  const sourceStat = await requireRegularFile(sourceArchivePath, 'built Partner library');
+  const packagedStat = await requireRegularFile(packaged, 'packaged Partner library');
+  if (
+    sourceStat.size === 0 ||
+    sourceStat.size > 4 * 1024 * 1024 ||
+    packagedStat.size !== sourceStat.size
+  )
+    throw new Error('Packaged Partner library size differs from the built archive');
+  const [sourceBytes, packagedBytes] = await Promise.all([
+    fs.readFile(sourceArchivePath),
+    fs.readFile(packaged),
+  ]);
+  if (!sourceBytes.equals(packagedBytes))
+    throw new Error('Packaged Partner library differs from the built archive');
+}
 const KODAX_PUBLIC_FACADE_FILES = [
   'index.js',
   'sdk-a2a.js',
@@ -108,6 +151,188 @@ async function listFilesRecursive(dir) {
     }
   }
   return out;
+}
+
+async function packagedMacTargetFromExecutable(asarPath) {
+  const contentsDir = path.dirname(path.dirname(asarPath));
+  const appName = path.basename(path.dirname(contentsDir), '.app');
+  const executable = path.join(contentsDir, 'MacOS', appName);
+  const header = Buffer.alloc(8);
+  let handle;
+  try {
+    handle = await fs.open(executable, 'r');
+    const { bytesRead } = await handle.read(header, 0, header.length, 0);
+    if (bytesRead !== header.length) throw new Error('Mach-O header is truncated');
+  } catch (error) {
+    throw new Error(`could not inspect packaged macOS architecture: ${error.message}`);
+  } finally {
+    await handle?.close();
+  }
+  const littleEndian = [0xfeedface, 0xfeedfacf].includes(header.readUInt32LE(0));
+  const bigEndian = [0xfeedface, 0xfeedfacf].includes(header.readUInt32BE(0));
+  const cpuType = littleEndian
+    ? header.readUInt32LE(4)
+    : bigEndian
+      ? header.readUInt32BE(4)
+      : undefined;
+  if (cpuType === 0x01000007) return 'darwin-x64';
+  if (cpuType === 0x0100000c) return 'darwin-arm64';
+  throw new Error(`unsupported packaged macOS Mach-O architecture: ${executable}`);
+}
+
+async function packagedFeishuCliTarget(asarPath) {
+  const normalized = asarPath.replace(/\\/g, '/').toLowerCase();
+  if (normalized.endsWith('/win-unpacked/resources/app.asar')) return 'win32-x64';
+  if (normalized.endsWith('/linux-unpacked/resources/app.asar')) return 'linux-x64';
+  if (/\/mac-arm64\/[^/]+\.app\/contents\/resources\/app\.asar$/u.test(normalized)) {
+    return 'darwin-arm64';
+  }
+  if (/\/mac-universal\/[^/]+\.app\/contents\/resources\/app\.asar$/u.test(normalized)) {
+    throw new Error('universal macOS app.asar has no single Feishu CLI target');
+  }
+  if (/\/mac\/[^/]+\.app\/contents\/resources\/app\.asar$/u.test(normalized)) {
+    const unpackedDir = path.dirname(path.dirname(path.dirname(path.dirname(asarPath))));
+    const artifacts = await fs.readdir(path.dirname(unpackedDir));
+    const artifactPrefix = `kodax-space-${SPACE_VERSION}-`;
+    const hasArm64Dmg = artifacts.some(
+      (name) => name.toLowerCase() === `${artifactPrefix}arm64.dmg`,
+    );
+    const hasX64Dmg = artifacts.some((name) => name.toLowerCase() === `${artifactPrefix}x64.dmg`);
+    if (hasArm64Dmg && !hasX64Dmg) return 'darwin-arm64';
+    if (hasX64Dmg) return 'darwin-x64';
+    return packagedMacTargetFromExecutable(asarPath);
+  }
+  throw new Error(`cannot infer Feishu CLI target from packaged app.asar: ${asarPath}`);
+}
+
+async function listSafePackagedFiles(dir) {
+  let rootStat;
+  try {
+    rootStat = await fs.lstat(dir);
+  } catch (error) {
+    throw new Error(`could not inspect packaged Feishu CLI root ${dir}: ${error.message}`);
+  }
+  if (rootStat.isSymbolicLink()) {
+    throw new Error(`packaged Feishu CLI root is a symbolic link: ${dir}`);
+  }
+  if (!rootStat.isDirectory())
+    throw new Error(`packaged Feishu CLI root is not a directory: ${dir}`);
+  const files = [];
+  const stack = [dir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    let names;
+    try {
+      names = await fs.readdir(current);
+    } catch (error) {
+      throw new Error(`could not inspect packaged Feishu CLI resources: ${error.message}`);
+    }
+    for (const name of names) {
+      const fullPath = path.join(current, name);
+      let stat;
+      try {
+        stat = await fs.lstat(fullPath);
+      } catch (error) {
+        throw new Error(
+          `could not inspect packaged Feishu CLI entry ${fullPath}: ${error.message}`,
+        );
+      }
+      if (stat.isSymbolicLink()) {
+        throw new Error(`unsafe symbolic link in packaged Feishu CLI resources: ${fullPath}`);
+      }
+      if (stat.isDirectory()) stack.push(fullPath);
+      else if (stat.isFile()) files.push(fullPath);
+      else throw new Error(`unsafe packaged Feishu CLI entry: ${fullPath}`);
+    }
+  }
+  return files;
+}
+
+async function requireRegularFile(file, label) {
+  try {
+    const stat = await fs.lstat(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1) throw new Error('unsafe');
+    return stat;
+  } catch {
+    throw new Error(`${label} missing or unsafe: ${file}`);
+  }
+}
+
+async function sha256File(file) {
+  return createHash('sha256')
+    .update(await fs.readFile(file))
+    .digest('hex');
+}
+
+async function readFeishuCliLock(lockPath, target) {
+  let lock;
+  try {
+    lock = JSON.parse(await fs.readFile(lockPath, 'utf8'));
+  } catch (error) {
+    throw new Error(
+      `could not read Feishu CLI lock: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  const asset = lock?.assets?.[target];
+  if (
+    lock?.schemaVersion !== 1 ||
+    lock?.component !== 'lark-cli' ||
+    !/^\d+\.\d+\.\d+$/u.test(lock?.version ?? '') ||
+    !Number.isSafeInteger(asset?.bytes) ||
+    asset.bytes < 1 ||
+    !/^[a-f0-9]{64}$/u.test(asset?.sha256 ?? '') ||
+    !['tar.gz', 'zip'].includes(asset?.format)
+  ) {
+    throw new Error(`Feishu CLI lock has no valid ${target} asset`);
+  }
+  return { lock, asset };
+}
+
+export async function verifyPackagedFeishuCliResources({
+  asarPath,
+  lockPath = FEISHU_CLI_LOCK_PATH,
+}) {
+  const target = await packagedFeishuCliTarget(asarPath);
+  const { lock, asset } = await readFeishuCliLock(lockPath, target);
+  const componentRoot = path.join(path.dirname(asarPath), 'managed-components', 'feishu-cli');
+  const packagedLicense = path.join(componentRoot, 'LICENSE');
+  await requireRegularFile(packagedLicense, 'packaged Feishu CLI license');
+  await requireRegularFile(FEISHU_CLI_LICENSE_PATH, 'source Feishu CLI license');
+  if ((await sha256File(packagedLicense)) !== (await sha256File(FEISHU_CLI_LICENSE_PATH))) {
+    throw new Error('packaged Feishu CLI license does not match the reviewed source license');
+  }
+  const archiveName = `lark-cli.${asset.format}`;
+  const archive = path.join(componentRoot, lock.version, target, archiveName);
+  const stat = await requireRegularFile(archive, `packaged Feishu CLI ${target} archive`);
+  if (stat.size !== asset.bytes) {
+    throw new Error(
+      `packaged Feishu CLI ${target} archive size mismatch: expected ${asset.bytes}, got ${stat.size}`,
+    );
+  }
+  if ((await sha256File(archive)) !== asset.sha256) {
+    throw new Error(`packaged Feishu CLI ${target} archive SHA-256 mismatch`);
+  }
+  const expected = path.relative(componentRoot, archive).replace(/\\/g, '/');
+  const allowed = new Set(['LICENSE', expected]);
+  const packagedFiles = (await listSafePackagedFiles(componentRoot)).map((file) =>
+    path.relative(componentRoot, file).replace(/\\/g, '/'),
+  );
+  const unexpected = packagedFiles.filter((file) => !allowed.has(file));
+  if (unexpected.length > 0) {
+    throw new Error(
+      `unexpected Feishu CLI file packaged with ${target}: ${unexpected.sort().join(', ')}`,
+    );
+  }
+  return { target, version: lock.version };
+}
+
+async function checkPackagedFeishuCliResources(asarPath) {
+  try {
+    const verified = await verifyPackagedFeishuCliResources({ asarPath });
+    ok(`packaged Feishu CLI ${verified.version} archive is locked to ${verified.target}`);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
 }
 
 async function verifyHashPinnedNativeFile(root, entry, label) {
@@ -905,6 +1130,15 @@ async function checkAsarContents(asarPath) {
     }
   }
   ok('node-pty native runtime present in filesystem resources');
+  if (process.platform !== 'win32') {
+    for (const helper of nativeFilesystemFiles.filter((file) =>
+      /\/node-pty\/prebuilds\/darwin-(arm64|x64)\/spawn-helper$/.test(file),
+    )) {
+      if (((await fs.stat(helper)).mode & 0o111) !== 0o111) {
+        fail(`node-pty spawn helper is not executable: ${helper}`);
+      }
+    }
+  }
 
   if (leaks.length > 0) {
     console.warn(
@@ -928,6 +1162,18 @@ try {
   const result = database.prepare('select 42 as value').get();
   database.close();
   if (result?.value !== 42) throw new Error('unexpected query result');
+  if (process.platform === 'darwin') {
+    const version = requireFromPackage('esbuild/package.json').version;
+    const cli = ${JSON.stringify(path.join(`${asarPath}.unpacked`, 'node_modules', 'esbuild', 'bin', 'esbuild'))};
+    const binary = ${JSON.stringify(path.join(`${asarPath}.unpacked`, 'node_modules', '@esbuild'))} + '/darwin-' + process.arch + '/bin/esbuild';
+    for (const executable of [cli, binary]) {
+      const execFileSync = require('node:child_process').execFileSync;
+      const options = { encoding: 'utf8', timeout: 10_000 };
+      if (execFileSync(executable, ['--version'], options).trim() !== version) throw new Error('packaged esbuild version mismatch');
+      const transformed = execFileSync(executable, ['--loader=ts'], { ...options, input: 'const value: number = 42;' });
+      if (!transformed.includes('const value = 42;')) throw new Error('packaged esbuild transform failed');
+    }
+  }
   process.stdout.write(${JSON.stringify(marker)});
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
@@ -956,6 +1202,7 @@ try {
     );
   }
   ok('better-sqlite3 opens and queries :memory: from packaged app.asar');
+  if (process.platform === 'darwin') ok('both packaged esbuild entry points execute and transform TypeScript');
 }
 
 function checkKodaxWorkersExecuteFromAsar(asarPath) {
@@ -1781,6 +2028,9 @@ async function main() {
   }
   await checkWindowsExecutableIcons(installers);
   for (const asarPath of await findAsarPaths()) {
+    await verifyPackagedPartnerLibrary({ asarPath });
+    ok('packaged Partner library matches the built archive');
+    await checkPackagedFeishuCliResources(asarPath);
     await checkAsarContents(asarPath);
     checkPackagedSqliteExecutesFromAsar(asarPath);
     checkKodaxWorkersExecuteFromAsar(asarPath);
@@ -1788,7 +2038,9 @@ async function main() {
   console.log('\n[smoke-pack] all checks passed');
 }
 
-main().catch((err) => {
-  console.error('[smoke-pack] uncaught error:', err);
-  process.exit(1);
-});
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  main().catch((err) => {
+    console.error('[smoke-pack] uncaught error:', err);
+    process.exit(1);
+  });
+}

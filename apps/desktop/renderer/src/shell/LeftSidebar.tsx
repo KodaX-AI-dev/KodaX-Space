@@ -17,9 +17,19 @@
 // 接 surface store）；LeftSidebar 是两 surface 共用的全局导航（项目 / session / surface tab）。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, ChevronDown, Ellipsis, FolderTree, Monitor, Pin, SquarePen } from 'lucide-react';
+import {
+  Plus,
+  ChevronDown,
+  Ellipsis,
+  FolderTree,
+  Monitor,
+  Pin,
+  Blocks,
+  SquarePen,
+} from 'lucide-react';
 import { SurfaceTabs } from './SurfaceTabs.js';
 import { useAppStore } from '../store/appStore.js';
+import { startNewConversation } from '../store/newConversation.js';
 import { useSurfaceStore } from '../store/surface.js';
 import { Caret } from '../components/Caret.js';
 import {
@@ -49,12 +59,17 @@ import {
   type SessionLoadPhase,
   type SessionLoadStateByScope,
 } from './sidebarSessionLoading.js';
+import { projectShellChrome } from './shellChromeProjection.js';
 
 interface LeftSidebarProps {
   /** 2026-06: 动态宽度（px）。Shell 拖 ResizeHandle 实时改这个值。 */
   width?: number;
   readonly filesActive?: boolean;
   readonly onOpenFiles?: () => void;
+  readonly pluginsAvailable?: boolean;
+  readonly pluginsActive?: boolean;
+  readonly onOpenPlugins?: () => void;
+  readonly onNavigate?: () => void;
   readonly onOpenSettings: () => void;
 }
 
@@ -62,6 +77,10 @@ export function LeftSidebar({
   width,
   filesActive = false,
   onOpenFiles,
+  pluginsAvailable = false,
+  pluginsActive = false,
+  onOpenPlugins,
+  onNavigate,
   onOpenSettings,
 }: LeftSidebarProps): JSX.Element {
   const { t } = useI18n();
@@ -72,6 +91,7 @@ export function LeftSidebar({
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   // F045: 当前工作面（Coder / Partner）。session 列表按 surface 分面——切 surface 重新拉。
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
+  const shellChrome = projectShellChrome(currentSurface);
   const visibleSessions = useMemo(
     () => sessions.filter((s) => (s.surface ?? 'code') === currentSurface),
     [sessions, currentSurface],
@@ -142,10 +162,12 @@ export function LeftSidebar({
    * 所以 provider / 模式选择一点不丢（见 createSession.ts 头注释：两处调用已统一到该 helper）。
    */
   function handleNewSession(): void {
-    setCurrentSession(null);
+    onNavigate?.();
+    startNewConversation();
   }
 
   function handleOpenFiles(): void {
+    onNavigate?.();
     onOpenFiles?.();
   }
 
@@ -173,7 +195,7 @@ export function LeftSidebar({
           <Plus className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} aria-hidden />
           {t('sidebar.newSession')}
         </button>
-        <WorkflowNavPanel />
+        {shellChrome.showWorkflowNavigation && <WorkflowNavPanel />}
         <button
           type="button"
           onClick={handleOpenFiles}
@@ -187,7 +209,19 @@ export function LeftSidebar({
           <FolderTree className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} aria-hidden />
           {t('files.openProjectFiles')}
         </button>
-        <FutureFeaturesDisclosure />
+        {currentSurface === 'partner' && pluginsAvailable && (
+          <button
+            type="button"
+            data-testid="partner-plugins-nav"
+            onClick={onOpenPlugins}
+            aria-pressed={pluginsActive}
+            className={`w-full text-left text-xs px-2 py-1.5 rounded hover:bg-hover-bg flex items-center gap-2 text-fg-primary ${pluginsActive ? 'bg-surface-3' : ''}`}
+          >
+            <Blocks className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} aria-hidden />
+            {t('extensions.plugins')}
+          </button>
+        )}
+        {shellChrome.showFutureFeatures && <FutureFeaturesDisclosure />}
       </div>
 
       {/* F017 Running peers — 其他 KodaX 进程（CLI / 别的 Space 窗口）当前活动的 session。
@@ -208,7 +242,10 @@ export function LeftSidebar({
         <ProjectTree
           sessions={visibleSessions}
           currentSessionId={currentSessionId}
-          onSelect={setCurrentSession}
+          onSelect={(sessionId) => {
+            onNavigate?.();
+            setCurrentSession(sessionId);
+          }}
           sessionLoadStateByScope={sessionLoadStateByScope}
           onRefreshProjectSessions={loadProjectSessions}
         />
@@ -573,9 +610,7 @@ function ProjectTree({
                   e.stopPropagation();
                   // 切到此项目 + 清 current session → BottomBar.ensureSession 在首发时
                   // 懒建一个新 session（跟顶部 New session 按钮同一路径）。
-                  const state = useAppStore.getState();
-                  state.setCurrentProject(proj.path);
-                  state.setCurrentSession(null);
+                  startNewConversation(proj.path);
                 }}
                 className="inline-flex h-6 w-6 items-center justify-center rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary"
                 aria-label={`${t('sidebar.newSessionInProject')}: ${proj.name}`}
@@ -1101,34 +1136,38 @@ function SessionRow({
                 title={t('session.deleting')}
               />
             ) : status === 'running' ? (
-          <span className="sidebar-status-spinner" aria-hidden title={statusLabel ?? undefined} />
-        ) : (
-          <>
-            {flags?.unread && (
               <span
-                className="h-1.5 w-1.5 rounded-full bg-ok shadow-[0_0_0_2px_rgb(var(--ok)/0.12)]"
-                aria-label={t('sidebar.status.unread')}
-                title={t('sidebar.status.unread')}
-              />
-            )}
-            {status === 'awaiting' && statusLabel && (
-              <SessionAwaitingIndicator label={statusLabel} />
-            )}
-            {status === 'error' && (
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-danger"
-                aria-label={statusLabel ?? undefined}
+                className="sidebar-status-spinner"
+                aria-hidden
                 title={statusLabel ?? undefined}
               />
+            ) : (
+              <>
+                {flags?.unread && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-ok shadow-[0_0_0_2px_rgb(var(--ok)/0.12)]"
+                    aria-label={t('sidebar.status.unread')}
+                    title={t('sidebar.status.unread')}
+                  />
+                )}
+                {status === 'awaiting' && statusLabel && (
+                  <SessionAwaitingIndicator label={statusLabel} />
+                )}
+                {status === 'error' && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-danger"
+                    aria-label={statusLabel ?? undefined}
+                    title={statusLabel ?? undefined}
+                  />
+                )}
+                {flags?.pinned && (
+                  <span aria-label={t('sidebar.status.pinned')} title={t('sidebar.status.pinned')}>
+                    <Pin className="h-3 w-3 text-fg-muted" strokeWidth={1.9} aria-hidden />
+                  </span>
+                )}
+                <span className="tnum min-w-[2.15rem] text-right leading-none">{timeLabel}</span>
+              </>
             )}
-            {flags?.pinned && (
-              <span aria-label={t('sidebar.status.pinned')} title={t('sidebar.status.pinned')}>
-                <Pin className="h-3 w-3 text-fg-muted" strokeWidth={1.9} aria-hidden />
-              </span>
-            )}
-            <span className="tnum min-w-[2.15rem] text-right leading-none">{timeLabel}</span>
-          </>
-        )}
           </span>
         </button>
       </div>

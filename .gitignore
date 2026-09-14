@@ -9,6 +9,7 @@ dist-electron/
 out/
 out-*/
 build/
+.managed-components/
 *.tsbuildinfo
 
 # Logs

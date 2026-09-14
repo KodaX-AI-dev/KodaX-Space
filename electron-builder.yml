@@ -22,6 +22,7 @@ directories:
 
 files:
   - 'dist-electron/**/*'
+  - '!dist-electron/bundled-extensions/**/*'
   - 'apps/desktop/dist/**/*'
   - 'packages/*/dist/**/*'
   # Runtime-loaded native keychain module. The Electron main bundle imports this
@@ -91,6 +92,17 @@ electronLanguages:
   - zh-CN
 
 extraResources:
+  - from: dist-electron/bundled-extensions/kodax.partner-library.space-extension
+    to: bundled-extensions/kodax.partner-library.space-extension
+  # Feishu's official CLI is a host-managed component, never plugin code. The
+  # pack wrapper prepares exactly the selected target archive from the pinned
+  # release lock; the app performs only local verified extraction on first use.
+  - from: .managed-components/feishu-cli/1.0.92/${env.KODAX_BUILD_TARGET_PLATFORM}-${arch}
+    to: managed-components/feishu-cli/1.0.92/${env.KODAX_BUILD_TARGET_PLATFORM}-${arch}
+    filter:
+      - 'lark-cli.*'
+  - from: resources/partner-connectors/feishu-cli/LICENSE
+    to: managed-components/feishu-cli/LICENSE
   - from: resources/kodax-license-policy.json
     to: kodax-license-policy.json
   # BrowserWindow needs a real runtime path for the native Windows
@@ -119,7 +131,9 @@ extraResources:
     filter:
       - 'package.json'
       - 'lib/**/*'
-      - 'prebuilds/**/*'
+      # node-pty loads only the running platform/arch; foreign prebuilds are
+      # unused (unlike the SDK's separately verified, complete native bundle).
+      - 'prebuilds/${env.KODAX_BUILD_TARGET_PLATFORM}-${arch}/**/*'
       - 'build/Release/*.node'
       - 'build/Release/conpty/**/*'
       - 'build/Release/spawn-helper'
@@ -194,6 +208,7 @@ asarUnpack:
 afterPack: scripts/after-pack.cjs
 
 mac:
+  compression: maximum
   category: public.app-category.developer-tools
   target:
     - target: dmg
@@ -257,6 +272,11 @@ linux:
   maintainer: icetomoyo <icetomoyo@gmail.com>
   vendor: icetomoyo
 
+appImage:
+  # Keep the complete runtime below the 200 MiB installer gate. The pinned
+  # FUSE2 AppImage toolset supports xz with a 1 MiB SquashFS block size.
+  compression: xz
+
 extraMetadata:
   main: dist-electron/main.js
 
@@ -285,7 +305,7 @@ fileAssociations:
 # electron-updater 在 main 进程通过本配置定位 release feed。
 publish:
   - provider: github
-    owner: icetomoyo
+    owner: KodaX-AI-dev
     repo: KodaX-Space
     releaseType: release
 

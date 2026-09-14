@@ -65,7 +65,7 @@ test('registerSpaceBuiltinSkills is idempotent and makes the installer-owned pat
   assert.equal(isSpaceBuiltinSkillPath(`${builtinRoot}-sibling/space-test-skill`), false);
 });
 
-test('repository builtin snapshot contains the two supported design skills', async () => {
+test('repository builtin snapshot contains the formal Feishu expert skill and design skills', async () => {
   const repositoryBuiltinRoot = path.resolve(
     import.meta.dirname,
     '..',
@@ -77,7 +77,26 @@ test('repository builtin snapshot contains the two supported design skills', asy
   );
   const result = await registerSpaceBuiltinSkills(repositoryBuiltinRoot);
 
-  assert.deepEqual(result.skillNames, ['frontend-slides', 'huashu-design']);
+  assert.deepEqual(result.skillNames, [
+    'call-prep',
+    'copywriting',
+    'customer-research',
+    'draft-response',
+    'feishu-office-suite',
+    'frontend-slides',
+    'huashu-design',
+    'interview-prep',
+    'knowledge-synthesis',
+    'onboarding',
+    'partner-business-communication',
+    'partner-data-analysis',
+    'partner-deep-research',
+    'partner-meeting-minutes',
+    'partner-product-management',
+    'partner-project-management',
+    'process-doc',
+    'status-report',
+  ]);
 
   const sdk = await import('@kodax-ai/kodax/skills');
   const registry = new sdk.SkillRegistry(temporaryRoot);

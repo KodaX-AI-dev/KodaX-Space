@@ -16,6 +16,28 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.46-beta.3] - 2026-09-14
+
+Release candidate; publication is tracked in [release readiness](https://github.com/KodaX-AI-dev/KodaX-Space/blob/main/docs/releases/v0.1.46-beta.3-release-readiness.md).
+
+### Added
+
+- Bundle the Partner library with Space so a fresh installation can open its expert and connector directory without manually installing an extension. Expert methods and session bindings use the existing trusted desktop host; external services still require the user's account connection and resource authorization.
+
+### Fixed
+
+- Preserve existing installations and users' disable/uninstall choices when provisioning the bundled Partner library. Forward SDK extension ownership, pinned contributions, and lifecycle hooks through the Partner runtime adapter.
+- Restore the Partner home materials panel when its auto-hidden layout is reopened, and ensure packaged macOS terminal helpers remain executable for prebuilt and source-built node-pty installations.
+- Serialize connector record reads with atomic writes so saving a task cannot interrupt a simultaneous refresh or briefly appear as an empty database. Use xz for Linux AppImage and maximum macOS compression; ship only the target node-pty prebuilds while retaining the complete SDK native bundle and the 200 MiB package limit.
+- Deduplicate the identical macOS esbuild CLI binary with a relative link while retaining both executable entry points; packaged checks exercise version reporting and TypeScript transformation through each path.
+
+### Changed
+
+- Point repository metadata and packaged update feeds to `KodaX-AI-dev/KodaX-Space`. Keep KodaX pinned to `0.7.96-rc.4`. Coder sharing of Partner experts and connectors remains a separate follow-up.
+- Synchronize the user manual and in-app help with expert selection, session binding, connector authorization, and disable/uninstall behavior. Publish through the organization as a beta; the stable download remains unchanged.
+
+---
+
 ## [0.1.46-beta.2] - 2026-09-13
 
 ### Fixed

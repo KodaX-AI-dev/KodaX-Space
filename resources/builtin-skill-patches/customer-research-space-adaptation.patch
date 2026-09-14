@@ -1,0 +1,68 @@
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -7,7 +7,18 @@
+ 
+ # Customer Research
+ 
++## Space 运行适配
++
++沿用当前会话已提供的背景和用户指定交付物；只有缺少影响任务的信息才提问。使用用户语言输出。文中示例数字、置信等级和样本阈值是方法启发，不是用户数据、统计保证或成果承诺。只引用实际读到的证据。
++
++引用的其他 Skill 均为可选；先检查是否可用，不自动安装或切换，不因为缺少它们停止本方法。支持文件相对本 Skill 目录读取。外部来源需要当前可用工具与授权，无法访问时明确缺口。起草采访、邀约和发布计划不意味着获准联系别人、发放奖励或发布；不得假装已完成这些动作。
++
++
+ You are an expert customer researcher. Your goal is to help uncover what customers actually think, feel, say, and struggle with — so that everything from positioning to product to copy is grounded in reality rather than assumption.
++
++## 证据计数与解释
++
++先按参与者去重，再计数材料条目。同一用户多次抱怨只能说明该用户的报告，不能提高跨用户结论的置信度；未经日志或复现检查，不把主观反馈写成已验证的技术缺陷。原文“昨天再试”不提供访谈当下又失败的证据，日期未知时不补造事件时间。分别写明确事实和解释假设。
+ 
+ ## Before Starting
+ 
+@@ -110,7 +121,7 @@
+ - Reddit skews technical and skeptical vs. mainstream buyers
+ - Factor this in when drawing conclusions about "all customers"
+ 
+-**Minimum viable sample**: Don't build personas or draw messaging conclusions from fewer than 5 independent data points per segment.
++**Sample adequacy**: Assess recruitment bias, relevance, diversity, contradictory evidence and the decision at stake. A fixed number of interviews is not proof of representativeness. Small samples can support labeled hypotheses, not population estimates.
+ 
+ ---
+ 
+@@ -181,7 +192,7 @@
+ - **Prove yourself wrong, not right** — research is disconfirmation, not validation (the Dropbox sync-speed example)
+ - **Amy Hoy's Sales Safari** — passively mine pains, jargon, recommendations, and worldview from where the audience already gathers
+ - **Recruiting your best customers** — segment the CRM by deal size / short sales cycle / low churn; ask sales & CS for referrals; always close with *"who else should we talk to?"*
+-- **Outreach email template** and **incentives** — $50/call, $5/survey; aim for 10 calls, be happy with 5
++- **Outreach email template** and **incentives** — USD 50/call, USD 5/survey; aim for 10 calls, be happy with 5
+ - **Keep Asking Why (5-why laddering)** — worked example laddering a churn answer down to NRR; pain points vs. passion points
+ - **The PMF survey (Sean Ellis / Superhuman)** — *"How would you feel if you could no longer use [product]?"*; the **40% "very disappointed"** benchmark (Superhuman reached 58%)
+ 
+@@ -203,7 +214,7 @@
+ Personas built this way are provisional: tag each with its proxy source, and replace proxy evidence with first-party evidence as real reviews arrive.
+ 
+ 
+-Personas should be built from research, not invented. Don't create a persona until you have at least 5-10 data points (interviews, reviews, or community posts) from a consistent segment.
++Personas should be built from research, not invented. Create a persona only when evidence supports a coherent segment; otherwise deliver the observed facts and research gaps. Do not use a fixed sample count as a validity threshold.
+ 
+ ### Persona Structure
+ 
+@@ -272,7 +283,7 @@
+ 5. **Competitive intelligence summary** — what customers say about competitors vs. you
+ 6. **Research gap analysis** — what you still don't know and how to find it
+ 
+-Ask the user which deliverable(s) they need before generating output.
++Use the deliverable already requested. Ask only when the choice materially changes the work and cannot be inferred.
+ 
+ ---
+ 
+--- a/references/source-guides.md
++++ b/references/source-guides.md
+@@ -333,7 +333,7 @@
+ - Skews English-language, US-centric
+ - Shows what audiences do, not why — pair with qualitative sources
+ 
+-See [tools/integrations/sparktoro.md](../../../tools/integrations/sparktoro.md) for full tool details and pricing.
++SparkToro access is optional and is not bundled with this Skill. Use it only if a suitable tool is already available and authorized; otherwise work from supplied audience research and state coverage limits.
+ 
+ ---
+ 

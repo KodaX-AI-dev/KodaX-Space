@@ -1,165 +1,177 @@
-// ArtifactPanel — Partner 三栏之右栏：产物（artifact）。F059 / F059b。
-//
-// 仅是 Partner 右栏的外壳（aside + 标题）；artifact 展示主体抽到共享 `ArtifactsView`
-// （features/artifact），Coder 的 RightSidebar Artifact section + 全屏 popout 复用同一主体，
-// 让 artifact 真正全局（Coder+Partner）。
-
 import { useEffect, useState } from 'react';
-import { ArchiveRestore, FileCheck2, FileOutput, FileSearch } from 'lucide-react';
-import { ArtifactsView } from '../artifact/ArtifactsView';
-import {
-  FOCUS_ARTIFACT_EVENT,
-  OPEN_FILE_VIEWER_EVENT,
-  getLastOpenedFileViewerSnapshot,
-  isFileViewerSnapshot,
-  type FocusArtifactEventDetail,
-  type OpenFileViewerEventDetail,
-  type TransientArtifactSnapshot,
-} from '../artifact/transientArtifact.js';
-import { FileViewer } from '../preview/FileViewer.js';
-import { useI18n } from '../../i18n/I18nProvider.js';
+import { ChevronRight, FileOutput } from 'lucide-react';
+import type { PartnerDeliveryRefT } from '@kodax-space/space-ipc-schema';
+import type { TransientArtifactSnapshot } from '../artifact/transientArtifact.js';
+import { ArtifactsView } from '../artifact/ArtifactsView.js';
+import { PartnerRemoteRecords } from '../extensions/PartnerRemoteRecords.js';
 import { useAppStore } from '../../store/appStore.js';
-import { FileProposalsPanel } from './FileProposalsPanel.js';
-import { DeliveriesPanel } from './DeliveriesPanel.js';
+import { useI18n } from '../../i18n/I18nProvider.js';
+import { openPartnerDeliveryInViewer } from '../../lib/openPath.js';
+import {
+  partnerDetailTargetForDelivery,
+  type PartnerDetailOpenTarget,
+} from './partnerDetailWorkspace.js';
 
-export function ArtifactPanel(): JSX.Element {
-  const { t } = useI18n();
-  const currentProjectPath = useAppStore((state) => state.currentProjectPath);
-  const currentSessionId = useAppStore((state) => state.currentSessionId);
-  const [activeTab, setActiveTab] = useState<
-    'artifacts' | 'fileViewer' | 'deliveries' | 'fileProposals'
-  >('artifacts');
-  const [fileViewerSnapshot, setFileViewerSnapshot] = useState<TransientArtifactSnapshot | null>(
-    null,
-  );
+interface ArtifactPanelProps {
+  readonly focusedArtifact?: {
+    readonly id: string;
+    readonly snapshot?: TransientArtifactSnapshot;
+  };
+  readonly includeRemoteOutputs?: boolean;
+  readonly onOpenDetail?: (target: PartnerDetailOpenTarget) => void;
+}
+
+interface PartnerOutputDeliveryState {
+  readonly scopeKey: string;
+  readonly deliveries: readonly PartnerDeliveryRefT[];
+  readonly error: string | null;
+}
+
+function outputScopeKey(projectRoot: string | null, sessionId: string | null): string {
+  return JSON.stringify([projectRoot, sessionId]);
+}
+
+function usePartnerOutputDeliveries(): PartnerOutputDeliveryState {
+  const projectRoot = useAppStore((state) => state.currentProjectPath);
+  const sessionId = useAppStore((state) => state.currentSessionId);
+  const scopeKey = outputScopeKey(projectRoot, sessionId);
+  const [state, setState] = useState<PartnerOutputDeliveryState>({
+    scopeKey: outputScopeKey(null, null),
+    deliveries: [],
+    error: null,
+  });
+
   useEffect(() => {
-    const showFocusedArtifact = (event: Event): void => {
-      const detail = (event as CustomEvent<FocusArtifactEventDetail>).detail;
-      if (isFileViewerSnapshot(detail?.snapshot)) {
-        setFileViewerSnapshot(detail.snapshot ?? null);
-        setActiveTab('fileViewer');
-        return;
-      }
-      setActiveTab('artifacts');
-    };
-    window.addEventListener(FOCUS_ARTIFACT_EVENT, showFocusedArtifact);
-    return () => window.removeEventListener(FOCUS_ARTIFACT_EVENT, showFocusedArtifact);
-  }, []);
-  useEffect(() => {
-    const showFileViewer = (event: Event): void => {
-      const detail = (event as CustomEvent<OpenFileViewerEventDetail>).detail;
-      if (!isFileViewerSnapshot(detail?.snapshot)) return;
-      setFileViewerSnapshot(detail.snapshot);
-      setActiveTab('fileViewer');
-    };
-    window.addEventListener(OPEN_FILE_VIEWER_EVENT, showFileViewer);
-    return () => window.removeEventListener(OPEN_FILE_VIEWER_EVENT, showFileViewer);
-  }, []);
-  useEffect(() => {
-    setFileViewerSnapshot(null);
-    setActiveTab((current) => (current === 'fileViewer' ? 'artifacts' : current));
-  }, [currentProjectPath]);
-  useEffect(() => {
-    if (
-      fileViewerSnapshot?.source !== 'session-attachment-preview' ||
-      fileViewerSnapshot.sessionId === currentSessionId
-    ) {
+    const bridge = window.kodaxSpace;
+    if (!bridge || !projectRoot || !sessionId) {
+      setState({ scopeKey, deliveries: [], error: null });
       return;
     }
-    setFileViewerSnapshot(null);
-    setActiveTab((current) => (current === 'fileViewer' ? 'artifacts' : current));
-  }, [currentSessionId, fileViewerSnapshot]);
-  useEffect(() => {
-    const snapshot = getLastOpenedFileViewerSnapshot(currentProjectPath, currentSessionId);
-    if (!snapshot) return;
-    setFileViewerSnapshot(snapshot);
-    setActiveTab('fileViewer');
-  }, [currentProjectPath, currentSessionId]);
+    let active = true;
+    let revision = 0;
+    const load = async (): Promise<void> => {
+      const currentRevision = ++revision;
+      try {
+        const result = await bridge.invoke('partner.deliveries.list', { projectRoot, sessionId });
+        if (!active || currentRevision !== revision) return;
+        setState(
+          result.ok
+            ? { scopeKey, deliveries: result.data.deliveries, error: null }
+            : { scopeKey, deliveries: [], error: result.error.message },
+        );
+      } catch (reason) {
+        if (!active || currentRevision !== revision) return;
+        setState({
+          scopeKey,
+          deliveries: [],
+          error: reason instanceof Error ? reason.message : String(reason),
+        });
+      }
+    };
+    setState({ scopeKey, deliveries: [], error: null });
+    void load();
+    const unsubscribe = bridge.on('partner.deliveries.changed', (event) => {
+      if (event.sessionId === sessionId) void load();
+    });
+    return () => {
+      active = false;
+      revision += 1;
+      unsubscribe();
+    };
+  }, [projectRoot, scopeKey, sessionId]);
+
+  return state.scopeKey === scopeKey ? state : { scopeKey, deliveries: [], error: null };
+}
+
+export function openPartnerOutputDelivery(
+  delivery: PartnerDeliveryRefT,
+  onOpenDetail?: (target: PartnerDetailOpenTarget) => void,
+): void {
+  const target = partnerDetailTargetForDelivery(delivery);
+  if (target && onOpenDetail) {
+    onOpenDetail(target);
+    return;
+  }
+  void openPartnerDeliveryInViewer(delivery);
+}
+
+export function PartnerOutputDeliveryList({
+  deliveries,
+  onOpenDetail,
+}: {
+  readonly deliveries: readonly PartnerDeliveryRefT[];
+  readonly onOpenDetail?: (target: PartnerDetailOpenTarget) => void;
+}): JSX.Element | null {
+  const { t } = useI18n();
+  if (deliveries.length === 0) return null;
+  return (
+    <section
+      className="border-b border-border-default p-3 text-xs"
+      data-testid="partner-output-deliveries"
+    >
+      <h3 className="mb-2 font-medium">{t('partner.deliveries.tab.deliveries')}</h3>
+      <div className="space-y-1">
+        {deliveries.map((delivery) => (
+          <button
+            key={delivery.id}
+            type="button"
+            onClick={() => openPartnerOutputDelivery(delivery, onOpenDetail)}
+            className="flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left text-fg-muted hover:bg-hover-bg hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-border"
+            title={delivery.relativePath}
+            data-testid="partner-output-delivery"
+          >
+            <FileOutput className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+            <span className="min-w-0 flex-1 truncate">{delivery.title}</span>
+            <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PartnerOutputIndex({
+  onOpenDetail,
+}: {
+  readonly onOpenDetail?: (target: PartnerDetailOpenTarget) => void;
+}): JSX.Element {
+  const { deliveries, error } = usePartnerOutputDeliveries();
+  return (
+    <div className="max-h-[45%] shrink-0 overflow-y-auto">
+      <PartnerRemoteRecords kind="results" onOpenDetail={onOpenDetail} />
+      <PartnerOutputDeliveryList deliveries={deliveries} onOpenDetail={onOpenDetail} />
+      {error && (
+        <p className="border-b border-border-default p-3 text-xs text-danger" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The Partner output surface has one job: render created resources.
+ *
+ * Review proposals and delivery history keep their host contracts, but they are
+ * no longer permanent destinations inside the office-facing detail workspace.
+ * Individual files and artifacts open as their own typed detail tabs.
+ */
+export function ArtifactPanel({
+  focusedArtifact,
+  includeRemoteOutputs = true,
+  onOpenDetail,
+}: ArtifactPanelProps): JSX.Element {
   return (
     <aside
       className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface"
       data-testid="partner-artifact-panel"
     >
-      <div className="px-3 h-9 flex items-center gap-2 border-b border-border-default flex-shrink-0">
-        <div className="flex min-w-0 items-center gap-1 rounded bg-surface-2 p-0.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab('artifacts')}
-            className={`h-6 inline-flex items-center gap-1 rounded px-1.5 text-[11px] ${
-              activeTab === 'artifacts'
-                ? 'bg-surface-raised text-fg-primary'
-                : 'text-fg-muted hover:bg-hover-bg hover:text-fg-primary'
-            }`}
-            title={t('partner.fileProposals.tab.artifacts')}
-            aria-label={t('partner.fileProposals.tab.artifacts')}
-            aria-pressed={activeTab === 'artifacts'}
-          >
-            <FileOutput className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden />
-            <span>{t('partner.fileProposals.tab.artifacts')}</span>
-          </button>
-          {fileViewerSnapshot && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('fileViewer')}
-              className={`h-6 inline-flex items-center gap-1 rounded px-1.5 text-[11px] ${
-                activeTab === 'fileViewer'
-                  ? 'bg-surface-raised text-fg-primary'
-                  : 'text-fg-muted hover:bg-hover-bg hover:text-fg-primary'
-              }`}
-              title={t('partner.fileViewer.tab')}
-              aria-label={t('partner.fileViewer.tab')}
-              aria-pressed={activeTab === 'fileViewer'}
-              data-testid="partner-file-viewer-tab"
-            >
-              <FileSearch className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden />
-              <span>{t('partner.fileViewer.tab')}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setActiveTab('fileProposals')}
-            className={`h-6 inline-flex items-center gap-1 rounded px-1.5 text-[11px] ${
-              activeTab === 'fileProposals'
-                ? 'bg-surface-raised text-fg-primary'
-                : 'text-fg-muted hover:bg-hover-bg hover:text-fg-primary'
-            }`}
-            title={t('partner.fileProposals.tab.files')}
-            aria-label={t('partner.fileProposals.tab.files')}
-            aria-pressed={activeTab === 'fileProposals'}
-            data-testid="partner-file-proposals-tab"
-          >
-            <FileCheck2 className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden />
-            <span>{t('partner.fileProposals.tab.files')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('deliveries')}
-            className={`h-6 inline-flex items-center gap-1 rounded px-1.5 text-[11px] ${
-              activeTab === 'deliveries'
-                ? 'bg-surface-raised text-fg-primary'
-                : 'text-fg-muted hover:bg-hover-bg hover:text-fg-primary'
-            }`}
-            title={t('partner.fileProposals.tab.deliveries')}
-            aria-label={t('partner.fileProposals.tab.deliveries')}
-            aria-pressed={activeTab === 'deliveries'}
-            data-testid="partner-deliveries-tab"
-          >
-            <ArchiveRestore className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden />
-            <span>{t('partner.fileProposals.tab.deliveries')}</span>
-          </button>
-        </div>
-      </div>
-      {/* ArtifactsView 根用 h-full：需一个有界高度的 flex 子容器（aside 满高减去 header）。 */}
-      <div className="flex-1 min-h-0">
-        {activeTab === 'fileViewer' && fileViewerSnapshot ? (
-          <FileViewer snapshot={fileViewerSnapshot} onSnapshotChange={setFileViewerSnapshot} />
-        ) : activeTab === 'artifacts' ? (
-          <ArtifactsView />
-        ) : activeTab === 'fileProposals' ? (
-          <FileProposalsPanel />
-        ) : (
-          <DeliveriesPanel />
-        )}
+      {includeRemoteOutputs && <PartnerOutputIndex onOpenDetail={onOpenDetail} />}
+      <div className="min-h-0 flex-1">
+        <ArtifactsView
+          focusedId={focusedArtifact?.id ?? null}
+          focusedSnapshot={focusedArtifact?.snapshot ?? null}
+        />
       </div>
     </aside>
   );

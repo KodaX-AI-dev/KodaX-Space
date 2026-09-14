@@ -20,8 +20,16 @@ import { pushToast } from '../../store/toastStore.js';
 import { openPartnerDeliveryInViewer, revealPath } from '../../lib/openPath.js';
 import { RichPreview } from '../preview/RichPreview.js';
 import { detectKind, type RichPreviewKind } from '../preview/binaryUtils.js';
+import { handleTablistKeyDown } from './tablistKeyboard.js';
 
 type ActiveTab = 'deliveries' | 'checkpoints';
+
+interface DeliveriesPanelProps {
+  readonly selectionRequest?: {
+    readonly revision: number;
+    readonly tab: ActiveTab;
+  } | null;
+}
 
 function ipcError(result: {
   readonly ok: false;
@@ -55,7 +63,7 @@ function shortHash(hash: string | null | undefined): string {
   return hash.replace(/^sha256:/, '').slice(0, 12);
 }
 
-export function DeliveriesPanel(): JSX.Element {
+export function DeliveriesPanel({ selectionRequest = null }: DeliveriesPanelProps): JSX.Element {
   const { t, effectiveLocale } = useI18n();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
@@ -142,13 +150,22 @@ export function DeliveriesPanel(): JSX.Element {
   }, [load]);
 
   useEffect(() => {
+    if (selectionRequest) setActiveTab(selectionRequest.tab);
+  }, [selectionRequest]);
+
+  useEffect(() => {
     const bridge = window.kodaxSpace;
     if (!bridge) return;
     const offDeliveries = bridge.on('partner.deliveries.changed', (payload) => {
-      if (payload.sessionId === currentSessionId) void load({ quiet: true });
+      if (payload.sessionId !== currentSessionId) return;
+      if (payload.reason === 'created') setActiveTab('deliveries');
+      if (payload.reason === 'checkpoint') setActiveTab('checkpoints');
+      void load({ quiet: true });
     });
     const offCheckpoints = bridge.on('partner.checkpoints.changed', (payload) => {
-      if (payload.sessionId === currentSessionId) void load({ quiet: true });
+      if (payload.sessionId !== currentSessionId) return;
+      if (payload.reason === 'created') setActiveTab('checkpoints');
+      void load({ quiet: true });
     });
     return () => {
       offDeliveries();
@@ -227,11 +244,23 @@ export function DeliveriesPanel(): JSX.Element {
             )}
           </button>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-1 rounded bg-surface-2 p-0.5">
-          <TabButton active={activeTab === 'deliveries'} onClick={() => setActiveTab('deliveries')}>
+        <div
+          className="mt-2 grid grid-cols-2 gap-1 rounded bg-surface-2 p-0.5"
+          role="tablist"
+          aria-label={t('partner.deliveries.title')}
+          onKeyDown={handleTablistKeyDown}
+        >
+          <TabButton
+            id="partner-delivered-files-tab"
+            controls="partner-delivered-files-panel"
+            active={activeTab === 'deliveries'}
+            onClick={() => setActiveTab('deliveries')}
+          >
             {t('partner.deliveries.tab.deliveries')}
           </TabButton>
           <TabButton
+            id="partner-result-history-tab"
+            controls="partner-result-history-panel"
             active={activeTab === 'checkpoints'}
             onClick={() => setActiveTab('checkpoints')}
           >
@@ -253,33 +282,46 @@ export function DeliveriesPanel(): JSX.Element {
         </div>
       )}
 
-      {activeTab === 'deliveries' ? (
-        <DeliveryList
-          deliveries={deliveries}
-          selectedId={selectedDeliveryId}
-          locale={effectiveLocale}
-          onSelect={setSelectedDeliveryId}
-        />
-      ) : (
-        <CheckpointList
-          checkpoints={checkpoints}
-          selectedId={selectedCheckpointId}
-          locale={effectiveLocale}
-          onSelect={setSelectedCheckpointId}
-        />
-      )}
-
-      <div className="flex-1 min-h-0 overflow-y-auto border-t border-border-default">
+      <div
+        id={
+          activeTab === 'deliveries'
+            ? 'partner-delivered-files-panel'
+            : 'partner-result-history-panel'
+        }
+        role="tabpanel"
+        aria-labelledby={
+          activeTab === 'deliveries' ? 'partner-delivered-files-tab' : 'partner-result-history-tab'
+        }
+        className="flex min-h-0 flex-1 flex-col"
+      >
         {activeTab === 'deliveries' ? (
-          <DeliveryDetail delivery={selectedDelivery} locale={effectiveLocale} />
-        ) : (
-          <CheckpointDetail
-            checkpoint={selectedCheckpoint}
-            busy={busyCheckpointId === selectedCheckpoint?.id}
+          <DeliveryList
+            deliveries={deliveries}
+            selectedId={selectedDeliveryId}
             locale={effectiveLocale}
-            onRollback={selectedCheckpoint ? () => void rollback(selectedCheckpoint) : undefined}
+            onSelect={setSelectedDeliveryId}
+          />
+        ) : (
+          <CheckpointList
+            checkpoints={checkpoints}
+            selectedId={selectedCheckpointId}
+            locale={effectiveLocale}
+            onSelect={setSelectedCheckpointId}
           />
         )}
+
+        <div className="flex-1 min-h-0 overflow-y-auto border-t border-border-default">
+          {activeTab === 'deliveries' ? (
+            <DeliveryDetail delivery={selectedDelivery} locale={effectiveLocale} />
+          ) : (
+            <CheckpointDetail
+              checkpoint={selectedCheckpoint}
+              busy={busyCheckpointId === selectedCheckpoint?.id}
+              locale={effectiveLocale}
+              onRollback={selectedCheckpoint ? () => void rollback(selectedCheckpoint) : undefined}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -626,24 +668,32 @@ function CheckpointDetail({
 }
 
 function TabButton({
+  id,
+  controls,
   active,
   onClick,
   children,
 }: {
+  readonly id: string;
+  readonly controls: string;
   readonly active: boolean;
   readonly onClick: () => void;
   readonly children: ReactNode;
 }): JSX.Element {
   return (
     <button
+      id={id}
       type="button"
+      role="tab"
+      aria-controls={controls}
+      aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={`h-6 rounded text-[11px] ${
         active
           ? 'bg-surface-raised text-fg-primary'
           : 'text-fg-muted hover:bg-hover-bg hover:text-fg-primary'
       }`}
-      aria-pressed={active}
     >
       {children}
     </button>

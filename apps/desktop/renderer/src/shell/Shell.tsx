@@ -32,7 +32,6 @@ import {
   Info,
   Minus,
   PanelLeft,
-  PanelRight,
   PawPrint,
   Square,
   X,
@@ -42,10 +41,15 @@ import type {
   LicenseStatusT,
   SpaceCapabilityStatus,
   SpaceVersionOutput,
+  SpaceExtensionT,
 } from '@kodax-space/space-ipc-schema';
 import { LeftSidebar } from './LeftSidebar.js';
 import { ResizeHandle } from './ResizeHandle.js';
 import { useSmartPopoutDirector } from '../features/popout-director/useSmartPopoutDirector.js';
+import type {
+  FocusArtifactEventDetail,
+  OpenFileViewerEventDetail,
+} from '../features/artifact/transientArtifact.js';
 import { Breadcrumb } from './Breadcrumb.js';
 import { CommandToolbar, type PopoutKind } from './CommandToolbar.js';
 import { BottomBar } from './BottomBar.js';
@@ -72,6 +76,44 @@ import { pushToast } from '../store/toastStore.js';
 import { useSurfaceStore } from '../store/surface.js';
 import { PartnerWorkspace } from '../features/partner/PartnerWorkspace.js';
 import { PartnerRightSidebar } from '../features/partner/PartnerRightSidebar.js';
+import { usePartnerLinkDetails } from '../features/partner/partnerLinkDetails.js';
+import {
+  SpaceExtensionsProvider,
+  useSpaceExtensions,
+} from '../features/extensions/SpaceExtensionsProvider.js';
+import { PartnerExtensionView } from '../features/extensions/PartnerExtensionView.js';
+import { PartnerConnectorDialog } from '../features/extensions/PartnerConnectorDialog.js';
+import {
+  PartnerConnectorProvider,
+  PARTNER_CONNECTOR_DETAIL_EVENT,
+  PARTNER_CONNECTOR_DIALOG_EVENT,
+  PARTNER_CONNECTOR_MANAGE_EVENT,
+  type PartnerConnectorDetailRequest,
+} from '../features/extensions/PartnerConnectorProvider.js';
+import { PartnerRemoteRecordsProvider } from '../features/extensions/usePartnerRemoteRecords.js';
+import {
+  PartnerExpertProvider,
+  PARTNER_EXPERT_DETAIL_EVENT,
+  PARTNER_EXPERT_MANAGE_EVENT,
+  type PartnerExpertDetailRequest,
+} from '../features/extensions/PartnerExpertProvider.js';
+import { NEW_CONVERSATION_EVENT, startNewConversation } from '../store/newConversation.js';
+import {
+  createExtensionViewSelection,
+  enabledPartnerExtensions,
+  resolveExtensionView,
+  type ExtensionViewSelection,
+  type ExtensionViewContext,
+} from '../features/extensions/extensionViewPolicy.js';
+import { AdminAuditPanel } from '../features/partner/AdminAuditPanel.js';
+import {
+  consumePartnerDetailOpenRequest,
+  partnerDetailRequestForContext,
+  partnerDetailWorkspaceContextKey,
+  type PartnerDetailOpenRequest,
+  type PartnerDetailOpenTarget,
+  type PartnerDetailWorkspaceContext,
+} from '../features/partner/partnerDetailWorkspace.js';
 import { HandoffInbox } from './HandoffInbox.js';
 import { SettingsModal, type SettingsTab } from '../features/settings/SettingsModal.js';
 import {
@@ -90,6 +132,8 @@ import {
 } from './taskDockControl.js';
 import type { RightSidebarWidthMode } from './RightSidebarFrame.js';
 import { resolveRightSidebarToggleAction } from './sidebarToggle.js';
+import { SidebarToggleButton } from './SidebarToggleButton.js';
+import { PARTNER_MIN_CENTER_PX, resolvePartnerShellLayout } from './partnerShellLayout.js';
 import {
   activateSessionHistoryPaging,
   deactivateSessionHistoryPaging,
@@ -109,19 +153,21 @@ const RIGHT_SIDEBAR_DEFAULT_MIN_WIDTH = 320;
 const RIGHT_SIDEBAR_DEFAULT_MAX_WIDTH = 520;
 const RIGHT_SIDEBAR_DEFAULT_RATIO = 0.3;
 const RIGHT_SIDEBAR_MIN_WIDTH = 180;
+const PARTNER_DETAIL_DEFAULT_WIDTH = 440;
 const SHELL_PANEL_HORIZONTAL_PADDING_PX = 20;
 const SHELL_PANEL_GAP_PX = 10;
 const RESIZE_HANDLE_WIDTH_PX = 4;
 const CODER_MIN_CENTER_PX = 520;
-const PARTNER_RIGHT_SIDEBAR_OPEN_KEY = 'kodax-space.partnerArtifactOpen';
+const PARTNER_RIGHT_SIDEBAR_MAX_RATIO = 0.75;
+const PARTNER_RIGHT_SIDEBAR_OPEN_KEY = 'kodax-space.partnerDetailOpen.v1';
 type LeftSidebarMode = 'navigation' | 'files';
 
 function readPartnerRightSidebarOpen(): boolean {
-  if (typeof window === 'undefined') return true;
+  if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage.getItem(PARTNER_RIGHT_SIDEBAR_OPEN_KEY) !== '0';
+    return window.localStorage.getItem(PARTNER_RIGHT_SIDEBAR_OPEN_KEY) === '1';
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -164,6 +210,36 @@ function rightSidebarOpenWidth(
   return clampSidebarWidthPx(Math.round(pairedWidth / 2));
 }
 
+function surfaceRightSidebarCustomMaxWidth(
+  surface: 'code' | 'partner',
+  leftSidebarVisible: boolean,
+  leftWidth: number,
+  viewportWidth = getViewportWidth(),
+): number {
+  const balancedWidth = rightSidebarOpenWidth(leftSidebarVisible, leftWidth, viewportWidth);
+  if (surface === 'code') return balancedWidth;
+  return Math.max(
+    RIGHT_SIDEBAR_MIN_WIDTH,
+    Math.round(balancedWidth * 2 * PARTNER_RIGHT_SIDEBAR_MAX_RATIO),
+  );
+}
+
+function clampSurfaceRightSidebarWidth(
+  surface: 'code' | 'partner',
+  px: number,
+  leftSidebarVisible: boolean,
+  leftWidth: number,
+  viewportWidth = getViewportWidth(),
+): number {
+  const finite = Number.isFinite(px) ? px : RIGHT_SIDEBAR_DEFAULT_MIN_WIDTH;
+  return Math.round(
+    Math.min(
+      surfaceRightSidebarCustomMaxWidth(surface, leftSidebarVisible, leftWidth, viewportWidth),
+      Math.max(RIGHT_SIDEBAR_MIN_WIDTH, finite),
+    ),
+  );
+}
+
 function rightSidebarDefaultWidth(
   leftSidebarVisible: boolean,
   leftWidth: number,
@@ -176,6 +252,21 @@ function rightSidebarDefaultWidth(
     RIGHT_SIDEBAR_DEFAULT_MAX_WIDTH,
     Math.max(RIGHT_SIDEBAR_DEFAULT_MIN_WIDTH, proportionalWidth),
   );
+}
+
+function surfaceRightSidebarDefaultWidth(
+  surface: 'code' | 'partner',
+  leftSidebarVisible: boolean,
+  leftWidth: number,
+  viewportWidth = getViewportWidth(),
+): number {
+  if (surface === 'partner') {
+    return Math.min(
+      PARTNER_DETAIL_DEFAULT_WIDTH,
+      rightSidebarOpenWidth(leftSidebarVisible, leftWidth, viewportWidth),
+    );
+  }
+  return rightSidebarDefaultWidth(leftSidebarVisible, leftWidth, viewportWidth);
 }
 
 function rightSidebarMaxWidth(
@@ -214,7 +305,21 @@ function coderCenterWidthPx(
   const gapWidth = Math.max(0, childCount - 1) * SHELL_PANEL_GAP_PX;
   return viewportWidth - SHELL_PANEL_HORIZONTAL_PADDING_PX - fixedWidth - gapWidth;
 }
-export function Shell({ version = null }: ShellProps): JSX.Element {
+export function Shell(props: ShellProps): JSX.Element {
+  return (
+    <SpaceExtensionsProvider>
+      <PartnerExpertProvider>
+        <PartnerConnectorProvider>
+          <PartnerRemoteRecordsProvider>
+            <ShellContent {...props} />
+          </PartnerRemoteRecordsProvider>
+        </PartnerConnectorProvider>
+      </PartnerExpertProvider>
+    </SpaceExtensionsProvider>
+  );
+}
+
+function ShellContent({ version = null }: ShellProps): JSX.Element {
   const { t } = useI18n();
   const shellRootRef = useRef<HTMLDivElement | null>(null);
   // F045: surface 一等状态（替代旧 local mode）。Partner 自本版起有真实空壳。
@@ -262,6 +367,48 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
   // 侧栏开/关：button 放在 breadcrumb 行最左 / 最右；侧栏关掉时 0 占位（不再 28px 竖条）
   const leftSidebarOpen = useAppStore((s) => s.leftSidebarOpen);
   const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen);
+  const currentSessionIdForPlan = useAppStore((s) => s.currentSessionId);
+  const currentProjectPathForPartnerDetail = useAppStore((s) => s.currentProjectPath);
+  const { snapshot: extensionCatalog } = useSpaceExtensions();
+  const [extensionSelection, setExtensionSelection] = useState<ExtensionViewSelection | null>(null);
+  const [extensionTab, setExtensionTab] = useState<'experts' | 'connectors'>('experts');
+  const [extensionNavigationRevision, setExtensionNavigationRevision] = useState(0);
+  const [connectorDialog, setConnectorDialog] = useState<{
+    selection: ExtensionViewSelection;
+    request: PartnerConnectorDetailRequest;
+  } | null>(null);
+  const extensionContext = {
+    surface: currentSurface,
+    projectRoot: currentProjectPathForPartnerDetail,
+    sessionId: currentSessionIdForPlan,
+  };
+  const enabledExtensions = enabledPartnerExtensions(currentSurface, extensionCatalog.extensions);
+  const visibleExtension = resolveExtensionView(
+    extensionSelection,
+    extensionContext,
+    extensionCatalog.extensions,
+  );
+  const connectorDialogExtension = resolveExtensionView(
+    connectorDialog?.selection ?? null,
+    extensionContext,
+    extensionCatalog.extensions,
+  );
+  useEffect(() => {
+    if (connectorDialog && !connectorDialogExtension) setConnectorDialog(null);
+  }, [connectorDialog, connectorDialogExtension]);
+  const closeExtensionView = useCallback((): void => setExtensionSelection(null), []);
+  useEffect(() => {
+    window.addEventListener(NEW_CONVERSATION_EVENT, closeExtensionView);
+    return () => window.removeEventListener(NEW_CONVERSATION_EVENT, closeExtensionView);
+  }, [closeExtensionView]);
+  const openExtensionView = (extension: SpaceExtensionT): void => {
+    setExtensionTab('experts');
+    setExtensionSelection(createExtensionViewSelection(extension, extensionContext));
+  };
+  // Derive visibility synchronously; never leave an old frame visible for an effect tick.
+  useEffect(() => {
+    if (extensionSelection && !visibleExtension) setExtensionSelection(null);
+  }, [extensionSelection, visibleExtension]);
   const mascotMode = useAppStore((s) => s.mascotMode);
   const setLeftSidebarOpen = useAppStore((s) => s.setLeftSidebarOpen);
   const setRightSidebarOpen = useAppStore((s) => s.setRightSidebarOpen);
@@ -280,10 +427,36 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
   const setLeftSidebarWidth = useAppStore((s) => s.setLeftSidebarWidth);
   const setRightSidebarWidth = useAppStore((s) => s.setRightSidebarWidth);
   const [leftWidthDraft, setLeftWidthDraft] = useState<number | null>(null);
-  const [rightWidthDraft, setRightWidthDraft] = useState<number | null>(null);
+  const [partnerRightSidebarWidth, setPartnerRightSidebarWidth] = useState(
+    PARTNER_DETAIL_DEFAULT_WIDTH,
+  );
+  const [rightWidthDraftBySurface, setRightWidthDraftBySurface] = useState<
+    Record<'code' | 'partner', number | null>
+  >({ code: null, partner: null });
+  const rightWidthDraft = rightWidthDraftBySurface[currentSurface];
+  const setRightWidthDraft = useCallback(
+    (width: number | null): void => {
+      setRightWidthDraftBySurface((current) =>
+        current[currentSurface] === width ? current : { ...current, [currentSurface]: width },
+      );
+    },
+    [currentSurface],
+  );
+  const storedRightWidth =
+    currentSurface === 'partner' ? partnerRightSidebarWidth : persistedRightWidth;
   const [leftSidebarMode, setLeftSidebarMode] = useState<LeftSidebarMode>('navigation');
-  const [rightSidebarWidthMode, setRightSidebarWidthMode] =
-    useState<RightSidebarWidthMode>('custom');
+  const [rightSidebarWidthModeBySurface, setRightSidebarWidthModeBySurface] = useState<
+    Record<'code' | 'partner', RightSidebarWidthMode>
+  >({ code: 'custom', partner: 'default' });
+  const rightSidebarWidthMode = rightSidebarWidthModeBySurface[currentSurface];
+  const setRightSidebarWidthMode = useCallback(
+    (mode: RightSidebarWidthMode): void => {
+      setRightSidebarWidthModeBySurface((current) =>
+        current[currentSurface] === mode ? current : { ...current, [currentSurface]: mode },
+      );
+    },
+    [currentSurface],
+  );
   const [rightSidebarWidthSettling, setRightSidebarWidthSettling] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -291,22 +464,57 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatusT | null>(null);
   const popoutBoundsRef = useRef<HTMLDivElement | null>(null);
   const rightSidebarWidthSettlingTimerRef = useRef<number | null>(null);
-  const rightSidebarWidthPersistTimerRef = useRef<number | null>(null);
+  const rightSidebarWidthPersistTimerRef = useRef<Record<'code' | 'partner', number | null>>({
+    code: null,
+    partner: null,
+  });
   const [taskDockFocusRequest, setTaskDockFocusRequest] = useState<TaskDockFocusState>({
     section: null,
     nonce: 0,
   });
+  const [partnerDetailOpenRequest, setPartnerDetailOpenRequest] =
+    useState<PartnerDetailOpenRequest | null>(null);
+  const partnerDetailOpenRevisionRef = useRef(0);
+  const livePartnerDetailContext: PartnerDetailWorkspaceContext = {
+    projectRoot: currentProjectPathForPartnerDetail,
+    sessionId: currentSessionIdForPlan,
+  };
+  const [retainedPartnerDetailContext, setRetainedPartnerDetailContext] =
+    useState<PartnerDetailWorkspaceContext | null>(() =>
+      currentSurface === 'partner' ? livePartnerDetailContext : null,
+    );
+  const mountedPartnerDetailContext =
+    currentSurface === 'partner' ? livePartnerDetailContext : retainedPartnerDetailContext;
+  const partnerDetailContextKey = mountedPartnerDetailContext
+    ? partnerDetailWorkspaceContextKey(mountedPartnerDetailContext)
+    : null;
+  const scopedPartnerDetailOpenRequest = mountedPartnerDetailContext
+    ? partnerDetailRequestForContext(partnerDetailOpenRequest, mountedPartnerDetailContext)
+    : null;
+  useEffect(() => {
+    if (currentSurface !== 'partner') return;
+    setRetainedPartnerDetailContext({
+      projectRoot: currentProjectPathForPartnerDetail,
+      sessionId: currentSessionIdForPlan,
+    });
+  }, [currentProjectPathForPartnerDetail, currentSessionIdForPlan, currentSurface]);
+  const visiblePartnerDetailOpenRequest =
+    currentSurface === 'partner' ? scopedPartnerDetailOpenRequest : null;
   const [viewportWidth, setViewportWidth] = useState(() => getViewportWidth());
   const leftWidth = clampSidebarWidthPx(leftWidthDraft ?? persistedLeftWidth);
+  const partnerRightSidebarPreferredOpenRef = useRef(readPartnerRightSidebarOpen());
   const rightSidebarOpenBySurfaceRef = useRef<Record<'code' | 'partner', boolean>>({
     code: rightSidebarOpen,
-    partner: readPartnerRightSidebarOpen(),
+    partner: partnerRightSidebarPreferredOpenRef.current,
   });
   const activeRightSidebarSurfaceRef = useRef<'code' | 'partner' | null>(null);
   const setRightSidebarOpenForCurrentSurface = useCallback(
     (open: boolean): void => {
       rightSidebarOpenBySurfaceRef.current[currentSurface] = open;
-      if (currentSurface === 'partner') persistPartnerRightSidebarOpen(open);
+      if (currentSurface === 'partner') {
+        partnerRightSidebarPreferredOpenRef.current = open;
+        persistPartnerRightSidebarOpen(open);
+      }
       setRightSidebarOpen(open);
     },
     [currentSurface, setRightSidebarOpen],
@@ -326,28 +534,50 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
     }, 240);
   }, []);
 
-  const persistRightSidebarWidthAfterPaint = useCallback(
-    (px: number): void => {
-      if (rightSidebarWidthPersistTimerRef.current !== null) {
-        window.clearTimeout(rightSidebarWidthPersistTimerRef.current);
+  const commitRightSidebarWidth = useCallback(
+    (surface: 'code' | 'partner', px: number): void => {
+      const pendingTimer = rightSidebarWidthPersistTimerRef.current[surface];
+      if (pendingTimer !== null) {
+        window.clearTimeout(pendingTimer);
+        rightSidebarWidthPersistTimerRef.current[surface] = null;
       }
-      rightSidebarWidthPersistTimerRef.current = window.setTimeout(() => {
-        rightSidebarWidthPersistTimerRef.current = null;
-        setRightSidebarWidth(px);
-      }, 240);
+      if (surface === 'partner') {
+        setPartnerRightSidebarWidth(px);
+        return;
+      }
+      setRightSidebarWidth(px);
     },
     [setRightSidebarWidth],
   );
 
+  const persistRightSidebarWidthAfterPaint = useCallback(
+    (surface: 'code' | 'partner', px: number): void => {
+      const pendingTimer = rightSidebarWidthPersistTimerRef.current[surface];
+      if (pendingTimer !== null) {
+        window.clearTimeout(pendingTimer);
+      }
+      rightSidebarWidthPersistTimerRef.current[surface] = window.setTimeout(() => {
+        rightSidebarWidthPersistTimerRef.current[surface] = null;
+        commitRightSidebarWidth(surface, px);
+      }, 240);
+    },
+    [commitRightSidebarWidth],
+  );
+
   useEffect(() => {
+    const persistTimers = rightSidebarWidthPersistTimerRef.current;
     return () => {
       if (rightSidebarWidthSettlingTimerRef.current !== null) {
         window.clearTimeout(rightSidebarWidthSettlingTimerRef.current);
       }
-      if (rightSidebarWidthPersistTimerRef.current !== null) {
-        window.clearTimeout(rightSidebarWidthPersistTimerRef.current);
+      for (const pendingTimer of Object.values(persistTimers)) {
+        if (pendingTimer !== null) window.clearTimeout(pendingTimer);
       }
     };
+  }, []);
+
+  const consumePartnerDetailRequest = useCallback((revision: number): void => {
+    setPartnerDetailOpenRequest((current) => consumePartnerDetailOpenRequest(current, revision));
   }, []);
 
   useEffect(() => {
@@ -415,6 +645,8 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
 
   const preferredLeftSidebarVisible = leftSidebarOpen && !fullscreenRead;
   const preferredRightSidebarVisible = rightSidebarOpen && !fullscreenRead;
+  const surfaceMinCenterWidth =
+    currentSurface === 'partner' ? PARTNER_MIN_CENTER_PX : CODER_MIN_CENTER_PX;
   const preliminaryRightSidebarHalfWidth = rightSidebarOpenWidth(
     preferredLeftSidebarVisible,
     leftWidth,
@@ -422,15 +654,57 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
   );
   const preliminaryRightWidth =
     rightWidthDraft !== null
-      ? Math.min(clampSidebarWidthPx(rightWidthDraft), preliminaryRightSidebarHalfWidth)
+      ? clampSurfaceRightSidebarWidth(
+          currentSurface,
+          rightWidthDraft,
+          preferredLeftSidebarVisible,
+          leftWidth,
+          viewportWidth,
+        )
       : rightSidebarWidthMode === 'max'
         ? rightSidebarMaxWidth(preferredLeftSidebarVisible, leftWidth, viewportWidth)
         : rightSidebarWidthMode === 'half'
           ? preliminaryRightSidebarHalfWidth
           : rightSidebarWidthMode === 'default'
-            ? rightSidebarDefaultWidth(preferredLeftSidebarVisible, leftWidth, viewportWidth)
-            : Math.min(clampSidebarWidthPx(persistedRightWidth), preliminaryRightSidebarHalfWidth);
+            ? surfaceRightSidebarDefaultWidth(
+                currentSurface,
+                preferredLeftSidebarVisible,
+                leftWidth,
+                viewportWidth,
+              )
+            : clampSurfaceRightSidebarWidth(
+                currentSurface,
+                storedRightWidth,
+                preferredLeftSidebarVisible,
+                leftWidth,
+                viewportWidth,
+              );
+  const rightSidebarDefaultWidthFits =
+    coderCenterWidthPx(
+      preferredLeftSidebarVisible,
+      leftWidth,
+      true,
+      surfaceRightSidebarDefaultWidth(
+        currentSurface,
+        preferredLeftSidebarVisible,
+        leftWidth,
+        viewportWidth,
+      ),
+      viewportWidth,
+    ) >= surfaceMinCenterWidth;
+  const partnerPreliminaryLayout =
+    currentSurface === 'partner'
+      ? resolvePartnerShellLayout({
+          viewportWidth,
+          preferredLeftSidebarVisible,
+          leftWidth,
+          rightSidebarVisible: preferredRightSidebarVisible,
+          requestedRightWidth: preliminaryRightWidth,
+          widthMode: rightSidebarWidthMode === 'max' ? 'custom' : rightSidebarWidthMode,
+        })
+      : null;
   const responsiveHideRightSidebar =
+    currentSurface !== 'partner' &&
     preferredRightSidebarVisible &&
     rightSidebarWidthMode !== 'half' &&
     rightSidebarWidthMode !== 'max' &&
@@ -440,19 +714,20 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
       true,
       preliminaryRightWidth,
       viewportWidth,
-    ) < CODER_MIN_CENTER_PX;
+    ) < surfaceMinCenterWidth;
   const rightSidebarVisibleBeforeLeft = preferredRightSidebarVisible && !responsiveHideRightSidebar;
   const responsiveHideLeftSidebar =
-    currentSurface === 'code' &&
-    preferredLeftSidebarVisible &&
-    rightSidebarWidthMode !== 'max' &&
-    coderCenterWidthPx(
-      true,
-      leftWidth,
-      rightSidebarVisibleBeforeLeft,
-      preliminaryRightWidth,
-      viewportWidth,
-    ) < CODER_MIN_CENTER_PX;
+    currentSurface === 'partner'
+      ? preferredLeftSidebarVisible && !partnerPreliminaryLayout?.leftSidebarVisible
+      : preferredLeftSidebarVisible &&
+        rightSidebarWidthMode !== 'max' &&
+        coderCenterWidthPx(
+          true,
+          leftWidth,
+          rightSidebarVisibleBeforeLeft,
+          preliminaryRightWidth,
+          viewportWidth,
+        ) < surfaceMinCenterWidth;
   const leftSidebarVisible = preferredLeftSidebarVisible && !responsiveHideLeftSidebar;
 
   const openRightSidebarAtBalancedWidth = useCallback((): void => {
@@ -460,39 +735,207 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
     pulseRightSidebarWidthSettling();
     setRightWidthDraft(null);
     setRightSidebarWidthMode('half');
-    persistRightSidebarWidthAfterPaint(targetWidth);
+    persistRightSidebarWidthAfterPaint(currentSurface, targetWidth);
     setRightSidebarOpenForCurrentSurface(true);
   }, [
+    currentSurface,
     leftSidebarVisible,
     leftWidth,
     persistRightSidebarWidthAfterPaint,
     pulseRightSidebarWidthSettling,
     setRightSidebarOpenForCurrentSurface,
+    setRightSidebarWidthMode,
+    setRightWidthDraft,
     viewportWidth,
   ]);
 
   const openRightSidebarAtDefaultWidth = useCallback((): void => {
-    const targetWidth = rightSidebarDefaultWidth(leftSidebarVisible, leftWidth, viewportWidth);
+    const targetWidth = surfaceRightSidebarDefaultWidth(
+      currentSurface,
+      leftSidebarVisible,
+      leftWidth,
+      viewportWidth,
+    );
     pulseRightSidebarWidthSettling();
     setRightWidthDraft(null);
     setRightSidebarWidthMode('default');
-    persistRightSidebarWidthAfterPaint(targetWidth);
+    persistRightSidebarWidthAfterPaint(currentSurface, targetWidth);
     setRightSidebarOpenForCurrentSurface(true);
   }, [
+    currentSurface,
     leftSidebarVisible,
     leftWidth,
     persistRightSidebarWidthAfterPaint,
     pulseRightSidebarWidthSettling,
     setRightSidebarOpenForCurrentSurface,
+    setRightSidebarWidthMode,
+    setRightWidthDraft,
     viewportWidth,
   ]);
 
+  const openPartnerDetail = useCallback(
+    (target: PartnerDetailOpenTarget): void => {
+      setPartnerDetailOpenRequest({
+        revision: ++partnerDetailOpenRevisionRef.current,
+        context: {
+          projectRoot: currentProjectPathForPartnerDetail,
+          sessionId: currentSessionIdForPlan,
+        },
+        target,
+      });
+      if (rightSidebarDefaultWidthFits) openRightSidebarAtDefaultWidth();
+      else openRightSidebarAtBalancedWidth();
+    },
+    [
+      currentProjectPathForPartnerDetail,
+      currentSessionIdForPlan,
+      openRightSidebarAtBalancedWidth,
+      openRightSidebarAtDefaultWidth,
+      rightSidebarDefaultWidthFits,
+    ],
+  );
+
+  usePartnerLinkDetails(openPartnerDetail);
+
+  useEffect(() => {
+    const onConnectorDetails = (event: Event): void => {
+      const detail = (event as CustomEvent<PartnerConnectorDetailRequest>).detail;
+      if (
+        !detail ||
+        currentSurface !== 'partner' ||
+        detail.context.surface !== currentSurface ||
+        detail.context.projectRoot !== currentProjectPathForPartnerDetail ||
+        detail.context.sessionId !== currentSessionIdForPlan
+      )
+        return;
+      closeExtensionView();
+      openPartnerDetail({
+        kind: 'connector',
+        extensionId: detail.extensionId,
+        connector: detail.connector,
+        connectionId: detail.connectionId,
+      });
+    };
+    window.addEventListener(PARTNER_CONNECTOR_DETAIL_EVENT, onConnectorDetails);
+    return () => window.removeEventListener(PARTNER_CONNECTOR_DETAIL_EVENT, onConnectorDetails);
+  }, [
+    currentSurface,
+    currentProjectPathForPartnerDetail,
+    currentSessionIdForPlan,
+    closeExtensionView,
+    openPartnerDetail,
+  ]);
+
+  useEffect(() => {
+    const matches = (context: ExtensionViewContext): boolean =>
+      context.surface === 'partner' &&
+      currentSurface === 'partner' &&
+      context.projectRoot === currentProjectPathForPartnerDetail &&
+      context.sessionId === currentSessionIdForPlan;
+    const openDialog = (event: Event): void => {
+      const request = (event as CustomEvent<PartnerConnectorDetailRequest>).detail;
+      if (!request || !matches(request.context)) return;
+      const extension = extensionCatalog.extensions.find(
+        (item) => item.id === request.extensionId && item.enabled,
+      );
+      if (extension)
+        setConnectorDialog({
+          selection: createExtensionViewSelection(extension, request.context),
+          request,
+        });
+    };
+    const manage = (event: Event): void => {
+      const request = (
+        event as CustomEvent<{ context: ExtensionViewContext; extensionId?: string }>
+      ).detail;
+      if (!request || !matches(request.context)) return;
+      const enabled = extensionCatalog.extensions.filter(
+        (item) => item.enabled && item.connectorCount > 0,
+      );
+      const extension = enabled.find((item) => item.id === request.extensionId) ?? enabled[0];
+      if (!extension) {
+        setSettingsInitialTab('extensions');
+        setSettingsOpen(true);
+        return;
+      }
+      setExtensionTab('connectors');
+      setExtensionNavigationRevision((value) => value + 1);
+      setExtensionSelection(createExtensionViewSelection(extension, request.context));
+    };
+    const manageExperts = (event: Event): void => {
+      const request = (event as CustomEvent<{ context: ExtensionViewContext }>).detail;
+      if (!request || !matches(request.context)) return;
+      const extension = extensionCatalog.extensions.find(
+        (item) => item.enabled && item.expertCount > 0,
+      );
+      if (!extension) {
+        setSettingsInitialTab('extensions');
+        setSettingsOpen(true);
+        return;
+      }
+      setExtensionTab('experts');
+      setExtensionNavigationRevision((value) => value + 1);
+      setExtensionSelection(createExtensionViewSelection(extension, request.context));
+    };
+    const close = (): void => setConnectorDialog(null);
+    window.addEventListener(PARTNER_CONNECTOR_DIALOG_EVENT, openDialog);
+    window.addEventListener(PARTNER_CONNECTOR_MANAGE_EVENT, manage);
+    window.addEventListener(PARTNER_EXPERT_MANAGE_EVENT, manageExperts);
+    window.addEventListener(NEW_CONVERSATION_EVENT, close);
+    return () => {
+      window.removeEventListener(PARTNER_CONNECTOR_DIALOG_EVENT, openDialog);
+      window.removeEventListener(PARTNER_CONNECTOR_MANAGE_EVENT, manage);
+      window.removeEventListener(PARTNER_EXPERT_MANAGE_EVENT, manageExperts);
+      window.removeEventListener(NEW_CONVERSATION_EVENT, close);
+    };
+  }, [
+    currentSurface,
+    currentProjectPathForPartnerDetail,
+    currentSessionIdForPlan,
+    extensionCatalog.extensions,
+  ]);
+
+  useEffect(() => {
+    const onExpertDetails = (event: Event): void => {
+      const detail = (event as CustomEvent<PartnerExpertDetailRequest>).detail;
+      if (
+        !detail ||
+        currentSurface !== 'partner' ||
+        detail.context.surface !== currentSurface ||
+        detail.context.projectRoot !== currentProjectPathForPartnerDetail ||
+        detail.context.sessionId !== currentSessionIdForPlan
+      )
+        return;
+      closeExtensionView();
+      openPartnerDetail({ kind: 'expert', expert: detail.expert });
+    };
+    window.addEventListener(PARTNER_EXPERT_DETAIL_EVENT, onExpertDetails);
+    return () => window.removeEventListener(PARTNER_EXPERT_DETAIL_EVENT, onExpertDetails);
+  }, [
+    closeExtensionView,
+    currentProjectPathForPartnerDetail,
+    currentSessionIdForPlan,
+    currentSurface,
+    openPartnerDetail,
+  ]);
+
   const openRightSidebarAtMaxWidth = useCallback((): void => {
+    if (currentSurface === 'partner') {
+      openRightSidebarAtDefaultWidth();
+      return;
+    }
     pulseRightSidebarWidthSettling();
     setRightWidthDraft(null);
     setRightSidebarWidthMode('max');
     setRightSidebarOpenForCurrentSurface(true);
-  }, [pulseRightSidebarWidthSettling, setRightSidebarOpenForCurrentSurface]);
+  }, [
+    currentSurface,
+    openRightSidebarAtDefaultWidth,
+    pulseRightSidebarWidthSettling,
+    setRightSidebarOpenForCurrentSurface,
+    setRightSidebarWidthMode,
+    setRightWidthDraft,
+  ]);
 
   const setTaskDockWidthPreset = useCallback(
     (mode: TaskDockWidthPreset): void => {
@@ -520,7 +963,7 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
         rightSidebarWidthMode === 'half'
           ? halfWithLeft
           : rightSidebarWidthMode === 'default'
-            ? rightSidebarDefaultWidth(true, leftWidth, viewportWidth)
+            ? surfaceRightSidebarDefaultWidth(currentSurface, true, leftWidth, viewportWidth)
             : Math.min(clampSidebarWidthPx(persistedRightWidth), halfWithLeft);
       const currentCenterWithLeft = coderCenterWidthPx(
         true,
@@ -531,7 +974,12 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
       );
 
       if (currentCenterWithLeft < CODER_MIN_CENTER_PX) {
-        const defaultWithLeft = rightSidebarDefaultWidth(true, leftWidth, viewportWidth);
+        const defaultWithLeft = surfaceRightSidebarDefaultWidth(
+          currentSurface,
+          true,
+          leftWidth,
+          viewportWidth,
+        );
         const defaultCenterWithLeft = coderCenterWidthPx(
           true,
           leftWidth,
@@ -591,7 +1039,6 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
   // 右侧栏跟 KodaX 计划列表（todoListBySession）联动：plan 出现 → 自动打开；
   // plan 清空 → 自动折叠。只在 hasPlan 状态切换的瞬间动一次，中间段用户的手动 toggle 不会被打扰。
   // 首次挂载只记录状态、不覆盖 localStorage 持久化值——避免用户上次手动设置被开屏一瞬间冲掉。
-  const currentSessionIdForPlan = useAppStore((s) => s.currentSessionId);
   const currentHistoryPaging = useSessionHistoryPaging(currentSessionIdForPlan);
   const currentHistoryWarning =
     currentHistoryPaging.conversationStatus === 'partial' ||
@@ -645,16 +1092,41 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
   // F059c: 对话里点 artifact 卡片 → 若右侧栏关着先打开它（RightSidebar 内部再切到 Artifact
   // tab + 选中）。否则点了卡片"什么都没发生"。
   useEffect(() => {
-    const onFocus = (): void => {
+    const openCoderDetail = (): void => {
       openRightSidebarAtBalancedWidth();
     };
-    window.addEventListener('kodax-space.focus-artifact', onFocus);
-    window.addEventListener('kodax-space.open-file-viewer', onFocus);
-    return () => {
-      window.removeEventListener('kodax-space.focus-artifact', onFocus);
-      window.removeEventListener('kodax-space.open-file-viewer', onFocus);
+    const onFocusArtifact = (event: Event): void => {
+      if (currentSurface === 'partner') {
+        const detail = (event as CustomEvent<FocusArtifactEventDetail>).detail;
+        const artifactId = detail?.id ?? detail?.snapshot?.id;
+        if (!artifactId) return;
+        openPartnerDetail({
+          kind: 'artifact',
+          artifactId,
+          title: detail?.snapshot?.title,
+          snapshot: detail?.snapshot,
+        });
+        return;
+      }
+      openCoderDetail();
     };
-  }, [openRightSidebarAtBalancedWidth]);
+    const onOpenFileViewer = (event: Event): void => {
+      if (currentSurface === 'partner') {
+        const detail = (event as CustomEvent<OpenFileViewerEventDetail>).detail;
+        if (detail?.snapshot) {
+          openPartnerDetail({ kind: 'file', snapshot: detail.snapshot });
+        }
+        return;
+      }
+      openCoderDetail();
+    };
+    window.addEventListener('kodax-space.focus-artifact', onFocusArtifact);
+    window.addEventListener('kodax-space.open-file-viewer', onOpenFileViewer);
+    return () => {
+      window.removeEventListener('kodax-space.focus-artifact', onFocusArtifact);
+      window.removeEventListener('kodax-space.open-file-viewer', onOpenFileViewer);
+    };
+  }, [currentSessionIdForPlan, currentSurface, openPartnerDetail, openRightSidebarAtBalancedWidth]);
 
   useEffect(() => {
     const onOpenFilesWorkspace = (): void => {
@@ -824,25 +1296,42 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
     setRequestedPopout(null); // 消费完清回 null,允许下次 slash command 再次触发
   }, [requestedPopout, setRequestedPopout, setActivePopout, currentSurface]);
   const rightSidebarHalfWidth = rightSidebarOpenWidth(leftSidebarVisible, leftWidth, viewportWidth);
+  const rightSidebarCustomMaxWidth = surfaceRightSidebarCustomMaxWidth(
+    currentSurface,
+    leftSidebarVisible,
+    leftWidth,
+    viewportWidth,
+  );
   const rightSidebarMaxAvailableWidth = rightSidebarMaxWidth(
     leftSidebarVisible,
     leftWidth,
     viewportWidth,
   );
   const clampRightSidebarNonMaxWidth = useCallback(
-    (px: number): number => Math.min(clampSidebarWidthPx(px), rightSidebarHalfWidth),
-    [rightSidebarHalfWidth],
+    (px: number): number =>
+      Math.round(
+        Math.min(
+          rightSidebarCustomMaxWidth,
+          Math.max(
+            RIGHT_SIDEBAR_MIN_WIDTH,
+            Number.isFinite(px) ? px : RIGHT_SIDEBAR_DEFAULT_MIN_WIDTH,
+          ),
+        ),
+      ),
+    [rightSidebarCustomMaxWidth],
   );
   const clampRightSidebarWidth = useCallback(
     (px: number): number => {
       const finite = Number.isFinite(px) ? px : RIGHT_SIDEBAR_DEFAULT_MIN_WIDTH;
       const max =
-        rightSidebarWidthMode === 'max' ? rightSidebarMaxAvailableWidth : rightSidebarHalfWidth;
+        rightSidebarWidthMode === 'max'
+          ? rightSidebarMaxAvailableWidth
+          : rightSidebarCustomMaxWidth;
       return Math.round(Math.min(max, Math.max(RIGHT_SIDEBAR_MIN_WIDTH, finite)));
     },
-    [rightSidebarHalfWidth, rightSidebarMaxAvailableWidth, rightSidebarWidthMode],
+    [rightSidebarCustomMaxWidth, rightSidebarMaxAvailableWidth, rightSidebarWidthMode],
   );
-  const rightWidth =
+  const requestedRightWidth =
     rightWidthDraft !== null
       ? clampRightSidebarWidth(rightWidthDraft)
       : rightSidebarWidthMode === 'max'
@@ -850,22 +1339,33 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
         : rightSidebarWidthMode === 'half'
           ? rightSidebarHalfWidth
           : rightSidebarWidthMode === 'default'
-            ? rightSidebarDefaultWidth(leftSidebarVisible, leftWidth, viewportWidth)
-            : clampRightSidebarNonMaxWidth(persistedRightWidth);
+            ? surfaceRightSidebarDefaultWidth(
+                currentSurface,
+                leftSidebarVisible,
+                leftWidth,
+                viewportWidth,
+              )
+            : clampRightSidebarNonMaxWidth(storedRightWidth);
+  const partnerLayout =
+    currentSurface === 'partner' && rightSidebarVisibleBeforeLeft
+      ? resolvePartnerShellLayout({
+          viewportWidth,
+          preferredLeftSidebarVisible: leftSidebarVisible,
+          leftWidth,
+          rightSidebarVisible: true,
+          requestedRightWidth,
+          widthMode: rightSidebarWidthMode === 'max' ? 'custom' : rightSidebarWidthMode,
+        })
+      : null;
+  const rightWidth = partnerLayout?.rightSidebarWidth ?? requestedRightWidth;
   const rightSidebarVisible =
-    rightSidebarVisibleBeforeLeft &&
-    (rightSidebarWidthMode === 'half' ||
-      rightSidebarWidthMode === 'max' ||
-      coderCenterWidthPx(leftSidebarVisible, leftWidth, true, rightWidth, viewportWidth) >=
-        CODER_MIN_CENTER_PX);
-  const rightSidebarDefaultWidthFits =
-    coderCenterWidthPx(
-      leftSidebarOpen,
-      leftWidth,
-      true,
-      rightSidebarDefaultWidth(leftSidebarOpen, leftWidth, viewportWidth),
-      viewportWidth,
-    ) >= CODER_MIN_CENTER_PX;
+    currentSurface === 'partner'
+      ? rightSidebarVisibleBeforeLeft
+      : rightSidebarVisibleBeforeLeft &&
+        (rightSidebarWidthMode === 'half' ||
+          rightSidebarWidthMode === 'max' ||
+          coderCenterWidthPx(leftSidebarVisible, leftWidth, true, rightWidth, viewportWidth) >=
+            surfaceMinCenterWidth);
   const toggleRightSidebar = useCallback((): void => {
     if (fullscreenRead) setFullscreenRead(false);
     const action = resolveRightSidebarToggleAction(
@@ -885,7 +1385,8 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
     rightSidebarVisible,
     setRightSidebarOpenForCurrentSurface,
   ]);
-  const rightSidebarWorkspaceMode = rightSidebarVisible && rightSidebarWidthMode === 'max';
+  const rightSidebarWorkspaceMode =
+    currentSurface === 'code' && rightSidebarVisible && rightSidebarWidthMode === 'max';
 
   // FEATURE_032 v2：内联提问卡与停靠条都在 center-pane 内，右侧栏 max 模式（display:none）
   // 下不可见（旧 modal 挂 Shell 根不受影响）。「查看」召回时退出 max 模式，让问题卡回到可视区。
@@ -896,7 +1397,7 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
     };
     window.addEventListener(FOCUS_ASK_USER_EVENT, onFocusAskUser);
     return () => window.removeEventListener(FOCUS_ASK_USER_EVENT, onFocusAskUser);
-  }, [rightSidebarWorkspaceMode]);
+  }, [rightSidebarWorkspaceMode, setRightSidebarWidthMode]);
   const platformClass = getRendererPlatformClass();
   const isWindows = platformClass === 'platform-win32';
 
@@ -918,6 +1419,8 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
         <AppTopMenu
           leftSidebarOpen={leftSidebarVisible}
           rightSidebarOpen={rightSidebarVisible}
+          rightSidebarAvailable
+          showHistoryNavigation={currentSurface === 'code'}
           focusMode={fullscreenRead}
           diagnosticsOpen={diagnosticsOpen}
           onToggleLeftSidebar={toggleLeftSidebar}
@@ -986,6 +1489,12 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
                 filesActive={false}
                 onOpenFiles={openFilesInLeftSidebar}
                 onOpenSettings={openPreferencesSettings}
+                pluginsAvailable={enabledExtensions.length > 0}
+                pluginsActive={visibleExtension !== null}
+                onOpenPlugins={() => {
+                  if (enabledExtensions[0]) openExtensionView(enabledExtensions[0]);
+                }}
+                onNavigate={closeExtensionView}
               />
             )}
             <ResizeHandle
@@ -1004,11 +1513,52 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
         {currentSurface === 'partner' ? (
           // F045: Partner surface 只替换主区（对话区）。LeftSidebar 是全局导航
           // （项目 / session / SurfaceTabs），两 surface 共用；右侧栏外壳也由 Shell 统一托管。
-          <PartnerWorkspace
-            rightSidebarOpen={rightSidebarVisible}
-            workspaceMode={rightSidebarWorkspaceMode}
-            onToggleRightSidebar={toggleRightSidebar}
-          />
+          <>
+            {/* Keep the conversation mounted so opening a library never resets its draft. */}
+            <div
+              style={{ display: visibleExtension ? 'none' : 'contents' }}
+              aria-hidden={visibleExtension ? true : undefined}
+            >
+              <PartnerWorkspace
+                leftSidebarOpen={leftSidebarVisible}
+                rightSidebarOpen={rightSidebarVisible}
+                workspaceMode={rightSidebarWorkspaceMode}
+                onToggleLeftSidebar={toggleLeftSidebar}
+                onToggleRightSidebar={toggleRightSidebar}
+                onOpenDetail={openPartnerDetail}
+              />
+            </div>
+            {visibleExtension && (
+              <PartnerExtensionView
+                key={`${visibleExtension.id}:${visibleExtension.version}:${visibleExtension.installedAt}`}
+                extension={visibleExtension}
+                extensions={enabledExtensions}
+                onSelect={openExtensionView}
+                onClose={closeExtensionView}
+                onManage={() => openSettingsAt('extensions')}
+                initialTab={extensionTab}
+                navigationRevision={extensionNavigationRevision}
+                onExpertSelected={() => {
+                  closeExtensionView();
+                  window.dispatchEvent(new Event('kodax-space.focus-textarea'));
+                }}
+                onExpertDetails={(expert) => {
+                  closeExtensionView();
+                  openPartnerDetail({ kind: 'expert', expert });
+                }}
+                onConnectorDetails={(connector) => {
+                  setConnectorDialog({
+                    selection: createExtensionViewSelection(visibleExtension, extensionContext),
+                    request: {
+                      context: extensionContext,
+                      extensionId: visibleExtension.id,
+                      connector,
+                    },
+                  });
+                }}
+              />
+            )}
+          </>
         ) : (
           /* 中央阅读区：默认实色；全特效档使用半透明玻璃，并在滚动/拖拽期间临时卸下
               大面积 backdrop-filter，避免内容位移和极光动画叠加触发 re-composite。 */
@@ -1079,51 +1629,72 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
           </div>
         )}
 
-        {rightSidebarVisible && (
-          <>
-            {!rightSidebarWorkspaceMode && (
-              <ResizeHandle
-                side="right"
-                width={rightWidth}
-                defaultWidth={rightSidebarDefaultWidth(
-                  leftSidebarVisible,
-                  leftWidth,
-                  viewportWidth,
-                )}
-                onPreview={(px) => setRightWidthDraft(clampRightSidebarWidth(px))}
-                onCommit={(px) => {
-                  setRightWidthDraft(null);
-                  setRightSidebarWidthMode('custom');
-                  setRightSidebarWidth(clampRightSidebarNonMaxWidth(px));
-                }}
-              />
+        {rightSidebarVisible && !rightSidebarWorkspaceMode && !visibleExtension && (
+          <ResizeHandle
+            side="right"
+            width={rightWidth}
+            defaultWidth={surfaceRightSidebarDefaultWidth(
+              currentSurface,
+              leftSidebarVisible,
+              leftWidth,
+              viewportWidth,
             )}
-            {currentSurface === 'partner' ? (
-              <PartnerRightSidebar
-                width={rightWidth}
-                widthMode={rightSidebarWidthMode}
-                onDefaultWidth={openRightSidebarAtDefaultWidth}
-                onHalfWidth={openRightSidebarAtBalancedWidth}
-                onMaxWidth={openRightSidebarAtMaxWidth}
-                onClose={() => setRightSidebarOpenForCurrentSurface(false)}
-              />
-            ) : (
-              <RightSidebar
-                width={rightWidth}
-                widthMode={rightSidebarWidthMode}
-                onDefaultWidth={openRightSidebarAtDefaultWidth}
-                onHalfWidth={openRightSidebarAtBalancedWidth}
-                onMaxWidth={openRightSidebarAtMaxWidth}
-                onClose={() => setRightSidebarOpenForCurrentSurface(false)}
-                shellFocusRequest={taskDockFocusRequest}
-              />
-            )}
-          </>
+            onPreview={(px) => setRightWidthDraft(clampRightSidebarWidth(px))}
+            onCommit={(px) => {
+              setRightWidthDraft(null);
+              setRightSidebarWidthMode('custom');
+              commitRightSidebarWidth(currentSurface, clampRightSidebarNonMaxWidth(px));
+            }}
+          />
+        )}
+        {currentSurface === 'code' && rightSidebarVisible && (
+          <RightSidebar
+            width={rightWidth}
+            widthMode={rightSidebarWidthMode}
+            onDefaultWidth={openRightSidebarAtDefaultWidth}
+            onHalfWidth={openRightSidebarAtBalancedWidth}
+            onMaxWidth={openRightSidebarAtMaxWidth}
+            onClose={() => setRightSidebarOpenForCurrentSurface(false)}
+            shellFocusRequest={taskDockFocusRequest}
+          />
+        )}
+        {mountedPartnerDetailContext && (
+          <PartnerRightSidebar
+            key={partnerDetailContextKey ?? 'partner-detail'}
+            open={currentSurface === 'partner' && rightSidebarVisible && !visibleExtension}
+            width={currentSurface === 'partner' ? rightWidth : partnerRightSidebarWidth}
+            openRequest={visiblePartnerDetailOpenRequest}
+            onConsumeOpenRequest={consumePartnerDetailRequest}
+          />
         )}
       </div>
 
       {/* 模态/命令面板：在面板区之外，保证 position:fixed 相对视口正常铺满 */}
       <PermissionModal />
+      {connectorDialog && connectorDialogExtension && (
+        <PartnerConnectorDialog
+          key={`${connectorDialogExtension.id}:${connectorDialogExtension.version}:${connectorDialogExtension.installedAt}:${JSON.stringify(connectorDialog.request.context)}:${connectorDialog.request.connector.id}:${connectorDialog.request.connectionId ?? ''}`}
+          extension={connectorDialogExtension}
+          connector={connectorDialog.request.connector}
+          connectionId={connectorDialog.request.connectionId}
+          onClose={() => setConnectorDialog(null)}
+          onTry={() => {
+            setConnectorDialog(null);
+            closeExtensionView();
+            window.dispatchEvent(new Event('kodax-space.focus-textarea'));
+          }}
+          onScope={(connectionId) => {
+            setConnectorDialog(null);
+            closeExtensionView();
+            openPartnerDetail({
+              kind: 'connector',
+              extensionId: connectorDialogExtension.id,
+              connector: connectorDialog.request.connector,
+              connectionId,
+            });
+          }}
+        />
+      )}
       <ConfirmDialog />
       {/* FEATURE_032 v2：max 模式下 center-pane 隐藏，停靠条在此兜底常驻
           （点击「查看」会退出 max 模式并定位到队首卡，见上方 FOCUS_ASK_USER_EVENT 监听） */}
@@ -1158,17 +1729,13 @@ export function Shell({ version = null }: ShellProps): JSX.Element {
   );
 }
 
-interface SidebarToggleButtonProps {
-  side: 'left' | 'right';
-  open: boolean;
-  onClick: () => void;
-}
-
 type AppMenuId = 'file' | 'edit' | 'view' | 'help';
 
 interface AppTopMenuProps {
   readonly leftSidebarOpen: boolean;
   readonly rightSidebarOpen: boolean;
+  readonly rightSidebarAvailable: boolean;
+  readonly showHistoryNavigation: boolean;
   readonly focusMode: boolean;
   readonly diagnosticsOpen: boolean;
   readonly onToggleLeftSidebar: () => void;
@@ -1215,9 +1782,11 @@ function isEditableTarget(target: EventTarget | null): target is HTMLElement {
   return editableTypes.has(target.type);
 }
 
-function AppTopMenu({
+export function AppTopMenu({
   leftSidebarOpen,
   rightSidebarOpen,
+  rightSidebarAvailable,
+  showHistoryNavigation,
   focusMode,
   diagnosticsOpen,
   onToggleLeftSidebar,
@@ -1261,7 +1830,7 @@ function AppTopMenu({
   }, []);
 
   const startNewSession = useCallback((): void => {
-    useAppStore.getState().setCurrentSession(null);
+    startNewConversation();
     window.dispatchEvent(new Event('kodax-space.focus-textarea'));
   }, []);
 
@@ -1417,6 +1986,7 @@ function AppTopMenu({
           id: 'right-sidebar',
           label: t('menu.view.rightSidebar'),
           checked: rightSidebarOpen,
+          disabled: !rightSidebarAvailable,
           onSelect: onToggleRightSidebar,
         },
         {
@@ -1528,12 +2098,16 @@ function AppTopMenu({
       >
         <PanelLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
       </TitlebarIconButton>
-      <TitlebarIconButton label={t('menu.nav.back')} disabled onClick={() => undefined}>
-        <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-      </TitlebarIconButton>
-      <TitlebarIconButton label={t('menu.nav.forward')} disabled onClick={() => undefined}>
-        <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-      </TitlebarIconButton>
+      {showHistoryNavigation && (
+        <>
+          <TitlebarIconButton label={t('menu.nav.back')} disabled onClick={() => undefined}>
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </TitlebarIconButton>
+          <TitlebarIconButton label={t('menu.nav.forward')} disabled onClick={() => undefined}>
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </TitlebarIconButton>
+        </>
+      )}
       <div className="mx-1 h-4 w-px bg-border-default/70" aria-hidden />
 
       {menus.map((menu) => (
@@ -1786,6 +2360,7 @@ function RuntimeDiagnostics({
   onClose,
 }: RuntimeDiagnosticsProps): JSX.Element {
   const { t } = useI18n();
+  const currentSurface = useSurfaceStore((state) => state.currentSurface);
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return;
@@ -1859,32 +2434,11 @@ function RuntimeDiagnostics({
           </div>
         )}
       </div>
+      {currentSurface === 'partner' && (
+        <div className="mt-2 max-h-48 overflow-auto rounded-md border border-border-default bg-surface-2">
+          <AdminAuditPanel />
+        </div>
+      )}
     </div>
-  );
-}
-
-/**
- * 侧栏切换按钮 — 放在 breadcrumb 行的两端，常驻显示。
- * - icon: ◧ (left) / ◨ (right)，对应侧的紧凑指示
- * - open 时图标 text-fg-primary；close 时 text-fg-muted（让用户一眼看出当前状态）
- */
-function SidebarToggleButton({ side, open, onClick }: SidebarToggleButtonProps): JSX.Element {
-  const { t } = useI18n();
-  const Icon = side === 'left' ? PanelLeft : PanelRight;
-  const sideLabel = t(side === 'left' ? 'shell.side.left' : 'shell.side.right');
-  const label = t(open ? 'shell.hideSidebar' : 'shell.showSidebar', { side: sideLabel });
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`ix-pop w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 hover:bg-hover-bg ${
-        open ? 'text-fg-primary' : 'text-fg-muted hover:text-fg-primary'
-      }`}
-      title={label}
-      aria-label={label}
-      aria-pressed={open}
-    >
-      <Icon className="w-4 h-4" strokeWidth={1.75} />
-    </button>
   );
 }

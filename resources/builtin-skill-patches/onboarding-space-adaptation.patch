@@ -1,0 +1,36 @@
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -4,16 +4,22 @@
+ argument-hint: "<new hire name and role>"
+ ---
+ 
++## Space 适配（2026-09-08）
++
++使用当前会话已有资料和实际可用工具，按用户语言及篇幅交付。工具类别不是授权；不能假设CRM、HRIS、日历写入或全库检索已接入。缺少工具时用用户材料继续并说明缺口。外发、邀约、账号开通和系统变更须有用户明确要求及真实工具结果，草稿不能写成已执行。下面的示例是模板，不是事实；短追问不重复完整访谈。
++
++先核对入职日期、工作日安排、角色和已有制度，不假设当地周末、节假日或部门时区。日程是建议，不能伪称邀请已发出、设备已采购或账号已开通。账号仅列所需最小权限及审批责任人，不收集密码或替用户开权。公司制度、培训时长、导师人选未知则标待确认；30/60/90天目标按岗位设计可观察成果，不擅自承诺生产权限或独立上线。明确每项负责人/依赖/完成证据，首日与首周适度排期，保留正常工作和答疑时间。
++
+ # /onboarding
+ 
+-> If you see unfamiliar placeholders or need to check which tools are connected, see [CONNECTORS.md](../../CONNECTORS.md).
++工具可用性遵循本文件 Space 适配。
+ 
+ Generate a comprehensive onboarding plan for a new team member.
+ 
+ ## Usage
+ 
+ ```
+-/onboarding $ARGUMENTS
++根据用户本次入职需求制定计划
+ ```
+ 
+ ## What I Need From You
+@@ -95,7 +101,7 @@
+ - Pull the team's existing onboarding checklist to customize
+ 
+ If **~~calendar** is connected:
+-- Create Day 1 calendar events and Week 1 meeting invites automatically
++- Draft proposed Day 1 and Week 1 schedules. Create invitations only when explicitly requested and supported by the authorized tool.
+ 
+ ## Tips
+ 

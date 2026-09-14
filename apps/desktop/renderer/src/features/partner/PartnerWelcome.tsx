@@ -1,27 +1,87 @@
-// PartnerWelcome — Partner 中栏无 session 时的落地态（对应 Coder 的 WelcomeDashboard）。
-//
-// doc-workspace 取向：不堆编码 dashboard 的指标，给一句"把文档/代码库/研究问题交给 Partner"
-// 的引导。用户在下方 BottomBar 描述任务 → ensureSession 懒建一个 Partner 会话（surface=partner）。
-
-import { Handshake } from 'lucide-react';
+import { Handshake, FolderPlus, Plug } from 'lucide-react';
 import { useAppStore } from '../../store/appStore.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
+import {
+  requestPartnerExpertManagement,
+  usePartnerExpert,
+} from '../extensions/PartnerExpertProvider.js';
+import { openPartnerMaterialPicker } from './partnerMaterialPicker.js';
+import { PartnerStarterTasks } from './PartnerStarterTasks.js';
+import {
+  requestPartnerConnectorManagement,
+  usePartnerConnectors,
+} from '../extensions/PartnerConnectorProvider.js';
 
 export function PartnerWelcome(): JSX.Element {
   const { t } = useI18n();
-  const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center overflow-y-auto">
-      <Handshake className="w-8 h-8 text-accent-ink" strokeWidth={1.5} aria-hidden />
-      <div className="text-[15px] text-fg-primary font-medium">{t('partner.welcome.title')}</div>
-      <div className="text-[13px] text-fg-secondary max-w-[420px] leading-relaxed">
-        {t('partner.welcome.description')}
+    <header
+      className="mx-auto w-full max-w-[760px] shrink-0 px-6 pb-6 pt-8 text-center"
+      data-testid="partner-welcome"
+    >
+      <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-accent-border/20 bg-accent-ink/5 text-accent-ink">
+        <Handshake className="h-6 w-6" strokeWidth={1.5} aria-hidden />
       </div>
-      {!currentProjectPath && (
-        <div className="text-[12px] text-fg-muted max-w-[420px]">
-          {t('partner.welcome.openFolderFirst')}
-        </div>
-      )}
-    </div>
+      <h1 className="text-3xl font-semibold tracking-tight text-fg-primary">
+        {t('partner.welcome.title')}
+      </h1>
+      <p className="mt-3 text-sm leading-6 text-fg-muted">{t('partner.welcome.description')}</p>
+    </header>
+  );
+}
+
+export function PartnerWelcomeStarters(): JSX.Element {
+  const { t } = useI18n();
+  const project = useAppStore((state) => state.currentProjectPath);
+  const expert = usePartnerExpert();
+  const connectors = usePartnerConnectors();
+  return (
+    <section
+      className="mx-auto w-full max-w-[760px] shrink-0 px-4 pb-8"
+      aria-label={t('partner.welcome.starters')}
+    >
+      <div className="mb-7 flex flex-wrap items-center justify-center gap-3 text-xs text-fg-secondary">
+        <button
+          type="button"
+          disabled={!expert}
+          onClick={() => expert && requestPartnerExpertManagement(expert.snapshot.context)}
+          className="inline-flex items-center gap-2 rounded-full border border-border-default px-3 py-2 hover:bg-hover-bg disabled:opacity-50"
+        >
+          <img
+            src="./expert-avatars/research.jpg"
+            alt=""
+            width={20}
+            height={20}
+            className="h-5 w-5 rounded-full"
+          />
+          {t('partner.welcome.experts')}
+        </button>
+        <button
+          type="button"
+          disabled={!connectors}
+          onClick={() =>
+            connectors && requestPartnerConnectorManagement(connectors.snapshot.context)
+          }
+          className="inline-flex items-center gap-2 rounded-full border border-border-default px-3 py-2 hover:bg-hover-bg disabled:opacity-50"
+        >
+          <Plug className="h-4 w-4" aria-hidden />
+          {t('partner.welcome.connectors')}
+        </button>
+        <button
+          type="button"
+          onClick={openPartnerMaterialPicker}
+          disabled={!project}
+          className="inline-flex items-center gap-2 rounded-full border border-border-default px-3 py-2 hover:bg-hover-bg disabled:opacity-50"
+        >
+          <FolderPlus className="h-4 w-4" aria-hidden />
+          {t('partner.welcome.materials')}
+        </button>
+      </div>
+      <p className="mb-3 text-xs text-fg-muted">{t('partner.welcome.starters')}</p>
+      <PartnerStarterTasks />
+      <p className="mt-4 text-center text-[11px] leading-5 text-fg-muted">
+        {t(project ? 'partner.welcome.editHint' : 'partner.welcome.openFolderFirst')}
+      </p>
+    </section>
   );
 }

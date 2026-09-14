@@ -16,6 +16,7 @@ import {
   dialog,
   ipcMain,
   nativeImage,
+  webFrameMain,
   type IpcMainEvent,
   type MenuItemConstructorOptions,
   type NativeImage,
@@ -72,6 +73,17 @@ import { registerLicenseChannels } from './ipc/license.js';
 import { registerNotificationChannels, setNotificationWindowGetter } from './ipc/notification.js';
 import { registerUpdaterChannels, initAutoUpdater } from './ipc/updater.js';
 import { registerMcpbChannels, installMcpbFromOsHandoff } from './ipc/mcpb.js';
+import { registerSpaceExtensionChannels } from './ipc/space-extensions.js';
+import { provisionBundledPartnerLibrary } from './space-extensions/bundled.js';
+import { registerPartnerConnectorChannels } from './ipc/partner-connectors.js';
+import {
+  configurePartnerConnectorRuntimeEnvironment,
+  disposePartnerConnectorTasks,
+} from './partner-connectors/runtime.js';
+import {
+  SPACE_EXTENSION_FRAME_CSP,
+  isSpaceExtensionFrameUrl,
+} from './window/space-extension-frame.js';
 import { registerTerminalChannels } from './ipc/terminal.js';
 import { registerClipboardChannels } from './ipc/clipboard.js';
 import { registerShellChannels } from './ipc/shell.js';
@@ -82,7 +94,11 @@ import { learningEventBridge, registerLearningChannels } from './ipc/learning.js
 import { workflowController } from './kodax/workflow-controller.js';
 import { workflowPolicyStore } from './kodax/workflow-policy.js';
 import { registerArtifactWindowChannel } from './artifact/artifact-window.js';
-import { installNavigationGuards } from './window/navigation-guards.js';
+import {
+  installNavigationGuards,
+  PartnerBrowserFrameRegistry,
+} from './window/navigation-guards.js';
+import { installRemoteFramePermissionGuards } from './window/remote-frame-permissions.js';
 import { installWindowActivityPublisher } from './window/activity.js';
 import {
   AppBadgeController,
@@ -263,6 +279,11 @@ if (scopedUserDataDir !== null) {
 }
 
 const SPACE_VERSION = process.env.npm_package_version ?? app.getVersion();
+configurePartnerConnectorRuntimeEnvironment({
+  isPackaged: app.isPackaged,
+  mainDirectory: __dirname,
+  resourcesPath: process.resourcesPath,
+});
 const diagnosticsLogger = initializeDiagnostics({
   userDataDir: app.getPath('userData'),
   spaceVersion: SPACE_VERSION,
@@ -360,9 +381,19 @@ function repairStaleWindowsPortableShortcut(): void {
 }
 
 // THEME_BOOTSTRAP_INLINE_HASH 抽到 csp-config.ts 让单测无 electron 依赖也能 import
-import { THEME_BOOTSTRAP_INLINE_HASH } from './csp-config.js';
+import {
+  APP_RENDERER_FRAME_SRC,
+  THEME_BOOTSTRAP_INLINE_HASH,
+  shouldPreserveRemoteFrameHeaders,
+} from './csp-config.js';
+import {
+  PARTNER_BROWSER_PARTITION,
+  isSafePartnerWebviewUrl,
+  preparePartnerWebviewAttachment,
+} from './window/partner-webview-policy.js';
 
 let mainWindow: BrowserWindow | null = null;
+let mainPartnerBrowserFrames: PartnerBrowserFrameRegistry | null = null;
 const WINDOWS_BACKGROUND_TRAY_ENABLED =
   process.platform === 'win32' && process.env.SPACE_DISABLE_TRAY !== '1';
 let backgroundTray: Tray | null = null;
@@ -536,6 +567,22 @@ function applyCsp(): void {
       callback({ responseHeaders: details.responseHeaders });
       return;
     }
+    // Partner's remote browser frame must keep the destination site's own CSP
+    // and X-Frame-Options. Replacing them with the app-shell policy both breaks
+    // the page and would erase the site's explicit decision not to be embedded.
+    const currentMainContents =
+      mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
+    const isMainWindowPartnerFrame = Boolean(
+      currentMainContents &&
+      details.webContentsId === currentMainContents.id &&
+      mainPartnerBrowserFrames?.resolveName(details.frame, currentMainContents.mainFrame),
+    );
+    if (
+      shouldPreserveRemoteFrameHeaders(details.resourceType, details.url, isMainWindowPartnerFrame)
+    ) {
+      callback({ responseHeaders: details.responseHeaders });
+      return;
+    }
     // F009 CSP 扩项：
     //   - worker-src 'self' blob:  → Monaco editor 用 Web Worker（dev 走 module worker；prod 走 blob）
     //   - script-src 加 blob:       → 同上，Monaco esm worker 通过 blob URL 起
@@ -548,31 +595,33 @@ function applyCsp(): void {
     // receives a separate bootstrap CSP; the main renderer never receives its
     // unsafe-inline policy. The iframe omits allow-same-origin and the generated
     // document adds its own restrictive permission-specific CSP.
-    const csp = isArtifactHtmlFrameUrl(details.url)
-      ? ARTIFACT_HTML_FRAME_BOOTSTRAP_CSP
-      : isDev
-        ? [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
-            "worker-src 'self' blob:",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob: https:",
-            "media-src 'self' data: blob:",
-            "font-src 'self' data:",
-            "frame-src 'self' app:",
-            "connect-src 'self' ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*",
-          ].join('; ')
-        : [
-            "default-src 'self'",
-            `script-src 'self' '${THEME_BOOTSTRAP_INLINE_HASH}' blob:`,
-            "worker-src 'self' blob:",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob: https:",
-            "media-src 'self' data: blob:",
-            "font-src 'self' data:",
-            "frame-src 'self' app:",
-            "connect-src 'self'",
-          ].join('; ');
+    const csp = isSpaceExtensionFrameUrl(details.url)
+      ? SPACE_EXTENSION_FRAME_CSP
+      : isArtifactHtmlFrameUrl(details.url)
+        ? ARTIFACT_HTML_FRAME_BOOTSTRAP_CSP
+        : isDev
+          ? [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+              "worker-src 'self' blob:",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "media-src 'self' data: blob:",
+              "font-src 'self' data:",
+              APP_RENDERER_FRAME_SRC,
+              "connect-src 'self' ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*",
+            ].join('; ')
+          : [
+              "default-src 'self'",
+              `script-src 'self' '${THEME_BOOTSTRAP_INLINE_HASH}' blob:`,
+              "worker-src 'self' blob:",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "media-src 'self' data: blob:",
+              "font-src 'self' data:",
+              APP_RENDERER_FRAME_SRC,
+              "connect-src 'self'",
+            ].join('; ');
 
     callback({
       responseHeaders: {
@@ -617,6 +666,7 @@ function createMainWindow(): BrowserWindow {
       sandbox: true,
       webSecurity: true,
       allowRunningInsecureContent: false,
+      webviewTag: true,
       // React paints underneath the independent boot overlay. Keep it running
       // even while Chromium considers the covered contents occluded; normal
       // throttling is restored only after the Shell-ready signal removes it.
@@ -632,6 +682,27 @@ function createMainWindow(): BrowserWindow {
   installWindowActivityPublisher(win);
   appBadgeController.refresh();
   const uninstallTopmostGuard = installTopmostGuard(win, { label: 'main window' });
+  win.webContents.on('will-attach-webview', (event, preferences, params) => {
+    if (!preparePartnerWebviewAttachment(preferences as unknown as Record<string, unknown>, params))
+      event.preventDefault();
+  });
+  win.webContents.on('did-attach-webview', (_event, guest) => {
+    guest.setWindowOpenHandler(({ url }) => {
+      if (isSafePartnerWebviewUrl(url)) void guest.loadURL(url);
+      return { action: 'deny' };
+    });
+    const guardNavigation = (event: Electron.Event, url: string): void => {
+      if (!isSafePartnerWebviewUrl(url)) event.preventDefault();
+    };
+    guest.on('will-navigate', guardNavigation);
+    guest.on('will-redirect', guardNavigation);
+  });
+  const partnerBrowserSession = session.fromPartition(PARTNER_BROWSER_PARTITION);
+  partnerBrowserSession.setPermissionCheckHandler(() => false);
+  partnerBrowserSession.setPermissionRequestHandler((_contents, _permission, callback) => {
+    callback(false);
+  });
+  partnerBrowserSession.on('will-download', (event) => event.preventDefault());
   const invalidateMainWindow = (): void => {
     if (!win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.invalidate();
   };
@@ -678,10 +749,26 @@ function createMainWindow(): BrowserWindow {
   // 避免两处窗口的安全策略漂移。理由：renderer 终会渲染 LLM/MCP 产生的内容，必须
   // 只放行应用自身资源（dev: Vite origin / prod: 精确 app://space origin），https 外链走系统
   // 浏览器，其余一律 deny（防 LLM 注入 file:///etc/passwd 等任意路径）。
+  const partnerBrowserFrames = new PartnerBrowserFrameRegistry();
+  mainPartnerBrowserFrames = partnerBrowserFrames;
+  win.webContents.on('frame-created', (_event, details) => {
+    partnerBrowserFrames.register(details.frame, win.webContents.mainFrame);
+  });
+  win.webContents.once('destroyed', () => {
+    partnerBrowserFrames.clear();
+    if (mainPartnerBrowserFrames === partnerBrowserFrames) mainPartnerBrowserFrames = null;
+  });
   installNavigationGuards(win.webContents, {
     devServerUrl: VITE_DEV_SERVER_URL,
     allowedAppOrigin: APP_PROTOCOL_ORIGIN,
     openExternal: (url) => void shell.openExternal(url),
+    allowPartnerBrowserFrames: true,
+    onPartnerBrowserNavigated: (payload) => {
+      pushToRenderer('partner.browserNavigated', payload);
+    },
+    resolveFrame: (processId, routingId) => webFrameMain.fromId(processId, routingId),
+    resolvePartnerBrowserFrameName: (frame) =>
+      partnerBrowserFrames.resolveName(frame, win.webContents.mainFrame),
   });
 
   const isWindowUnavailable = (): boolean => win.isDestroyed() || win.webContents.isDestroyed();
@@ -2129,6 +2216,7 @@ const startupPromise = app
       origin: APP_PROTOCOL_ORIGIN,
     });
     applyCsp();
+    installRemoteFramePermissionGuards(session.defaultSession);
     logGpuFeatureStatus('app-ready');
     // Show the trusted, dependency-free boot surface before Runtime/SDK/store
     // initialization. The React renderer remains behind rendererStartupGate,
@@ -2453,6 +2541,23 @@ const startupPromise = app
     );
     // F021 .mcpb / .dxt bundle install — IPC handlers，UI 点 "Install extension..." 走
     registerMcpbChannels();
+    try {
+      await provisionBundledPartnerLibrary({
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        mainDirectory: __dirname,
+      });
+    } catch (error) {
+      diagnosticsLogger?.warn(
+        'space-extensions',
+        'bundled-partner-unavailable',
+        'The bundled Partner library could not be registered.',
+        { error: (error instanceof Error ? error.message : String(error)).slice(0, 512) },
+      );
+    }
+    if (startupShutdownCoordinator.isShutdownRequested()) return;
+    registerSpaceExtensionChannels();
+    registerPartnerConnectorChannels();
     // F011 内置终端 (xterm.js + node-pty) — terminal.create/write/resize/kill + output/exit push
     registerTerminalChannels();
     // OC-31 v0.1.9 clipboard image paste — renderer 把粘贴板图片落到 app temp dir
@@ -2664,6 +2769,7 @@ app.on('before-quit', (event) => {
   permissionBroker.cancelAll('shutdown');
   askUserBroker.cancelAll('shutdown');
   spaceControlRendererBroker.cancelAll('shutdown');
+  const connectorTasksDisposal = disposePartnerConnectorTasks();
   try {
     getPtyHost().disposeAll();
   } catch (err) {
@@ -2678,6 +2784,9 @@ app.on('before-quit', (event) => {
     // Startup must settle before any close() call: otherwise an early user quit
     // can race Runtime initialize() and leave a newly spawned resource behind.
     const disposals: Promise<unknown>[] = [
+      connectorTasksDisposal.catch(() =>
+        console.warn('[main] connector authorization cleanup did not complete'),
+      ),
       Promise.resolve()
         .then(() => stopQueueWatch?.())
         .catch((err) =>

@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { canonProjectRoot } from '@kodax-space/space-ipc-schema';
+import { pushToRenderer } from './push.js';
 import { registerChannel } from './register.js';
 import { projectStore } from '../projects/store.js';
 import { adminPolicyAuditStore } from '../kodax/admin-policy-audit-store.js';
@@ -73,6 +74,15 @@ export function registerPartnerFileProposalChannels(): void {
       ...(result.proposal?.projectRoot ? { projectRoot: result.proposal.projectRoot } : {}),
       ...(result.proposal?.sessionId ? { sessionId: result.proposal.sessionId } : {}),
     });
+    if (result.ok && result.proposal) {
+      pushToRenderer('partner.fileProposals.changed', {
+        sessionId: result.proposal.sessionId,
+        projectRoot: result.proposal.projectRoot,
+        id: result.proposal.id,
+        status: result.proposal.status,
+        reason: 'updated',
+      });
+    }
     return result;
   });
   registerChannel('partner.fileProposals.reject', async (input) => {
@@ -95,6 +105,15 @@ export function registerPartnerFileProposalChannels(): void {
       ...(result.proposal?.projectRoot ? { projectRoot: result.proposal.projectRoot } : {}),
       ...(result.proposal?.sessionId ? { sessionId: result.proposal.sessionId } : {}),
     });
+    if (result.ok && result.proposal) {
+      pushToRenderer('partner.fileProposals.changed', {
+        sessionId: result.proposal.sessionId,
+        projectRoot: result.proposal.projectRoot,
+        id: result.proposal.id,
+        status: result.proposal.status,
+        reason: 'updated',
+      });
+    }
     return result;
   });
   registerChannel('partner.fileProposals.export', async (input) => {

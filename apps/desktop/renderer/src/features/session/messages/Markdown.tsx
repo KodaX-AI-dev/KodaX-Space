@@ -31,14 +31,17 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import {
   openFileSmart,
-  openExternalUrl,
   openGeneratedResourceHref,
   isAbsolutePathOutsideProject,
   looksLikeFilePath,
 } from '../../../lib/openPath.js';
 import { useAppStore } from '../../../store/appStore.js';
 import { useI18n } from '../../../i18n/I18nProvider.js';
-import { parsePartnerDeliveryUri } from '@kodax-space/space-ipc-schema';
+import {
+  parsePartnerDeliveryUri,
+  projectPartnerConnectorResource,
+} from '@kodax-space/space-ipc-schema';
+import { openConversationLink } from '../../partner/partnerLinkEvents.js';
 import {
   openPartnerEvidence,
   parsePartnerCitationHref,
@@ -305,7 +308,9 @@ export function markdownFilePath(children: ReactNode, href: string | undefined):
 
 /** @internal Exported for deterministic Markdown target tests. */
 export function markdownUrlTransform(url: string): string {
-  return parsePartnerDeliveryUri(url) || parsePartnerCitationHref(url)
+  return parsePartnerDeliveryUri(url) ||
+    parsePartnerCitationHref(url) ||
+    projectPartnerConnectorResource(url)
     ? url
     : localFileTarget(url)
       ? url
@@ -392,14 +397,16 @@ function MarkdownInner({ content }: MarkdownProps): JSX.Element {
 
           // ---- 链接 ----
           // http(s) 链接经 shell.openExternal 走系统浏览器（http 也放行，不止 https）；
-          // 非 http 链接（锚点 / 相对）保持默认 <a> 行为。
+          // Partner 资源引用只打开已保存的会话资料；锚点 / 相对链接保留默认行为。
           a: ({ children, href, ...props }) => {
             const isHttp = typeof href === 'string' && /^https?:\/\//i.test(href);
             const isGeneratedResource =
               typeof href === 'string' && parsePartnerDeliveryUri(href) !== null;
+            const isConnectorResource =
+              typeof href === 'string' && projectPartnerConnectorResource(href) !== null;
             const partnerCitationId = parsePartnerCitationHref(href);
             const filePath =
-              !isHttp && !isGeneratedResource && !partnerCitationId
+              !isHttp && !isGeneratedResource && !partnerCitationId && !isConnectorResource
                 ? markdownFilePath(children, href)
                 : null;
             if (filePath) {
@@ -426,7 +433,7 @@ function MarkdownInner({ content }: MarkdownProps): JSX.Element {
               <a
                 {...props}
                 href={href}
-                {...(isHttp || isGeneratedResource || partnerCitationId
+                {...(isHttp || isGeneratedResource || partnerCitationId || isConnectorResource
                   ? {
                       onClick: (e: ReactMouseEvent) => {
                         e.preventDefault();
@@ -435,7 +442,7 @@ function MarkdownInner({ content }: MarkdownProps): JSX.Element {
                         } else if (isGeneratedResource) {
                           void openGeneratedResourceHref(href as string);
                         } else {
-                          void openExternalUrl(href as string);
+                          void openConversationLink(href as string);
                         }
                       },
                     }

@@ -27,6 +27,7 @@ import { useEffect, useState } from 'react';
 import { BrainCircuit, ChevronDown } from 'lucide-react';
 import type { ProviderInfo, SessionMeta } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
+import { useSurfaceStore } from '../store/surface.js';
 import { pushToast } from '../store/toastStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { setSpaceReasoningDefault } from '../space-control/semanticActions.js';
@@ -61,6 +62,7 @@ function effortLabel(mode: ReasoningMode, t: Translate): string {
 
 export function ModelEffortSelector(): JSX.Element {
   const { t } = useI18n();
+  const currentSurface = useSurfaceStore((s) => s.currentSurface);
   const sessions = useAppStore((s) => s.sessions);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
   const providers = useAppStore((s) => s.providers);
@@ -330,6 +332,7 @@ export function ModelEffortSelector(): JSX.Element {
           'h-7 max-w-[240px] min-w-0 px-2 rounded-md border border-border-default',
           'bg-surface-2 text-fg-secondary hover:bg-hover-bg hover:text-fg-primary',
           'flex items-center gap-1.5 transition-colors',
+          currentSurface === 'partner' ? 'partner-model-selector' : '',
         ].join(' ')}
         title={`${session ? t('modelPicker.title.active') : t('modelPicker.title.next')} - ${selectorTitle}`}
         aria-label={session ? t('modelPicker.title.active') : t('modelPicker.title.next')}
@@ -339,12 +342,20 @@ export function ModelEffortSelector(): JSX.Element {
           strokeWidth={1.8}
           aria-hidden
         />
-        <span className="font-mono text-[11px] truncate min-w-0">{activeModel}</span>
-        <span className="text-fg-muted shrink-0" aria-hidden>
+        <span className="partner-model-selector__model font-mono text-[11px] truncate min-w-0">
+          {activeModel}
+        </span>
+        <span className="partner-model-selector__separator text-fg-muted shrink-0" aria-hidden>
           ·
         </span>
-        <span className="text-[11px] shrink-0 text-fg-muted">{compactSuffix}</span>
-        <ChevronDown className="w-3 h-3 shrink-0 text-fg-muted" strokeWidth={2} aria-hidden />
+        <span className="partner-model-selector__effort text-[11px] shrink-0 text-fg-muted">
+          {compactSuffix}
+        </span>
+        <ChevronDown
+          className="partner-model-selector__chevron w-3 h-3 shrink-0 text-fg-muted"
+          strokeWidth={2}
+          aria-hidden
+        />
       </button>
 
       {open && (

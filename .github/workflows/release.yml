@@ -211,7 +211,7 @@ jobs:
 
           const tag = process.env.GITHUB_REF_NAME || '';
           const version = tag.replace(/^v/, '');
-          const repository = process.env.GITHUB_REPOSITORY || 'icetomoyo/KodaX-Space';
+          const repository = process.env.GITHUB_REPOSITORY || 'KodaX-AI-dev/KodaX-Space';
 
           if (!/^v?\d+\.\d+\.\d+/.test(tag)) {
             throw new Error(`Unsupported release tag: ${tag}`);
