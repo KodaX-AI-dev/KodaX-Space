@@ -6,9 +6,20 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 // Repair the installed copy before tests or electron-builder copy these files.
 export async function ensureNodePtyHelpers(nodePtyRoot) {
   const root = await realpath(nodePtyRoot);
-  for (const arch of ['arm64', 'x64']) {
-    const helper = path.join(root, 'prebuilds', `darwin-${arch}`, 'spawn-helper');
-    if ((await realpath(helper)) !== helper || !(await lstat(helper)).isFile()) {
+  const helpers = [
+    'prebuilds/darwin-arm64/spawn-helper',
+    'prebuilds/darwin-x64/spawn-helper',
+    'build/Release/spawn-helper',
+    'build/Debug/spawn-helper',
+  ];
+  for (const relative of helpers) {
+    const helper = path.join(root, relative);
+    const stat = await lstat(helper).catch((error) => {
+      if (error.code === 'ENOENT') return undefined;
+      throw error;
+    });
+    if (!stat) continue; // Source builds remove prebuilds; other platforms have no helper.
+    if (!stat.isFile() || (await realpath(helper)) !== helper) {
       throw new Error(`Unsafe node-pty helper: ${helper}`);
     }
     await chmod(helper, 0o755);
