@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+---
+
+## [0.1.46-beta.4] - 2026-09-14
+
 ### Fixed
 
 - **Windows Coder Runtime startup**: Align the SDK integration with KodaX
@@ -23,13 +27,6 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
   Runtime readiness within the existing budget, and verifies the records remain
   unchanged. This covers the startup timeout that left all Coder sessions waiting
   for Runtime history in beta.4.
-
----
-
-## [0.1.46-beta.4] - 2026-09-14
-
-### Fixed
-
 - **Coder/Partner integration compatibility**: Keep ordinary web links in the system
   browser and remove the Partner embedded browser. Preserve file previews, saved source
   snapshots and result cards. Correct connector permission changes when another binding
@@ -57,7 +54,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
   the rc.5/Issue 215 work in this section, and its CI needed reruns for shared-runner Partner
   test flakes. Its GitHub release was withdrawn at maintainer decision (the tag remains as
   history); beta.4 is the first published release carrying both the Partner integration and
-  the rc.5 alignment.
+  the KodaX rc line through 0.7.96-rc.6.
 
 ---
 
