@@ -55,7 +55,9 @@ async function openLibrary(
   const browser = await chromium.launch({ executablePath: browserPath, headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage();
-  page.setDefaultTimeout(2000);
+  // CI runs the real browser beside the complete unit suite on shared runners.
+  // Match the bounded Partner flow budget without relaxing local assertions.
+  page.setDefaultTimeout(process.env.CI ? 5000 : 2000);
   const requests: ExtensionFrameRequest[] = [];
   let experts = initialExperts;
   let connected = false;
