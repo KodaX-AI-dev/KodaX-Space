@@ -71,7 +71,14 @@ test('explicit component installation repairs only its damaged managed binary', 
     verifyBinary: async (file) => (await readFile(file, 'utf8')) === 'fixture native',
   });
   try {
-    await mkdir(path.dirname(installer.executable), { recursive: true });
+    // Managed provider directories must be owner-only on POSIX (the installer
+    // rejects group/other permissions on every level it checks); build the
+    // chain explicitly so no level depends on recursive-mkdir mode quirks.
+    let managed = root;
+    for (const part of path.relative(root, path.dirname(installer.executable)).split(path.sep)) {
+      managed = path.join(managed, part);
+      await mkdir(managed, { mode: 0o700 });
+    }
     await writeFile(installer.executable, 'damaged');
     await installer.install(new AbortController().signal, true);
     assert.equal(await readFile(installer.executable, 'utf8'), 'fixture native');
