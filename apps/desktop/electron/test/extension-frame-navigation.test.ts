@@ -74,7 +74,9 @@ for (const { legacy, early } of [
       const browser = await chromium.launch({ executablePath: browserPath, headless: true });
       t.after(() => browser.close());
       const page = await browser.newPage();
-      page.setDefaultTimeout(5000);
+      // Shared CI runners can pause between browser launch, iframe bootstrap,
+      // and navigation; keep a bounded but contention-tolerant budget there.
+      page.setDefaultTimeout(process.env.CI ? 15_000 : 5_000);
       let releaseBootstrap!: () => void;
       const gate = new Promise<void>((resolve) => {
         releaseBootstrap = resolve;
