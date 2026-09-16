@@ -139,7 +139,7 @@ Space Trusted Host
 ## 版本号与分发
 
 - 用户下载的产品是官方 Space。Space 版本、SDK 精确版本和 lockfile 由组织发布线统一管理，禁止为了 Partner 修改 SDK 版本或改回个人更新地址。
-- 历史交付基线为 Space `0.1.46-beta.3` / KodaX `0.7.96-rc.4`，该 GitHub Release 已撤回，tag 保留。当前源码为 Space `0.1.46-beta.4` / KodaX `0.7.96-rc.6`，尚未发布；修复和验证见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。后续发布使用未占用的新版本，同步 manifests、CHANGELOG 和更新元数据，不覆盖既有 tag 或 Release 资产。
+- 历史交付基线为 Space `0.1.46-beta.3` / KodaX `0.7.96-rc.4`，该 GitHub Release 已撤回，tag 保留。当前源码为 Space `0.1.46-beta.4` / KodaX `0.7.96-rc.7`，尚未发布；修复和验证见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。后续发布使用未占用的新版本，同步 manifests、CHANGELOG 和更新元数据，不覆盖既有 tag 或 Release 资产。
 - Partner Library 当前为 `0.1.0`，随官方安装包包含并在首次启动注册。宿主、插件归档与方法 Skill 必须一起验证；只上传 `.space-extension` 不代表用户已经获得宿主能力。
 - `hostApiVersion` 管理宿主协议兼容性；`requiredHostCapabilities` 声明需要的能力。
 - 本次不创建新的个人 `partner-v*` 发布线。历史标签保留作证据，不执行 `git push --tags`。

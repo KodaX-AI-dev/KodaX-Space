@@ -78,7 +78,7 @@ F146 <- PF001, PF002, PF003
 
 ## 6. 当前集成快照
 
-当前源码为 Space `0.1.46-beta.4` / KodaX `0.7.96-rc.6`，尚未发布。beta.3 Release 已撤回，tag 与下述集成历史保留。beta.4 按共享 Coder 路径修复普通网页外跳，移除 Partner webview；本地文件、资料快照、专家、连接器及成果卡保留。连接组件在 Settings 按需安装，不阻塞开发启动；管理导航同时兼容当前库与已安装旧库。验证与边界见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。
+当前源码为 Space `0.1.46-beta.4` / KodaX `0.7.96-rc.7`，尚未发布。beta.3 Release 已撤回，tag 与下述集成历史保留。beta.4 按共享 Coder 路径修复普通网页外跳，移除 Partner webview；本地文件、资料快照、专家、连接器及成果卡保留。连接组件在 Settings 按需安装，不阻塞开发启动；管理导航同时兼容当前库与已安装旧库。验证与边界见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。
 
 ### beta.3 历史交付
 

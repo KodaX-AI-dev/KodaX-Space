@@ -14,6 +14,16 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Fixed
+
+- **KodaX 0.7.96-rc.7 integration**: Pin the exact published Registry package in
+  both manifests and the lockfile. rc.7 returns eligible file outputs from
+  successful writes over A2A in both coding and managed execution — independently
+  of conversation compaction and the memory artifact ledger — and recognizes
+  HTML/HTM outputs as `text/html`, while every rc.6 capability contract is
+  retained: no Space capability gate moves and the existing bounded artifact
+  projection is unchanged.
+
 ---
 
 ## [0.1.46-beta.4] - 2026-09-14
