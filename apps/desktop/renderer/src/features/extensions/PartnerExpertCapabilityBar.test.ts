@@ -128,6 +128,9 @@ test(
     });
     await page.getByRole('button', { name: '新建多维表格', exact: true }).click();
     assert.equal(await draft.inputValue(), '保留现有草稿：请新建一个飞书多维表格。');
+    // The insertion posts a caret-fixing requestAnimationFrame; let that frame
+    // land before overwriting the field so the two writes cannot interleave.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
     await draft.fill('保留现有草稿：请新建一个飞书多维表格。字段包括项目、负责人');
     assert.equal(
       await draft.inputValue(),

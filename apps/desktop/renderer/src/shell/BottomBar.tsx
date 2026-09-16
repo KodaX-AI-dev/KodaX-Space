@@ -635,14 +635,15 @@ export function BottomBar(): JSX.Element {
         setPrompt((p) => p + text);
         return;
       }
-      const start = ta.selectionStart ?? -1;
-      const end = ta.selectionEnd ?? -1;
-      setPrompt((current) => {
-        const s = start >= 0 ? start : current.length;
-        const e = end >= 0 ? end : current.length;
-        return current.slice(0, s) + text + current.slice(e);
-      });
-      const newPos = (start >= 0 ? start : ta.value.length) + text.length;
+      // Resolve the splice against the live DOM value at call time. A deferred
+      // functional update carrying DOM selection offsets can replay against a
+      // value changed by an interleaving DOM write (e.g. automated fills),
+      // prepending the inserted text again at a stale offset.
+      const value = ta.value;
+      const start = ta.selectionStart ?? value.length;
+      const end = ta.selectionEnd ?? value.length;
+      setPrompt(value.slice(0, start) + text + value.slice(end));
+      const newPos = start + text.length;
       requestAnimationFrame(() => {
         const live = textareaRef.current;
         if (!live) return;
@@ -695,7 +696,6 @@ export function BottomBar(): JSX.Element {
     window.addEventListener(INSERT_PARTNER_SKILL_DRAFT_EVENT, onInsertSkillDraft);
     return () => window.removeEventListener(INSERT_PARTNER_SKILL_DRAFT_EVENT, onInsertSkillDraft);
   }, [currentSurface, insertAtCaret]);
-
 
   // and focus it (caret at end). Callers may also request an immediate submit
   // when they are launching a structured task through the normal composer path.
