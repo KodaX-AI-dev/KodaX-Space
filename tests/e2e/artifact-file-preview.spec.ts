@@ -644,6 +644,90 @@ test('Project HTML File Viewer runs relative modules, assets, local fetch, stora
   }
 });
 
+test('Project HTML File Viewer loads and switches local animation frames in both network modes', async () => {
+  const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kodax-local-animation-'));
+  const relPath = 'web/index.html';
+  const absPath = path.join(projectDir, relPath);
+  await fs.mkdir(path.dirname(absPath), { recursive: true });
+  await fs.writeFile(
+    absPath,
+    `<!doctype html><html><body>
+      <button id="switch">Switch direction</button>
+      <iframe id="animation" src="./a.html"></iframe>
+      <script>
+        const frame = document.querySelector('#animation');
+        frame.onload = () => frame.contentWindow.postMessage({ t: 2.5 }, '*');
+        document.querySelector('#switch').onclick = () => { frame.src = './b.html'; };
+      </script>
+    </body></html>`,
+  );
+  for (const direction of ['a', 'b']) {
+    await fs.writeFile(
+      path.join(projectDir, 'web', `${direction}.html`),
+      `<!doctype html><html><body><h1>Direction ${direction}</h1><output>waiting</output>
+        <script>
+          addEventListener('message', event => {
+            if (event.source === parent && typeof event.data?.t === 'number') {
+              document.querySelector('output').textContent = 'Time ' + event.data.t;
+            }
+          });
+        </script>
+      </body></html>`,
+    );
+  }
+  const space = await launchSpace(`local-animation-${Date.now()}`);
+  try {
+    await space.seedProject(projectDir);
+    await space.page.evaluate(() => {
+      localStorage.setItem('kodax-space.smartPopoutEnabled', '0');
+      localStorage.setItem('kodax-space.rightSidebarOpen', '0');
+    });
+    await space.page.reload();
+    await space.page.waitForLoadState('domcontentloaded');
+    await openFileViaFilesPanel(space.page, {
+      absPath,
+      relPath,
+      ext: '.html',
+      size: (await fs.stat(absPath)).size,
+    });
+    const sidebar = space.page.getByTestId('right-sidebar');
+    const host = sidebar.getByTestId('project-web-preview').locator('iframe');
+    const frame = host.contentFrame();
+    const animation = frame.locator('#animation').contentFrame();
+    for (const networkAccess of [false, true]) {
+      if (networkAccess) {
+        await sidebar
+          .getByRole('button', {
+            name: 'Allow additional HTTPS/WSS requests for this trusted page',
+          })
+          .click();
+      }
+      await expect(host).toHaveAttribute('data-ready', 'true');
+      await expect(animation.getByRole('heading')).toHaveText('Direction a');
+      await expect(animation.locator('output')).toHaveText('Time 2.5');
+      await frame.getByRole('button', { name: 'Switch direction' }).click();
+      await expect(animation.getByRole('heading')).toHaveText('Direction b');
+      await expect(animation.locator('output')).toHaveText('Time 2.5');
+      expect(await animation.locator('body').evaluate(() => typeof window.kodaxSpace)).toBe(
+        'undefined',
+      );
+      expect(
+        await animation.locator('body').evaluate(() => {
+          try {
+            return top?.document.title;
+          } catch {
+            return 'cross-origin-blocked';
+          }
+        }),
+      ).toBe('cross-origin-blocked');
+      await expect(sidebar.getByTestId('web-preview-diagnostic')).toHaveCount(0);
+    }
+  } finally {
+    await space.close();
+    await fs.rm(projectDir, { recursive: true, force: true });
+  }
+});
+
 test('PDF File Viewer supports keyboard paging after focus', async () => {
   const rootStat = await fs.stat(DOWNLOADS_ROOT).catch(() => null);
   test.skip(!rootStat?.isDirectory(), `Downloads test directory not found: ${DOWNLOADS_ROOT}`);

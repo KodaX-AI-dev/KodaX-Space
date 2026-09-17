@@ -4,6 +4,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { wrapSdkError } from '../kodax/sdk-errors.js';
 
+test('native timeout and cancellation survive SDK cause wrappers without message heuristics', () => {
+  for (const wrapped of [false, true]) {
+    for (const [name, category] of [['TimeoutError', 'network'], ['AbortError', 'cancelled']]) {
+      const cause = new DOMException('Operation ended.', name);
+      const error = wrapped ? new Error('Provider failed.', { cause }) : cause;
+      assert.equal(wrapSdkError(error).category, category);
+    }
+  }
+});
+
+test('numeric error codes and cyclic causes do not break error reporting', () => {
+  const error = Object.assign(new Error('Unknown failure'), { code: 23, cause: undefined as unknown });
+  error.cause = error;
+  assert.equal(wrapSdkError(error).category, 'unknown');
+});
+
 test('AbortError → cancelled', () => {
   const err = new Error('user aborted');
   err.name = 'AbortError';

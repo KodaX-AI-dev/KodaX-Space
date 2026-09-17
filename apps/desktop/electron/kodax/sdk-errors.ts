@@ -54,7 +54,8 @@ interface ErrLike {
   readonly message?: string;
   readonly status?: number;
   readonly statusCode?: number;
-  readonly code?: string;
+  readonly code?: string | number;
+  readonly cause?: unknown;
   readonly name?: string;
 }
 
@@ -67,6 +68,17 @@ function extractStatus(err: ErrLike): number | null {
   return null;
 }
 
+function typedTransportError(err: unknown): string | undefined {
+  const seen = new Set<unknown>();
+  while (typeof err === 'object' && err !== null && !seen.has(err)) {
+    seen.add(err);
+    const candidate = err as ErrLike;
+    if (candidate.name === 'AbortError' || candidate.name === 'TimeoutError') return candidate.name;
+    err = candidate.cause;
+  }
+  return undefined;
+}
+
 function matchesAny(haystack: string, needles: readonly string[]): boolean {
   const lower = haystack.toLowerCase();
   return needles.some((n) => lower.includes(n));
@@ -74,12 +86,13 @@ function matchesAny(haystack: string, needles: readonly string[]): boolean {
 
 export function wrapSdkError(err: unknown, ctx?: WrapContext): WrappedSdkError {
   // Cancelled 路径单独处理 —— 不应当当成错误展示给用户
-  if (err instanceof Error && err.name === 'AbortError') {
+  const transportError = typedTransportError(err);
+  if (transportError === 'AbortError') {
     return {
       userMessage: 'Request cancelled.',
       category: 'cancelled',
       retriable: true,
-      debugMessage: err.message,
+      debugMessage: err instanceof Error ? err.message : String(err),
     };
   }
 
@@ -91,11 +104,12 @@ export function wrapSdkError(err: unknown, ctx?: WrapContext): WrappedSdkError {
         : { message: String(err) };
 
   const rawMessage = errObj.message ?? String(err);
-  const code = errObj.code ?? '';
+  const code = typeof errObj.code === 'string' ? errObj.code : '';
   const status = extractStatus(errObj);
 
   // --- 网络层 ---
   if (
+    transportError === 'TimeoutError' ||
     matchesAny(code, ['enotfound', 'econnrefused', 'econnreset', 'etimedout', 'eai_again']) ||
     matchesAny(rawMessage, ['fetch failed', 'network error', 'getaddrinfo', 'socket hang up', 'request timeout'])
   ) {

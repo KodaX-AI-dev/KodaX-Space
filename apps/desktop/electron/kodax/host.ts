@@ -53,7 +53,7 @@ import {
 } from '../ipc/clipboard.js';
 import { revokeSessionAttachmentPreviews } from '../window/session-attachment-protocol.js';
 import { runtimeHostAdapter } from './runtime-host-adapter.js';
-import { resolveSdkSpaceWireEffort, runtimeSettingEffort } from './reasoning-effort.js';
+import { runtimeSettingEffort } from './reasoning-effort.js';
 
 // alpha.2: Real KodaX 内核 vs Mock 切换。
 //
@@ -498,11 +498,6 @@ class KodaXHost {
         return 'session-not-found';
       }
       if (session.surface === 'code' && runtimeHostAdapter.hasReadyRuntime()) {
-        const wireEffort = await resolveSdkSpaceWireEffort({
-          provider: session.provider,
-          ...(session.model ? { model: session.model } : {}),
-          reasoningMode: session.reasoningMode,
-        });
         // A newly-created Space session is intentionally admitted to the daemon
         // lazily. Settings can be changed before the first send, so admit it here
         // as well and seed the complete settings snapshot instead of applying only
@@ -513,7 +508,7 @@ class KodaXHost {
             provider: session.provider,
             model: session.model ?? null,
             thinking: session.thinking ?? null,
-            effort: runtimeSettingEffort(session.reasoningMode, wireEffort),
+            effort: runtimeSettingEffort(session.reasoningMode),
             reasoningMode: null,
             permissionMode: session.permissionMode,
             executionCwd: session.projectRoot,
@@ -535,20 +530,13 @@ class KodaXHost {
           before.provider !== session.provider ||
           before.model !== session.model ||
           before.reasoningMode !== session.reasoningMode;
-        const rollbackWireEffort = reasoningContextChanged
-          ? await resolveSdkSpaceWireEffort({
-              provider: before.provider,
-              ...(before.model ? { model: before.model } : {}),
-              reasoningMode: before.reasoningMode,
-            })
-          : undefined;
         const rollbackPatch = {
           ...(before.provider !== session.provider ? { provider: before.provider } : {}),
           ...(before.model !== session.model ? { model: before.model ?? null } : {}),
           ...(before.thinking !== session.thinking ? { thinking: before.thinking ?? null } : {}),
           ...(reasoningContextChanged
             ? {
-                effort: runtimeSettingEffort(before.reasoningMode, rollbackWireEffort),
+                effort: runtimeSettingEffort(before.reasoningMode),
                 reasoningMode: null,
               }
             : {}),

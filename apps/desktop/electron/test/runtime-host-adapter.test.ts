@@ -11878,6 +11878,33 @@ test('daemon bridge preserves Runtime turn identity on live transcript events', 
   await adapter.close();
 });
 
+test('daemon bridge preserves reasoning intent, sent effort and rejection cache provenance', async () => {
+  const sessionEvents: unknown[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    push: (channel, payload) => { if (channel === 'session.event') sessionEvents.push(payload); },
+  });
+  const bridge = bindTestRuntimeEventBridge(adapter);
+  const resolution = {
+    provider: 'OpenRouter', model: 'reasoner', requestedEffort: 'none', sentEffort: 'minimal',
+    verified: false,
+    fallbacks: [{ effort: 'none', reason: 'cached-rejection' }],
+  } as const;
+  for (const contextKind of ['root', 'child'] as const) {
+    bridge({
+      id: `reasoning_${contextKind}`, seq: 40, time: '2026-09-17T00:00:00.000Z',
+      type: 'provider.recovery', sessionId: 's_reasoning', runId: 'run_reasoning', turnId: 'turn_reasoning',
+      payload: { kind: 'reasoning_resolved', event: resolution,
+        meta: { contextKind, ...(contextKind === 'child' ? { liveOnly: true, childAgentId: 'child_1' } : {}) } },
+    } as import('@kodax-ai/kodax/runtime').RuntimeTypedEvent, 'runtime_reasoning');
+  }
+  assert.deepEqual(sessionEvents, [{
+    runtimeEvent: { runtimeId: 'runtime_reasoning', runId: 'run_reasoning', journalEpoch: 'journal_epoch_1', seq: 40 },
+    turnId: 'turn_reasoning', kind: 'reasoning_resolved', sessionId: 's_reasoning', resolution,
+  }]);
+  await adapter.close();
+});
+
 for (const recoveryAction of ['stable_boundary_retry', 'text_diagnosis'] as const) {
   test(`daemon bridge projects root Provider ${recoveryAction} with Runtime provenance`, async () => {
     const sessionEvents: unknown[] = [];

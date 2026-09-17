@@ -1380,6 +1380,23 @@ export const sessionEventChannel = {
       ladderStep: z.number().int().nonnegative().max(10),
       fallbackUsed: z.boolean(),
     }),
+    z.object({
+      ...runtimeSessionEventOriginShape,
+      kind: z.literal('reasoning_resolved'),
+      sessionId: z.string().min(1),
+      turnId: z.string().min(1).max(256).optional(),
+      resolution: z.object({
+        provider: z.string().min(1).max(256),
+        model: z.string().max(512),
+        requestedEffort: z.string().min(1).max(64),
+        sentEffort: z.string().min(1).max(64).optional(),
+        verified: z.literal(false),
+        fallbacks: z.array(z.object({
+          effort: z.string().max(64).optional(),
+          reason: z.enum(['profile', 'unsupported-effort', 'unsupported-parameter', 'cached-rejection']),
+        })).max(100),
+      }),
+    }),
     // ---- Repointel (repo intelligence) trace ----
     z.object({
       kind: z.literal('repointel_trace'),

@@ -10,8 +10,6 @@ import {
   effortToReasoningMode,
   projectReasoningProfile,
   reasoningModeToEffort,
-  resolveSdkSpaceWireEffort,
-  resolveSpaceWireEffort,
   runtimeSettingEffort,
 } from '../kodax/reasoning-effort.js';
 
@@ -102,7 +100,7 @@ test('prompt-only profile does not invent wire effort choices', () => {
   });
 });
 
-test('custom provider without a reasoning declaration omits reasoning_effort', () => {
+test('custom provider without a reasoning declaration defaults to max', () => {
   registerCustomProviders([
     {
       name: 'space-unprofiled-qwen',
@@ -114,17 +112,16 @@ test('custom provider without a reasoning declaration omits reasoning_effort', (
   ]);
 
   assert.equal(
-    resolveSpaceWireEffort({
+    resolveSdkWireEffort({
       provider: 'space-unprofiled-qwen',
       model: 'qwen3.8-27b',
-      reasoningMode: 'deep',
-      resolveWireEffort: resolveSdkWireEffort,
-    }),
-    undefined,
+      desiredEffort: 'max',
+    }).effort,
+    'max',
   );
 });
 
-test('SDK registry resolver also omits auto for an unprofiled custom provider', async () => {
+test('SDK registry resolver starts auto at max for an unprofiled custom provider', async () => {
   registerCustomProviders([
     {
       name: 'space-unprofiled-auto-qwen',
@@ -136,22 +133,24 @@ test('SDK registry resolver also omits auto for an unprofiled custom provider', 
   ]);
 
   assert.equal(
-    await resolveSdkSpaceWireEffort({
+    resolveSdkWireEffort({
       provider: 'space-unprofiled-auto-qwen',
       model: 'qwen3.8-27b',
-      reasoningMode: 'auto',
-    }),
-    undefined,
+      desiredEffort: 'auto',
+    }).effort,
+    'max',
   );
 });
 
-test('Runtime settings preserve supported auto intent but omit unsupported auto', () => {
-  assert.equal(runtimeSettingEffort('auto', 'high'), 'auto');
-  assert.equal(runtimeSettingEffort('auto', undefined), null);
-  assert.equal(runtimeSettingEffort('high', 'xhigh'), 'xhigh');
+test('Runtime settings preserve intent independently of negotiated wire effort', () => {
+  assert.equal(runtimeSettingEffort('auto'), 'auto');
+  assert.equal(runtimeSettingEffort(undefined), null);
+  assert.equal(runtimeSettingEffort('off'), 'none');
+  assert.equal(runtimeSettingEffort('deep'), 'max');
+  assert.equal(runtimeSettingEffort('high'), 'high');
 });
 
-test('Space fallback keeps intent monotonic before using the SDK default', () => {
+test('SDK fallback owns the monotonic effort ladder', () => {
   registerCustomProviders([
     {
       name: 'space-profiled-qwen',
@@ -167,12 +166,11 @@ test('Space fallback keeps intent monotonic before using the SDK default', () =>
   ]);
 
   const resolve = (reasoningMode: 'high' | 'xhigh' | 'max' | 'off'): string | undefined =>
-    resolveSpaceWireEffort({
+    resolveSdkWireEffort({
       provider: 'space-profiled-qwen',
       model: 'qwen3.8-27b',
-      reasoningMode,
-      resolveWireEffort: resolveSdkWireEffort,
-    });
+      desiredEffort: reasoningModeToEffort(reasoningMode),
+    }).effort;
 
   assert.equal(resolve('high'), 'medium');
   assert.equal(resolve('xhigh'), 'xhigh');
@@ -192,12 +190,16 @@ test('learned wire rejections are delegated to the SDK resolver', () => {
     },
   ]);
 
-  const resolved = resolveSpaceWireEffort({
+  const resolved = resolveSdkWireEffort({
     provider: 'space-rejected-max',
     model: 'reasoner',
-    reasoningMode: 'max',
+    desiredEffort: 'max',
     rejectedEfforts: ['max'],
-    resolveWireEffort: resolveSdkWireEffort,
   });
-  assert.equal(resolved, 'xhigh');
+  assert.equal(resolved.effort, 'xhigh');
+});
+
+test('unknown reasoning and disabling capabilities remain unknown', () => {
+  assert.deepEqual(projectReasoningProfile(undefined), {});
+  assert.deepEqual(projectReasoningProfile({ effortStrategy: 'openai-chat-effort' }), {});
 });

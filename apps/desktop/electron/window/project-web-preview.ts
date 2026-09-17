@@ -351,7 +351,8 @@ export function projectWebPreviewCsp(
     `font-src 'self' data:${fontRemote ? ` ${fontRemote}` : ''}`,
     `media-src 'self' data: blob:${mediaRemote ? ` ${mediaRemote}` : ''}`,
     `connect-src 'self'${networkAccess ? ' https: wss:' : ''}`,
-    "frame-src 'none'",
+    // The capability origin serves only this preview directory, including child HTML.
+    "frame-src 'self'",
     "child-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",

@@ -1295,6 +1295,26 @@ function launchSdk(name: string): unknown {
   };
 }
 
+test('workflow launch forwards user effort intent for SDK negotiation', async () => {
+  const { dir, file } = freshFile();
+  _setCodingSdkForTesting(launchSdk('reasoning-flow'));
+  _setRepoIntelEntitlementForTesting(async () => false);
+  try {
+    const ctrl = new WorkflowController(() => {}, file);
+    const manager = fakeManager();
+    await ctrl.init(manager);
+    for (const [reasoningMode, effort] of [['auto', 'auto'], ['off', 'none'], ['deep', 'max']]) {
+      await ctrl.createGeneratedWorkflow('do a thing', { ...LAUNCH_SESSION, reasoningMode });
+      const options = manager.started.at(-1)?.options as Record<string, unknown>;
+      assert.equal(options.effort, effort);
+    }
+  } finally {
+    _setRepoIntelEntitlementForTesting(null);
+    _setCodingSdkForTesting(null);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('workflow launch forces repo-intelligence OFF when unlicensed', async () => {
   const { dir, file } = freshFile();
   _setCodingSdkForTesting(launchSdk('gated-flow'));

@@ -22,7 +22,7 @@ import { getSpaceDataDir } from './data-paths.js';
 import { pushToRenderer } from '../ipc/push.js';
 import { artifactStore } from '../artifact/store.js';
 import { detectArtifactKind } from '../artifact/workflow-artifact-bridge.js';
-import { resolveSpaceWireEffort } from './reasoning-effort.js';
+import { reasoningModeToEffort } from './reasoning-effort.js';
 import { workflowPolicyStore, buildWorkflowHostPolicy } from './workflow-policy.js';
 import { externalAgentGateway } from './external-agent-gateway.js';
 import { repoIntelContextFields } from './repo-intel-gate.js';
@@ -1801,14 +1801,6 @@ export class WorkflowController {
   // ---- 内部 ----
 
   private async launchOptions(s: LaunchSession): Promise<Record<string, unknown>> {
-    const sdk = await loadCodingSdk();
-    // Also exclude efforts the wire layer already rejected this process (parity with the chat path),
-    // so a previously-400'd effort isn't re-sent on every workflow run.
-    const rejectedEfforts =
-      (await loadAgentEffortCache())?.getCachedRejectedEfforts?.(
-        s.provider,
-        s.model ?? undefined,
-      ) ?? [];
     // C2: forward the user-configured Workflow Host Policy so maxAgents/maxConcurrency/tokenBudget
     // caps actually bound explicit /workflow runs (mirrors the AMA run_workflow path in real-session).
     const policy = workflowPolicyStore.get();
@@ -1827,13 +1819,7 @@ export class WorkflowController {
     });
     return {
       provider: s.provider,
-      effort: resolveSpaceWireEffort({
-        provider: s.provider,
-        ...(s.model ? { model: s.model } : {}),
-        reasoningMode: s.reasoningMode,
-        rejectedEfforts,
-        resolveWireEffort: sdk?.resolveWireEffort,
-      }),
+      effort: reasoningModeToEffort(s.reasoningMode),
       agentMode: s.agentMode,
       ...(s.model ? { model: s.model } : {}),
       // C9: agentProfile.surface makes create_artifact's resolveSessionRunContext succeed for
@@ -2159,7 +2145,6 @@ interface SavedWorkflowDirsLite {
 }
 
 interface CodingSdkSubset {
-  resolveWireEffort?: import('./reasoning-effort.js').ResolveWireEffortFn;
   listBuiltinWorkflows?: () => readonly WorkflowMetaLite[];
   listWorkflowPatternTemplates?: () => readonly WorkflowPatternLite[];
   getBuiltinWorkflow?: (name: string) => unknown;
@@ -2238,21 +2223,6 @@ async function loadCodingSdk(): Promise<CodingSdkSubset | null> {
   }
 }
 
-// /agent subpath — only for the reasoning-effort rejection cache (same source the chat path uses),
-// so workflow child agents also stop resending a wire-rejected effort. Load failure → empty cache.
-type AgentEffortCache = {
-  getCachedRejectedEfforts?: (provider: string, model?: string) => readonly string[];
-};
-let agentEffortCache: AgentEffortCache | null = null;
-async function loadAgentEffortCache(): Promise<AgentEffortCache | null> {
-  if (agentEffortCache) return agentEffortCache;
-  try {
-    agentEffortCache = (await import('@kodax-ai/kodax/agent')) as unknown as AgentEffortCache;
-    return agentEffortCache;
-  } catch {
-    return null;
-  }
-}
 
 /** saved 工作流搜索目录:个人 ~/.kodax/workflows + 项目 <root>/.kodax/workflows。*/
 function savedWorkflowDirs(projectRoot?: string): { personal: string; project?: string } {
