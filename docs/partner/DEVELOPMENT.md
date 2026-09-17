@@ -41,25 +41,28 @@
 
 ## 仓库与分支职责
 
-从 2026-09-14 起，交付目标统一为组织仓库 `KodaX-AI-dev/KodaX-Space`：
+2026-09-17 用户确认：以组织仓库 `KodaX-AI-dev/KodaX-Space` 的最新源码为基础，后续代码、修复、测试和文档统一在自己的一个分支开发与上传：
 
-- `origin`：组织 Space 仓库，作为拉取和以后提交 PR 的目标。
-- `main` / `origin/main`：组织主线，不直接开发或覆盖。
-- `integration/partner-bundled-release`：保留原始 39 条提交的来源分支。
+- `origin`：组织 Space 仓库，作为拉取上游和上传自己分支的目标。
+- `feature/partner-maintenance-20260917`：当前唯一开发和上传分支，后续持续更新；不为每次修改自动另建分支。
+- `main`：不在其上修改、提交，不推送、合并、重置或删除；不创建面向 `main` 的 PR，不启用自动合并或代为合并。
+- `origin/main`：只用于读取、比较和吸收同事的最新改动；同步方向是主线进入自己的分支。
+- `integration/partner-bundled-release`：原始 39 条提交的来源历史，不再用于日常上传。
 - `feature/partner-bundled-release`：已通过 [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5) 合入组织 main 的 beta.3 贡献分支，保留作历史。
-- `feature/partner-<topic>`：后续短期开发分支，从最新 `origin/main` 创建。
-- 旧个人仓库和旧 F146 分支只作来源及恢复历史，不再作为产品分发入口。
+- `docs/partner-beta3-published`：此前通过 PR #6 提交发布文档的历史分支。
+- 上述三个历史分支不再接收日常改动；保留现有 GitHub 记录，不自动删除远端分支。
 
-2026-09-14 来源分支已上传。随后用户授权按贡献规范提交到组织主线，并确认 Space `0.1.46-beta.3`；通过 PR、完整验证及既有发布 workflow 交付。主线使用署名 `poppersamhar` 且带完整正文的整合提交，来源分支不改写。实际合并、标签和发布状态见 [beta.3 readiness](../releases/v0.1.46-beta.3-release-readiness.md)。
+2026-09-14 曾获授权将 beta.3 通过 PR 合入主线并发布，该一次性授权已经执行完毕，不能作为后续主线操作的依据。历史合并、标签和发布状态见 [beta.3 readiness](../releases/v0.1.46-beta.3-release-readiness.md)。只有用户明确更改本约定时，才能调整统一分支或主线操作范围。
 
-开发使用当前组织集成 checkout。旧 Partner checkout 仅保留历史；集成仓库已复制全部需要的 Git 对象，不依赖旧目录的对象存储。具体目录、提交和备份证据记录在本地交付报告，不把个人电脑路径写入公共产品配置。
+开发使用当前组织集成 checkout。旧 Partner 本地 checkout 已按用户要求删除；现有仓库的 Git 对象独立，不依赖旧目录。具体本地路径和核对结果记录在本地工作说明，不把个人电脑路径写入公共产品配置。
 
 ## 每次开始和结束开发
 
-开始前先确认自己在哪个分支：
+开始前确认当前分支必须为 `feature/partner-maintenance-20260917`；不符合时先核对工作区状态，不直接开始编辑：
 
 ```sh
 git status --short --branch
+test "$(git branch --show-current)" = feature/partner-maintenance-20260917
 ```
 
 不要在 `main` 上修改。一个行为完成后就提交，不再把数天的工作堆成一个工作区快照：
@@ -96,20 +99,15 @@ docs/partner/INTEGRATION.md
 
 PF 使用 `PF###` 编号，并分别管理开发状态 `Planned → InProgress → Completed` 与集成状态 `Local → Ready → Proposed → Integrated`。该 Skill 不修改 Space 总 `docs/FEATURE_LIST.md`；需要新的 Space `F###` 时走全局 Feature 流程。
 
-## 短分支与组织主线同步
+## 统一分支与组织主线同步
 
-本次融合已进入组织主线。后续从最新组织主线建立短功能分支：
+统一分支已建立。以后继续使用它，代码与配套文档在同一分支上传，不再分成代码、文档和 integration 三条上传线。
 
-```sh
-git fetch origin main
-git switch -c feature/partner-<topic> origin/main
-```
-
-同步时先提交当前工作并确认目录干净，再把组织主线合入当前功能分支；不重写已经共享的历史：
+需要吸收同事的新代码时，先提交当前工作并确认目录干净，再获取上游并合入自己的分支；不切换或更新本地 `main`，不重写已经共享的历史：
 
 ```sh
 git fetch origin main
-git switch feature/partner-<topic>
+git switch feature/partner-maintenance-20260917
 git merge --no-ff --no-commit origin/main
 ```
 
@@ -134,7 +132,7 @@ Space Trusted Host
 
 共享的 `real-session.ts`、Shell 和 schema 只依赖稳定接口。新增 Partner 能力优先落在 Partner adapter、connector service 和 Partner UI 目录；不要继续让 Coder manifest 逐个排除 Partner channel，也不要在共享文件里无限增加 `surface === 'partner'` 分支。
 
-日常 Host API、IPC 和 Partner 宿主兼容改造归入 `feature/partner-host-*`；需要吸收新的 `origin/main` 时，在当前功能分支同步并处理冲突；`integration/partner-bundled-release` 仅保留来源历史。插件包不应通过修改 Coder 业务逻辑来获得能力。
+日常 Host API、IPC 和 Partner 宿主兼容改造也统一提交到 `feature/partner-maintenance-20260917`；需要吸收新的 `origin/main` 时，在该分支同步并处理冲突。插件包不应通过修改 Coder 业务逻辑来获得能力。
 
 ## 版本号与分发
 
@@ -184,31 +182,29 @@ Node 与 Electron 使用不同 SQLite ABI；不要同时运行会重建原生依
 
 ## 推送与发布门槛
 
-Space beta.3 曾通过组织主线和既有发布流程交付，随后由维护者撤回 Release；发布与撤回记录均保留。以下门槛适用于后续功能与新版本：
+当前日常交付是将代码与文档上传到自己的统一分支。Space beta.3 的历史主线发布流程不再作为本开发线的默认后续步骤。
 
-1. 核对组织最新主线、目标分支和已完成验证，确认当前工作区没有未提交的产品改动。
+1. 核对当前分支为 `feature/partner-maintenance-20260917`，检查上游差异和已完成验证，确认没有遗漏未提交的改动。
 2. 核对即将提交的内容没有凭据、真实账号运行数据或个人环境配置；只包含可复核的产品代码、资产和文档。
-3. 核对 `origin` 指向组织仓库，推送当前已确认的 `feature/partner-*` 功能分支并向 `main` 提交 PR，不直接覆盖组织主线。
-4. 组织 CI 及各平台验收通过后，由维护者合并，再按 Space 原有发布流程更新版本、创建对应标签与 Release。
-5. 从正式 Release 下载验证，确认用户首次启动看到 Partner，账号连接仍由用户授权，Coder 运行不受影响。
+3. 核对 `origin` 为 `KodaX-AI-dev/KodaX-Space`，仅向同名远端分支推送。不向 `main` 提交 PR 或合并，不更新三个旧交付分支。
+4. 检查自己分支的远端提交和适用的 CI 结果，记录实际交付状态；分支上传不等于进入主线或安装包已发布。
 
-本地 `git commit`、组织分支、合入主线、正式 Release 是四个不同状态。只有目标提交被组织主线接收后，才将对应 PF 标记为 `Integrated`。本次用户已明确选择组织发布路线；个人仓库删除状态单独记录，不影响本地代码保留。
-
-## 恢复本地归档材料
-
-先查看归档内容，不要整分支合并：
+上传时显式限定源分支和目标，首次上传及以后更新均使用：
 
 ```sh
-git show --stat archive/local-only-f146-unreviewed-20260904
+test "$(git branch --show-current)" = feature/partner-maintenance-20260917 &&
+  git push -u origin HEAD:refs/heads/feature/partner-maintenance-20260917
 ```
 
-确认截图、路径、图标或权限变化确实可以公开后，只恢复明确需要的路径：
+禁止 force push、`--all`、`--mirror` 和 `--tags`。若推送被拒绝，先核对远端自己分支的变化，不强制覆盖。
 
-```sh
-git restore --source=archive/local-only-f146-unreviewed-20260904 --worktree -- <path>
-```
+分支上传不授权创建发布标签、组织 GitHub Release 或变更更新渠道；现有 `v*` 标签会触发组织发布 workflow。安装包发布需要单独明确范围，不能沿用 beta.3 的旧授权。
 
-修正本机绝对路径、授权或来源问题后，再作为独立提交加入功能分支。
+本地提交、远端分支、主线集成、安装包 Release 是不同状态。历史 `Integrated` 证据保留；只上传自己分支的新工作不得标记为已进入 Space 主线。
+
+## 历史材料与当前基线
+
+以后以组织最新源码及现有文档结构为基础。历史提交和验收记录仅用于追溯，不整体恢复旧本地代码或以旧文档覆盖同事的修正。
 
 ## 文档迁移与链接维护
 

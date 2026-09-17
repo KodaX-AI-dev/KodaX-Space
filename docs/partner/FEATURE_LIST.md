@@ -15,9 +15,10 @@
 - Planned Partner Version: `v0.1.0`
 - Partner Library Target: `0.1.0`
 - Current Source Baseline: KodaX Space `v0.1.46-beta.4` / KodaX `0.7.96-rc.7`，尚未发布。历史 `v0.1.46-beta.3` tag 保留 `0.7.96-rc.4`，其 GitHub Release 已撤回；见 [beta.4 readiness](../releases/v0.1.46-beta.4-release-readiness.md)。
-- Active Baseline: `origin/main`; future work uses `feature/partner-<topic>`
+- Upstream Baseline: `origin/main`（只读取和吸收上游改动，不修改主线）
+- Development / Upload Branch: `feature/partner-maintenance-20260917`（代码、修复和文档统一上传；不向 main 提 PR 或合并，见 [Development](DEVELOPMENT.md)）
 - Current Git Snapshot: main merge `a2f7a1b0` via [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5); source `f8daed67` preserved; beta.3 status: [release readiness](../releases/v0.1.46-beta.3-release-readiness.md)
-- Last Updated: 2026-09-14
+- Last Updated: 2026-09-17（统一开发与上传分支约定；Feature 状态未变）
 
 Integration evidence: PF001–PF013 existing implementations entered `main` in [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5) at `a2f7a1b0` and originally shipped in Space beta.3, whose GitHub release was subsequently withdrawn. Integration history is retained in the beta.4 candidate; this does not complete the remaining development or real-account acceptance for PF001–PF003. Existing F146 mappings are retained; no new Space F-ID is assigned.
 

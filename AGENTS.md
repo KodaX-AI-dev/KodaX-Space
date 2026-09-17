@@ -22,6 +22,28 @@ If the user did not give a concrete task, read `README.md`, then check `docs/` f
 - `docs/partner/README.md` — Partner product-line documentation
 - `docs/partner/FEATURE_LIST.md` — Partner-only `PF###` planning
 
+## Partner Branch Policy (2026-09-17)
+
+For this Partner development line, all code, fixes, tests, and documentation use the single
+branch `feature/partner-maintenance-20260917` in `KodaX-AI-dev/KodaX-Space`.
+Continue updating that branch; do not split routine uploads across the three historical
+beta.3 branches or automatically create a new branch for each change.
+
+- Do not modify, commit on, push to, merge into, reset, or delete `main`.
+- Do not create PRs targeting `main`, enable auto-merge, or merge such PRs on the user's behalf.
+- Fetch `origin/main` only as an upstream source. Bring needed upstream changes into the
+  Partner branch; never send Partner changes back into `main` under this policy.
+- When uploading, verify the current branch and explicitly target
+  `HEAD:refs/heads/feature/partner-maintenance-20260917`. Do not force-push or use
+  `--all`, `--mirror`, or `--tags`.
+- Branch delivery does not authorize release tags, an organization GitHub Release, or
+  update-channel changes. The one-time beta.3/main authorization is historical and expired.
+- Follow the existing document layout: Partner-specific material in `docs/partner/`,
+  shared Space contracts in the existing global docs. Do not restore the old local source tree.
+
+Changing this branch policy requires a new explicit user instruction. See
+[Partner development workflow](docs/partner/DEVELOPMENT.md) for the upload and upstream-sync steps.
+
 ## Code Addition Discipline
 
 **Before adding code, ask**:

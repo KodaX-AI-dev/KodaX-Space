@@ -111,8 +111,10 @@ Partner 代码不会移动到文档目录；源码继续按 Electron、Renderer�
 
 ## 维护约定
 
+- 代码与文档统一在 `feature/partner-maintenance-20260917` 开发和上传；三个 beta.3 历史分支不再用于日常上传，不自动拆分新的上传分支。
+- 不修改 `main`，不向其推送、提 PR 或合并；只将需要的 `origin/main` 更新吸收到自己的分支。具体约束见 [Development](DEVELOPMENT.md)。
 - 新增、开始、完成或归档 Partner 功能时使用 `partner-feature-manager`。
 - PF 设计写入 `docs/partner/features/`，不要写回 Space 的 `docs/features/`。
 - Partner 测试、评审和发布证据写入本目录对应子目录。
-- 准备进入 Space 时，在 [Integration](INTEGRATION.md) 记录目标分支、提交、Space Feature 和验证证据。
+- 在 [Integration](INTEGRATION.md) 记录自己分支的提交、Space Feature 映射和验证证据；上传自己分支不表示新工作已进入 Space 主线。
 - 只有影响 Space 总产品、共享架构或正式发布时，才小范围修改全局文档。

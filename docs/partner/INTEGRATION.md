@@ -108,14 +108,16 @@ F146 <- PF001, PF002, PF003
 - PF001–PF003 都是 F146 的 Partner 内部切片；在上游接受前不复制成三个 Space Feature。
 - Partner `v0.1.0` 与 library `0.1.0` 是独立版本轴，不覆盖 Space `v0.1.46-alpha.5` 或 KodaX `0.7.96-beta.1`。
 
-## 8. 上游同步与合并门槛
+## 8. 上游同步与分支交付门槛
 
-1. 在当前组织集成 checkout 保存本地修改，确认分支和工作区干净。
-2. 从组织 `origin` 获取最新主线，将 `origin/main` 合入集成分支，解决共享代码和文档冲突。
+2026-09-17 起，本开发线统一使用 `feature/partner-maintenance-20260917`。此前向 main 提交 PR 和合并的授权已结束，后续只交付自己的分支。
+
+1. 在当前组织集成 checkout 保存本地修改，确认当前为上述统一分支且工作区干净。
+2. 从组织 `origin` 获取最新主线，将需要的 `origin/main` 改动合入自己的分支，解决共享代码和文档冲突；不修改 `main`。
 3. 验证 Partner Extension、Partner/Coder desktop、IPC、类型、lint 和打包。
 4. 记录真实服务人工项与自动 fixture 的差异。
-5. 用户通知后向组织推送集成分支并提交 PR；主线接收后，后续功能从最新组织主线建立短分支。
-6. 只有目标提交进入 Space 主线后才将 PF 标记 `Integrated`。
+5. 代码、测试和文档统一上传到 `origin/feature/partner-maintenance-20260917`，不分散上传到三个旧交付分支，不自动创建新上传分支。
+6. 不向 `main` 推送、提 PR 或合并，不因分支上传而标记新工作 `Integrated`，不自动创建发布标签或 Release。
 
 详细命令见 [Development](DEVELOPMENT.md)。
 
