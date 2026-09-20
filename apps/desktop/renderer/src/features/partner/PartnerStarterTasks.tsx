@@ -5,7 +5,6 @@ import { useI18n } from '../../i18n/I18nProvider.js';
 import { invokeExtensionHost, useSpaceExtensions } from '../extensions/SpaceExtensionsProvider.js';
 import { usePartnerExpert } from '../extensions/PartnerExpertProvider.js';
 import { expertContextMatches } from '../extensions/partnerExpertBinding.js';
-import { requestPartnerSkillDraft } from './partnerSkillDraft.js';
 
 export const PARTNER_STARTER_EXPERTS = [
   { id: 'research', expertId: 'deep-research' },
@@ -123,7 +122,12 @@ export function PartnerStarterTasks(): JSX.Element {
         current.state.available &&
         current.state.expert?.expert.id === expert.id
       ) {
-        requestPartnerSkillDraft(expert.starterTasks[0]!);
+        // Choosing a scenario replaces its draft instead of accumulating templates.
+        window.dispatchEvent(
+          new CustomEvent('kodax-space.compose-prefill', {
+            detail: { text: expert.starterTasks[0]! },
+          }),
+        );
       }
     } catch (reason) {
       if (active.current && expertContextMatches(scope, context.binding.getSnapshot().context))

@@ -17,7 +17,7 @@ const manifest = JSON.parse(
 );
 
 test(
-  'starter tasks bind the current expert revision and method before inserting a template; failures and scope changes do not edit drafts',
+  'switching starter tasks replaces the composer template after binding the expert; failures and scope changes preserve drafts',
   { skip: !browserPath },
   async (t) => {
     const fixture = `
@@ -29,6 +29,8 @@ import {useSurfaceStore} from '../../store/surface.ts';
 import {SpaceExtensionsProvider} from '../extensions/SpaceExtensionsProvider.tsx';
 import {PartnerExpertProvider} from '../extensions/PartnerExpertProvider.tsx';
 import {PartnerStarterTasks} from './PartnerStarterTasks.tsx';
+import {BottomBar} from '../../shell/BottomBar.tsx';
+import {requestPartnerSkillDraft} from './partnerSkillDraft.ts';
 const manifest=${JSON.stringify(manifest)};
 window.calls=[];window.fail=false;window.hold=false;window.release=null;
 window.kodaxSpace={platform:'darwin',on:()=>()=>{},invoke:async(channel,input)=>{
@@ -40,11 +42,13 @@ window.kodaxSpace={platform:'darwin',on:()=>()=>{},invoke:async(channel,input)=>
   if(window.fail)return {ok:false,error:{code:'UNAVAILABLE',message:'Expert unavailable'}};
   return {ok:true,data:{expert:{extensionId:manifest.id,extensionVersion:manifest.version,useSkill:input.useSkill,expert:manifest.experts.find(e=>e.id===input.expertId)}}};
  }
- throw new Error('Unexpected IPC '+channel);
+ if(channel==='session.listRunning')return {ok:true,data:{peers:[]}};
+ if(channel==='slash.discover')return {ok:true,data:{commands:[]}};
+ if(channel==='project.fileSearch')return {ok:true,data:{paths:[]}};
+ return {ok:false,error:{code:'ERR_TEST_UNAVAILABLE',message:'Fixture did not allow '+channel}};
 }};
 useSurfaceStore.getState().setSurface('partner');useAppStore.getState().setCurrentProject('/a');useAppStore.getState().setCurrentSession(null);
-window.addEventListener('kodax-space.partner-insert-skill-draft',event=>{document.querySelector('textarea').value+=event.detail.text});
-createRoot(document.getElementById('root')).render(<I18nProvider><SpaceExtensionsProvider><PartnerExpertProvider><textarea defaultValue="保留草稿。"/><button onClick={()=>useAppStore.getState().setCurrentProject('/b')}>换项目</button><PartnerStarterTasks/></PartnerExpertProvider></SpaceExtensionsProvider></I18nProvider>);
+createRoot(document.getElementById('root')).render(<I18nProvider><SpaceExtensionsProvider><PartnerExpertProvider><BottomBar/><button onClick={()=>useAppStore.getState().setCurrentProject('/b')}>换项目</button><button onClick={()=>requestPartnerSkillDraft('补充方法草稿。')}>插入方法草稿</button><PartnerStarterTasks/></PartnerExpertProvider></SpaceExtensionsProvider></I18nProvider>);
 `;
     const bundle = await build({
       stdin: {
@@ -57,12 +61,36 @@ createRoot(document.getElementById('root')).render(<I18nProvider><SpaceExtension
       format: 'iife',
       platform: 'browser',
       jsx: 'automatic',
-      define: { 'import.meta.env': '{}' },
+      define: {
+        'import.meta.glob': '__testAssetGlob',
+        'import.meta.env': '{}',
+        'import.meta.url': '"about:blank"',
+      },
+      banner: { js: 'const __testAssetGlob = () => ({});' },
+      loader: { '.png': 'dataurl', '.svg': 'dataurl', '.css': 'empty' },
+      plugins: [
+        {
+          name: 'vite-asset-environment',
+          setup(builder) {
+            builder.onResolve({ filter: /\?(?:url|inline|worker)$/ }, (args) => ({
+              path: args.path,
+              namespace: 'test-asset',
+            }));
+            builder.onLoad({ filter: /.*/, namespace: 'test-asset' }, (args) => ({
+              contents: args.path.endsWith('?worker')
+                ? 'export default class TestWorker {}'
+                : 'export default "";',
+              loader: 'js',
+            }));
+          },
+        },
+      ],
     });
     const browser = await chromium.launch({ executablePath: browserPath, headless: true });
     t.after(() => browser.close());
     const page = await browser.newPage({ locale: 'zh-CN' });
-    page.setDefaultTimeout(5000);
+    page.setDefaultTimeout(process.env.CI ? 15_000 : 5000);
+    page.on('pageerror', (error) => t.diagnostic(error.message));
     await page.route('**/*', (route) =>
       route.fulfill({ body: '<div id="root"></div>', contentType: 'text/html' }),
     );
@@ -71,6 +99,9 @@ createRoot(document.getElementById('root')).render(<I18nProvider><SpaceExtension
     const cards = page.getByTestId('partner-starter-tasks');
     const ids = [
       'deep-research',
+      'data-analysis',
+      'deep-research',
+      'data-analysis',
       'data-analysis',
       'writing-mentor',
       'meeting-minutes',
@@ -92,8 +123,15 @@ createRoot(document.getElementById('root')).render(<I18nProvider><SpaceExtension
           .at(-1).input,
         { extensionId: manifest.id, expertId: id, revision: expert.revision, useSkill: true },
       );
-      assert.ok((await page.locator('textarea').inputValue()).startsWith('保留草稿。'));
+      await cards.getByRole('status').waitFor({ state: 'detached' });
+      assert.equal(await page.locator('textarea').inputValue(), expert.starterTasks[0]);
     }
+    await page.locator('textarea').fill('用户修改过的草稿。');
+    await page.locator('textarea').press('End');
+    await page.getByRole('button', { name: '插入方法草稿', exact: true }).click();
+    await page.waitForFunction(
+      () => document.querySelector('textarea')!.value === '用户修改过的草稿。补充方法草稿。',
+    );
     const before = await page.locator('textarea').inputValue();
     await page.evaluate(() => {
       Reflect.set(window, 'fail', true);
