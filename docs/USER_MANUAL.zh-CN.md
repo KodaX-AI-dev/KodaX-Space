@@ -6,7 +6,7 @@
 
 > 当前发布精确锁定 KodaX `0.7.95`，要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。同一 boot 的临时 `unconfirmed-owner` 会自动重试；Space 不要求用户删除标记，且只在缺少安全证明时阻断有竞争风险的 sandbox/owner 操作。
 >
-> 当前源码候选为 Space `0.1.46-beta.5`，精确锁定 KodaX `0.7.96-rc.7`，并要求 `sessionCancellation:1`（durable frontier）、`toolInvocation:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
+> 当前源码候选为 Space `0.1.46-rc.1`，精确锁定 KodaX `0.7.96-rc.8`，并要求 `sessionCancellation:1`（durable frontier）、`toolInvocation:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
 > Windows 既有安装首次迁移可能需要用户在 Settings → Runtime 明确执行一次 Sandbox Setup；
 > 普通启动、Refresh 和工具调用不会隐式提升权限。正式发布版的 0.7.95 说明保留为历史事实。
 > v0.1.46-beta.5 要求 daemon 支持会话原子取消：停止其接受请求时固定队列边界内的任务，之后提交的新任务保留。未知结果保留重试按钮，刷新后仍绑定原 Session/Run/requestId；已接受请求可原样重放，针对已结束 Run 的首次请求被拒绝且不会转向后继任务。rc.3 已通过发布包 daemon 及打包版真实任务执行验收；子代理读图写文件可完成，但图片颜色识别仍有不一致样本。旧 owner 由 SDK 连接层按其安全条件升级，Space 不再降级为只停一个 Run。
@@ -450,6 +450,8 @@ KodaX 0.7.77 会为确认兼容的内置 Provider 建立稳定的提示词缓存
 
 - 会话可覆盖 Provider 和 Model。
 - Effort 选项由当前 Provider/Model 的 KodaX reasoning profile 决定，UI 按 SDK 声明顺序展示可用档位；`quick / balanced / deep` 仅作为旧版兼容别名。
+- 未声明能力的兼容 Provider 可尝试关闭、自动及极低到最高的全部标准档位；能力未知不等于明确不支持。自动优先采用模型声明的默认档，否则从 max 开始；明确拒绝后由 SDK 回退并缓存。关闭被拒绝时尝试最低可用思考档。
+- 选择器保留你的意图，另行显示上次请求实际发送的档位和回退原因。该记录只适用于对应模型与选择；请求成功或没有可见 Thinking 都不能证明某档位已生效或不受支持。
 - `Ctrl+Shift+E` 打开/循环可用 effort；`Ctrl+T` 保留为旧式循环快捷键。
 - Thinking 是模型输出行为，不等于 Effort。
 
@@ -537,7 +539,7 @@ Partner 已支持 Sources、KB、workspace-first Outputs、checkpointed writes�
 
 ### 12.1 使用内置专家
 
-`0.1.46-beta.5` 候选新增随 Space 分发的 Partner 插件库。安装包含本次改动的版本后，首次启动会安装并启用内置库，无需单独下载 `.space-extension`。正式发布状态见 [版本验收记录](releases/v0.1.46-beta.3-release-readiness.md)；稳定版 `v0.1.45` 不包含这一增量。
+`0.1.46-rc.1` 候选新增随 Space 分发的 Partner 插件库。安装包含本次改动的版本后，首次启动会安装并启用内置库，无需单独下载 `.space-extension`。正式发布状态见 [版本验收记录](releases/v0.1.46-beta.3-release-readiness.md)；稳定版 `v0.1.45` 不包含这一增量。
 
 1. 切换到 **Partner**，从首页任务卡直接选择专家，或通过 **Plugins（插件）** 打开专家库选择。
 2. 选择专家，说明目标并添加资料。专家的方法会用于当前 Partner 会话，继续使用 Space 中配置的模型。

@@ -16,6 +16,23 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.46-rc.1] - 2026-09-17
+
+### Fixed
+
+- **KodaX rc.8 reasoning integration**: Pin the published SDK to 0.7.96-rc.8.
+  Keep requested effort in chat, shared Runtime settings and workflows; delegate
+  fallback and rejection caching to the SDK. Unknown models allow Off and all
+  standard effort attempts. Show the last sent effort and fallback reason without
+  claiming the strength took effect.
+- **Provider timeout reporting**: Recognize native and cause-wrapped
+  TimeoutError/AbortError, including numeric DOMException codes.
+- **Local HTML animation previews**: Allow nested pages from the same preview
+  directory in both network modes, fixing blank iframe-based animation players.
+  Remote frames remain blocked and local file access stays capability-scoped.
+
+---
+
 ## [0.1.46-beta.5] - 2026-09-16
 
 ### Fixed

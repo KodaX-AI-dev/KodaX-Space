@@ -14,6 +14,59 @@ import {
   runWithExactProviderCredential,
   runWithSpaceProviderCredentialLease,
 } from '../providers/credential-scope.js';
+import { wrapSdkError } from '../kodax/sdk-errors.js';
+
+for (const name of ['TimeoutError', 'AbortError']) {
+  for (const nested of [false, true]) {
+    test(`released SDK preserves ${name} through a Space child lease (nested=${nested})`, async () => {
+      const secret = 'synthetic-space-credential';
+      const native = new DOMException(`Operation ended: ${secret}`, name);
+      const original = nested
+        ? new Error(`Provider failed: ${secret}`, { cause: new Error('Request failed', { cause: native }) })
+        : native;
+      Object.defineProperty(native, 'cause', { value: original, configurable: true });
+      const operation = runWithSpaceProviderCredentialLease('provider-a', async () => {
+        const child = deriveCurrentProviderCredentialLeaseScope(['provider-a']);
+        assert.ok(child);
+        try {
+          return await runWithProviderCredentialLeaseScope(child, () =>
+            withProviderRequestCredential('provider-a', 'primary', undefined, async () => {
+              assert.equal(getScopedProviderCredential('provider-a'), secret);
+              throw original;
+            }),
+          );
+        } finally {
+          child.close();
+        }
+      }, {
+        readProviderCredential: async () => secret,
+        listProviderCredentialIds: async () => [],
+        createProviderCredentialLeaseScope,
+        runWithProviderCredentialLeaseScope,
+      });
+      await assert.rejects(operation, (error: unknown) => {
+        assert.ok(error instanceof Error);
+        const redactedNative = nested ? (error.cause as Error).cause : error;
+        assert.ok(redactedNative instanceof DOMException);
+        assert.equal(redactedNative.name, name);
+        assert.equal(redactedNative.code, name === 'TimeoutError' ? 23 : 20);
+        assert.equal(redactedNative.message, 'Operation ended: [REDACTED_CREDENTIAL]');
+        assert.equal(Reflect.get(redactedNative, 'cause'), error);
+        assert.ok(!String(redactedNative).includes(secret));
+        assert.equal(typeof redactedNative.stack, 'string');
+        assert.ok(!redactedNative.stack?.includes(secret));
+        const wrapped = wrapSdkError(error);
+        assert.equal(wrapped.category, name === 'TimeoutError' ? 'network' : 'cancelled');
+        assert.equal(wrapped.retriable, true);
+        assert.ok(!wrapped.userMessage.includes(secret));
+        assert.ok(!wrapped.debugMessage.includes(secret));
+        return true;
+      });
+      assert.equal(native.message, `Operation ended: ${secret}`);
+      assert.equal(getScopedProviderCredential('provider-a'), undefined);
+    });
+  }
+}
 
 test('an exact Space credential remains scoped across asynchronous work', async () => {
   let release!: () => void;

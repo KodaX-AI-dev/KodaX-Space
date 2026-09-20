@@ -4,8 +4,21 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { projectEmbeddedMidTurnUserMessages, RealKodaXSession } from '../kodax/real-session.js';
+import { projectEmbeddedMidTurnUserMessages, projectEmbeddedReasoningResolution, RealKodaXSession } from '../kodax/real-session.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
+
+test('embedded reasoning observations keep root ownership', () => {
+  const resolution = {
+    provider: 'OpenRouter', model: 'reasoner', requestedEffort: 'auto', sentEffort: 'max',
+    verified: false as const, fallbacks: [],
+  };
+  assert.deepEqual(projectEmbeddedReasoningResolution('s', resolution), {
+    kind: 'reasoning_resolved', sessionId: 's', resolution,
+  });
+  assert.equal(projectEmbeddedReasoningResolution('s', { ...resolution, contextKind: 'child' }), undefined);
+  const legacyChildResolution = { ...resolution, childAgentId: 'child' };
+  assert.equal(projectEmbeddedReasoningResolution('s', legacyChildResolution), undefined);
+});
 
 async function waitForTest(predicate: () => boolean, timeoutMs = 1_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -1446,7 +1459,7 @@ test('active daemon run preserves interrupt intent and requires explicit after-t
         provider: 'test-provider',
         model: null,
         thinking: null,
-        effort: null,
+        effort: 'auto',
         reasoningMode: null,
         permissionMode: 'accept-edits',
         executionCwd: process.cwd(),
@@ -1566,7 +1579,7 @@ test('daemon run refreshes settings and transports trusted Skill context without
         provider: 'test-provider',
         model: null,
         thinking: null,
-        effort: null,
+        effort: 'max',
         reasoningMode: null,
         permissionMode: 'auto',
         executionCwd: process.cwd(),
@@ -1583,6 +1596,7 @@ test('daemon run refreshes settings and transports trusted Skill context without
           readonly rawUserInput?: string;
           readonly skillInvocation?: Record<string, unknown>;
         };
+        readonly effort?: string;
         readonly modelOverride?: string;
       }
     | undefined;
@@ -1595,6 +1609,7 @@ test('daemon run refreshes settings and transports trusted Skill context without
     enforceAtRuntime: true,
   });
   assert.equal(options?.modelOverride, 'skill-model');
+  assert.equal(options?.effort, 'max');
   assert.deepEqual(managedRunInput?.operation, { operationId: 'space-send-start-1' });
   assert.deepEqual(managedRunInput?.input, [
     { type: 'text', text: 'prepared daemon Skill prompt' },

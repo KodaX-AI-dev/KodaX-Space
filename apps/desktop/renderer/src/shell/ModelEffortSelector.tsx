@@ -25,7 +25,7 @@
 
 import { useEffect, useState } from 'react';
 import { BrainCircuit, ChevronDown } from 'lucide-react';
-import type { ProviderInfo, SessionMeta } from '@kodax-space/space-ipc-schema';
+import type { ProviderInfo, SessionMeta, SessionEvent } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
 import { useSurfaceStore } from '../store/surface.js';
 import { pushToast } from '../store/toastStore.js';
@@ -33,10 +33,12 @@ import { useI18n } from '../i18n/I18nProvider.js';
 import { setSpaceReasoningDefault } from '../space-control/semanticActions.js';
 import type { MessageKey } from '../i18n/messages.js';
 import { resolveActiveModel } from './resolveActiveModel.js';
-import { sdkEffortToReasoningMode, visibleEffortLadder } from './effortLadder.js';
+import { sdkEffortToReasoningMode, visibleEffortLadder, latestReasoningResolution } from './effortLadder.js';
 
 // Re-export the pure ladder helpers (kept as this module's public API; logic lives in effortLadder.ts).
 export { sdkEffortToReasoningMode, visibleEffortLadder };
+
+const EMPTY_EVENTS: readonly SessionEvent[] = [];
 
 type ReasoningMode = SessionMeta['reasoningMode'];
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
@@ -65,6 +67,7 @@ export function ModelEffortSelector(): JSX.Element {
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
   const sessions = useAppStore((s) => s.sessions);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const events = useAppStore((s) => currentSessionId ? (s.eventsBySession[currentSessionId] ?? EMPTY_EVENTS) : EMPTY_EVENTS);
   const providers = useAppStore((s) => s.providers);
   const defaultProviderId = useAppStore((s) => s.defaultProviderId);
   const kodaxDefaults = useAppStore((s) => s.kodaxDefaults);
@@ -132,13 +135,21 @@ export function ModelEffortSelector(): JSX.Element {
     kodaxDefaults?.reasoningMode ??
     'auto';
   const activeEffort = sdkEffortToReasoningMode(configuredEffort) ?? 'auto';
+  const resolution = latestReasoningResolution(events, activeProviderId, activeModel, activeEffort);
+  const sentMode = resolution?.sentEffort ? sdkEffortToReasoningMode(resolution.sentEffort) : null;
+  const resolutionLabel = resolution ? t('modelPicker.reasoning.sent', {
+    effort: sentMode ? effortLabel(sentMode, t) : t('modelPicker.reasoning.omitted'),
+  }) : null;
+  const fallbackLabel = resolution?.fallbacks.map((fallback) =>
+    t(`modelPicker.reasoning.reason.${fallback.reason}`)).filter((value, index, all) => all.indexOf(value) === index).join(' · ');
+
 
   // Effort ladder built from the active model's SDK-declared efforts (falls back
   // to a stable fallback ladder when unknown). The model's own default rung is
   // annotated so the user can see "what this model prefers".
   const visibleEfforts = visibleEffortLadder(
     modelEfforts?.supportedEfforts,
-    modelEfforts?.canDisableThinking ?? false,
+    modelEfforts?.canDisableThinking,
   );
   const modelDefaultMode = modelEfforts?.defaultEffort
     ? sdkEffortToReasoningMode(modelEfforts.defaultEffort)
@@ -287,7 +298,7 @@ export function ModelEffortSelector(): JSX.Element {
         e.preventDefault();
         const ladder = visibleEffortLadder(
           modelEfforts?.supportedEfforts,
-          modelEfforts?.canDisableThinking ?? false,
+          modelEfforts?.canDisableThinking,
         );
         const idx = ladder.indexOf(activeEffort);
         const next = ladder[(idx + 1) % ladder.length] ?? ladder[0];
@@ -449,6 +460,14 @@ export function ModelEffortSelector(): JSX.Element {
             </div>
           </div>
 
+          {resolutionLabel && (
+            <p className="px-3 py-1 text-fg-muted" data-testid="reasoning-resolution">
+              {resolutionLabel}{fallbackLabel ? ` · ${fallbackLabel}` : ''}
+            </p>
+          )}
+          {modelEfforts?.supportedEfforts === undefined && (
+            <p className="px-3 py-1 text-fg-muted">{t('modelPicker.reasoning.unknown')}</p>
+          )}
           {/* Effort 行（横跨 2 列底部） */}
           <div className="border-t border-border-default pt-1">
             <div className="px-3 py-1 flex justify-between items-center text-fg-muted text-[11px] uppercase tracking-wider">

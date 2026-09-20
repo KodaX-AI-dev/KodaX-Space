@@ -725,7 +725,8 @@ function composeAssistantSegment(
         currentText.thinking = (currentText.thinking ?? '') + evt.text;
         break;
       }
-      case 'provider_recovery': {
+      case 'provider_recovery':
+      case 'reasoning_resolved': {
         break;
       }
       case 'tool_start': {

@@ -1,8 +1,8 @@
 // Pure effort-ladder helpers shared by the picker and Runtime projections.
 
-import { reasoningModeSchema, type ReasoningMode } from '@kodax-space/space-ipc-schema';
+import { reasoningModeSchema, type ReasoningMode, type SessionEvent } from '@kodax-space/space-ipc-schema';
 
-const UNKNOWN_CAPABILITY_ORDER: readonly ReasoningMode[] = ['auto', 'low', 'medium', 'high'];
+const UNKNOWN_CAPABILITY_ORDER: readonly ReasoningMode[] = ['auto', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 /** Preserve real SDK effort levels while accepting persisted Space aliases. */
 export function sdkEffortToReasoningMode(effort: string): ReasoningMode | null {
@@ -34,10 +34,10 @@ export function sdkEffortToReasoningMode(effort: string): ReasoningMode | null {
 /** Build an exact, provider-aware picker ladder without collapsing xhigh/max. */
 export function visibleEffortLadder(
   supportedEfforts: readonly string[] | undefined,
-  canDisableThinking = false,
+  canDisableThinking?: boolean,
 ): readonly ReasoningMode[] {
   if (supportedEfforts === undefined) {
-    return canDisableThinking ? ['off', ...UNKNOWN_CAPABILITY_ORDER] : UNKNOWN_CAPABILITY_ORDER;
+    return canDisableThinking !== false ? ['off', ...UNKNOWN_CAPABILITY_ORDER] : UNKNOWN_CAPABILITY_ORDER;
   }
 
   const visible: ReasoningMode[] = canDisableThinking ? ['off', 'auto'] : ['auto'];
@@ -49,4 +49,19 @@ export function visibleEffortLadder(
     visible.push(mode);
   }
   return visible;
+}
+
+/** Show the last request's observation only for the current provider, model and intent. */
+export function latestReasoningResolution(
+  events: readonly SessionEvent[], provider: string | null, model: string, intent: ReasoningMode,
+): Extract<SessionEvent, { kind: 'reasoning_resolved' }>['resolution'] | undefined {
+  for (let index = events.length - 1; index >= 0; index--) {
+    const event = events[index];
+    if (event?.kind !== 'reasoning_resolved') continue;
+    const resolution = event.resolution;
+    return resolution.provider.toLowerCase() === provider?.toLowerCase() &&
+      resolution.model === model && sdkEffortToReasoningMode(resolution.requestedEffort) === intent
+      ? resolution : undefined;
+  }
+  return undefined;
 }

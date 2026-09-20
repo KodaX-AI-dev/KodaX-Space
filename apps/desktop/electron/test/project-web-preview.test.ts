@@ -195,7 +195,12 @@ test('project preview exposes a fixed diagnostics runtime and mode-specific CSP'
   assert.match(localCsp, /connect-src 'self'/);
   assert.doesNotMatch(localCsp, /connect-src[^;]*https:/);
   assert.match(networkCsp, /connect-src[^;]*https: wss:/);
-  assert.match(localCsp, /frame-src 'none'/);
+  for (const csp of [localCsp, networkCsp]) {
+    assert.equal(
+      csp.split('; ').find((directive) => directive.startsWith('frame-src ')),
+      "frame-src 'self'",
+    );
+  }
   assert.match(localCsp, /object-src 'none'/);
 
   const headers = projectWebPreviewResponseHeaders('index.html', false);

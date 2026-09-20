@@ -3,10 +3,10 @@
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
 > Last reviewed: 2026-09-16
-> Space baseline: current source `0.1.46-beta.5`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical)
-> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.96-rc.7` (`sha512-Hp8CF6RA56VBR+h/a3J3DwMeGyxs/rwfZ6lE5zGJt1lcn9Vc1ZgH0+R7pLnYpoORciD5bnJOTc+ppUxpdTaslA==`).
+> Space baseline: current source `0.1.46-rc.1`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical)
+> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.96-rc.8` (`sha512-eDAxYhXo7V4jVrNXJ4OxszsAkqynrPVZt/bnH8z71rsH0k5vUXqFN4EGFs+vuc8ELk4wHECV+OLBBwjwEJOWnQ==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
-> Workspace dependency: root and Desktop manifests and lockfile pin rc.7. Earlier rc.3 Windows packaged/boot/exit evidence remains historical; final beta.3 qualification is recorded in the release readiness document above.
+> Workspace dependency: root and Desktop manifests and lockfile pin rc.8. Earlier rc.3 Windows packaged/boot/exit evidence remains historical; final beta.3 qualification is recorded in the release readiness document above.
 > Package/source evidence: a formal release requires both workspaces to resolve one deduplicated exact Registry package whose root/desktop manifests, lock views, installed package, tarball URL, and integrity agree. Release acceptance also imports every public KodaX facade, verifies ancestor-aware transitive dependencies, loads packaged `better-sqlite3`from unpacked native bytes, and boots the packaged application.
 > Published KodaX review: all earlier compaction/history/Actor/usage/learning/external-agent contracts plus 0.7.78 ownership/integration/sandbox contracts, 0.7.80`managedRunDurability:1`, 0.7.81 canonical delivered-interrupt `entryId`, 0.7.83 active-run/session-recovery and exact-shutdown fixes, 0.7.84 same-owner Actor settlement recovery, 0.7.85 `actorSettlementConvergence:1`plus`sessionEventJournal:1`, 0.7.87 `sandboxRuntime:3`, 0.7.88 `actorSettlementConvergence:2`, 0.7.89 `runBoundHostTools:2`plus`materializedAgentTools`, and 0.7.91 `runtimeExitSettlement:1`plus`liveOutputSegments:1`have been reviewed. F118 is released; broader F117/F138 work remains planned.
 > Published 0.7.94 adds`conversationHistory:2`, typed daemon disconnect facts, credential-safe Run failure classification, fail-closed Run/sandbox finalization hardening, and the explicit-Skill contract in which legacy `user-invocable`no longer gates execution while`disable-model-invocation`gates only model discovery/tool use. Space treats lifecycle support as capability contracts, not SemVer inference.
@@ -33,6 +33,8 @@
 > Published candidate 0.7.96-rc.4 keeps every rc.3 contract and repairs new-Session startup: event journals initialize at sequence zero instead of scanning unrelated Run logs, cached event-sequence floors bind to their journal epoch so missing or corrupt sequence files recover the durable log maximum without duplicate sequences or lost replay progress (SDK Issue 334), and Full RepoIntel routing plus preturn caches populate during startup prewarm from one worker result. See [Issues 211/213/214](KNOWN_ISSUES.md).
 
 > Published candidate 0.7.96-rc.7 preserves every rc.6 contract: successful writes return eligible file outputs over A2A in both coding and managed execution, independent of conversation compaction and the memory artifact ledger, with existing publication limits and legacy executors preserved and HTML/HTM outputs recognized as `text/html`. No capability version moves; Space's existing bounded artifact projection and Runtime gates are unchanged.
+
+> Published candidate 0.7.96-rc.8 keeps every rc.7 contract and makes the SDK the single owner of reasoning-effort negotiation: requested intent is preserved end to end, unknown OpenAI-compatible capability profiles may attempt Off, auto and every standard effort level, explicit rejections are cached per provider/model, and the SDK surfaces a `reasoning_resolved` observation carrying requested effort, actually sent effort, typed fallback reasons, and `verified:false` — no visible thinking or HTTP 200 is treated as proof of effective strength. The SDK compatibility layer keeps parsing/replaying `reasoning_content`, `reasoning`, and structured `reasoning_details`; typed TimeoutError/AbortError recognition covers native and cause-wrapped errors including numeric DOMException codes. No public capability version moves.
 
 > Published candidate 0.7.96-rc.6 preserves rc.5 contracts and image recovery while reducing Windows process cleanup queries at startup and exit. Space keeps the same Runtime capability gates. Packaged boot qualification now includes 122 unresolved historical child records and verifies their bytes remain unchanged.
 
@@ -61,7 +63,7 @@ This is the Space-side source of truth for SDK-dependent capability planning. A 
 
 ## Runtime and session capabilities
 
-### Current source candidate: KodaX 0.7.96-rc.7
+### Current source candidate: KodaX 0.7.96-rc.8
 
 The source tree pins the exact published prerelease in both manifests and the
 npm lockfile. SDK startup requires `sandboxRuntime:11`, `runtimeAutoModeGuardrail:6`,
@@ -73,7 +75,7 @@ daemon admission requirements and connected Runtime checks additionally require
 `commandLifetimeFilesystemLease:false`. The release dependency gate requires the
 complete universal native bundle. Electron packaging unpacks the whole
 `dist/native` directory, and packaged smoke validates each manifest-pinned file
-before running the real sandbox path. Space uses package version 0.1.46-beta.5
+before running the real sandbox path. Space uses package version 0.1.46-rc.1
 for this source candidate. Alpha.6/alpha.7 move Windows readiness to protected-cache
 generation 10, keep broad ACL repair inside explicit Setup, extend exact-authority
 proxy capacity, isolate each command's temporary leaf, and require real no-side-effect

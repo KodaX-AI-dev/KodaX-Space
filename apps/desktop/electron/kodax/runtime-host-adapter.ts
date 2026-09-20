@@ -5065,6 +5065,17 @@ export class RuntimeHostAdapter {
     if (event.type === 'provider.recovery') {
       const recovery = runtimeEventRecord(payload?.event);
       if (!recovery) return;
+      if (payload?.kind === 'reasoning_resolved') {
+        const parsed = sessionEventChannel.payload.safeParse({
+          ...runtimeSessionEventOrigin(runtimeId, event),
+          ...runtimeTranscriptTurnIdentity(event),
+          kind: 'reasoning_resolved',
+          sessionId: event.sessionId,
+          resolution: recovery,
+        });
+        if (parsed.success) this.push('session.event', parsed.data);
+        return;
+      }
       const parsed = sessionEventChannel.payload.safeParse({
         ...runtimeSessionEventOrigin(runtimeId, event),
         ...runtimeTranscriptTurnIdentity(event),

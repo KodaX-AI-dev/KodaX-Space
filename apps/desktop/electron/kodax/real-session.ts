@@ -61,22 +61,6 @@ function loadSdkLlm(): Promise<SdkLlmModule | null> {
   return sdkLlmCache;
 }
 
-// /agent 子路径——只用它的 reasoning-effort 能力学习缓存（getCachedRejectedEfforts /
-// recordRejectedEffort）。加载失败返 null，canonical resolver 仍可在没有拒绝缓存时工作。
-type SdkAgentModule = typeof import('@kodax-ai/kodax/agent');
-let sdkAgentCache: Promise<SdkAgentModule | null> | null = null;
-function loadSdkAgent(): Promise<SdkAgentModule | null> {
-  if (sdkAgentCache === null) {
-    sdkAgentCache = import('@kodax-ai/kodax/agent').catch((err) => {
-      console.warn(
-        `[real-session] failed to load @kodax-ai/kodax/agent subpath: ${err instanceof Error ? err.message : err}`,
-      );
-      return null;
-    });
-  }
-  return sdkAgentCache;
-}
-
 /**
  * 从 SDK 抛出的 error 里抠 Retry-After（rate_limit / 5xx 时有）。
  * SDK /llm 加载失败 / err 里没 header → undefined。返 'header' type 的 waitMs；
@@ -284,7 +268,7 @@ import {
   drainQueueForSession,
   enqueueUserPrompt,
 } from '../ipc/queue.js';
-import { resolveSpaceWireEffort, runtimeSettingEffort } from './reasoning-effort.js';
+import { reasoningModeToEffort, runtimeSettingEffort } from './reasoning-effort.js';
 import { runtimeHostAdapter } from './runtime-host-adapter.js';
 
 type SpaceReasoning = ReasoningMode;
@@ -392,6 +376,14 @@ function clampSessionEventText(value: string | undefined): string | undefined {
   if (value === undefined) return undefined;
   if (value.length <= 262_144) return value;
   return `${value.slice(0, 262_120)}\n\n[truncated]`;
+}
+
+export function projectEmbeddedReasoningResolution(
+  sessionId: string,
+  resolution: Parameters<NonNullable<KodaXEvents['onReasoningResolved']>>[0],
+): SessionEvent | undefined {
+  if (isTransientChildEvent(resolution)) return undefined;
+  return { kind: 'reasoning_resolved', sessionId, resolution };
 }
 
 export function projectEmbeddedMidTurnUserMessages(
@@ -521,18 +513,6 @@ export class RealKodaXSession implements ManagedSession {
     }
   }
 
-  private async resolveCurrentWireEffort(): Promise<string | undefined> {
-    const [sdk, agent] = await Promise.all([loadSdkCoding(), loadSdkAgent()]);
-    return resolveSpaceWireEffort({
-      provider: this.provider,
-      ...(this.model ? { model: this.model } : {}),
-      reasoningMode: this.reasoningMode,
-      rejectedEfforts:
-        agent?.getCachedRejectedEfforts(this.provider, this.model ?? undefined) ?? [],
-      resolveWireEffort: sdk.resolveWireEffort,
-    });
-  }
-
   private async syncRuntimeSessionSettings(): Promise<KodaXShellExecutionContract | undefined> {
     const { terminalShell } = await settingsStore.load();
     const shellExecution = await resolveKodaXShellExecutionContract(terminalShell, {
@@ -541,12 +521,11 @@ export class RealKodaXSession implements ManagedSession {
     const shellExecutionFingerprint = JSON.stringify(shellExecution ?? null);
     const shellExecutionChanged = this.shellExecutionFingerprint !== shellExecutionFingerprint;
     const dispatchedPermissionMode = this.permissionMode;
-    const wireEffort = await this.resolveCurrentWireEffort();
     await runtimeHostAdapter.updateSessionSettings(this.sessionId, {
       provider: this.provider,
       model: this.model ?? null,
       thinking: this.thinking ?? null,
-      effort: runtimeSettingEffort(this.reasoningMode, wireEffort),
+      effort: runtimeSettingEffort(this.reasoningMode),
       reasoningMode: null,
       permissionMode: dispatchedPermissionMode,
       executionCwd: this.projectRoot,
@@ -1398,18 +1377,17 @@ export class RealKodaXSession implements ManagedSession {
       const shellExecution = await this.syncRuntimeSessionSettings();
       await runtimeHostAdapter.ensureObserved(sid);
 
-      const [skillsPrompt, runConfig, sdk, wireEffort] = await Promise.all([
+      const [skillsPrompt, runConfig, sdk] = await Promise.all([
         buildSkillsPromptForSurface('code', this.projectRoot),
         loadKodaxRunConfig(),
         loadSdkCoding(),
-        this.resolveCurrentWireEffort(),
       ]);
       const selfManual = buildSpaceManual(sdk);
       const workflowPolicy = workflowPolicyStore.get();
       const options: RuntimeDaemonKodaXOptions = {
         ...(toolInvocation ? { toolInvocation } : {}),
         provider: this.provider,
-        ...(wireEffort !== undefined ? { effort: wireEffort } : {}),
+        effort: reasoningModeToEffort(this.reasoningMode),
         agentMode: this.agentMode,
         ...(this.model !== undefined ? { model: this.model } : {}),
         ...(explicitSkill?.modelOverride !== undefined
@@ -2262,26 +2240,9 @@ export class RealKodaXSession implements ManagedSession {
           fallbackUsed: event.fallbackUsed,
         });
       },
-      // C1: 记录 wire 层拒绝的 reasoning effort。SDK 每 turn 新建 provider 实例 →
-      // suppressReasoningEffort 不跨 turn 存活；只有落到进程级能力缓存里，下一 turn 的
-      // resolveWireEffort(getCachedRejectedEfforts) 才会把它从档位里排除，不再重复发送。
-      onReasoningEffortRejected: (event) => {
-        void loadSdkAgent().then((agent) => {
-          try {
-            agent?.recordRejectedEffort(
-              event.provider,
-              event.model,
-              event.effort,
-              'observed',
-              new Date().toISOString(),
-            );
-          } catch (err) {
-            console.warn(
-              `[real-session ${sid}] recordRejectedEffort failed:`,
-              err instanceof Error ? err.message : err,
-            );
-          }
-        });
+      onReasoningResolved: (resolution) => {
+        const observation = projectEmbeddedReasoningResolution(sid, resolution);
+        if (observation) emitLive(observation);
       },
 
       // ---- Repointel trace ----
@@ -2686,7 +2647,6 @@ export class RealKodaXSession implements ManagedSession {
         ...(inputArtifacts ? { inputArtifacts } : {}),
       };
 
-      const wireEffort = await this.resolveCurrentWireEffort();
       const runConfig = await loadKodaxRunConfig();
       const persistedSkillSession =
         sessionStorage !== undefined
@@ -2720,7 +2680,7 @@ export class RealKodaXSession implements ManagedSession {
 
       const options: KodaXOptions = {
         provider: this.provider,
-        effort: wireEffort,
+        effort: reasoningModeToEffort(this.reasoningMode),
         // KodaX agent 形态：AMA / SA。显式传以便用户切换生效。
         agentMode: this.agentMode,
         // SDK 0.7.42 wired (P0): /model + /thinking 设置在下一 turn 生效
