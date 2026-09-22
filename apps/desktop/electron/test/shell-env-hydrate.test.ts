@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test, { afterEach } from 'node:test';
+import test, { afterEach, mock } from 'node:test';
 
 import {
   hydrateShellEnvOnce,
@@ -43,6 +43,51 @@ test('Windows hydration projects shell PATH without copying profile secrets', as
   assert.equal(env.PATH, 'C:\\Toolchain\\bin;C:\\Windows\\System32');
   assert.equal(env.OPENAI_API_KEY, undefined);
   assert.equal(env.FNM_DIR, undefined);
+});
+
+test('Windows hydration awaits the shared usable shell selection before attempting a profile capture', async () => {
+  let captured = false;
+  const result = await hydrateShellEnvOnce({
+    platform: 'win32',
+    env: { PATH: 'C:\\Windows\\System32' },
+    resolveShell: async () => ({
+      kind: 'cmd',
+      program: 'C:\\Windows\\System32\\cmd.exe',
+      args: [],
+    }),
+    runCapture: async () => {
+      captured = true;
+      return { PATH: 'unexpected' };
+    },
+  });
+  assert.equal(captured, false);
+  assert.equal(result.reason, 'unsupported-shell');
+  assert.equal(result.shell?.kind, 'cmd');
+});
+
+test('profile capture diagnostics preserve the failure code without logging command output', async () => {
+  const warnings = mock.method(console, 'warn', () => undefined);
+  try {
+    const result = await hydrateShellEnvOnce({
+      platform: 'win32',
+      env: { PATH: 'original' },
+      resolveShell: () => POWERSHELL,
+      runCapture: async () => {
+        throw Object.assign(new Error('secret-command-output'), {
+          code: 'ETIMEDOUT',
+          killed: true,
+          signal: 'SIGTERM',
+        });
+      },
+    });
+    assert.equal(result.reason, 'capture-failed');
+    const logged = JSON.stringify(warnings.mock.calls.map((call) => call.arguments));
+    assert.match(logged, /ETIMEDOUT/);
+    assert.match(logged, /SIGTERM/);
+    assert.doesNotMatch(logged, /secret-command-output/);
+  } finally {
+    warnings.mock.restore();
+  }
 });
 
 test('Windows hydration is idempotent and captures a profile only once', async () => {

@@ -155,6 +155,20 @@ export class EncryptedCredentialVault {
     });
   }
 
+  /** A delayed legacy read must not undo a newer save or deletion. */
+  async importLegacy(account: string, secret: string): Promise<string | undefined> {
+    if (!isSafeAccount(account)) throw new Error('invalid credential account');
+    const ciphertext = (await this.cipher.encrypt(secret)).toString('base64');
+    if (!isCanonicalBase64(ciphertext)) throw new Error('encrypted credential is too large');
+    await this.mutate((state) => {
+      if (Object.hasOwn(state.records, account) || state.revokedLegacyAccounts.includes(account)) {
+        return state;
+      }
+      return { ...state, records: { ...state.records, [account]: ciphertext } };
+    });
+    return this.get(account);
+  }
+
   /**
    * Removes an encrypted Provider record without decrypting it. The legacy
    * tombstone prevents an old per-Provider Keychain item from being imported

@@ -8,9 +8,14 @@ import {
   resetShellExecutionCanaryForTesting,
   resolveKodaXShellExecutionContract,
 } from '../kodax/shell-execution.js';
+import {
+  resetShellStartupProbesForTesting,
+  resolveUsableTerminalShell,
+} from '../terminal/shell.js';
 
 afterEach(() => {
   resetShellExecutionCanaryForTesting();
+  resetShellStartupProbesForTesting();
 });
 
 function existing(...paths: string[]): (candidate: string) => boolean {
@@ -215,4 +220,42 @@ test('cmd contracts skip the profile canary because cmd loads no profile', async
   assert.ok(contract);
   assert.equal(contract.shell.kind, 'cmd');
   assert.equal(probes, 0);
+});
+
+test('Windows auto gives terminals and the daemon the same usable CMD selection', async () => {
+  const cmd = 'C:\\Windows\\System32\\cmd.exe';
+  let profileProbes = 0;
+  const options = {
+    platform: 'win32' as const,
+    env: { SystemRoot: 'C:\\Windows' },
+    exists: existing(cmd, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'),
+    probeStartup: async (shell: { kind: string }) => shell.kind === 'cmd',
+    probeProfile: async () => {
+      profileProbes += 1;
+      return true;
+    },
+  };
+  const terminalShell = await resolveUsableTerminalShell('auto', options);
+  const contract = await resolveKodaXShellExecutionContract('auto', options);
+
+  assert.ok(contract);
+  assert.equal(contract.shell.kind, terminalShell.kind);
+  assert.equal(contract.shell.executable, cmd);
+  assert.equal(contract.environment?.windowsPath, 'registry');
+  assert.equal(profileProbes, 0);
+  assert.deepEqual(normalizeShellExecutionContract(contract), contract);
+});
+
+test('Windows auto retains a working PowerShell when only its profile capture fails', async () => {
+  const powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+  const contract = await resolveKodaXShellExecutionContract('auto', {
+    platform: 'win32',
+    env: { SystemRoot: 'C:\\Windows' },
+    exists: existing(powershell, 'C:\\Windows\\System32\\cmd.exe'),
+    probeStartup: async () => true,
+    probeProfile: async () => false,
+  });
+  assert.equal(contract?.shell.kind, 'powershell');
+  assert.equal(contract?.shell.profile, 'none');
+  assert.equal(contract?.shell.executable, powershell);
 });

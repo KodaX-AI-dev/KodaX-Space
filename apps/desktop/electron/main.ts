@@ -145,6 +145,7 @@ import {
   refreshDiagnosticRedactionOptions,
 } from './diagnostics/runtime.js';
 import { registerDiagnosticsChannels } from './ipc/diagnostics.js';
+import { initializeSdkDiagnostics } from './diagnostics/sdk-bridge.js';
 import { registerSpaceControlChannels } from './ipc/space-control.js';
 import { spaceControlRendererBroker } from './space-control/runtime.js';
 import { installAppProtocolHandler, registerAppSchemePrivileges } from './window/app-protocol.js';
@@ -2206,6 +2207,8 @@ const startupPromise = app
     });
     if (startupShutdownCoordinator.isShutdownRequested()) return;
 
+    await initializeSdkDiagnostics(diagnosticsLogger);
+    if (startupShutdownCoordinator.isShutdownRequested()) return;
     let startupBoundary: Awaited<ReturnType<typeof runRuntimeStartupBoundary>>;
     try {
       startupBoundary = await runRuntimeStartupBoundary({

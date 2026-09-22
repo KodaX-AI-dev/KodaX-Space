@@ -144,22 +144,52 @@ export function redactDiagnosticValue(
     if (typeof value === 'symbol') return '[SYMBOL]';
     if (depth >= resolved.maxDepth) return '[MAX_DEPTH]';
 
-    if (value instanceof Error) {
-      return {
-        name: truncate(value.name || 'Error', 128),
-        message: redactDiagnosticText(value.message, {
-          ...resolved,
-          maxStringLength: Math.max(256, resolved.maxStringLength),
-        }),
-      };
-    }
-    if (value instanceof Uint8Array) return `[BINARY ${value.byteLength} BYTES]`;
     if (typeof value !== 'object') return '[UNSUPPORTED]';
     if (seen.has(value)) return '[CIRCULAR]';
     seen.add(value);
 
+    if (value instanceof Error || (key === 'cause' && !Array.isArray(value))) {
+      const result: Record<string, unknown> = {
+        name: redactDiagnosticText(String(Reflect.get(value, 'name') || 'Error'), {
+          ...resolved,
+          maxStringLength: 128,
+        }),
+        message: redactDiagnosticText(String(Reflect.get(value, 'message') || ''), {
+          ...resolved,
+          maxStringLength: Math.max(256, resolved.maxStringLength),
+        }),
+      };
+      // Child-process errors also carry env/argv/output. Keep only failure
+      // metadata; recursively redact native binding cause arrays as well.
+      for (const field of [
+        'code',
+        'errno',
+        'syscall',
+        'signal',
+        'killed',
+        'exitCode',
+        'status',
+        'timedOut',
+        'cause',
+      ]) {
+        if (!(field in value)) continue;
+        const detail: unknown = Reflect.get(value, field);
+        if (
+          field === 'cause' ||
+          detail === null ||
+          ['string', 'number', 'boolean'].includes(typeof detail)
+        ) {
+          result[field] = visit(detail, depth + 1, field);
+        }
+      }
+      return result;
+    }
+    if (value instanceof Uint8Array) return `[BINARY ${value.byteLength} BYTES]`;
+
     if (Array.isArray(value)) {
-      const items = value.slice(0, resolved.maxArrayItems).map((item) => visit(item, depth + 1));
+      const items = value
+        .slice(0, resolved.maxArrayItems)
+        .map((item) => visit(item, depth + 1, key === 'cause' ? key : undefined));
       if (value.length > resolved.maxArrayItems) {
         items.push(`[TRUNCATED ${value.length - resolved.maxArrayItems} ITEMS]`);
       }

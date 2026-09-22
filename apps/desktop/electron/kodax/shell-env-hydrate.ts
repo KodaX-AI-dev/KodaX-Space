@@ -4,7 +4,8 @@ import { existsSync } from 'node:fs';
 import os from 'node:os';
 
 import {
-  resolveTerminalShell,
+  resolveUsableTerminalShell,
+  shellProbeErrorDetails,
   type ResolvedShell,
   type TerminalShellPreference,
 } from '../terminal/shell.js';
@@ -26,7 +27,7 @@ export interface ShellEnvHydrationOptions {
   readonly resolveShell?: (
     preference: TerminalShellPreference,
     options: { platform: NodeJS.Platform; env: NodeJS.ProcessEnv },
-  ) => ResolvedShell;
+  ) => ResolvedShell | Promise<ResolvedShell>;
   readonly runCapture?: (
     shell: ResolvedShell,
     cwd: string,
@@ -195,12 +196,24 @@ async function hydrateShellEnv(
     } catch (error) {
       console.warn(
         '[shell-env-hydrate] SDK shell profile capture failed (non-fatal):',
-        error instanceof Error ? error.message : error,
+        shellProbeErrorDetails(error),
       );
       return { hydrated: false, reason: 'capture-failed' };
     }
   }
-  const shell = (options.resolveShell ?? resolveTerminalShell)(preference, { platform, env });
+  let shell: ResolvedShell;
+  try {
+    shell = await (options.resolveShell ?? resolveUsableTerminalShell)(preference, {
+      platform,
+      env,
+    });
+  } catch (error) {
+    console.warn(
+      '[shell-env-hydrate] shell selection failed (non-fatal):',
+      shellProbeErrorDetails(error),
+    );
+    return { hydrated: false, reason: 'capture-failed' };
+  }
   const windowsHostCompatible = shell.kind === 'pwsh' || shell.kind === 'powershell';
   if (
     shell.kind === 'cmd' ||
@@ -222,8 +235,8 @@ async function hydrateShellEnv(
     );
   } catch (error) {
     console.warn(
-      '[shell-env-hydrate] shell profile capture failed (non-fatal):',
-      error instanceof Error ? error.message : error,
+      `[shell-env-hydrate] ${shell.kind} profile capture failed (non-fatal):`,
+      shellProbeErrorDetails(error),
     );
     return { hydrated: false, shell, reason: 'capture-failed' };
   }
@@ -262,7 +275,11 @@ export async function probeShellProfileEnvironment(
       `__KODAX_SPACE_SHELL_ENV_${randomUUID().replace(/-/g, '')}__`,
     );
     return pathEntry(captured) !== undefined;
-  } catch {
+  } catch (error) {
+    console.warn(
+      `[shell-env-hydrate] ${shell.kind} profile probe failed:`,
+      shellProbeErrorDetails(error),
+    );
     return false;
   }
 }

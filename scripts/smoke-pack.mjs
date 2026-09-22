@@ -1150,6 +1150,39 @@ async function checkAsarContents(asarPath) {
   }
 }
 
+export function verifyPackagedUpdater({ asarPath, executable = electronBin }) {
+  const marker = 'PACKAGED_UPDATER_PROBE=ok';
+  const probeSource = `
+const { createRequire } = require('node:module');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+(async () => {
+  const packageRoot = ${JSON.stringify(asarPath)};
+  const resolve = createRequire(path.join(packageRoot, 'package.json')).resolve;
+  const entry = resolve('electron-updater');
+  const relative = path.relative(packageRoot, entry);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('updater resolved outside the packaged app');
+  const module = await import(pathToFileURL(entry).href);
+  const descriptor = Object.getOwnPropertyDescriptor(module.default ?? module, 'autoUpdater');
+  if (typeof descriptor?.get !== 'function') throw new Error('autoUpdater getter is missing');
+  process.stdout.write(${JSON.stringify(marker)});
+})().catch(error => { console.error(error.message); process.exitCode = 1; });
+`;
+  // Inspect the real import namespace but do not invoke the lazy getter, check
+  // the release feed, download updates, or touch the user's updater cache.
+  const result = spawnSync(executable, ['-e', probeSource], {
+    encoding: 'utf8',
+    timeout: 30_000,
+    windowsHide: true,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+  });
+  if (result.error || result.status !== 0 || !result.stdout?.includes(marker)) {
+    throw new Error(
+      `packaged updater probe failed: ${result.error?.message ?? (result.stderr || result.stdout || result.status)}`,
+    );
+  }
+}
+
 function checkPackagedSqliteExecutesFromAsar(asarPath) {
   const packageEntry = path.join(asarPath, 'package.json');
   const marker = 'PACKAGED_SQLITE_PROBE=ok';
@@ -1202,7 +1235,8 @@ try {
     );
   }
   ok('better-sqlite3 opens and queries :memory: from packaged app.asar');
-  if (process.platform === 'darwin') ok('both packaged esbuild entry points execute and transform TypeScript');
+  if (process.platform === 'darwin')
+    ok('both packaged esbuild entry points execute and transform TypeScript');
 }
 
 async function checkKodaxWorkersExecuteFromAsar(asarPath) {
@@ -2055,6 +2089,8 @@ async function main() {
     ok('packaged Partner library matches the built archive');
     await checkPackagedFeishuCliResources(asarPath);
     await checkAsarContents(asarPath);
+    verifyPackagedUpdater({ asarPath });
+    ok('packaged updater dependency loads with its CommonJS autoUpdater export');
     checkPackagedSqliteExecutesFromAsar(asarPath);
     await checkKodaxWorkersExecuteFromAsar(asarPath);
   }

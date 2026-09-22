@@ -10,6 +10,7 @@ import { pushToRenderer } from './push.js';
 import { projectStore } from '../projects/store.js';
 import { getPtyHost } from '../terminal/ptyHost.js';
 import { settingsStore } from '../settings/store.js';
+import { resolveUsableTerminalShell } from '../terminal/shell.js';
 
 let listenersBound = false;
 
@@ -54,11 +55,17 @@ export function registerTerminalChannels(): void {
       await projectStore.assertAllowed(realCwd);
     }
     const settings = await settingsStore.load();
+    const resolvedShell = await resolveUsableTerminalShell(settings.terminalShell);
+    // Re-check after asynchronous startup probes, before the synchronous spawn.
+    if (host.count() >= MAX_CONCURRENT_PTYS) {
+      throw new Error(`PTY limit reached (max ${MAX_CONCURRENT_PTYS} concurrent terminals)`);
+    }
     const created = host.create({
       cwd: realCwd,
       cols: input.cols,
       rows: input.rows,
       shellPreference: settings.terminalShell,
+      resolvedShell,
     });
     return { terminalId: created.terminalId, shell: created.shell, pid: created.pid };
   });

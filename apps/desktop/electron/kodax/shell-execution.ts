@@ -2,9 +2,11 @@ import type { KodaXShellExecutionContract } from '@kodax-ai/kodax/coding';
 
 import {
   resolveTerminalShell,
+  resolveUsableTerminalShell,
   type ResolvedShell,
   type ShellResolutionOptions,
   type TerminalShellPreference,
+  type UsableShellResolutionOptions,
 } from '../terminal/shell.js';
 import { probeShellProfileEnvironment } from './shell-env-hydrate.js';
 
@@ -12,7 +14,7 @@ const SHELL_ENV_CACHE_TTL_MS = 30_000;
 const SHELL_ENV_PROBE_TIMEOUT_MS = 10_000;
 const PROFILE_CANARY_FAILURE_RETRY_MS = 60_000;
 
-export interface ShellExecutionContractOptions extends ShellResolutionOptions {
+export interface ShellExecutionContractOptions extends UsableShellResolutionOptions {
   /** Effective command working directory used by the daemon. */
   readonly cwd?: string;
   /** Test hook: replace the profile canary probe. */
@@ -27,9 +29,9 @@ interface ShellExecutionContractBase {
 function buildContractBase(
   preference: TerminalShellPreference,
   options: ShellResolutionOptions,
+  shell = resolveTerminalShell(preference, options),
 ): ShellExecutionContractBase | undefined {
   const platform = options.platform ?? process.platform;
-  const shell = resolveTerminalShell(preference, options);
   if (
     shell.kind !== 'pwsh' &&
     shell.kind !== 'powershell' &&
@@ -172,7 +174,8 @@ export async function resolveKodaXShellExecutionContract(
   preference: TerminalShellPreference,
   options: ShellExecutionContractOptions = {},
 ): Promise<KodaXShellExecutionContract | undefined> {
-  const base = buildContractBase(preference, options);
+  const selectedShell = await resolveUsableTerminalShell(preference, options);
+  const base = buildContractBase(preference, options, selectedShell);
   if (!base) {
     console.warn(
       `[shell-execution] shell for preference '${preference}' cannot carry the KodaX ` +
