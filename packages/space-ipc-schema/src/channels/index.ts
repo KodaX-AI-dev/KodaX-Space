@@ -1,3 +1,4 @@
+import { voiceInvokeChannels } from './voice.js';
 import { partnerComponentInvokeChannels } from './partner-components.js';
 import {
   webPreviewPrepareChannel,
@@ -554,7 +555,9 @@ export const invokeChannels: typeof sessionInvokeChannels &
   typeof extensionInvokeChannels &
   typeof connectorInvokeChannels &
   typeof connectorOnboardingInvokeChannels &
-  typeof partnerComponentInvokeChannels = {
+  typeof partnerComponentInvokeChannels &
+  typeof voiceInvokeChannels = {
+  ...voiceInvokeChannels,
   ...partnerComponentInvokeChannels,
   ...sessionInvokeChannels,
   ...coreInvokeChannels,

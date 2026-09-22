@@ -2,6 +2,43 @@ import type { SupportedLocaleT } from '@kodax-space/space-ipc-schema';
 
 export const messages = {
   'en-US': {
+    'voice.title': 'Voice input',
+    'voice.description':
+      'Whisper Base multilingual · about 62 MB download. Install once, then dictate offline. Up to 30 seconds per recording.',
+    'voice.privacy':
+      'Audio stays in memory on this device. Recognized text goes into your draft; sending the draft shares it with your selected AI provider.',
+    'voice.state.checking': 'Checking voice component…',
+    'voice.state.missing': 'Not installed',
+    'voice.state.installing': 'Downloading and checking…',
+    'voice.state.ready': 'Ready for local voice input',
+    'voice.state.failed': 'Installation needs attention',
+    'voice.state.unsupported': 'Voice input is not supported on this platform',
+    'voice.progress': 'Voice component download',
+    'voice.install': 'Install voice input',
+    'voice.repair': 'Verify / repair',
+    'voice.remove': 'Remove downloaded component',
+    'voice.cancel': 'Cancel',
+    'voice.language': 'Recognition language',
+    'voice.chinese': 'Chinese (Simplified)',
+    'voice.auto': 'Auto-detect',
+    'voice.license':
+      'Free local recognition. Whisper, whisper.cpp and whisper.node use the MIT license. License notices are included with the component.',
+    'voice.installFailed':
+      'Could not complete this operation. Check the connection and free disk space, stop any recognition, then try again.',
+    'voice.runtimeFailed':
+      'The speech engine could not load on this computer. Try repairing the component.',
+    'voice.start': 'Voice input',
+    'voice.stop': 'Stop recording and transcribe',
+    'voice.recording': 'Recording {seconds}/30s',
+    'voice.requesting': 'Waiting for microphone…',
+    'voice.transcribing': 'Transcribing locally…',
+    'voice.close': 'Close voice settings',
+    'voice.permissionDenied':
+      'Microphone access was denied. Allow Space to use the microphone in system privacy settings, then try again.',
+    'voice.noSpeech': 'No clear speech was detected. Move closer to the microphone and try again.',
+    'voice.recognitionFailed':
+      'Voice recognition failed. Check the microphone, or verify / repair the voice component below.',
+    'voice.recordingFailed': 'The microphone recording could not be read.',
     'components.title': 'Connector components',
     'components.description':
       'Install connection components when needed. Installation does not connect an account or grant access to a conversation.',
@@ -3034,6 +3071,40 @@ export const messages = {
       'Auto is sandbox-first. Full access runs directly on the host; connector scopes and reviewed writes still apply.',
   },
   'zh-CN': {
+    'voice.title': '语音输入',
+    'voice.description':
+      'Whisper Base 多语言版 · 下载约 62 MB。安装后可离线使用，每次最多录音 30 秒。',
+    'voice.privacy':
+      '音频只在本机内存中处理。识别文字先填入草稿；发送草稿后，文字会交给你选择的 AI 服务。',
+    'voice.state.checking': '正在检查语音组件…',
+    'voice.state.missing': '尚未安装',
+    'voice.state.installing': '正在下载和校验…',
+    'voice.state.ready': '可以使用本地语音输入',
+    'voice.state.failed': '安装需要处理',
+    'voice.state.unsupported': '当前平台暂不支持语音输入',
+    'voice.progress': '语音组件下载进度',
+    'voice.install': '安装语音输入',
+    'voice.repair': '检查 / 修复',
+    'voice.remove': '删除已下载组件',
+    'voice.cancel': '取消',
+    'voice.language': '识别语言',
+    'voice.chinese': '中文（简体）',
+    'voice.auto': '自动识别',
+    'voice.license':
+      '本地识别免费。Whisper、whisper.cpp 和 whisper.node 均采用 MIT 许可，组件附带许可证和版权声明。',
+    'voice.installFailed': '操作未完成。请检查网络和剩余磁盘空间，停止正在进行的识别后重试。',
+    'voice.runtimeFailed': '语音引擎无法在这台电脑上加载，请尝试修复组件。',
+    'voice.start': '语音输入',
+    'voice.stop': '停止录音并转成文字',
+    'voice.recording': '录音中 {seconds}/30 秒',
+    'voice.requesting': '等待麦克风权限…',
+    'voice.transcribing': '正在本地识别…',
+    'voice.close': '关闭语音设置',
+    'voice.permissionDenied':
+      '麦克风权限被拒绝。请在系统隐私设置中允许 Space 使用麦克风，再试一次。',
+    'voice.noSpeech': '没有检测到清晰语音，请靠近麦克风后重试。',
+    'voice.recognitionFailed': '语音识别失败。请检查麦克风，或在下方检查 / 修复语音组件。',
+    'voice.recordingFailed': '无法读取麦克风录音。',
     'components.title': '连接器组件',
     'components.description': '按需安装连接组件。安装不会连接账号，也不会授予会话访问权限。',
     'components.feishu-cli': '飞书',

@@ -1,3 +1,4 @@
+export * from './channels/voice.js';
 // Public surface of @kodax-space/space-ipc-schema.
 //
 // 消费端：

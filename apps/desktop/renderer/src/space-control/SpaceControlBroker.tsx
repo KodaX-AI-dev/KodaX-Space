@@ -41,6 +41,7 @@ const THEMES = new Set<'dark' | 'light' | 'system'>(['dark', 'light', 'system'])
 const LANGUAGES = new Set<LanguageModeT>(['system', 'zh-CN', 'en-US']);
 const SURFACES = new Set<Surface>(['code', 'partner']);
 const SETTINGS_TABS = new Set<SettingsTab>([
+  'voice',
   'preferences',
   'providers',
   'runtime',

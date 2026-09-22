@@ -121,6 +121,10 @@ async function buildOne(entry, outfile) {
 }
 
 await Promise.all([
+  buildOne(
+    path.join(electronDir, 'voice', 'whisper-worker.ts'),
+    path.join(outDir, 'whisper-worker.js'),
+  ),
   buildOne(path.join(electronDir, 'main.ts'), path.join(outDir, 'main.js')),
   buildOne(path.join(electronDir, 'preload.ts'), path.join(outDir, 'preload.js')),
   buildOne(

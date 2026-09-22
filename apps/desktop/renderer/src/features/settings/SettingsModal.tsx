@@ -1,3 +1,4 @@
+import { VoiceSettingsPanel } from '../voice/VoiceSettingsPanel.js';
 import {
   useCallback,
   useEffect,
@@ -10,6 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  Mic,
   Archive,
   AlertTriangle,
   Bot,
@@ -75,6 +77,7 @@ import { SpaceExtensionsProvider } from '../extensions/SpaceExtensionsProvider.j
 import { ExtensionSettingsPanel } from '../extensions/ExtensionSettingsPanel.js';
 
 export type SettingsTab =
+  | 'voice'
   | 'providers'
   | 'preferences'
   | 'runtime'
@@ -98,6 +101,7 @@ interface SettingsTabMeta {
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 const TABS: readonly SettingsTabMeta[] = [
+  { id: 'voice', labelKey: 'voice.title', descriptionKey: 'voice.description', Icon: Mic },
   {
     id: 'preferences',
     labelKey: 'settings.preferences',
@@ -268,6 +272,15 @@ function SettingsModalContent({
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto bg-surface/30">
+            <div
+              id="settings-panel-voice"
+              role="tabpanel"
+              aria-labelledby="settings-tab-voice"
+              hidden={tab !== 'voice'}
+              className="h-full"
+            >
+              <VoiceSettingsPanel active={tab === 'voice'} />
+            </div>
             <div
               id="settings-panel-preferences"
               role="tabpanel"

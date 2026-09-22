@@ -1,3 +1,5 @@
+import { NEW_CONVERSATION_EVENT } from '../store/newConversation.js';
+import { VoiceInputButton } from '../features/voice/VoiceInputButton.js';
 // BottomBar - F011-revised
 // Composer footer: chips, textarea, attachments, mode controls, and send/stop.
 
@@ -548,6 +550,16 @@ export function BottomBar(): JSX.Element {
       : EMPTY_INPUT_HISTORY,
   );
   const [prompt, setPrompt, promptRef] = useTrackedState('');
+  const [voiceDraftEpoch, setVoiceDraftEpoch] = useState(0);
+  const voiceDraftEpochRef = useRef(0);
+  const invalidateVoiceDraft = useCallback((): void => {
+    voiceDraftEpochRef.current++;
+    setVoiceDraftEpoch(voiceDraftEpochRef.current);
+  }, []);
+  useEffect(() => {
+    window.addEventListener(NEW_CONVERSATION_EVENT, invalidateVoiceDraft);
+    return () => window.removeEventListener(NEW_CONVERSATION_EVENT, invalidateVoiceDraft);
+  }, [invalidateVoiceDraft]);
   const [busy, setBusy] = useState(false);
   const [busySlashName, setBusySlashName] = useState<string | null>(null);
   const [isAttaching, setIsAttaching] = useState(false);
@@ -705,6 +717,7 @@ export function BottomBar(): JSX.Element {
       const detail = (e as CustomEvent<{ text?: string; submit?: boolean; queueMode?: QueueMode }>)
         .detail;
       if (typeof detail?.text !== 'string') return;
+      invalidateVoiceDraft();
       setPrompt(detail.text);
       const len = detail.text.length; // use the known length, not the (maybe-stale) DOM value
       requestAnimationFrame(() => {
@@ -721,7 +734,7 @@ export function BottomBar(): JSX.Element {
     };
     window.addEventListener('kodax-space.compose-prefill', onPrefill);
     return () => window.removeEventListener('kodax-space.compose-prefill', onPrefill);
-  }, [setPrompt]);
+  }, [setPrompt, invalidateVoiceDraft]);
 
   useEffect(() => {
     return registerInsertReceiver((text) => {
@@ -2036,6 +2049,7 @@ export function BottomBar(): JSX.Element {
     const effectivePrompt =
       textAndFilePrompt !== '' ? textAndFilePrompt : pendingImages.length > 0 ? '(image)' : '';
     if (effectivePrompt === '') return;
+    invalidateVoiceDraft();
     let resolvedSessionId: string | null = null;
     if (trimmed.startsWith('/')) {
       const head = trimmed.slice(1);
@@ -2879,6 +2893,29 @@ export function BottomBar(): JSX.Element {
               <ContextWindowIndicator
                 compacting={isCompacting}
                 attentionOnly={currentSurface === 'partner'}
+              />
+              <VoiceInputButton
+                key={JSON.stringify([
+                  currentSurface,
+                  currentProjectPath,
+                  currentSessionId,
+                  voiceDraftEpoch,
+                ])}
+                disabled={busy || partnerExpertBusy}
+                onText={(text) => {
+                  const state = useAppStore.getState();
+                  if (
+                    voiceDraftEpochRef.current !== voiceDraftEpoch ||
+                    state.currentSessionId !== currentSessionId ||
+                    state.currentProjectPath !== currentProjectPath ||
+                    useSurfaceStore.getState().currentSurface !== currentSurface
+                  )
+                    return;
+                  setPrompt((value) =>
+                    value ? `${value}${/\s$/.test(value) ? '' : ' '}${text}` : text,
+                  );
+                  focusComposerSoon();
+                }}
               />
               <ModelEffortSelector />
               {sessionPendingStops

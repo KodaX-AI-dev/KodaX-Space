@@ -1,3 +1,4 @@
+import { registerVoiceChannels, disposeVoice } from './ipc/voice.js';
 // Electron main process entry — FEATURE_001
 //
 // 架构判断（详见 docs/HLD.md §1.2 + docs/ADR/ADR-003）：
@@ -1713,6 +1714,7 @@ async function stopSpaceOwnedWorkForForcedExit(): Promise<void> {
       task.state !== 'rejected',
   );
 
+  void disposeVoice().catch(() => console.warn('[main] voice cleanup did not complete'));
   permissionBroker.cancelAll('shutdown');
   askUserBroker.cancelAll('shutdown');
   const localStops = await Promise.allSettled([
@@ -2369,6 +2371,7 @@ const startupPromise = app
     // the already-visible trusted boot page does not invoke application IPC.
     registerVersionChannel();
     registerSandboxChannels();
+    registerVoiceChannels();
     // F121 Part 1: explicit SDK-pending snapshot handlers. They report a
     // connecting projection until the published daemon adapter replaces it.
     registerRuntimeProjectionChannels();
@@ -2715,6 +2718,7 @@ app.on('before-quit', (event) => {
   permissionBroker.cancelAll('shutdown');
   askUserBroker.cancelAll('shutdown');
   spaceControlRendererBroker.cancelAll('shutdown');
+  const voiceDisposal = disposeVoice();
   const connectorTasksDisposal = disposePartnerConnectorTasks();
   try {
     getPtyHost().disposeAll();
@@ -2730,6 +2734,7 @@ app.on('before-quit', (event) => {
     // Startup must settle before any close() call: otherwise an early user quit
     // can race Runtime initialize() and leave a newly spawned resource behind.
     const disposals: Promise<unknown>[] = [
+      voiceDisposal.catch(() => console.warn('[main] voice cleanup did not complete')),
       connectorTasksDisposal.catch(() =>
         console.warn('[main] connector authorization cleanup did not complete'),
       ),

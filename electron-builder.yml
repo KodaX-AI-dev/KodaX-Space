@@ -208,6 +208,8 @@ asarUnpack:
 afterPack: scripts/after-pack.cjs
 
 mac:
+  extendInfo:
+    NSMicrophoneUsageDescription: "Space uses the microphone only when you start local voice input. Audio is processed on this device."
   compression: maximum
   category: public.app-category.developer-tools
   target:
