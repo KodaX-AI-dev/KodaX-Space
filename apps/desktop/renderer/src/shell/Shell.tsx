@@ -1520,10 +1520,8 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
               aria-hidden={visibleExtension ? true : undefined}
             >
               <PartnerWorkspace
-                leftSidebarOpen={leftSidebarVisible}
                 rightSidebarOpen={rightSidebarVisible}
                 workspaceMode={rightSidebarWorkspaceMode}
-                onToggleLeftSidebar={toggleLeftSidebar}
                 onToggleRightSidebar={toggleRightSidebar}
                 onOpenDetail={openPartnerDetail}
               />

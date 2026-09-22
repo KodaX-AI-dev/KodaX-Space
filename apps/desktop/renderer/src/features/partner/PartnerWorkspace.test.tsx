@@ -46,9 +46,7 @@ test('compact Partner keeps context and detail entries reachable', () => {
       <I18nProvider>
         <PartnerRemoteRecordsProvider>
           <PartnerWorkspace
-            leftSidebarOpen
             rightSidebarOpen={false}
-            onToggleLeftSidebar={() => undefined}
             onToggleRightSidebar={() => undefined}
             onOpenDetail={() => undefined}
           />

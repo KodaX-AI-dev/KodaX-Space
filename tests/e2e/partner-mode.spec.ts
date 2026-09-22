@@ -385,7 +385,8 @@ test('Partner supports normal composer use, slash clear, mode shortcut, and resu
       'false',
     );
 
-    const navigationToggle = page.getByTestId('partner-left-sidebar-toggle');
+    const navigationToggle = page.getByRole('button', { name: /^(Show|Hide) left sidebar$/ });
+    await expect(navigationToggle).toHaveCount(1);
     await expect(navigationToggle).toHaveAttribute('aria-pressed', 'true');
     await navigationToggle.click();
     await expect(page.getByTestId('left-sidebar')).toHaveCount(0);
