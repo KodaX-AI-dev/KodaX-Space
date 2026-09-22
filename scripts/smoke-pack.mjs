@@ -45,7 +45,14 @@ const FEISHU_CLI_LICENSE_PATH = path.join(
 );
 const SIZE_LIMIT_BYTES = 200 * 1024 * 1024;
 const require = createRequire(import.meta.url);
-const electronBin = require('electron');
+// Resolved lazily: requiring 'electron' at import time hard-fails whenever the
+// electron postinstall download is broken or still racing (CI unit shards import
+// this module for the updater probe without needing the binary).
+let electronBinCache;
+function electronBin() {
+  if (!electronBinCache) electronBinCache = require('electron');
+  return electronBinCache;
+}
 
 export async function verifyPackagedPartnerLibrary({
   asarPath,
@@ -1150,7 +1157,7 @@ async function checkAsarContents(asarPath) {
   }
 }
 
-export function verifyPackagedUpdater({ asarPath, executable = electronBin }) {
+export function verifyPackagedUpdater({ asarPath, executable = electronBin() }) {
   const marker = 'PACKAGED_UPDATER_PROBE=ok';
   const probeSource = `
 const { createRequire } = require('node:module');
@@ -1218,7 +1225,7 @@ try {
   process.exit(1);
 }
 `;
-  const result = spawnSync(electronBin, ['-e', probeSource], {
+  const result = spawnSync(electronBin(), ['-e', probeSource], {
     cwd: rootDir,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -2043,7 +2050,7 @@ try {
   const probePath = path.join(outDir, `.kodax-worker-probe-${randomUUID()}.mjs`);
   await fs.writeFile(probePath, probeSource, { flag: 'wx' });
   const runProbe = () =>
-    spawnSync(electronBin, [probePath], {
+    spawnSync(electronBin(), [probePath], {
       cwd: rootDir,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
