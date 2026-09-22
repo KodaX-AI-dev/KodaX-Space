@@ -1,6 +1,6 @@
 # ISSUE 216 — Windows 凭据、Shell 与诊断回归
 
-状态：Space 源码修复，尚未发布。2026-09-22 已接入官方 Registry 发布的
+状态：原修复已随 Space `0.1.46-rc.2` 发布；下方真实模型验收发现的压缩事件修复仅在本地源码，尚未发布。2026-09-22 已接入官方 Registry 发布的
 `@kodax-ai/kodax@0.7.96-rc.9`，包含 SDK 诊断及后续单独授权的 daemon 状态写入修复。
 本轮本地集成验证已完成，客户原机验收待完成；下方 rc.8 验证记录保持为历史证据。
 
@@ -108,6 +108,64 @@ macOS 取消授权记忆和 native loader cause 入口已补回归并修正；�
   待恢复退出状态时不必产生这些父事件。核验改在完整退出之后，未增加生产探针。
 - Standards / Spec 独立评审均无遗留 finding。
 - 客户原机验收：待完成。
+
+## rc.2 发布后的真实模型补充验收（2026-09-22）
+
+发布记录 `v0.1.46-rc.2` 已完成此前手册断言修正后的完整回归；上方首轮
+3,771/1/13 是历史结果，不代表当前发布结果。
+
+- 下载官方 rc.2 Portable 并核对 SHA-256：
+  `71ccade346023aca67dda999607f1a23fb6ff3babee48a7c081f719a8dea9f0f`。
+  使用隔离 profile、合成历史和真实 DeepSeek 请求复现：对话成功，手动压缩已提交，
+  但 Space 丢失 `compact_stats`。原因是 SDK 的 `performance.now()` 产生合法小数毫秒，
+  IPC 的 `elapsedMs` / `commitMs` 却要求整数。
+- 最小源码修复仅允许这两个耗时字段为有限、非负且不超过 86,400,000 的数字。
+  token、调用次数和 revision 仍要求整数；未改变 SDK 压缩算法、认证或触发策略。
+  公共事件投影测试先 RED，修复后 16/16 通过，覆盖三个压缩来源和非法数值。
+- 修复后的完整 `npm test` 一次通过：桌面 3,774 通过、0 失败、13 条件跳过；
+  发布检查 85 通过、0 失败、7 条件跳过；IPC schema 362 通过、0 失败。
+  TypeScript、全仓 ESLint 和最终新增验收脚本 ESLint 均通过。
+- 重新构建、标准 Windows 打包通过。该本地包仍标记 rc.2、使用 Registry 原版 SDK
+  rc.9，**不是已发布的官方 rc.2 二进制，也不包含 sibling SDK 的后续维护收尾补丁**。
+  boot、Runtime/Worker、updater/native/SQLite、两次完整退出和历史恢复烟测通过。
+- `e2e/issue216-live-acceptance.mjs` 真实模型验收通过：凭据通过 Space broker 注入、
+  两轮对话、UI 手动压缩、独立长历史自动压缩、压缩后 renderer 重载、四路实际
+  `windows-restricted-user` sandbox 命令重叠、UI Stop 后精确子进程消失及后继 Run。
+  手动/自动各实际请求一次摘要，commitMs 分别约 31.747 / 48.091，均成功投影。
+  四路命令使用共同文件屏障及区间重叠断言；不能仅凭 Promise.all 判定并发。
+- 第一次自动压缩测试紧接手动压缩，没有构造足够的新可压缩前缀，未通过提交断言。
+  最终改用独立会话和真实长 assistant 历史，保留 committed、摘要请求和 revision
+  前进断言，没有降低成功标准。
+- 验收读取环境中的 `DEEPSEEK_API_KEY`，仅将合成数据发给该 Provider。测试应用环境
+  不直接持有该环境变量，通过测试内存凭据后端与真实 Runtime broker 调用。
+  这项测试不替代上方真实 DPAPI 跨进程验证，更不替代客户原账号迁移验收。
+- 本机证据目录：`C:/Users/ADMIN/AppData/Local/Temp/space-rc9-followup-2b943869c9`；
+  最终真实模型报告为 `live-complete/report.json`，原发布包失败为 `live-first/report.json`。
+
+复跑：设置 `DEEPSEEK_API_KEY`、`SPACE_LIVE_EXE`（待验收包绝对路径）和可选
+`SPACE_LIVE_REPORT_DIR`，执行 `node --import tsx e2e/issue216-live-acceptance.mjs`。
+会产生少量真实模型费用；只使用临时 profile，不读取客户凭据或业务历史。
+
+SDK 的 MCP 验证等待和 Runtime 后台维护收尾跟踪在 sibling KodaX 仓库单独修复、
+验证，尚未发布或接入本包。SDK 完整 Runtime 文件加新增维护用例 348/348、相关
+Stop/Shell/host/runner 五文件 156/156、MCP/image-history 18/18 通过；批次存在交集，
+不累加。SDK 类型检查、包/分发构建、重建产物的真实 Shell 与 close gate 验收通过，
+但本轮未重跑整个 SDK 15,000+ 测试套件。
+另有独立 memory-review 后台任务关闭归属缺口：直接等待
+可能引入约 90 秒甚至更长的关机等待，因此未混入当前补丁；不能宣称所有历史
+`EBUSY/ENOTEMPTY` 已消除。客户 PowerShell/CIM 和原账号 DPAPI 验收仍待完成。
+
+### Standards
+
+本轮以 Space `c390167e`、SDK `717a3792` 为固定点评审工作区变动。
+验收脚本的采证失败、报告失败清理及真实并发断言已修正；SDK 测试失败清理已修正。
+最终本轴遗留 finding：0。静态评审不代替上述执行结果。
+
+### Spec
+
+压缩修复保持原计数约束；SDK 维护等待限于 Runtime close，保留 Run/Stop 异步行为、
+两 Runtime 隔离和原 close 重试语义。四路重叠验收缺口已关闭。
+最终本轴遗留 finding：0。独立 memory-review 和客户原机问题仍明确保留。
 
 ## 客户原机验收
 

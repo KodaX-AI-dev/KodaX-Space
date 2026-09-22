@@ -211,14 +211,14 @@ Last Updated: 2026-09-21
 | 213 | Medium   | ready                                    | SDK Full RepoIntel routing can rebuild for 9–16 seconds before model work begins                                                                                                                           | Observed SDK 0.7.96-rc.3 / Space v0.1.46-beta.1              | 2026-09-13 |
 | 214 | High     | Resolved in source                       | New Session event-journal initialization scanned all historical Run logs and blocked concurrent history reads                                                                                              | Observed v0.1.46-beta.1 / SDK 0.7.96-rc.3                    | 2026-09-13 |
 | 215 | High     | Resolved in source — SDK rc.5 integrated | Corrupt extracted JPEG causes repeated upstream HTTP 400 across Providers with no actionable reason                                                                                                        | Observed v0.1.46-beta.2; introduction unknown                | 2026-09-14 |
-| 216 | High | Resolved in source; SDK rc.9 integrated; Space release/customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics | Observed v0.1.46-beta.4-fix.1 / rc.1 | 2026-09-21 |
+| 216 | High | Original fix released in rc.2; compaction telemetry follow-up fixed in source; customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics | Observed v0.1.46-beta.4-fix.1 / rc.1 | 2026-09-21 |
 
 ## Issue Details
 
 ## Issue 216: Some Windows profiles cannot restore credentials or start their selected shell
 
 - Priority: High
-- Status: Resolved in source; published SDK rc.9 integrated; Space release/customer verification pending
+- Status: Original fix released in Space rc.2 with SDK rc.9; compaction telemetry follow-up fixed in source; customer verification pending
 - Introduced: Observed in v0.1.46-beta.4-fix.1 and v0.1.46-rc.1
 - Created: 2026-09-21
 
@@ -279,11 +279,23 @@ Two complete product exits and Session restoration passed. These are new rc.9 re
 reused rc.8 evidence. An additional observed complete-exit run confirmed real SDK events in
 both Space (boot/process identity) and daemon (Job membership) logs. Healthy startup alone
 need not emit the parent events; the initial observer's stronger assumption was corrected
-without adding production probes. Space publication and customer-machine acceptance remain pending.
+without adding production probes. Space publication and customer-machine acceptance were still pending at that checkpoint.
+
+Post-release follow-up on 2026-09-22: official Space rc.2 is now published; its release
+verification reran the complete desktop suite successfully. Real-provider acceptance of that
+official binary found a separate telemetry bug: legitimate fractional SDK compaction timings
+failed Space's integer-only IPC schema, discarding `compact_stats` after successful compaction.
+The source-only follow-up accepts finite, bounded, nonnegative durations; count/revision
+constraints are unchanged. A rebuilt local package using the unmodified Registry SDK rc.9
+passed real conversation, manual/automatic compaction with committed statistics, renderer
+history reload, four overlapping sandbox Shell commands, and UI Stop/exact-child/successor
+acceptance. It is not a new published binary. See the regression guide for RED/GREEN evidence.
+Separate SDK maintenance ownership and MCP fixture fixes remain local to the sibling SDK;
+independent memory-review shutdown ownership and customer-machine acceptance remain open.
 
 ### Resolution
 
-- Fixed version: Unreleased source for the 0.1.46 line; no release/version bump.
+- Fixed version: Original changes released in Space 0.1.46-rc.2; later compaction telemetry correction is unreleased source.
 - Resolution Date: 2026-09-21; published SDK rc.9 integrated on 2026-09-22.
 - Windows credentials now use the existing encrypted vault first, with per-account migration,
   durable Runtime reads/writes, stable identity preservation and deletion-race protection.
@@ -296,8 +308,9 @@ without adding production probes. Space publication and customer-machine accepta
   shell fallback/contract, updater imports/package guard, structured causes and SDK bridge.
 
 See the [regression guide](test-guides/ISSUE_216_0.1.46_REGRESSION_GUIDE.md) for exact boundaries
-and customer checks. The SDK changes are published in rc.9 and integrated into Space's exact
-Registry dependency; Space itself remains unreleased for these changes. The customer-specific
+and customer checks. The original SDK changes are published in rc.9 and integrated into Space's exact
+Registry dependency; the original Space changes shipped in rc.2. The new telemetry follow-up
+and later SDK maintenance work are not released. The customer-specific
 lifecycle failure remains unconfirmed; this fix does not remove the SDK's PowerShell dependency
 or claim that failure is resolved.
 

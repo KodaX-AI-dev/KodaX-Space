@@ -471,6 +471,51 @@ test('daemon compaction summary-request metrics survive the Space telemetry cont
   );
 });
 
+test('fractional SDK compaction durations preserve committed manual and automatic events', () => {
+  for (const source of ['manual', 'automatic_threshold', 'physical_capacity']) {
+    const projected = projectRuntimeContextSessionEvent(
+      runtimeEvent('context.compaction.finished', {
+        contextId: 's_1',
+        contextKind: 'root',
+        contextRevision: 1,
+        tokensBefore: 5_000,
+        tokensAfter: 1_000,
+        committed: true,
+        source,
+        elapsedMs: 1234.625,
+        commitMs: 0.125,
+        summaryRequests: [{ outcome: 'succeeded' }],
+      }),
+    );
+    assert.ok(projected?.kind === 'compact_stats', `${source} result must reach the renderer`);
+    assert.equal(projected.elapsedMs, 1234.625);
+    assert.equal(projected.commitMs, 0.125);
+    assert.equal(projected.committed, true);
+    assert.equal(projected.summaryRequestCount, 1);
+  }
+});
+
+test('compaction duration fields retain finite nonnegative bounded validation', () => {
+  for (const field of ['elapsedMs', 'commitMs']) {
+    for (const value of [NaN, Infinity, -0.125, 86_400_000.125]) {
+      assert.equal(
+        projectRuntimeContextSessionEvent(
+          runtimeEvent('context.compaction.finished', {
+            contextId: 's_1',
+            contextKind: 'root',
+            contextRevision: 1,
+            tokensBefore: 5_000,
+            tokensAfter: 1_000,
+            committed: true,
+            [field]: value,
+          }),
+        ),
+        undefined,
+      );
+    }
+  }
+});
+
 test('daemon compaction finished without summary metrics projects without them', () => {
   assert.deepEqual(
     projectRuntimeContextSessionEvent(
