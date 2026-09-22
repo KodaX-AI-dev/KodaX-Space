@@ -353,6 +353,16 @@ export function PartnerConnectorDialog({
             {context.snapshot.error}
           </p>
         )}
+        {context?.snapshot.error && (
+          <button
+            type="button"
+            className={`mt-3 ${actionClass}`}
+            disabled={busy || context.snapshot.loading || context.snapshot.changing}
+            onClick={() => void perform(() => context.binding.refresh())}
+          >
+            {t('connectors.retryBinding')}
+          </button>
+        )}
         {connection ? (
           <div className="mt-6 space-y-4">
             <p className="flex items-center gap-2 text-sm text-green-600">

@@ -119,6 +119,7 @@ export const messages = {
       'Connection is ready. Enable it for this conversation, then choose exact documents and folders. Document changes still require review.',
     'connectors.documentScope': 'Documents and Base scope',
     'connectors.try': 'Try it',
+    'connectors.retryBinding': 'Retry conversation connection',
     'connectors.advanced': 'Advanced: use an existing CLI profile',
     'connectors.installContinue': 'Install and continue',
     'connectors.privateInstall':
@@ -3138,6 +3139,7 @@ export const messages = {
       '账号已连接。启用本会话后，请单独选择可访问的文档与文件夹；文档修改仍需审核。',
     'connectors.documentScope': '文档与多维表格范围',
     'connectors.try': '去试试',
+    'connectors.retryBinding': '重新检查会话连接',
     'connectors.advanced': '高级：使用已有 CLI profile',
     'connectors.installContinue': '安装并继续',
     'connectors.privateInstall':

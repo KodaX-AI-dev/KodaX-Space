@@ -706,10 +706,15 @@ export class PartnerConnectorService {
         continue;
       }
       const status = await this.deps.cli.inspect(account.profile);
+      if (!status.installed || status.version !== FEISHU_CLI_VERSION || !status.identity) {
+        const code = !status.installed
+          ? 'cli_missing'
+          : status.version !== FEISHU_CLI_VERSION
+            ? 'unsupported_version'
+            : 'not_connected';
+        throw new Error(status.reason ?? new FeishuCliError(code, false).message);
+      }
       if (
-        !status.installed ||
-        status.version !== FEISHU_CLI_VERSION ||
-        !status.identity ||
         status.identity.appId !== account.appId ||
         status.identity.openId !== account.openId
       )

@@ -66,7 +66,7 @@ if(channel==='partner.connectors.onboarding.get')return {ok:true,data:{job}};
 if(channel==='partner.connectors.onboarding.reopen')return {ok:true,data:{ok:true}};
 if(channel==='partner.connectors.onboarding.cancel'){if(window.failCancel)return {ok:false,error:{message:'Cancellation could not be confirmed'}};return new Promise(resolve=>{window.finishCancel=()=>{job={...job,phase:window.connectedBeforeCancel?'connected':'cancelled',canReopen:false,...(window.connectedBeforeCancel?{connection}:{})};if(window.connectedBeforeCancel)accounts=[connection];resolve({ok:true,data:{job}});};});}
 if(channel==='partner.connectors.disconnect'){accounts=[];window.emit('partner.connectors.changed',{extensionId:'library'});return {ok:true,data:{ok:true}};}
-if(channel==='partner.connectors.resolve')return {ok:true,data:{connectors:input.connectors.map(binding=>({binding:{...binding,name:connector.name,accountLabel:connection.accountLabel},available:true}))}};
+if(channel==='partner.connectors.resolve'){if(window.failResolve)return {ok:false,error:{message:'Account verification temporarily failed'}};return {ok:true,data:{connectors:input.connectors.map(binding=>({binding:{...binding,name:connector.name,accountLabel:connection.accountLabel},available:true}))}};}
 if(channel==='session.partnerConnectors.get')return new Promise(resolve=>{window.finishSessionGet=()=>resolve(window.failSessionGet?{ok:false,error:{message:'Could not read saved conversation bindings'}}:{ok:true,data:{connectors:savedBindings}});});
 if(channel==='session.partnerConnectors.set')return {ok:true,data:{connectors:input.connectors.map(binding=>({binding:{...binding,name:connector.name,accountLabel:connection.accountLabel},available:true}))}};
 return {ok:false,error:{message:'Unexpected channel '+channel}};
@@ -121,6 +121,61 @@ async function openFixture(
   await page.goto('http://connector.test/');
   await page.addScriptTag({ content: output.outputFiles[0].text });
   return { page, errors };
+}
+
+for (const retainedScope of [false, true]) {
+  test(
+    `a connected account can retry failed verification without disconnecting or losing scope: retained=${retainedScope}`,
+    { skip: !browserPath },
+    async (t) => {
+      const { page, errors } = await openFixture(t);
+      await page.getByRole('button', { name: 'Connect', exact: true }).waitFor();
+      await page.evaluate(() => Reflect.get(window, 'finishConnection')());
+      const tryIt = page.getByRole('button', { name: 'Try it', exact: true });
+      await tryIt.waitFor();
+      if (retainedScope) await page.evaluate(() => Reflect.get(window, 'seedScope')());
+      const before = await page.evaluate(() => Reflect.get(window, 'readBindings')());
+      await page.evaluate(() => {
+        Reflect.set(window, 'failResolve', true);
+      });
+      if (retainedScope) await page.evaluate(() => Reflect.get(window, 'refreshBindings')());
+      else await tryIt.click();
+      await page
+        .getByRole('alert')
+        .filter({ hasText: 'Account verification temporarily failed' })
+        .waitFor();
+      assert.equal(await tryIt.isDisabled(), true);
+      await page.evaluate(() => {
+        Reflect.set(window, 'failResolve', false);
+      });
+      await page
+        .getByRole('button', { name: 'Retry conversation connection', exact: true })
+        .click();
+      await page.getByRole('alert').waitFor({ state: 'detached' });
+      assert.deepEqual(await page.evaluate(() => Reflect.get(window, 'readBindings')()), before);
+      await tryIt.click();
+      await page.getByText('Conversation focused', { exact: true }).waitFor();
+      assert.equal(
+        await page.getByRole('textbox', { name: 'Draft' }).inputValue(),
+        'Keep my draft',
+      );
+      const calls = (await page.evaluate(() => Reflect.get(window, 'calls'))) as {
+        channel: string;
+      }[];
+      assert.equal(
+        calls.some((call) =>
+          [
+            'partner.connectors.disconnect',
+            'partner.connectors.onboarding.start',
+            'session.create',
+            'session.send',
+          ].includes(call.channel),
+        ),
+        false,
+      );
+      assert.deepEqual(errors, []);
+    },
+  );
 }
 
 test(

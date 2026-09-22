@@ -105,6 +105,7 @@ feature is not integrated merely because its local development status is complet
 
 ## Test Requirements
 
+- **Partner local preference (2026-09-22)**: Do not automatically launch browsers, browser-based tests, or desktop windows on this user's computer, including headless system Chrome that can disrupt their work. Use checks that do not launch browsers. Only resume UI launches after a new explicit user request; an earlier one-time frontend launch is not standing authorization. Leave full UI regression to CI or a user-arranged session and record any interrupted checks accurately.
 - **Coverage**: ≥ 80%
 - **Layout**: unit tests next to source (`packages/*/src/**/*.test.ts`); E2E in `tests/`. No `__tests__/` directories.
 - **TDD**: write test first (RED) → fail → minimal impl (GREEN) → pass → refactor.

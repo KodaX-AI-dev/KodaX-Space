@@ -1061,6 +1061,41 @@ test('inspection contains no private identity, unchanged verification preserves 
   );
 });
 
+test('Feishu selection distinguishes verification failure from a changed account and can recover without reconnecting', async (t) => {
+  const f = await fixture(t);
+  const verified = await f.cli.inspect('test');
+  const selections = f.context.bindings.map(
+    ({ name: _name, accountLabel: _label, ...value }) => value,
+  );
+  const cases: Array<[Awaited<ReturnType<FeishuCli['inspect']>>, string]> = [
+    [{ installed: false }, new FeishuCliError('cli_missing', false).message],
+    [
+      { installed: true, version: '0.0.0' },
+      new FeishuCliError('unsupported_version', false).message,
+    ],
+    [
+      { installed: true, version: '1.0.92', reason: new FeishuCliError('timeout', false).message },
+      new FeishuCliError('timeout', false).message,
+    ],
+    [{ installed: true, version: '1.0.92' }, new FeishuCliError('not_connected', false).message],
+    [
+      { ...verified, identity: { ...verified.identity!, openId: 'ou_other' } },
+      '飞书账号已变化，请重新连接并确认范围',
+    ],
+  ];
+  for (const [status, message] of cases) {
+    f.cli.inspect = async () => status;
+    await assert.rejects(f.service.resolveSelections(selections), { message });
+    const [account] = await f.service.accounts('partner.library', 'feishu');
+    assert.equal(account.id, f.connection.id);
+    assert.equal(account.revision, f.connection.revision);
+    assert.equal(account.connected, true);
+  }
+  f.cli.inspect = async () => verified;
+  assert.deepEqual(await f.service.resolveSelections(selections), f.context.bindings);
+  assert.equal(f.writes(), 0);
+});
+
 test('disable rejects new calls and waits for already dispatched write settlement', async (t) => {
   const f = await fixture(t);
   let started!: () => void;

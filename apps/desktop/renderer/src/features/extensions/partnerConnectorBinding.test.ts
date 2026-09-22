@@ -47,6 +47,23 @@ test('selecting a connector only configures its exact draft scope, never creates
   await binding.remove(selection.connectionId);
   assert.deepEqual(binding.captureDraft(draft).connectors, []);
 });
+
+test('refresh lets an empty draft retry a failed first selection without granting the failed scope', async () => {
+  const { binding, api } = fixture();
+  const resolve = api.resolve;
+  await binding.setContext(draft);
+  api.resolve = async () => {
+    throw new Error('Account verification timed out');
+  };
+  await assert.rejects(binding.select(selection), /timed out/);
+  assert.deepEqual(binding.getSnapshot().state.connectors, []);
+  api.resolve = resolve;
+  await binding.refresh();
+  assert.equal(binding.getSnapshot().error, null);
+  assert.deepEqual(binding.captureDraft(draft).connectors, []);
+  await binding.select(selection);
+  assert.deepEqual(binding.captureDraft(draft).connectors, [selection]);
+});
 test('clear new conversation invalidates a captured draft and keeps old ACK from adopting it', async () => {
   const { binding } = fixture();
   await binding.setContext(draft);

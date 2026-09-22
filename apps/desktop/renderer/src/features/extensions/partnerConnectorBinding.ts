@@ -63,7 +63,12 @@ export function createPartnerConnectorBinding(api: PartnerConnectorApi) {
       refreshAfterChange = true;
       return;
     }
-    if (!context.sessionId && !snapshot.state.connectors.length) return;
+    if (!context.sessionId && !snapshot.state.connectors.length) {
+      // A failed first selection saved no scope. Let the user retry; selecting
+      // again still goes through the host's identity and permission checks.
+      publish({ loading: false, error: null });
+      return;
+    }
     const expectedEpoch = epoch;
     const expectedLoad = ++loadRevision;
     publish({ loading: true, error: null });
