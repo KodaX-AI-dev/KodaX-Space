@@ -31,7 +31,6 @@ import {
   Copy,
   Info,
   Minus,
-  PanelLeft,
   PawPrint,
   Square,
   X,
@@ -1520,8 +1519,10 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
               aria-hidden={visibleExtension ? true : undefined}
             >
               <PartnerWorkspace
+                leftSidebarOpen={leftSidebarVisible}
                 rightSidebarOpen={rightSidebarVisible}
                 workspaceMode={rightSidebarWorkspaceMode}
+                onToggleLeftSidebar={toggleLeftSidebar}
                 onToggleRightSidebar={toggleRightSidebar}
                 onOpenDetail={openPartnerDetail}
               />
@@ -2089,13 +2090,6 @@ export function AppTopMenu({
       ref={ref}
       className="titlebar-brand app-no-drag flex h-7 min-w-0 items-center gap-0.5 text-[12px] text-fg-secondary"
     >
-      <TitlebarIconButton
-        label={leftSidebarOpen ? t('menu.view.hideLeftSidebar') : t('menu.view.showLeftSidebar')}
-        active={leftSidebarOpen}
-        onClick={onToggleLeftSidebar}
-      >
-        <PanelLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-      </TitlebarIconButton>
       {showHistoryNavigation && (
         <>
           <TitlebarIconButton label={t('menu.nav.back')} disabled onClick={() => undefined}>
@@ -2104,9 +2098,9 @@ export function AppTopMenu({
           <TitlebarIconButton label={t('menu.nav.forward')} disabled onClick={() => undefined}>
             <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </TitlebarIconButton>
+          <div className="mx-1 h-4 w-px bg-border-default/70" aria-hidden />
         </>
       )}
-      <div className="mx-1 h-4 w-px bg-border-default/70" aria-hidden />
 
       {menus.map((menu) => (
         <div key={menu.id} className="relative">

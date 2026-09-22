@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Handshake, List, PanelRight } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import { useAppStore } from '../../store/appStore.js';
+import { SidebarToggleButton } from '../../shell/SidebarToggleButton.js';
 import { PartnerContextRail } from './PartnerContextRail.js';
 import { PartnerConversation } from './PartnerConversation.js';
 import { PartnerEvidenceDetail } from './PartnerEvidenceDetail.js';
@@ -48,15 +49,19 @@ function useCompactPartnerLayout(): boolean {
 }
 
 interface PartnerWorkspaceProps {
+  readonly leftSidebarOpen: boolean;
   readonly rightSidebarOpen: boolean;
   readonly workspaceMode?: boolean;
+  readonly onToggleLeftSidebar: () => void;
   readonly onToggleRightSidebar: () => void;
   readonly onOpenDetail: (target: PartnerDetailOpenTarget) => void;
 }
 
 export function PartnerWorkspace({
+  leftSidebarOpen,
   rightSidebarOpen,
   workspaceMode = false,
+  onToggleLeftSidebar,
   onToggleRightSidebar,
   onOpenDetail,
 }: PartnerWorkspaceProps): JSX.Element {
@@ -139,7 +144,13 @@ export function PartnerWorkspace({
       <PartnerBaseTaskAutoOpener onOpenDetail={onOpenDetail} />
       <PartnerNativeDocumentAutoOpener onOpenDetail={onOpenDetail} />
       <div className="flex h-10 flex-shrink-0 items-center gap-1 border-b border-border-default px-3">
-        <Handshake className="h-4 w-4 text-accent-ink" strokeWidth={1.75} aria-hidden />
+        <SidebarToggleButton
+          side="left"
+          open={leftSidebarOpen}
+          onClick={onToggleLeftSidebar}
+          testId="partner-left-sidebar-toggle"
+        />
+        <Handshake className="ml-1 h-4 w-4 text-accent-ink" strokeWidth={1.75} aria-hidden />
         <span className="flex-shrink-0 text-[13px] font-medium text-fg-primary">Partner</span>
         <span className="min-w-0 truncate text-[11px] text-fg-muted">{t('partner.subtitle')}</span>
         <div className="ml-auto flex items-center gap-1.5">
