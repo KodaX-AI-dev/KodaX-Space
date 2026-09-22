@@ -560,6 +560,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'Artifact 视图支持列表选择、版本切换、copy、save/export、再改一版、打开 standalone window。interactive HTML 会进入 sandbox 预览。react artifact 当前是占位类型，不作为可交互 LiveCanvas 运行。',
       '',
+      '在 Partner 对话中打开产物后，预览占满右侧标签页扣除工具栏后的可用空间；长报告在预览内部滚动。调整窗口大小、切换标签或版本后，预览区域随面板调整。',
+      '',
       'Artifact 不等于项目文件。它默认是会话产物；需要落到项目里时，用户应明确要求保存到指定路径，之后会走常规写文件权限。',
       '',
       'Agent 侧生成方式（Coder daemon 会话）：KodaX 0.7.89 的 runBoundHostTools v2 会把 lease 绑定的 Space host tools 物化进该 run 的模型可见工具表，create_artifact / create_office_artifact 在 SA 与 managed-agent 子 Agent 两条路径都可直接调用。同一批工具仍保留 MCP 能力通道：用 mcp_search（server 为 "host"）发现，用 mcp_call 调用，capability id 形如 host:<leaseId>:create_artifact。lease 由 Space 自动绑定到它启动的 Coder run，子 Agent 随父 run 继承同一通道。Embedded 回退模式与 Partner 会话仍使用进程内顶层工具。',

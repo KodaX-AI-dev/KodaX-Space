@@ -571,6 +571,8 @@ Coder 和 Partner 的普通网页链接均由系统浏览器打开。本地文�
 - **Artifact**：由 Space 管理的独立生成物，有自己的版本、复制和导出行为。
 - **Partner Output**：面向知识工作的 workspace-first 交付物，可带 checkpoint/diff/rollback。
 
+在 Partner 对话中打开产物后，预览会占满右侧标签页扣除工具栏后的可用空间。长报告在预览内部滚动；调整窗口大小、切换标签或版本后，预览区域随面板调整。
+
 interactive HTML 在沙箱中预览；React artifact 当前不是 LiveCanvas。Office writer 提供的是可靠基础文件，不承诺品牌模板级排版。
 
 ## 14. Workflow、Memory、MCP、Skills 与 External Agents
