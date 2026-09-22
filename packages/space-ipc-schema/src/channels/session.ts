@@ -1334,7 +1334,8 @@ export const sessionEventChannel = {
       contextRevision: z.number().int().nonnegative().optional(),
       source: z.enum(['manual', 'automatic_threshold', 'physical_capacity']).optional(),
       committed: z.boolean().optional(),
-      elapsedMs: z.number().int().nonnegative().max(86_400_000).optional(),
+      // SDK performance.now() measurements retain fractional milliseconds.
+      elapsedMs: z.number().finite().nonnegative().max(86_400_000).optional(),
       strategy: z.enum(['full_prefix', 'map_reduce']).optional(),
       effectiveTriggerTokens: z.number().int().nonnegative().max(10_000_000).optional(),
       protectedBudgetTokens: z.number().int().nonnegative().max(10_000_000).optional(),
@@ -1346,7 +1347,7 @@ export const sessionEventChannel = {
       /** KodaX 0.7.96-beta.4: physical summary calls (count only; no per-request detail). */
       summaryRequestCount: z.number().int().positive().max(1_000).optional(),
       /** Durable history commit duration; excludes summary generation. */
-      commitMs: z.number().int().nonnegative().max(86_400_000).optional(),
+      commitMs: z.number().finite().nonnegative().max(86_400_000).optional(),
       beforeRevision: z.number().int().nonnegative().optional(),
       afterRevision: z.number().int().nonnegative().optional(),
       reason: z.string().max(2_000).optional(),

@@ -10,6 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildPtyEnvironment, PtyHost } from '../terminal/ptyHost.js';
+import { resolveTerminalShell } from '../terminal/shell.js';
 
 const SKIP = process.env.SKIP_PTY_TESTS === '1';
 const ifAvailable = SKIP ? test.skip.bind(test) : test;
@@ -76,6 +77,18 @@ ifAvailable('PtyHost: create rejects relative cwd', () => {
   const host = new PtyHost();
   try {
     assert.throws(() => createTestPty(host, { cwd: './relative' }), /absolute/);
+  } finally {
+    host.disposeAll();
+  }
+});
+
+ifAvailable('PtyHost: starts the usable shell selected by the main process', () => {
+  const host = new PtyHost();
+  const resolvedShell = resolveTerminalShell(process.platform === 'win32' ? 'cmd' : 'bash');
+  try {
+    const created = createTestPty(host, { shellPreference: 'pwsh', resolvedShell });
+    assert.equal(created.shell, resolvedShell.program);
+    assert.ok(created.pid > 0);
   } finally {
     host.disposeAll();
   }

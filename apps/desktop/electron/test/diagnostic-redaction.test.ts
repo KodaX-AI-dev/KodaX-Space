@@ -67,3 +67,58 @@ test('diagnostic redaction bounds depth, keys, arrays, strings, errors, and circ
   assert.deepEqual(result.circular, { value: 'ok', self: '[CIRCULAR]' });
   assert.deepEqual(result.deep, { a: { b: '[MAX_DEPTH]' } });
 });
+
+test('diagnostic errors retain bounded failure evidence without arbitrary process or secret fields', () => {
+  const nativeError = Object.assign(new Error('Cannot load C:\\Users\\alice\\binding.node'), {
+    code: 'ERR_DLOPEN_FAILED',
+    errno: -4058,
+    syscall: 'dlopen',
+    env: { PRIVATE_VALUE: 'hidden-environment' },
+    spawnargs: ['hidden-arguments'],
+  });
+  const error = Object.assign(new Error('Cannot find native binding', { cause: [nativeError] }), {
+    code: 'ETIMEDOUT',
+    signal: 'SIGTERM',
+    killed: true,
+    exitCode: 1,
+    stdout: 'hidden-output',
+    password: 'hidden-password',
+  });
+  assert.deepEqual(redactDiagnosticValue(error, { privatePathPrefixes: ['C:\\Users\\alice'] }), {
+    name: 'Error',
+    message: 'Cannot find native binding',
+    code: 'ETIMEDOUT',
+    signal: 'SIGTERM',
+    killed: true,
+    exitCode: 1,
+    cause: [
+      {
+        name: 'Error',
+        message: 'Cannot load [PRIVATE_PATH]\\binding.node',
+        code: 'ERR_DLOPEN_FAILED',
+        errno: -4058,
+        syscall: 'dlopen',
+      },
+    ],
+  });
+});
+
+test('diagnostic error cause chains are bounded and do not expose unstructured cause payloads', () => {
+  const error = new Error('outer');
+  error.cause = error;
+  assert.deepEqual(redactDiagnosticValue(error), {
+    name: 'Error',
+    message: 'outer',
+    cause: '[CIRCULAR]',
+  });
+  const nested = new Error('outer', {
+    cause: [new Error('inner', { cause: error }), new Error('extra')],
+  });
+  assert.deepEqual(redactDiagnosticValue(nested, { maxDepth: 2, maxArrayItems: 1 }), {
+    name: 'Error',
+    message: 'outer',
+    cause: ['[MAX_DEPTH]', '[TRUNCATED 1 ITEMS]'],
+  });
+  const payload = new Error('outer', { cause: [{ env: { VALUE: 'hidden-environment' } }] });
+  assert.doesNotMatch(JSON.stringify(redactDiagnosticValue(payload)), /hidden-environment/);
+});

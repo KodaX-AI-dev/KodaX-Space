@@ -115,17 +115,11 @@ function defaultSecretStore(): RuntimeClientSecretStore {
   return {
     async read(account) {
       const keychain = await import('../../providers/keychain.js');
-      if ((await keychain.getBackendStatus()) !== 'keychain') {
-        throw new Error('OS keychain is required for the Runtime client secret.');
-      }
-      return keychain.getKey(account);
+      return keychain.getPersistentKey(account);
     },
     async write(account, secret) {
       const keychain = await import('../../providers/keychain.js');
-      if ((await keychain.getBackendStatus()) !== 'keychain') {
-        throw new Error('OS keychain is required for the Runtime client secret.');
-      }
-      await keychain.setKey(account, secret);
+      await keychain.setPersistentKey(account, secret);
     },
   };
 }
@@ -211,7 +205,7 @@ export class RuntimeClientIdentityStore {
       // Populate a candidate-specific keychain account before publishing its
       // name. Concurrent first starts therefore cannot overwrite one another's
       // secret; only the identity-file winner becomes authoritative.
-      await this.#loadSecret(candidate.secretAccount);
+      await this.#loadSecret(candidate.secretAccount, true);
       const bytes = identityBytes(candidate);
 
       try {
@@ -243,7 +237,7 @@ export class RuntimeClientIdentityStore {
     throw new Error('Unable to establish a stable Runtime client identity.');
   }
 
-  #loadSecret(account: string): Promise<string> {
+  #loadSecret(account: string, allowCreate = false): Promise<string> {
     if (this.#secretPromise?.account !== account) {
       const pending = (async () => {
         const existing = await this.#secretStore.read(account);
@@ -252,6 +246,11 @@ export class RuntimeClientIdentityStore {
             throw new Error('Runtime client secret stored in the OS keychain is invalid.');
           }
           return existing;
+        }
+        if (!allowCreate) {
+          throw new Error(
+            'Existing Runtime client secret is missing; restore the credential before reconnecting.',
+          );
         }
         const candidate = `space_secret_${this.#uuid()}`;
         await this.#secretStore.write(account, candidate);

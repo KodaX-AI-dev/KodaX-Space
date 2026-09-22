@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -23,6 +24,119 @@ export interface ShellResolutionOptions {
   readonly platform?: NodeJS.Platform;
   readonly env?: NodeJS.ProcessEnv;
   readonly exists?: (candidate: string) => boolean;
+}
+
+export interface UsableShellResolutionOptions extends ShellResolutionOptions {
+  /** Test seam: a profile-free, side-effect-free shell startup probe. */
+  readonly probeStartup?: (shell: ResolvedShell) => Promise<boolean>;
+}
+
+const startupProbes = new Map<
+  string,
+  { readonly expiresAt: number; readonly result: Promise<boolean> }
+>();
+
+export function resetShellStartupProbesForTesting(): void {
+  startupProbes.clear();
+}
+
+function probeShellStartupOnce(
+  shell: ResolvedShell,
+  options: UsableShellResolutionOptions,
+): Promise<boolean> {
+  const env = options.env ?? process.env;
+  const key = JSON.stringify([
+    shell.kind,
+    shell.program.toLowerCase(),
+    envValue(env, 'PATH'),
+    envValue(env, 'SystemRoot'),
+  ]);
+  const cached = startupProbes.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+  const result = Promise.resolve()
+    .then(() =>
+      options.probeStartup ? options.probeStartup(shell) : probeShellStartup(shell, env),
+    )
+    .catch((error: unknown) => {
+      console.warn(`[shell] ${shell.kind} startup probe failed:`, shellProbeErrorDetails(error));
+      return false;
+    });
+  startupProbes.set(key, { expiresAt: Date.now() + 30_000, result });
+  return result;
+}
+
+/** Exclude command text, stderr and environment values from probe diagnostics. */
+export function shellProbeErrorDetails(
+  error: unknown,
+): Readonly<Record<string, string | number | boolean>> {
+  const details =
+    error && typeof error === 'object'
+      ? (error as { code?: unknown; signal?: unknown; killed?: unknown })
+      : {};
+  const safeCode =
+    typeof details.code === 'number' ||
+    (typeof details.code === 'string' && /^[A-Z_0-9-]{1,64}$/.test(details.code));
+  return {
+    code: safeCode ? (details.code as string | number) : 'unknown',
+    signal:
+      typeof details.signal === 'string' && /^SIG[A-Z0-9]{1,16}$/.test(details.signal)
+        ? details.signal
+        : 'none',
+    killed: details.killed === true,
+  };
+}
+
+export async function resolveUsableTerminalShell(
+  preference: TerminalShellPreference = 'auto',
+  options: UsableShellResolutionOptions = {},
+): Promise<ResolvedShell> {
+  if (preference !== 'auto' || (options.platform ?? process.platform) !== 'win32') {
+    return resolveTerminalShell(preference, options);
+  }
+  const rejected = new Set<string>();
+  const exists = options.exists ?? existsSync;
+  for (;;) {
+    const shell = resolveTerminalShell('auto', {
+      ...options,
+      exists: (candidate) => !rejected.has(candidate.toLowerCase()) && exists(candidate),
+    });
+    const key = shell.program.toLowerCase();
+    if (rejected.has(key)) throw new Error('No usable Windows shell found (PowerShell or CMD).');
+    rejected.add(key);
+    if (await probeShellStartupOnce(shell, options)) return shell;
+  }
+}
+
+function probeShellStartup(shell: ResolvedShell, env = process.env): Promise<boolean> {
+  const marker = '__KODAX_SHELL_READY__';
+  const args =
+    shell.kind === 'cmd'
+      ? ['/d', '/s', '/c', `echo ${marker}`]
+      : ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', `Write-Output '${marker}'`];
+  return new Promise((resolve) => {
+    execFile(
+      shell.program,
+      args,
+      {
+        env,
+        windowsHide: true,
+        timeout: 5_000,
+        maxBuffer: 4096,
+        encoding: 'utf8',
+      },
+      (error, stdout) => {
+        if (error) {
+          console.warn(
+            `[shell] ${shell.kind} startup probe failed:`,
+            shellProbeErrorDetails(error),
+          );
+        } else if (stdout.trim() !== marker) {
+          console.warn(`[shell] ${shell.kind} startup probe returned no readiness marker`);
+        }
+        resolve(!error && stdout.trim() === marker);
+      },
+    );
+  });
 }
 
 function envValue(env: NodeJS.ProcessEnv, name: string): string | undefined {

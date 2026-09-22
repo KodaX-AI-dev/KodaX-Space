@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-09-14
+Last Updated: 2026-09-21
 
 > Historical issue details are preserved as investigation evidence. Resolved items older than 30 days move to [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md) without losing their investigation record. The latest published Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) artifact uses exact npm Registry KodaX 0.7.95 and requires `conversationHistory:2`, `runtimeExitSettlement:2`, and `sandboxRuntime:5`. Start from the [documentation hub](README.md) for current behavior and status.
 
@@ -211,8 +211,108 @@ Last Updated: 2026-09-14
 | 213 | Medium   | ready                                    | SDK Full RepoIntel routing can rebuild for 9–16 seconds before model work begins                                                                                                                           | Observed SDK 0.7.96-rc.3 / Space v0.1.46-beta.1              | 2026-09-13 |
 | 214 | High     | Resolved in source                       | New Session event-journal initialization scanned all historical Run logs and blocked concurrent history reads                                                                                              | Observed v0.1.46-beta.1 / SDK 0.7.96-rc.3                    | 2026-09-13 |
 | 215 | High     | Resolved in source — SDK rc.5 integrated | Corrupt extracted JPEG causes repeated upstream HTTP 400 across Providers with no actionable reason                                                                                                        | Observed v0.1.46-beta.2; introduction unknown                | 2026-09-14 |
+| 216 | High | Original fix released in rc.2; compaction telemetry follow-up fixed in source; customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics | Observed v0.1.46-beta.4-fix.1 / rc.1 | 2026-09-21 |
 
 ## Issue Details
+
+## Issue 216: Some Windows profiles cannot restore credentials or start their selected shell
+
+- Priority: High
+- Status: Original fix released in Space rc.2 with SDK rc.9; compaction telemetry follow-up fixed in source; customer verification pending
+- Introduced: Observed in v0.1.46-beta.4-fix.1 and v0.1.46-rc.1
+- Created: 2026-09-21
+
+### Original Problem
+
+Customer rc.1 logs show native keyring load failure followed by Runtime identity-open failure,
+before any daemon connection. The earlier onsite build has an existing version-1 encrypted
+credential vault and schema-3 Runtime identity, but also reports capability-upgrade failure.
+PowerShell profile hydration fails, and packaged updater initialization fails independently.
+The logs do not establish that all PowerShell execution is forbidden or identify the exact
+Windows native loader failure. Existing credentials and authority must survive an upgrade.
+
+Reproduction: make native keyring loading fail on Windows; start rc.1 with an existing vault
+and Runtime identity. Separately make Auto-selected PowerShell fail a no-profile launch,
+or inspect the rc.1 packaged app with its missing electron-updater production dependency.
+
+### Approved Scope and Acceptance
+
+1. Space uses Electron safeStorage/DPAPI and the existing v1 vault format on Windows. Restore
+   onsite ciphertext on the original Windows user profile. Migrate known Provider accounts
+   individually, including custom Providers and shared aliases; avoid global keyring enumeration.
+2. Existing Runtime clientId, instanceId, account and secret stay stable. Persistent read/write
+   errors must propagate. Never generate a replacement secret for an existing schema-3 identity.
+   New/legacy identities publish only after persistent secret write/read succeeds. Preserve
+   concurrent-first-start, file alias protections, macOS prompt behavior and Linux fallback.
+3. The initially approved SDK additions are diagnostic only: classify the existing boot identity, Job containment,
+   owner validation and missing-capability failures. Preserve all probes, timeouts, cache,
+   return/throw behavior, authentication, lifecycle and compression implementations.
+4. Windows Auto checks shell usability and may choose CMD. Agent shell contract, environment
+   hydration and PTY agree on selection. Explicit choices and profile-only failure semantics
+   remain intact. This does not remove PowerShell dependencies from SDK daemon lifecycle.
+5. Include and correctly load electron-updater in packaged Space. Preserve structured,
+   bounded, redacted error causes; do not log credentials, environments or command payloads.
+
+The later SDK daemon-state repair was separately authorized after reproducing Windows
+atomic-rename contention. Published rc.9 includes that repair alongside the diagnostic work;
+the original diagnostic-only scope does not describe all changes in rc.9.
+
+### Verification
+
+Historical validation on 2026-09-21, before Space integrated rc.9: fault-injected public-boundary
+regressions were observed failing before the fixes. The complete desktop suite passed: 3,772 passed, 0 failed, 13 platform/permission skips. Type checks,
+full ESLint, renderer/main builds, real three-process Electron DPAPI verification, packaged
+updater loading, packaged boot, two complete exits and Session restoration passed. Both review
+axes have no remaining findings. SDK focused regressions and built-artifact credential and
+manual/managed compaction tests passed in the sibling KodaX repository.
+
+2026-09-22 rc.9 verification: exact Registry bytes and manifest/lock alignment passed. Release
+checks passed (85 pass, 7 conditional skips), as did IPC schema (362 pass). The full desktop
+run had 3,771 pass, 1 stale rc.8 manual assertion failure and 13 conditional skips; after updating
+that assertion, all 7 manual tests passed. The entire desktop suite was not rerun after that
+test-only correction. A static ESM import in the diagnostic test was also corrected before the
+successful release-check run. Type checks, full ESLint, builds, real three-process Electron
+DPAPI verification and both independent review axes passed. Standard Windows packaging passed
+all dependency/native-hash/updater/Runtime/Worker smokes; renderer was ready in 7,436 ms and
+Runtime in 30,768 ms (including the 20-second test hold), with 122 historical records intact.
+Two complete product exits and Session restoration passed. These are new rc.9 results, not
+reused rc.8 evidence. An additional observed complete-exit run confirmed real SDK events in
+both Space (boot/process identity) and daemon (Job membership) logs. Healthy startup alone
+need not emit the parent events; the initial observer's stronger assumption was corrected
+without adding production probes. Space publication and customer-machine acceptance were still pending at that checkpoint.
+
+Post-release follow-up on 2026-09-22: official Space rc.2 is now published; its release
+verification reran the complete desktop suite successfully. Real-provider acceptance of that
+official binary found a separate telemetry bug: legitimate fractional SDK compaction timings
+failed Space's integer-only IPC schema, discarding `compact_stats` after successful compaction.
+The source-only follow-up accepts finite, bounded, nonnegative durations; count/revision
+constraints are unchanged. A rebuilt local package using the unmodified Registry SDK rc.9
+passed real conversation, manual/automatic compaction with committed statistics, renderer
+history reload, four overlapping sandbox Shell commands, and UI Stop/exact-child/successor
+acceptance. It is not a new published binary. See the regression guide for RED/GREEN evidence.
+Separate SDK maintenance ownership and MCP fixture fixes remain local to the sibling SDK;
+independent memory-review shutdown ownership and customer-machine acceptance remain open.
+
+### Resolution
+
+- Fixed version: Original changes released in Space 0.1.46-rc.2; later compaction telemetry correction is unreleased source.
+- Resolution Date: 2026-09-21; published SDK rc.9 integrated on 2026-09-22.
+- Windows credentials now use the existing encrypted vault first, with per-account migration,
+  durable Runtime reads/writes, stable identity preservation and deletion-race protection.
+- Auto Shell resolution tests startup usability; updater packaging/import and structured error
+  diagnostics are corrected. SDK probe diagnostics observe existing Windows probes; rc.9 also
+  contains the separately authorized daemon-state atomic-rename contention repair.
+- Files Changed: credential vault/keychain, Runtime identity, terminal shell/PTY/hydration,
+  updater, diagnostics/main registration, production dependency manifests and package smoke.
+- Tests Added: Windows migration/failure/restart/macOS cancellation, Runtime identity failure,
+  shell fallback/contract, updater imports/package guard, structured causes and SDK bridge.
+
+See the [regression guide](test-guides/ISSUE_216_0.1.46_REGRESSION_GUIDE.md) for exact boundaries
+and customer checks. The original SDK changes are published in rc.9 and integrated into Space's exact
+Registry dependency; the original Space changes shipped in rc.2. The new telemetry follow-up
+and later SDK maintenance work are not released. The customer-specific
+lifecycle failure remains unconfirmed; this fix does not remove the SDK's PowerShell dependency
+or claim that failure is resolved.
 
 ## Issue 215: Corrupt extracted JPEG causes repeated upstream HTTP 400
 
@@ -15317,14 +15417,14 @@ misclassified as missing before the durable mutation is attempted.
 
 ## Summary
 
-- Total: 203
+- Total: 204
 - Open: 1
 - Ready: 1
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 190
-- High: 107
+- Resolved (including source-only fixes): 191
+- High: 108
 - Medium: 84
 - Low: 12
 - Next ready to resolve: 213

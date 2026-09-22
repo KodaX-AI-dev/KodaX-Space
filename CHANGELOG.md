@@ -16,6 +16,28 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.46-rc.2] - 2026-09-22
+
+### Fixed
+
+- **Issue 216 — Windows credential restoration, Shell usability and packaged
+  diagnostics; KodaX rc.9 integration**: Pin the published SDK to 0.7.96-rc.9.
+  Windows credentials now use the Electron safeStorage/DPAPI-encrypted v1 vault
+  first (no native keyring load required to restore), migrating legacy keyring
+  accounts per known Provider with deletion-race and stale-read protection.
+  Existing Runtime identities keep their clientId/instanceId/secret; persistent
+  read/write failures propagate instead of minting a replacement secret.
+  Windows Auto shell resolution probes a no-profile startup and may pick CMD,
+  shared consistently by the Agent contract, environment hydration and the PTY.
+  The packaged updater gains the missing `electron-updater` production
+  dependency plus a CommonJS default-export loading fix and a packaged smoke
+  guard. Structured diagnostics redact cause chains, child-process details and
+  SDK payloads without logging credentials, environments or command payloads.
+  rc.9 adds the approved Windows probe diagnostics and the separately authorized
+  daemon-state atomic-rename contention repair.
+
+---
+
 ## [0.1.46-rc.1] - 2026-09-17
 
 ### Fixed

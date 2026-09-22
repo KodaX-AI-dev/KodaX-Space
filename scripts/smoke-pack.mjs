@@ -45,7 +45,14 @@ const FEISHU_CLI_LICENSE_PATH = path.join(
 );
 const SIZE_LIMIT_BYTES = 200 * 1024 * 1024;
 const require = createRequire(import.meta.url);
-const electronBin = require('electron');
+// Resolved lazily: requiring 'electron' at import time hard-fails whenever the
+// electron postinstall download is broken or still racing (CI unit shards import
+// this module for the updater probe without needing the binary).
+let electronBinCache;
+function electronBin() {
+  if (!electronBinCache) electronBinCache = require('electron');
+  return electronBinCache;
+}
 
 export async function verifyPackagedPartnerLibrary({
   asarPath,
@@ -1150,6 +1157,44 @@ async function checkAsarContents(asarPath) {
   }
 }
 
+export function verifyPackagedUpdater({ asarPath, executable = electronBin() }) {
+  const marker = 'PACKAGED_UPDATER_PROBE=ok';
+  const probeSource = `
+const { createRequire } = require('node:module');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+(async () => {
+  const fs = require('node:fs');
+  const packageRoot = ${JSON.stringify(asarPath)};
+  // Require resolution realpaths the resolved entry, and macOS runners expose tmpdir
+  // through /var/folders -> /private/var/folders symlinks. Compare under one
+  // realpath, or the containment check rejects a legitimately contained fixture.
+  const root = fs.realpathSync.native(packageRoot);
+  const resolve = createRequire(path.join(packageRoot, 'package.json')).resolve;
+  const entry = fs.realpathSync.native(resolve('electron-updater'));
+  const relative = path.relative(root, entry);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('updater resolved outside the packaged app');
+  const module = await import(pathToFileURL(entry).href);
+  const descriptor = Object.getOwnPropertyDescriptor(module.default ?? module, 'autoUpdater');
+  if (typeof descriptor?.get !== 'function') throw new Error('autoUpdater getter is missing');
+  process.stdout.write(${JSON.stringify(marker)});
+})().catch(error => { console.error(error.message); process.exitCode = 1; });
+`;
+  // Inspect the real import namespace but do not invoke the lazy getter, check
+  // the release feed, download updates, or touch the user's updater cache.
+  const result = spawnSync(executable, ['-e', probeSource], {
+    encoding: 'utf8',
+    timeout: 30_000,
+    windowsHide: true,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+  });
+  if (result.error || result.status !== 0 || !result.stdout?.includes(marker)) {
+    throw new Error(
+      `packaged updater probe failed: ${result.error?.message ?? (result.stderr || result.stdout || result.status)}`,
+    );
+  }
+}
+
 function checkPackagedSqliteExecutesFromAsar(asarPath) {
   const packageEntry = path.join(asarPath, 'package.json');
   const marker = 'PACKAGED_SQLITE_PROBE=ok';
@@ -1180,7 +1225,7 @@ try {
   process.exit(1);
 }
 `;
-  const result = spawnSync(electronBin, ['-e', probeSource], {
+  const result = spawnSync(electronBin(), ['-e', probeSource], {
     cwd: rootDir,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -1202,7 +1247,8 @@ try {
     );
   }
   ok('better-sqlite3 opens and queries :memory: from packaged app.asar');
-  if (process.platform === 'darwin') ok('both packaged esbuild entry points execute and transform TypeScript');
+  if (process.platform === 'darwin')
+    ok('both packaged esbuild entry points execute and transform TypeScript');
 }
 
 async function checkKodaxWorkersExecuteFromAsar(asarPath) {
@@ -2004,7 +2050,7 @@ try {
   const probePath = path.join(outDir, `.kodax-worker-probe-${randomUUID()}.mjs`);
   await fs.writeFile(probePath, probeSource, { flag: 'wx' });
   const runProbe = () =>
-    spawnSync(electronBin, [probePath], {
+    spawnSync(electronBin(), [probePath], {
       cwd: rootDir,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -2055,6 +2101,8 @@ async function main() {
     ok('packaged Partner library matches the built archive');
     await checkPackagedFeishuCliResources(asarPath);
     await checkAsarContents(asarPath);
+    verifyPackagedUpdater({ asarPath });
+    ok('packaged updater dependency loads with its CommonJS autoUpdater export');
     checkPackagedSqliteExecutesFromAsar(asarPath);
     await checkKodaxWorkersExecuteFromAsar(asarPath);
   }

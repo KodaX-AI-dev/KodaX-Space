@@ -81,7 +81,9 @@ async function ensureAutoUpdater(): Promise<typeof import('electron-updater').au
   ensureUpdaterPromise = (async () => {
     try {
       const mod = await import('electron-updater');
-      autoUpdaterInstance = mod.autoUpdater;
+      // Native import() exposes this CommonJS getter on default, not as a
+      // synthetic named export. Preserve lazy loading for packaged apps only.
+      autoUpdaterInstance = (mod.default ?? mod).autoUpdater;
       // 默认行为：下载 ready 后不立即重启，等用户点 install
       autoUpdaterInstance.autoDownload = true;
       autoUpdaterInstance.autoInstallOnAppQuit = false;

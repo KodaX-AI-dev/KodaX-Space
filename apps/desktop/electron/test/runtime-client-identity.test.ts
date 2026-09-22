@@ -158,3 +158,61 @@ test('callers cannot mutate the cached stable Runtime client identity', async (t
   });
   assert.equal((await store.loadOrCreate()).clientId, identity.clientId);
 });
+
+test('an existing identity with a missing secret fails without rotating its authority', async (t) => {
+  const { dir, file, store } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  await store.loadOrCreate();
+  const before = await fs.readFile(file, 'utf8');
+  let writes = 0;
+  const unavailable: RuntimeClientSecretStore = {
+    read: async () => undefined,
+    write: async () => {
+      writes += 1;
+    },
+  };
+  await assert.rejects(
+    new RuntimeClientIdentityStore(file, dir, randomUUID, unavailable).loadOrCreate(),
+    /existing Runtime client secret.*missing/i,
+  );
+  assert.equal(writes, 0);
+  assert.equal(await fs.readFile(file, 'utf8'), before);
+});
+
+test('a transient secret read failure preserves the identity and can be retried', async (t) => {
+  const { dir, file, store, secrets } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const first = await store.openInstance({ name: 'Space', version: 'test' });
+  const before = await fs.readFile(file, 'utf8');
+  let failed = false;
+  const recovering: RuntimeClientSecretStore = {
+    read: async (account) => {
+      if (!failed) {
+        failed = true;
+        throw new Error('decrypt unavailable');
+      }
+      return secrets.read(account);
+    },
+    write: async () => assert.fail('must not replace an existing secret'),
+  };
+  const reopened = new RuntimeClientIdentityStore(file, dir, randomUUID, recovering);
+  await assert.rejects(reopened.loadOrCreate(), /decrypt unavailable/);
+  assert.deepEqual(await reopened.openInstance({ name: 'Space', version: 'test' }), first);
+  assert.equal(await fs.readFile(file, 'utf8'), before);
+});
+
+test('failed secret persistence never publishes a new identity', async (t) => {
+  const { dir, file } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const failing: RuntimeClientSecretStore = {
+    read: async () => undefined,
+    write: async () => {
+      throw new Error('disk full');
+    },
+  };
+  await assert.rejects(
+    new RuntimeClientIdentityStore(file, dir, randomUUID, failing).loadOrCreate(),
+    /disk full/,
+  );
+  await assert.rejects(fs.stat(file), { code: 'ENOENT' });
+});

@@ -23,7 +23,7 @@ import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { IPty } from 'node-pty';
-import { resolveTerminalShell, type TerminalShellPreference } from './shell.js';
+import { resolveTerminalShell, type ResolvedShell, type TerminalShellPreference } from './shell.js';
 
 const IS_WIN = process.platform === 'win32';
 
@@ -118,6 +118,8 @@ export interface CreateOptions {
   readonly cols: number;
   readonly rows: number;
   readonly shellPreference?: TerminalShellPreference;
+  /** Main-process selection already checked before creating the PTY. */
+  readonly resolvedShell?: ResolvedShell;
 }
 
 export interface CreatedTerminal {
@@ -157,7 +159,7 @@ export class PtyHost {
     if (!path.isAbsolute(cwd)) {
       throw new Error('cwd must be absolute');
     }
-    const shell = resolveTerminalShell(opts.shellPreference);
+    const shell = opts.resolvedShell ?? resolveTerminalShell(opts.shellPreference);
     const terminalId = randomUUID();
     const pty = getNodePty().spawn(shell.program, [...shell.args], {
       name: 'xterm-256color',
