@@ -3,7 +3,7 @@ import { FileText, Plus, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import { FilesPanel } from '../../shell/popouts/FilesPanel.js';
 import { ArtifactPanel } from './ArtifactPanel.js';
-import { openExternalUrl } from '../../lib/openPath.js';
+import { ProjectWebPreview } from '../preview/ProjectWebPreview.js';
 import { PartnerRemoteSourcePanel } from './PartnerRemoteSourcePanel.js';
 import { FileViewer } from '../preview/FileViewer.js';
 import { SourcesPanel } from './SourcesPanel.js';
@@ -281,7 +281,9 @@ export function PartnerRightSidebar({
           .filter((tab) => tab.kind === 'remoteSource' && tab.sourceId)
           .map((tab) => (
             <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
-              {activeTab?.id === tab.id && <PartnerRemoteSourcePanel sourceId={tab.sourceId!} />}
+              {activeTab?.id === tab.id && (
+                <PartnerRemoteSourcePanel sourceId={tab.sourceId!} onOpenDetail={openLocalDetail} />
+              )}
             </DetailTabPanel>
           ))}
 
@@ -303,7 +305,7 @@ export function PartnerRightSidebar({
               tab.baseTask!;
             return (
               <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
-                <PartnerFeishuBaseTaskPanel task={task} />
+                <PartnerFeishuBaseTaskPanel task={task} onOpenDetail={openLocalDetail} />
               </DetailTabPanel>
             );
           })}
@@ -375,19 +377,7 @@ export function PartnerRightSidebar({
           .filter((tab) => tab.kind === 'remoteResult')
           .map((tab) => (
             <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
-              <section className="space-y-3 p-4" data-testid="partner-remote-result-detail">
-                <h3 className="text-sm font-medium">{tab.title}</h3>
-                <p className="break-all text-xs text-fg-muted">{tab.externalUrl}</p>
-                {tab.externalUrl && (
-                  <button
-                    type="button"
-                    className="rounded-md border border-border-default px-2 py-1 text-xs"
-                    onClick={() => void openExternalUrl(tab.externalUrl!)}
-                  >
-                    {t('partner.browser.openExternal')}
-                  </button>
-                )}
-              </section>
+              {tab.externalUrl && <ProjectWebPreview url={tab.externalUrl} title={tab.title} />}
             </DetailTabPanel>
           ))}
       </div>

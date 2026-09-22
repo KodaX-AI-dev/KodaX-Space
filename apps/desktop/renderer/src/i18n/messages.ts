@@ -603,6 +603,11 @@ export const messages = {
     'fileViewer.networkRestrictedStatus':
       'Current: Limited to local and page-authored display resources',
     'webPreview.projectTitle': 'Interactive project web preview',
+    'webPreview.remoteTitle': 'Web page preview',
+    'webPreview.reload': 'Reload preview',
+    'webPreview.remoteFailed':
+      'This page could not be displayed. Check your connection and reload. The website may require sign-in or restrict embedded previews.',
+    'partner.browser.openPreview': 'Open in right-side preview',
     'webPreview.loading': 'Loading interactive preview...',
     'webPreview.loadFailed': 'Could not load the web preview: {message}',
     'webPreview.policyBlocked': 'Preview security policy blocked {directive}.',
@@ -2078,7 +2083,8 @@ export const messages = {
     'modelPicker.effort.auto': 'Auto',
     'modelPicker.reasoning.sent': 'Last request sent: {effort}. Effective strength unconfirmed.',
     'modelPicker.reasoning.omitted': 'no reasoning control',
-    'modelPicker.reasoning.unknown': 'Capabilities unknown. Your selection will be attempted; explicit rejections trigger fallback.',
+    'modelPicker.reasoning.unknown':
+      'Capabilities unknown. Your selection will be attempted; explicit rejections trigger fallback.',
     'modelPicker.reasoning.reason.profile': 'Model profile fallback',
     'modelPicker.reasoning.reason.unsupported-effort': 'Effort rejected',
     'modelPicker.reasoning.reason.unsupported-parameter': 'Reasoning parameter rejected',
@@ -3595,6 +3601,11 @@ export const messages = {
     'fileViewer.networkAllowedStatus': '当前：允许此页面发起额外的 HTTPS/WSS 请求',
     'fileViewer.networkRestrictedStatus': '当前：仅允许访问本地资源和页面已声明的展示资源',
     'webPreview.projectTitle': '项目网页交互预览',
+    'webPreview.remoteTitle': '网页预览',
+    'webPreview.reload': '重新加载预览',
+    'webPreview.remoteFailed':
+      '暂时无法显示此网页，请检查网络后重新加载。该网站可能要求登录或限制内嵌预览。',
+    'partner.browser.openPreview': '在右侧预览打开',
     'webPreview.loading': '正在加载交互预览…',
     'webPreview.loadFailed': '无法加载网页预览：{message}',
     'webPreview.policyBlocked': '预览安全策略阻止了 {directive}。',

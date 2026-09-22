@@ -86,6 +86,7 @@ import {
 import { registerTerminalChannels } from './ipc/terminal.js';
 import { registerClipboardChannels } from './ipc/clipboard.js';
 import { registerShellChannels } from './ipc/shell.js';
+import { registerWebPreviewChannels } from './ipc/web-preview.js';
 import { registerArtifactChannels } from './ipc/artifact.js';
 import { registerWorkflowChannels } from './ipc/workflow.js';
 import { registerMemoryChannels } from './ipc/memory.js';
@@ -377,7 +378,11 @@ function repairStaleWindowsPortableShortcut(): void {
 }
 
 // THEME_BOOTSTRAP_INLINE_HASH 抽到 csp-config.ts 让单测无 electron 依赖也能 import
-import { APP_RENDERER_FRAME_SRC, THEME_BOOTSTRAP_INLINE_HASH } from './csp-config.js';
+import {
+  APP_RENDERER_FRAME_SRC,
+  THEME_BOOTSTRAP_INLINE_HASH,
+  applyAppResponseCsp,
+} from './csp-config.js';
 
 let mainWindow: BrowserWindow | null = null;
 const WINDOWS_BACKGROUND_TRAY_ENABLED =
@@ -599,10 +604,7 @@ function applyCsp(): void {
             ].join('; ');
 
     callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [csp],
-      },
+      responseHeaders: applyAppResponseCsp(details.url, details.responseHeaders, csp),
     });
   });
 }
@@ -1081,14 +1083,17 @@ function createMainWindow(): BrowserWindow {
       );
     },
   );
-  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-    if (errorCode === -3) return; // ERR_ABORTED is normal for cancelled dev navigations.
-    console.error(
-      `[main] renderer did-fail-load: code=${errorCode} ${errorDescription} url=${describeUrlForLog(validatedURL)}`,
-    );
-    revealWindow('did-fail-load');
-    retryAppLoad(`did-fail-load ${errorCode} ${errorDescription}`);
-  });
+  win.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame || errorCode === -3) return; // A failed preview must not restart Space.
+      console.error(
+        `[main] renderer did-fail-load: code=${errorCode} ${errorDescription} url=${describeUrlForLog(validatedURL)}`,
+      );
+      revealWindow('did-fail-load');
+      retryAppLoad(`did-fail-load ${errorCode} ${errorDescription}`);
+    },
+  );
   win.webContents.on('render-process-gone', (_event, details) => {
     console.error(
       `[main] renderer process gone: reason=${details.reason} exitCode=${details.exitCode}`,
@@ -2504,6 +2509,7 @@ const startupPromise = app
     // Shell exits: reveal files, enter allowlisted directories, and open http(s) URLs.
     // 让 renderer 里到处的文件路径 / URL 死文本变成可点击（用户反馈）。
     registerShellChannels();
+    registerWebPreviewChannels();
     // Artifact 数据层（F057，LC-free）：create/list/read/delete/export + openWindow。
     // LC sandbox（路径 D）的 loopback server 已移除，待 LiveCanvas 稳定后作为独立 feature 重接。
     registerArtifactChannels();

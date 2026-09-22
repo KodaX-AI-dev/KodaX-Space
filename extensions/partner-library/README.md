@@ -155,7 +155,10 @@ Reads appear in the existing 资料 card as immutable remote snapshots. With the
 generic `partnerNativeDocumentDeliveryV1` host capability, a complete request to
 create a new document is dispatched once through the selected platform adapter;
 the host privately reads it back, returns only a verified canonical URL, and opens
-that URL in Partner's right-hand browser. Feishu is the first write adapter, while
+that URL in the shared Space `ProjectWebPreview` in Partner's right sidebar.
+Web sign-in is separate from connector authorization; provider embedding policies
+still apply. This uses neither `PartnerBrowserPanel` nor automatic external-browser
+navigation. Feishu is the first write adapter, while
 the task/signal/opener contract is provider-neutral for later DingTalk and Tencent
 Docs adapters. Proposed append content still appears in 待审核 with its complete
 content, target, operation and version before confirmation. Unknown/partial or

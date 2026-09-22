@@ -25,6 +25,7 @@ export async function openConversationLink(href: string): Promise<void> {
         },
       }),
     );
+    return;
   }
   if (isHttp) await openExternalUrl(href);
 }

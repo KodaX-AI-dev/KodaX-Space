@@ -1,4 +1,9 @@
 import { partnerComponentInvokeChannels } from './partner-components.js';
+import {
+  webPreviewPrepareChannel,
+  webPreviewReleaseChannel,
+  webPreviewFailedChannel,
+} from './web-preview.js';
 // Channel registry — single source of truth.
 //
 // 新加 channel 步骤：
@@ -421,6 +426,8 @@ const sessionInvokeChannels = {
   [filesReadBinaryChannel.name]: filesReadBinaryChannel,
   [filesStatChannel.name]: filesStatChannel,
   [filesWebPreviewChannel.name]: filesWebPreviewChannel,
+  [webPreviewPrepareChannel.name]: webPreviewPrepareChannel,
+  [webPreviewReleaseChannel.name]: webPreviewReleaseChannel,
   [filesDiffChannel.name]: filesDiffChannel,
   [partnerSourcesListChannel.name]: partnerSourcesListChannel,
   [partnerSourcesAddChannel.name]: partnerSourcesAddChannel,
@@ -557,6 +564,7 @@ export const invokeChannels: typeof sessionInvokeChannels &
 };
 
 export const pushChannels = {
+  [webPreviewFailedChannel.name]: webPreviewFailedChannel,
   ...connectorOnboardingPushChannels,
   ...connectorPushChannels,
   [spaceExtensionsChangedChannel.name]: spaceExtensionsChangedChannel,

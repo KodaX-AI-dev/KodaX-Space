@@ -11,5 +11,17 @@
  */
 export const THEME_BOOTSTRAP_INLINE_HASH = 'sha256-jFAue9erP7/8uXZSCw/NBSbC45sMok1WrPe7p6NDs1Y=';
 
-// The renderer embeds only local preview and extension endpoints.
-export const APP_RENDERER_FRAME_SRC = "frame-src 'self' app:";
+// Remote HTTPS frames additionally require a window-owned ProjectWebPreview grant
+// at the navigation guard. Plugin/artifact frame policies remain independent.
+export const APP_RENDERER_FRAME_SRC = "frame-src 'self' app: https:";
+
+export function applyAppResponseCsp(
+  url: string,
+  headers: Record<string, string[]> | undefined,
+  csp: string,
+): Record<string, string[]> | undefined {
+  // Remote documents bring their own policy. Applying Space's script/connect
+  // allowlist here breaks their login and must never overwrite frame-ancestors.
+  if (url.startsWith('https://')) return headers;
+  return { ...headers, 'Content-Security-Policy': [csp] };
+}

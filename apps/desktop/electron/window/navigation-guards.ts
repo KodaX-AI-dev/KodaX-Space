@@ -16,6 +16,8 @@ import type { WebContents } from 'electron';
 import { isArtifactHtmlFrameUrl } from './app-protocol-policy.js';
 import { isProjectWebPreviewUrl } from './project-web-preview.js';
 import { isSpaceExtensionFrameUrl } from './space-extension-frame.js';
+import { normalizeWebPreviewUrl } from '@kodax-space/space-ipc-schema';
+import { remoteWebPreviewRegistry, type PreviewFrame } from './remote-web-preview.js';
 
 export interface NavGuardDeps {
   /** Vite dev-server URL when running in dev; undefined in production. */
@@ -66,13 +68,18 @@ export function installNavigationGuards(wc: WebContents, deps: NavGuardDeps): vo
     if (url.startsWith('https://')) deps.openExternal(url);
   });
 
-  // Only application-owned preview and extension endpoints may load as child frames.
+  // Child frames require a window-owned remote grant or a local preview/extension endpoint.
   const guardSubframeNavigation = (details: {
     readonly url: string;
     readonly isMainFrame: boolean;
+    readonly frame?: PreviewFrame | null;
     preventDefault(): void;
   }): void => {
     if (details.isMainFrame) return;
+    if (remoteWebPreviewRegistry.forFrame(wc.id, details.frame ?? null, wc.mainFrame)) {
+      if (!normalizeWebPreviewUrl(details.url)) details.preventDefault();
+      return;
+    }
     if (
       isProjectWebPreviewUrl(details.url) ||
       isArtifactHtmlFrameUrl(details.url) ||

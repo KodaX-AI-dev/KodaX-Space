@@ -1,16 +1,155 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { normalizeWebPreviewUrl } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import {
   WebPreviewDiagnosticBanner,
   useWebPreviewDiagnostics,
 } from './WebPreviewDiagnosticBanner.js';
 
-interface ProjectWebPreviewProps {
+interface LocalProjectWebPreviewProps {
   readonly projectRoot: string;
   readonly path: string;
   readonly revision: number;
   readonly networkAccess: boolean;
+}
+
+type ProjectWebPreviewProps =
+  | LocalProjectWebPreviewProps
+  | {
+      readonly url: string;
+      readonly title?: string;
+    };
+
+/** One preview surface for workspace HTML and authorized remote web pages. */
+export function ProjectWebPreview(props: ProjectWebPreviewProps): JSX.Element {
+  return 'url' in props ? (
+    <RemoteProjectWebPreview key={props.url} {...props} />
+  ) : (
+    <LocalProjectWebPreview {...props} />
+  );
+}
+
+function RemoteProjectWebPreview({
+  url: requestedUrl,
+  title,
+}: {
+  readonly url: string;
+  readonly title?: string;
+}): JSX.Element {
+  const { t } = useI18n();
+  const url = normalizeWebPreviewUrl(requestedUrl);
+  const [revision, setRevision] = useState(0);
+  const [preview, setPreview] = useState<{
+    id: string;
+    url: string;
+    status: 'loading' | 'loaded' | 'failed';
+  } | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let disposed = false;
+    let id: string | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const bridge = window.kodaxSpace;
+    setPreview(null);
+    setError(false);
+    if (!bridge || !url) {
+      setError(true);
+      return;
+    }
+    const release = (grantId: string): void => {
+      void bridge
+        .invoke('webPreview.release', { id: grantId })
+        .then((result) => {
+          if (!result.ok) console.warn('[web-preview] Could not release preview grant');
+        })
+        .catch(() => console.warn('[web-preview] Could not release preview grant'));
+    };
+    const unsubscribe = bridge.on('webPreview.failed', (failure) => {
+      if (!disposed && failure.id === id) {
+        setPreview((current) => (current?.id === id ? { ...current, status: 'failed' } : current));
+      }
+    });
+    void bridge
+      .invoke('webPreview.prepare', { url })
+      .then((result) => {
+        if (!result.ok) {
+          if (!disposed) setError(true);
+          return;
+        }
+        id = result.data.id;
+        if (disposed) {
+          release(id);
+          return;
+        }
+        setPreview({ ...result.data, status: 'loading' });
+        timer = setTimeout(() => {
+          setPreview((current) =>
+            current?.id === id && current.status === 'loading'
+              ? { ...current, status: 'failed' }
+              : current,
+          );
+        }, 30000);
+      })
+      .catch(() => {
+        if (!disposed) setError(true);
+      });
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      unsubscribe();
+      if (id) release(id);
+    };
+  }, [url, revision]);
+  const failed = error || preview?.status === 'failed';
+  return (
+    <div className="flex h-full min-h-0 flex-col" data-testid="project-web-preview">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border-default px-3 py-2">
+        <span className="min-w-0 flex-1 truncate text-xs text-fg-muted" title={url ?? undefined}>
+          {url ?? title}
+        </span>
+        <button
+          type="button"
+          className="rounded p-1 hover:bg-hover-bg"
+          aria-label={t('webPreview.reload')}
+          onClick={() => setRevision((value) => value + 1)}
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
+      </div>
+      {failed ? (
+        <div role="alert" className="p-4 text-sm text-fg-secondary">
+          {t('webPreview.remoteFailed')}
+        </div>
+      ) : (
+        <>
+          {preview?.status !== 'loaded' && (
+            <p role="status" className="shrink-0 p-2 text-xs text-fg-muted">
+              {t('webPreview.loading')}
+            </p>
+          )}
+          {preview && (
+            <iframe
+              key={preview.id}
+              name={`space-web-preview-${preview.id}`}
+              title={title ?? t('webPreview.remoteTitle')}
+              src={preview.url}
+              sandbox="allow-scripts allow-same-origin allow-forms"
+              referrerPolicy="no-referrer"
+              onLoad={() =>
+                setPreview((current) =>
+                  current?.id === preview.id && current.status === 'loading'
+                    ? { ...current, status: 'loaded' }
+                    : current,
+                )
+              }
+              className="h-full min-h-0 w-full flex-1 border-0 bg-white"
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 function withRevision(url: string, revision: number): string {
@@ -19,12 +158,12 @@ function withRevision(url: string, revision: number): string {
   return parsed.toString();
 }
 
-export function ProjectWebPreview({
+function LocalProjectWebPreview({
   projectRoot,
   path,
   revision,
   networkAccess,
-}: ProjectWebPreviewProps): JSX.Element {
+}: LocalProjectWebPreviewProps): JSX.Element {
   const { t } = useI18n();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [url, setUrl] = useState<string | null>(null);

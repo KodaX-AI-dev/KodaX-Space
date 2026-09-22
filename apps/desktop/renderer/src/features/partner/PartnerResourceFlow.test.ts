@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import test, { type TestContext } from 'node:test';
+import test, { after, type TestContext } from 'node:test';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
 
@@ -61,6 +61,8 @@ window.kodaxSpace={platform:'darwin',on:()=>()=>{},invoke:async(channel,input)=>
   const source=sources.find(source=>source.id===input.id);
   return ok({source:window.missingSource?null:window.wrongOwner?{...source,sessionId:'other-session'}:source});
  }
+ if(channel==='webPreview.prepare')return window.externalFailure?{ok:false,error:{message:'Preview unavailable'}}:ok({id:'10000000-0000-4000-8000-'+String(window.previewSeq=(window.previewSeq??0)+1).padStart(12,'0'),url:input.url});
+ if(channel==='webPreview.release')return ok({released:true});
  if(channel==='shell.openExternal')return ok({opened: !window.externalFailure});
  return {ok:false,error:{message:'Fixture did not allow '+channel}};
 }};
@@ -71,7 +73,7 @@ window.switchSurface=surface=>useSurfaceStore.getState().setSurface(surface);
 window.getToasts=()=>useToastStore.getState().toasts;
 window.requestMailLink=()=>window.dispatchEvent(new CustomEvent(PARTNER_LINK_DETAIL_EVENT,{detail:{context:owner,href:'mail://qq/inbox/99/42'}}));
 window.requestStaleLink=()=>window.dispatchEvent(new CustomEvent(PARTNER_LINK_DETAIL_EVENT,{detail:{context:owner,href:'https://stale.test/'}}));
-function App(){const [request,setRequest]=useState(null);const revision=useRef(0);const onOpen=useCallback(target=>{window.lastTarget=target;setRequest({revision:++revision.current,target});},[]);usePartnerLinkDetails(onOpen);return <><Markdown content={'[Created document]('+createdTask.canonicalUrl+') [Chinese URL](https://example.org/中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中) [Web page](https://example.org/guide) [Saved Feishu]('+refs[0]+') [Saved Notion]('+refs[1]+') [Saved Airtable]('+refs[2]+') [Missing Notion](notion://page/'+'b'.repeat(32)+') [Unsafe URL](https://user:password@example.org/) [Script](javascript:alert(1))'+(window.apiSources?apiSources.map(([id,title,url])=>' [Chat '+title+']('+url+')').join(''):'')}/><PartnerRemoteRecords kind="results" onOpenDetail={onOpen}/><PartnerContextRail onAddMaterial={()=>{}} onOpenDetail={onOpen}/><PartnerRightSidebar open openRequest={request} onConsumeOpenRequest={consumed=>{window.consumed.push(consumed);setRequest(current=>current?.revision===consumed?null:current);}}/></>;}
+function App(){const scopeKey=useAppStore(state=>JSON.stringify([state.currentProjectPath,state.currentSessionId]));const [request,setRequest]=useState(null);const revision=useRef(0);const onOpen=useCallback(target=>{window.lastTarget=target;setRequest({revision:++revision.current,target});},[]);usePartnerLinkDetails(onOpen);return <><Markdown content={'[Created document]('+createdTask.canonicalUrl+') [Chinese URL](https://example.org/中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中) [Web page](https://example.org/guide) [Saved Feishu]('+refs[0]+') [Saved Notion]('+refs[1]+') [Saved Airtable]('+refs[2]+') [Missing Notion](notion://page/'+'b'.repeat(32)+') [Unsafe URL](https://user:password@example.org/) [Script](javascript:alert(1))'+(window.apiSources?apiSources.map(([id,title,url])=>' [Chat '+title+']('+url+')').join(''):'')}/><PartnerRemoteRecords kind="results" onOpenDetail={onOpen}/><PartnerContextRail onAddMaterial={()=>{}} onOpenDetail={onOpen}/><PartnerRightSidebar key={scopeKey} open openRequest={request} onConsumeOpenRequest={consumed=>{window.consumed.push(consumed);setRequest(current=>current?.revision===consumed?null:current);}}/></>;}
 createRoot(document.getElementById('root')).render(<I18nProvider><PartnerRemoteRecordsProvider><App/></PartnerRemoteRecordsProvider></I18nProvider>);
 `;
 
@@ -112,11 +114,22 @@ async function buildFixture(): Promise<string> {
 }
 
 let bundledFixture: Promise<string> | undefined;
+let sharedBrowser: ReturnType<typeof chromium.launch> | undefined;
+after(async () => {
+  if (sharedBrowser) await (await sharedBrowser).close();
+});
 async function openFixture(t: TestContext, flags: Record<string, boolean> = {}) {
   const bundle = await (bundledFixture ??= buildFixture());
-  const browser = await chromium.launch({ executablePath: browserPath, headless: true });
-  t.after(() => browser.close());
-  const page = await browser.newPage({ locale: 'en-US' });
+  const browser = await (sharedBrowser ??= chromium.launch({
+    executablePath: browserPath,
+    headless: true,
+  }));
+  const context = await browser.newContext({ locale: 'en-US' });
+  t.after(() => context.close());
+  const page = await context.newPage();
+  await page.route('https://**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<h1>Remote preview fixture</h1>' }),
+  );
   page.setDefaultTimeout(5000);
   await page.route('http://resource-flow.test/', (route) =>
     route.fulfill({ contentType: 'text/html', body: '<div id="root"></div>' }),
@@ -163,7 +176,9 @@ for (const title of ['Feishu note', 'Notion note', 'Airtable rows']) {
       await panel.getByText('Saved ' + title + ' body.', { exact: true }).waitFor();
       assert.equal(await page.getByTestId('partner-browser-webview').count(), 0);
       assert.equal(
-        await panel.getByRole('button', { name: 'Open in system browser', exact: true }).count(),
+        await panel
+          .getByRole('button', { name: 'Open in right-side preview', exact: true })
+          .count(),
         title === 'Feishu note' ? 1 : 0,
       );
       const calls = await page.evaluate(() => Reflect.get(window, 'calls'));
@@ -222,53 +237,72 @@ test(
 );
 
 test(
-  'ordinary chat links open externally without creating a browser tab',
+  'Partner web links use ProjectWebPreview and repeat clicks reuse the tab without external launches',
   { skip: !browserPath || darwinCi },
   async (t) => {
     const page = await openFixture(t);
-    await page.getByRole('link', { name: 'Web page', exact: true }).click();
-    const calls = await page.evaluate(() =>
-      Reflect.get(window, 'calls').filter(
-        (call: { channel: string }) => call.channel === 'shell.openExternal',
-      ),
-    );
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].input.url, 'https://example.org/guide');
+    const link = page.getByRole('link', { name: 'Web page', exact: true });
+    await link.click();
+    const preview = page.getByTestId('project-web-preview');
+    await preview.locator('iframe').waitFor();
+    assert.equal(await preview.locator('iframe').getAttribute('src'), 'https://example.org/guide');
+    await link.click();
+    assert.equal(await page.getByRole('tab').count(), 1);
     assert.equal(await page.locator('webview').count(), 0);
+    const calls = await page.evaluate(() => Reflect.get(window, 'calls'));
+    assert.equal(
+      calls.filter((call: { channel: string }) => call.channel === 'webPreview.prepare').length,
+      1,
+    );
+    assert.equal(
+      calls.some((call: { channel: string }) => call.channel === 'shell.openExternal'),
+      false,
+    );
   },
 );
 
 test(
-  'restored connector results remain local until explicitly opened in the system browser',
+  'created documents open in ProjectWebPreview and reuse the result tab',
   { skip: !browserPath || darwinCi },
   async (t) => {
     const page = await openFixture(t);
     const card = page.getByTestId('partner-remote-results');
     await card.getByRole('button', { name: 'View details', exact: true }).click();
-    const detail = page.getByTestId('partner-remote-result-detail');
-    await detail.getByText('https://example.feishu.cn/docx/NewDocument', { exact: true }).waitFor();
-    assert.equal(
-      await page.evaluate(
-        () =>
-          Reflect.get(window, 'calls').filter(
-            (call: { channel: string }) => call.channel === 'shell.openExternal',
-          ).length,
-      ),
-      0,
-    );
-    await detail.getByRole('button', { name: 'Open in system browser', exact: true }).click();
-    assert.equal(
-      await page.evaluate(
-        () =>
-          Reflect.get(window, 'calls').filter(
-            (call: { channel: string }) => call.channel === 'shell.openExternal',
-          ).length,
-      ),
-      1,
+    const frame = page.getByTestId('project-web-preview').locator('iframe');
+    await frame.waitFor();
+    assert.equal(await frame.getAttribute('src'), 'https://example.feishu.cn/docx/NewDocument');
+    await page.evaluate(() =>
+      Reflect.get(window, 'openRawLink')('https://example.feishu.cn/docx/NewDocument'),
     );
     await card.getByRole('button', { name: 'View details', exact: true }).click();
     assert.equal(await page.getByRole('tab').count(), 1);
+    const calls = await page.evaluate(() => Reflect.get(window, 'calls'));
+    assert.equal(
+      calls.filter((call: { channel: string }) => call.channel === 'webPreview.prepare').length,
+      1,
+    );
+    assert.equal(
+      calls.some((call: { channel: string }) => call.channel === 'shell.openExternal'),
+      false,
+    );
     assert.equal(await page.locator('webview').count(), 0);
+    await page.getByRole('button', { name: 'Close Created document', exact: true }).click();
+    await page.waitForFunction(() =>
+      Reflect.get(window, 'calls').some(
+        (call: { channel: string }) => call.channel === 'webPreview.release',
+      ),
+    );
+    assert.equal(await page.getByTestId('project-web-preview').count(), 0);
+    await card.getByRole('button', { name: 'View details', exact: true }).click();
+    await frame.waitFor();
+    await page.evaluate(() => Reflect.get(window, 'switchSession')());
+    await page.waitForFunction(
+      () =>
+        Reflect.get(window, 'calls').filter(
+          (call: { channel: string }) => call.channel === 'webPreview.release',
+        ).length === 2,
+    );
+    assert.equal(await page.getByTestId('project-web-preview').count(), 0);
   },
 );
 
@@ -421,7 +455,7 @@ test(
 );
 
 test(
-  'Slack, Zoom and GitHub saved sources stay visible while webpage links open externally',
+  'saved sources retain their snapshots while webpage buttons open the shared preview',
   { skip: !browserPath || darwinCi },
   async (t) => {
     const page = await openFixture(t, { apiSources: true });
@@ -436,10 +470,11 @@ test(
         .click();
       const panel = page.getByTestId('partner-remote-source-panel');
       await panel.getByText('Saved ' + name + ' body.', { exact: true }).waitFor();
-      await panel.getByRole('button', { name: 'Open in system browser', exact: true }).click();
+      await panel.getByRole('button', { name: 'Open in right-side preview', exact: true }).click();
+      await page.locator('[data-testid="project-web-preview"]:visible iframe').waitFor();
       const external = await page.evaluate(() =>
         Reflect.get(window, 'calls').filter(
-          (call: { channel: string }) => call.channel === 'shell.openExternal',
+          (call: { channel: string }) => call.channel === 'webPreview.prepare',
         ),
       );
       assert.equal(external.at(-1).input.url, url);
@@ -487,7 +522,7 @@ test(
         else {
           await page.waitForFunction(() => !Reflect.get(window, 'holdRecords'));
           const target = await page.evaluate(() => Reflect.get(window, 'lastTarget'));
-          assert.equal(target?.kind, undefined);
+          assert.equal(target?.kind, next === 'web' ? 'remoteResult' : undefined);
           assert.equal(await page.getByText('Saved Notion note body.', { exact: true }).count(), 0);
         }
         assert.equal(
@@ -505,46 +540,48 @@ test(
 
 for (const surface of ['coder', 'partner']) {
   test(
-    `ordinary Chinese HTTP links open in the system browser in ${surface}`,
+    `Chinese HTTPS links follow the active surface routing: ${surface}`,
     { skip: !browserPath || darwinCi },
     async (t) => {
       const page = await openFixture(t);
       await page.evaluate((surface) => Reflect.get(window, 'switchSurface')(surface), surface);
       await page.getByRole('link', { name: 'Chinese URL', exact: true }).click();
-      await page.waitForFunction(() =>
-        Reflect.get(window, 'calls').some(
-          (call: { channel: string }) => call.channel === 'shell.openExternal',
-        ),
+      const channel = surface === 'partner' ? 'webPreview.prepare' : 'shell.openExternal';
+      await page.waitForFunction(
+        (channel) =>
+          Reflect.get(window, 'calls').some(
+            (call: { channel: string }) => call.channel === channel,
+          ),
+        channel,
       );
-      const calls = await page.evaluate(() =>
-        Reflect.get(window, 'calls').filter(
-          (call: { channel: string }) => call.channel === 'shell.openExternal',
-        ),
+      const calls = await page.evaluate(
+        (channel) =>
+          Reflect.get(window, 'calls').filter(
+            (call: { channel: string }) => call.channel === channel,
+          ),
+        channel,
       );
       assert.equal(calls.length, 1);
       assert.equal(decodeURI(calls[0].input.url), 'https://example.org/' + '中'.repeat(240));
-      await page.evaluate(
-        (url) => Reflect.get(window, 'openRawLink')(url),
-        'https://example.org/' + '中'.repeat(240),
-      );
-      const raw = await page.evaluate(() =>
-        Reflect.get(window, 'calls')
-          .filter((call: { channel: string }) => call.channel === 'shell.openExternal')
-          .at(-1),
-      );
-      assert.equal(raw.input.url, 'https://example.org/' + '中'.repeat(240));
       assert.equal(await page.locator('webview').count(), 0);
     },
   );
 }
 
 test(
-  'a failed system-browser launch shows feedback and keeps saved source details usable',
+  'a failed embedded preview can retry in place without losing saved source access',
   { skip: !browserPath || darwinCi },
   async (t) => {
     const page = await openFixture(t, { externalFailure: true });
     await page.getByRole('link', { name: 'Web page', exact: true }).click();
-    assert.equal((await page.evaluate(() => Reflect.get(window, 'getToasts')())).length, 1);
+    const preview = page.getByTestId('project-web-preview');
+    await preview.getByRole('alert').waitFor();
+    await page.evaluate(() => {
+      Reflect.set(window, 'externalFailure', false);
+    });
+    await preview.getByRole('button', { name: 'Reload preview', exact: true }).click();
+    await preview.locator('iframe').waitFor();
+    assert.equal(await page.getByRole('tab').count(), 1);
     await page
       .getByTestId('partner-context-rail')
       .getByRole('button', { name: 'Feishu note', exact: true })
@@ -553,5 +590,10 @@ test(
       .getByTestId('partner-remote-source-panel')
       .getByText('Saved Feishu note body.', { exact: true })
       .waitFor();
+    const calls = await page.evaluate(() => Reflect.get(window, 'calls'));
+    assert.equal(
+      calls.some((call: { channel: string }) => call.channel === 'shell.openExternal'),
+      false,
+    );
   },
 );

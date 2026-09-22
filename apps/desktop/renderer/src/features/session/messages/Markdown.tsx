@@ -396,8 +396,8 @@ function MarkdownInner({ content }: MarkdownProps): JSX.Element {
           code: MarkdownCode,
 
           // ---- 链接 ----
-          // http(s) 链接经 shell.openExternal 走系统浏览器（http 也放行，不止 https）；
-          // Partner 资源引用只打开已保存的会话资料；锚点 / 相对链接保留默认行为。
+          // Coder 网页链接走系统浏览器；Partner 先解析会话资料/成果，再走右侧网页预览。
+          // Partner 内部资源引用只打开已保存的会话资料；锚点 / 相对链接保留默认行为。
           a: ({ children, href, ...props }) => {
             const isHttp = typeof href === 'string' && /^https?:\/\//i.test(href);
             const isGeneratedResource =

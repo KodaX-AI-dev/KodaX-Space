@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { WebContents } from 'electron';
 import { installNavigationGuards } from '../window/navigation-guards.js';
+import { remoteWebPreviewRegistry } from '../window/remote-web-preview.js';
 
 type WindowOpenHandler = (details: { url: string }) => { action: 'deny' };
 type NavigateHandler = (event: { preventDefault(): void }, url: string) => void;
@@ -17,6 +18,7 @@ function installGuard(deps: {
   readonly allowedAppOrigin?: string;
   readonly allowedDataUrls?: readonly string[];
   readonly openExternal?: (url: string) => void;
+  readonly previewId?: string;
 }): {
   readonly openHandler: WindowOpenHandler;
   readonly navigate: (url: string) => boolean;
@@ -27,7 +29,15 @@ function installGuard(deps: {
   let navigateHandler: NavigateHandler | null = null;
   let frameNavigateHandler: FrameNavigateHandler | null = null;
   let frameRedirectHandler: FrameNavigateHandler | null = null;
+  const mainFrame = { name: '', parent: null };
+  const childFrame = {
+    url: 'about:blank',
+    name: deps.previewId ? `space-web-preview-${deps.previewId}` : '',
+    parent: mainFrame,
+  };
   const wc = {
+    id: 42,
+    mainFrame,
     setWindowOpenHandler(handler: WindowOpenHandler) {
       openHandler = handler;
     },
@@ -57,7 +67,7 @@ function installGuard(deps: {
       frameRedirectHandler?.({
         url,
         isMainFrame: false,
-        frame: null,
+        frame: childFrame,
         preventDefault() {
           prevented = true;
         },
@@ -81,7 +91,7 @@ function installGuard(deps: {
       frameNavigateHandler?.({
         url,
         isMainFrame: false,
-        frame: { url: currentUrl },
+        frame: { ...childFrame, url: currentUrl },
         preventDefault() {
           prevented = true;
         },
@@ -100,6 +110,30 @@ test('navigation guard allows the exact packaged app origin and denies lookalike
   assert.equal(guard.navigate('app://space.evil/index.html'), true);
   assert.equal(guard.navigate('app://user@space/index.html'), true);
   assert.equal(guard.navigate('file:///app/index.html'), true);
+});
+
+test('only an explicitly granted remote preview may navigate HTTPS, never local app pages', () => {
+  const grant = remoteWebPreviewRegistry.create(42, 'https://example.feishu.cn/docx/report');
+  try {
+    const opened: string[] = [];
+    const guard = installGuard({ previewId: grant.id, openExternal: (url) => opened.push(url) });
+    assert.equal(guard.frameNavigate(grant.url), false);
+    assert.equal(guard.frameRedirect('https://accounts.feishu.cn/login'), false);
+    for (const url of [
+      'app://space/__artifact_html_sandbox__',
+      'file:///etc/passwd',
+      'https://user:secret@example.org/',
+      'http://example.org/',
+    ]) {
+      assert.equal(guard.frameNavigate(url), true);
+      assert.equal(guard.frameRedirect(url), true);
+    }
+    assert.deepEqual(opened, []);
+    remoteWebPreviewRegistry.release(42, grant.id);
+    assert.equal(guard.frameNavigate(grant.url), true);
+  } finally {
+    remoteWebPreviewRegistry.release(42);
+  }
 });
 
 test('navigation guard allows only exact trusted data URLs', () => {

@@ -3,7 +3,10 @@ import type {
   PartnerFeishuBaseCreateTaskT,
 } from '@kodax-space/space-ipc-schema';
 import { Database, ShieldCheck } from 'lucide-react';
-import { openExternalUrl } from '../../lib/openPath.js';
+import {
+  partnerDetailTargetForWebPage,
+  type PartnerDetailOpenTarget,
+} from './partnerDetailWorkspace.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
 
 function fieldTypeLabel(field: FeishuBaseCreateFieldT, t: ReturnType<typeof useI18n>['t']): string {
@@ -68,8 +71,10 @@ function BaseTaskMetadata({ task }: { readonly task: PartnerFeishuBaseCreateTask
 
 export function PartnerFeishuBaseTaskPanel({
   task,
+  onOpenDetail,
 }: {
   readonly task: PartnerFeishuBaseCreateTaskT;
+  readonly onOpenDetail: (target: PartnerDetailOpenTarget) => void;
 }): JSX.Element {
   const { t } = useI18n();
   return (
@@ -84,9 +89,12 @@ export function PartnerFeishuBaseTaskPanel({
         <button
           type="button"
           className="mt-4 rounded-md border border-border-default px-2 py-1 text-xs"
-          onClick={() => void openExternalUrl(task.url!)}
+          onClick={() => {
+            const target = partnerDetailTargetForWebPage(task.url!, task.baseName);
+            if (target) onOpenDetail(target);
+          }}
         >
-          {t('partner.browser.openExternal')}
+          {t('partner.browser.openPreview')}
         </button>
       )}
 

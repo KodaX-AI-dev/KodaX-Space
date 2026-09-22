@@ -7,6 +7,17 @@ import type {
   SpaceConnectorDefinitionT,
 } from '@kodax-space/space-ipc-schema';
 import { partnerDeliveryPreviewVersion } from '../../lib/generatedResourceRef.js';
+import { normalizeWebPreviewUrl } from '@kodax-space/space-ipc-schema';
+
+export function partnerDetailTargetForWebPage(
+  url: string,
+  title?: string,
+): PartnerDetailOpenTarget | null {
+  const normalized = normalizeWebPreviewUrl(url);
+  return normalized
+    ? { kind: 'remoteResult', initialUrl: normalized, resourceKey: `web-${normalized}`, title }
+    : null;
+}
 
 export type PartnerDetailTabKind =
   | 'materials'

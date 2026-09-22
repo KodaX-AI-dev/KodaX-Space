@@ -10,6 +10,7 @@
 export * from './channels/partner-connector.js';
 export * from './channels/partner-connector-onboarding.js';
 export * from './partner-connector-capabilities.js';
+export * from './channels/web-preview.js';
 
 export {
   IPC_ERROR_CODES,
