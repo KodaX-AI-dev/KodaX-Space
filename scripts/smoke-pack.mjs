@@ -1157,10 +1157,15 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 (async () => {
+  const fs = require('node:fs');
   const packageRoot = ${JSON.stringify(asarPath)};
+  // Require resolution realpaths the resolved entry, and macOS runners expose tmpdir
+  // through /var/folders -> /private/var/folders symlinks. Compare under one
+  // realpath, or the containment check rejects a legitimately contained fixture.
+  const root = fs.realpathSync.native(packageRoot);
   const resolve = createRequire(path.join(packageRoot, 'package.json')).resolve;
-  const entry = resolve('electron-updater');
-  const relative = path.relative(packageRoot, entry);
+  const entry = fs.realpathSync.native(resolve('electron-updater'));
+  const relative = path.relative(root, entry);
   if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('updater resolved outside the packaged app');
   const module = await import(pathToFileURL(entry).href);
   const descriptor = Object.getOwnPropertyDescriptor(module.default ?? module, 'autoUpdater');
