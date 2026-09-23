@@ -86,9 +86,10 @@ test('Space kodax_manual documents the required current KodaX capability boundar
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.45 正式发布.*KodaX 0\.7\.95/);
   assert.match(
     topics.get('runtime-host')?.body ?? '',
-    /v0\.1\.46-rc\.3 精确锁定 KodaX 0\.7\.96-rc\.10/,
+    /v0\.1\.46-rc\.4 精确锁定 KodaX 0\.7\.96-rc\.11/,
   );
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.46-alpha\.11 落地 FEATURE_275/);
+  assert.match(topics.get('runtime-host')?.body ?? '', /macOS 后台 Git 调用先经 SDK 共享预检/);
   assert.match(
     topics.get('runtime-host')?.body ?? '',
     /v0\.1\.46-alpha\.10 升级到 KodaX 0\.7\.96-beta\.6/,

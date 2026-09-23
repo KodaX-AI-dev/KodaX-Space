@@ -16,6 +16,25 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.46-rc.4] - 2026-09-23
+
+### Fixed
+
+- **Issue 217 — background Git queries no longer trigger the macOS
+  developer-tools installer; KodaX rc.11 integration**: Pin the published SDK
+  to 0.7.96-rc.11. On macOS without command-line developer tools, the system
+  Git executable is a launcher that shows Apple's install dialog before normal
+  failure handling; background project queries and workspace `git init`
+  repeatedly re-raised it. Space now guards both spawn sites with the SDK's
+  shared Darwin-only check (executes only for `/usr/bin/git`; an
+  `xcode-select -p` exit code 2 blocks the call, uncertain probe failures
+  preserve the original Git attempt, 5-second cache, recovery on later
+  refresh) while Windows and Linux behavior is untouched. The SDK adds the
+  shared check plus repo-intelligence recovery to Git-backed analysis from
+  unborn repositories.
+
+---
+
 ## [0.1.46-rc.3] - 2026-09-23
 
 ### Changed
