@@ -7,6 +7,7 @@ import { BrowserWindow, dialog } from 'electron';
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { debuglog } from 'node:util';
 import { registerChannel } from './register.js';
 import { validateProjectRoot } from './validate.js';
 import {
@@ -16,6 +17,7 @@ import {
   type GitChangeFile,
 } from './project-git-changes.js';
 import { projectStore } from '../projects/store.js';
+import { assertNoGitInstallPrompt } from '../kodax/git-install-prompt.js';
 import { resolveInsideProject, toPosixRelative } from './files-core.js';
 import type { ProjectGitStatsDaily } from '@kodax-space/space-ipc-schema';
 
@@ -685,6 +687,15 @@ interface GitRunResult {
  *   - 1MB stdout 上限（histogram 365 行 / numstat 大 repo 也够）；超过截断不抛
  */
 async function runGit(cwd: string, args: readonly string[]): Promise<GitRunResult> {
+  try {
+    await assertNoGitInstallPrompt(cwd);
+  } catch (error) {
+    debuglog('kodax:macos-git')(
+      'Background Git preflight failed: %s',
+      error instanceof Error ? error.message : String(error),
+    );
+    return { ok: false, stdout: '' };
+  }
   return new Promise((resolve) => {
     let stdout = '';
     let truncated = false;

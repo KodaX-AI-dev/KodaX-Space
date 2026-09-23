@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-09-21
+Last Updated: 2026-09-23
 
 > Historical issue details are preserved as investigation evidence. Resolved items older than 30 days move to [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md) without losing their investigation record. The latest published Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) artifact uses exact npm Registry KodaX 0.7.95 and requires `conversationHistory:2`, `runtimeExitSettlement:2`, and `sandboxRuntime:5`. Start from the [documentation hub](README.md) for current behavior and status.
 
@@ -212,8 +212,86 @@ Last Updated: 2026-09-21
 | 214 | High     | Resolved in source                       | New Session event-journal initialization scanned all historical Run logs and blocked concurrent history reads                                                                                              | Observed v0.1.46-beta.1 / SDK 0.7.96-rc.3                    | 2026-09-13 |
 | 215 | High     | Resolved in source — SDK rc.5 integrated | Corrupt extracted JPEG causes repeated upstream HTTP 400 across Providers with no actionable reason                                                                                                        | Observed v0.1.46-beta.2; introduction unknown                | 2026-09-14 |
 | 216 | High | Original fix released in rc.2; compaction telemetry follow-up fixed in source; customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics | Observed v0.1.46-beta.4-fix.1 / rc.1 | 2026-09-21 |
+| 217 | Medium | Resolved in source; native macOS verification pending | Background Git queries repeatedly trigger the macOS developer-tools installer | Observed v0.1.46-rc.3 / SDK v0.7.96-rc.10; first affected version unknown | 2026-09-23 |
 
 ## Issue Details
+
+## Issue 217: Background Git queries repeatedly trigger the macOS developer-tools installer
+
+- Priority: Medium
+- Status: Resolved in source; native macOS verification pending
+- Introduced: Observed against Space v0.1.46-rc.3 / SDK v0.7.96-rc.10; first affected version unknown
+- Fixed: SDK v0.7.96-rc.11 installed and pinned; Space application changes await release
+- Created / Source Resolution Date: 2026-09-23
+
+### Original Problem
+
+On macOS without usable command-line developer tools, opening Space repeatedly
+shows Apple's “The git command requires the command line developer tools” dialog.
+Cancelling it does not stop later prompts. Reproduce by opening a workspace on such
+a Mac, allowing background refreshes, and switching focus/projects. Expected:
+background discovery does not request installation repeatedly, while an existing
+usable Git installation continues working.
+
+### Root Cause and Scope
+
+The macOS system Git executable is a developer-tools launcher. Executing it can
+show installation UI before ordinary failure handling runs. Space project queries,
+workspace `git init`, and SDK-owned background Git calls can reach it. Windows and
+Linux do not use this Apple installer mechanism; their original execution behavior
+is preserved. Arbitrary user/model Bash or PTY commands are outside this repair.
+
+### Source Resolution
+
+- Space guards the existing project Git runner and settings workspace init before
+  spawning Git, using the SDK's shared macOS check. The project runner keeps its
+  existing 5-second timeout, 1 MB output cap and failed-result shape; settings keeps
+  its nonfatal startup warning path. No shared Git runner migration is implemented.
+- The SDK check applies only on Darwin when the selected executable resolves to
+  `/usr/bin/git`. It runs `/usr/bin/xcode-select -p` with matching cwd/environment;
+  only exit code 2 blocks execution. Uncertain probe failures preserve the original
+  Git attempt. Independent Git, effective PATH ordering and DEVELOPER_DIR remain valid.
+- Determinate checks use a 5-second cache and can recover on later refresh without
+  restart. SDK repo-intelligence can recover from filesystem to Git-backed analysis,
+  including unborn repositories; synchronous memory identity and worktree failure
+  semantics remain unchanged.
+- The adapter is lazy on macOS and does not load the SDK for Windows/Linux calls.
+  It calls the new SDK API directly; the next Space release ships with the matching SDK.
+
+### Delivery and Verification
+
+- Space root/desktop manifests and lockfile now pin published SDK v0.7.96-rc.11.
+  The local SDK link was replaced by a physical package installation. Space's
+  application changes still need its own release; native macOS acceptance is pending.
+- Space changes: `apps/desktop/electron/ipc/project.ts`,
+  `apps/desktop/electron/settings/store.ts`, and
+  `apps/desktop/electron/kodax/git-install-prompt.ts`.
+- Validation on 2026-09-23: the final four-suite regression run passed 40 tests
+  with one Windows symlink test skipped, including all five focused regressions.
+  Full Space type checking, the main-process build and installed builtin-skill
+  verification passed against the installed rc.11 package. The published
+  SDK and Space adapter also passed a simulated-Darwin smoke check for blocked
+  system Git and available independent/installed Git.
+  The async/sync public exports and guards in runtime/semantic workers, CLI and
+  bare resume are present. After Registry propagation completed, the unmodified
+  release dependency gate downloaded the official tarball directly, verified its
+  SHA-512 against the lockfile, and compared every installed package file and
+  required native artifact successfully. No development link remains.
+  The release test suite passed 86 tests with 7 platform/environment skips.
+  Full renderer/main builds and release-mode Windows packaging passed at the
+  current Space v0.1.46-rc.3 version. Packaged dependency/native/worker checks,
+  Windows boot smoke, and two clean product exits with Session history recovery
+  passed. No version bump, tag, or upload was performed. Native macOS acceptance
+  remains separate and unexecuted on this Windows host.
+  Standards and Spec reviews have no remaining findings.
+- Tests: `git-install-prompt.test.ts` exercises actual project/settings entry points,
+  blocked startup, recovery and non-macOS behavior. Native macOS
+  zero-dialog testing remains pending; see the
+  [Issue 217 regression guide](test-guides/ISSUE_217_v0.1.46-rc.3_REGRESSION_GUIDE.md).
+- SDK tracking: Issue 339. Ordinary `runGit` / `runGitSync` consolidation is separately
+  recorded as SDK FEATURE_300 / v0.7.99, **Planned**, with no implementation in this fix.
+
+---
 
 ## Issue 216: Some Windows profiles cannot restore credentials or start their selected shell
 
@@ -15417,14 +15495,14 @@ misclassified as missing before the durable mutation is attempted.
 
 ## Summary
 
-- Total: 204
+- Total: 205
 - Open: 1
 - Ready: 1
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 191
+- Resolved (including source-only fixes): 192
 - High: 108
-- Medium: 84
+- Medium: 85
 - Low: 12
 - Next ready to resolve: 213

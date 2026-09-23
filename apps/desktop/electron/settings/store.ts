@@ -17,6 +17,7 @@ import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { z } from 'zod';
+import { assertNoGitInstallPrompt } from '../kodax/git-install-prompt.js';
 import {
   coderRuntimeModeSchema,
   reasoningModeSchema,
@@ -315,6 +316,7 @@ export class SettingsStore {
       /* fallthrough — 需要 init */
     }
     try {
+      await assertNoGitInstallPrompt(absDir);
       // -q 抑制 stdout；只在 absDir 当前层级初始化（不继承父级 git）
       await execFileAsync('git', ['init', '-q'], { cwd: absDir, timeout: 5_000 });
       console.info(`[SettingsStore] git init at ${absDir}`);
