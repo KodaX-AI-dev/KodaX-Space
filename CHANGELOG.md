@@ -16,6 +16,25 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.46-rc.3] - 2026-09-23
+
+### Changed
+
+- Pin published KodaX `0.7.96-rc.10` in both workspaces and the npm lockfile.
+  Inherit Runtime shutdown draining for owned maintenance/memory work and the
+  Edits-mode canonical-target fix. Align SDK compatibility checks, live acceptance
+  and the built-in manual; retain the existing public capability gates.
+
+### Fixed
+
+- **Compaction telemetry**: Accept finite, bounded fractional durations for
+  `elapsedMs`/`commitMs` in `compact_stats` — SDK `performance.now()` measurements
+  are fractional, and the previous integer-only schema silently discarded
+  compaction statistics after otherwise successful compactions. Count and revision
+  constraints are unchanged.
+
+---
+
 ## [0.1.46-rc.2] - 2026-09-22
 
 ### Fixed
