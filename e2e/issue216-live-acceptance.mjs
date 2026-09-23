@@ -297,7 +297,7 @@ try {
     await readFile(path.join(space.testDataDir, 'runtime/daemon/coder/daemon.json'), 'utf8'),
   );
   report.sdkVersion = daemon.version;
-  assert.equal(daemon.version, '0.7.96-rc.9');
+  assert.equal(daemon.version, '0.7.96-rc.10');
   assert.equal(
     (await invoke('provider.setKey', { providerId: 'deepseek', apiKey: credential })).ok,
     true,

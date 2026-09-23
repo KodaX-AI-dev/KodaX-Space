@@ -61,6 +61,37 @@ async function runtimeFixture(paths, permissionMode) {
   return { runtime, session, close: () => runtime.close() };
 }
 
+test('an already-cancelled direct Run completes without calling the Provider', async (t) => {
+  let providerCalls = 0;
+  const paths = await fixture(t, async () => {
+    providerCalls += 1;
+    return response('must not run');
+  });
+  const controller = new AbortController();
+  controller.abort();
+  let completed = 0;
+  const result = await runKodaX(
+    {
+      provider: providerName,
+      model: 'fixture',
+      agentMode: 'sa',
+      lsp: false,
+      abortSignal: controller.signal,
+      events: { onComplete: () => completed++ },
+      context: {
+        gitRoot: paths.workspace,
+        executionCwd: paths.workspace,
+        repoIntelligenceMode: 'off',
+      },
+    },
+    'This request was cancelled before execution.',
+  );
+  assert.ok(result, 'cancellation must return a defined KodaXResult');
+  assert.equal(result.interrupted, true);
+  assert.equal(completed, 1, 'the host must receive exactly one terminal notification');
+  assert.equal(providerCalls, 0);
+});
+
 test('Runtime Full Access and reviewed Auto write outside workspace; a later denial still blocks', async (t) => {
   let decision = 'allow';
   const paths = await fixture(t, async () =>

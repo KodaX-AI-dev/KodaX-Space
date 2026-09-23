@@ -9,7 +9,7 @@ import test from 'node:test';
 
 const PROBE_MARKER = 'KODAX_RUNTIME_PROBE=';
 const PROBE_TIMEOUT_MS = 30_000;
-const EXPECTED_KODAX_VERSION = '0.7.96-rc.9';
+const EXPECTED_KODAX_VERSION = '0.7.96-rc.10';
 const INSTALLED_KODAX_VERSION = (
   createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as { readonly version: string }
 ).version;
@@ -1371,9 +1371,8 @@ test(
     } finally {
       await runtime?.close();
       await new Promise<void>((resolve) => server.close(() => resolve()));
-      // The runtime's memory-review flush can land one write after close();
-      // retry the rmdir like removeSharedDaemonHome so teardown cannot fail
-      // the already-verified test body.
+      // rc.10 drains owned memory work before close() returns. Retain bounded
+      // removal retries for transient Windows filesystem contention.
       await rm(homeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       if (previousCredential === undefined) delete process.env[credentialName];
       else process.env[credentialName] = previousCredential;
