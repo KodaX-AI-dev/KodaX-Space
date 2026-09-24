@@ -6,7 +6,7 @@
 
 > 当前发布精确锁定 KodaX `0.7.95`，要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。同一 boot 的临时 `unconfirmed-owner` 会自动重试；Space 不要求用户删除标记，且只在缺少安全证明时阻断有竞争风险的 sandbox/owner 操作。
 >
-> 当前源码候选为 Space `0.1.46-rc.4`，精确锁定 KodaX `0.7.96-rc.11`，并要求 `sessionCancellation:1`（durable frontier）、`toolInvocation:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
+> 当前源码候选为 Space `0.1.46-rc.5`，精确锁定 KodaX `0.7.96-rc.11`，并要求 `sessionCancellation:1`（durable frontier）、`toolInvocation:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`。
 > Windows 既有安装首次迁移可能需要用户在 Settings → Runtime 明确执行一次 Sandbox Setup；
 > 普通启动、Refresh 和工具调用不会隐式提升权限。正式发布版的 0.7.95 说明保留为历史事实。
 > v0.1.46-beta.5 要求 daemon 支持会话原子取消：停止其接受请求时固定队列边界内的任务，之后提交的新任务保留。未知结果保留重试按钮，刷新后仍绑定原 Session/Run/requestId；已接受请求可原样重放，针对已结束 Run 的首次请求被拒绝且不会转向后继任务。rc.3 已通过发布包 daemon 及打包版真实任务执行验收；子代理读图写文件可完成，但图片颜色识别仍有不一致样本。旧 owner 由 SDK 连接层按其安全条件升级，Space 不再降级为只停一个 Run。

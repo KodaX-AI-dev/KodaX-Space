@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+---
+
+## [0.1.46-rc.5] - 2026-09-24
+
 ### Changed
 
 - **F022 auto-update: disabled on macOS, silent NSIS install on Windows**: macOS

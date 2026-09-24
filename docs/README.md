@@ -15,7 +15,7 @@
 > root/Desktop manifest、lockfile、物理安装与打包 ASAR 必须解析到同一个正式 Registry URL/SRI。
 > v0.1.44 / KodaX 0.7.93 及更早的发布记录保持历史事实。
 
-> **2026-09-23 当前源码候选**：Space package 为 `0.1.46-rc.4`，root/Desktop/lockfile 已精确锁定已发布的
+> **2026-09-24 当前源码候选**：Space package 为 `0.1.46-rc.5`，root/Desktop/lockfile 已精确锁定已发布的
 > `@kodax-ai/kodax@0.7.96-rc.11`。rc.9 携带 Issue 216 的 Windows 探测诊断与 daemon 状态原子 rename 竞争修复；Space 侧 Windows 凭据走 safeStorage/DPAPI vault、保留 Runtime 身份、Auto Shell 启动探针、updater 生产依赖与结构化脱敏诊断。rc.11 增加 macOS Git 安装预检共享 API（Issue 217），Space 的项目查询与 workspace git init 已接入。推理档位保留用户意图，协商与拒绝缓存交由 SDK；能力未知的兼容模型可尝试关闭与全部标准档位。SDK 包门要求 `sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 与 `effectiveConfig:1`；daemon 准入与连接后 Runtime 门额外要求 `providerCredentialBroker:2`。Windows wire protocol 10 与 setup generation 11（beta.5 的 Codex 兼容 profile/SSH ACL 排除）、真实 target-start doctor 证明、私有逐命令 Temp 与 64 端口 broker 范围都由 v11 门隔离。KodaX
 > universal native bundle 会整体解包，并在 packaged smoke 中按 manifest hash 校验；权限面仍为 Plan、Edits、Auto[LLM]、Full Access 四档；这不会
 > 把 v0.1.45 / KodaX 0.7.95 的正式发布记录改写成 alpha 版本。
