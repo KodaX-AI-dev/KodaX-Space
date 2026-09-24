@@ -14,6 +14,24 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- **F022 auto-update: disabled on macOS, silent NSIS install on Windows**: macOS
+  builds are unsigned (`mac.identity: null`, FEATURE_027 signing dropped
+  2026-06-05). Squirrel.Mac validates the code signature before replacing the
+  app, so on macOS the update always downloaded fine but the final swap failed
+  asynchronously and silently — the banner button stuck at "Installing..."
+  forever. `initAutoUpdater` and the `updater.check` channel now no-op on darwin
+  (state stays `idle`, the update banner never appears) until signing is
+  restored; macOS users update via the GitHub Releases DMG. On Windows,
+  `updater.install` now calls `quitAndInstall(true, true)` — the `/S` silent
+  install reuses the recorded install directory and `--force-run` relaunches the
+  app, so the full NSIS setup wizard no longer pops up on every update. Linux
+  keeps auto-update (AppImage replaces the file directly; deb downloads then
+  prompts for sudo via pkexec). Windows flow verified end-to-end with the new
+  `e2e/auto-update-packaged.mjs` (real NSIS install → local generic feed →
+  banner → click → silent install → relaunch → auto-uninstall).
+
 ---
 
 ## [0.1.46-rc.4] - 2026-09-23

@@ -1,7 +1,8 @@
-// Auto-update handler — F022 (v0.1.3)
+// 自动更新 handler — F022 (v0.1.3)
 //
 // 包装 electron-updater 的 autoUpdater：
 //   - 启动时若 app.isPackaged → 立即 checkForUpdates()
+//   - darwin 禁用（见 isUpdaterSupportedPlatform：未签名构建 Squirrel.Mac 装不上）
 //   - 把 'update-available' / 'download-progress' / 'update-downloaded' / 'error'
 //     桥接到 push channel 'updater.status'
 //   - 提供 'updater.check'（手动触发）和 'updater.install'（quitAndInstall）
@@ -24,6 +25,18 @@ import { getDiagnosticsLogger } from '../diagnostics/runtime.js';
 let currentState: UpdaterStateT = { state: 'idle' };
 let autoUpdaterInstance: typeof import('electron-updater').autoUpdater | null = null;
 let initStarted = false;
+
+/**
+ * macOS 构建未签名（electron-builder.yml `mac.identity: null`，FEATURE_027 签名计划
+ * 已于 2026-06-05 移除）。electron-updater 在 mac 上走 Squirrel.Mac，替换 /Applications
+ * 里的应用前强制校验代码签名——下载、checksum 都能过（UI 会弹"已就绪"），但最后替换
+ * 必然失败，且失败是异步静默的：按钮永远停在"安装中..."，也不报错。未恢复签名前，
+ * darwin 直接不启用 updater（state 恒为 idle，banner 永不出现），用户走 Releases 页
+ * 手动下载 DMG。
+ */
+function isUpdaterSupportedPlatform(): boolean {
+  return process.platform !== 'darwin';
+}
 /**
  * v0.1.4 review LOW-5：cache the Promise，不是 resolved value。
  * 之前 ensureAutoUpdater 同时被两个 caller 触发时（startup initAutoUpdater + 用户点
@@ -134,8 +147,8 @@ async function ensureAutoUpdater(): Promise<typeof import('electron-updater').au
 export async function initAutoUpdater(): Promise<void> {
   if (initStarted) return;
   initStarted = true;
-  if (!app.isPackaged) {
-    // dev：保持 idle，UI 仍可见 "no updates" 状态
+  if (!app.isPackaged || !isUpdaterSupportedPlatform()) {
+    // dev / darwin：保持 idle，UI 呈现 "no updates" 状态，banner 永不弹出
     pushState({ state: 'idle' });
     return;
   }
@@ -151,7 +164,7 @@ export async function initAutoUpdater(): Promise<void> {
 
 export function registerUpdaterChannels(): void {
   registerChannel('updater.check', async () => {
-    if (!app.isPackaged) {
+    if (!app.isPackaged || !isUpdaterSupportedPlatform()) {
       return { enabled: false, state: { state: 'idle' } };
     }
     const inst = await ensureAutoUpdater();
@@ -181,10 +194,12 @@ export function registerUpdaterChannels(): void {
     // 而 installing 是纯 main 端 guard 没有 wire 出去的必要。
     if (installing) return { accepted: false };
     installing = true;
-    // isSilent=false, isForceRunAfter=true —— 走 NSIS / pkg 安装器 UI，重启后自动起新版
+    // isSilent=true, isForceRunAfter=true —— NSIS 走 /S 静默安装（复用注册表里记录的
+    // 安装目录，不弹 Setup 向导）+ 装完自动起新版。之前 isSilent=false 会让 oneClick:false
+    // 的 assisted 安装包在**每次自动更新时都弹完整安装向导**，用户要点一遍 Next。
     setTimeout(() => {
       try {
-        autoUpdaterInstance?.quitAndInstall(false, true);
+        autoUpdaterInstance?.quitAndInstall(true, true);
       } catch (err) {
         const message = sanitizeErrorMessage(err instanceof Error ? err.message : String(err));
         // 失败重置 installing 让用户可以再试（quitAndInstall 偶尔抛是 known electron-updater 行为）

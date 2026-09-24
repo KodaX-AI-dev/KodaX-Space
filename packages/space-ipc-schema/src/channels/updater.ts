@@ -62,7 +62,7 @@ export const updaterCheckChannel = {
   direction: 'invoke',
   input: z.object({}).strict(),
   output: z.object({
-    /** 当前是否走 packaged 模式（dev 模式直接返 false，UI 提示 "available in built app"） */
+    /** 当前是否启用 updater（dev 模式 / darwin 未签名构建返 false，UI 提示 "available in built app"） */
     enabled: z.boolean(),
     /** 触发后立刻拿到的最新已知 state（异步状态变化继续走 push channel） */
     state: updaterStateSchema,
