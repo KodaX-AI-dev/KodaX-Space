@@ -76,7 +76,9 @@ for (const { legacy, early } of [
       const page = await browser.newPage();
       // Shared CI runners can pause between browser launch, iframe bootstrap,
       // and navigation; keep a bounded but contention-tolerant budget there.
-      page.setDefaultTimeout(process.env.CI ? 15_000 : 5_000);
+      // rc.5's run showed a runner slow enough that 15s still timed out with the
+      // tab resolved-but-hidden, so the CI budget matches the 30s node:test cap.
+      page.setDefaultTimeout(process.env.CI ? 30_000 : 5_000);
       let releaseBootstrap!: () => void;
       const gate = new Promise<void>((resolve) => {
         releaseBootstrap = resolve;

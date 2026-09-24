@@ -106,7 +106,10 @@ async function buildIsolatedUpdater(platform?: string): Promise<IsolatedUpdater>
 }
 
 test('packaged updater initializes a CommonJS getter export and checks once without downloading', async (t) => {
-  const isolated = await buildIsolatedUpdater();
+  // Pin the supported-platform bundle: without a define the isolated host keeps
+  // the real process.platform, so a darwin runner would hit the updater gate
+  // this suite tests separately below.
+  const isolated = await buildIsolatedUpdater('"win32"');
   t.after(() => rm(isolated.directory, { recursive: true, force: true }));
   const handler = await isolated.module();
   await Promise.all([handler.initAutoUpdater(), handler.initAutoUpdater()]);
