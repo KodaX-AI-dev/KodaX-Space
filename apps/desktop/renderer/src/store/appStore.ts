@@ -7433,6 +7433,7 @@ export const useAppStore = create<AppState>((setState) => {
               sessionId,
               toolId: item.toolId,
               toolName: item.toolName,
+              ...(item.interrupted ? { interrupted: true } : {}),
               ...(item.input ? { input: item.input } : {}),
             });
             if (item.result !== undefined) {

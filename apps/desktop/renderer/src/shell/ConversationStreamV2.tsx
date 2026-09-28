@@ -149,7 +149,7 @@ type ArtifactMessage = {
   title: string;
   artifactKind: string;
   version?: number;
-  status: 'running' | 'done';
+  status: 'running' | 'done' | 'interrupted';
   summary?: string;
   snapshot?: TransientArtifactSnapshot;
 };
@@ -627,7 +627,7 @@ function pickToolString(input: Record<string, unknown> | undefined, key: string)
 }
 
 function artifactMessageFromTool(tool: ToolCallMsg): ArtifactMessage | null {
-  if (tool.toolName !== 'create_artifact') return null;
+  if (tool.toolName !== 'create_artifact' || tool.status === 'interrupted') return null;
   const match = typeof tool.result === 'string' ? ARTIFACT_RESULT_RE.exec(tool.result) : null;
   if (tool.status === 'done' && !match) return null;
 

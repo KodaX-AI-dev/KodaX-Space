@@ -671,12 +671,15 @@ function appendRuntimeConversationPage(
   window.nextCursor = window.hasMore ? page.nextCursor : undefined;
 }
 
-async function loadRuntimeConversationWindow(input: {
-  readonly sessionId: string;
-  readonly cursor?: string;
-  readonly revision?: string;
-  readonly sourceRevision?: string;
-}): Promise<RuntimeConversationWindowResult> {
+async function loadRuntimeConversationWindow(
+  input: {
+    readonly sessionId: string;
+    readonly cursor?: string;
+    readonly revision?: string;
+    readonly sourceRevision?: string;
+  },
+  recoveryDeadline: number,
+): Promise<RuntimeConversationWindowResult> {
   const isContinuation = input.cursor !== undefined;
   let window = runtimeConversationWindows.get(input.sessionId);
   if (isContinuation) {
@@ -712,6 +715,7 @@ async function loadRuntimeConversationWindow(input: {
       ? { revision: window.revision, sourceRevision: window.sourceRevision }
       : {}),
     limit: RUNTIME_HISTORY_PAGE_LIMIT,
+    recoveryDeadline,
   });
   if (result.outcome === 'data_changed') {
     runtimeConversationWindows.delete(input.sessionId);
@@ -1867,6 +1871,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
   // read-only projection and therefore must not participate in executable Coder admission.
   registerChannel('session.history', (input) =>
     runSerializedSessionHistoryOperation(input.sessionId, async () => {
+      const recoveryDeadline = Date.now() + 15_000;
       const withLocalNotices = async (
         baseItems: readonly SessionHistoryItem[],
         conversation?: ReturnType<typeof conversationHistoryDiagnostic>,
@@ -1936,7 +1941,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         return withLocalNotices([], undefined, { outcome: 'runtime_unavailable' });
       }
       if (historyBackend === 'runtime') {
-        const result = await loadRuntimeConversationWindow(input);
+        const result = await loadRuntimeConversationWindow(input, recoveryDeadline);
         if (result.outcome === 'data_changed') {
           return withLocalNotices([], undefined, { outcome: 'data_changed' });
         }
@@ -2327,6 +2332,38 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
           scope: 'history',
           omittedItems: Math.max(1, omittedConversationEntries),
         });
+      }
+      if (runtimeWindowForResponse !== undefined) {
+        try {
+          const boundaries = new Set(
+            [...runtimeWindowForResponse.entriesByIndex.values()].map((entry) => entry.boundaryId),
+          );
+          const completeTurnIds = items.flatMap((item) =>
+            item.kind === 'user' &&
+            item.turnId &&
+            item.turnUserOrdinal === 0 &&
+            item.historyBoundary?.sourceRevision === runtimeWindowForResponse.sourceRevision &&
+            boundaries.has(item.historyBoundary.boundaryId)
+              ? [item.turnId]
+              : [],
+          );
+          const recovered = await runtimeHostAdapter.recoverInterruptedConversationItems(
+            input.sessionId,
+            items,
+            completeTurnIds,
+            recoveryDeadline,
+          );
+          items.splice(0, items.length, ...recovered);
+        } catch (error) {
+          console.warn(
+            '[session.history] Interrupted history recovery failed:',
+            error instanceof Error ? error.name : 'unknown',
+          );
+          items.push({
+            kind: 'workflow_notice',
+            text: '部分中断内容暂时无法恢复，已保留正式历史；重新打开会话可重试。',
+          });
+        }
       }
       if (runtimeWindowForResponse !== undefined) {
         const window = runtimeWindowForResponse;

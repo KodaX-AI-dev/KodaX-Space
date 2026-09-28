@@ -757,7 +757,9 @@ export function ToolCallCard({
   }, [status, prefersReducedMotion]);
   // showFullInput / inputPretty / inputCollapse 状态已搬进 ToolEditInputView —
   // OC-21 之后 raw-JSON fallback 由那边统一处理
-  const colorClass = TOOL_STATUS_COLOR[status] ?? 'border-border-strong bg-surface-2/50';
+  const colorClass =
+    TOOL_STATUS_COLOR[status === 'interrupted' ? 'running' : status] ??
+    'border-border-strong bg-surface-2/50';
   const toolNameColor = TOOL_NAME_COLOR[toolName] ?? 'text-fg-secondary';
   const argSummary = summarizeInput(input);
 
@@ -842,9 +844,9 @@ export function ToolCallCard({
   );
 }
 
-function StatusBadge({ status }: { status: 'running' | 'done' }): JSX.Element {
+function StatusBadge({ status }: { status: 'running' | 'done' | 'interrupted' }): JSX.Element {
   const { t } = useI18n();
-  if (status === 'running') {
+  if (status !== 'done') {
     return (
       <span
         className={[
@@ -853,7 +855,7 @@ function StatusBadge({ status }: { status: 'running' | 'done' }): JSX.Element {
           'text-warn bg-warn/12 border-warn/30',
         ].join(' ')}
       >
-        {t('message.status.running')}
+        {t(status === 'interrupted' ? 'message.status.interrupted' : 'message.status.running')}
       </span>
     );
   }

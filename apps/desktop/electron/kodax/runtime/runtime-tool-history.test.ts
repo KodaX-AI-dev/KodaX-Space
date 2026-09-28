@@ -137,3 +137,19 @@ test('a snapshot without recoverable output does not replay another run', async 
     empty,
   );
 });
+
+test('active replay bounds oversized receipts to the IPC limit', async () => {
+  const recovered = await recoverRuntimeToolHistory(
+    {
+      replay: async () => [
+        started,
+        event(4, 'tool.finished', {
+          result: { id: 'tool', name: 'read', content: 'x'.repeat(600_000) },
+        }),
+      ],
+    },
+    snapshot,
+  );
+  const receipt = recovered.toolEvents?.find((item) => item.kind === 'tool_result');
+  assert.ok(receipt && receipt.content.length <= 524_288);
+});

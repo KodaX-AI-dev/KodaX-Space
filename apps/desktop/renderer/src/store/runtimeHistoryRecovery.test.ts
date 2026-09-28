@@ -379,17 +379,36 @@ test('a retained tail followed by new output merges without repeating the saved 
       .join(''),
     'Checking the file.The file is valid. Ready.',
   );
-  useAppStore
-    .getState()
-    .appendEvent({
-      kind: 'tool_start',
-      sessionId,
-      turnId: 'queued-turn',
-      toolId: 'later-tool',
-      toolName: 'read',
-      input: { path: 'later' },
-      runtimeEvent: { runtimeId: 'runtime', runId: 'run', journalEpoch: 'epoch', seq: 23 },
-    });
+  useAppStore.getState().appendEvent({
+    kind: 'tool_start',
+    sessionId,
+    turnId: 'queued-turn',
+    toolId: 'later-tool',
+    toolName: 'read',
+    input: { path: 'later' },
+    runtimeEvent: { runtimeId: 'runtime', runId: 'run', journalEpoch: 'epoch', seq: 23 },
+  });
   assert.equal(messages().filter((row) => row.kind === 'user').length, 1);
   assert.equal(messages().filter((row) => row.kind === 'tool_call').length, 3);
+});
+
+test('interrupted history tools stay interrupted after refresh without disabling a new turn', () => {
+  const items: SessionHistoryItem[] = [
+    query,
+    {
+      kind: 'tool_call',
+      toolId: 'unfinished',
+      toolName: 'read',
+      turnId: 'queued-turn',
+      interrupted: true,
+    },
+  ];
+  restore(items);
+  restore(items);
+  const tools = messages().filter((message) => message.kind === 'tool_call');
+  assert.equal(tools.length, 1);
+  assert.equal(tools[0]?.status, 'interrupted');
+  assert.equal(tools[0]?.result, undefined);
+  const state = useAppStore.getState();
+  assert.equal(state.liveProjectionBySession[sessionId]?.activeRun, undefined);
 });

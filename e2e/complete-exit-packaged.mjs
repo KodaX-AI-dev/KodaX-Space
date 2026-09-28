@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -253,6 +253,92 @@ async function seedUnconfirmedCleanup(runId) {
   await writeFile(file, JSON.stringify(persisted));
 }
 
+// Reproduce the reported failure: the durable user exists, but its assistant/tool
+// output only reached the journal before owner death. Only this stopped test profile is edited.
+async function seedInterruptedOutput(sessionId, runId) {
+  const runsDir = path.join(profileDir, '.kodax', 'runtime', 'profiles', 'coder', 'runs');
+  const statusPath = path.join(runsDir, runId, 'status.json');
+  const run = await readJson(statusPath);
+  if (!run) throw new Error('Missing isolated Run');
+  run.turnId = `fixture-interrupted-turn-${runId}`;
+  await writeFile(statusPath, JSON.stringify(run));
+  const { createSessionManager } = await import('@kodax-ai/kodax/session');
+  const manager = createSessionManager({
+    sessionsDir: path.join(profileDir, 'sessions'),
+    configHome: profileDir,
+  });
+  const saved = await manager.loadSession(sessionId);
+  if (!saved || !run?.turnId) throw new Error('Missing isolated interrupted history fixture');
+  await manager.storage.save(sessionId, {
+    ...saved,
+    messages: [
+      ...saved.messages,
+      {
+        role: 'user',
+        content: 'interrupted-output-query',
+        turnId: run.turnId,
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  });
+  const journalPath = path.join(runsDir, sessionId, 'events.jsonl');
+  const journal = (await readFile(journalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const last = journal.at(-1);
+  const additions = [
+    [
+      'output.segment.started',
+      { responseId: 'fixture-response', providerRequestId: 'fixture-request', mode: 'append' },
+    ],
+    ['assistant.delta', { text: 'Interrupted visible progress sentinel' }],
+    ['tool.started', { tool: { id: 'fixture-tool', name: 'read', input: {} } }],
+    ['thinking.delta', { text: 'Interrupted thinking sentinel' }],
+  ].map(([type, payload], index) => ({
+    id: `fixture-event-${index}`,
+    seq: last.seq + index + 1,
+    cursor: { ...last.cursor, seq: last.seq + index + 1 },
+    sessionId,
+    runId,
+    turnId: run.turnId,
+    time: new Date().toISOString(),
+    type,
+    payload,
+  }));
+  await appendFile(journalPath, additions.map((row) => JSON.stringify(row) + '\n').join(''));
+}
+
+async function verifyInterruptedOutput(instance, sessionId) {
+  for (let repeat = 0; repeat < 2; repeat++) {
+    const response = await instance.window.evaluate(
+      async (id) =>
+        window.kodaxSpace.invoke('session.history', {
+          sessionId: id,
+          requestId: 'interrupted-output-verification',
+          expectedSurface: 'code',
+        }),
+      sessionId,
+    );
+    if (!response.ok) throw new Error(`Interrupted history failed: ${response.error?.message}`);
+    const items = response.data.items;
+    if (
+      items.filter(
+        (item) =>
+          item.kind === 'assistant' && item.text === 'Interrupted visible progress sentinel',
+      ).length !== 1 ||
+      items.filter(
+        (item) => item.kind === 'assistant' && item.thinking === 'Interrupted thinking sentinel',
+      ).length !== 1 ||
+      !items.some(
+        (item) =>
+          item.kind === 'tool_call' &&
+          item.toolId === 'fixture-tool' &&
+          item.interrupted &&
+          item.result === undefined,
+      )
+    )
+      throw new Error('Interrupted journal output was missing, duplicated, or labelled running');
+  }
+}
+
 async function forceCleanup() {
   for (const child of activeProcesses) {
     if (child.exitCode !== null || child.signalCode !== null) continue;
@@ -325,6 +411,7 @@ try {
   }
   await requestProductCompleteExit(first);
   await seedUnconfirmedCleanup(recoveryRunId);
+  await seedInterruptedOutput(sessionId, recoveryRunId);
 
   const second = await launchPackagedApp(first.daemon.runtimeId);
   const restored = await waitFor(
@@ -368,16 +455,18 @@ try {
     30_000,
     'Space terminal projection after cleanup recovery',
   );
+  await verifyInterruptedOutput(second, sessionId);
   await verifyRuntimeSession(sessionId, recoveryRunId);
   await requestProductCompleteExit(second);
 
   const third = await launchPackagedApp(second.daemon.runtimeId);
+  await verifyInterruptedOutput(third, sessionId);
   await verifyRuntimeSession(sessionId, recoveryRunId);
   await requestProductCompleteExit(third);
 
   console.log(
     `[complete-exit-packaged] PASS | KodaX ${expectedKodaxVersion} | ` +
-      'three product exits clean | Session history restored | cleanup recovery survives two restarts | next tasks completed',
+      'three product exits clean | interrupted text/thinking/tools restored without duplicates | cleanup recovery survives two restarts | next tasks completed',
   );
 } catch (error) {
   console.error(

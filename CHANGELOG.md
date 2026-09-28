@@ -16,6 +16,12 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Fixed
 
+- Restore interrupted assistant progress, unfinished thinking and tool receipts from
+  the SDK journal when durable history is incomplete. Verify the complete turn prefix,
+  preserve retry replacement and branch boundaries, and label unfinished tools interrupted.
+  History lookback and replay share a bounded deadline; recovery failure preserves
+  saved history and does not fence sending or queued work.
+
 - Recover queued-input identity and completed tool calls after reload, merge matching
   Runtime and durable history without duplicating whole answers, and retain output event times.
   Uses the existing SDK replay API; no SDK upgrade is required (Issue 218).

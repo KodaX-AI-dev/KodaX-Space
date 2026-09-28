@@ -607,6 +607,7 @@ const transcriptHistoryIdentityShape = {
 const historyToolCallSchema = z.object({
   ...transcriptHistoryIdentityShape,
   kind: z.literal('tool_call'),
+  interrupted: z.boolean().optional(),
   toolId: z.string().min(1).max(128),
   toolName: z.string().min(1).max(64),
   /** SDK 持久化的 tool_use 输入参数 (JSON 对象)。可能缺失 (历史 message 损坏 / 早期版本)。*/
@@ -1111,6 +1112,7 @@ export const sessionEventChannel = {
       ...runtimeSessionEventOriginShape,
       ...transcriptHistoryIdentityShape,
       kind: z.literal('tool_start'),
+      interrupted: z.boolean().optional(),
       sessionId: z.string().min(1),
       toolId: z.string().min(1),
       toolName: z.string().min(1),
@@ -1395,10 +1397,19 @@ export const sessionEventChannel = {
         requestedEffort: z.string().min(1).max(64),
         sentEffort: z.string().min(1).max(64).optional(),
         verified: z.literal(false),
-        fallbacks: z.array(z.object({
-          effort: z.string().max(64).optional(),
-          reason: z.enum(['profile', 'unsupported-effort', 'unsupported-parameter', 'cached-rejection']),
-        })).max(100),
+        fallbacks: z
+          .array(
+            z.object({
+              effort: z.string().max(64).optional(),
+              reason: z.enum([
+                'profile',
+                'unsupported-effort',
+                'unsupported-parameter',
+                'cached-rejection',
+              ]),
+            }),
+          )
+          .max(100),
       }),
     }),
     // ---- Repointel (repo intelligence) trace ----

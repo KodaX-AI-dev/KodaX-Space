@@ -80,7 +80,7 @@ export type ConversationMessage =
       input?: Record<string, unknown>;
       result?: string;
       progress?: string;
-      status: 'running' | 'done';
+      status: 'running' | 'done' | 'interrupted';
     }
   | {
       kind: 'system_notice';
@@ -738,7 +738,7 @@ function composeAssistantSegment(
           toolId: evt.toolId,
           toolName: evt.toolName,
           input: evt.input,
-          status: 'running',
+          status: evt.interrupted ? 'interrupted' : 'running',
         };
         toolCardsByToolId.set(evt.toolId, card);
         out.push(card);

@@ -73,6 +73,11 @@ import {
   preparePersistedSessionFreshnessTracking,
   SPACE_EPHEMERAL_SESSION_TAG,
 } from './session-store.js';
+import type { SessionHistoryItem } from '@kodax-space/space-ipc-schema';
+import {
+  recoverInterruptedHistory,
+  readWithinRecoveryDeadline,
+} from './runtime/interrupted-history.js';
 import { recoverRuntimeToolHistory } from './runtime/runtime-tool-history.js';
 import { RuntimeClientIdentityStore } from './runtime/runtime-client-identity.js';
 import {
@@ -383,6 +388,54 @@ export interface RuntimeConversationHistoryPage {
 export type RuntimeConversationHistoryPageResult =
   | { readonly outcome: 'ready'; readonly page: RuntimeConversationHistoryPage | null }
   | { readonly outcome: 'data_changed' };
+
+/** Read only the missing beginning of an interrupted turn, not the whole conversation. */
+export async function expandInterruptedConversationPage(
+  page: RuntimeConversationHistoryPage,
+  runs: readonly Pick<RuntimeRunStatus, 'turnId' | 'phase'>[],
+  readOlder: (cursor: string) => Promise<RuntimeConversationHistoryPage | null>,
+  deadline = Date.now() + RUNTIME_READ_TIMEOUT_MS,
+): Promise<RuntimeConversationHistoryPage> {
+  const first = page.entries[0]?.entry.message;
+  const turnId =
+    first && typeof first === 'object' && 'turnId' in first && typeof first.turnId === 'string'
+      ? first.turnId
+      : undefined;
+  if (
+    !turnId ||
+    !runs.some(
+      (run) => run.turnId === turnId && ['interrupted', 'cancelled', 'failed'].includes(run.phase),
+    )
+  )
+    return page;
+  let result = page;
+  let bytes = Buffer.byteLength(JSON.stringify(page));
+  const visited = new Set<string>();
+  while (result.hasMore && result.nextCursor && Date.now() < deadline) {
+    const leading = result.entries[0]?.entry.message;
+    if (leading && typeof leading === 'object' && 'turnId' in leading && leading.turnId !== turnId)
+      break;
+    if (visited.has(result.nextCursor))
+      throw new Error('Interrupted history lookback cursor repeated.');
+    visited.add(result.nextCursor);
+    const older = await readWithinRecoveryDeadline(() => readOlder(result.nextCursor!), deadline);
+    if (!older || older.revision !== page.revision || older.sourceRevision !== page.sourceRevision)
+      throw new Error('Interrupted history changed during lookback.');
+    bytes += Buffer.byteLength(JSON.stringify(older));
+    if (
+      bytes > MAX_RUNTIME_CONVERSATION_TOTAL_BYTES ||
+      result.entries.length + older.entries.length > 2_000
+    )
+      break;
+    result = {
+      ...page,
+      entries: [...older.entries, ...result.entries],
+      hasMore: older.hasMore,
+      nextCursor: older.nextCursor,
+    };
+  }
+  return result;
+}
 
 const RUNTIME_READ_TIMEOUT_MS = 15_000;
 const RUNTIME_TRANSCRIPT_TOTAL_TIMEOUT_MS = 60_000;
@@ -3519,12 +3572,47 @@ export class RuntimeHostAdapter {
     return pending;
   }
 
+  async recoverInterruptedConversationItems(
+    sessionId: string,
+    items: readonly SessionHistoryItem[],
+    completeTurnIds: readonly string[],
+    deadline = Date.now() + RUNTIME_READ_TIMEOUT_MS,
+  ): Promise<SessionHistoryItem[]> {
+    const runtime = await this.requireRuntime();
+    const generation = this.transcriptGenerations.get(sessionId) ?? 0;
+    const runs = await readWithinRecoveryDeadline(
+      () =>
+        runtime.runs.list({
+          sessionId,
+          phase: ['interrupted', 'cancelled', 'failed'],
+        }),
+      deadline,
+    );
+    const recovered = await recoverInterruptedHistory(
+      runtime.events,
+      runs,
+      sessionId,
+      items,
+      completeTurnIds,
+      deadline,
+    );
+    if (
+      this.runtime !== runtime ||
+      this.state !== 'ready' ||
+      (this.transcriptGenerations.get(sessionId) ?? 0) !== generation
+    ) {
+      throw new Error('Runtime changed while recovering interrupted history.');
+    }
+    return recovered;
+  }
+
   async conversationHistoryPage(input: {
     readonly sessionId: string;
     readonly cursor?: string;
     readonly revision?: string;
     readonly sourceRevision?: string;
     readonly limit?: number;
+    readonly recoveryDeadline?: number;
   }): Promise<RuntimeConversationHistoryPageResult> {
     const runtime = await this.requireRuntime();
     await this.assertPersistedCoderOwnershipIfChanged(input.sessionId);
@@ -3539,6 +3627,34 @@ export class RuntimeHostAdapter {
         ...(input.cursor !== undefined ? { cursor: input.cursor } : {}),
         ...(input.limit !== undefined ? { limit: input.limit } : {}),
       });
+      if (page?.hasMore) {
+        const deadline = input.recoveryDeadline ?? Date.now() + RUNTIME_READ_TIMEOUT_MS;
+        try {
+          page = await expandInterruptedConversationPage(
+            page,
+            await readWithinRecoveryDeadline(
+              () =>
+                runtime.runs.list({
+                  sessionId: input.sessionId,
+                  phase: ['interrupted', 'cancelled', 'failed'],
+                }),
+              deadline,
+            ),
+            (cursor) =>
+              readRuntimeConversationHistoryPage(runtime, {
+                sessionId: input.sessionId,
+                cursor,
+                limit: input.limit,
+              }),
+            deadline,
+          );
+        } catch (error) {
+          console.warn(
+            '[runtime] Interrupted history lookback unavailable:',
+            sanitizeDiagnosticError(error),
+          );
+        }
+      }
     } catch (error) {
       if (isRuntimeResyncRequired(error)) return { outcome: 'data_changed' };
       // A Session the daemon has never persisted (fresh profile, mock host, or a

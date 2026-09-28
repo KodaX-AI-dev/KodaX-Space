@@ -3,6 +3,7 @@ import {
   spaceSessionLiveProjectionSchema,
   type SpaceSessionLiveProjectionT,
 } from '@kodax-space/space-ipc-schema';
+import { boundToolResult } from './interrupted-history.js';
 import { isTransientChildRuntimeEvent } from './coder-daemon-projection.js';
 
 type ToolEvent = NonNullable<SpaceSessionLiveProjectionT['toolEvents']>[number];
@@ -37,7 +38,7 @@ function projectToolEvent(event: RuntimeTypedEvent): ToolEvent | undefined {
       ...origin,
       toolId: toolId(meta, result.id),
       toolName: result.name,
-      content: result.content,
+      content: boundToolResult(result.content),
     };
   }
   return undefined;
