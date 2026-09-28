@@ -1,5 +1,5 @@
-// Packaged complete-exit E2E: exercise the real Electron product path twice,
-// prove the daemon/Job owner is gone, then verify persisted Session history.
+// Packaged lifecycle E2E: verify real product exits, persisted Session history,
+// repeated recovery of unconfirmed cleanup, and admission of subsequent tasks.
 import { spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync } from 'node:fs';
@@ -176,7 +176,7 @@ async function requestProductCompleteExit(instance) {
   await rm(triggerPath, { force: true });
 }
 
-async function verifyRuntimeSession(sessionId) {
+async function verifyRuntimeSession(sessionId, recoveredRunId) {
   const previousKodaxHome = process.env.KODAX_HOME;
   process.env.KODAX_HOME = profileDir;
   let runtime;
@@ -193,11 +193,64 @@ async function verifyRuntimeSession(sessionId) {
     });
     const session = await runtime.sessions.load(sessionId);
     if (session.id !== sessionId) throw new Error('Space created an unexpected Runtime identity');
+    if (recoveredRunId && (await runtime.runs.get(recoveredRunId)).phase !== 'interrupted') {
+      throw new Error('Recovered cleanup Run did not remain interrupted');
+    }
+    await runtime.sessions.updateSettings(sessionId, { permissionMode: 'full-access' });
+    const fixturePath = path.join(projectDir, 'recovery-read.txt');
+    await writeFile(fixturePath, 'packaged recovery sentinel');
+    const run = await runtime.runs.start({
+      sessionId,
+      prompt: 'Read the isolated recovery fixture',
+      options: {
+        provider: 'anthropic',
+        lsp: false,
+        toolInvocation: { name: 'read', input: { path: fixturePath } },
+      },
+    });
+    if ((await run.result).phase !== 'completed') {
+      throw new Error('Packaged daemon could not execute the next tool task');
+    }
+    return run.runId;
   } finally {
     await runtime?.close();
     if (previousKodaxHome === undefined) delete process.env.KODAX_HOME;
     else process.env.KODAX_HOME = previousKodaxHome;
   }
+}
+
+// Inject only after the fixture's exact daemon and supervisor have exited.
+async function seedUnconfirmedCleanup(runId) {
+  // With an explicit sessionsDir, Runtime persistence is based on its parent/.kodax.
+  const file = path.join(
+    profileDir,
+    '.kodax',
+    'runtime',
+    'profiles',
+    'coder',
+    'runs',
+    runId,
+    'status.json',
+  );
+  const persisted = JSON.parse(await readFile(file, 'utf8'));
+  persisted.phase = 'unknown';
+  persisted.stage = 'unknown';
+  delete persisted.terminal;
+  delete persisted.endedAt;
+  persisted.stop = {
+    requestedAt: new Date().toISOString(),
+    state: 'unknown',
+    outcome: 'unknown',
+    reason: 'stop',
+  };
+  persisted._runtime.shellCleanups = [
+    {
+      runtimeRunId: runId,
+      pid: 2_147_483_000,
+      registrationId: '11111111-1111-4111-8111-111111111111',
+    },
+  ];
+  await writeFile(file, JSON.stringify(persisted));
 }
 
 async function forceCleanup() {
@@ -242,7 +295,7 @@ try {
   sessionId = created.data.sessionId;
   // Creation now persists the Coder identity itself. Verify that product behavior
   // instead of creating a second Session in the test harness.
-  await verifyRuntimeSession(sessionId);
+  const recoveryRunId = await verifyRuntimeSession(sessionId);
   const noticeText = 'complete-exit persistence sentinel';
   const appended = await first.window.evaluate(
     async ({ id, text }) =>
@@ -271,6 +324,7 @@ try {
     throw new Error(`Session sentinel was not readable before exit: ${JSON.stringify(beforeExit)}`);
   }
   await requestProductCompleteExit(first);
+  await seedUnconfirmedCleanup(recoveryRunId);
 
   const second = await launchPackagedApp(first.daemon.runtimeId);
   const restored = await waitFor(
@@ -297,11 +351,33 @@ try {
   if (restored.data.page?.outcome === 'runtime_unavailable') {
     throw new Error('Session history remained runtime_unavailable after restart');
   }
+  await waitFor(
+    async () => {
+      const response = await second.window.evaluate(() =>
+        window.kodaxSpace.invoke('runtime.profileSnapshot'),
+      );
+      const session =
+        response.ok && response.data.sessions.find((item) => item.sessionId === sessionId);
+      return (
+        session &&
+        !session.activeRun &&
+        session.lastTerminalRun?.runId === recoveryRunId &&
+        session.lastTerminalRun.phase === 'interrupted'
+      );
+    },
+    30_000,
+    'Space terminal projection after cleanup recovery',
+  );
+  await verifyRuntimeSession(sessionId, recoveryRunId);
   await requestProductCompleteExit(second);
+
+  const third = await launchPackagedApp(second.daemon.runtimeId);
+  await verifyRuntimeSession(sessionId, recoveryRunId);
+  await requestProductCompleteExit(third);
 
   console.log(
     `[complete-exit-packaged] PASS | KodaX ${expectedKodaxVersion} | ` +
-      'two product exits clean | Session history restored',
+      'three product exits clean | Session history restored | cleanup recovery survives two restarts | next tasks completed',
   );
 } catch (error) {
   console.error(

@@ -44,6 +44,19 @@ Space 的运行面板、Agent 侧栏和独立任务面板统一采用 Runtime �
 `queued-message-toast.spec.ts` 在 Electron 中验证 1920×1152、1024×768、480×640
 窗口的排队通知位于输入区上方、可关闭，且仍可输入和提交后续消息。
 
+`e2e/complete-exit-packaged.mjs` 直接启动打包的 exe 和真实 daemon；在确认测试
+进程退出后注入旧 unknown 清理记录，验证恢复后的 Space IPC 终态、连续两次
+重启后的状态，以及每次都能真实执行后续 read 工具任务。所有数据、凭据和
+进程均归属于隔离测试 profile，不修改用户会话。
+
+打包程序的界面回归沿用同一组测试：
+
+```powershell
+$env:SPACE_E2E_EXECUTABLE = (Resolve-Path 'out/win-unpacked/KodaX Space.exe').Path
+npx playwright test tests/e2e/queued-message-toast.spec.ts tests/e2e/session-send-retry.spec.ts tests/e2e/renderer-boot.spec.ts
+Remove-Item Env:SPACE_E2E_EXECUTABLE
+```
+
 ```powershell
 npm run typecheck
 node --import tsx --test apps/desktop/electron/test/composer-invoke.test.ts apps/desktop/electron/test/agent-status-projection.test.ts apps/desktop/electron/test/task-dock-projection.test.ts apps/desktop/electron/test/activitySpinner.test.ts apps/desktop/renderer/src/shell/ActivitySpinner.test.ts
@@ -60,3 +73,26 @@ npx playwright test tests/e2e/queued-message-toast.spec.ts tests/e2e/session-sen
 4. 主动 Stop 后模型停止；收尾期间仍能发送下一条消息，随后正常执行。
 5. 下一轮开始后遗留清理记录仍保留，不误显示全部进程已确认终止。
 6. 在 1920×1152、1024×768、480×640 窗口检查通知不挡 Stop / Send，且可关闭。
+
+## 最终包级验收（2026-09-28）
+
+- 产品源码包含 `dffa5ab2`（轮次）及此前的清理、自愈、状态和发送修复；SDK 为正式
+  Registry 安装的 `0.7.96-rc.12`。本轮没有再次修改产品运行代码。
+- Windows NSIS 与 Portable 产物已生成；ASAR 依赖、跨平台 native 文件哈希、
+  Worker 执行、SQLite 和 updater 加载检查通过。
+- 打包程序启动检查通过，实际后台版本为 rc.12；122 条历史进程记录保留。
+- 扩展后的完整退出测试通过：三次产品退出清理 daemon / Windows Job，历史
+  保留，旧 unknown 清理记录恢复为 interrupted，两次重启后仍保持终态，且
+  每次都能完成新的 read 工具任务。全部使用隔离 profile。
+- 打包 exe 的三项界面测试通过：渲染器启动、发送拒绝后的草稿恢复与重试、
+  三种窗口尺寸下通知不遮挡输入区且可关闭并继续提交。通知使用实时几何和
+  交互断言；未将隐藏窗口截图或暂停时钟作为通过条件。
+- 验收使用 `out/win-unpacked/KodaX Space.exe`；未覆盖用户现有安装、未发布
+  GitHub Release，也未进行真实付费模型调用。NSIS 安装向导交互不在本次自动化范围内。
+
+产物 SHA-256：
+
+| 产物                                 | SHA-256                                                            |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| KodaX-Space-Setup-0.1.46-rc.6.exe    | `28098e0b7488672bf5651a4ed0ee70f9f033fdbcf7ef28d8cdf2217975e3209b` |
+| KodaX-Space-Portable-0.1.46-rc.6.exe | `107d771da130f7607bed35d03e4f28ed3c40f3422b80b4a5704847133a4ce086` |

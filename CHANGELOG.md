@@ -19,6 +19,12 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Show unconfirmed Runtime state in the task dock and root Agent, allow queued
   messages while Stop settles, and keep Stop notifications above
   the composer so they cannot cover Stop / Send.
+- Integrate KodaX `0.7.96-rc.12`: deferred Shell cleanup no longer fences later
+  tasks. Recovered terminal Runs override stale plans and root Agent snapshots,
+  while new turns keep their own activity state. Verify repeated recovery and
+  subsequent tool execution against the packaged daemon.
+- Check SDK compatibility and current manual versions against the dependency
+  declaration, removing stale rc.11 expectations after the rc.12 upgrade.
 
 ---
 

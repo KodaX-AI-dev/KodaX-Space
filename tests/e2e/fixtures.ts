@@ -125,6 +125,7 @@ export interface LaunchSpaceOptions {
  * Pass `onConsole` / `onPageError` to capture errors that fire synchronously
  * during the first render pass — listeners attached after this function
  * returns would miss them.
+ * Set SPACE_E2E_EXECUTABLE to run the same isolated tests against a packaged binary.
  */
 export async function launchSpace(
   testId: string,
@@ -161,10 +162,11 @@ export async function launchSpace(
   if (process.platform === 'darwin') baseEnv.TMPDIR = await fs.realpath(os.tmpdir());
 
   let app: ElectronApplication;
+  const executablePath = opts?.executablePath ?? process.env.SPACE_E2E_EXECUTABLE;
   try {
     app = await _electron.launch({
-      ...(opts?.executablePath ? { executablePath: opts.executablePath } : {}),
-      args: opts?.executablePath ? [] : [ELECTRON_MAIN],
+      ...(executablePath ? { executablePath } : {}),
+      args: executablePath ? [] : [ELECTRON_MAIN],
       env: {
         ...baseEnv,
         KODAX_TEST_ONBOARDING: testId,
