@@ -129,7 +129,7 @@ export function queueModeForRuntimePhase(
 export function composerRunControls(
   isStreaming: boolean,
   compactingSlash: boolean,
-  runtimePhase: string | undefined,
+  _runtimePhase: string | undefined,
 ): {
   readonly showStop: boolean;
   readonly showSend: boolean;
@@ -139,7 +139,7 @@ export function composerRunControls(
   return {
     showStop: isStreaming && !compactingSlash,
     showSend: !isStreaming || canQueue,
-    canSendDuringActivity: runtimePhase !== 'unknown' && (!isStreaming || canQueue),
+    canSendDuringActivity: !isStreaming || canQueue,
   };
 }
 

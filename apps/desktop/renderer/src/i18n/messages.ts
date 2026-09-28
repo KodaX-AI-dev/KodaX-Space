@@ -2771,7 +2771,7 @@ export const messages = {
     'bottom.stopOutcomeUnknown': 'Stop requested, but the outcome is not yet confirmed - {session}',
     'taskDock.runUnconfirmed': 'Run status unconfirmed',
     'bottom.runUnconfirmed':
-      'Run status is unconfirmed. Your draft is kept; sending is paused. Retry Stop to verify cleanup.',
+      'Run status is unconfirmed. You can keep sending messages; they will be processed after the current execution ends.',
     'bottom.runAlreadyTerminal': 'The run had already reached a terminal state - {session}',
     'bottom.noActiveRun': 'No active run was found to stop - {session}',
     'bottom.cancelFailed': 'Cancel failed ({session}): {message}',
@@ -5470,8 +5470,7 @@ export const messages = {
     'bottom.stopConfirmed': '已确认停止 - {session}',
     'bottom.stopOutcomeUnknown': '已请求停止，但结果尚未确认 - {session}',
     'taskDock.runUnconfirmed': '运行状态未确认',
-    'bottom.runUnconfirmed':
-      '当前运行状态未确认，草稿已保留，暂不能发送。请重试停止以确认清理结果。',
+    'bottom.runUnconfirmed': '运行状态暂未确认，仍可发送消息；消息将在当前执行结束后处理。',
     'bottom.runAlreadyTerminal': '任务已先一步进入终态 - {session}',
     'bottom.noActiveRun': '未找到可停止的活动任务 - {session}',
     'bottom.cancelFailed': '取消失败（{session}）：{message}',

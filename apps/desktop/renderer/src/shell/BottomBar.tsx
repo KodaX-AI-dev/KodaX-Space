@@ -2024,10 +2024,6 @@ export function BottomBar(): JSX.Element {
   ): Promise<void> {
     if (!window.kodaxSpace) return;
     if (busy || attachmentGateRef.current!.isPending()) return;
-    if (currentRuntimePhase === 'unknown') {
-      setErr(t('bottom.runUnconfirmed'));
-      return;
-    }
     if (partnerExpertBusy) {
       setErr(t('extensions.expertSaving'));
       return;
@@ -2556,7 +2552,7 @@ export function BottomBar(): JSX.Element {
     (prompt.trim().length > 0 || pendingImages.length > 0 || pendingFileRefs.length > 0);
   const sendButtonTitle =
     currentRuntimePhase === 'unknown'
-      ? t('bottom.runUnconfirmed')
+      ? t('bottom.sendTitle.afterTurn')
       : canSend
         ? t('bottom.sendTitle.ready')
         : !currentProjectPath
