@@ -9,16 +9,20 @@ import test from 'node:test';
 
 const PROBE_MARKER = 'KODAX_RUNTIME_PROBE=';
 const PROBE_TIMEOUT_MS = 30_000;
-const EXPECTED_KODAX_VERSION = '0.7.96-rc.11';
+const require = createRequire(import.meta.url);
+const EXPECTED_KODAX_VERSION = (
+  require('../../../../package.json') as {
+    readonly dependencies: { readonly '@kodax-ai/kodax': string };
+  }
+).dependencies['@kodax-ai/kodax'];
 const INSTALLED_KODAX_VERSION = (
-  createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as { readonly version: string }
+  require('@kodax-ai/kodax/package.json') as { readonly version: string }
 ).version;
 const SHARED_DAEMON_TIMEOUT_MS = 45_000;
 const SHARED_DAEMON_MARKER = 'KODAX_SHARED_DAEMON_HOST=';
 const SHARED_DAEMON_CONTEXT_MARKER = 'KODAX_SHARED_DAEMON_CONTEXT=';
 const SHARED_DAEMON_OWNER_MARKER = 'KODAX_SHARED_DAEMON_OWNER=';
 const CLEANUP_COMMAND_TIMEOUT_MS = 15_000;
-const require = createRequire(import.meta.url);
 const KODAX_CLI_PATH = path.join(
   path.dirname(require.resolve('@kodax-ai/kodax/package.json')),
   'dist',

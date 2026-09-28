@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import test from 'node:test';
 
 import {
@@ -7,6 +8,11 @@ import {
   resolveKodaXManual,
 } from '@kodax-ai/kodax/coding';
 import { buildSpaceManual, SPACE_PRODUCT_NAME } from '../kodax/space-manual-topics.js';
+
+const manifest = createRequire(import.meta.url)('../../../../package.json') as {
+  readonly version: string;
+  readonly dependencies: { readonly '@kodax-ai/kodax': string };
+};
 
 const sdkManual = buildSpaceManual({
   KODAX_UNDERLYING_CAPABILITY_TOPICS,
@@ -84,9 +90,13 @@ test('Space kodax_manual documents the required current KodaX capability boundar
     }
   }
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.45 正式发布.*KodaX 0\.7\.95/);
-  assert.match(
-    topics.get('runtime-host')?.body ?? '',
-    /v0\.1\.46-rc\.6 精确锁定 KodaX 0\.7\.96-rc\.11/,
+  assert.ok(
+    topics
+      .get('runtime-host')
+      ?.body.includes(
+        `v${manifest.version} 精确锁定 KodaX ${manifest.dependencies['@kodax-ai/kodax']}`,
+      ),
+    'The current manual must match the declared Space and SDK versions',
   );
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.46-alpha\.11 落地 FEATURE_275/);
   assert.match(topics.get('runtime-host')?.body ?? '', /macOS 后台 Git 调用先经 SDK 共享预检/);
