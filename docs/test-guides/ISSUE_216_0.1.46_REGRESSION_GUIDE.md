@@ -6,6 +6,9 @@
 
 ## 修复边界
 
+2026-09-28 追加的 Runtime 解密自愈仅在源码，尚未打包或发布。
+符合下面“升级自愈回归”条件时可恢复原 secret；其余持久化失败仍保持原有失败语义。
+
 - Windows 优先使用 Electron safeStorage/DPAPI，复用 `provider-credentials.v1.json`
   的版本 1 格式；无需加载 native keyring 即可恢复已有 vault 和保存新凭据。
 - 旧凭据按已知 Provider 账号迁移。单条异常不让所有账号降级；迁移中的旧读取不能
@@ -33,6 +36,25 @@
 | 5 | updater 根生产依赖、CJS 加载及包内保护；结构化错误脱敏、SDK 日志桥接 | [package.json](../../package.json)、[updater.ts](../../apps/desktop/electron/ipc/updater.ts)、[smoke-pack.mjs](../../scripts/smoke-pack.mjs)、[redaction.ts](../../apps/desktop/electron/diagnostics/redaction.ts)、[sdk-bridge.ts](../../apps/desktop/electron/diagnostics/sdk-bridge.ts)、[main.ts](../../apps/desktop/electron/main.ts) |
 
 ## 自动化验证
+
+### 升级自愈回归（2026-09-28）
+
+运行 `node --import tsx --test apps/desktop/electron/test/windows-credential-migration.test.ts apps/desktop/electron/test/runtime-credential-recovery.test.ts apps/desktop/electron/test/runtime-client-identity.test.ts apps/desktop/electron/test/encrypted-credential-vault.test.ts`。
+
+- 模拟已迁移 Windows 凭据的加密状态失配；原 keyring 候选与同一 instanceId
+  的唯一 journal v1 指纹匹配时，启动返回原身份和原 secret，二次启动可读取。
+- 验证 `.before-recovery.json` 备份保留原 vault 字节；正式文件只替换目标密文。
+- 错误候选、不同 instanceId、多指纹、未知 journal 版本、缺失或损坏的证据
+  均不自动恢复。损坏 vault JSON 也不可绕过。
+- 恢复期间的删除或保存优先；备份失败或新密文解密验证失败时不得改写旧 vault。
+- Windows Runtime 之外的 Provider Key 不用此身份记录恢复。缺少恢复材料的
+  用户显示明确错误，不生成替代 Runtime secret。
+
+本轮与历史分页/加载提示一起运行：103 通过、0 失败、1 项 Windows 符号链接
+权限条件跳过；TypeScript 和改动文件 ESLint 通过。现场仅只读验证恢复资格，
+尚未在正式数据或重新打包的 Electron 程序上执行恢复。
+
+### 原有验证命令
 
 1. `node --import tsx --test apps/desktop/electron/test/windows-credential-migration.test.ts`
    覆盖 native keyring 缺失、重启恢复、现场 v1 格式、Provider 逐账号发现、删除、

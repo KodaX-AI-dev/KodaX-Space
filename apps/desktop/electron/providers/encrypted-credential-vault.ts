@@ -1,5 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { replaceFileIfUnchanged } from '../kodax/atomic-file.js';
 
 const VAULT_VERSION = 1 as const;
 const MAX_ACCOUNTS = 256;
@@ -23,6 +25,31 @@ export class CredentialVaultCorruptError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'CredentialVaultCorruptError';
+  }
+}
+
+export class CredentialVaultDecryptionError extends Error {
+  readonly #ciphertext: string;
+
+  constructor(ciphertext: string, cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'Credential decryption failed.', { cause });
+    this.name = 'CredentialVaultDecryptionError';
+    this.#ciphertext = ciphertext;
+  }
+
+  get ciphertext(): string {
+    return this.#ciphertext;
+  }
+}
+
+async function writeRecoveryBackup(filePath: string, bytes: Buffer): Promise<void> {
+  try {
+    await fs.writeFile(filePath, bytes, { flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    if (!(await fs.readFile(filePath)).equals(bytes)) {
+      throw new Error('Credential recovery backup does not match.');
+    }
   }
 }
 
@@ -130,11 +157,64 @@ export class EncryptedCredentialVault {
   async get(account: string): Promise<string | undefined> {
     const ciphertext = (await this.load()).records[account];
     if (ciphertext === undefined) return undefined;
-    const decrypted = await this.cipher.decrypt(Buffer.from(ciphertext, 'base64'));
+    const decrypted = await this.cipher
+      .decrypt(Buffer.from(ciphertext, 'base64'))
+      .catch((cause: unknown) => {
+        throw new CredentialVaultDecryptionError(ciphertext, cause);
+      });
     if (decrypted.shouldReEncrypt) {
       await this.rotateIfUnchanged(account, ciphertext, decrypted.result);
     }
     return decrypted.result;
+  }
+
+  /** Caller must verify the candidate belongs to the existing identity first. */
+  async recover(account: string, previousCiphertext: string, secret: string): Promise<string> {
+    if (!isSafeAccount(account)) throw new Error('invalid credential account');
+    const encrypted = await this.cipher.encrypt(secret);
+    if ((await this.cipher.decrypt(encrypted)).result !== secret) {
+      throw new Error('Recovered credential failed encryption verification.');
+    }
+    const operation = this.writeQueue.then(() =>
+      this.installRecoveredRecord(account, previousCiphertext, encrypted),
+    );
+    this.writeQueue = operation.catch(() => undefined);
+    await operation;
+    return secret;
+  }
+
+  private async installRecoveredRecord(
+    account: string,
+    previousCiphertext: string,
+    encrypted: Buffer,
+  ): Promise<void> {
+    const stat = await fs.lstat(this.filePath);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink > 1 || stat.size > 8 * 1024 * 1024) {
+      throw new Error('Credential recovery requires a safe standalone vault.');
+    }
+    const bytes = await fs.readFile(this.filePath);
+    const current = parseState(JSON.parse(bytes.toString('utf8')));
+    if (
+      current.records[account] !== previousCiphertext ||
+      current.revokedLegacyAccounts.includes(account)
+    ) {
+      throw new Error('Credential changed during recovery; retry after relaunch.');
+    }
+    const next = parseState({
+      ...current,
+      records: { ...current.records, [account]: encrypted.toString('base64') },
+    });
+    const hash = createHash('sha256').update(bytes).digest('hex');
+    const backup = `${this.filePath}.${hash}.before-recovery.json`;
+    await writeRecoveryBackup(backup, bytes);
+    await replaceFileIfUnchanged(
+      this.filePath,
+      Buffer.from(`${JSON.stringify(next, null, 2)}\n`),
+      `sha256:${hash}`,
+      'Credential changed during recovery; retry after relaunch.',
+      8 * 1024 * 1024,
+    );
+    this.cached = next;
   }
 
   async set(account: string, secret: string): Promise<void> {

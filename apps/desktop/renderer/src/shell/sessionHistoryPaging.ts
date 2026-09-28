@@ -28,6 +28,7 @@ export interface SessionHistoryPagingState {
    * surface. Cleared by ready/data_changed/epoch-reset publishes and re-set by each
    * runtime_unavailable response, so it never outlives the cycle it describes. */
   readonly runtimeUnavailable?: boolean;
+  readonly runtimeFailureReason?: string;
 }
 const IDLE_HISTORY_STATE: SessionHistoryPagingState = {
   phase: 'idle',
@@ -672,10 +673,22 @@ function scheduleRuntimeRetry(
   surface: 'code' | 'partner' | undefined,
   retainReadyProjection = false,
 ): void {
-  if (retryTimers.has(sessionId) || !activeTokens.has(sessionId)) return;
+  if (!activeTokens.has(sessionId)) return;
+  const current = sessionHistoryPagingSnapshot(sessionId);
+  const connection = useAppStore.getState().runtimeConnection;
+  if (surface !== 'partner' && current.runtimeUnavailable && connection.state === 'incompatible') {
+    clearRetry(sessionId);
+    publish(sessionId, {
+      ...current,
+      phase: 'error',
+      ...(connection.reason ? { runtimeFailureReason: connection.reason } : {}),
+    });
+    updateAllTerminalHistoryWorkflows(sessionId, 'in-flight', 'pending');
+    return;
+  }
+  if (retryTimers.has(sessionId)) return;
   const attempt = (retryAttempts.get(sessionId) ?? 0) + 1;
   if (attempt > MAX_RUNTIME_RETRY_ATTEMPTS) {
-    const current = sessionHistoryPagingSnapshot(sessionId);
     publish(sessionId, { ...current, phase: 'error' });
     retryAttempts.delete(sessionId);
     updateAllTerminalHistoryWorkflows(sessionId, 'in-flight', 'pending');
@@ -859,6 +872,7 @@ async function requestHistory(
         ...(retainReadyProjection && previous.phase === 'ready'
           ? previous
           : { ...IDLE_HISTORY_STATE, phase: 'waiting' as const, runtimeUnavailable: true }),
+        runtimeUnavailable: true,
         ...(surface ? { surface } : {}),
         ...(boundary.conversationStatus !== undefined
           ? { conversationStatus: boundary.conversationStatus }

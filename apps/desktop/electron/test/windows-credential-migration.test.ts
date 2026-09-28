@@ -6,8 +6,9 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { RuntimeClientIdentityStore } from '../kodax/runtime/runtime-client-identity.js';
+import { verifyLegacyRuntimeSecret } from '../kodax/runtime/runtime-credential-recovery.js';
 
 type Keychain = typeof import('../providers/keychain.js');
 const entry = fileURLToPath(new URL('../providers/keychain.ts', import.meta.url));
@@ -37,6 +38,7 @@ async function fixture(
     encryptFails?: boolean;
     asyncUnavailable?: boolean;
     beforeLegacyRead?: () => Promise<void>;
+    keyEpoch?: string;
     platform?: 'win32' | 'darwin';
   } = {},
 ) {
@@ -56,11 +58,13 @@ async function fixture(
             isAsyncEncryptionAvailable: async () => !options.asyncUnavailable,
             encryptStringAsync: async (value: string) => {
               if (options.encryptFails) throw new Error('encryption unavailable');
-              return Buffer.from(`fixture:${value}`);
+              return Buffer.from(`${options.keyEpoch ?? 'fixture'}:${value}`);
             },
             decryptStringAsync: async (value: Buffer) => {
               if (options.decryptFails) throw new Error('DPAPI decryption unavailable');
-              return { result: value.toString().slice(8), shouldReEncrypt: false };
+              const prefix = `${options.keyEpoch ?? 'fixture'}:`;
+              if (!value.toString().startsWith(prefix)) throw new Error('DPAPI key changed');
+              return { result: value.toString().slice(prefix.length), shouldReEncrypt: false };
             },
           },
         };
@@ -141,7 +145,7 @@ test('Runtime opens a fresh profile and reconnects with identical authority with
       path.join(f.dir, 'runtime-client-identity.json'),
       f.dir,
       randomUUID,
-      { read: keys.getPersistentKey, write: keys.setPersistentKey },
+      { read: (account) => keys.getPersistentKey(account), write: keys.setPersistentKey },
     );
     return identity.openInstance({ name: 'Space', version: 'fixture' });
   };
@@ -213,6 +217,26 @@ test('Runtime persistent reads surface decryption failure and leave ciphertext u
   assert.equal(f.loads(), 0);
 });
 
+test('verified legacy Runtime secret heals after an encryption key change and survives restart', async (t) => {
+  const account = 'runtime_client_00000000-0000-4000-8000-000000000001';
+  const secret = 'space_secret_unchanged_from_onsite_build';
+  const options = { keyEpoch: 'old', legacy: { [account]: secret } };
+  const f = await fixture(t, options);
+  await (await f.load()).setPersistentKey(account, secret);
+  const file = path.join(f.dir, 'provider-credentials.v1.json');
+  const before = await fs.readFile(file, 'utf8');
+  options.keyEpoch = 'new';
+  const recovered = await (
+    await f.load()
+  ).getPersistentKey(account, async (candidate) => candidate === secret);
+  assert.equal(recovered, secret);
+  assert.equal(await (await f.load()).getPersistentKey(account), secret);
+  const backup = (await fs.readdir(f.dir)).find((name) => name.endsWith('.before-recovery.json'));
+  assert.ok(backup);
+  assert.equal(await fs.readFile(path.join(f.dir, backup), 'utf8'), before);
+  assert.equal(f.reads.length, 1);
+});
+
 test('failed Windows encryption cannot report an ephemeral write as persistent success', async (t) => {
   const f = await fixture(t, { encryptFails: true });
   const keys = await f.load();
@@ -224,6 +248,114 @@ test('failed Windows encryption cannot report an ephemeral write as persistent s
   assert.equal(await keys.getBackendStatus(), 'keychain');
   assert.equal(await keys.getKey('anthropic'), undefined);
 });
+
+test('Runtime recovery uses the persisted identity evidence without rotating identity or secret', async (t) => {
+  const options = { keyEpoch: 'old', legacy: {} as Record<string, string> };
+  const f = await fixture(t, options);
+  const file = path.join(f.dir, 'runtime-client-identity.json');
+  const journal = path.join(f.dir, 'host-tool-invocations.json');
+  const open = async () => {
+    const keys = await f.load();
+    return new RuntimeClientIdentityStore(file, f.dir, randomUUID, {
+      read: (account, identity) =>
+        keys.getPersistentKey(
+          account,
+          identity === undefined
+            ? undefined
+            : (candidate) => verifyLegacyRuntimeSecret(identity, candidate, journal),
+        ),
+      write: keys.setPersistentKey,
+    }).openInstance({ name: 'Space', version: 'fixture' });
+  };
+  const first = await open();
+  const identityBytes = await fs.readFile(file, 'utf8');
+  const identity = JSON.parse(identityBytes) as { secretAccount: string };
+  options.legacy[identity.secretAccount] = first.instanceSecret;
+  await fs.writeFile(
+    journal,
+    JSON.stringify({
+      version: 1,
+      clients: [
+        {
+          key: `stable:${first.instanceId}:${createHash('sha256').update(first.instanceSecret).digest('hex')}`,
+          invocations: [],
+        },
+      ],
+    }),
+  );
+  options.keyEpoch = 'new';
+  assert.deepEqual(await open(), first);
+  assert.deepEqual(await open(), first);
+  assert.equal(await fs.readFile(file, 'utf8'), identityBytes);
+});
+
+test('unverified recovery leaves ciphertext intact and creates no backup', async (t) => {
+  const options = { keyEpoch: 'old', legacy: { runtime: 'stale-secret' } };
+  const f = await fixture(t, options);
+  await (await f.load()).setPersistentKey('runtime', 'current-secret');
+  const file = path.join(f.dir, 'provider-credentials.v1.json');
+  const before = await fs.readFile(file, 'utf8');
+  options.keyEpoch = 'new';
+  await assert.rejects(
+    (await f.load()).getPersistentKey('runtime', async () => false),
+    /could not be verified/,
+  );
+  assert.equal(await fs.readFile(file, 'utf8'), before);
+  assert.equal(
+    (await fs.readdir(f.dir)).some((name) => name.endsWith('.before-recovery.json')),
+    false,
+  );
+});
+
+test('recovery preserves the original vault when its backup cannot be saved', async (t) => {
+  const options = { keyEpoch: 'old', legacy: { runtime: 'original-secret' } };
+  const f = await fixture(t, options);
+  await (await f.load()).setPersistentKey('runtime', 'original-secret');
+  const file = path.join(f.dir, 'provider-credentials.v1.json');
+  const before = await fs.readFile(file);
+  const hash = createHash('sha256').update(before).digest('hex');
+  await fs.mkdir(`${file}.${hash}.before-recovery.json`);
+  options.keyEpoch = 'new';
+  await assert.rejects((await f.load()).getPersistentKey('runtime', async () => true));
+  assert.deepEqual(await fs.readFile(file), before);
+});
+
+test('recovery refuses to persist a secret when fresh encryption cannot be read back', async (t) => {
+  const options = { keyEpoch: 'old', legacy: { runtime: 'original-secret' }, decryptFails: false };
+  const f = await fixture(t, options);
+  await (await f.load()).setPersistentKey('runtime', 'original-secret');
+  const file = path.join(f.dir, 'provider-credentials.v1.json');
+  const before = await fs.readFile(file);
+  options.decryptFails = true;
+  await assert.rejects(
+    (await f.load()).getPersistentKey('runtime', async () => true),
+    /DPAPI decryption unavailable/,
+  );
+  assert.deepEqual(await fs.readFile(file), before);
+});
+
+for (const change of ['delete', 'replace'] as const) {
+  test(`recovery cannot undo a concurrent ${change} from another vault instance`, async (t) => {
+    const options = { keyEpoch: 'old', legacy: { runtime: 'original-secret' } };
+    const f = await fixture(t, options);
+    await (await f.load()).setPersistentKey('runtime', 'original-secret');
+    options.keyEpoch = 'new';
+    const reading = await f.load();
+    const writing = await f.load();
+    await assert.rejects(
+      reading.getPersistentKey('runtime', async () => {
+        if (change === 'delete') await writing.deleteKey('runtime');
+        else await writing.setPersistentKey('runtime', 'replacement-secret');
+        return true;
+      }),
+      /changed during recovery/,
+    );
+    assert.equal(
+      await (await f.load()).getPersistentKey('runtime'),
+      change === 'delete' ? undefined : 'replacement-secret',
+    );
+  });
+}
 
 test('asynchronous DPAPI unavailable rejects Runtime storage without touching legacy keyring', async (t) => {
   const f = await fixture(t, { asyncUnavailable: true });

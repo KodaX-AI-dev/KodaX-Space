@@ -41,6 +41,7 @@ import path from 'node:path';
 import { getSpaceDataDir } from '../kodax/data-paths.js';
 import {
   CredentialVaultCorruptError,
+  CredentialVaultDecryptionError,
   EncryptedCredentialVault,
 } from './encrypted-credential-vault.js';
 
@@ -176,13 +177,16 @@ async function requirePersistentVault(): Promise<EncryptedCredentialVault> {
 }
 
 /** Runtime authority must never fall back to an ephemeral secret or swallow storage errors. */
-export async function getPersistentKey(account: string): Promise<string | undefined> {
+export async function getPersistentKey(
+  account: string,
+  verifyRecoverySecret?: (candidate: string) => Promise<boolean>,
+): Promise<string | undefined> {
   if (process.platform === 'darwin' && skippedMacosReads.has(account)) {
     throw new Error('Credential access was cancelled or failed; retry after relaunch.');
   }
   const queued = persistentReadQueue.get(account);
   if (queued) return queued;
-  const pending = readPersistentKey(account)
+  const pending = readPersistentKey(account, verifyRecoverySecret)
     .catch((error: unknown) => {
       if (process.platform === 'darwin') skippedMacosReads.add(account);
       throw error;
@@ -192,13 +196,31 @@ export async function getPersistentKey(account: string): Promise<string | undefi
   return pending;
 }
 
-async function readPersistentKey(account: string): Promise<string | undefined> {
+async function readPersistentKey(
+  account: string,
+  verifyRecoverySecret?: (candidate: string) => Promise<boolean>,
+): Promise<string | undefined> {
   if ((await detectBackend()) !== 'keychain') {
     throw new Error('OS-protected storage is required for the Runtime client secret.');
   }
   const vault = await loadVault();
   if (vault) {
-    const stored = await vault.get(account);
+    const stored = await vault.get(account).catch(async (error: unknown) => {
+      if (
+        process.platform !== 'win32' ||
+        !verifyRecoverySecret ||
+        !(error instanceof CredentialVaultDecryptionError)
+      )
+        throw error;
+      const keyring = await loadKeyring();
+      const legacy = await keyring?.getPassword(SERVICE_NAME, account);
+      if (legacy == null || !(await verifyRecoverySecret(legacy))) {
+        throw new Error(
+          'Runtime credential could not be decrypted and its original identity could not be verified. Restore the original credential or contact support.',
+        );
+      }
+      return vault.recover(account, error.ciphertext, legacy);
+    });
     if (stored !== undefined) return stored;
     if (await vault.isLegacyRevoked(account)) return undefined;
   }

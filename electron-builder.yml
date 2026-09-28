@@ -243,8 +243,9 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  # 仅清理 %APPDATA%/kodax-space。KodaX Windows sandbox 的共享机器级状态不属于应用数据。
-  deleteAppDataOnUninstall: true
+  # .kodax/space retains encrypted credentials after uninstall. Preserve the
+  # Electron Local State key as well, or reinstall strands those credentials.
+  deleteAppDataOnUninstall: false
   shortcutName: KodaX Space
   artifactName: 'KodaX-Space-Setup-${version}.${ext}'
 

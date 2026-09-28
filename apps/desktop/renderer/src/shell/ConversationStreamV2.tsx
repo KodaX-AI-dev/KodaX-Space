@@ -2088,6 +2088,7 @@ export function ConversationStreamV2(): JSX.Element {
               historyBoundaryLoading ||
               historyBoundaryWaiting) && (
               <HistoryPagingSentinel
+                reason={historyPaging.runtimeFailureReason}
                 phase={
                   olderHistoryFeedback?.sessionId === currentSessionId
                     ? olderHistoryFeedback.phase
@@ -2107,6 +2108,7 @@ export function ConversationStreamV2(): JSX.Element {
               historyPaging.phase === 'error' && (
                 <HistoryPagingSentinel
                   phase="error"
+                  reason={historyPaging.runtimeFailureReason}
                   onRetry={() => {
                     if (historyPaging.surface !== undefined) {
                       // Failure is already painted by this error sentinel; the
@@ -2126,10 +2128,11 @@ export function ConversationStreamV2(): JSX.Element {
                 // Runtime 不可用导致正文读不到:重试已终止。明确告知文件未损坏,避免被当成空白/损坏。
                 <div
                   className="text-fg-faint text-sm"
-                  role="status"
+                  role="alert"
                   data-testid="history-runtime-unavailable"
                 >
-                  {t('conversation.historyRuntimeUnavailable')}
+                  {historyPaging.runtimeFailureReason ??
+                    t('conversation.historyRuntimeUnavailable')}
                 </div>
               ) : currentSessionMsgCount > 0 ? (
                 // 有 SDK summary msgCount 但 buffer 空 → history IPC 正在 flight,显示骨架
@@ -2938,9 +2941,11 @@ function ToolCluster({ cluster, followTail, expanded, onToggle }: ToolClusterPro
 
 function HistoryPagingSentinel({
   phase,
+  reason,
   onRetry,
 }: {
   readonly phase: 'loading' | 'waiting' | 'error';
+  readonly reason?: string;
   readonly onRetry: () => void;
 }): JSX.Element {
   const { t } = useI18n();
@@ -2970,7 +2975,7 @@ function HistoryPagingSentinel({
       role="alert"
       data-testid="history-paging-error"
     >
-      <span>{t('conversation.historyLoadFailed')}</span>
+      <span>{reason ?? t('conversation.historyLoadFailed')}</span>
       <button
         type="button"
         onClick={onRetry}

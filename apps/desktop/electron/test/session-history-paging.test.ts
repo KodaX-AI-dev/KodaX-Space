@@ -592,9 +592,9 @@ test('an unresolved terminal history page cannot prune an omitted live owner', a
   assert.equal(
     useAppStore
       .getState()
-      .userMessagesBySession[sessionId]?.some(
-        (message) => message.content === 'ambiguous live query',
-      ),
+      .userMessagesBySession[
+        sessionId
+      ]?.some((message) => message.content === 'ambiguous live query'),
     true,
   );
 });
@@ -2311,6 +2311,74 @@ test('Runtime observation waits for the canonical history activation to settle',
   assert.equal(historyPhaseAllowsRuntimeObservation('loading'), false);
   assert.equal(historyPhaseAllowsRuntimeObservation('ready'), true);
   assert.equal(historyPhaseAllowsRuntimeObservation('error'), true);
+});
+
+test('terminal Runtime startup failure ends history waiting and still recovers on readiness', async (t) => {
+  const sessionId = 'history-paging-credential-failure';
+  const previousConnection = useAppStore.getState().runtimeConnection;
+  t.after(() => useAppStore.setState({ runtimeConnection: previousConnection }));
+  const reason = 'Saved Runtime credential cannot be decrypted. Restore the existing credential.';
+  useAppStore.setState({
+    sessions: [],
+    currentSessionId: sessionId,
+    eventsBySession: {},
+    userMessagesBySession: {},
+    runtimeConnection: {
+      state: 'incompatible',
+      changedAt: 1,
+      stale: true,
+      reason,
+      capabilities: [],
+    },
+  });
+  let calls = 0;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async () => {
+          calls += 1;
+          return calls === 1
+            ? {
+                ok: true as const,
+                data: { items: [], page: { outcome: 'runtime_unavailable' as const } },
+              }
+            : {
+                ok: true as const,
+                data: {
+                  items: [{ kind: 'user' as const, content: 'restored' }],
+                  page: {
+                    outcome: 'ready' as const,
+                    revision: 'recovered',
+                    hasMore: false,
+                    windowMode: 'replace' as const,
+                    hasNewer: false,
+                  },
+                },
+              };
+        }),
+      },
+    },
+  });
+  await restoreNewestSessionHistory(sessionId, 'code');
+  const failed = sessionHistoryPagingSnapshot(sessionId);
+  assert.equal(failed.phase, 'error');
+  assert.equal(failed.runtimeFailureReason, reason);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(calls, 1, 'permanent credential failure must not poll history');
+  useAppStore.setState({
+    runtimeConnection: {
+      state: 'ready',
+      changedAt: 2,
+      stale: false,
+      runtimeId: 'recovered-runtime',
+      capabilities: [],
+    },
+  });
+  await wakeWaitingSessionHistory(sessionId);
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).phase, 'ready');
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).runtimeFailureReason, undefined);
 });
 
 test('Runtime ready wakes waiting history immediately and cancels the old retry timer', async () => {

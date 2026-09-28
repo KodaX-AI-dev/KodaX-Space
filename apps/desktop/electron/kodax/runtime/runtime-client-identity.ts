@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { replaceFileIfUnchanged, writeNewFileExclusive } from '../atomic-file.js';
 import { getSpaceDataDir } from '../data-paths.js';
+import { verifyLegacyRuntimeSecret } from './runtime-credential-recovery.js';
 
 const MAX_IDENTITY_BYTES = 4 * 1024;
 const CLIENT_ID_RE =
@@ -54,7 +55,7 @@ export interface RuntimeClientInstanceIdentity {
 }
 
 export interface RuntimeClientSecretStore {
-  read(account: string): Promise<string | undefined>;
+  read(account: string, identity?: StableRuntimeClientIdentity): Promise<string | undefined>;
   write(account: string, secret: string): Promise<void>;
 }
 
@@ -113,9 +114,14 @@ function defaultSecretStore(): RuntimeClientSecretStore {
     };
   }
   return {
-    async read(account) {
+    async read(account, identity) {
       const keychain = await import('../../providers/keychain.js');
-      return keychain.getPersistentKey(account);
+      return keychain.getPersistentKey(
+        account,
+        identity === undefined
+          ? undefined
+          : (candidate) => verifyLegacyRuntimeSecret(identity, candidate),
+      );
     },
     async write(account, secret) {
       const keychain = await import('../../providers/keychain.js');
@@ -169,7 +175,7 @@ export class RuntimeClientIdentityStore {
     readonly version: string;
   }): Promise<RuntimeClientInstanceIdentity> {
     const stable = await this.loadOrCreate();
-    const instanceSecret = await this.#loadSecret(stable.secretAccount);
+    const instanceSecret = await this.#loadSecret(stable.secretAccount, false, stable);
     return {
       clientId: stable.clientId,
       instanceId: stable.instanceId,
@@ -186,7 +192,7 @@ export class RuntimeClientIdentityStore {
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const current = await this.#read();
       if (current.kind === 'valid') {
-        await this.#loadSecret(current.identity.secretAccount);
+        await this.#loadSecret(current.identity.secretAccount, false, current.identity);
         return current.identity;
       }
 
@@ -237,10 +243,14 @@ export class RuntimeClientIdentityStore {
     throw new Error('Unable to establish a stable Runtime client identity.');
   }
 
-  #loadSecret(account: string, allowCreate = false): Promise<string> {
+  #loadSecret(
+    account: string,
+    allowCreate = false,
+    identity?: StableRuntimeClientIdentity,
+  ): Promise<string> {
     if (this.#secretPromise?.account !== account) {
       const pending = (async () => {
-        const existing = await this.#secretStore.read(account);
+        const existing = await this.#secretStore.read(account, identity);
         if (existing !== undefined) {
           if (existing.length < 32 || existing.length > 512) {
             throw new Error('Runtime client secret stored in the OS keychain is invalid.');
