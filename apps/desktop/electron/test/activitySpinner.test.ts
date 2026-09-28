@@ -18,6 +18,82 @@ import {
 
 const sid = 's_activity_spinner';
 
+test('restart recovery clears stale unknown activity regardless of IPC delivery order', () => {
+  const unknown = {
+    runId: 'run-crashed',
+    sessionId: sid,
+    phase: 'unknown' as const,
+    startedAt: 10,
+    stop: {
+      requestedAt: 20,
+      state: 'unknown' as const,
+      outcome: 'unknown' as const,
+      reason: 'stop',
+    },
+  };
+  const terminal = {
+    runId: unknown.runId,
+    sessionId: sid,
+    phase: 'interrupted' as const,
+    completedAt: 30,
+  };
+  for (const terminalSource of ['live', 'profile']) {
+    const live = {
+      ...idleProjection(),
+      cursor: { runtimeId: 'restarted-runtime', seq: 1 },
+      ...(terminalSource === 'live' ? { lastTerminalRun: terminal } : { activeRun: unknown }),
+    };
+    const profile = {
+      sessionId: sid,
+      surface: 'code' as const,
+      createdAt: 10,
+      lastActivityAt: 30,
+      queuedRuns: [],
+      ...(terminalSource === 'profile' ? { lastTerminalRun: terminal } : { activeRun: unknown }),
+    };
+    const events: SessionEvent[] = [
+      {
+        kind: 'session_start',
+        sessionId: sid,
+        provider: 'mock',
+        runtimeEvent: { runtimeId: 'dead-runtime', runId: unknown.runId, seq: 900 },
+      },
+    ];
+    assert.equal(
+      selectEffectiveRuntimeActiveRun(live, events, profile, true, {
+        runtimeId: 'restarted-runtime',
+        seq: 2,
+      }),
+      undefined,
+    );
+    assert.equal(
+      selectActivitySnapshot(live, events, false, undefined, profile, true, {
+        runtimeId: 'restarted-runtime',
+        seq: 2,
+      }).streaming,
+      false,
+    );
+    const successor = {
+      runId: 'run-successor',
+      sessionId: sid,
+      phase: 'running' as const,
+      startedAt: 40,
+    };
+    assert.equal(
+      selectActivitySnapshot(
+        { ...live, activeRun: successor },
+        events,
+        false,
+        undefined,
+        profile,
+        true,
+        { runtimeId: 'restarted-runtime', seq: 2 },
+      ).streaming,
+      true,
+    );
+  }
+});
+
 test('same-Run unknown state cannot be hidden by the other IPC snapshot', () => {
   const run = { runId: 'run-race', sessionId: sid, phase: 'running' as const, stageChangedAt: 10 };
   for (const unknownSource of ['live', 'profile']) {
