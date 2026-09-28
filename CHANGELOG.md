@@ -16,6 +16,39 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.46-rc.6] - 2026-09-28
+
+### Fixed
+
+- **Issue 216 follow-up — Runtime credential self-heal, uninstall-safe
+  AppData, terminal history errors**: Field investigation of a Windows
+  rc.5 machine (`docs/investigations/2026-09-28-runtime-credential-decryption.md`)
+  confirmed the ciphertext lives in `.kodax/space` while the Electron
+  `safeStorage` encryption key lives in AppData, so an NSIS uninstall that
+  deleted AppData kept undecryptable ciphertext behind. NSIS now preserves
+  AppData on uninstall (`deleteAppDataOnUninstall: false`), keeping the Local
+  State key and any existing credentials across reinstall.
+- When an existing Windows Runtime identity secret fails to decrypt, Space
+  now attempts a narrowly scoped self-heal: it reads the legacy Credential
+  Manager candidate for the same account and verifies it against the SDK
+  host-tool-invocations journal v1 (one fingerprint per `instanceId`, exact
+  SHA-256 match, symlink/hardlink/size-guarded read). A verified candidate is
+  re-encrypted with the current safeStorage, the original vault bytes are
+  backed up to `.before-recovery.json`, and the new ciphertext is installed
+  atomically; delete/save races and backup or verification failures abandon
+  the recovery without touching the old vault. Unverified candidates, wrong
+  `instanceId`, multiple fingerprints, unknown journal versions, and missing
+  or corrupt evidence all fail closed — no replacement secret is ever minted.
+  Provider API keys and machines without recovery material keep the explicit
+  failure.
+- Session history paging no longer waits forever on a terminal failure: when
+  the Runtime reports unavailable and the connection is `incompatible`, the
+  pending history workflow shows the failure reason immediately, marks
+  in-flight workflows pending, and stops retry polling; readiness still
+  triggers the normal automatic reload.
+
+---
+
 ## [0.1.46-rc.5] - 2026-09-24
 
 ### Changed
