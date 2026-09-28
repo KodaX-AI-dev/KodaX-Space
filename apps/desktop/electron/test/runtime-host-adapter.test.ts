@@ -3314,7 +3314,7 @@ test('same-runtime-id reconnect restores an active live projection', async () =>
   await adapter.close();
 });
 
-test('active observation trusts the SDK output segment snapshot without replay fallback', async () => {
+test('active observation retains SDK text and recovers tools from the same journal window', async () => {
   const fake = createFakeRuntime('rt_recovered_observation');
   const sessionId = 's_recovered_observation';
   const runId = 'run_recovered_observation';
@@ -3363,112 +3363,19 @@ test('active observation trusts the SDK output segment snapshot without replay f
   fake.runtime.events.replay = async (filter) => {
     replayCalls += 1;
     assert.equal(filter.runId, runId);
-    assert.deepEqual(filter.type, [
-      'turn.started',
-      'run.progress',
-      'assistant.delta',
-      'thinking.delta',
-      'thinking.finished',
-      'tool.finished',
-      'provider.recovery',
-    ]);
-    assert.equal(filter.limit, undefined);
+    assert.deepEqual(filter.type, ['tool.started', 'tool.finished', 'output.segment.started']);
+    assert.equal(filter.after?.seq, 5);
+    assert.equal(filter.limit, 512);
     return [
       withTestRuntimeCursor({
-        id: 'event_recovered_root_start',
-        seq: 1,
-        time: '2026-08-14T00:00:00.050Z',
-        type: 'turn.started',
-        sessionId,
-        runId,
-        payload: {
-          sessionId,
-          seq: 1,
-          turnId: 'turn_recovered_observation',
-          deliveryKind: 'initial',
-          contextKind: 'root',
-        },
-      }),
-      withTestRuntimeCursor({
-        id: 'event_recovered_iteration',
-        seq: 2,
-        time: '2026-08-14T00:00:00.100Z',
-        type: 'run.progress',
-        sessionId,
-        runId,
-        turnId: 'turn_recovered_observation',
-        payload: { kind: 'iteration_start', iter: 1, maxIter: 200 },
-      }),
-      withTestRuntimeCursor({
-        id: 'event_abandoned_text',
-        seq: 3,
-        time: '2026-08-14T00:00:00.200Z',
-        type: 'assistant.delta',
-        sessionId,
-        runId,
-        turnId: 'turn_recovered_observation',
-        payload: { text: 'abandoned' },
-      }),
-      withTestRuntimeCursor({
-        id: 'event_abandoned_thinking',
-        seq: 4,
-        time: '2026-08-14T00:00:00.300Z',
-        type: 'thinking.delta',
-        sessionId,
-        runId,
-        turnId: 'turn_recovered_observation',
-        payload: { text: 'abandoned thinking' },
-      }),
-      withTestRuntimeCursor({
-        id: 'event_recovered_boundary',
-        seq: 5,
-        time: '2026-08-14T00:00:00.400Z',
-        type: 'provider.recovery',
-        sessionId,
-        runId,
-        turnId: 'turn_recovered_observation',
-        payload: {
-          event: {
-            stage: 'mid_stream_text',
-            errorClass: 'connection_failure',
-            attempt: 1,
-            maxAttempts: 4,
-            delayMs: 0,
-            recoveryAction: 'stable_boundary_retry',
-            ladderStep: 2,
-            fallbackUsed: false,
-          },
-        },
-      }),
-      withTestRuntimeCursor({
-        id: 'event_replacement_text',
-        seq: 6,
-        time: '2026-08-14T00:00:00.500Z',
-        type: 'assistant.delta',
-        sessionId,
-        runId,
-        turnId: 'turn_recovered_observation',
-        payload: { text: 'replacement' },
-      }),
-      withTestRuntimeCursor({
-        id: 'event_replacement_thinking',
+        id: 'recovered-tool',
         seq: 7,
         time: '2026-08-14T00:00:00.600Z',
-        type: 'thinking.delta',
+        type: 'tool.started',
         sessionId,
         runId,
         turnId: 'turn_recovered_observation',
-        payload: { text: 'replacement thinking' },
-      }),
-      withTestRuntimeCursor({
-        id: 'event_after_snapshot_cursor',
-        seq: 8,
-        time: '2026-08-14T00:00:00.700Z',
-        type: 'assistant.delta',
-        sessionId,
-        runId,
-        turnId: 'turn_recovered_observation',
-        payload: { text: 'future event' },
+        payload: { tool: { id: 'tool', name: 'read', input: {} } },
       }),
     ];
   };
@@ -3484,7 +3391,8 @@ test('active observation trusts the SDK output segment snapshot without replay f
   await adapter.ensureObserved(sessionId);
 
   const live = await adapter.readSessionLiveSnapshot(sessionId);
-  assert.equal(replayCalls, 0);
+  assert.equal(replayCalls, 1);
+  assert.equal(live.toolEvents?.[0]?.toolId, 'tool');
   assert.equal(live.assistantDraft?.text, 'replacement');
   assert.equal(live.thinkingDraft?.text, 'replacement thinking');
   assert.equal(live.outputSegment?.active?.providerRequestId, 'request_replacement');

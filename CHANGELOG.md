@@ -16,6 +16,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Fixed
 
+- Recover queued-input identity and completed tool calls after reload, merge matching
+  Runtime and durable history without duplicating whole answers, and retain output event times.
+  Uses the existing SDK replay API; no SDK upgrade is required (Issue 218).
+
 - Show unconfirmed Runtime state in the task dock and root Agent, allow queued
   messages while Stop settles, and keep Stop notifications above
   the composer so they cannot cover Stop / Send.
