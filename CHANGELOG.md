@@ -14,6 +14,12 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Fixed
+
+- Show unconfirmed Runtime cleanup in the task dock and root Agent, preserve
+  drafts while blocking unsupported sends, and keep Stop notifications above
+  the composer so they cannot cover Stop / Send.
+
 ---
 
 ## [0.1.46-rc.6] - 2026-09-28

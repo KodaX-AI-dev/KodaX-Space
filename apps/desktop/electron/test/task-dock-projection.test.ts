@@ -5,6 +5,28 @@ import type { MessageKey } from '../../renderer/src/i18n/messages.js';
 import { buildTaskDockRunView } from '../../renderer/src/shell/taskDockProjection.js';
 import { getCachedTaskDockRunView } from '../../renderer/src/shell/useTaskDockRunView.js';
 
+test('unknown Runtime takes precedence over stale active todos and streaming', () => {
+  const view = buildTaskDockRunView({
+    hasProject: true,
+    hasSession: true,
+    pendingSend: false,
+    isStreaming: true,
+    runtimePhase: 'unknown',
+    todos: [{ id: 'narration', content: 'Synthesize narration', status: 'in_progress' }],
+  });
+  assert.equal(view.mode, 'attention');
+  assert.match(view.headline, /unconfirmed/i);
+});
+
+test('task dock cache follows Run recovery even when the streaming flag does not change', () => {
+  const input = { hasProject: true, hasSession: true, pendingSend: false, isStreaming: true };
+  getCachedTaskDockRunView({ ...input, runtimePhase: 'running' });
+  const unknown = getCachedTaskDockRunView({ ...input, runtimePhase: 'unknown' });
+  const recovered = getCachedTaskDockRunView({ ...input, runtimePhase: 'running' });
+  assert.equal(unknown.mode, 'attention');
+  assert.equal(recovered.mode, 'running');
+});
+
 test('task dock run projection prioritizes blocking permission attention', () => {
   const view = buildTaskDockRunView({
     hasProject: true,

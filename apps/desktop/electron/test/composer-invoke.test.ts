@@ -221,12 +221,16 @@ test('composer queues input after an automatically fenced unknown Run', () => {
   assert.equal(queueModeForRuntimePhase('after-turn', 'unknown'), 'after-turn');
 });
 
-test('a running Runtime keeps both exact Stop and queue Send available', () => {
+test('an unknown Runtime keeps Stop available but blocks sending until recovery', () => {
   assert.deepEqual(composerRunControls(true, false, 'unknown'), {
     showStop: true,
     showSend: true,
-    canSendDuringActivity: true,
+    canSendDuringActivity: false,
   });
+  assert.equal(composerRunControls(false, false, 'unknown').canSendDuringActivity, false);
+});
+
+test('a running Runtime keeps both exact Stop and queue Send available', () => {
   assert.deepEqual(composerRunControls(true, false, 'running'), {
     showStop: true,
     showSend: true,

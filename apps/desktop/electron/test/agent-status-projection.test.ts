@@ -9,6 +9,51 @@ import type { AgentActorTreeSnapshotT, SessionEvent } from '@kodax-space/space-i
 
 type Status = Parameters<typeof buildAgentStatuses>[0];
 
+test('Runtime root state never overrides a legacy child sorted before the main worker', () => {
+  for (const includeMain of [false, true]) {
+    const agents = buildAgentStatuses(
+      makeStatus({
+        activeWorkerId: 'child',
+        activeWorkerTitle: 'Child',
+        events: includeMain ? [{ key: 'main', kind: 'completed', summary: 'Waiting' }] : [],
+      }),
+      undefined,
+      undefined,
+      'unknown',
+    );
+    assert.equal(agents.find((agent) => agent.id === 'child')?.state, 'active');
+    assert.equal(agents.find((agent) => agent.id === '__kodax-space:main__')?.state, 'waiting');
+  }
+});
+
+test('root status follows the foreground Run even when the control Actor has no Turn', () => {
+  const snapshot: AgentActorTreeSnapshotT = {
+    runtimeId: 'runtime',
+    revision: 1,
+    eventCursor: 1,
+    maxConcurrentThreads: 4,
+    sessionId: 'session',
+    rootPath: '/root',
+    activeNonRootTurns: 0,
+    actors: [
+      {
+        path: '/root',
+        taskName: 'root',
+        kind: 'native',
+        state: 'running',
+        revision: 1,
+        createdAt: '2026-09-28T08:00:00Z',
+        updatedAt: '2026-09-28T08:00:00Z',
+      },
+    ],
+  };
+  assert.equal(buildAgentStatuses(undefined, undefined, snapshot, 'running')[0].state, 'active');
+  const unknown = buildAgentStatuses(undefined, undefined, snapshot, 'unknown')[0];
+  assert.equal(unknown.state, 'waiting');
+  assert.match(unknown.latest ?? '', /unconfirmed/i);
+  assert.equal(buildAgentStatuses(undefined, undefined, snapshot)[0].state, 'idle');
+});
+
 function makeStatus(overrides: Partial<NonNullable<Status>> = {}): NonNullable<Status> {
   return {
     agentMode: 'ama',

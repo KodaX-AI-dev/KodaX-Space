@@ -2024,6 +2024,10 @@ export function BottomBar(): JSX.Element {
   ): Promise<void> {
     if (!window.kodaxSpace) return;
     if (busy || attachmentGateRef.current!.isPending()) return;
+    if (currentRuntimePhase === 'unknown') {
+      setErr(t('bottom.runUnconfirmed'));
+      return;
+    }
     if (partnerExpertBusy) {
       setErr(t('extensions.expertSaving'));
       return;
@@ -2550,15 +2554,16 @@ export function BottomBar(): JSX.Element {
     runControls.canSendDuringActivity &&
     !!currentProjectPath &&
     (prompt.trim().length > 0 || pendingImages.length > 0 || pendingFileRefs.length > 0);
-  const sendButtonTitle = canSend
-    ? currentRuntimePhase === 'unknown'
-      ? t('bottom.sendTitle.afterTurn')
-      : t('bottom.sendTitle.ready')
-    : !currentProjectPath
-      ? t('bottom.openFolderFirst')
-      : busy || isAttaching
-        ? t('bottom.sendTitle.busy')
-        : t('bottom.sendTitle.empty');
+  const sendButtonTitle =
+    currentRuntimePhase === 'unknown'
+      ? t('bottom.runUnconfirmed')
+      : canSend
+        ? t('bottom.sendTitle.ready')
+        : !currentProjectPath
+          ? t('bottom.openFolderFirst')
+          : busy || isAttaching
+            ? t('bottom.sendTitle.busy')
+            : t('bottom.sendTitle.empty');
   const placeholderText = !currentProjectPath
     ? t('bottom.placeholder.openFolder')
     : currentSurface === 'partner'
@@ -2578,6 +2583,11 @@ export function BottomBar(): JSX.Element {
       onDrop={onDrop}
     >
       {err && <div className="text-danger text-xs font-mono px-1">{err}</div>}
+      {!err && currentRuntimePhase === 'unknown' && (
+        <div role="status" className="text-warn text-xs px-1">
+          {t('bottom.runUnconfirmed')}
+        </div>
+      )}
 
       <NotificationsSurface />
 

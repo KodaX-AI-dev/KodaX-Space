@@ -8,7 +8,7 @@ import {
   type BuildTaskDockRunInput,
   type TaskDockRunViewModel,
 } from './taskDockProjection.js';
-import { useIsStreaming } from './ActivitySpinner.js';
+import { useActivityState } from './ActivitySpinner.js';
 
 const EMPTY_EVENTS: readonly SessionEvent[] = [];
 
@@ -32,7 +32,8 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
   const pendingSend = useAppStore((s) =>
     currentSessionId ? (s.pendingSendBySession[currentSessionId] ?? false) : false,
   );
-  const isStreaming = useIsStreaming();
+  const { isStreaming, runtimeActiveRun } = useActivityState();
+  const runtimePhase = runtimeActiveRun?.phase;
   const todos = useAppStore((s) =>
     currentSessionId ? s.todoListBySession[currentSessionId] : undefined,
   );
@@ -66,6 +67,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
         hasSession,
         pendingSend,
         isStreaming,
+        runtimePhase,
         todos,
         managedStatus,
         actorSnapshot,
@@ -80,6 +82,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
       hasSession,
       pendingSend,
       isStreaming,
+      runtimePhase,
       todos,
       managedStatus,
       actorSnapshot,
@@ -109,6 +112,7 @@ function sameRunViewInput(a: BuildTaskDockRunInput, b: BuildTaskDockRunInput): b
     a.hasSession === b.hasSession &&
     a.pendingSend === b.pendingSend &&
     a.isStreaming === b.isStreaming &&
+    a.runtimePhase === b.runtimePhase &&
     a.todos === b.todos &&
     a.managedStatus === b.managedStatus &&
     a.actorSnapshot === b.actorSnapshot &&

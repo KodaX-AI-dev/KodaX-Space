@@ -448,8 +448,24 @@ export function selectEffectiveRuntimeActiveRun(
     profileCursor,
   );
   const liveRun = projection?.activeRun;
-  if (liveRun !== undefined && !terminalRunIds.has(liveRun.runId)) return liveRun;
   const profileRun = profileSession?.activeRun;
+  if (liveRun !== undefined && !terminalRunIds.has(liveRun.runId)) {
+    if (
+      profileRun?.runId === liveRun.runId &&
+      (liveRun.phase === 'unknown' || profileRun.phase === 'unknown')
+    ) {
+      // These snapshots can arrive out of order. Stage timestamps belong to the
+      // same Run; profile and session cursor sequences need not be comparable.
+      if (
+        liveRun.stageChangedAt !== undefined &&
+        profileRun.stageChangedAt !== undefined &&
+        liveRun.stageChangedAt !== profileRun.stageChangedAt
+      )
+        return liveRun.stageChangedAt > profileRun.stageChangedAt ? liveRun : profileRun;
+      return liveRun.phase === 'unknown' ? liveRun : profileRun;
+    }
+    return liveRun;
+  }
   return profileRun !== undefined && !terminalRunIds.has(profileRun.runId) ? profileRun : undefined;
 }
 
@@ -598,7 +614,7 @@ export function selectActivitySnapshot(
     runtimeConnectionAuthoritative && projection !== undefined
       ? snapshotFromRuntimeRunState(
           projection.activeRun?.runId === effectiveActiveRun?.runId
-            ? projection.activeRun
+            ? effectiveActiveRun
             : undefined,
           projection.queuedRuns.filter((run) => !terminalRunIds.has(run.runId)),
           projection,
@@ -608,7 +624,7 @@ export function selectActivitySnapshot(
     runtimeConnectionAuthoritative && profileSession !== undefined
       ? snapshotFromRuntimeRunState(
           profileSession.activeRun?.runId === effectiveActiveRun?.runId
-            ? profileSession.activeRun
+            ? effectiveActiveRun
             : undefined,
           profileSession.queuedRuns.filter((run) => !terminalRunIds.has(run.runId)),
         )
@@ -915,6 +931,8 @@ function formatActivityStatus(status: string, sendingTooLong: boolean, t: Transl
   if (status === 'Writing…') return t('activity.writing');
   if (status === 'Compacting context…') return t('activity.compactingContext');
   if (status === 'Verifying…') return t('activity.verifying');
+  if (status === 'Stop status unknown…' || status === 'Run status unknown…')
+    return t('taskDock.runUnconfirmed');
   if (status.startsWith('Running ') && status.endsWith('…')) {
     return t('activity.runningTool', { tool: status.slice('Running '.length, -1) });
   }

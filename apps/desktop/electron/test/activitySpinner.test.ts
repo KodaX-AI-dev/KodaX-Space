@@ -18,6 +18,43 @@ import {
 
 const sid = 's_activity_spinner';
 
+test('same-Run unknown state cannot be hidden by the other IPC snapshot', () => {
+  const run = { runId: 'run-race', sessionId: sid, phase: 'running' as const, stageChangedAt: 10 };
+  for (const unknownSource of ['live', 'profile']) {
+    const unknown = { ...run, phase: 'unknown' as const, stageChangedAt: 20 };
+    const live = { ...idleProjection(), activeRun: unknownSource === 'live' ? unknown : run };
+    const profile = {
+      sessionId: sid,
+      surface: 'code' as const,
+      createdAt: 1,
+      lastActivityAt: 20,
+      activeRun: unknownSource === 'profile' ? unknown : run,
+      queuedRuns: [],
+    };
+    assert.equal(selectEffectiveRuntimeActiveRun(live, [], profile, true)?.phase, 'unknown');
+    assert.match(selectActivitySnapshot(live, [], false, undefined, profile).status, /unknown/i);
+    const recovered = { ...run, stageChangedAt: 30 };
+    const nextLive = { ...live, activeRun: unknownSource === 'live' ? unknown : recovered };
+    const nextProfile = {
+      ...profile,
+      activeRun: unknownSource === 'profile' ? unknown : recovered,
+    };
+    assert.equal(
+      selectEffectiveRuntimeActiveRun(nextLive, [], nextProfile, true)?.phase,
+      'running',
+    );
+    assert.equal(
+      selectEffectiveRuntimeActiveRun(
+        { ...live, activeRun: { ...live.activeRun, stageChangedAt: undefined } },
+        [],
+        { ...profile, activeRun: { ...profile.activeRun, stageChangedAt: undefined } },
+        true,
+      )?.phase,
+      'unknown',
+    );
+  }
+});
+
 function idleProjection(): SpaceSessionLiveProjectionT {
   return {
     sessionId: sid,

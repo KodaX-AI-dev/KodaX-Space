@@ -1,3 +1,4 @@
+import { useActivityState } from './ActivitySpinner.js';
 // RightSidebar - F041 (v0.1.4) task mission control
 //
 // Before: Progress / Working folder / Context repeated the same todo state as PlanPanel.
@@ -777,13 +778,15 @@ function AgentSection({
   const events = useAppStore((s) =>
     currentSessionId ? s.eventsBySession[currentSessionId] : undefined,
   );
+  const { runtimeActiveRun } = useActivityState();
+  const runtimePhase = runtimeActiveRun?.phase;
   const currentTurnActorSnapshot = useMemo(
     () => scopeAgentActorSnapshotToCurrentTurn(actorSnapshot, events),
     [actorSnapshot, events],
   );
   const agents = useMemo(
-    () => buildAgentStatuses(status, t, currentTurnActorSnapshot),
-    [currentTurnActorSnapshot, status, t],
+    () => buildAgentStatuses(status, t, currentTurnActorSnapshot, runtimePhase),
+    [currentTurnActorSnapshot, status, t, runtimePhase],
   );
 
   // active = workers that are actually moving now; idle/done should not dominate summary.

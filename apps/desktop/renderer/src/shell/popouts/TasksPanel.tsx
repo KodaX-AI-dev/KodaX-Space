@@ -1,3 +1,4 @@
+import { useActivityState } from '../ActivitySpinner.js';
 import { useEffect, useMemo, useState } from 'react';
 import { Caret } from '../../components/Caret.js';
 import { useAppStore } from '../../store/appStore.js';
@@ -29,13 +30,15 @@ export function TasksPanel(): JSX.Element {
     currentSessionId ? s.harnessProfileBySession[currentSessionId] : undefined,
   );
 
+  const { runtimeActiveRun } = useActivityState();
+  const runtimePhase = runtimeActiveRun?.phase;
   const currentTurnActorSnapshot = useMemo(
     () => scopeAgentActorSnapshotToCurrentTurn(actorSnapshot, events),
     [actorSnapshot, events],
   );
   const agents = useMemo(
-    () => buildAgentStatuses(status, t, currentTurnActorSnapshot),
-    [currentTurnActorSnapshot, status, t],
+    () => buildAgentStatuses(status, t, currentTurnActorSnapshot, runtimePhase),
+    [currentTurnActorSnapshot, status, t, runtimePhase],
   );
   const workerById = useMemo(() => {
     const map = new Map<string, WorkerNode>();

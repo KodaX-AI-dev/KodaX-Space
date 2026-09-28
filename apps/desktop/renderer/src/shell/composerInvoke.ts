@@ -19,7 +19,11 @@ export interface RetainedComposerSendOperation {
 }
 
 export type ComposerSendOperationSettlement =
-  'accepted' | 'retained' | 'rolled-back' | 'settled' | 'stale';
+  | 'accepted'
+  | 'retained'
+  | 'rolled-back'
+  | 'settled'
+  | 'stale';
 
 type AcceptedSessionSend = Extract<ChannelOutput<'session.send'>, { readonly accepted: true }>;
 
@@ -125,7 +129,7 @@ export function queueModeForRuntimePhase(
 export function composerRunControls(
   isStreaming: boolean,
   compactingSlash: boolean,
-  _runtimePhase: string | undefined,
+  runtimePhase: string | undefined,
 ): {
   readonly showStop: boolean;
   readonly showSend: boolean;
@@ -135,7 +139,7 @@ export function composerRunControls(
   return {
     showStop: isStreaming && !compactingSlash,
     showSend: !isStreaming || canQueue,
-    canSendDuringActivity: !isStreaming || canQueue,
+    canSendDuringActivity: runtimePhase !== 'unknown' && (!isStreaming || canQueue),
   };
 }
 

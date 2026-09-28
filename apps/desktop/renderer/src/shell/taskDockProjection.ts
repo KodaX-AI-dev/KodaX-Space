@@ -1,6 +1,7 @@
 import type {
   AgentActorTreeSnapshotT,
   SessionEvent,
+  SpaceRuntimeRunPhaseT,
   WorkflowRunT,
 } from '@kodax-space/space-ipc-schema';
 import { summarizeTodoProgress } from '../lib/liveTaskProgress.js';
@@ -49,6 +50,7 @@ export interface BuildTaskDockRunInput {
   readonly hasSession: boolean;
   readonly pendingSend: boolean;
   readonly isStreaming: boolean;
+  readonly runtimePhase?: SpaceRuntimeRunPhaseT;
   readonly todos?: readonly TodoItem[];
   readonly managedStatus?: ManagedTaskStatus;
   readonly actorSnapshot?: AgentActorTreeSnapshotT;
@@ -68,6 +70,7 @@ export function buildTaskDockRunView(input: BuildTaskDockRunInput): TaskDockRunV
         input.managedStatus,
         t,
         scopeAgentActorSnapshotToCurrentTurn(input.actorSnapshot, input.events),
+        input.runtimePhase,
       );
     }
     return agentStatuses;
@@ -84,6 +87,9 @@ export function buildTaskDockRunView(input: BuildTaskDockRunInput): TaskDockRunV
     };
   }
 
+  if (input.runtimePhase === 'unknown') {
+    return attention(t('taskDock.runUnconfirmed'), t('bottom.runUnconfirmed'), 'blocked');
+  }
   if (input.hasPermissionRequest) {
     return attention(t('taskDock.permissionNeeded'), t('taskDock.permissionDetail'), 'permission');
   }

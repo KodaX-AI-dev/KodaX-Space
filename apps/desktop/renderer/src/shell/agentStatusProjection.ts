@@ -1,5 +1,9 @@
-import type { AgentActorTreeSnapshotT, SessionEvent } from '@kodax-space/space-ipc-schema';
-import { buildWorkerTree } from './popouts/worker-tree.js';
+import type {
+  AgentActorTreeSnapshotT,
+  SessionEvent,
+  SpaceRuntimeRunPhaseT,
+} from '@kodax-space/space-ipc-schema';
+import { buildWorkerTree, MAIN_WORKER_ID } from './popouts/worker-tree.js';
 import { messages, type MessageKey } from '../i18n/messages.js';
 
 type ManagedTaskStatus = Extract<SessionEvent, { kind: 'managed_task_status' }>['status'];
@@ -48,9 +52,40 @@ export function buildAgentStatuses(
   status: ManagedTaskStatus | undefined,
   t: Translate = DEFAULT_TRANSLATE,
   actorSnapshot?: AgentActorTreeSnapshotT,
+  runtimePhase?: SpaceRuntimeRunPhaseT,
 ): readonly AgentStatusViewModel[] {
-  if (actorSnapshot) return buildActorStatuses(actorSnapshot, t, status);
-  return buildLegacyAgentStatuses(status, t);
+  let agents = actorSnapshot
+    ? buildActorStatuses(actorSnapshot, t, status)
+    : buildLegacyAgentStatuses(status, t);
+  if (runtimePhase) {
+    const rootId = actorSnapshot?.rootPath ?? MAIN_WORKER_ID;
+    if (!agents.some((agent) => agent.id === rootId))
+      agents = [
+        { id: rootId, title: t('agent.rootTitle'), role: t('agent.role.main'), state: 'idle' },
+        ...agents,
+      ];
+    agents = agents.map((agent) => {
+      if (agent.id !== rootId) return agent;
+      const state =
+        runtimePhase === 'unknown' ||
+        runtimePhase === 'recovering' ||
+        runtimePhase.startsWith('waiting_') ||
+        runtimePhase === 'queued'
+          ? 'waiting'
+          : runtimePhase === 'running'
+            ? 'active'
+            : agent.state;
+      return {
+        ...agent,
+        state,
+        phase: runtimePhase,
+        ...(runtimePhase === 'unknown'
+          ? { latest: t('bottom.runUnconfirmed'), responsibility: t('taskDock.runUnconfirmed') }
+          : {}),
+      };
+    });
+  }
+  return agents;
 }
 
 /**

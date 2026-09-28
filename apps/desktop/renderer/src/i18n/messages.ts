@@ -2077,7 +2077,8 @@ export const messages = {
     'modelPicker.effort.auto': 'Auto',
     'modelPicker.reasoning.sent': 'Last request sent: {effort}. Effective strength unconfirmed.',
     'modelPicker.reasoning.omitted': 'no reasoning control',
-    'modelPicker.reasoning.unknown': 'Capabilities unknown. Your selection will be attempted; explicit rejections trigger fallback.',
+    'modelPicker.reasoning.unknown':
+      'Capabilities unknown. Your selection will be attempted; explicit rejections trigger fallback.',
     'modelPicker.reasoning.reason.profile': 'Model profile fallback',
     'modelPicker.reasoning.reason.unsupported-effort': 'Effort rejected',
     'modelPicker.reasoning.reason.unsupported-parameter': 'Reasoning parameter rejected',
@@ -2768,6 +2769,9 @@ export const messages = {
     'bottom.stopSignalSent': 'Stop signal sent - {session}',
     'bottom.stopConfirmed': 'Stop confirmed - {session}',
     'bottom.stopOutcomeUnknown': 'Stop requested, but the outcome is not yet confirmed - {session}',
+    'taskDock.runUnconfirmed': 'Run status unconfirmed',
+    'bottom.runUnconfirmed':
+      'Run status is unconfirmed. Your draft is kept; sending is paused. Retry Stop to verify cleanup.',
     'bottom.runAlreadyTerminal': 'The run had already reached a terminal state - {session}',
     'bottom.noActiveRun': 'No active run was found to stop - {session}',
     'bottom.cancelFailed': 'Cancel failed ({session}): {message}',
@@ -5465,6 +5469,9 @@ export const messages = {
     'bottom.stopSignalSent': '已发送停止信号 - {session}',
     'bottom.stopConfirmed': '已确认停止 - {session}',
     'bottom.stopOutcomeUnknown': '已请求停止，但结果尚未确认 - {session}',
+    'taskDock.runUnconfirmed': '运行状态未确认',
+    'bottom.runUnconfirmed':
+      '当前运行状态未确认，草稿已保留，暂不能发送。请重试停止以确认清理结果。',
     'bottom.runAlreadyTerminal': '任务已先一步进入终态 - {session}',
     'bottom.noActiveRun': '未找到可停止的活动任务 - {session}',
     'bottom.cancelFailed': '取消失败（{session}）：{message}',
