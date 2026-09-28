@@ -270,7 +270,8 @@ async function seedInterruptedOutput(sessionId, runId) {
   const saved = await manager.loadSession(sessionId);
   if (!saved || !run?.turnId) throw new Error('Missing isolated interrupted history fixture');
   await manager.storage.save(sessionId, {
-    ...saved,
+    title: saved.title,
+    gitRoot: projectDir,
     messages: [
       ...saved.messages,
       {
@@ -281,9 +282,17 @@ async function seedInterruptedOutput(sessionId, runId) {
       },
     ],
   });
-  const journalPath = path.join(runsDir, sessionId, 'events.jsonl');
+  const journalPath = path.join(runsDir, runId, 'events.jsonl');
   const journal = (await readFile(journalPath, 'utf8')).trim().split('\n').map(JSON.parse);
   const last = journal.at(-1);
+  const sequencePath = path.join(
+    path.dirname(runsDir),
+    'session-events',
+    Buffer.from(sessionId, 'utf8').toString('base64url'),
+    'sequence',
+  );
+  const sequence = Math.max(last.seq, Number(await readFile(sequencePath, 'utf8')));
+  last.seq = sequence;
   const additions = [
     [
       'output.segment.started',
@@ -304,6 +313,10 @@ async function seedInterruptedOutput(sessionId, runId) {
     payload,
   }));
   await appendFile(journalPath, additions.map((row) => JSON.stringify(row) + '\n').join(''));
+  await writeFile(sequencePath, JSON.stringify(additions.at(-1).seq));
+  const canonical = await manager.readConversationHistory(sessionId);
+  if (!canonical?.entries.some((entry) => entry.message.turnId === run.turnId))
+    throw new Error('Interrupted fixture query was not on the canonical branch');
 }
 
 async function verifyInterruptedOutput(instance, sessionId) {
@@ -335,7 +348,9 @@ async function verifyInterruptedOutput(instance, sessionId) {
           item.result === undefined,
       )
     )
-      throw new Error('Interrupted journal output was missing, duplicated, or labelled running');
+      throw new Error(
+        `Interrupted journal output was missing, duplicated, or labelled running: ${JSON.stringify(response.data)}`,
+      );
   }
 }
 
