@@ -73,6 +73,7 @@ import {
   preparePersistedSessionFreshnessTracking,
   SPACE_EPHEMERAL_SESSION_TAG,
 } from './session-store.js';
+import { recoverRuntimeToolHistory } from './runtime/runtime-tool-history.js';
 import { RuntimeClientIdentityStore } from './runtime/runtime-client-identity.js';
 import {
   CoderSessionProjectionReducer,
@@ -3952,6 +3953,21 @@ export class RuntimeHostAdapter {
   }
 
   async readSessionLiveSnapshot(sessionId: string): Promise<SpaceSessionLiveProjectionT> {
+    const projection = await this.readObservedSessionLiveSnapshot(sessionId);
+    const runtime = this.runtime;
+    if (!runtime || runtime.identity.runtimeId !== projection.cursor.runtimeId) {
+      throw new Error('Runtime changed while restoring the live transcript.');
+    }
+    const recovered = await recoverRuntimeToolHistory(runtime.events, projection);
+    if (this.runtime !== runtime || this.state !== 'ready') {
+      throw new Error('Runtime changed while replaying the live transcript tools.');
+    }
+    return recovered;
+  }
+
+  private async readObservedSessionLiveSnapshot(
+    sessionId: string,
+  ): Promise<SpaceSessionLiveProjectionT> {
     await this.assertPersistedCoderOwnershipIfChanged(sessionId);
     const currentObservation = this.observations.get(sessionId);
     if (

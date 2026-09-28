@@ -2451,9 +2451,34 @@ function projectedEventText(
     .join('');
 }
 
-function cumulativeProjectionTextSuffix(durable: string, live: string): string {
+function cumulativeProjectionTextSuffix(
+  durable: string,
+  live: string,
+  durableEvents: readonly SessionEvent[],
+  events: readonly SessionEvent[],
+  kind: 'text_delta' | 'thinking_delta',
+): string | undefined {
   if (live.length === 0 || durable.includes(live)) return '';
-  return live.startsWith(durable) ? live.slice(durable.length) : '';
+  if (live.startsWith(durable)) return live.slice(durable.length);
+  // A bounded snapshot can start at a saved tail segment. Require a whole recovered
+  // chunk as an anchor; a coincidental character overlap is not correspondence.
+  let prefix = '';
+  let overlap = 0;
+  for (const event of events) {
+    if (event.kind !== kind) continue;
+    prefix += event.text;
+    if (prefix.length > durable.length) break;
+    if (prefix.length > 0 && durable.endsWith(prefix)) overlap = prefix.length;
+  }
+  let savedTail = '';
+  for (let index = durableEvents.length - 1; index >= 0; index--) {
+    const event = durableEvents[index]!;
+    if (event.kind !== kind) continue;
+    savedTail = event.text + savedTail;
+    if (savedTail.length > live.length) break;
+    if (savedTail.length > overlap && live.startsWith(savedTail)) overlap = savedTail.length;
+  }
+  return overlap > 0 ? live.slice(overlap) : undefined;
 }
 
 function projectionSuffixChunks(
@@ -2637,15 +2662,27 @@ function mergeIdentityProvenTurnProjections(
   const durableBody = durableEvents.filter(
     (event) => !isTranscriptTerminal(event) && !isPromptSegmentBoundary(event),
   );
-  const textSuffixProjector = exactEntryIdentity
-    ? cumulativeProjectionTextSuffix
-    : projectionTextSuffix;
+  const textSuffixProjector = (
+    saved: string,
+    recovered: string,
+    kind: 'text_delta' | 'thinking_delta',
+  ) =>
+    exactEntryIdentity
+      ? (cumulativeProjectionTextSuffix(
+          saved,
+          recovered,
+          durableEvents,
+          effectiveLiveEvents,
+          kind,
+        ) ?? '')
+      : projectionTextSuffix(saved, recovered);
   const textSuffix =
     authority === 'canonical'
       ? ''
       : textSuffixProjector(
           projectedEventText(durableEvents, 'text_delta'),
           projectedEventText(effectiveLiveEvents, 'text_delta'),
+          'text_delta',
         );
   const thinkingSuffix =
     authority === 'canonical'
@@ -2653,6 +2690,7 @@ function mergeIdentityProvenTurnProjections(
       : textSuffixProjector(
           projectedEventText(durableEvents, 'thinking_delta'),
           projectedEventText(effectiveLiveEvents, 'thinking_delta'),
+          'thinking_delta',
         );
   const liveTextChunks = projectionSuffixChunks(effectiveLiveEvents, 'text_delta', textSuffix);
   const liveThinkingChunks = projectionSuffixChunks(
@@ -3526,12 +3564,58 @@ interface UnitOverlay {
   readonly retired: boolean;
 }
 
+function sameEntryCoversRecoveredContent(
+  durable: TranscriptTurnSnapshot,
+  live: TranscriptTurnSnapshot,
+  durableEvents: readonly SessionEvent[],
+  events: readonly SessionEvent[],
+): boolean {
+  if (userEntryIdentityRelation(durable, live) !== 'match') return false;
+  // Journal recovery may omit durable-only tools, and parallel tools finish in a different order.
+  // Keep canonical ordering only after proving the owner and every recovered content item.
+  const effective = filterEffectiveOutputSegmentEvents(events);
+  if (
+    cumulativeProjectionTextSuffix(
+      durable.text,
+      live.text,
+      durableEvents,
+      effective,
+      'text_delta',
+    ) === undefined ||
+    cumulativeProjectionTextSuffix(
+      durable.thinking,
+      live.thinking,
+      durableEvents,
+      effective,
+      'thinking_delta',
+    ) === undefined
+  )
+    return false;
+  return live.tools.every((tool) => {
+    const candidate = durable.tools.find((saved) => saved.toolId === tool.toolId);
+    // Uncheckpointed tools are live progress. Only contradictory receipts for a shared
+    // invocation prevent folding; requiring every new tool in history duplicates the owner.
+    return (
+      candidate === undefined ||
+      (candidate.toolName === tool.toolName &&
+        candidate.input === tool.input &&
+        (tool.result === undefined ||
+          candidate.result === undefined ||
+          candidate.result === tool.result))
+    );
+  });
+}
+
 function overlayAdmission(
   input: UnitOverlayInput,
   facts: UnitOverlayFacts,
 ): 'merge' | 'canonical' | 'coexist' {
   if (facts.certified) return 'merge';
   const { canonical, transient, causal, match, openPrefix } = facts;
+  if (
+    sameEntryCoversRecoveredContent(canonical, transient, input.durable.events, input.live.events)
+  )
+    return 'merge';
   if (transient.closed) {
     if (causal !== undefined && match === undefined && input.durable.events.length > 0)
       return 'coexist';
@@ -5685,10 +5769,23 @@ interface RuntimeDeliveredInputReconciliation {
 type RuntimeQueuedInputProjection = SpaceSessionLiveProjectionT['queuedInputs'][number];
 
 function deliveredInputIdentity(
+  projection: SpaceSessionLiveProjectionT,
   input: RuntimeQueuedInputProjection,
 ): StrongUserTurnIdentity | undefined {
-  return input.turnId !== undefined && input.turnUserOrdinal !== undefined
-    ? { turnId: input.turnId, turnUserOrdinal: input.turnUserOrdinal }
+  const canonical =
+    input.entryId === undefined
+      ? undefined
+      : canonicalPageBySession
+          .get(projection.sessionId)
+          ?.userMessages.find((user) => user.entryId === input.entryId);
+  const turnId = input.turnId ?? canonical?.turnId;
+  const ordinal =
+    input.turnUserOrdinal ??
+    (canonical?.turnId === turnId ? canonical?.turnUserOrdinal : undefined);
+  // A turn may contain several inputs. Only the exact canonical entry can supply
+  // its missing ordinal; a partial turn ID must not claim another input's output.
+  return turnId !== undefined && ordinal !== undefined
+    ? { turnId, turnUserOrdinal: ordinal }
     : undefined;
 }
 
@@ -5702,7 +5799,7 @@ function createDeliveredInputUserMessage(
     projection.sessionId,
     content,
     input.deliveredAt ?? input.createdAt,
-    deliveredInputIdentity(input),
+    deliveredInputIdentity(projection, input),
     queued?.attachments,
   );
   return {
@@ -5739,7 +5836,7 @@ function deliveredInputUserMessage(
     ...owner,
     content,
     sentAt: input.deliveredAt ?? input.createdAt,
-    ...(deliveredInputIdentity(input) ?? {}),
+    ...(deliveredInputIdentity(projection, input) ?? {}),
     deliveryQueueId: input.inputId,
     deliveryQueueMode: 'interrupt',
     deliveredInterrupt: true,
@@ -5769,7 +5866,7 @@ function createDeliveredInputBoundary(
     queueId: input.inputId,
     content,
     entryId: input.entryId,
-    ...(deliveredInputIdentity(input) ?? {}),
+    ...(deliveredInputIdentity(projection, input) ?? {}),
     ...(input.deliveredAt !== undefined ? { sentAt: input.deliveredAt } : {}),
     ...(input.runId !== undefined && input.deliverySeq !== undefined
       ? {

@@ -564,6 +564,7 @@ function applyDomainChange(
               assistantDraft: undefined,
               thinkingDraft: undefined,
               outputSegment: undefined,
+              toolEvents: undefined,
               activeTools: [],
               managedTask: undefined,
               interactions: [],

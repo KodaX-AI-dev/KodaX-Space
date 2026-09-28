@@ -520,7 +520,14 @@ function reconciledOutputSegmentDraft(
     runId,
     turnId,
     reconciled.text,
-    sentAt,
+    segment.startedAt ??
+      events.find(
+        (event): event is StreamDeltaEvent =>
+          event.kind === kind &&
+          event.providerRequestId === segment.providerRequestId &&
+          event.sentAt !== undefined,
+      )?.sentAt ??
+      sentAt,
     segment.startedAtSeq,
     segment.providerRequestId,
     reconciled.startOffset,
@@ -763,6 +770,48 @@ function toolIdOf(event: SessionEvent): string | undefined {
   return undefined;
 }
 
+function hydrateToolHistory(
+  events: readonly SessionEvent[],
+  projection: SpaceSessionLiveProjectionT,
+  runId: string,
+  turnId: string | undefined,
+): readonly SessionEvent[] {
+  const next = [...events];
+  for (const tool of projection.toolEvents ?? []) {
+    if (tool.seq > projection.cursor.seq || tool.runId !== runId || tool.turnId !== turnId)
+      continue;
+    const existing = next.findIndex(
+      (event) =>
+        event.kind === tool.kind &&
+        toolIdOf(event) === tool.toolId &&
+        belongsToRun(runtimeEventOrigin(event), projection, runId),
+    );
+    if (existing !== -1) {
+      // Replace an active-tool placeholder with the journal's actual input and position.
+      if (runtimeEventOrigin(next[existing]!)!.seq !== projection.cursor.seq) continue;
+      next.splice(existing, 1);
+    }
+    const { seq, runId: _runId, ...payload } = tool;
+    const event: SessionEvent = {
+      ...payload,
+      sessionId: projection.sessionId,
+      ...(turnId !== undefined ? { turnId } : {}),
+      runtimeEvent: {
+        runtimeId: projection.cursor.runtimeId,
+        runId,
+        ...(projection.cursor.journalEpoch ? { journalEpoch: projection.cursor.journalEpoch } : {}),
+        seq,
+      },
+    };
+    const index = next.findIndex((candidate) => {
+      const origin = runtimeEventOrigin(candidate);
+      return belongsToRun(origin, projection, runId) && origin!.seq > seq;
+    });
+    next.splice(index === -1 ? next.length : index, 0, event);
+  }
+  return next;
+}
+
 function reconcileActiveTools(
   events: readonly SessionEvent[],
   projection: SpaceSessionLiveProjectionT,
@@ -917,6 +966,7 @@ export function hydrateSessionEventsFromLiveSnapshot(
       active.length,
     );
   }
+  active = hydrateToolHistory(active, projection, run.runId, run.turnId);
   active = reconcileActiveTools(active, projection, run.runId, run.turnId);
 
   if (

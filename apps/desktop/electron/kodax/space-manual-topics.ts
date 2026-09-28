@@ -299,6 +299,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'composer 支持：',
       '- Enter 发送，Shift+Enter 换行，Ctrl/Cmd+Enter 以 after-turn 队列追加。Coder 运行中普通发送会使用 interrupt input，在下一个安全 Runner 边界按 FIFO 交付；它不会创建一条伪装成当前轮的 continuation Run。运行中发送按钮变为停止按钮。',
       '- 已接受的 interrupt 以公开 inputId 跟踪：交付后黄色排队气泡必须由真实用户 transcript 边界替换；若最终安全窗口已经关闭，发送会被拒绝并恢复草稿；极端终态仍未交付时会保留“未送达”失败气泡，不能无限显示为排队中。',
+      '- Issue 218 源码修复刷新后排队消息及回答重复、运行中历史缺少已完成工具的问题，并恢复输出时间；两次有意发送的相同消息仍保留两份。需使用包含修复的重建版本。切换会话后排队消息偶现消失仍在调查，尚未确认解决。',
       '- KodaX 0.7.89 的 managedRunDurability v1 要求已接受的首条输入、每个完成回合和每条队列输入在发布相应生命周期事件前先持久化；actorSettlementConvergence v2 只把 canonical replacement 结果未知视为提交歧义。Space 将确认的 runId 绑定到对应 optimistic query，后续 history 重验和 streaming turnId 不会把它归到旧 query。durable run.input.delivered 若失败，Runtime 会保留 queued input、返回错误并只记录不含用户正文的有界 runtime.warning；Space 恢复草稿，不能把 warning 或旧气泡当作已交付。',
       '- 输入 / 打开 slash command 和 skill 补全；输入 @ 打开项目路径补全；上下键在补全和历史消息中导航。',
       '- 粘贴或拖入 PNG/JPEG/WEBP 图片会生成图片 chip；当前 base64/IPC 路径的临时源文件处理上限为 12 MiB，Space 调用 KodaX 将最大边压到 2000 px，并要求最终文件不超过 6 MiB；单轮上限 8 张。',

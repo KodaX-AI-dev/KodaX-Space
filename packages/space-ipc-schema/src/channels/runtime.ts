@@ -610,6 +610,7 @@ const spaceRuntimeOutputSegmentStateSchema = z
     providerRequestId: idSchema,
     mode: z.enum(['replace', 'append']),
     startedAtSeq: z.number().int().nonnegative().optional(),
+    startedAt: timestampSchema.optional(),
     assistantText: z.string().max(MAX_DRAFT),
     thinkingText: z.string().max(MAX_DRAFT),
     assistantTextStartOffset: z.number().int().nonnegative(),
@@ -682,6 +683,28 @@ export const spaceRuntimeActiveToolSchema = z
     sandbox: spaceRuntimeToolSandboxSchema.optional(),
   })
   .strict();
+
+// Journal evidence for the current bounded output window, including completed calls.
+const toolEventOrigin = {
+  runId: idSchema,
+  turnId: z.string().min(1).max(256),
+  seq: z.number().int().nonnegative(),
+  sentAt: timestampSchema,
+  toolId: z.string().min(1),
+  toolName: z.string().min(1),
+};
+const spaceRuntimeToolEventSchema = z.discriminatedUnion('kind', [
+  z
+    .object({ ...toolEventOrigin, kind: z.literal('tool_start'), input: z.record(z.unknown()) })
+    .strict(),
+  z
+    .object({
+      ...toolEventOrigin,
+      kind: z.literal('tool_result'),
+      content: z.string().max(524_288),
+    })
+    .strict(),
+]);
 
 export const spaceRuntimeTodoSchema = z
   .object({
@@ -788,6 +811,7 @@ export const spaceSessionLiveProjectionSchema = z
     thinkingDraft: spaceRuntimeDraftSchema.optional(),
     outputSegment: spaceRuntimeOutputSegmentProjectionSchema.optional(),
     activeTools: z.array(spaceRuntimeActiveToolSchema).max(MAX_ACTIVE_TOOLS),
+    toolEvents: z.array(spaceRuntimeToolEventSchema).max(10_000).optional(),
     todos: z.array(spaceRuntimeTodoSchema).max(MAX_TODOS),
     managedTask: spaceRuntimeManagedTaskSchema.optional(),
     settings: spaceRuntimeSessionSettingsSchema.optional(),

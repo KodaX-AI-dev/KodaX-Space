@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-09-23
+Last Updated: 2026-09-28
 
 > Historical issue details are preserved as investigation evidence. Resolved items older than 30 days move to [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md) without losing their investigation record. The latest published Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) artifact uses exact npm Registry KodaX 0.7.95 and requires `conversationHistory:2`, `runtimeExitSettlement:2`, and `sandboxRuntime:5`. Start from the [documentation hub](README.md) for current behavior and status.
 
@@ -213,6 +213,37 @@ Last Updated: 2026-09-23
 | 215 | High     | Resolved in source — SDK rc.5 integrated | Corrupt extracted JPEG causes repeated upstream HTTP 400 across Providers with no actionable reason                                                                                                        | Observed v0.1.46-beta.2; introduction unknown                | 2026-09-14 |
 | 216 | High | Original fix released in rc.2; compaction telemetry follow-up fixed in source; customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics | Observed v0.1.46-beta.4-fix.1 / rc.1 | 2026-09-21 |
 | 217 | Medium | Resolved in source; native macOS verification pending | Background Git queries repeatedly trigger the macOS developer-tools installer | Observed v0.1.46-rc.3 / SDK v0.7.96-rc.10; first affected version unknown | 2026-09-23 |
+| 218 | High | Fixed in source; packaged verification pending | Queued inputs and whole answers duplicate after reload; recovered live history omits completed tools | Observed v0.1.46-rc.5 | 2026-09-28 |
+
+## Issue 218 — Queue/history recovery (fixed in source; packaged verification pending)
+
+Reported against `out/win-unpacked` v0.1.46-rc.5 on 2026-09-28. Queued inputs
+could appear twice after reload; an entire answer could also be duplicated, while
+recovered live output omitted completed tool calls and used the Run start time.
+
+The queued-input snapshot has entry/turn/run identity but need not carry a user
+ordinal. Space did not resolve the missing ordinal from the matching canonical entry. Its live snapshot hydration also
+restored text and active tools without completed tool receipts. Strict ordered
+history matching then rejected the incomplete projection; parallel tool order and
+durable-only todo tools made that rejection persist after terminal settlement.
+
+Fix scope: resolve missing ordinals only from the exact canonical input entry; recover tool starts/results
+and output-segment times using the public SDK journal replay API within the exact
+snapshot cursor, and merge same-entry compatible content while preserving
+canonical tools and a proven live suffix. Distinct user entries with identical
+text must remain distinct. No SDK implementation/dependency changes or session
+data rewrites are part of this fix.
+
+Read-only replay of the reported sessions verified one answered turn with 14
+tools for `s_11be2ee5-54f4-4740-84ce-b22f1577db73` and 29 recovered tools for
+`20260928_163725_6b23af70b17b2`. Replay tests reconstruct selected journal/history
+windows; they do not establish the exact historical disk-write timing.
+
+Deferred with the user's agreement: the intermittent disappearance when switching
+away while still queued and returning after delivery was not reproduced. Do not
+claim this symptom resolved by the above fixes.
+
+Regression guide: [Issue 218](test-guides/ISSUE_218_v0.1.46-rc.6_REGRESSION_GUIDE.md).
 
 ## Issue Details
 
