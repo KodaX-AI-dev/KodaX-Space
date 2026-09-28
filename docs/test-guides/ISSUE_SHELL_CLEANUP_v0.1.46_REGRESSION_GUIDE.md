@@ -30,9 +30,26 @@ Runtime 的活动事件不能盖过同一 Run 的 interrupted 终态；旧 Runti
 
 ## 自动回归
 
+### SDK 0.7.96-rc.12 配套验证
+
+Space 的运行面板、Agent 侧栏和独立任务面板统一采用 Runtime 的最新终态。
+旧的进行中计划、预算提示和根 Agent 快照不能覆盖已中断状态；新任务启动时
+不继承上一轮终态。这里仅改变显示，Stop 仍使用活动 Run 的身份。
+
+`runtime-cleanup-recovery.test.ts` 使用实际安装的 SDK 和隔离目录，构造磁盘上
+遗留的 unknown/停止未确认记录，验证连续两次重启均投影为 interrupted、
+发送入口可用、旧计划不再显示运行中，随后真实执行一个 read 工具任务成功。
+测试不访问用户会话，也不调用模型服务。
+
+`queued-message-toast.spec.ts` 在 Electron 中验证 1920×1152、1024×768、480×640
+窗口的排队通知位于输入区上方、可关闭，且仍可输入和提交后续消息。
+
 ```powershell
 npm run typecheck
 node --import tsx --test apps/desktop/electron/test/composer-invoke.test.ts apps/desktop/electron/test/agent-status-projection.test.ts apps/desktop/electron/test/task-dock-projection.test.ts apps/desktop/electron/test/activitySpinner.test.ts apps/desktop/renderer/src/shell/ActivitySpinner.test.ts
+node --import tsx --test apps/desktop/electron/test/runtime-cleanup-recovery.test.ts
+npm run build:smoke
+npx playwright test tests/e2e/queued-message-toast.spec.ts tests/e2e/session-send-retry.spec.ts
 ```
 
 ## 人工检查

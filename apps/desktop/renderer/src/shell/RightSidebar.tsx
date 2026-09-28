@@ -778,8 +778,7 @@ function AgentSection({
   const events = useAppStore((s) =>
     currentSessionId ? s.eventsBySession[currentSessionId] : undefined,
   );
-  const { runtimeActiveRun } = useActivityState();
-  const runtimePhase = runtimeActiveRun?.phase;
+  const { runtimePhase } = useActivityState();
   const currentTurnActorSnapshot = useMemo(
     () => scopeAgentActorSnapshotToCurrentTurn(actorSnapshot, events),
     [actorSnapshot, events],

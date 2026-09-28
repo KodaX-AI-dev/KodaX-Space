@@ -9,6 +9,13 @@ import { messages, type MessageKey } from '../i18n/messages.js';
 type ManagedTaskStatus = Extract<SessionEvent, { kind: 'managed_task_status' }>['status'];
 
 const EMPTY_AGENT_STATUSES: readonly AgentStatusViewModel[] = [];
+const TERMINAL_AGENT_STATES: Partial<Record<SpaceRuntimeRunPhaseT, AgentStatusViewModel['state']>> =
+  {
+    completed: 'completed',
+    failed: 'error',
+    interrupted: 'interrupted',
+    cancelled: 'interrupted',
+  };
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 const DEFAULT_TRANSLATE: Translate = (key) => messages['en-US'][key];
 const AGENT_STATUS_CACHE = new WeakMap<
@@ -67,18 +74,31 @@ export function buildAgentStatuses(
     agents = agents.map((agent) => {
       if (agent.id !== rootId) return agent;
       const state =
-        runtimePhase === 'unknown' ||
+        TERMINAL_AGENT_STATES[runtimePhase] ??
+        (runtimePhase === 'unknown' ||
         runtimePhase === 'recovering' ||
         runtimePhase.startsWith('waiting_') ||
         runtimePhase === 'queued'
           ? 'waiting'
           : runtimePhase === 'running'
             ? 'active'
-            : agent.state;
+            : agent.state);
       return {
         ...agent,
         state,
         phase: runtimePhase,
+        ...(TERMINAL_AGENT_STATES[runtimePhase]
+          ? {
+              latest: t(
+                runtimePhase === 'failed'
+                  ? 'taskDock.runError'
+                  : runtimePhase === 'completed'
+                    ? 'taskDock.runComplete'
+                    : 'taskDock.runStopped',
+              ),
+              responsibility: undefined,
+            }
+          : {}),
         ...(runtimePhase === 'unknown'
           ? { latest: t('bottom.runUnconfirmed'), responsibility: t('taskDock.runUnconfirmed') }
           : {}),

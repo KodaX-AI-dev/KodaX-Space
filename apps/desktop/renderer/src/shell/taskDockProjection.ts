@@ -90,6 +90,30 @@ export function buildTaskDockRunView(input: BuildTaskDockRunInput): TaskDockRunV
   if (input.runtimePhase === 'unknown') {
     return attention(t('taskDock.runUnconfirmed'), t('bottom.runUnconfirmed'), 'blocked');
   }
+  if (
+    !input.isStreaming &&
+    !input.pendingSend &&
+    ['interrupted', 'cancelled', 'completed', 'failed'].includes(input.runtimePhase ?? '')
+  ) {
+    const failed = input.runtimePhase === 'failed';
+    const completed = input.runtimePhase === 'completed';
+    return {
+      mode: failed ? 'error' : completed ? 'completed' : 'idle',
+      severity: failed ? 'danger' : completed ? 'success' : 'neutral',
+      headline: t(
+        failed ? 'taskDock.runError' : completed ? 'taskDock.runComplete' : 'taskDock.runStopped',
+      ),
+      detail: t(
+        failed
+          ? 'taskDock.runErrorDetail'
+          : completed
+            ? 'taskDock.runCompleteDetail'
+            : 'taskDock.readyNext',
+      ),
+      metrics: buildMetrics(input, getAgents(), t),
+      primaryTarget: 'run',
+    };
+  }
   if (input.hasPermissionRequest) {
     return attention(t('taskDock.permissionNeeded'), t('taskDock.permissionDetail'), 'permission');
   }

@@ -30,8 +30,7 @@ export function TasksPanel(): JSX.Element {
     currentSessionId ? s.harnessProfileBySession[currentSessionId] : undefined,
   );
 
-  const { runtimeActiveRun } = useActivityState();
-  const runtimePhase = runtimeActiveRun?.phase;
+  const { runtimePhase } = useActivityState();
   const currentTurnActorSnapshot = useMemo(
     () => scopeAgentActorSnapshotToCurrentTurn(actorSnapshot, events),
     [actorSnapshot, events],

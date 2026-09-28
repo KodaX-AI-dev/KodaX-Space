@@ -52,6 +52,14 @@ test('root status follows the foreground Run even when the control Actor has no 
   assert.equal(unknown.state, 'waiting');
   assert.match(unknown.latest ?? '', /unconfirmed/i);
   assert.equal(buildAgentStatuses(undefined, undefined, snapshot)[0].state, 'idle');
+  for (const [phase, state] of [
+    ['interrupted', 'interrupted'],
+    ['cancelled', 'interrupted'],
+    ['completed', 'completed'],
+    ['failed', 'error'],
+  ] as const) {
+    assert.equal(buildAgentStatuses(undefined, undefined, snapshot, phase)[0].state, state);
+  }
 });
 
 function makeStatus(overrides: Partial<NonNullable<Status>> = {}): NonNullable<Status> {

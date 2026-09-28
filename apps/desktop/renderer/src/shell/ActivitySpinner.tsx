@@ -15,6 +15,7 @@ import { useEffect, useState, type JSX as ReactJSX } from 'react';
 import type {
   SessionEvent,
   SpaceRuntimeProfileProjectionT,
+  SpaceRuntimeRunPhaseT,
   SpaceRuntimeToolSandboxT,
   SpaceSessionLiveProjectionT,
 } from '@kodax-space/space-ipc-schema';
@@ -848,8 +849,26 @@ export interface ActivityState {
   readonly isStreaming: boolean;
   readonly isCompacting: boolean;
   readonly runtimeActiveRun: RuntimeProfileSession['activeRun'];
+  readonly runtimePhase?: SpaceRuntimeRunPhaseT;
   readonly runtimeStopIdentity: RuntimeStopIdentity;
   readonly activityGeneration?: string;
+}
+
+export function selectRuntimeDisplayPhase(
+  activeRun: RuntimeProfileSession['activeRun'],
+  streaming: boolean,
+  projection: SpaceSessionLiveProjectionT | undefined,
+  profileSession: RuntimeProfileSession | undefined,
+  authoritative: boolean,
+): SpaceRuntimeRunPhaseT | undefined {
+  if (!authoritative) return undefined;
+  if (activeRun) return activeRun.phase;
+  if (streaming) return undefined;
+  const live = projection?.lastTerminalRun;
+  const profile = profileSession?.lastTerminalRun;
+  return (
+    !live || (profile && (profile.completedAt ?? 0) > (live.completedAt ?? 0)) ? profile : live
+  )?.phase;
 }
 
 /** Shared live activity state for controls that need both run and nested compaction status. */
@@ -901,15 +920,23 @@ export function useActivityState(): ActivityState {
     runtimeConnectionAuthoritative,
     scoped.profileCursor,
   );
+  const runtimeActiveRun = selectEffectiveRuntimeActiveRun(
+    scoped.projection,
+    scoped.events,
+    scoped.profileSession,
+    runtimeConnectionAuthoritative,
+    scoped.profileCursor,
+  );
   return {
     isStreaming: snapshot.streaming,
     isCompacting: snapshot.streaming && snapshot.compacting === true,
-    runtimeActiveRun: selectEffectiveRuntimeActiveRun(
+    runtimeActiveRun,
+    runtimePhase: selectRuntimeDisplayPhase(
+      runtimeActiveRun,
+      snapshot.streaming,
       scoped.projection,
-      scoped.events,
       scoped.profileSession,
       runtimeConnectionAuthoritative,
-      scoped.profileCursor,
     ),
     runtimeStopIdentity,
     activityGeneration: selectActivityGeneration(scoped.events, runtimeStopIdentity.runId),

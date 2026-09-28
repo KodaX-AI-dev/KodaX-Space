@@ -11,12 +11,57 @@ import {
   selectActivitySnapshot,
   selectActivityGeneration,
   selectRuntimeStopIdentity,
+  selectRuntimeDisplayPhase,
   snapshotFromEvents,
   snapshotFromRuntimeProfileSession,
   snapshotFromRuntimeProjection,
 } from '../../renderer/src/shell/ActivitySpinner.js';
 
 const sid = 's_activity_spinner';
+
+test('display phase selects the newest terminal snapshot without hiding a successor', () => {
+  const live = {
+    ...idleProjection(),
+    lastTerminalRun: { runId: 'old', sessionId: sid, phase: 'completed' as const, completedAt: 10 },
+  };
+  const profile = {
+    sessionId: sid,
+    surface: 'code' as const,
+    createdAt: 1,
+    lastActivityAt: 20,
+    queuedRuns: [],
+    lastTerminalRun: {
+      runId: 'recovered',
+      sessionId: sid,
+      phase: 'interrupted' as const,
+      completedAt: 20,
+    },
+  };
+  assert.equal(selectRuntimeDisplayPhase(undefined, false, live, profile, true), 'interrupted');
+  assert.equal(
+    selectRuntimeDisplayPhase(
+      undefined,
+      false,
+      { ...live, lastTerminalRun: profile.lastTerminalRun },
+      { ...profile, lastTerminalRun: live.lastTerminalRun },
+      true,
+    ),
+    'interrupted',
+  );
+  // Optimistic send/events must not inherit the preceding Run's terminal state.
+  assert.equal(selectRuntimeDisplayPhase(undefined, true, live, profile, true), undefined);
+  assert.equal(selectRuntimeDisplayPhase(undefined, false, live, profile, false), undefined);
+  assert.equal(
+    selectRuntimeDisplayPhase(
+      { runId: 'next', sessionId: sid, phase: 'running' },
+      true,
+      live,
+      profile,
+      true,
+    ),
+    'running',
+  );
+});
 
 test('restart recovery clears stale unknown activity regardless of IPC delivery order', () => {
   const unknown = {

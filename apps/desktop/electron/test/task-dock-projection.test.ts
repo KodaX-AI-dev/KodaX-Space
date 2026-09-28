@@ -5,6 +5,30 @@ import type { MessageKey } from '../../renderer/src/i18n/messages.js';
 import { buildTaskDockRunView } from '../../renderer/src/shell/taskDockProjection.js';
 import { getCachedTaskDockRunView } from '../../renderer/src/shell/useTaskDockRunView.js';
 
+test('recovered terminal Run outranks leftover plan and budget state', () => {
+  for (const runtimePhase of ['interrupted', 'cancelled', 'completed', 'failed'] as const) {
+    const view = buildTaskDockRunView({
+      hasProject: true,
+      hasSession: true,
+      pendingSend: false,
+      isStreaming: false,
+      runtimePhase,
+      todos: [{ id: 'narration', content: 'Synthesize narration', status: 'in_progress' }],
+      managedStatus: {
+        agentMode: 'ama',
+        harnessProfile: 'H2_PLAN_EXECUTE_EVAL',
+        budgetApprovalRequired: true,
+      },
+    });
+    assert.equal(
+      view.mode,
+      runtimePhase === 'failed' ? 'error' : runtimePhase === 'completed' ? 'completed' : 'idle',
+    );
+    if (runtimePhase === 'interrupted' || runtimePhase === 'cancelled')
+      assert.match(view.headline, /stopped/i);
+  }
+});
+
 test('unknown Runtime takes precedence over stale active todos and streaming', () => {
   const view = buildTaskDockRunView({
     hasProject: true,

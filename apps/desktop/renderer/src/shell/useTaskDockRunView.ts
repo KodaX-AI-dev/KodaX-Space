@@ -32,8 +32,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
   const pendingSend = useAppStore((s) =>
     currentSessionId ? (s.pendingSendBySession[currentSessionId] ?? false) : false,
   );
-  const { isStreaming, runtimeActiveRun } = useActivityState();
-  const runtimePhase = runtimeActiveRun?.phase;
+  const { isStreaming, runtimePhase } = useActivityState();
   const todos = useAppStore((s) =>
     currentSessionId ? s.todoListBySession[currentSessionId] : undefined,
   );
