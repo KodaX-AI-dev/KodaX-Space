@@ -552,6 +552,7 @@ function applyDomainChange(
       return {
         ...base,
         activeRun: update.change.activeRun ?? undefined,
+        ...(update.change.iteration ? { iteration: update.change.iteration } : {}),
         queuedRuns: update.change.queuedRuns,
         ...(update.change.lastTerminalRun !== undefined
           ? { lastTerminalRun: update.change.lastTerminalRun }
@@ -561,6 +562,7 @@ function applyDomainChange(
           : {}),
         ...(update.change.resetRunScopedState
           ? {
+              iteration: undefined,
               assistantDraft: undefined,
               thinkingDraft: undefined,
               outputSegment: undefined,

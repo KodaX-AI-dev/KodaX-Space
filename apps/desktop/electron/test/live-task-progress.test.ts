@@ -18,7 +18,7 @@ test('todo progress counts an active item before it completes', () => {
   assert.equal(progress.total, 3);
 });
 
-test('live budget fallback advances from iteration progress', () => {
+test('Runner fuse is independent of the overall work budget', () => {
   const event: SessionEvent = {
     kind: 'iteration_start',
     sessionId: 's1',
@@ -27,7 +27,7 @@ test('live budget fallback advances from iteration progress', () => {
   };
 
   assert.deepEqual(applyLiveBudgetFallback({ used: 0, cap: 200 }, event), {
-    used: 2,
+    used: 0,
     cap: 200,
   });
 });
@@ -60,4 +60,17 @@ test('live budget fallback advances from todo progress', () => {
     used: 1,
     cap: 200,
   });
+});
+
+test('unbounded Runner iterations do not consume the work budget', () => {
+  const budget = { used: 3, cap: 200 };
+  assert.strictEqual(
+    applyLiveBudgetFallback(budget, {
+      kind: 'iteration_start',
+      sessionId: 's1',
+      iter: 99,
+      maxIter: 0,
+    }),
+    budget,
+  );
 });

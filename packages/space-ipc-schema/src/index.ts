@@ -268,6 +268,8 @@ export {
 
 export {
   agentDiscoverChannel,
+  agentIterationProgressSchema,
+  type AgentIterationProgressT,
   agentActorTreeSnapshotSchema,
   agentActorSnapshotChannel,
   agentActorChangedChannel,

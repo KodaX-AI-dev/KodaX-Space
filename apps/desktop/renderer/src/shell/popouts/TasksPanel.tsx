@@ -1,6 +1,6 @@
-import { useActivityState } from '../ActivitySpinner.js';
 import { useEffect, useMemo, useState } from 'react';
 import { Caret } from '../../components/Caret.js';
+import { useActivityState } from '../ActivitySpinner.js';
 import { useAppStore } from '../../store/appStore.js';
 import {
   buildAgentStatuses,
@@ -30,14 +30,14 @@ export function TasksPanel(): JSX.Element {
     currentSessionId ? s.harnessProfileBySession[currentSessionId] : undefined,
   );
 
-  const { runtimePhase } = useActivityState();
+  const { iteration: rootIteration, runtimePhase } = useActivityState();
   const currentTurnActorSnapshot = useMemo(
     () => scopeAgentActorSnapshotToCurrentTurn(actorSnapshot, events),
     [actorSnapshot, events],
   );
   const agents = useMemo(
-    () => buildAgentStatuses(status, t, currentTurnActorSnapshot, runtimePhase),
-    [currentTurnActorSnapshot, status, t, runtimePhase],
+    () => buildAgentStatuses(status, t, currentTurnActorSnapshot, rootIteration, runtimePhase),
+    [currentTurnActorSnapshot, status, t, rootIteration, runtimePhase],
   );
   const workerById = useMemo(() => {
     const map = new Map<string, WorkerNode>();
@@ -188,7 +188,9 @@ function AgentPanelRow({
               {agent.title}
             </span>
             <span className="flex-shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
-              {t(agentStateLabelKey(agent.state))}
+              {agent.terminationReason === 'iteration_limit'
+                ? t('agent.iterationLimitReached')
+                : t(agentStateLabelKey(agent.state))}
             </span>
           </span>
           <span className="mt-0.5 block truncate text-[11px] text-fg-muted">
@@ -196,7 +198,10 @@ function AgentPanelRow({
               t('tasks.delegatedWork')}
           </span>
           {agent.latest && (
-            <span className="mt-1 block text-[12px] leading-4 text-fg-secondary">
+            <span
+              className="mt-1 block text-[12px] leading-4 text-fg-secondary"
+              title={agent.iteration ? t('agent.iterationHint') : undefined}
+            >
               {agent.latest}
             </span>
           )}

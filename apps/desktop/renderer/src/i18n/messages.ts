@@ -1225,6 +1225,10 @@ export const messages = {
 
     'agent.fallbackTitle': 'Worker',
     'agent.rootTitle': 'Root Agent',
+    'agent.iteration': 'Iteration',
+    'agent.iterationHint':
+      'Current iteration / protection limit for this Runner invocation; resets on the next invocation.',
+    'agent.iterationLimitReached': 'Iteration limit reached',
     'agent.role.main': 'main agent',
     'agent.role.research': 'research',
     'agent.role.review': 'review',
@@ -4205,6 +4209,9 @@ export const messages = {
 
     'agent.fallbackTitle': '执行代理',
     'agent.rootTitle': '根 Agent',
+    'agent.iteration': '轮次',
+    'agent.iterationHint': '当前轮次 / 本次 Runner 执行的保护阈值；下次执行重新计数。',
+    'agent.iterationLimitReached': '达到轮次上限',
     'agent.role.main': '主代理',
     'agent.role.research': '调研',
     'agent.role.review': '复核',

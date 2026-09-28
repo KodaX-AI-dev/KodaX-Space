@@ -247,3 +247,39 @@ test('Runtime Actor tree projection retains newest active Agents after the IPC c
     false,
   );
 });
+
+test('Actor iteration and terminal cause cross the IPC boundary', () => {
+  const iteration = { current: 200, max: 200 };
+  const tree = {
+    rootPath: '/root' as const,
+    revision: 1,
+    activeNonRootTurns: 0,
+    maxConcurrentThreads: 4,
+    actors: [
+      {
+        ...detail.actor,
+        latestTurn: {
+          turnId: 'turn_1',
+          state: 'failed' as const,
+          summary: 'partial',
+          summaryTruncated: false,
+          iteration,
+          terminationReason: 'iteration_limit' as const,
+          recentActivity: [
+            {
+              sequence: 1,
+              kind: 'status' as const,
+              summary: 'Iteration 200/200',
+              createdAt: 'now',
+              iteration,
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const projected = projectRuntimeActorTreeSnapshot('rt_1', 's_code', tree, 1);
+  assert.deepEqual(projected.actors[0]?.latestTurn?.iteration, iteration);
+  assert.equal(projected.actors[0]?.latestTurn?.terminationReason, 'iteration_limit');
+  assert.deepEqual(projected.actors[0]?.latestTurn?.recentActivity[0]?.iteration, iteration);
+});

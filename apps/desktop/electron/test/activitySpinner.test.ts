@@ -1208,3 +1208,87 @@ test('Runtime sandbox presentation distinguishes applied and unselected decision
     tone: 'muted',
   });
 });
+
+test('iteration bridge ignores a previous journal epoch after snapshot recovery', () => {
+  const projection: SpaceSessionLiveProjectionT = {
+    ...idleProjection(),
+    cursor: { runtimeId: 'rt_1', sessionId: sid, journalEpoch: 'new', seq: 2 },
+    activeRun: { runId: 'root_run', sessionId: sid, phase: 'running', startedAt: 1 },
+    iteration: { runId: 'root_run', current: 1, max: 500 },
+  };
+  const event: SessionEvent = {
+    kind: 'iteration_start',
+    sessionId: sid,
+    iter: 99,
+    maxIter: 500,
+    runtimeEvent: { runtimeId: 'rt_1', runId: 'root_run', journalEpoch: 'old', seq: 99 },
+  };
+  assert.deepEqual(
+    selectActivitySnapshot(projection, [event], false, undefined, undefined, true).iter,
+    { current: 1, max: 500 },
+  );
+});
+
+test('runtime activity preserves actual root iteration and excludes another run', () => {
+  const projection = {
+    ...idleProjection(),
+    activeRun: { runId: 'root_run', sessionId: sid, phase: 'running' as const, startedAt: 1 },
+    iteration: { runId: 'root_run', current: 17, max: 500 },
+  };
+  assert.deepEqual(snapshotFromRuntimeProjection(projection)?.iter, { current: 17, max: 500 });
+  assert.deepEqual(selectActivitySnapshot(projection, [], false, undefined, undefined, true).iter, {
+    current: 17,
+    max: 500,
+  });
+  const compacting = selectActivitySnapshot(
+    projection,
+    [{ kind: 'compact_start', sessionId: sid }],
+    false,
+    undefined,
+    undefined,
+    true,
+  );
+  assert.equal(compacting.compacting, true);
+  assert.deepEqual(compacting.iter, { current: 17, max: 500 });
+  assert.equal(
+    snapshotFromRuntimeProjection({
+      ...projection,
+      iteration: { ...projection.iteration, runId: 'old_run' },
+    })?.iter,
+    undefined,
+  );
+});
+
+test('root iteration bridge repairs a missing live snapshot only for the same active run', () => {
+  const activeRun = { runId: 'root_run', sessionId: sid, phase: 'running' as const, startedAt: 1 };
+  const origin = { runtimeId: 'rt_1', runId: 'root_run', seq: 20 };
+  const events: SessionEvent[] = [
+    { kind: 'session_start', sessionId: sid, provider: 'mock', runtimeEvent: origin },
+    { kind: 'iteration_start', sessionId: sid, iter: 17, maxIter: 500, runtimeEvent: origin },
+    {
+      kind: 'iteration_start',
+      sessionId: sid,
+      iter: 4,
+      maxIter: 200,
+      contextKind: 'child',
+      runtimeEvent: { ...origin, seq: 21 },
+    },
+  ];
+  const profile = {
+    surface: 'code' as const,
+    sessionId: sid,
+    activeRun,
+    queuedRuns: [],
+    createdAt: 1,
+    lastActivityAt: 1,
+  };
+  assert.deepEqual(
+    selectActivitySnapshot(undefined, events, false, undefined, profile, true).iter,
+    { current: 17, max: 500 },
+  );
+  const next = { ...idleProjection(), activeRun, cursor: { runtimeId: 'rt_1', seq: 25 } };
+  assert.equal(
+    selectActivitySnapshot(next, events, false, undefined, profile, true).iter,
+    undefined,
+  );
+});

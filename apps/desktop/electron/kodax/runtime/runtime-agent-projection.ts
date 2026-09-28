@@ -1,6 +1,7 @@
 import type {
   AgentDetail,
   AgentEvent,
+  AgentIterationProgress,
   AgentOutput,
   AgentTreeSnapshot,
   AgentTurn,
@@ -14,6 +15,14 @@ import type {
   ExternalAgentTaskEventT,
   ExternalAgentTaskT,
 } from '@kodax-space/space-ipc-schema';
+
+import { agentIterationProgressSchema } from '@kodax-space/space-ipc-schema';
+
+// Accept telemetry additively so an older daemon can still omit it.
+function iterationFields(value: { readonly iteration?: AgentIterationProgress }) {
+  const parsed = agentIterationProgressSchema.safeParse(value.iteration);
+  return parsed.success ? { iteration: parsed.data } : {};
+}
 
 const TASK_ID_PREFIX = 'runtime-actor:';
 const MAX_ACTOR_PATH = 2_048;
@@ -87,6 +96,10 @@ export function projectRuntimeActorTreeSnapshot(
             latestTurn: {
               turnId: boundedText(actor.latestTurn.turnId, MAX_ACTOR_TURN_ID),
               state: actor.latestTurn.state,
+              ...iterationFields(actor.latestTurn),
+              ...(actor.latestTurn.terminationReason === 'iteration_limit'
+                ? { terminationReason: 'iteration_limit' as const }
+                : {}),
               summary: boundedText(actor.latestTurn.summary, MAX_ACTOR_SUMMARY),
               summaryTruncated:
                 actor.latestTurn.summaryTruncated ||
@@ -94,6 +107,7 @@ export function projectRuntimeActorTreeSnapshot(
               recentActivity: actor.latestTurn.recentActivity
                 .slice(-MAX_ACTOR_ACTIVITY)
                 .map((activity) => ({
+                  ...iterationFields(activity),
                   sequence: activity.sequence,
                   kind: activity.kind,
                   summary: boundedText(activity.summary, MAX_ACTOR_SUMMARY),

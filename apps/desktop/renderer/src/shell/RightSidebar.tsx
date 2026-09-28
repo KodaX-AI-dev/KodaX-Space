@@ -1,4 +1,3 @@
-import { useActivityState } from './ActivitySpinner.js';
 // RightSidebar - F041 (v0.1.4) task mission control
 //
 // Before: Progress / Working folder / Context repeated the same todo state as PlanPanel.
@@ -39,6 +38,7 @@ import type {
   ExternalAgentTaskT,
   SessionEvent,
 } from '@kodax-space/space-ipc-schema';
+import { useActivityState } from './ActivitySpinner.js';
 import { useAppStore } from '../store/appStore.js';
 import {
   openFileInViewer,
@@ -778,14 +778,14 @@ function AgentSection({
   const events = useAppStore((s) =>
     currentSessionId ? s.eventsBySession[currentSessionId] : undefined,
   );
-  const { runtimePhase } = useActivityState();
+  const { iteration: rootIteration, runtimePhase } = useActivityState();
   const currentTurnActorSnapshot = useMemo(
     () => scopeAgentActorSnapshotToCurrentTurn(actorSnapshot, events),
     [actorSnapshot, events],
   );
   const agents = useMemo(
-    () => buildAgentStatuses(status, t, currentTurnActorSnapshot, runtimePhase),
-    [currentTurnActorSnapshot, status, t, runtimePhase],
+    () => buildAgentStatuses(status, t, currentTurnActorSnapshot, rootIteration, runtimePhase),
+    [currentTurnActorSnapshot, status, t, rootIteration, runtimePhase],
   );
 
   // active = workers that are actually moving now; idle/done should not dominate summary.
@@ -1480,7 +1480,9 @@ function AgentStatusCard({
               {agent.title}
             </span>
             <span className="flex-shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
-              {agentStateLabel(agent.state, t)}
+              {agent.terminationReason === 'iteration_limit'
+                ? t('agent.iterationLimitReached')
+                : agentStateLabel(agent.state, t)}
             </span>
           </div>
           <div className="mt-0.5 flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] text-fg-muted">
@@ -1492,7 +1494,7 @@ function AgentStatusCard({
               className={`mt-1 text-[12px] leading-4 text-fg-secondary ${
                 compact ? 'line-clamp-2' : ''
               }`}
-              title={agent.latest}
+              title={agent.iteration ? t('agent.iterationHint') : agent.latest}
             >
               {agent.latest}
             </div>

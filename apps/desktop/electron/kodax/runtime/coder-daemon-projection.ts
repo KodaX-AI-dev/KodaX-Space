@@ -10,6 +10,7 @@ import type {
 } from '@kodax-ai/kodax/runtime';
 import type { KodaXOutputSegmentProjection } from '@kodax-ai/kodax/coding';
 import {
+  agentIterationProgressSchema,
   spaceRuntimeProfileProjectionSchema,
   spaceRuntimeSidecarMessagePayloadSchema,
   spaceRuntimeToolSandboxSchema,
@@ -1050,6 +1051,8 @@ export function projectRuntimeSessionSnapshot(
   // projecting a leftover draft after terminal would both bypass persistence and risk assigning a
   // different Run's keyed text to lastTerminalRun.
   const runId = runs.activeRun?.runId;
+  const iterations = snapshot.live.iterationsByRun;
+  const iteration = agentIterationProgressSchema.safeParse(runId ? iterations?.[runId] : undefined);
   const rawOutputSegment = runId ? snapshot.live.outputSegmentsByRun[runId] : undefined;
   const outputSegment = rawOutputSegment
     ? boundedOutputSegmentProjection(rawOutputSegment)
@@ -1079,6 +1082,7 @@ export function projectRuntimeSessionSnapshot(
     },
     transcriptRevision: snapshot.transcriptRevision,
     ...runs,
+    ...(iteration.success && runId ? { iteration: { ...iteration.data, runId } } : {}),
     ...(assistantDraft ? { assistantDraft } : {}),
     ...(thinkingDraft ? { thinkingDraft } : {}),
     ...(outputSegment ? { outputSegment } : {}),
@@ -1343,6 +1347,26 @@ export class CoderSessionProjectionReducer {
     if (event.type === 'todo.updated') {
       return this.#commit(event.seq, { domain: 'todos', todos: todoProjection(event.payload) });
     }
+    if (
+      event.type === 'run.progress' &&
+      (payload?.kind === 'iteration_start' || payload?.kind === 'iteration_end')
+    ) {
+      const info = payload.kind === 'iteration_end' ? record(payload.info) : payload;
+      const meta = record(payload.meta) ?? info;
+      if (isTransientChildEvent(meta as ChildMeta) || isTransientChildRuntimeEvent(event))
+        return null;
+      const iteration = agentIterationProgressSchema.safeParse({
+        current: info?.iter,
+        max: info?.maxIter,
+      });
+      if (!iteration.success || event.runId !== this.#projection.activeRun?.runId) return null;
+      return this.#commit(event.seq, {
+        domain: 'run',
+        activeRun: this.#projection.activeRun,
+        queuedRuns: this.#projection.queuedRuns,
+        iteration: { ...iteration.data, runId: event.runId },
+      });
+    }
     if (event.type === 'run.progress' && payload?.kind === 'managed_task_status') {
       const status = record(payload.status);
       const phase = text(status?.phase, 64);
@@ -1505,11 +1529,13 @@ export class CoderSessionProjectionReducer {
           projectionRevision,
           cursor,
           activeRun: change.activeRun ?? undefined,
+          ...(change.iteration ? { iteration: change.iteration } : {}),
           queuedRuns: change.queuedRuns,
           ...(change.lastTerminalRun ? { lastTerminalRun: change.lastTerminalRun } : {}),
           ...(change.queuedInputs !== undefined ? { queuedInputs: change.queuedInputs } : {}),
           ...(change.resetRunScopedState
             ? {
+                iteration: undefined,
                 assistantDraft: undefined,
                 thinkingDraft: undefined,
                 outputSegment: undefined,

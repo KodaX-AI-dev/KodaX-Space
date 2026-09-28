@@ -1067,6 +1067,10 @@ export function projectRuntimeContextSessionEvent(
       sessionId: event.sessionId,
       iter: payload.iter,
       maxIter: payload.maxIter,
+      ...projectContextIdentity(payload.meta),
+      ...(isTransientChildEvent(runtimeEventRecord(payload.meta) as ChildMeta)
+        ? { contextKind: 'child' }
+        : {}),
     };
   } else if (event.type === 'run.progress' && payload?.kind === 'iteration_end') {
     const info = runtimeEventRecord(payload.info);
@@ -4967,7 +4971,10 @@ export class RuntimeHostAdapter {
         : undefined;
     const contextEvent = projectRuntimeContextSessionEvent(event);
     if (contextEvent) {
-      this.push('session.event', contextEvent);
+      this.push('session.event', {
+        ...contextEvent,
+        ...runtimeSessionEventOrigin(runtimeId, event),
+      });
       if (event.type === 'context.compaction.finished') {
         this.projectCommittedCompactionBoundary(event);
       }

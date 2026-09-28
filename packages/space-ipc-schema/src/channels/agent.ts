@@ -65,10 +65,20 @@ export type AgentFailure = z.infer<typeof agentFailureSchema>;
 // KodaX 0.7.72+ unified Actor/Turn telemetry. This is deliberately separate
 // from managed_task_status: the latter owns the foreground AMA Worker, while
 // this snapshot is the canonical native/recursive/Workflow/external Agent tree.
+export const agentIterationProgressSchema = z
+  .object({
+    current: z.number().int().nonnegative(),
+    // Zero denotes an unbounded Runner invocation.
+    max: z.number().int().nonnegative(),
+  })
+  .strict();
+export type AgentIterationProgressT = z.infer<typeof agentIterationProgressSchema>;
+
 const agentActorProgressItemSchema = z
   .object({
     sequence: z.number().int().nonnegative(),
     kind: z.enum(['status', 'tool', 'assistant']),
+    iteration: agentIterationProgressSchema.optional(),
     summary: z.string().max(4096),
     createdAt: z.string().min(1).max(128),
   })
@@ -80,6 +90,8 @@ const agentActorLatestTurnSchema = z
     state: z.enum(['accepted', 'running', 'completed', 'failed', 'interrupted']),
     summary: z.string().max(4096),
     summaryTruncated: z.boolean(),
+    iteration: agentIterationProgressSchema.optional(),
+    terminationReason: z.literal('iteration_limit').optional(),
     recentActivity: z.array(agentActorProgressItemSchema).max(32),
   })
   .strict();

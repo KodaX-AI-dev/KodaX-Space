@@ -54,6 +54,7 @@ export interface BuildTaskDockRunInput {
   readonly todos?: readonly TodoItem[];
   readonly managedStatus?: ManagedTaskStatus;
   readonly actorSnapshot?: AgentActorTreeSnapshotT;
+  readonly rootIteration?: AgentStatusViewModel['iteration'];
   readonly workflowRuns?: readonly WorkflowRunT[];
   readonly events?: readonly SessionEvent[];
   readonly hasPermissionRequest?: boolean;
@@ -70,6 +71,7 @@ export function buildTaskDockRunView(input: BuildTaskDockRunInput): TaskDockRunV
         input.managedStatus,
         t,
         scopeAgentActorSnapshotToCurrentTurn(input.actorSnapshot, input.events),
+        input.rootIteration,
         input.runtimePhase,
       );
     }

@@ -2052,8 +2052,18 @@ export class RealKodaXSession implements ManagedSession {
           ...(info.turnId ? { turnId: info.turnId } : {}),
         });
       },
-      onIterationStart: (iter, maxIter) => {
-        emitLive({ kind: 'iteration_start', sessionId: sid, iter, maxIter });
+      onIterationStart: (iter, maxIter, meta) => {
+        emitLive({
+          kind: 'iteration_start',
+          sessionId: sid,
+          iter,
+          maxIter,
+          ...(isTransientChildEvent(meta)
+            ? { contextKind: 'child' as const }
+            : meta?.contextKind
+              ? { contextKind: meta.contextKind }
+              : {}),
+        });
       },
       onIterationEnd: (info) => {
         // Forward root and child Agent Provider usage. The renderer keeps child iterations

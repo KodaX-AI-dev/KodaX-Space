@@ -4,6 +4,7 @@
 // state instead of mirroring unpublished KodaX daemon transport payloads.
 
 import { z } from 'zod';
+import { agentIterationProgressSchema } from './agent.js';
 import { autoModeDecisionDiagnosticsSchema } from './permission.js';
 
 const MAX_ID = 128;
@@ -775,6 +776,8 @@ export const spaceRuntimeSidecarMessageSchema = z
   })
   .strict();
 
+const runIterationSchema = agentIterationProgressSchema.extend({ runId: idSchema });
+
 export const spaceSessionLiveProjectionSchema = z
   .object({
     sessionId: idSchema,
@@ -782,6 +785,7 @@ export const spaceSessionLiveProjectionSchema = z
     cursor: spaceRuntimeCursorSchema,
     transcriptRevision: z.string().min(1).max(256),
     activeRun: spaceRuntimeRunProjectionSchema.optional(),
+    iteration: runIterationSchema.optional(),
     queuedRuns: z.array(spaceRuntimeRunProjectionSchema).max(MAX_QUEUE_ITEMS),
     lastTerminalRun: spaceRuntimeRunProjectionSchema.optional(),
     assistantDraft: spaceRuntimeDraftSchema.optional(),
@@ -825,6 +829,7 @@ export const spaceSessionLiveProjectionSchema = z
 const runChangeSchema = z
   .object({
     domain: z.literal('run'),
+    iteration: runIterationSchema.optional(),
     activeRun: spaceRuntimeRunProjectionSchema.nullable(),
     queuedRuns: z.array(spaceRuntimeRunProjectionSchema).max(MAX_QUEUE_ITEMS),
     lastTerminalRun: spaceRuntimeRunProjectionSchema.optional(),

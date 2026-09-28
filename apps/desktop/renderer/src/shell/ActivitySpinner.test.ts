@@ -36,3 +36,29 @@ test('pending send elapsed time survives rerenders and resets for a retry', (t) 
   assert.match(render(), /3s/);
   assert.doesNotMatch(render(), /13s/);
 });
+
+test('spinner renders runtime iteration and omits an unbounded denominator', (t) => {
+  const initial = useAppStore.getInitialState();
+  const original = { ...initial };
+  t.after(() => Object.assign(initial, original));
+  for (const max of [500, 0]) {
+    Object.assign(initial, {
+      currentSessionId: 'iteration-render',
+      pendingSendBySession: {},
+      runtimeProfile: undefined,
+      eventsBySession: {
+        'iteration-render': [
+          { kind: 'session_start', sessionId: 'iteration-render', provider: 'mock' },
+          { kind: 'iteration_start', sessionId: 'iteration-render', iter: 17, maxIter: max },
+        ],
+      },
+      liveProjectionBySession: {},
+      runtimeConnection: { state: 'disconnected', changedAt: 0, stale: true, capabilities: [] },
+    });
+    const html = renderToStaticMarkup(
+      createElement(TestI18nProvider, null, createElement(ActivitySpinner)),
+    );
+    assert.ok(html.includes(max > 0 ? '17/500' : '17'));
+    assert.ok(!html.includes('17/0'));
+  }
+});

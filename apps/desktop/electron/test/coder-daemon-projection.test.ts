@@ -2168,3 +2168,49 @@ test('projection restores multi-question input and advances revisioned settings'
     value: { provider: 'openai', model: 'gpt-next', permissionMode: 'plan' },
   });
 });
+
+test('root iteration survives snapshots, updates independently and resets for the next turn', () => {
+  const snapshot = {
+    ...observation,
+    live: { ...observation.live, iterationsByRun: { [running.runId]: { current: 17, max: 500 } } },
+  };
+  const projection = projectRuntimeSessionSnapshot(snapshot, []);
+  assert.deepEqual(projection.iteration, { runId: running.runId, current: 17, max: 500 });
+  const reducer = new CoderSessionProjectionReducer(projection, snapshot.runs);
+  const event = {
+    id: 'iter_1',
+    cursor: { ...observation.cursor, seq: projection.cursor.seq + 1 },
+    seq: projection.cursor.seq + 1,
+    time: running.startedAt,
+    type: 'run.progress' as const,
+    sessionId: running.sessionId,
+    runId: running.runId,
+    payload: { kind: 'iteration_start' as const, iter: 18, maxIter: 500 },
+  };
+  reducer.apply(event);
+  assert.equal(reducer.snapshot().iteration?.current, 18);
+  reducer.apply({
+    ...event,
+    seq: event.seq + 1,
+    payload: { ...event.payload, iter: 4, maxIter: 200, meta: { contextKind: 'child' } },
+  });
+  assert.equal(reducer.snapshot().iteration?.current, 18);
+  reducer.apply({
+    ...event,
+    seq: event.seq + 2,
+    payload: { kind: 'iteration_start', iter: 1, maxIter: 0 },
+  });
+  assert.deepEqual(reducer.snapshot().iteration, { runId: running.runId, current: 1, max: 0 });
+  reducer.apply({
+    ...event,
+    seq: event.seq + 3,
+    type: 'turn.started',
+    payload: {
+      turnId: 'next_turn',
+      sessionId: running.sessionId,
+      seq: event.seq + 3,
+      deliveryKind: 'interrupt',
+    },
+  });
+  assert.equal(reducer.snapshot().iteration, undefined);
+});

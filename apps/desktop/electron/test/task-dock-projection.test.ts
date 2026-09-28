@@ -393,3 +393,24 @@ function workflowRunFixture(): WorkflowRunT {
     },
   };
 }
+
+test('task dock cached root status follows the latest runtime iteration', () => {
+  const input = {
+    hasProject: true,
+    hasSession: true,
+    pendingSend: false,
+    isStreaming: true,
+    managedStatus: {
+      agentMode: 'ama' as const,
+      harnessProfile: 'H2_PLAN_EXECUTE_EVAL' as const,
+      activeWorkerId: 'root-worker',
+      activeWorkerTitle: 'Root Agent',
+    },
+    rootIteration: { current: 17, max: 500 },
+  };
+  const first = getCachedTaskDockRunView(input);
+  assert.ok(first.detail?.includes('17/500'));
+  const second = getCachedTaskDockRunView({ ...input, rootIteration: { current: 18, max: 500 } });
+  assert.ok(second.detail?.includes('18/500'));
+  assert.notStrictEqual(first, second);
+});

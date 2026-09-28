@@ -67,10 +67,6 @@ export function applyLiveBudgetFallback(
 
 function estimateLiveBudgetUsed(current: WorkBudget, event: SessionEvent): number | undefined {
   switch (event.kind) {
-    case 'iteration_start':
-      return scaleIterationToBudget(event.iter, event.maxIter, current.cap);
-    case 'iteration_end':
-      return scaleIterationToBudget(event.iter + 1, event.maxIter, current.cap);
     case 'tool_start':
     case 'tool_result':
       return current.used + 1;
@@ -104,12 +100,6 @@ function estimateManagedStatusBudgetUsed(
   }
 
   return estimates.length > 0 ? Math.max(...estimates) : undefined;
-}
-
-function scaleIterationToBudget(iter: number, maxIter: number, cap: number): number {
-  const safeMax = Math.max(1, maxIter);
-  const safeIter = clamp(iter, 1, safeMax);
-  return Math.ceil((safeIter / safeMax) * cap);
 }
 
 function clamp(value: number, min: number, max: number): number {

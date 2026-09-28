@@ -19,6 +19,7 @@ test('Runtime root state never overrides a legacy child sorted before the main w
       }),
       undefined,
       undefined,
+      undefined,
       'unknown',
     );
     assert.equal(agents.find((agent) => agent.id === 'child')?.state, 'active');
@@ -47,8 +48,11 @@ test('root status follows the foreground Run even when the control Actor has no 
       },
     ],
   };
-  assert.equal(buildAgentStatuses(undefined, undefined, snapshot, 'running')[0].state, 'active');
-  const unknown = buildAgentStatuses(undefined, undefined, snapshot, 'unknown')[0];
+  assert.equal(
+    buildAgentStatuses(undefined, undefined, snapshot, undefined, 'running')[0].state,
+    'active',
+  );
+  const unknown = buildAgentStatuses(undefined, undefined, snapshot, undefined, 'unknown')[0];
   assert.equal(unknown.state, 'waiting');
   assert.match(unknown.latest ?? '', /unconfirmed/i);
   assert.equal(buildAgentStatuses(undefined, undefined, snapshot)[0].state, 'idle');
@@ -58,7 +62,10 @@ test('root status follows the foreground Run even when the control Actor has no 
     ['completed', 'completed'],
     ['failed', 'error'],
   ] as const) {
-    assert.equal(buildAgentStatuses(undefined, undefined, snapshot, phase)[0].state, state);
+    assert.equal(
+      buildAgentStatuses(undefined, undefined, snapshot, undefined, phase)[0].state,
+      state,
+    );
   }
 });
 
@@ -324,3 +331,42 @@ function makeActor(
       : {}),
   };
 }
+
+test('root and child display their own runtime limits and expose exhaustion', () => {
+  const actor = {
+    path: '/root/child',
+    taskName: 'child',
+    kind: 'native' as const,
+    state: 'idle' as const,
+    createdAt: 'now',
+    updatedAt: 'now',
+    revision: 1,
+    latestTurn: {
+      turnId: 't1',
+      state: 'failed' as const,
+      summary: 'partial output',
+      summaryTruncated: false,
+      iteration: { current: 200, max: 200 },
+      terminationReason: 'iteration_limit' as const,
+      recentActivity: [],
+    },
+  };
+  const snapshot = {
+    runtimeId: 'rt',
+    sessionId: 's',
+    rootPath: '/root' as const,
+    revision: 1,
+    eventCursor: 1,
+    activeNonRootTurns: 0,
+    maxConcurrentThreads: 4,
+    actors: [{ ...actor, path: '/root', latestTurn: undefined }, actor],
+  };
+  const agents = buildAgentStatuses(undefined, undefined, snapshot, { current: 17, max: 500 });
+  assert.match(agents[0]!.latest!, new RegExp('17/500'));
+  assert.match(agents[1]!.latest!, new RegExp('200/200'));
+  assert.equal(agents[1]!.terminationReason, 'iteration_limit');
+  assert.equal(agents[1]!.state, 'error');
+  const unbounded = buildAgentStatuses(undefined, undefined, snapshot, { current: 18, max: 0 });
+  assert.match(unbounded[0]!.latest!, /18/);
+  assert.doesNotMatch(unbounded[0]!.latest!, new RegExp('18/0'));
+});

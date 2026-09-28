@@ -1,5 +1,6 @@
 import type {
   AgentActorTreeSnapshotT,
+  AgentIterationProgressT,
   SessionEvent,
   SpaceRuntimeRunPhaseT,
 } from '@kodax-space/space-ipc-schema';
@@ -50,6 +51,8 @@ export interface AgentStatusViewModel {
   readonly responsibility?: string;
   readonly phase?: string;
   readonly latest?: string;
+  readonly iteration?: AgentIterationProgressT;
+  readonly terminationReason?: 'iteration_limit';
   readonly evidenceCount?: number;
   readonly traceCount?: number;
   readonly trace?: readonly AgentTraceViewModel[];
@@ -59,6 +62,7 @@ export function buildAgentStatuses(
   status: ManagedTaskStatus | undefined,
   t: Translate = DEFAULT_TRANSLATE,
   actorSnapshot?: AgentActorTreeSnapshotT,
+  rootIteration?: AgentIterationProgressT,
   runtimePhase?: SpaceRuntimeRunPhaseT,
 ): readonly AgentStatusViewModel[] {
   let agents = actorSnapshot
@@ -105,7 +109,16 @@ export function buildAgentStatuses(
       };
     });
   }
-  return agents;
+  if (!rootIteration) return agents;
+  return agents.map((agent, index) =>
+    (actorSnapshot ? agent.id === actorSnapshot.rootPath : index === 0)
+      ? {
+          ...agent,
+          iteration: rootIteration,
+          latest: iterationActivity(rootIteration, agent.latest, t),
+        }
+      : agent,
+  );
 }
 
 /**
@@ -312,11 +325,16 @@ function buildActorStatuses(
             ? undefined
             : humanizePhase(actor.kind),
       phase: latestTurn?.state ?? actor.state,
-      latest:
+      iteration: latestTurn?.iteration,
+      terminationReason: latestTurn?.terminationReason,
+      latest: iterationActivity(
+        latestTurn?.iteration,
         latestActivity ??
-        (latestTurn?.summary && latestTurn.summary !== latestTurn.state
-          ? latestTurn.summary
-          : undefined),
+          (latestTurn?.summary && latestTurn.summary !== latestTurn.state
+            ? latestTurn.summary
+            : undefined),
+        t,
+      ),
       traceCount: trace?.length,
       trace,
     };
@@ -390,4 +408,19 @@ function countEvidence(
     if (event.summary && event.summary.trim().length > 0) count++;
   }
   return count > 0 ? count : undefined;
+}
+
+/** Latest iteration is independent of tool text and the bounded trace ring. */
+function iterationActivity(
+  iteration: AgentIterationProgressT | undefined,
+  activity: string | undefined,
+  t: Translate,
+): string | undefined {
+  if (!iteration) return activity;
+  const count =
+    iteration.max > 0 ? iteration.current + '/' + iteration.max : String(iteration.current);
+  const detail = activity
+    ?.replace(/\[\d+(?:\/\d+)?\]\s*/u, '')
+    .replace(/^Iteration \d+(?:\/\d+)?$/u, '');
+  return [t('agent.iteration') + ' ' + count, detail].filter(Boolean).join(' · ');
 }

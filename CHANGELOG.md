@@ -26,6 +26,13 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Fixed
 
+- Restore Root Agent iteration display from Runtime snapshots and live events; show
+  each Agent's actual Runner limit in the sidebar, task panel and activity UI.
+  Unbounded runs show only the current iteration. Child iteration exhaustion is
+  labelled explicitly, and Runner iteration ratios no longer consume the overall
+  work-budget estimate. Both workspace and desktop dependencies now use the published
+  KodaX SDK `0.7.96-rc.12` for structured iteration and termination telemetry.
+
 - **Issue 216 follow-up — Runtime credential self-heal, uninstall-safe
   AppData, terminal history errors**: Field investigation of a Windows
   rc.5 machine (`docs/investigations/2026-09-28-runtime-credential-decryption.md`)

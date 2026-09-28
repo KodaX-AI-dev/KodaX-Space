@@ -783,3 +783,37 @@ test('a stale degraded connection also discards live authority until a fresh pro
     3,
   );
 });
+
+test('iteration delta survives hydration and clears at the next root invocation', () => {
+  const activeRun = { runId: 'run_1', sessionId: 's_1', phase: 'running' as const };
+  const base = replaceSessionLiveProjection(
+    replaceRuntimeProfile(createRuntimeProjectionState(), profile('rt_1', 1)),
+    { ...live('rt_1', 1), activeRun },
+  );
+  const update: SpaceSessionLiveChangedT = {
+    sessionId: 's_1',
+    baseProjectionRevision: 1,
+    projectionRevision: 2,
+    cursor: { runtimeId: 'rt_1', seq: 2 },
+    change: {
+      domain: 'run',
+      activeRun,
+      queuedRuns: [],
+      iteration: { runId: 'run_1', current: 17, max: 500 },
+    },
+  };
+  const changed = applySessionLiveChange(base, update);
+  assert.deepEqual(changed.state.liveBySession.s_1?.iteration, {
+    runId: 'run_1',
+    current: 17,
+    max: 500,
+  });
+  const reset = applySessionLiveChange(changed.state, {
+    ...update,
+    baseProjectionRevision: 2,
+    projectionRevision: 3,
+    cursor: { runtimeId: 'rt_1', seq: 3 },
+    change: { domain: 'run', activeRun, queuedRuns: [], resetRunScopedState: true },
+  });
+  assert.equal(reset.state.liveBySession.s_1?.iteration, undefined);
+});

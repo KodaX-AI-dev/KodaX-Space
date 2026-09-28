@@ -400,6 +400,9 @@ function snapshotFromRuntimeRunState(
     streaming: true,
     status,
     startedAt: run.startedAt ?? run.queuedAt ?? Date.now(),
+    ...(detail?.iteration?.runId === run.runId
+      ? { iter: { current: detail.iteration.current, max: detail.iteration.max } }
+      : {}),
     ...(activeTool?.sandbox ? { sandbox: presentRuntimeSandbox(activeTool.sandbox) } : {}),
   };
 }
@@ -639,18 +642,23 @@ export function selectActivitySnapshot(
       profileCursor,
     ) &&
     !terminalRunIds.has(activeEventOrigin.runId);
+  const iteration = effectiveActiveRun
+    ? iterationForActiveRun(effectiveActiveRun.runId, projection, events, profileCursor)
+    : undefined;
   // Compaction is a nested Runtime activity and is not represented by activeRun requirements.
   // Prefer its explicit lifecycle while active; otherwise the daemon live projection remains the
   // authority for ordinary queued/running/waiting states.
   if (eventSnapshot.streaming && eventSnapshot.compacting) {
-    return eventSnapshot;
+    return { ...eventSnapshot, ...(iteration ? { iter: iteration } : {}) };
   }
   // session.live, runtime.status and bridge events are independently delivered. Positive activity
   // from any current-Runtime plane remains authoritative until that exact Run has an explicit
   // terminal fact. An idle snapshot is only absence; letting its unrelated/global cursor clear a
   // positive source caused spinner/Stop to flicker whenever the three streams alternated.
-  if (runtimeSnapshot?.streaming) return runtimeSnapshot;
-  if (profileSnapshot?.streaming) return profileSnapshot;
+  if (runtimeSnapshot?.streaming)
+    return { ...runtimeSnapshot, ...(iteration ? { iter: iteration } : {}) };
+  if (profileSnapshot?.streaming)
+    return { ...profileSnapshot, ...(iteration ? { iter: iteration } : {}) };
   if (activeCurrentRuntimeEvent) return eventSnapshot;
   // A local send begins before Runtime admission can update the last projection.
   // Preserve that short pending state even when the previous authoritative snapshot was idle.
@@ -661,6 +669,44 @@ export function selectActivitySnapshot(
   // when no authoritative Runtime observation exists.
   if (projection === undefined && profileSession === undefined) return eventSnapshot;
   return { streaming: false, status: '', startedAt: null };
+}
+
+function iterationForActiveRun(
+  runId: string,
+  projection: SpaceSessionLiveProjectionT | undefined,
+  events: readonly SessionEvent[],
+  profileCursor: SpaceRuntimeProfileProjectionT['cursor'] | undefined,
+): ActivitySnapshot['iter'] {
+  for (let index = events.length - 1; index >= 0; index--) {
+    const event = events[index]!;
+    if (
+      event.kind === 'session_start' ||
+      event.kind === 'session_complete' ||
+      event.kind === 'session_error'
+    )
+      break;
+    if (event.kind !== 'iteration_start' && event.kind !== 'iteration_end') continue;
+    if (event.contextKind === 'child' || event.runtimeEvent?.runId !== runId) continue;
+    if (
+      projection?.cursor.journalEpoch &&
+      event.runtimeEvent.journalEpoch !== projection.cursor.journalEpoch
+    )
+      continue;
+    if (
+      !runtimeActivityOriginBelongsToCurrentRuntime(
+        event.runtimeEvent,
+        projection?.cursor,
+        profileCursor,
+      )
+    )
+      continue;
+    // A newer snapshot without iteration is a reset, not missing telemetry.
+    if (projection && event.runtimeEvent.seq <= projection.cursor.seq) break;
+    return { current: event.iter, max: event.maxIter };
+  }
+  return projection?.iteration?.runId === runId
+    ? { current: projection.iteration.current, max: projection.iteration.max }
+    : undefined;
 }
 
 /** Tally a string's ASCII vs non-ASCII chars into an accumulator (for token estimation). */
@@ -785,7 +831,9 @@ export function ActivitySpinner(): ReactJSX.Element | null {
     startedAt !== null ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : 0;
   const elapsedStr = elapsedSec > 0 ? formatElapsed(elapsedSec) : '';
 
-  const iterStr = snap.iter ? `iter ${snap.iter.current}/${snap.iter.max}` : '';
+  const iterStr = snap.iter
+    ? `${t('agent.iteration')} ${snap.iter.current}${snap.iter.max > 0 ? '/' + snap.iter.max : ''}`
+    : '';
 
   // tokens 后跟 tok/s rate — 用 cumulative tokens / elapsed sec 作平均速率（足以反映进度感）
   let tokenStr = '';
@@ -846,6 +894,7 @@ export function ActivitySpinner(): ReactJSX.Element | null {
 }
 
 export interface ActivityState {
+  readonly iteration?: ActivitySnapshot['iter'];
   readonly isStreaming: boolean;
   readonly isCompacting: boolean;
   readonly runtimeActiveRun: RuntimeProfileSession['activeRun'];
@@ -928,6 +977,7 @@ export function useActivityState(): ActivityState {
     scoped.profileCursor,
   );
   return {
+    iteration: snapshot.iter,
     isStreaming: snapshot.streaming,
     isCompacting: snapshot.streaming && snapshot.compacting === true,
     runtimeActiveRun,

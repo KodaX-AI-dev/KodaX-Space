@@ -32,7 +32,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
   const pendingSend = useAppStore((s) =>
     currentSessionId ? (s.pendingSendBySession[currentSessionId] ?? false) : false,
   );
-  const { isStreaming, runtimePhase } = useActivityState();
+  const { isStreaming, iteration: rootIteration, runtimePhase } = useActivityState();
   const todos = useAppStore((s) =>
     currentSessionId ? s.todoListBySession[currentSessionId] : undefined,
   );
@@ -67,6 +67,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
         pendingSend,
         isStreaming,
         runtimePhase,
+        rootIteration,
         todos,
         managedStatus,
         actorSnapshot,
@@ -82,6 +83,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
       pendingSend,
       isStreaming,
       runtimePhase,
+      rootIteration,
       todos,
       managedStatus,
       actorSnapshot,
@@ -112,6 +114,8 @@ function sameRunViewInput(a: BuildTaskDockRunInput, b: BuildTaskDockRunInput): b
     a.pendingSend === b.pendingSend &&
     a.isStreaming === b.isStreaming &&
     a.runtimePhase === b.runtimePhase &&
+    a.rootIteration?.current === b.rootIteration?.current &&
+    a.rootIteration?.max === b.rootIteration?.max &&
     a.todos === b.todos &&
     a.managedStatus === b.managedStatus &&
     a.actorSnapshot === b.actorSnapshot &&
