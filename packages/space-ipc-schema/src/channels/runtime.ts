@@ -570,6 +570,19 @@ export const spaceRuntimeProfileProjectionSchema = z
     projectionRevision: z.number().int().nonnegative(),
     cursor: spaceRuntimeCursorSchema.optional(),
     sessions: z.array(spaceRuntimeSessionProfileSchema).max(MAX_PROFILE_SESSIONS),
+    // Activity evidence only: consumers join this to known Coder session metadata.
+    // It does not grant live authority or require a Session observation.
+    sessionActivity: z
+      .array(
+        z
+          .object({
+            sessionId: idSchema,
+            lastActivityAt: timestampSchema,
+          })
+          .strict(),
+      )
+      .max(1_000)
+      .optional(),
     interactions: z.array(spaceRuntimeInteractionSchema).max(MAX_INTERACTIONS),
     notifications: z.array(spaceRuntimeNotificationSchema).max(MAX_NOTIFICATIONS),
   })

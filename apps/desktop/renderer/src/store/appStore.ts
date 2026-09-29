@@ -6450,13 +6450,17 @@ export const useAppStore = create<AppState>((setState) => {
     },
     setSessions: (sessions) =>
       set((state) => ({
-        sessions: mergeRuntimeActivityIntoSessions(sessions, state.runtimeProfile),
+        sessions: mergeRuntimeActivityIntoSessions(sessions, state.runtimeProfile, state.sessions),
       })),
     replaceSessionsForScope: (sessions, scope) =>
       set((state) => {
         const replaced = replaceSessionsInScope(state.sessions, sessions, scope, IS_WIN_RENDERER);
         return {
-          sessions: mergeRuntimeActivityIntoSessions(replaced, state.runtimeProfile),
+          sessions: mergeRuntimeActivityIntoSessions(
+            replaced,
+            state.runtimeProfile,
+            state.sessions,
+          ),
         };
       }),
     setCurrentSession: (sessionId) => {
@@ -8488,12 +8492,17 @@ export const useAppStore = create<AppState>((setState) => {
 
     upsertSession: (meta) =>
       set((state) => {
+        const [withActivity] = mergeRuntimeActivityIntoSessions(
+          [meta],
+          state.runtimeProfile,
+          state.sessions,
+        );
         const existingIdx = state.sessions.findIndex((s) => s.sessionId === meta.sessionId);
         if (existingIdx < 0) {
-          return { sessions: [meta, ...state.sessions] };
+          return { sessions: [withActivity!, ...state.sessions] };
         }
         const next = state.sessions.slice();
-        next[existingIdx] = meta;
+        next[existingIdx] = withActivity!;
         return { sessions: next };
       }),
 

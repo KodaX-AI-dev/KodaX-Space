@@ -5,6 +5,7 @@ import type {
 } from '@kodax-space/space-ipc-schema';
 
 import { sdkEffortToReasoningMode } from '../shell/effortLadder.js';
+import { sessionMatchesScope } from '../lib/sessionScope.js';
 
 /**
  * Apply daemon-owned settings to the renderer's session projection.
@@ -58,23 +59,39 @@ export function mergeRuntimeSettingsIntoSessions(
 export function mergeRuntimeActivityIntoSessions(
   sessions: readonly SessionMeta[],
   profile: SpaceRuntimeProfileProjectionT | null,
+  previousSessions: readonly SessionMeta[] = [],
 ): readonly SessionMeta[] {
-  if (!profile || profile.sessions.length === 0 || sessions.length === 0) return sessions;
+  if (sessions.length === 0) return sessions;
 
   const runtimeBySessionId = new Map(
-    profile.sessions.map((session) => [session.sessionId, session] as const),
+    profile?.sessions.map((session) => [session.sessionId, session] as const),
+  );
+  const activityBySessionId = new Map(
+    profile?.sessionActivity?.map((activity) => [activity.sessionId, activity.lastActivityAt]),
+  );
+  const previousBySessionId = new Map(
+    previousSessions.map((session) => [session.sessionId, session]),
   );
   let changed = false;
   const merged = sessions.map((session) => {
     if ((session.surface ?? 'code') !== 'code') return session;
     const runtimeSession = runtimeBySessionId.get(session.sessionId);
-    if (!runtimeSession) return session;
-
-    const createdAt = session.createdAt > 0 ? session.createdAt : runtimeSession.createdAt;
+    const previous = previousBySessionId.get(session.sessionId);
+    const previousActivity =
+      previous &&
+      sessionMatchesScope(previous, {
+        projectRoot: session.projectRoot,
+        surface: 'code',
+      })
+        ? previous.lastActivityAt
+        : 0;
+    const createdAt = session.createdAt > 0 ? session.createdAt : (runtimeSession?.createdAt ?? 0);
     const lastActivityAt = Math.max(
       createdAt,
       session.lastActivityAt,
-      runtimeSession.lastActivityAt,
+      runtimeSession?.lastActivityAt ?? 0,
+      activityBySessionId.get(session.sessionId) ?? 0,
+      previousActivity,
     );
     if (createdAt === session.createdAt && lastActivityAt === session.lastActivityAt) {
       return session;

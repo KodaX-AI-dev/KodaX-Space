@@ -214,6 +214,7 @@ Last Updated: 2026-09-28
 | 216 | High | Original fix released in rc.2; compaction telemetry follow-up fixed in source; customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics | Observed v0.1.46-beta.4-fix.1 / rc.1 | 2026-09-21 |
 | 217 | Medium | Resolved in source; native macOS verification pending | Background Git queries repeatedly trigger the macOS developer-tools installer | Observed v0.1.46-rc.3 / SDK v0.7.96-rc.10; first affected version unknown | 2026-09-23 |
 | 218 | High | Fixed in source; packaged verification pending | Queued inputs and whole answers duplicate after reload; recovered live history omits completed tools | Observed v0.1.46-rc.5 | 2026-09-28 |
+| 219 | Medium | Resolved in source; packaged verification pending | Old completed Sessions fall back to creation time in sidebar recency | Runtime activity overlay introduced 2026-08-03 | 2026-09-28 |
 
 ## Issue 218 — Queue/history recovery (fixed in source; packaged verification pending)
 
@@ -246,6 +247,51 @@ claim this symptom resolved by the above fixes.
 Regression guide: [Issue 218](test-guides/ISSUE_218_v0.1.46-rc.6_REGRESSION_GUIDE.md).
 
 ## Issue Details
+
+## Issue 219: Old completed Sessions fall back to creation time in sidebar recency
+
+- Priority: Medium
+- Status: Resolved in source; packaged verification pending
+- Introduced: Runtime activity overlay (`7f98b3b5`, 2026-08-03); out-of-page active-only handling (`c5c9fd91`, 2026-08-05)
+- Created / Resolution Date: 2026-09-28
+- Fixed: v0.1.46-rc.6 source, not yet packaged
+
+### Original Problem
+
+A Session created on July 28 had a September 28 conversation and terminal Run,
+but the sidebar displayed two months and sorted it among old Sessions. Runtime's
+default 50-summary page omitted the Session. Space admitted out-of-page active
+Runs into the live profile, but dropped that compensation once they completed.
+A list refresh could then overwrite a newer renderer timestamp with createdAt.
+
+### Resolution
+
+Space projects bounded activity-only timestamps from the Run records already in
+the Runtime status response. Main and renderer join them to known Coder rows;
+they do not create live Sessions or initiate observations. List replacement and
+upsert retain newer known activity for the same Session/project/surface. SDK
+interfaces, scan bounds, Run limits and summary-cache invalidation are unchanged.
+
+### Files Changed / Tests Added
+
+- `packages/space-ipc-schema/src/channels/runtime.ts`
+- `apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts`
+- `apps/desktop/electron/ipc/session.ts`
+- `apps/desktop/renderer/src/store/{appStore,runtimeSessionSettings}.ts`
+- Colocated activity regressions cover projection, list IPC/cache reuse and renderer refresh.
+- [Requirements, commands and desktop verification](test-guides/ISSUE_219_v0.1.46_REGRESSION_GUIDE.md)
+
+### Verification
+
+158 related regressions and 362 IPC schema tests passed, along with renderer/main
+TypeScript checks, full ESLint and `build:smoke`. Independent Standards and Spec
+reviews found no actionable issues. Packaged desktop verification is pending.
+
+### Limits
+
+Activity absent from both the bounded Runtime window and renderer memory after
+a cold start is not reconstructed. No full-history scan or persistent index is
+added by this fix.
 
 ## Issue 217: Background Git queries repeatedly trigger the macOS developer-tools installer
 
@@ -15526,14 +15572,14 @@ misclassified as missing before the durable mutation is attempted.
 
 ## Summary
 
-- Total: 205
+- Total: 206
 - Open: 1
 - Ready: 1
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 192
+- Resolved (including source-only fixes): 193
 - High: 108
-- Medium: 85
+- Medium: 86
 - Low: 12
 - Next ready to resolve: 213

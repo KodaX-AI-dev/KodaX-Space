@@ -1104,6 +1104,30 @@ export function projectRuntimeSessionSnapshot(
   });
 }
 
+function projectSessionActivity(status: RuntimeStatusSnapshot) {
+  const partnerIds = new Set(
+    status.sessions.filter(isPartnerRuntimeSessionIdentity).map((session) => session.id),
+  );
+  const activity = new Map<string, number>();
+  for (const run of status.runs) {
+    if (partnerIds.has(run.sessionId)) continue;
+    const lastActivityAt = Math.max(
+      timestamp(run.acceptedAt),
+      timestamp(run.startedAt),
+      timestamp(run.runningAt),
+      timestamp(run.endedAt),
+    );
+    if (lastActivityAt > (activity.get(run.sessionId) ?? 0)) {
+      activity.set(run.sessionId, lastActivityAt);
+    }
+  }
+  // Keep the transport bounded even if a future SDK returns a larger Run window.
+  return [...activity]
+    .map(([sessionId, lastActivityAt]) => ({ sessionId, lastActivityAt }))
+    .sort((a, b) => b.lastActivityAt - a.lastActivityAt)
+    .slice(0, 1_000);
+}
+
 export function projectRuntimeProfile(input: {
   readonly status: RuntimeStatusSnapshot;
   readonly verifiedOutOfPageCoderSessionIds?: ReadonlySet<string>;
@@ -1150,6 +1174,7 @@ export function projectRuntimeProfile(input: {
     },
     projectionRevision: input.projectionRevision,
     cursor: { runtimeId: input.status.runtimeId, seq: input.cursor },
+    sessionActivity: projectSessionActivity(input.status),
     sessions: projectedSessions.map(({ sessionId, session }) => {
       const runs = runsForSession(input.status.runs, sessionId);
       const ownRuns = input.status.runs.filter((run) => run.sessionId === sessionId);

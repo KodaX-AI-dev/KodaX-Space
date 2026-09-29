@@ -1531,10 +1531,15 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     // Runtime profile owns the latest known run boundary. Older SDK SessionSummary only
     // exposes createdAt, so use the profile to recover persisted Coder session activity.
     // The renderer repeats this overlay because session.list can race Runtime startup.
+    const runtimeProfile = runtimeProjectionController.profileSnapshot();
     const runtimeSessions = new Map(
-      runtimeProjectionController
-        .profileSnapshot()
-        .sessions.map((session) => [session.sessionId, session] as const),
+      runtimeProfile.sessions.map((session) => [session.sessionId, session] as const),
+    );
+    const runtimeActivity = new Map(
+      runtimeProfile.sessionActivity?.map((activity) => [
+        activity.sessionId,
+        activity.lastActivityAt,
+      ]),
     );
     const withTs = merged
       .filter((m) => {
@@ -1550,19 +1555,30 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         return canonProjectRoot(m.projectRoot) === projectFilter;
       })
       .map((m) => {
+        const runtimeSession = m.surface === 'code' ? runtimeSessions.get(m.sessionId) : undefined;
+        const runtimeActivityAt =
+          m.surface === 'code' ? (runtimeActivity.get(m.sessionId) ?? 0) : 0;
         if (m.kind === 'in-flight') {
+          const lastActivityAt = Math.max(
+            m.lastActivityAt,
+            runtimeSession?.lastActivityAt ?? 0,
+            runtimeActivityAt,
+          );
           return {
             item: m,
             createdAt: m.createdAt,
-            lastActivityAt: m.lastActivityAt,
-            sortKey: m.lastActivityAt,
+            lastActivityAt,
+            sortKey: lastActivityAt,
           };
         }
-        const runtimeSession = m.surface === 'code' ? runtimeSessions.get(m.sessionId) : undefined;
         const parsedCreatedAt = m.createdAt !== undefined ? Date.parse(m.createdAt) : 0;
         const sdkCreatedAt = Number.isFinite(parsedCreatedAt) ? parsedCreatedAt : 0;
         const createdAt = sdkCreatedAt > 0 ? sdkCreatedAt : (runtimeSession?.createdAt ?? 0);
-        const lastActivityAt = Math.max(createdAt, runtimeSession?.lastActivityAt ?? 0);
+        const lastActivityAt = Math.max(
+          createdAt,
+          runtimeSession?.lastActivityAt ?? 0,
+          runtimeActivityAt,
+        );
         return { item: m, createdAt, lastActivityAt, sortKey: lastActivityAt };
       })
       .sort((a, b) => b.sortKey - a.sortKey);
@@ -1587,7 +1603,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
               : {}),
             title: item.title,
             createdAt: item.createdAt,
-            lastActivityAt: item.lastActivityAt,
+            lastActivityAt,
             parentSessionId: item.parentSessionId,
             forkPointTurnIdx: item.forkPointTurnIdx,
             model: item.model,
