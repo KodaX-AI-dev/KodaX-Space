@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade the exact KodaX dependency to `0.7.96-rc.13`: Runtime-managed assistant messages and tool results survive interruption at committed boundaries. Keep bounded partial-output recovery and host-owned persistence unchanged; add published-package regression coverage. See the [integration audit](docs/releases/kodax-0.7.96-rc.13-integration.md).
+
 ### Fixed
 
 - Restore interrupted assistant progress, unfinished thinking and tool receipts from

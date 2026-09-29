@@ -56,3 +56,7 @@ Standards: 0 remaining blocking findings. Spec: 0 remaining blocking findings.
 ## Cleanup
 
 The integrated `codex/interrupted-history` worktree was archived and its branch deleted. The other chat's `codex/queue-history-recovery` worktree remains attached to that chat and was not removed. Six failed-verification temporary copies remain under the Windows temp directory because automatic approval review rejected their batch deletion (`blocked by policy`). Production session files were never rewritten by these checks.
+
+## Published SDK rc.13 follow-up
+
+The pending SDK publication above is now resolved: `0.7.96-rc.13` includes `7c0bfd79` and is pinned by Space. See the [full delta audit and current validation](../releases/kodax-0.7.96-rc.13-integration.md). The rc.12 package/hash above remains a historical result.

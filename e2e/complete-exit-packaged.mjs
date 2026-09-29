@@ -111,6 +111,30 @@ async function launchPackagedApp(previousRuntimeId) {
   if (daemon.version !== expectedKodaxVersion) {
     throw new Error(`unexpected packaged KodaX version: ${daemon.version}`);
   }
+  // Daemon readiness precedes the desktop's connection/projection initialization.
+  // History deliberately reports runtime_unavailable until that public boundary is ready.
+  let initialConnectionState;
+  await waitFor(
+    async () => {
+      const response = await window.evaluate(() =>
+        window.kodaxSpace.invoke('runtime.profileSnapshot'),
+      );
+      if (!response.ok) throw new Error(`Runtime projection failed: ${response.error?.message}`);
+      const connection = response.data.connection;
+      initialConnectionState ??= connection.state;
+      if (connection.state === 'incompatible') {
+        throw new Error(`Runtime incompatible: ${connection.reason}`);
+      }
+      return (
+        connection.state === 'ready' &&
+        !connection.stale &&
+        connection.runtimeId === daemon.runtimeId
+      );
+    },
+    30_000,
+    'Space connection to the current packaged Runtime',
+  );
+  console.info(`[complete-exit-packaged] Space connection ${initialConnectionState} -> ready`);
   return { app, appProcess, window, daemon, owner };
 }
 
