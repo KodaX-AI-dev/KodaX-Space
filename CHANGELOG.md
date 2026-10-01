@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+---
+
+## [0.1.46-rc.6] - 2026-09-28
+
 ### Changed
 
 - Upgrade the exact KodaX dependency to `0.7.96-rc.14`: restore provable legacy histories and pass bounded, unconfirmed interrupted-Run summaries to managed/coding requests without rewriting saved conversation. Accept the new partial-history diagnostic without blocking continued use, and clarify recovery notices. See the [integration audit](docs/releases/kodax-0.7.96-rc.14-integration.md).
@@ -41,13 +45,6 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
   subsequent tool execution against the packaged daemon.
 - Check SDK compatibility and current manual versions against the dependency
   declaration, removing stale rc.11 expectations after the rc.12 upgrade.
-
----
-
-## [0.1.46-rc.6] - 2026-09-28
-
-### Fixed
-
 - Restore Root Agent iteration display from Runtime snapshots and live events; show
   each Agent's actual Runner limit in the sidebar, task panel and activity UI.
   Unbounded runs show only the current iteration. Child iteration exhaustion is
