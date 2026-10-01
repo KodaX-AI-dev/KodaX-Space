@@ -2,11 +2,11 @@
 
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
-> Last reviewed: 2026-09-29
+> Last reviewed: 2026-10-01
 > Space baseline: current source `0.1.46-rc.6`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical)
-> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.96-rc.13` (`sha512-YKHzv9NayMyQE8m9O7S5yUTU4ujKKXU/2EzDO/pwGMLNezW4zpgWSwYvig+8Z+d8kLKqtaPNilmho7DehP2Yrw==`).
+> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.96-rc.14` (`sha512-QN4FCLkhL+InGXGnSqm0j14ghd+vbisMDH9hLoz8ukn8Q6aiV2ZFMQ8u5Hyb6nzr/EgGg6c5vJEt/tdMGXuZQA==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
-> Workspace dependency: root and Desktop manifests and lockfile pin rc.13. Earlier rc.3 Windows packaged/boot/exit evidence remains historical; final beta.3 qualification is recorded in the release readiness document above.
+> Workspace dependency: root and Desktop manifests and lockfile pin rc.14. Earlier rc.3 Windows packaged/boot/exit evidence remains historical; final beta.3 qualification is recorded in the release readiness document above.
 > Package/source evidence: a formal release requires both workspaces to resolve one deduplicated exact Registry package whose root/desktop manifests, lock views, installed package, tarball URL, and integrity agree. Release acceptance also imports every public KodaX facade, verifies ancestor-aware transitive dependencies, loads packaged `better-sqlite3`from unpacked native bytes, and boots the packaged application.
 > Published KodaX review: all earlier compaction/history/Actor/usage/learning/external-agent contracts plus 0.7.78 ownership/integration/sandbox contracts, 0.7.80`managedRunDurability:1`, 0.7.81 canonical delivered-interrupt `entryId`, 0.7.83 active-run/session-recovery and exact-shutdown fixes, 0.7.84 same-owner Actor settlement recovery, 0.7.85 `actorSettlementConvergence:1`plus`sessionEventJournal:1`, 0.7.87 `sandboxRuntime:3`, 0.7.88 `actorSettlementConvergence:2`, 0.7.89 `runBoundHostTools:2`plus`materializedAgentTools`, and 0.7.91 `runtimeExitSettlement:1`plus`liveOutputSegments:1`have been reviewed. F118 is released; broader F117/F138 work remains planned.
 > Published 0.7.94 adds`conversationHistory:2`, typed daemon disconnect facts, credential-safe Run failure classification, fail-closed Run/sandbox finalization hardening, and the explicit-Skill contract in which legacy `user-invocable`no longer gates execution while`disable-model-invocation`gates only model discovery/tool use. Space treats lifecycle support as capability contracts, not SemVer inference.
@@ -46,6 +46,8 @@
 
 This is the Space-side source of truth for SDK-dependent capability planning. A capability is supported only when a public contract exists and Space has verified/consumed it. A KodaX design document or version number alone is not support.
 
+> Published candidate 0.7.96-rc.14 retains all rc.13 capability versions and adds read-only, evidence-based legacy history recovery, cache v9, and bounded interrupted-Run summaries in managed/coding Provider requests. Space accepts `compaction_history_truncated`, keeps partially recoverable history usable, and clarifies journal display versus transient model context. It adds no transcript writer or repair writes. See [full delta audit and verification](releases/kodax-0.7.96-rc.14-integration.md).
+
 > Published candidate 0.7.96-rc.13 retains all rc.12 contracts and persists each completed Runtime-managed assistant/tool-result boundary before dependent execution. Host-owned persistence timing is unchanged. Space retains bounded journal recovery for uncommitted partial output; it adds no writer or version gate. See [full delta audit and verification](releases/kodax-0.7.96-rc.13-integration.md).
 
 > Published candidate 0.7.96-rc.11 retains all rc.10 capability contracts and adds the shared macOS Git install-prompt preflight (Issue 217): the check applies only on Darwin when the selected executable resolves to `/usr/bin/git`, runs `/usr/bin/xcode-select -p` with matching cwd/environment, blocks only on exit code 2, preserves the original Git attempt on uncertain probe failures, caches determinate results for 5 seconds, and recovers on later refresh without restart. Repo-intelligence can recover to Git-backed analysis from unborn repositories. No public capability version moves.
@@ -71,7 +73,7 @@ This is the Space-side source of truth for SDK-dependent capability planning. A 
 
 ## Runtime and session capabilities
 
-### Current source candidate: KodaX 0.7.96-rc.13
+### Current source candidate: KodaX 0.7.96-rc.14
 
 The source tree pins the exact published prerelease in both manifests and the
 npm lockfile. SDK startup requires `sandboxRuntime:11`, `runtimeAutoModeGuardrail:6`,

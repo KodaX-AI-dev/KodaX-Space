@@ -134,6 +134,21 @@ test('session.history keeps readable history when SDK rejects an invalid identit
   assert.equal(result.conversation?.issues[0]?.code, 'identity_repair_invalid');
 });
 
+test('session.history preserves the SDK partial result at an unprovable compaction boundary', () => {
+  const result = sessionHistoryChannel.output.parse({
+    ...historyEnvelope,
+    items: [{ kind: 'user', content: 'verified recent query' }],
+    conversation: {
+      status: 'partial',
+      sourceRevision: 'sha256:truncated-source',
+      issues: [{ code: 'compaction_history_truncated', occurrenceCount: 1, entryCount: 1 }],
+    },
+  });
+  assert.deepEqual(result.items, [{ kind: 'user', content: 'verified recent query' }]);
+  assert.equal(result.conversation?.status, 'partial');
+  assert.equal(result.conversation?.issues[0]?.code, 'compaction_history_truncated');
+});
+
 test('session image previews are bounded capability URLs in send acknowledgements and history', () => {
   const token = 'a'.repeat(32);
   const attachment = {

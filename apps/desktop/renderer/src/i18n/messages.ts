@@ -2990,7 +2990,7 @@ export const messages = {
     'session.historyAmbiguousWarning':
       'Persisted history failed an integrity check. Space kept the SDK candidates without guessing their order or deleting unproven duplicates. Reload after the persistence issue is resolved.',
     'session.historyPartialWarning':
-      'Some persisted lineage is unavailable. All available conversation records were kept.',
+      'Some earlier history could not be verified. The conversation shows the records that could be recovered; you can continue sending messages. The original records are preserved.',
     'session.historyBoundaryUnavailable':
       'This action needs an exact history boundary. Wait for history to finish loading and try again.',
     'session.localNoticePersistenceFailed':
@@ -5687,7 +5687,8 @@ export const messages = {
     'session.turnHistoryTruncatedLabel': '该超长轮次中有 {count} 条内容已省略',
     'session.historyAmbiguousWarning':
       '持久化历史未通过完整性校验。Space 已保留 SDK 返回的候选记录，未猜测顺序或删除无法证明的重复项；请在持久化问题解决后重新加载。',
-    'session.historyPartialWarning': '部分持久化谱系不可用。已保留当前能够恢复的全部对话记录。',
+    'session.historyPartialWarning':
+      '部分较早历史无法确认，当前显示能够恢复的对话记录。可继续发送消息，原始记录仍保留。',
     'session.historyBoundaryUnavailable': '此操作需要精确的历史边界。请等待历史加载完成后重试。',
     'session.localNoticePersistenceFailed':
       '一条本地会话提示未能保存。它当前仍然可见，但重启后可能丢失。',

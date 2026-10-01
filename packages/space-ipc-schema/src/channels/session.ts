@@ -734,6 +734,7 @@ const sessionHistoryItemSchema = z.discriminatedUnion('kind', [
 const conversationHistoryIssueCodeSchema = z.enum([
   'active_entry_missing',
   'compaction_boundary_invalid',
+  'compaction_history_truncated',
   'compaction_predecessor_ambiguous',
   'compaction_predecessor_missing',
   'legacy_overlap_ambiguous',

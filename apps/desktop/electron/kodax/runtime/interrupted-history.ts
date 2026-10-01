@@ -297,7 +297,7 @@ export async function recoverInterruptedHistory(
           {
             kind: 'workflow_notice',
             turnId,
-            text: '本轮已中断；以下内容从运行日志恢复，未写入模型上下文。',
+            text: '本轮已中断；以下内容从运行日志恢复，完整日志未写入正式对话。继续任务时会按需补充恢复摘要。',
           },
           ...boundRecoveredRows(tail),
         ]);
