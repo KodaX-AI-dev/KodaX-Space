@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- Pin the published stable KodaX `0.7.96` in both workspaces, refresh the lockfile and current manual baselines, and rebuild the Windows directory app. Runtime behavior and public contracts retain the rc.14 implementation. See the [integration verification](docs/releases/kodax-0.7.96-integration.md).
+
 ---
 
 ## [0.1.46-rc.6] - 2026-09-28
