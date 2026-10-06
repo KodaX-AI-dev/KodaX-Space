@@ -3,7 +3,7 @@
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
 > Last reviewed: 2026-10-02
-> Space baseline: current source `0.1.46-rc.6`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical)
+> Space baseline: current source `0.1.46`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical; v0.1.46 with stable KodaX 0.7.96 is released alongside this ledger state)
 > Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.96` (`sha512-7H/o0LhmlbeQsUnxGutSqMIb2Ms7UUS+kqNiPYChYT9G8Oni8RxB8ZxsDwiIlQ3ORPg4NwrDXQmKACab/uBVSA==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
 > Workspace dependency: root and Desktop manifests and lockfile pin stable 0.7.96. Earlier rc.3 Windows packaged/boot/exit evidence remains historical; final beta.3 qualification is recorded in the release readiness document above.
@@ -89,7 +89,7 @@ daemon admission requirements and connected Runtime checks additionally require
 `commandLifetimeFilesystemLease:false`. The release dependency gate requires the
 complete universal native bundle. Electron packaging unpacks the whole
 `dist/native` directory, and packaged smoke validates each manifest-pinned file
-before running the real sandbox path. Space uses package version 0.1.46-rc.6
+before running the real sandbox path. Space uses package version 0.1.46
 for this source candidate. Alpha.6/alpha.7 move Windows readiness to protected-cache
 generation 10, keep broad ACL repair inside explicit Setup, extend exact-authority
 proxy capacity, isolate each command's temporary leaf, and require real no-side-effect
