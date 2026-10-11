@@ -7,14 +7,18 @@ import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
 
-test('packaged dependency smoke requires conversationHistory v2 and sandboxRuntime v11', async () => {
+test('packaged dependency smoke requires the 0.7.97 unified contract set', async () => {
   const source = await readFile(
     new URL('../../../../scripts/smoke-pack.mjs', import.meta.url),
     'utf8',
   );
 
+  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.daemonOrphanExit\s*!==\s*1/);
+  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.actorSettlementConvergence\s*!==\s*2/);
+  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.daemonShutdownVerification\s*!==\s*1/);
+  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.productClient\s*!==\s*1/);
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.conversationHistory\s*!==\s*2/);
-  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.runtimeExitSettlement\s*!==\s*2/);
+  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.crashOutcomeModel\s*!==\s*2/);
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.sandboxRuntime\s*!==\s*11/);
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.runtimeAutoModeGuardrail\s*!==\s*6/);
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.sharedSessionSettings\s*!==\s*2/);

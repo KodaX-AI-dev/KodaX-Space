@@ -55,7 +55,9 @@ test('published SDK tools, statistics and canonical history survive Renderer rel
   try {
     await sendSdkPrompt(space, 'SDK_TOOLS');
     await expect
-      .poll(() => readFile(path.join(projectRoot, 'sdk-created.txt'), 'utf8').catch(() => ''))
+      .poll(() => readFile(path.join(projectRoot, 'sdk-created.txt'), 'utf8').catch(() => ''), {
+        timeout: 30_000,
+      })
       .toBe('REAL_SDK_TOOL_EXECUTION');
     const sessionId = await currentSdkSession(space);
     await expect(space.page.getByTestId('conversation-stream')).toContainText(

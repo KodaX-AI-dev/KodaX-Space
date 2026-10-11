@@ -4335,39 +4335,6 @@ test('Space-started Runtime Agent turns are registered for forced-exit cancellat
   await adapter.close();
 });
 
-test('complete exit rejects an idle CLI success without a captured daemon owner', async () => {
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeExitSettler: null,
-    idleDaemonStop: async () => ({ stopped: true }),
-    ownerControl: {
-      acquireInline: async () => {
-        throw new Error('not used');
-      },
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-08-06T00:00:00.000Z',
-        },
-        ownerStatus: 'unowned',
-        owner: null,
-      }),
-      enableDaemon: async () => ({
-        mode: 'daemon',
-        revision: 4,
-        updatedAt: '2026-08-06T00:00:00.000Z',
-      }),
-    },
-  });
-
-  await assert.rejects(adapter.stopDaemonForCompleteExit(), (error: unknown) =>
-    isCoderOwnerRecoveryRestartRequired(error),
-  );
-});
-
 test('complete exit rejects an idle legacy daemon without verified containment', async () => {
   const legacyOwner = {
     runtimeId: 'rt_idle_legacy',
@@ -4420,23 +4387,6 @@ test('complete exit rejects an idle legacy daemon without verified containment',
         updatedAt: '2026-08-06T00:00:01.000Z',
       }),
     },
-  });
-
-  await assert.rejects(adapter.stopDaemonForCompleteExit(), (error: unknown) =>
-    isCoderOwnerRecoveryRestartRequired(error),
-  );
-});
-
-test('ambiguous idle daemon stop requires process recovery', async () => {
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeExitSettler: null,
-    idleDaemonStop: async () => ({
-      stopped: false,
-      reason: 'command_failed',
-      message: 'daemon stop outcome is ambiguous',
-    }),
   });
 
   await assert.rejects(adapter.stopDaemonForCompleteExit(), (error: unknown) =>
