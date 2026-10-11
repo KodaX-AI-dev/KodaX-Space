@@ -104,5 +104,8 @@ pnpm-lock.yaml
 # Local diagnostics and scratch runs (never shipped)
 /scratch/
 
+# Local E2E/probe result dumps from migration and acceptance runs
+.tmp-*
+
 # Local packaged-app build outputs
 /artifacts/

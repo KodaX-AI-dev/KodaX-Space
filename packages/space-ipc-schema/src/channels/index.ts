@@ -331,6 +331,8 @@ const sessionInvokeChannels = {
   [sandboxSetupChannel.name]: sandboxSetupChannel,
   [runtimeProfileSnapshotChannel.name]: runtimeProfileSnapshotChannel,
   [sessionLiveSnapshotChannel.name]: sessionLiveSnapshotChannel,
+  [sessionStatisticsChannel.name]: sessionStatisticsChannel,
+  [sessionExecutionFactsChannel.name]: sessionExecutionFactsChannel,
   [diagnosticsReportChannel.name]: diagnosticsReportChannel,
   [diagnosticsExportChannel.name]: diagnosticsExportChannel,
   [spaceControlResolveChannel.name]: spaceControlResolveChannel,
@@ -564,6 +566,7 @@ export const pushChannels = {
   [runtimeConnectionChangedChannel.name]: runtimeConnectionChangedChannel,
   [runtimeProfileChangedChannel.name]: runtimeProfileChangedChannel,
   [sessionLiveChangedChannel.name]: sessionLiveChangedChannel,
+  [sessionStatisticsChangedChannel.name]: sessionStatisticsChangedChannel,
   [sessionLiveInvalidatedChannel.name]: sessionLiveInvalidatedChannel,
   [agentActorChangedChannel.name]: agentActorChangedChannel,
   [spaceControlRequestedChannel.name]: spaceControlRequestedChannel,
@@ -592,3 +595,8 @@ export const pushChannels = {
 
 export type InvokeChannels = typeof invokeChannels;
 export type PushChannels = typeof pushChannels;
+import {
+  sessionStatisticsChannel,
+  sessionStatisticsChangedChannel,
+  sessionExecutionFactsChannel,
+} from './statistics.js';

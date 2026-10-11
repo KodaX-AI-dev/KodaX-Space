@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import type {
   RuntimeIntegrationHealth,
   RuntimePermissionRequest,
@@ -243,7 +244,6 @@ export function projectRuntimeRun(
     runId: run.runId,
     sessionId: run.sessionId,
     ...(run.turnId !== undefined ? { turnId: run.turnId } : {}),
-    ...(origin?.operationId !== undefined ? { originOperationId: origin.operationId } : {}),
     phase: runtimePhase(run.phase),
     ...(run.stage !== undefined ? { stage: run.stage } : {}),
     ...(run.stageChangedAt !== undefined ? { stageChangedAt: timestamp(run.stageChangedAt) } : {}),
@@ -896,7 +896,6 @@ function queuedInputsProjection(
       runId: run.runId,
       position: index + 1,
       contentPreview: run.continuation!.contentPreview.slice(0, 4_096),
-      ...(run.origin?.operationId ? { originOperationId: run.origin.operationId } : {}),
       ...(run.origin
         ? {
             initiatedBy: {
@@ -946,9 +945,6 @@ function queuedInputsProjection(
                 ...(run.turnId ? { turnId: run.turnId } : {}),
                 // Per-input operation identity is authoritative for interrupts. Falling back to the
                 // root Run origin would alias every interrupt submitted to that Run.
-                ...(input.origin?.operationId
-                  ? { originOperationId: input.origin.operationId }
-                  : {}),
                 ...(origin
                   ? {
                       initiatedBy: {
@@ -1076,9 +1072,8 @@ export function projectRuntimeSessionSnapshot(
     projectionRevision: 1,
     cursor: {
       runtimeId: snapshot.runtimeId,
-      sessionId: snapshot.cursor.sessionId,
-      journalEpoch: snapshot.cursor.journalEpoch,
-      seq: snapshot.cursor.seq,
+      sessionId: snapshot.session.id,
+      seq: snapshot.seq,
     },
     transcriptRevision: snapshot.transcriptRevision,
     ...runs,
@@ -1222,6 +1217,7 @@ function runStatusFromEvent(event: RuntimeTypedEvent): RuntimeRunStatus | undefi
 }
 
 export class CoderSessionProjectionReducer {
+  #productQueue: SpaceSessionLiveProjectionT['queuedInputs'] | undefined;
   #projection: SpaceSessionLiveProjectionT;
   #draftTurnId: string | undefined;
   #outputSegment: KodaXOutputSegmentProjection | undefined;
@@ -1240,6 +1236,31 @@ export class CoderSessionProjectionReducer {
 
   snapshot(): SpaceSessionLiveProjectionT {
     return structuredClone(this.#projection);
+  }
+
+  replaceProductQueue(
+    queue: readonly {
+      readonly inputId: string;
+      readonly text: string;
+      readonly enqueuedAt: number;
+    }[],
+  ): SpaceSessionLiveChangedT | undefined {
+    const next = queue.map((item, index) => ({
+      inputId: item.inputId,
+      originOperationId: item.inputId,
+      sessionId: this.#projection.sessionId,
+      delivery: 'after-turn' as const,
+      state: 'queued' as const,
+      createdAt: item.enqueuedAt,
+      contentPreview: item.text.slice(0, 4096),
+      position: index + 1,
+    }));
+    if (isDeepStrictEqual(next, this.#productQueue)) return undefined;
+    this.#productQueue = next;
+    return this.#commit(this.#projection.cursor.seq, {
+      domain: 'queue',
+      queuedInputs: this.#productQueue,
+    });
   }
 
   replaceInteractions(
@@ -1544,6 +1565,18 @@ export class CoderSessionProjectionReducer {
   }
 
   #commit(seq: number, change: SpaceSessionLiveChangedT['change']): SpaceSessionLiveChangedT {
+    if (
+      this.#productQueue !== undefined &&
+      (change.domain === 'run' || change.domain === 'queue')
+    ) {
+      change = {
+        ...change,
+        queuedInputs: [
+          ...this.#productQueue,
+          ...(change.queuedInputs ?? []).filter((item) => item.delivery === 'interrupt'),
+        ],
+      };
+    }
     const baseProjectionRevision = this.#projection.projectionRevision;
     const projectionRevision = baseProjectionRevision + 1;
     const cursor = { ...this.#projection.cursor, seq };

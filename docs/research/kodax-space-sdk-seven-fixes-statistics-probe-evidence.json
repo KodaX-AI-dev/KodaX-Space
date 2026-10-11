@@ -1,0 +1,852 @@
+{
+  "sourceSnapshot": "a18e95d44864efb4db98f9d50bb30d6f6a6e32a37dd97dbbca9980c7dde122b8",
+  "rawChild": {
+    "reporterPresent": true,
+    "starts": [
+      {
+        "toolId": "source-call",
+        "executionId": "execution_8b9d4a07-908c-4a62-bda6-0be95a51930c",
+        "sessionId": "fixture-session",
+        "seq": 2,
+        "turnId": "child-turn",
+        "deliveryId": "delivery_ba34227cabc84cc3",
+        "contextId": "fixture-session/child/a",
+        "contextKind": "child",
+        "agentId": "/root/a",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T15:58:36.831Z",
+        "childAgentId": "/root/a",
+        "childAgentName": "/root/a",
+        "liveOnly": true
+      }
+    ],
+    "executionStarts": [
+      {
+        "toolId": "source-call",
+        "executionId": "execution_8b9d4a07-908c-4a62-bda6-0be95a51930c",
+        "sessionId": "fixture-session",
+        "seq": 4,
+        "turnId": "child-turn",
+        "deliveryId": "delivery_ba34227cabc84cc3",
+        "contextId": "fixture-session/child/a",
+        "contextKind": "child",
+        "agentId": "/root/a",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T15:58:36.831Z",
+        "childAgentId": "/root/a",
+        "childAgentName": "/root/a",
+        "liveOnly": true
+      }
+    ],
+    "results": [
+      {
+        "sessionId": "fixture-session",
+        "seq": 11,
+        "turnId": "child-turn",
+        "deliveryId": "delivery_ba34227cabc84cc3",
+        "contextId": "fixture-session/child/a",
+        "contextKind": "child",
+        "agentId": "/root/a",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T15:58:36.831Z",
+        "toolId": "source-call",
+        "childAgentId": "/root/a",
+        "childAgentName": "/root/a",
+        "liveOnly": true
+      }
+    ],
+    "sandbox": [
+      {
+        "update": {
+          "id": "source-call",
+          "observation": {
+            "version": 1,
+            "state": "not_selected"
+          }
+        },
+        "meta": {
+          "toolId": "source-call",
+          "executionId": "execution_8b9d4a07-908c-4a62-bda6-0be95a51930c",
+          "sessionId": "fixture-session",
+          "seq": 6,
+          "turnId": "child-turn",
+          "deliveryId": "delivery_ba34227cabc84cc3",
+          "contextId": "fixture-session/child/a",
+          "contextKind": "child",
+          "agentId": "/root/a",
+          "contextRevision": 0,
+          "timestamp": "2026-10-09T15:58:36.831Z",
+          "childAgentId": "/root/a",
+          "childAgentName": "/root/a",
+          "liveOnly": true
+        }
+      },
+      {
+        "update": {
+          "id": "source-call",
+          "observation": {
+            "version": 1,
+            "state": "fallback",
+            "reason": "not_ready",
+            "execution": "normal_permission_policy"
+          }
+        },
+        "meta": {
+          "toolId": "source-call",
+          "executionId": "execution_8b9d4a07-908c-4a62-bda6-0be95a51930c",
+          "sessionId": "fixture-session",
+          "seq": 8,
+          "turnId": "child-turn",
+          "deliveryId": "delivery_ba34227cabc84cc3",
+          "contextId": "fixture-session/child/a",
+          "contextKind": "child",
+          "agentId": "/root/a",
+          "contextRevision": 0,
+          "timestamp": "2026-10-09T15:58:36.831Z",
+          "childAgentId": "/root/a",
+          "childAgentName": "/root/a",
+          "liveOnly": true
+        }
+      }
+    ],
+    "context": {
+      "contextId": "fixture-session/child/a",
+      "contextKind": "child",
+      "contextRevision": 0,
+      "pressure": "low",
+      "sessionId": "fixture-session",
+      "seq": 13,
+      "turnId": "child-turn",
+      "deliveryId": "delivery_ba34227cabc84cc3",
+      "timestamp": "2026-10-09T15:58:36.831Z"
+    }
+  },
+  "adapterCoverage": {
+    "customStarted": {
+      "sessionId": "custom-fixture",
+      "revision": 2,
+      "coverage": "partial",
+      "issues": ["An executing adapter has not exposed a physical request boundary."],
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "thoughtTokens": 0
+      },
+      "requestCount": 1,
+      "requestsWithoutUsage": 1,
+      "physicalRequestCount": 0,
+      "operationCount": 1,
+      "contexts": []
+    },
+    "customCompleted": {
+      "sessionId": "custom-fixture",
+      "revision": 3,
+      "coverage": "partial",
+      "issues": ["Some adapters report operation boundaries rather than physical wire attempts."],
+      "usage": {
+        "inputTokens": 2,
+        "outputTokens": 1,
+        "totalTokens": 3,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "thoughtTokens": 0
+      },
+      "requestCount": 1,
+      "requestsWithoutUsage": 0,
+      "physicalRequestCount": 0,
+      "operationCount": 1,
+      "contexts": []
+    },
+    "nativePending": {
+      "statistics": {
+        "sessionId": "seven-fixes-native-openai",
+        "revision": 3,
+        "coverage": "complete",
+        "issues": [],
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0,
+          "thoughtTokens": 0
+        },
+        "requestCount": 1,
+        "requestsWithoutUsage": 1,
+        "physicalRequestCount": 0,
+        "operationCount": 1,
+        "contexts": []
+      },
+      "requests": [
+        {
+          "requestId": "request_20165dc3-7223-4e1d-b7e0-928176dbb91a",
+          "logicalRequestId": "logical_66632ebe-ec8b-4bb2-a06a-c0b67e3af1c2",
+          "provider": "seven-fixes-native-openai",
+          "purpose": "fallback",
+          "attempt": 1,
+          "boundary": "provider_operation",
+          "wireObservation": "pending",
+          "dispatch": "unknown",
+          "state": "started",
+          "startedAt": "2026-10-09T15:58:36.850Z",
+          "model": "fixture",
+          "target": {
+            "kind": "run",
+            "runId": "fixture-root"
+          },
+          "sessionId": "seven-fixes-native-openai",
+          "runtimeId": "fixture-runtime",
+          "revision": 3,
+          "fallback": true
+        }
+      ]
+    }
+  },
+  "sdkRetries": [
+    {
+      "provider": "seven-fixes-native-openai",
+      "fetchCount": 2,
+      "requests": [
+        {
+          "requestId": "request_20165dc3-7223-4e1d-b7e0-928176dbb91a",
+          "logicalRequestId": "logical_66632ebe-ec8b-4bb2-a06a-c0b67e3af1c2",
+          "provider": "seven-fixes-native-openai",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "failed",
+          "startedAt": "2026-10-09T15:58:36.919Z",
+          "endedAt": "2026-10-09T15:58:36.920Z",
+          "target": {
+            "kind": "run",
+            "runId": "fixture-root"
+          },
+          "sessionId": "seven-fixes-native-openai",
+          "runtimeId": "fixture-runtime",
+          "revision": 5,
+          "fallback": true
+        },
+        {
+          "requestId": "physical_1224df4a-fc48-407a-a165-dc0b1bab549e",
+          "logicalRequestId": "logical_66632ebe-ec8b-4bb2-a06a-c0b67e3af1c2",
+          "provider": "seven-fixes-native-openai",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 2,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:36.932Z",
+          "endedAt": "2026-10-09T15:58:36.934Z",
+          "usage": {
+            "inputTokens": 9,
+            "outputTokens": 3,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "fixture-root"
+          },
+          "sessionId": "seven-fixes-native-openai",
+          "runtimeId": "fixture-runtime",
+          "revision": 7,
+          "fallback": true,
+          "previousRequestId": "request_20165dc3-7223-4e1d-b7e0-928176dbb91a"
+        }
+      ],
+      "statistics": {
+        "sessionId": "seven-fixes-native-openai",
+        "revision": 7,
+        "coverage": "complete",
+        "issues": [],
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 3,
+          "totalTokens": 12,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0,
+          "thoughtTokens": 0
+        },
+        "requestCount": 2,
+        "requestsWithoutUsage": 1,
+        "physicalRequestCount": 2,
+        "operationCount": 0,
+        "contexts": []
+      }
+    },
+    {
+      "provider": "seven-fixes-native-anthropic",
+      "fetchCount": 2,
+      "requests": [
+        {
+          "requestId": "request_dd57e7c0-7daa-4c31-9a7c-d4e2f9d926de",
+          "logicalRequestId": "logical_dc0a4bc4-1619-4637-b218-ae3eca493a0b",
+          "provider": "seven-fixes-native-anthropic",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "failed",
+          "startedAt": "2026-10-09T15:58:37.002Z",
+          "endedAt": "2026-10-09T15:58:37.004Z",
+          "target": {
+            "kind": "run",
+            "runId": "fixture-root"
+          },
+          "sessionId": "seven-fixes-native-anthropic",
+          "runtimeId": "fixture-runtime",
+          "revision": 5,
+          "fallback": true
+        },
+        {
+          "requestId": "physical_f41fdb8f-f9a2-4593-b074-85c5c7fc6442",
+          "logicalRequestId": "logical_dc0a4bc4-1619-4637-b218-ae3eca493a0b",
+          "provider": "seven-fixes-native-anthropic",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 2,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:37.011Z",
+          "endedAt": "2026-10-09T15:58:37.014Z",
+          "usage": {
+            "inputTokens": 9,
+            "outputTokens": 3,
+            "totalTokens": 12,
+            "cachedReadTokens": 2
+          },
+          "target": {
+            "kind": "run",
+            "runId": "fixture-root"
+          },
+          "sessionId": "seven-fixes-native-anthropic",
+          "runtimeId": "fixture-runtime",
+          "revision": 7,
+          "fallback": true,
+          "previousRequestId": "request_dd57e7c0-7daa-4c31-9a7c-d4e2f9d926de"
+        }
+      ],
+      "statistics": {
+        "sessionId": "seven-fixes-native-anthropic",
+        "revision": 7,
+        "coverage": "complete",
+        "issues": [],
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 3,
+          "totalTokens": 12,
+          "cacheReadTokens": 2,
+          "cacheWriteTokens": 0,
+          "thoughtTokens": 0
+        },
+        "requestCount": 2,
+        "requestsWithoutUsage": 1,
+        "physicalRequestCount": 2,
+        "operationCount": 0,
+        "contexts": []
+      }
+    }
+  ],
+  "publicClient": {
+    "ordinaryAmbientChild": {
+      "rootRunId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58",
+      "actorTarget": {
+        "kind": "actor_turn",
+        "actorPath": "/root/audit-child",
+        "turnId": "turn_root_audit_child_1",
+        "parentRunId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+      },
+      "executions": ["child"],
+      "statistics": {
+        "sessionId": "20261009_235837_c82634a813d7fd",
+        "revision": 40,
+        "coverage": "complete",
+        "issues": [],
+        "usage": {
+          "inputTokens": 60,
+          "outputTokens": 12,
+          "totalTokens": 72,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0,
+          "thoughtTokens": 0
+        },
+        "requestCount": 6,
+        "requestsWithoutUsage": 0,
+        "physicalRequestCount": 6,
+        "operationCount": 0,
+        "contexts": [
+          {
+            "sessionId": "20261009_235837_c82634a813d7fd",
+            "turnId": "turn_50d1b8545add4771",
+            "contextId": "20261009_235837_c82634a813d7fd",
+            "contextKind": "root",
+            "provider": "seven-fixes-rpc-native",
+            "model": "fixture",
+            "profile": "report_only",
+            "contextWindow": 200000,
+            "smallWindow": false,
+            "pressure": "low",
+            "tokenBreakdown": {
+              "systemPrompt": 7661,
+              "toolSchemas": 19091,
+              "skillCatalog": 1437,
+              "mcpCatalog": 0,
+              "transcript": 864,
+              "pendingInput": 312,
+              "recentToolResults": 37,
+              "reservedResponse": 16,
+              "total": 29418
+            },
+            "usedTokens": 29418,
+            "availableTokens": 170582,
+            "usedRatio": 0.14709,
+            "toolSchemaRatio": 0.095455,
+            "recommendations": [],
+            "createdAt": "2026-10-09T15:58:39.716Z",
+            "compactionBudget": {
+              "triggerPercent": 75,
+              "absoluteTriggerTokens": 262144,
+              "triggerTokens": 150000,
+              "physicalCapacityTokens": 194159,
+              "reservedResponseTokens": 16,
+              "reservedMemoryTokens": 0
+            },
+            "seq": 43,
+            "deliveryId": "delivery_706d6c8ac0ff41f6",
+            "contextRevision": 0,
+            "timestamp": "2026-10-09T15:58:39.716Z",
+            "runtimeId": "rt_a6ed921e4637",
+            "target": {
+              "kind": "run",
+              "runId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+            },
+            "revision": 32
+          },
+          {
+            "compactionBudget": {
+              "triggerPercent": 75,
+              "absoluteTriggerTokens": 262144,
+              "triggerTokens": 150000,
+              "physicalCapacityTokens": 194159,
+              "reservedResponseTokens": 16,
+              "reservedMemoryTokens": 0
+            },
+            "sessionId": "20261009_235837_c82634a813d7fd",
+            "turnId": "turn_root_audit_child_1",
+            "contextId": "20261009_235837_c82634a813d7fd/agent/%2Froot%2Faudit-child",
+            "contextKind": "child",
+            "parentContextId": "20261009_235837_c82634a813d7fd",
+            "agentId": "/root/audit-child",
+            "provider": "seven-fixes-rpc-native",
+            "model": "fixture",
+            "profile": "report_only",
+            "contextWindow": 200000,
+            "smallWindow": false,
+            "pressure": "low",
+            "tokenBreakdown": {
+              "systemPrompt": 663,
+              "toolSchemas": 15395,
+              "skillCatalog": 0,
+              "mcpCatalog": 0,
+              "transcript": 857,
+              "pendingInput": 0,
+              "recentToolResults": 0,
+              "reservedResponse": 16,
+              "total": 16931
+            },
+            "usedTokens": 16931,
+            "availableTokens": 183069,
+            "usedRatio": 0.084655,
+            "toolSchemaRatio": 0.076975,
+            "recommendations": [],
+            "createdAt": "2026-10-09T15:58:39.560Z",
+            "seq": 36,
+            "deliveryId": "delivery_41d65d1f708049bd",
+            "contextRevision": 0,
+            "timestamp": "2026-10-09T15:58:39.560Z",
+            "runtimeId": "rt_a6ed921e4637",
+            "target": {
+              "kind": "actor_turn",
+              "actorPath": "/root/audit-child",
+              "turnId": "turn_root_audit_child_1",
+              "parentRunId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+            },
+            "revision": 27
+          }
+        ]
+      },
+      "requests": [
+        {
+          "requestId": "request_8f14842d-f95f-4a0f-801e-949d3e1a4c73",
+          "logicalRequestId": "logical_c65a2c1b-d91f-456a-9411-26a3bb25f733",
+          "provider": "seven-fixes-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:38.471Z",
+          "endedAt": "2026-10-09T15:58:38.475Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "runtimeId": "rt_a6ed921e4637",
+          "revision": 6,
+          "fallback": false
+        },
+        {
+          "requestId": "request_cef6bbe2-1f58-42fb-b24d-1d3baa389907",
+          "logicalRequestId": "logical_80a41888-be8e-45bf-884f-2d20e70256de",
+          "provider": "seven-fixes-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:38.896Z",
+          "endedAt": "2026-10-09T15:58:38.900Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "runtimeId": "rt_a6ed921e4637",
+          "revision": 15,
+          "fallback": false,
+          "previousRequestId": "request_8f14842d-f95f-4a0f-801e-949d3e1a4c73"
+        },
+        {
+          "requestId": "request_1ce740f7-596e-472b-bf45-456523cb4400",
+          "logicalRequestId": "req_1791561519287_6",
+          "provider": "seven-fixes-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attribution": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1"
+          },
+          "route": {
+            "chainId": "route_913a7934-7be6-4587-9d04-fe39c640c266",
+            "attempt": 1
+          },
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:39.304Z",
+          "endedAt": "2026-10-09T15:58:39.307Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1",
+            "parentRunId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "runtimeId": "rt_a6ed921e4637",
+          "revision": 20,
+          "fallback": false
+        },
+        {
+          "requestId": "request_626128a4-1c86-4809-af7e-5a638137f616",
+          "logicalRequestId": "req_1791561519559_8",
+          "provider": "seven-fixes-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attribution": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1"
+          },
+          "route": {
+            "chainId": "route_913a7934-7be6-4587-9d04-fe39c640c266",
+            "attempt": 1
+          },
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:39.579Z",
+          "endedAt": "2026-10-09T15:58:39.584Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1",
+            "parentRunId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "runtimeId": "rt_a6ed921e4637",
+          "revision": 31,
+          "fallback": false,
+          "previousRequestId": "request_1ce740f7-596e-472b-bf45-456523cb4400"
+        },
+        {
+          "requestId": "request_2d0e9203-e917-46ed-bb17-d004ad31d5d2",
+          "logicalRequestId": "logical_5dc0f393-76a3-47f6-9e82-111c47d96aab",
+          "provider": "seven-fixes-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:39.737Z",
+          "endedAt": "2026-10-09T15:58:39.739Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "runtimeId": "rt_a6ed921e4637",
+          "revision": 36,
+          "fallback": false,
+          "previousRequestId": "request_cef6bbe2-1f58-42fb-b24d-1d3baa389907"
+        },
+        {
+          "requestId": "request_98160c4a-df85-4913-aeac-50934cb128b0",
+          "logicalRequestId": "logical_e8341305-781b-44b0-95bd-f07a0e392365",
+          "provider": "seven-fixes-rpc-native",
+          "model": "fixture",
+          "purpose": "sidecar",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T15:58:39.843Z",
+          "endedAt": "2026-10-09T15:58:39.845Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "runtimeId": "rt_a6ed921e4637",
+          "revision": 40,
+          "fallback": false,
+          "previousRequestId": "request_2d0e9203-e917-46ed-bb17-d004ad31d5d2"
+        }
+      ],
+      "tools": [
+        {
+          "id": "execution_5e2b8712-e4fa-4787-ae10-4e05d1e59d31",
+          "revision": 10,
+          "toolId": "spawn",
+          "name": "spawn_agent",
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "target": {
+            "kind": "run",
+            "runId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "runtimeId": "rt_a6ed921e4637",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-09T15:58:38.647Z",
+          "sandbox": []
+        },
+        {
+          "id": "execution_cb8557fd-36f0-4ca9-8b2e-d7c853fcfb8c",
+          "revision": 26,
+          "toolId": "reused-provider-id",
+          "name": "seven_fixes_statistics_fixture",
+          "sessionId": "20261009_235837_c82634a813d7fd",
+          "target": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1",
+            "parentRunId": "run_9addadf3aeb7d5c7cef67369e3b7663193b58c5243503c67d9a46feb6a62db58"
+          },
+          "runtimeId": "rt_a6ed921e4637",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-09T15:58:39.370Z",
+          "sandbox": [
+            {
+              "version": 1,
+              "state": "not_selected"
+            },
+            {
+              "version": 1,
+              "state": "fallback",
+              "reason": "not_ready",
+              "execution": "normal_permission_policy"
+            }
+          ]
+        }
+      ]
+    },
+    "duplicates": {
+      "executions": ["one", "two"],
+      "facts": [
+        {
+          "id": "execution_204a698b-1dd4-4b3a-9015-a3e7b1c44392",
+          "revision": 15,
+          "toolId": "reused-provider-id",
+          "name": "seven_fixes_statistics_fixture",
+          "sessionId": "20261009_235840_4nce3af40cc08c",
+          "target": {
+            "kind": "run",
+            "runId": "run_76cbf0d85ebef04e2c58eb1ea4ac3e112cc9ae88cf9f85b409c70d0add003db7"
+          },
+          "runtimeId": "rt_a6ed921e4637",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-09T15:58:41.097Z",
+          "sandbox": [
+            {
+              "version": 1,
+              "state": "not_selected"
+            }
+          ]
+        },
+        {
+          "id": "execution_2c30df26-5eb5-490f-8a56-9652a8f4645f",
+          "revision": 16,
+          "toolId": "reused-provider-id",
+          "name": "seven_fixes_statistics_fixture",
+          "sessionId": "20261009_235840_4nce3af40cc08c",
+          "target": {
+            "kind": "run",
+            "runId": "run_76cbf0d85ebef04e2c58eb1ea4ac3e112cc9ae88cf9f85b409c70d0add003db7"
+          },
+          "runtimeId": "rt_a6ed921e4637",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-09T15:58:41.104Z",
+          "sandbox": [
+            {
+              "version": 1,
+              "state": "fallback",
+              "reason": "not_ready",
+              "execution": "normal_permission_policy"
+            }
+          ]
+        }
+      ],
+      "canonicalResults": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "reused-provider-id",
+          "content": "result-one",
+          "metadata": {
+            "truncated": true,
+            "capacityFallback": true,
+            "outputPath": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-seven-fixes-statistics-AaV38u\\one-output.txt"
+          },
+          "is_error": false
+        },
+        {
+          "type": "tool_result",
+          "tool_use_id": "reused-provider-id",
+          "content": "result-two",
+          "metadata": {
+            "truncated": true,
+            "capacityFallback": true,
+            "outputPath": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-seven-fixes-statistics-AaV38u\\two-output.txt"
+          },
+          "is_error": false
+        }
+      ],
+      "history": {
+        "items": [
+          {
+            "id": "20261009_235840_4nce3af40cc08c:history:sha256:630d15876de5b284e9d4f25662b7d61e9a62b172722c15630cf8fa12aafb076d:0#0",
+            "type": "user",
+            "text": "DUPLICATE_FACT_PROBE",
+            "inputId": "duplicate-batch",
+            "timestamp": 1791561520284,
+            "historyBoundary": {
+              "entryId": "entry_149b816258f0",
+              "sourceRevision": "sha256:0506d451009f9604596e44ae7791aaed89188f5f4cff90af3089bb984be14946"
+            }
+          },
+          {
+            "id": "20261009_235840_4nce3af40cc08c:history:sha256:630d15876de5b284e9d4f25662b7d61e9a62b172722c15630cf8fa12aafb076d:1#0",
+            "type": "tool",
+            "text": "result-one",
+            "tool": {
+              "assistantOutputId": "output_2f610747-92dc-4288-a56a-6329cf86ab19",
+              "callId": "reused-provider-id",
+              "name": "seven_fixes_statistics_fixture",
+              "status": "success",
+              "inputText": "{\"label\":\"two\"}",
+              "startedAt": 1791561521016
+            },
+            "historyBoundary": {
+              "entryId": "entry_67e51db74db0",
+              "sourceRevision": "sha256:0506d451009f9604596e44ae7791aaed89188f5f4cff90af3089bb984be14946"
+            }
+          },
+          {
+            "id": "20261009_235840_4nce3af40cc08c:history:sha256:630d15876de5b284e9d4f25662b7d61e9a62b172722c15630cf8fa12aafb076d:3#0",
+            "type": "assistant",
+            "text": "Offline native fixture completed.",
+            "outputId": "output_3db28bd3-0191-4a92-aecb-8441efb7e410",
+            "outputState": "committed",
+            "textRevision": 0,
+            "timestamp": 1791561521223,
+            "historyBoundary": {
+              "entryId": "entry_7bd3ca19026e",
+              "sourceRevision": "sha256:0506d451009f9604596e44ae7791aaed89188f5f4cff90af3089bb984be14946"
+            }
+          }
+        ],
+        "revision": "sha256:630d15876de5b284e9d4f25662b7d61e9a62b172722c15630cf8fa12aafb076d",
+        "sourceRevision": "sha256:0506d451009f9604596e44ae7791aaed89188f5f4cff90af3089bb984be14946",
+        "status": "resolved",
+        "issues": [],
+        "oversized": []
+      }
+    }
+  },
+  "finishedAt": "2026-10-09T15:58:41.515Z"
+}

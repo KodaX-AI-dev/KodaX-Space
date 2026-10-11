@@ -13,7 +13,6 @@ import type {
   RuntimeRunStatus,
   RuntimeScopedCredentialBroker,
   RuntimeSession,
-  RuntimeSessionCursor,
   RuntimeSessionObservationSnapshot,
   RuntimeSessionSettings,
   RuntimeSessionStatus,
@@ -21,6 +20,7 @@ import type {
   RuntimeTypedEvent,
 } from '@kodax-ai/kodax/runtime';
 import type { AgentEvent, AgentTreeSnapshot } from '@kodax-ai/kodax/agent';
+import { viewReader } from '../kodax/runtime/runtime-view-test-fixture.js';
 import { isCoderOwnerRecoveryRestartRequired } from '../kodax/coder-owner-recovery-error.js';
 import {
   initializeCoderDaemonProjectionSdk,
@@ -250,18 +250,17 @@ const testRuntimeEventParser = (event: unknown) => ({
 
 type TestRuntimeEvent = {
   [Type in RuntimeEventType]: Omit<RuntimeTypedEvent<Type>, 'cursor'> & {
-    readonly cursor?: RuntimeSessionCursor;
+    readonly cursor?: {
+      readonly sessionId: string;
+      readonly journalEpoch: string;
+      readonly seq: number;
+    };
   };
 }[RuntimeEventType];
-
-function testRuntimeCursor(sessionId: string, seq: number): RuntimeSessionCursor {
-  return { sessionId, journalEpoch: 'journal_epoch_1', seq };
-}
 
 function withTestRuntimeCursor(event: TestRuntimeEvent): RuntimeTypedEvent {
   return {
     ...event,
-    cursor: event.cursor ?? testRuntimeCursor(event.sessionId, event.seq),
   } as RuntimeTypedEvent;
 }
 
@@ -305,11 +304,10 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
         effectiveConfig: 1,
         liveOutputSegments: 1,
         managedRunDurability: 1,
-        runtimeExitSettlement: 2,
+        productClient: 1,
         runtimeEventCoalescing: 1,
         runtimeAutoModeGuardrail: 6,
         sandboxRuntime: 11,
-        sessionEventJournal: 1,
         sharedSessionSettings: 2,
       },
     }),
@@ -326,11 +324,10 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
           effectiveConfig: 1,
           liveOutputSegments: 1,
           managedRunDurability: 1,
-          runtimeExitSettlement: 2,
+          productClient: 1,
           runtimeEventCoalescing: 1,
           runtimeAutoModeGuardrail: 6,
           sandboxRuntime: 11,
-          sessionEventJournal: 1,
           sharedSessionSettings: 2,
         },
       }),
@@ -348,11 +345,10 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
           effectiveConfig: 1,
           liveOutputSegments: 1,
           managedRunDurability: 1,
-          runtimeExitSettlement: 2,
+          productClient: 1,
           runtimeEventCoalescing: 1,
           runtimeAutoModeGuardrail: 6,
           sandboxRuntime: 11,
-          sessionEventJournal: 1,
           sharedSessionSettings: 2,
         },
       }),
@@ -370,10 +366,9 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
           effectiveConfig: 1,
           liveOutputSegments: 1,
           managedRunDurability: 1,
-          runtimeExitSettlement: 2,
+          productClient: 1,
           runtimeAutoModeGuardrail: 6,
           sandboxRuntime: 11,
-          sessionEventJournal: 1,
           sharedSessionSettings: 2,
         },
       }),
@@ -381,7 +376,7 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
   );
   assert.throws(
     () => assertSpaceRuntimeSdkRequiredCapabilities({}),
-    /installed KodaX SDK.*actorSettlementConvergence v2.*conversationHistory v2.*crashOutcomeModel v2.*daemonOrphanExit v1.*daemonShutdownVerification v1.*effectiveConfig v1.*liveOutputSegments v1.*managedRunDurability v1.*runtimeExitSettlement v2.*runtimeEventCoalescing v1.*runtimeAutoModeGuardrail v6.*sandboxRuntime v11.*sessionEventJournal v1.*sharedSessionSettings v2/i,
+    /installed KodaX SDK.*actorSettlementConvergence v2.*conversationHistory v2.*crashOutcomeModel v2.*daemonOrphanExit v1.*daemonShutdownVerification v1.*effectiveConfig v1.*liveOutputSegments v1.*managedRunDurability v1.*productClient v1.*runtimeEventCoalescing v1.*runtimeAutoModeGuardrail v6.*sandboxRuntime v11.*sharedSessionSettings v2/i,
   );
 });
 
@@ -588,7 +583,6 @@ function createFakeRuntime(runtimeId = 'rt_test') {
     state: 'connected',
     connectionId: 'connection_1',
     runtimeEpoch: 'runtime_epoch_1',
-    journalEpoch: 'journal_epoch_1',
     reconnectable: true,
   };
   let runSeq = 0;
@@ -602,6 +596,12 @@ function createFakeRuntime(runtimeId = 'rt_test') {
       isolation: 'process',
     },
     capabilities: {
+      productClient: { version: 1 },
+      productExecutionAuthorization: { version: 2 },
+      productHistoryBoundaries: { version: 1 },
+      productActorAuthorization: { version: 1 },
+      productExitControl: { version: 1 },
+      productExecutionFacts: { version: 1 },
       externalAgentAdmin: { version: 1 },
       actorControlPlane: { version: 1, methodNamespace: 'agents' },
       learningCenter: { version: 1 },
@@ -678,6 +678,21 @@ function createFakeRuntime(runtimeId = 'rt_test') {
       'daemon:admin',
     ],
     sessions: {
+      async observeView(
+        sessionId: string,
+        listener: Parameters<KodaXDaemonRuntime['sessions']['observeView']>[1],
+      ) {
+        listener({
+          session: { id: sessionId, title: '' },
+          queue: [],
+          items: [],
+          interactions: [],
+          runs: [],
+          settings: { provider: 'anthropic', ...settings.get(sessionId)?.value },
+        });
+        return { close() {} };
+      },
+      readViewItem: viewReader([]).readViewItem,
       async load(sessionId: string) {
         calls.loaded.push(sessionId);
         if (!sessions.has(sessionId)) throw new Error(`Session not found: ${sessionId}`);
@@ -840,7 +855,7 @@ function createFakeRuntime(runtimeId = 'rt_test') {
         return {
           snapshot: {
             runtimeId,
-            cursor: testRuntimeCursor(sessionId, 0),
+            seq: 0,
             transcriptRevision: `transcript_${sessionId}_0`,
             session: { id: sessionId, title: '', surface: 'code' },
             transcript: {
@@ -916,6 +931,25 @@ function createFakeRuntime(runtimeId = 'rt_test') {
       },
     },
     runs: {
+      async acceptInput(input: Parameters<KodaXDaemonRuntime['runs']['acceptInput']>[0]) {
+        if (input.delivery !== 'immediate') {
+          calls.submitted.push(input);
+          return { state: 'queued' as const, sessionId: input.sessionId, inputId: input.inputId };
+        }
+        const handle = await runtime.runs.start({
+          sessionId: input.sessionId,
+          prompt: input.text,
+          inputId: input.inputId,
+          authorization: input.authorization,
+        });
+        void handle.result.catch(() => undefined);
+        return {
+          state: 'submitted' as const,
+          sessionId: input.sessionId,
+          inputId: input.inputId,
+          runId: handle.runId,
+        };
+      },
       async start(input: { sessionId: string }): Promise<RuntimeRunHandle> {
         calls.started.push(input);
         const runId = `run_${++runSeq}`;
@@ -1221,6 +1255,57 @@ function createFakeRuntime(runtimeId = 'rt_test') {
       },
     },
     diagnostics: {},
+    lifecycle: {
+      async requestExit(input: { requestId: string; shutdownHost?: boolean }) {
+        calls.daemonStops.push(input);
+        return {
+          requestId: input.requestId,
+          runtimeId,
+          clientId: 'client-fixture',
+          accepted: true as const,
+          requestedAt: '2026-10-11T00:00:00Z',
+          updatedAt: '2026-10-11T00:00:00Z',
+          cleanup: {
+            state: 'succeeded' as const,
+            runIds: [],
+            operationIds: [],
+            actorTurns: [],
+            withdrawnInputs: [],
+            issues: [],
+          },
+          host: {
+            requested: input.shutdownHost ?? true,
+            state: 'succeeded' as const,
+            owner: { runtimeId, pid: 123 },
+          },
+        };
+      },
+      readExit: async () => null,
+      listPendingExits: async () => [],
+    },
+    statistics: {
+      read: async (sessionId: string) => ({
+        sessionId,
+        revision: 0,
+        coverage: 'complete',
+        issues: [],
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+          thoughtTokens: 0,
+        },
+        requestCount: 0,
+        requestsWithoutUsage: 0,
+        physicalRequestCount: 0,
+        operationCount: 0,
+        contexts: [],
+      }),
+      readRequests: async () => ({ revision: 0, items: [] }),
+      readTools: async () => ({ revision: 0, items: [] }),
+    },
     admin: { agentRegistrations: {} },
     agents: {
       enabled: true,
@@ -2273,7 +2358,7 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
   assert.equal(options[0]?.requirements?.runtimeEventCoalescing, 1);
   assert.equal(options[0]?.requirements?.crashOutcomeModel, 2);
   assert.equal(options[0]?.requirements?.sandboxRuntime, 11);
-  assert.equal(options[0]?.requirements?.sessionEventJournal, 1);
+
   assert.equal(options[0]?.requirements?.integrationConfigResilience, 1);
   assert.equal(options[0]?.requirements?.runtimeAutoModeGuardrail, 6);
   assert.equal(adapter.snapshot().state, 'ready');
@@ -3314,7 +3399,7 @@ test('same-runtime-id reconnect restores an active live projection', async () =>
   await adapter.close();
 });
 
-test('active observation retains SDK text and recovers tools from the same journal window', async () => {
+test('active observation retains SDK text and recovers tools from the current view', async () => {
   const fake = createFakeRuntime('rt_recovered_observation');
   const sessionId = 's_recovered_observation';
   const runId = 'run_recovered_observation';
@@ -3326,7 +3411,7 @@ test('active observation retains SDK text and recovers tools from the same journ
       ...observation,
       snapshot: {
         ...observation.snapshot,
-        cursor: testRuntimeCursor(sessionId, 7),
+        seq: 7,
         runs: [
           {
             runId,
@@ -3360,24 +3445,21 @@ test('active observation retains SDK text and recovers tools from the same journ
     };
   };
   let replayCalls = 0;
-  fake.runtime.events.replay = async (filter) => {
-    replayCalls += 1;
-    assert.equal(filter.runId, runId);
-    assert.deepEqual(filter.type, ['tool.started', 'tool.finished', 'output.segment.started']);
-    assert.equal(filter.after?.seq, 5);
-    assert.equal(filter.limit, 512);
-    return [
-      withTestRuntimeCursor({
-        id: 'recovered-tool',
-        seq: 7,
-        time: '2026-08-14T00:00:00.600Z',
-        type: 'tool.started',
-        sessionId,
-        runId,
-        turnId: 'turn_recovered_observation',
-        payload: { tool: { id: 'tool', name: 'read', input: {} } },
-      }),
-    ];
+  fake.runtime.sessions.observeView = async (id, listener) => {
+    replayCalls++;
+    return viewReader(
+      [
+        {
+          id: 'recovered-tool',
+          type: 'tool',
+          text: '',
+          sourceRunId: runId,
+          sourceTurnId: 'turn_recovered_observation',
+          tool: { callId: 'tool', name: 'read', status: 'running', inputText: '{}' },
+        },
+      ],
+      id,
+    ).observeView(id, listener);
   };
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
@@ -3391,7 +3473,7 @@ test('active observation retains SDK text and recovers tools from the same journ
   await adapter.ensureObserved(sessionId);
 
   const live = await adapter.readSessionLiveSnapshot(sessionId);
-  assert.equal(replayCalls, 1);
+  assert.ok(replayCalls >= 1);
   assert.equal(live.toolEvents?.[0]?.toolId, 'tool');
   assert.equal(live.assistantDraft?.text, 'replacement');
   assert.equal(live.thinkingDraft?.text, 'replacement thinking');
@@ -3429,7 +3511,7 @@ test('streamed replacement converges with a fresh unbounded output segment snaps
     const observation = await originalObserve(...args);
     initialObservationSnapshot = {
       ...observation.snapshot,
-      cursor: testRuntimeCursor(sessionId, 7),
+      seq: 7,
       runs: [
         {
           runId,
@@ -3460,7 +3542,7 @@ test('streamed replacement converges with a fresh unbounded output segment snaps
     };
     return {
       ...observation,
-      snapshot: initialObservationSnapshot,
+      snapshot: initialObservationSnapshot!,
     };
   };
   const adapter = new RuntimeHostAdapter({
@@ -3526,7 +3608,7 @@ test('streamed replacement converges with a fresh unbounded output segment snaps
   assert.ok(initialObservationSnapshot);
   const fresh = projectRuntimeSessionSnapshot({
     ...initialObservationSnapshot,
-    cursor: testRuntimeCursor(sessionId, 10),
+    seq: 10,
     runs: [
       {
         runId,
@@ -3828,210 +3910,6 @@ test('Space leaves daemon capability replacement to the SDK and fails closed on 
   await adapter.close();
 });
 
-test('daemon rollback commits one inspected revision, waits for release, and restores owner explicitly', async () => {
-  const fake = createFakeRuntime();
-  let inlineOwnerCloses = 0;
-  let daemonRestores = 0;
-  let ownerReleased = false;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    ownerControl: {
-      acquireInline: async () => ({
-        profile: 'coder',
-        ownerId: 'inline_after_daemon',
-        ownerPolicy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-07-12T00:00:01.000Z',
-        },
-        close: () => {
-          inlineOwnerCloses += 1;
-        },
-      }),
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-07-12T00:00:01.000Z',
-        },
-        ownerStatus: ownerReleased ? 'unowned' : 'owned',
-        owner: ownerReleased
-          ? null
-          : {
-              runtimeId: 'rt_test',
-              pid: 123,
-              createdAt: '2026-07-12T00:00:00.000Z',
-              kind: 'daemon',
-            },
-      }),
-      enableDaemon: async () => {
-        daemonRestores += 1;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-07-12T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  const originalStop = fake.runtime.daemon.stopForInline.bind(fake.runtime.daemon);
-  fake.runtime.daemon.stopForInline = async (input) => {
-    const result = await originalStop(input);
-    ownerReleased = true;
-    return result;
-  };
-
-  await adapter.initialize();
-  const inspection = await adapter.inspectDaemonStop();
-  const rollback = await adapter.prepareInlineRollback('space-operation-1');
-
-  assert.equal(inspection.revision, 7);
-  assert.equal(rollback.accepted, true);
-  assert.deepEqual(fake.calls.daemonStops, [
-    {
-      expectedRuntimeId: 'rt_test',
-      expectedRevision: 7,
-      expectedOwnerPolicyRevision: 2,
-      operation: { operationId: 'space-operation-1' },
-    },
-  ]);
-  assert.equal(adapter.snapshot().state, 'closed');
-  assert.equal(fake.calls.close, 1);
-  assert.equal(inlineOwnerCloses, 0);
-
-  const restored = await adapter.restoreDaemonOwner();
-  assert.equal(restored.mode, 'daemon');
-  assert.equal(daemonRestores, 1);
-  assert.equal(inlineOwnerCloses, 1);
-});
-
-test('complete exit atomically stops the inspected daemon and leaves an unowned daemon policy', async () => {
-  const fake = createFakeRuntime();
-  const inspectDaemon = fake.runtime.daemon.inspect.bind(fake.runtime.daemon);
-  fake.runtime.daemon.inspect = async () => {
-    const management = await inspectDaemon();
-    return {
-      ...management,
-      owner: {
-        ...management.owner,
-        processContainment: 'windows-job',
-        supervisorPid: 456,
-      },
-    };
-  };
-  let inlineOwnerCloses = 0;
-  let daemonRestores = 0;
-  let ownerReleased = false;
-  const shutdownVerifications: Array<{
-    readonly configHome: string;
-    readonly profile: string;
-    readonly owner: RuntimeDaemonManagementState['owner'];
-    readonly timeoutMs: number;
-  }> = [];
-  const transitionOrder: string[] = [];
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeHomeDir: path.resolve('C:\\runtime-base'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    idleDaemonStop: async () => {
-      throw new Error('ready Runtime complete-exit must not use the racy CLI stop path');
-    },
-    daemonShutdownVerifier: async (input) => {
-      shutdownVerifications.push(input);
-      transitionOrder.push('daemon-shutdown-verified');
-      return { status: 'succeeded' };
-    },
-    ownerControl: {
-      acquireInline: async () => ({
-        profile: 'coder',
-        ownerId: 'inline_complete_exit',
-        ownerPolicy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-07-12T00:00:01.000Z',
-        },
-        close: () => {
-          inlineOwnerCloses += 1;
-        },
-      }),
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: ownerReleased ? 'daemon' : 'inline',
-          revision: ownerReleased ? 4 : 3,
-          updatedAt: '2026-07-12T00:00:02.000Z',
-        },
-        ownerStatus: ownerReleased ? 'unowned' : 'owned',
-        owner: ownerReleased
-          ? null
-          : {
-              runtimeId: 'rt_test',
-              pid: 123,
-              createdAt: '2026-07-12T00:00:00.000Z',
-              kind: 'daemon',
-            },
-      }),
-      enableDaemon: async () => {
-        daemonRestores += 1;
-        transitionOrder.push('daemon-policy-restored');
-        ownerReleased = true;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-07-12T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  const originalStop = fake.runtime.daemon.stopForInline.bind(fake.runtime.daemon);
-  fake.runtime.daemon.stopForInline = async (input) => {
-    const result = await originalStop(input);
-    ownerReleased = true;
-    return result;
-  };
-
-  await adapter.initialize();
-  await adapter.stopDaemonForCompleteExit('space-complete-exit-1');
-
-  assert.deepEqual(fake.calls.daemonStops, [
-    {
-      expectedRuntimeId: 'rt_test',
-      expectedRevision: 7,
-      expectedOwnerPolicyRevision: 2,
-      operation: { operationId: 'space-complete-exit-1' },
-    },
-  ]);
-  assert.equal(fake.calls.close, 1);
-  assert.equal(daemonRestores, 1);
-  assert.equal(inlineOwnerCloses, 1);
-  assert.deepEqual(shutdownVerifications, [
-    {
-      configHome: path.join(path.resolve('C:\\runtime-base'), '.kodax'),
-      profile: 'coder',
-      owner: {
-        runtimeId: 'rt_test',
-        pid: 123,
-        createdAt: '2026-07-12T00:00:00.000Z',
-        kind: 'daemon',
-        processContainment: 'windows-job',
-        supervisorPid: 456,
-      },
-      timeoutMs: 15_000,
-    },
-  ]);
-  assert.deepEqual(transitionOrder, ['daemon-shutdown-verified', 'daemon-policy-restored']);
-  assert.equal(adapter.snapshot().state, 'closed');
-});
-
 test('production complete exit delegates the exact lifecycle settlement to the SDK', async () => {
   const fake = createFakeRuntime();
   const calls: import('../kodax/runtime-host-adapter.js').RuntimeExitSettlementInput[] = [];
@@ -4044,7 +3922,6 @@ test('production complete exit delegates the exact lifecycle settlement to the S
     runtimeEventParser: testRuntimeEventParser,
     runtimeExitSettler: async (input) => {
       calls.push(input);
-      await input.runtime?.close();
       return {
         status: 'recovered',
         repairs: ['windows_process_tree', 'windows_sandbox_acl'],
@@ -4079,8 +3956,7 @@ test('a settled exit does not re-await the SDK transport close singleflight', as
     runtimeFactory: async () => hungRuntime,
     identityStore: testIdentityStore,
     runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: async (input) => {
-      void input.runtime?.close();
+    runtimeExitSettler: async () => {
       return { status: 'clean', repairs: [] };
     },
   });
@@ -4335,464 +4211,46 @@ test('post-mutation SDK settlement blockage preserves the live projection and re
   assert.equal(adapter.snapshot().state, 'ready');
 });
 
-test('complete exit fails closed and requires recovery when durable daemon cleanup fails', async () => {
+test('forced exit uses SDK personal cleanup rather than inferred principal ownership', async () => {
   const fake = createFakeRuntime();
-  let inlineOwnerCloses = 0;
-  let daemonRestores = 0;
-  let ownerReleased = false;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    daemonShutdownVerifier: async (input) => {
-      assert.equal(input.configHome, path.resolve('C:\\isolated-profile'));
-      assert.equal(input.profile, 'coder');
-      assert.equal(input.owner.pid, 123);
-      assert.equal(input.timeoutMs, 15_000);
-      return {
-        status: 'failed',
-        outcome: { error: 'managed child cleanup failed' },
-      };
-    },
-    ownerControl: {
-      acquireInline: async () => ({
-        profile: 'coder',
-        ownerId: 'inline_complete_exit_pid_timeout',
-        ownerPolicy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-08-03T00:00:01.000Z',
-        },
-        close: () => {
-          inlineOwnerCloses += 1;
-        },
-      }),
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: ownerReleased ? 'daemon' : 'inline',
-          revision: ownerReleased ? 4 : 3,
-          updatedAt: '2026-08-03T00:00:02.000Z',
-        },
-        ownerStatus: ownerReleased ? 'unowned' : 'owned',
-        owner: ownerReleased
-          ? null
-          : {
-              runtimeId: 'rt_test',
-              pid: 123,
-              createdAt: '2026-08-03T00:00:00.000Z',
-              kind: 'daemon',
-            },
-      }),
-      enableDaemon: async () => {
-        daemonRestores += 1;
-        ownerReleased = true;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-08-03T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  const originalStop = fake.runtime.daemon.stopForInline.bind(fake.runtime.daemon);
-  fake.runtime.daemon.stopForInline = async (input) => {
-    const result = await originalStop(input);
-    ownerReleased = true;
-    return result;
-  };
-
-  await adapter.initialize();
-  await assert.rejects(
-    adapter.stopDaemonForCompleteExit('space-complete-exit-cleanup-failed'),
-    (error: unknown) => {
-      assert.equal(isCoderOwnerRecoveryRestartRequired(error), true);
-      assert.match(
-        error instanceof Error ? error.message : String(error),
-        /shutdown was not authoritatively verified.*restart required/i,
-      );
-      return true;
-    },
-  );
-
-  assert.equal(fake.calls.close, 1);
-  assert.equal(daemonRestores, 1);
-  assert.equal(inlineOwnerCloses, 1);
-  assert.equal(adapter.snapshot().state, 'closed');
-});
-
-test('complete exit reacquires a fence after transient replacement-fence contention', async () => {
-  const fake = createFakeRuntime();
-  let ownerReleased = false;
-  let daemonPolicyRestored = false;
-  let inlineAcquisitions = 0;
-  let inlineOwnerCloses = 0;
-  let daemonRestores = 0;
-  let ownerStateReads = 0;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    idleDaemonStop: async () => {
-      throw new Error('ready Runtime complete-exit must not use the racy CLI stop path');
-    },
-    daemonProcessExitWaiter: async () => true,
-    ownerControl: {
-      acquireInline: async () => {
-        inlineAcquisitions += 1;
-        if (inlineAcquisitions === 1) {
-          throw new Error('Runtime owner transition is already in progress.');
-        }
-        return {
-          profile: 'coder',
-          ownerId: 'inline_complete_exit_retry',
-          ownerPolicy: {
-            mode: 'inline',
-            revision: 5,
-            updatedAt: '2026-08-03T00:00:03.000Z',
-          },
-          close: () => {
-            inlineOwnerCloses += 1;
-          },
-        };
-      },
-      getState: async () => {
-        ownerStateReads += 1;
-        return {
-          profile: 'coder',
-          policy: {
-            mode: daemonPolicyRestored ? 'daemon' : 'inline',
-            revision: daemonPolicyRestored ? 4 : 3,
-            updatedAt: '2026-08-03T00:00:02.000Z',
-          },
-          ownerStatus: ownerReleased ? ('unowned' as const) : ('owned' as const),
-          owner: ownerReleased
-            ? null
-            : {
-                runtimeId: 'rt_test',
-                pid: 123,
-                createdAt: '2026-08-03T00:00:00.000Z',
-                kind: 'daemon' as const,
-              },
-        };
-      },
-      enableDaemon: async () => {
-        daemonRestores += 1;
-        daemonPolicyRestored = true;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-08-03T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  const originalStop = fake.runtime.daemon.stopForInline.bind(fake.runtime.daemon);
-  fake.runtime.daemon.stopForInline = async (input) => {
-    const result = await originalStop(input);
-    ownerReleased = true;
-    return result;
-  };
-
-  await adapter.initialize();
-  await assert.doesNotReject(
-    adapter.stopDaemonForCompleteExit('space-complete-exit-fence-contention'),
-  );
-
-  assert.equal(inlineAcquisitions, 2);
-  assert.equal(daemonRestores, 2);
-  assert.equal(inlineOwnerCloses, 1);
-  assert.equal(
-    ownerStateReads,
-    3,
-    'the compensated path must verify state before reacquiring its fence and after restore',
-  );
-  assert.equal(adapter.snapshot().state, 'closed');
-  assert.deepEqual(fake.calls.daemonStops, [
-    {
-      expectedRuntimeId: 'rt_test',
-      expectedRevision: 7,
-      expectedOwnerPolicyRevision: 2,
-      operation: { operationId: 'space-complete-exit-fence-contention' },
-    },
-  ]);
-});
-
-test('complete exit fails closed when replacement-fence contention persists', async () => {
-  const fake = createFakeRuntime();
-  let ownerReleased = false;
-  let daemonPolicyRestored = false;
-  let inlineAcquisitions = 0;
-  let daemonRestores = 0;
-  let daemonExitWaited = false;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    daemonProcessExitWaiter: async () => {
-      daemonExitWaited = true;
-      return true;
-    },
-    ownerControl: {
-      acquireInline: async () => {
-        inlineAcquisitions += 1;
-        throw new Error('Runtime owner transition is already in progress.');
-      },
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: daemonPolicyRestored ? 'daemon' : 'inline',
-          revision: daemonPolicyRestored ? 4 : 3,
-          updatedAt: '2026-08-03T00:00:02.000Z',
-        },
-        ownerStatus: ownerReleased ? 'unowned' : 'owned',
-        owner: ownerReleased
-          ? null
-          : {
-              runtimeId: 'rt_test',
-              pid: 123,
-              createdAt: '2026-08-03T00:00:00.000Z',
-              kind: 'daemon',
-            },
-      }),
-      enableDaemon: async () => {
-        daemonRestores += 1;
-        daemonPolicyRestored = true;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-08-03T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  const originalStop = fake.runtime.daemon.stopForInline.bind(fake.runtime.daemon);
-  fake.runtime.daemon.stopForInline = async (input) => {
-    const result = await originalStop(input);
-    ownerReleased = true;
-    return result;
-  };
-
-  await adapter.initialize();
-  await assert.rejects(
-    adapter.stopDaemonForCompleteExit('space-complete-exit-persistent-fence-contention'),
-    (error: unknown) => {
-      assert.equal(isCoderOwnerRecoveryRestartRequired(error), true);
-      assert.match(
-        error instanceof Error ? error.message : String(error),
-        /recovered owner state could not be verified/i,
-      );
-      return true;
-    },
-  );
-
-  assert.equal(inlineAcquisitions, 2);
-  assert.equal(daemonRestores, 2);
-  assert.equal(daemonExitWaited, false);
-  assert.equal(adapter.snapshot().state, 'closed');
-});
-
-test('complete exit preserves restart-required recovery when compensated fence retry cannot restore authority', async () => {
-  const fake = createFakeRuntime();
-  let ownerReleased = false;
-  let daemonPolicyRestored = false;
-  let inlineAcquisitions = 0;
-  let daemonEnableAttempts = 0;
-  let daemonExitWaited = false;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    daemonProcessExitWaiter: async () => {
-      daemonExitWaited = true;
-      return true;
-    },
-    ownerControl: {
-      acquireInline: async () => {
-        inlineAcquisitions += 1;
-        throw new Error('inline owner fence unavailable');
-      },
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: daemonPolicyRestored ? 'daemon' : 'inline',
-          revision: daemonPolicyRestored ? 4 : 3,
-          updatedAt: '2026-08-03T00:00:02.000Z',
-        },
-        ownerStatus: ownerReleased ? 'unowned' : 'owned',
-        owner: ownerReleased
-          ? null
-          : {
-              runtimeId: 'rt_test',
-              pid: 123,
-              createdAt: '2026-08-03T00:00:00.000Z',
-              kind: 'daemon',
-            },
-      }),
-      enableDaemon: async () => {
-        daemonEnableAttempts += 1;
-        if (daemonEnableAttempts > 1) throw new Error('daemon policy restore failed');
-        daemonPolicyRestored = true;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-08-03T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  const originalStop = fake.runtime.daemon.stopForInline.bind(fake.runtime.daemon);
-  fake.runtime.daemon.stopForInline = async (input) => {
-    const result = await originalStop(input);
-    ownerReleased = true;
-    return result;
-  };
-
-  await adapter.initialize();
-  await assert.rejects(
-    adapter.stopDaemonForCompleteExit('space-complete-exit-retry-recovery'),
-    (error: unknown) => {
-      assert.equal(isCoderOwnerRecoveryRestartRequired(error), true);
-      assert.match(
-        error instanceof Error ? error.message : String(error),
-        /recovered owner state could not be verified/i,
-      );
-      return true;
-    },
-  );
-
-  assert.equal(inlineAcquisitions, 3);
-  assert.equal(daemonEnableAttempts, 2);
-  assert.equal(daemonExitWaited, false);
-  assert.equal(adapter.snapshot().state, 'failed');
-});
-
-test('forced exit preserves other-client Runtime work in the same Session', async () => {
-  const fake = createFakeRuntime();
-  const interrupted: Array<{ sessionId: string; actorPath: string; reason?: string }> = [];
-  fake.runtime.status.preflight = async () =>
-    ({
+  let requests = 0;
+  assert.ok(fake.runtime.lifecycle);
+  fake.runtime.lifecycle.requestExit = async (input) => {
+    requests += 1;
+    return {
+      requestId: input.requestId,
+      clientId: 'opaque-sdk-client',
       runtimeId: 'rt_test',
-      clientCount: 2,
-      activeRuns: [
-        {
-          runId: 'run_owned',
-          sessionId: 's_shared',
-          phase: 'running',
-          origin: { principalId: 'space_instance_stable' },
-        },
-        {
-          runId: 'run_other',
-          sessionId: 's_shared',
-          phase: 'running',
-          origin: { principalId: 'cli_instance' },
-        },
-      ],
-      queuedRuns: [
-        {
-          runId: 'run_owned_queued',
-          sessionId: 's_shared',
-          phase: 'queued',
-          origin: { principalId: 'space_instance_stable' },
-        },
-      ],
-      activeWorkflows: [
-        { runId: 'workflow_owned', workflow: 'review', status: 'running' },
-        { runId: 'workflow_other', workflow: 'review', status: 'running' },
-      ],
-      activeAgentTurns: [
-        {
-          sessionId: 's_shared',
-          actorPath: '/root/reviewer',
-          turnId: 'turn_owned',
-          kind: 'native',
-        },
-        {
-          sessionId: 's_shared',
-          actorPath: '/root/cli-reviewer',
-          turnId: 'turn_other',
-          kind: 'native',
-        },
-      ],
-      activeAgentTasks: [],
-      pendingPermissions: [],
-      pendingUserInputs: [],
-      blockers: ['connected_clients', 'active_runs', 'active_workflows', 'active_agent_turns'],
-      canStop: false,
-    }) as never;
-  fake.runtime.workflows.get = async (runId: string) =>
-    ({
-      runId,
-      workflowName: 'review',
-      status: 'running',
-      startedAt: '2026-07-12T00:00:00.000Z',
-      updatedAt: '2026-07-12T00:00:01.000Z',
-      sourceRunId: runId === 'workflow_owned' ? 'run_owned' : 'run_other',
-      hostMetadata: {
-        sessionId: 's_shared',
-        surface: 'code',
+      accepted: true,
+      requestedAt: '2026-10-11T00:00:00Z',
+      updatedAt: '2026-10-11T00:00:00Z',
+      cleanup: {
+        state: 'succeeded',
+        runIds: ['own-root'],
+        actorTurns: [{ sessionId: 's_shared', actorPath: '/root/own', turnId: 'turn' }],
+        operationIds: ['own-compaction'],
+        withdrawnInputs: [{ sessionId: 's_shared', inputId: 'own-queued' }],
+        issues: [],
       },
-      items: [],
-      counts: {
-        pending: 0,
-        running: 0,
-        completed: 0,
-        failed: 0,
-        cancelled: 0,
-        skipped: 0,
-      },
-      progress: {
-        spawnedAgents: 0,
-        finishedAgents: 0,
-        activeAgents: 0,
-        failedAgents: 0,
-        stoppedAgents: 0,
-      },
-    }) as never;
-  Object.assign(fake.runtime.agents as unknown as Record<string, unknown>, {
-    interrupt: async (sessionId: string, actorPath: string, reason?: string) => {
-      interrupted.push({ sessionId, actorPath, ...(reason ? { reason } : {}) });
-    },
-  });
+      host: { requested: true, state: 'protected', owner: { runtimeId: 'rt_test', pid: 123 } },
+    };
+  };
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
     runtimeFactory: async () => fake.runtime,
     identityStore: testIdentityStore,
+    profileRoot: path.resolve('C:\\isolated-profile'),
   });
-
   await adapter.initialize();
-  (
-    adapter as unknown as {
-      spaceOwnedAgentTurns: Set<string>;
-    }
-  ).spaceOwnedAgentTurns.add('s_shared\u0000/root/reviewer\u0000turn_owned');
-  const result = await adapter.stopSpaceOwnedRuntimeWorkForForcedExit();
-
-  assert.equal(result.attempted, 4);
-  assert.equal(result.failed, 0);
-  assert.deepEqual(fake.calls.aborted, ['run_owned', 'run_owned_queued']);
-  assert.deepEqual(fake.calls.workflowControls, [{ action: 'stop', runId: 'workflow_owned' }]);
-  assert.deepEqual(interrupted, [
-    {
-      sessionId: 's_shared',
-      actorPath: '/root/reviewer',
-      reason: 'KodaX Space force close',
-    },
-  ]);
-  await adapter.close();
+  assert.deepEqual(await adapter.stopSpaceOwnedRuntimeWorkForForcedExit(), {
+    attempted: 4,
+    failed: 0,
+  });
+  assert.equal(requests, 1);
+  assert.deepEqual(fake.calls.aborted, []);
+  assert.deepEqual(fake.calls.workflowControls, []);
+  await adapter.stopDaemonForCompleteExit();
+  assert.equal(requests, 1, 'forced and normal exit share one SDK receipt');
 });
 
 test('Space-started Runtime Agent turns are registered for forced-exit cancellation', async () => {
@@ -4872,309 +4330,9 @@ test('Space-started Runtime Agent turns are registered for forced-exit cancellat
   });
   const result = await adapter.stopSpaceOwnedRuntimeWorkForForcedExit();
 
-  assert.deepEqual(result, { attempted: 1, failed: 0 });
-  assert.deepEqual(interrupted, ['/external/reviewer']);
+  assert.deepEqual(result, { attempted: 0, failed: 0 });
+  assert.deepEqual(interrupted, [], 'client cleanup is selected by SDK lifecycle');
   await adapter.close();
-});
-
-test('complete exit verifies owner release when daemon transport closes before the rollback reply', async () => {
-  const fake = createFakeRuntime();
-  let inlineOwnerCloses = 0;
-  let daemonRestores = 0;
-  let ownerReleased = false;
-  let daemonPolicyRestored = false;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    idleDaemonStop: async () => {
-      throw new Error('ready Runtime complete-exit must not use the racy CLI stop path');
-    },
-    daemonProcessExitWaiter: async () => true,
-    ownerControl: {
-      acquireInline: async () => ({
-        profile: 'coder',
-        ownerId: 'inline_after_lost_reply',
-        ownerPolicy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-07-31T00:00:01.000Z',
-        },
-        close: () => {
-          inlineOwnerCloses += 1;
-        },
-      }),
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: daemonPolicyRestored ? 'daemon' : ownerReleased ? 'inline' : 'daemon',
-          revision: daemonPolicyRestored ? 4 : ownerReleased ? 3 : 2,
-          updatedAt: '2026-07-31T00:00:02.000Z',
-        },
-        ownerStatus: ownerReleased ? 'unowned' : 'owned',
-        owner: ownerReleased
-          ? null
-          : {
-              runtimeId: 'rt_test',
-              pid: 123,
-              createdAt: '2026-07-31T00:00:00.000Z',
-              kind: 'daemon',
-            },
-      }),
-      enableDaemon: async () => {
-        daemonRestores += 1;
-        daemonPolicyRestored = true;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-07-31T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  fake.runtime.daemon.stopForInline = async (input) => {
-    fake.calls.daemonStops.push(input);
-    ownerReleased = true;
-    throw new Error('Runtime daemon transport closed.');
-  };
-
-  await adapter.initialize();
-  await adapter.stopDaemonForCompleteExit('space-complete-exit-lost-reply');
-
-  assert.deepEqual(fake.calls.daemonStops, [
-    {
-      expectedRuntimeId: 'rt_test',
-      expectedRevision: 7,
-      expectedOwnerPolicyRevision: 2,
-      operation: { operationId: 'space-complete-exit-lost-reply' },
-    },
-  ]);
-  assert.equal(fake.calls.close, 1);
-  assert.equal(daemonRestores, 1);
-  assert.equal(inlineOwnerCloses, 1);
-  assert.equal(adapter.snapshot().state, 'closed');
-});
-
-test('complete exit stays fail-closed when a lost rollback reply cannot prove owner release', async () => {
-  const fake = createFakeRuntime();
-  let inlineAcquisitions = 0;
-  let daemonRestores = 0;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    ownerControl: {
-      acquireInline: async () => {
-        inlineAcquisitions += 1;
-        throw new Error('a different owner must not be replaced');
-      },
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-07-31T00:00:01.000Z',
-        },
-        ownerStatus: 'owned',
-        owner: {
-          runtimeId: 'rt_different_owner',
-          pid: 456,
-          createdAt: '2026-07-31T00:00:01.000Z',
-          kind: 'daemon',
-        },
-      }),
-      enableDaemon: async () => {
-        daemonRestores += 1;
-        return {
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-07-31T00:00:02.000Z',
-        };
-      },
-    },
-  });
-  fake.runtime.daemon.stopForInline = async (input) => {
-    fake.calls.daemonStops.push(input);
-    throw new Error('Runtime daemon transport closed.');
-  };
-
-  await adapter.initialize();
-  await assert.rejects(
-    adapter.stopDaemonForCompleteExit('space-complete-exit-unverified-owner'),
-    /owner release could not be verified/i,
-  );
-
-  assert.equal(fake.calls.close, 1);
-  assert.equal(inlineAcquisitions, 0);
-  assert.equal(daemonRestores, 1);
-});
-
-test('complete exit preserves restart-required recovery after a lost rollback reply', async () => {
-  const fake = createFakeRuntime();
-  let inlineAcquisitions = 0;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    runtimeExitSettler: null,
-    ownerControl: {
-      acquireInline: async () => {
-        inlineAcquisitions += 1;
-        throw new Error('inline owner fence unavailable');
-      },
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-07-31T00:00:01.000Z',
-        },
-        ownerStatus: 'unowned',
-        owner: null,
-      }),
-      enableDaemon: async () => {
-        throw new Error('daemon policy restore failed');
-      },
-    },
-  });
-  fake.runtime.daemon.stopForInline = async (input) => {
-    fake.calls.daemonStops.push(input);
-    throw new Error('Runtime daemon transport closed.');
-  };
-
-  await adapter.initialize();
-  await assert.rejects(
-    adapter.stopDaemonForCompleteExit('space-complete-exit-restart-required'),
-    (error: unknown) => {
-      assert.equal(isCoderOwnerRecoveryRestartRequired(error), true);
-      assert.match(
-        error instanceof Error ? error.message : String(error),
-        /owner release could not be verified/i,
-      );
-      return true;
-    },
-  );
-
-  assert.equal(fake.calls.close, 1);
-  assert.equal(inlineAcquisitions, 2);
-  assert.equal(adapter.snapshot().state, 'failed');
-});
-
-test('complete exit treats CLI missing as confirmation only when owner state is unowned', async () => {
-  for (const ownerStatus of ['unowned', 'owned'] as const) {
-    const adapter = new RuntimeHostAdapter({
-      mode: 'runtime',
-      profileRoot: path.resolve('C:\\isolated-profile'),
-      runtimeExitSettler: null,
-      idleDaemonStop: async () => ({ stopped: false, reason: 'missing' }),
-      ownerControl: {
-        acquireInline: async () => {
-          throw new Error('not used');
-        },
-        getState: async () => ({
-          profile: 'coder',
-          policy: {
-            mode: 'daemon',
-            revision: 4,
-            updatedAt: '2026-07-12T00:00:02.000Z',
-          },
-          ownerStatus,
-          owner:
-            ownerStatus === 'unowned'
-              ? null
-              : {
-                  runtimeId: 'rt_still_owned',
-                  pid: 123,
-                  createdAt: '2026-07-12T00:00:00.000Z',
-                  kind: 'daemon' as const,
-                },
-        }),
-        enableDaemon: async () => ({
-          mode: 'daemon',
-          revision: 4,
-          updatedAt: '2026-07-12T00:00:02.000Z',
-        }),
-      },
-    });
-
-    if (ownerStatus === 'unowned') {
-      await assert.doesNotReject(adapter.stopDaemonForCompleteExit());
-    } else {
-      await assert.rejects(adapter.stopDaemonForCompleteExit(), (error: unknown) =>
-        isCoderOwnerRecoveryRestartRequired(error),
-      );
-    }
-  }
-});
-
-test('complete exit verifies the exact idle daemon owner before accepting CLI shutdown', async () => {
-  const observedOwner = {
-    runtimeId: 'rt_idle_contained',
-    pid: 321,
-    createdAt: '2026-08-06T00:00:00.000Z',
-    kind: 'daemon' as const,
-    processContainment: 'windows-job' as const,
-    supervisorPid: 654,
-  };
-  let ownerReads = 0;
-  let verificationOwner: typeof observedOwner | undefined;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeExitSettler: null,
-    idleDaemonStop: async () => ({ stopped: true }),
-    daemonShutdownVerifier: async (input) => {
-      verificationOwner = input.owner as typeof observedOwner;
-      return { status: 'succeeded' };
-    },
-    ownerControl: {
-      acquireInline: async () => {
-        throw new Error('not used');
-      },
-      getState: async () => {
-        ownerReads += 1;
-        return ownerReads === 1
-          ? {
-              profile: 'coder',
-              policy: {
-                mode: 'daemon' as const,
-                revision: 4,
-                updatedAt: '2026-08-06T00:00:00.000Z',
-              },
-              ownerStatus: 'owned' as const,
-              owner: observedOwner,
-            }
-          : {
-              profile: 'coder',
-              policy: {
-                mode: 'daemon' as const,
-                revision: 5,
-                updatedAt: '2026-08-06T00:00:01.000Z',
-              },
-              ownerStatus: 'unowned' as const,
-              owner: null,
-            };
-      },
-      enableDaemon: async () => ({
-        mode: 'daemon',
-        revision: 5,
-        updatedAt: '2026-08-06T00:00:01.000Z',
-      }),
-    },
-  });
-
-  await adapter.stopDaemonForCompleteExit();
-
-  assert.deepEqual(verificationOwner, observedOwner);
-  assert.ok(ownerReads >= 3);
 });
 
 test('complete exit rejects an idle CLI success without a captured daemon owner', async () => {
@@ -5223,10 +4381,11 @@ test('complete exit rejects an idle legacy daemon without verified containment',
     profileRoot: path.resolve('C:\\isolated-profile'),
     runtimeExitSettler: null,
     idleDaemonStop: async () => ({ stopped: true }),
-    daemonShutdownVerifier: async () => ({
-      status: 'unverified',
-      reason: 'containment_unavailable',
-    }),
+    identityStore: testIdentityStore,
+    runtimeFactory: async (options) => {
+      assert.equal(options.autoStart, false, 'exit cannot start a replacement Host');
+      throw new Error('Old owner has no public lifecycle contract.');
+    },
     ownerControl: {
       acquireInline: async () => {
         throw new Error('not used');
@@ -6247,7 +5406,7 @@ test('a Runtime event replaces an older in-flight transcript boundary for later 
       ...observation,
       snapshot: {
         ...observation.snapshot,
-        cursor: testRuntimeCursor('s_crossed_boundary', 10),
+        seq: 10,
         transcriptRevision: 'rev_stale',
         session: { id: 's_crossed_boundary', title: 'Crossed boundary', surface: 'code' },
         transcript: {
@@ -6387,7 +5546,7 @@ test('fresh observation transcript seeds history paging without duplicate Sessio
       ...observation,
       snapshot: {
         ...observation.snapshot,
-        cursor: testRuntimeCursor('s_snapshot', 10),
+        seq: 10,
         transcriptRevision: 'rev_snapshot',
         session: { id: 's_snapshot', title: 'Snapshot title', surface: 'code' },
         transcript: {
@@ -8843,9 +8002,9 @@ test('initialization requires source-side Runtime event coalescing', async () =>
   assert.equal(fake.calls.close, 1);
 });
 
-test('initialization requires Session-scoped Runtime event journals', async () => {
+test('initialization requires trusted Main execution authorization', async () => {
   const fake = createFakeRuntime();
-  delete (fake.runtime.capabilities as Record<string, unknown>).sessionEventJournal;
+  delete (fake.runtime.capabilities as Record<string, unknown>).productExecutionAuthorization;
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
     profileRoot: path.resolve('C:\\isolated-profile'),
@@ -8853,7 +8012,7 @@ test('initialization requires Session-scoped Runtime event journals', async () =
     identityStore: testIdentityStore,
   });
 
-  await assert.rejects(adapter.initialize(), /sessionEventJournal v1/i);
+  await assert.rejects(adapter.initialize(), /productExecutionAuthorization v2/i);
   assert.equal(adapter.snapshot().state, 'failed');
   assert.equal(fake.calls.close, 1);
 });
@@ -9370,12 +8529,12 @@ test('manual Runtime compaction binds and revokes an operation-scoped credential
     mode: 'scoped',
     providers: ['anthropic'],
   });
-  assert.match(compactInput.operation?.operationId ?? '', /^space-compact-/);
+  assert.equal(compactInput.operation, undefined, 'Host selects the operation identity');
   assert.equal(credentialReads, 0, 'no-op Runtime setup must not preload a keychain secret');
 
   const broker = fake.calls.scopedCredentialBrokers[0];
   assert.ok(broker);
-  const operationId = compactInput.operation?.operationId ?? '';
+  const operationId = 'host-selected-compaction';
   const validRequest = {
     requestId: 'credential_request_1',
     leaseId: 'scoped_credential_1',
@@ -9440,23 +8599,16 @@ test('Space-started runs receive scoped credential and host-tool leases', async 
     sessionId: 's_1',
     prompt: 'hello',
     options: { provider: 'anthropic' },
-    operation: { journalEpoch: 'journal_start_1', expectedRevision: 4 },
   });
   assert.deepEqual(fake.calls.loaded, []);
-  const started = fake.calls.started[0] as {
-    credential?: { leaseId: string; mode: string; providers: readonly string[] };
-    hostTools?: { leaseId: string };
-    operation?: { operationId?: string; journalEpoch?: string; expectedRevision?: number };
-  };
-  assert.deepEqual(started.credential, {
+  const started = fake.calls.started[0] as Parameters<KodaXDaemonRuntime['runs']['start']>[0];
+  assert.deepEqual(started.authorization?.credential, {
     leaseId: 'scoped_credential_1',
     mode: 'scoped',
     providers: ['anthropic', 'openai'],
   });
-  assert.deepEqual(started.hostTools, { leaseId: 'tools_1' });
-  assert.match(started.operation?.operationId ?? '', /^space-run-/);
-  assert.equal(started.operation?.journalEpoch, 'journal_start_1');
-  assert.equal(started.operation?.expectedRevision, 4);
+  assert.deepEqual(started.authorization?.hostTools, { leaseId: 'tools_1' });
+  assert.match(started.inputId ?? '', /^space-input-/);
   const registration = fake.calls.hostToolRegistrations[0] as {
     descriptors: readonly { name: string }[];
   };
@@ -9472,14 +8624,13 @@ test('Space-started runs receive scoped credential and host-tool leases', async 
     target: {
       kind: 'run' as const,
       runId: handle.runId,
-      operationId: started.operation?.operationId,
     },
     purpose: 'primary' as const,
   };
   assert.equal(await broker({ ...validRequest, sessionId: 'wrong' }), undefined);
   assert.equal(
     await broker({ ...validRequest, target: { kind: 'run', runId: 'other_run' } }),
-    undefined,
+    'anthropic-secret-from-keychain',
   );
   assert.equal(
     await broker({ ...validRequest, purpose: 'compaction' }),
@@ -9502,9 +8653,9 @@ test('Space-started runs receive scoped credential and host-tool leases', async 
   assert.equal(
     await broker({
       ...validRequest,
-      target: { ...validRequest.target, operationId: 'space-run-other' },
+      target: { ...validRequest.target, runId: 'other_run' },
     }),
-    undefined,
+    'anthropic-secret-from-keychain',
   );
   assert.equal(await broker(validRequest), 'anthropic-secret-from-keychain');
   assert.equal(
@@ -9529,7 +8680,12 @@ test('Space-started runs receive scoped credential and host-tool leases', async 
     phase: 'completed',
   });
   await handle.result;
-  assert.deepEqual(fake.calls.credentialRevokes, ['scoped_credential_1']);
+  assert.deepEqual(
+    fake.calls.credentialRevokes,
+    [],
+    'shared Session grant remains for accepted queued inputs',
+  );
+  await adapter.close();
 });
 
 function testRuntimeDaemonDisconnectError(reconnectable = true): Error & {
@@ -9643,7 +8799,6 @@ test('non-mock Runtime runs resolve credentials lazily and fail closed in the br
   assert.equal(credentialReads, 0);
   assert.equal(fake.calls.scopedCredentialRegistrations.length, 1);
   assert.equal(fake.calls.started.length, 1);
-  const started = fake.calls.started[0] as { operation?: { operationId?: string } };
   const broker = fake.calls.scopedCredentialBrokers[0];
   assert.ok(broker);
   assert.equal(
@@ -9655,7 +8810,6 @@ test('non-mock Runtime runs resolve credentials lazily and fail closed in the br
       target: {
         kind: 'run',
         runId: handle.runId,
-        operationId: started.operation?.operationId,
       },
       purpose: 'primary',
     }),
@@ -9690,11 +8844,8 @@ test('true external env credentials are still bound exactly for a shared Runtime
   });
 
   assert.equal(fake.calls.scopedCredentialRegistrations.length, 1);
-  const started = fake.calls.started[0] as {
-    credential?: { leaseId: string; mode: string; providers: readonly string[] };
-    operation?: { operationId?: string };
-  };
-  assert.deepEqual(started.credential, {
+  const started = fake.calls.started[0] as Parameters<KodaXDaemonRuntime['runs']['start']>[0];
+  assert.deepEqual(started.authorization?.credential, {
     leaseId: 'scoped_credential_1',
     mode: 'scoped',
     providers: ['anthropic'],
@@ -9710,7 +8861,6 @@ test('true external env credentials are still bound exactly for a shared Runtime
       target: {
         kind: 'run',
         runId: 'run_1',
-        operationId: started.operation?.operationId,
       },
       purpose: 'primary',
     }),
@@ -9749,7 +8899,11 @@ test('Run recovery ignores unrelated retryable business failures while transport
 
   await assert.rejects(handle.result, /Provider retry remains a Run failure/);
   assert.deepEqual(fake.calls.runGets, []);
-  assert.deepEqual(fake.calls.runAwaits, []);
+  assert.deepEqual(
+    fake.calls.runAwaits,
+    [handle.runId],
+    'only the initial accepted Run is awaited',
+  );
   await adapter.close();
 });
 
@@ -9776,7 +8930,11 @@ test('Run recovery preserves a typed non-reconnectable disconnect failure', asyn
 
   await assert.rejects(handle.result, /Runtime daemon transport closed/);
   assert.deepEqual(fake.calls.runGets, []);
-  assert.deepEqual(fake.calls.runAwaits, []);
+  assert.deepEqual(
+    fake.calls.runAwaits,
+    [handle.runId],
+    'only the initial accepted Run is awaited',
+  );
   await adapter.close();
 });
 
@@ -9807,7 +8965,11 @@ test('Run recovery ignores a business failure that races with a disconnected Run
 
   await assert.rejects(handle.result, /Provider rejected this request/);
   assert.deepEqual(fake.calls.runGets, []);
-  assert.deepEqual(fake.calls.runAwaits, []);
+  assert.deepEqual(
+    fake.calls.runAwaits,
+    [handle.runId],
+    'only the initial accepted Run is awaited',
+  );
   await adapter.close();
 });
 
@@ -10145,10 +9307,10 @@ test('closing the adapter immediately settles a Run waiting for reconnect', asyn
   assert.equal(factoryCalls, 2);
 });
 
-test('failed after-turn submission revokes its newly registered credential lease', async () => {
+test('failed after-turn submission retains its captured authorization when the acceptance acknowledgement is lost', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_1');
-  fake.runtime.runs.submitInput = async () => {
+  fake.runtime.runs.acceptInput = async () => {
     throw new Error('transport failed');
   };
   const adapter = new RuntimeHostAdapter({
@@ -10169,11 +9331,15 @@ test('failed after-turn submission revokes its newly registered credential lease
     }),
     /transport failed/,
   );
-  assert.deepEqual(fake.calls.credentialRevokes, ['scoped_credential_1']);
+  assert.deepEqual(
+    fake.calls.credentialRevokes,
+    [],
+    'transport loss does not prove the input was rejected',
+  );
   await adapter.close();
 });
 
-test('after-turn submission uses the provider from the SDK active Run record', async () => {
+test('after-turn submission uses the provider from the SDK effective Session settings', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_observed_provider');
   let runReads = 0;
@@ -10198,6 +9364,7 @@ test('after-turn submission uses the provider from the SDK active Run record', a
 
   await adapter.initialize();
   await adapter.ensureObserved('s_observed_provider');
+  await adapter.updateSessionSettings('s_observed_provider', { provider: 'openai' });
   fake.emit({
     id: 'event_observed_provider',
     seq: 1,
@@ -10221,17 +9388,16 @@ test('after-turn submission uses the provider from the SDK active Run record', a
     afterRunId: 'run_observed_provider',
     delivery: 'after_turn',
     input: [{ type: 'text', text: 'continue after the turn' }],
-    operation: { journalEpoch: 'journal_after_turn_1', expectedRevision: 7 },
   });
 
-  assert.equal(runReads, 1);
+  assert.equal(runReads, 0);
   assert.deepEqual(fake.calls.scopedCredentialRegistrations, [{ providers: ['openai'] }]);
-  const submitted = fake.calls.submitted[0] as {
-    operation?: { operationId?: string; journalEpoch?: string; expectedRevision?: number };
-  };
-  assert.match(submitted.operation?.operationId ?? '', /^space-after-turn-/);
-  assert.equal(submitted.operation?.journalEpoch, 'journal_after_turn_1');
-  assert.equal(submitted.operation?.expectedRevision, 7);
+  const submitted = fake.calls.submitted[0] as Parameters<
+    KodaXDaemonRuntime['runs']['acceptInput']
+  >[0];
+  assert.match(submitted.inputId, /^space-input-/);
+  assert.equal(submitted.delivery, 'after_turn');
+  assert.equal(submitted.targetRunId, undefined);
   await adapter.close();
 });
 
@@ -10254,18 +9420,7 @@ test('interrupt submission reuses the active run bindings and returns the factua
   } as SessionStoreImpl);
   const fake = createFakeRuntime();
   fake.sessions.add('s_1');
-  fake.runtime.runs.submitInput = async (input) => {
-    fake.calls.submitted.push(input);
-    return {
-      accepted: true,
-      delivery: 'interrupt',
-      inputId: 'input_1',
-      runId: 'run_previous',
-      sessionId: 's_1',
-      afterRunId: 'run_previous',
-      sessionOrder: 1,
-    };
-  };
+
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
     profileRoot: path.resolve('C:\\isolated-profile'),
@@ -10277,12 +9432,30 @@ test('interrupt submission reuses the active run bindings and returns the factua
 
   await adapter.initialize();
   await adapter.ensureObserved('s_1');
+  const active = await adapter.startManagedRun({
+    sessionId: 's_1',
+    inputId: 'original',
+    prompt: 'hello',
+  });
+  const originalAuthorization = (
+    fake.calls.started[0] as Parameters<KodaXDaemonRuntime['runs']['start']>[0]
+  ).authorization;
+  fake.runtime.runs.acceptInput = async (input) => {
+    fake.calls.submitted.push(input);
+    return {
+      state: 'queued',
+      sessionId: input.sessionId,
+      inputId: input.inputId,
+      runId: active.runId,
+    };
+  };
   const readsAfterObservation = persistedReads;
   rejectPersistedRead = true;
 
   const result = await adapter.submitInput({
     sessionId: 's_1',
-    afterRunId: 'run_previous',
+    afterRunId: active.runId,
+    inputId: 'input_1',
     delivery: 'interrupt',
     input: [{ type: 'text', text: 'steer now' }],
   });
@@ -10293,25 +9466,27 @@ test('interrupt submission reuses the active run bindings and returns the factua
     accepted: true,
     delivery: 'interrupt',
     inputId: 'input_1',
-    runId: 'run_previous',
+    runId: active.runId,
     sessionId: 's_1',
-    afterRunId: 'run_previous',
-    sessionOrder: 1,
+    afterRunId: active.runId,
   });
-  assert.deepEqual(fake.calls.submitted, [
-    {
-      sessionId: 's_1',
-      afterRunId: 'run_previous',
-      delivery: 'interrupt',
-      input: [{ type: 'text', text: 'steer now' }],
-    },
-  ]);
-  assert.deepEqual(fake.calls.scopedCredentialRegistrations, []);
+  const submitted = fake.calls.submitted[0] as Parameters<
+    KodaXDaemonRuntime['runs']['acceptInput']
+  >[0];
+  assert.equal(submitted.targetRunId, active.runId);
+  assert.equal(submitted.delivery, 'steer');
+  assert.equal(submitted.text, 'steer now');
+  assert.deepEqual(submitted.authorization, originalAuthorization);
+  assert.equal(
+    fake.calls.scopedCredentialRegistrations.length,
+    1,
+    'steer reuses the original grant',
+  );
   assert.deepEqual(fake.calls.credentialRevokes, []);
   await adapter.close();
 });
 
-test('cold active interrupt uses Runtime ownership without crossing persisted history', async () => {
+test('cold steer without original Main authority rejects without crossing persisted history', async () => {
   let persistedReads = 0;
   setSessionStoreImpl({
     listSessions: async () => [],
@@ -10362,18 +9537,13 @@ test('cold active interrupt uses Runtime ownership without crossing persisted hi
       },
     };
   };
-  fake.runtime.runs.submitInput = async (input) => {
-    fake.calls.submitted.push(input);
-    return {
-      accepted: true,
-      delivery: 'interrupt' as const,
-      inputId: 'input_cold_active_interrupt',
-      runId,
-      sessionId,
-      afterRunId: runId,
-      sessionOrder: 1,
-    };
-  };
+  fake.runtime.runs.get = async () => ({
+    runId,
+    sessionId,
+    phase: 'running',
+    startedAt: '2026-10-11T00:00:00Z',
+    provider: 'mock',
+  });
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
     profileRoot: path.resolve('C:\\isolated-profile'),
@@ -10383,32 +9553,25 @@ test('cold active interrupt uses Runtime ownership without crossing persisted hi
   });
 
   await adapter.initialize();
-  const result = await adapter.submitInput({
-    sessionId,
-    afterRunId: runId,
-    delivery: 'interrupt',
-    input: [{ type: 'text', text: 'cold steer' }],
-  });
+  await assert.rejects(
+    adapter.submitInput({
+      sessionId,
+      afterRunId: runId,
+      delivery: 'interrupt',
+      input: [{ type: 'text', text: 'steer now' }],
+    }),
+    /original Main authorization.*unavailable/,
+  );
 
-  assert.equal(result.accepted, true);
   assert.equal(persistedReads, 0);
-  assert.equal(fake.calls.submitted.length, 1);
+  assert.equal(fake.calls.submitted.length, 0);
   await adapter.close();
 });
 
 test('managed-task verification delegates interrupt admission to KodaX Runtime', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_1');
-  fake.runtime.runs.submitInput = async (input) => {
-    fake.calls.submitted.push(input);
-    return {
-      accepted: false,
-      delivery: 'interrupt',
-      sessionId: 's_1',
-      afterRunId: 'run_previous',
-      reason: 'interrupt_window_closed',
-    };
-  };
+
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
     profileRoot: path.resolve('C:\\isolated-profile'),
@@ -10419,13 +9582,18 @@ test('managed-task verification delegates interrupt admission to KodaX Runtime',
 
   await adapter.initialize();
   await adapter.ensureObserved('s_1');
+  const active = await adapter.startManagedRun({ sessionId: 's_1', prompt: 'begin' });
+  fake.runtime.runs.acceptInput = async (input) => {
+    fake.calls.submitted.push(input);
+    throw Object.assign(new Error('Steer window is closed for this Run.'), { code: 'conflict' });
+  };
   fake.emit({
     id: 'event_verifying',
     seq: 1,
     time: '2026-07-24T08:44:30.324Z',
     type: 'run.progress',
     sessionId: 's_1',
-    runId: 'run_previous',
+    runId: active.runId,
     payload: {
       kind: 'managed_task_status',
       status: {
@@ -10440,28 +9608,17 @@ test('managed-task verification delegates interrupt admission to KodaX Runtime',
   });
   await new Promise<void>((resolve) => setImmediate(resolve));
 
-  const result = await adapter.submitInput({
-    sessionId: 's_1',
-    afterRunId: 'run_previous',
-    delivery: 'interrupt',
-    input: [{ type: 'text', text: 'too late for this root turn' }],
-  });
-
-  assert.deepEqual(result, {
-    accepted: false,
-    delivery: 'interrupt',
-    sessionId: 's_1',
-    afterRunId: 'run_previous',
-    reason: 'interrupt_window_closed',
-  });
-  assert.deepEqual(fake.calls.submitted, [
-    {
+  await assert.rejects(
+    adapter.submitInput({
       sessionId: 's_1',
-      afterRunId: 'run_previous',
+      afterRunId: active.runId,
       delivery: 'interrupt',
       input: [{ type: 'text', text: 'too late for this root turn' }],
-    },
-  ]);
+    }),
+    /Steer window is closed/,
+  );
+
+  assert.equal(fake.calls.submitted.length, 1, 'SDK decides whether the steer window remains open');
   await adapter.close();
 });
 
@@ -10484,7 +9641,7 @@ test('interrupt submission rejects replacement bindings before reaching Runtime'
       input: [{ type: 'text', text: 'steer now' }],
       hostTools: { leaseId: 'replacement_tools' },
     }),
-    /must reuse the active run credential and host-tool bindings/,
+    /selected by trusted Main/,
   );
   assert.deepEqual(fake.calls.submitted, []);
   assert.deepEqual(fake.calls.scopedCredentialRegistrations, []);
@@ -10574,7 +9731,6 @@ test('daemon delivered interrupt batch becomes ordered queue-addressable session
       runtimeEvent: {
         runtimeId: 'rt_test',
         runId: 'run_active',
-        journalEpoch: 'journal_epoch_1',
         seq: 1,
       },
       kind: 'session_start',
@@ -10586,7 +9742,6 @@ test('daemon delivered interrupt batch becomes ordered queue-addressable session
       runtimeEvent: {
         runtimeId: 'rt_test',
         runId: 'run_active',
-        journalEpoch: 'journal_epoch_1',
         seq: 2,
       },
       kind: 'mid_turn_user_prompt',
@@ -10602,7 +9757,6 @@ test('daemon delivered interrupt batch becomes ordered queue-addressable session
       runtimeEvent: {
         runtimeId: 'rt_test',
         runId: 'run_active',
-        journalEpoch: 'journal_epoch_1',
         seq: 2,
       },
       kind: 'mid_turn_user_prompt',
@@ -10996,7 +10150,6 @@ test('a terminal fallback restores an after-turn marker with its exact admitted 
     runtimeEvent: {
       runtimeId: 'rt_test',
       runId: 'run_terminal_continuation',
-      journalEpoch: 'journal_epoch_1',
       seq: 1,
     },
     kind: 'queued_user_prompt_started',
@@ -11790,26 +10943,50 @@ test('daemon bridge preserves reasoning intent, sent effort and rejection cache 
   const sessionEvents: unknown[] = [];
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
-    push: (channel, payload) => { if (channel === 'session.event') sessionEvents.push(payload); },
+    push: (channel, payload) => {
+      if (channel === 'session.event') sessionEvents.push(payload);
+    },
   });
   const bridge = bindTestRuntimeEventBridge(adapter);
   const resolution = {
-    provider: 'OpenRouter', model: 'reasoner', requestedEffort: 'none', sentEffort: 'minimal',
+    provider: 'OpenRouter',
+    model: 'reasoner',
+    requestedEffort: 'none',
+    sentEffort: 'minimal',
     verified: false,
     fallbacks: [{ effort: 'none', reason: 'cached-rejection' }],
   } as const;
   for (const contextKind of ['root', 'child'] as const) {
-    bridge({
-      id: `reasoning_${contextKind}`, seq: 40, time: '2026-09-17T00:00:00.000Z',
-      type: 'provider.recovery', sessionId: 's_reasoning', runId: 'run_reasoning', turnId: 'turn_reasoning',
-      payload: { kind: 'reasoning_resolved', event: resolution,
-        meta: { contextKind, ...(contextKind === 'child' ? { liveOnly: true, childAgentId: 'child_1' } : {}) } },
-    } as import('@kodax-ai/kodax/runtime').RuntimeTypedEvent, 'runtime_reasoning');
+    bridge(
+      {
+        id: `reasoning_${contextKind}`,
+        seq: 40,
+        time: '2026-09-17T00:00:00.000Z',
+        type: 'provider.recovery',
+        sessionId: 's_reasoning',
+        runId: 'run_reasoning',
+        turnId: 'turn_reasoning',
+        payload: {
+          kind: 'reasoning_resolved',
+          event: resolution,
+          meta: {
+            contextKind,
+            ...(contextKind === 'child' ? { liveOnly: true, childAgentId: 'child_1' } : {}),
+          },
+        },
+      } as import('@kodax-ai/kodax/runtime').RuntimeTypedEvent,
+      'runtime_reasoning',
+    );
   }
-  assert.deepEqual(sessionEvents, [{
-    runtimeEvent: { runtimeId: 'runtime_reasoning', runId: 'run_reasoning', journalEpoch: 'journal_epoch_1', seq: 40 },
-    turnId: 'turn_reasoning', kind: 'reasoning_resolved', sessionId: 's_reasoning', resolution,
-  }]);
+  assert.deepEqual(sessionEvents, [
+    {
+      runtimeEvent: { runtimeId: 'runtime_reasoning', runId: 'run_reasoning', seq: 40 },
+      turnId: 'turn_reasoning',
+      kind: 'reasoning_resolved',
+      sessionId: 's_reasoning',
+      resolution,
+    },
+  ]);
   await adapter.close();
 });
 
@@ -11855,7 +11032,6 @@ for (const recoveryAction of ['stable_boundary_retry', 'text_diagnosis'] as cons
         runtimeEvent: {
           runtimeId: 'runtime_recovery',
           runId: 'run_recovery',
-          journalEpoch: 'journal_epoch_1',
           seq: 41,
         },
         turnId: 'turn_recovery',
@@ -12299,7 +11475,6 @@ test('daemon terminal sidecar block is surfaced as a notice and closes without a
       runtimeEvent: {
         runtimeId: 'rt_1',
         runId: 'run_blocked',
-        journalEpoch: 'journal_epoch_1',
         seq: 1,
       },
       message: {
@@ -12396,9 +11571,9 @@ test('Runtime event coalescing capability is projected from the connected host',
     },
   );
   assert.deepEqual(
-    capabilities.find((item) => item.id === 'runtime.events.sessionJournal'),
+    capabilities.find((item) => item.id === 'runtime.product.historyBoundaries'),
     {
-      id: 'runtime.events.sessionJournal',
+      id: 'runtime.product.historyBoundaries',
       version: 1,
       available: true,
     },
@@ -13028,6 +12203,30 @@ test('trusted observation recovery does not cross the active Session writer boun
   await adapter.close();
 });
 
+test('a quiescent snapshot read cannot retire an observation during Run admission', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_admitting');
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  const acceptInput = fake.runtime.runs.acceptInput.bind(fake.runtime.runs);
+  fake.runtime.runs.acceptInput = async (input) => {
+    await adapter.readSessionLiveSnapshot(input.sessionId);
+    assert.equal(fake.calls.observationCloses, 0, 'admission still needs its live observer');
+    return acceptInput(input);
+  };
+  await adapter.initialize();
+  try {
+    await adapter.startManagedRun({ sessionId: 's_admitting', prompt: 'following a terminal Run' });
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('terminal Session observations retire and are not restored after reconnect', async () => {
   const first = createFakeRuntime();
   const second = createFakeRuntime();
@@ -13136,7 +12335,7 @@ test('observation reopen keeps the same terminal sidecar once and rejects retire
       ...observation,
       snapshot: {
         ...observation.snapshot,
-        cursor: testRuntimeCursor('s_reobserve', reopensTerminalOwner ? 4 : 5),
+        seq: reopensTerminalOwner ? 4 : 5,
         runs: [
           reopensTerminalOwner
             ? {
@@ -13314,7 +12513,7 @@ test('observation invalidation preserves a monotonic live revision for a missed 
       ...observation,
       snapshot: {
         ...observation.snapshot,
-        cursor: testRuntimeCursor('s_invalidated_revision', generation === 1 ? 0 : 4),
+        seq: generation === 1 ? 0 : 4,
         runs: [
           {
             runId: generation === 1 ? 'run_before_invalidation' : 'run_after_invalidation',

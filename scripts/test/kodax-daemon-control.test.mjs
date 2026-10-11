@@ -6,7 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { connectKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { ensureKodaXRuntime } from '@kodax-ai/kodax/runtime';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -24,10 +24,9 @@ async function fixture(t) {
   const packageRoot = path.dirname(
     createRequire(import.meta.url).resolve('@kodax-ai/kodax/package.json'),
   );
-  const runtime = await connectKodaXRuntime({
+  const runtime = await ensureKodaXRuntime({
     homeDir: path.join(root, 'home'),
     profile,
-    autoStart: true,
     defaultProvider: 'anthropic',
     daemonOrphanExitMs: 30000,
   });
@@ -40,7 +39,7 @@ async function fixture(t) {
         'daemon',
         'stop',
         '--home',
-        root,
+        path.join(root, 'home'),
         '--profile',
         profile,
         '--timeout-ms',

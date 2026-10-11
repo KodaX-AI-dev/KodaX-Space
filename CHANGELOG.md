@@ -14,6 +14,20 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade the installed SDK to `0.7.97-alpha.3` and migrate Space to the unified public contracts: stable Product input and captured Main authorization, Host-owned Workflow policy, canonical history/current views, execution statistics, and recoverable client exit. Keep the existing Main connection and Partner execution boundary. See the [migration and acceptance record](docs/features/SDK_0.7.97_MIGRATION.md).
+
+### Fixed
+
+- Recover interrupted thinking and text across separate Host view items, preserve repeated tool execution identity, and restore queued inputs and original authorization after Main reconnect. Client exit protects other online clients and retains unknown receipts for recovery.
+- Keep the Session observer attached while a new Run is being admitted, so a send after Stop receives its live output instead of remaining at “Sending”.
+
+### Tests
+
+- Run Windows E2E on an isolated desktop, preserving normal product window behavior and real Playwright input without covering the user's current desktop. Own the test process tree through cancellation, cancel unexpected native dialogs, and clean both test identity credentials after exit rotation.
+- Exercise the published SDK through Space UI and public IPC in source and packaged builds; replace retired journal/exit smoke checks with canonical history and verified lifecycle receipts. Include generated file-preview samples instead of depending on personal Downloads.
+
 ---
 
 ## [0.1.46] - 2026-10-06

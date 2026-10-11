@@ -25,7 +25,10 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { registerVersionChannel } from './ipc/version.js';
 import { registerSandboxChannels } from './ipc/sandbox.js';
-import { registerRuntimeProjectionChannels } from './ipc/runtime.js';
+import {
+  registerRuntimeProjectionChannels,
+  registerRuntimeStatisticsChannels,
+} from './ipc/runtime.js';
 import { registerRepointelChannels } from './ipc/repointel.js';
 import { registerHandoffChannels } from './ipc/handoff.js';
 import { registerSessionChannels } from './ipc/session.js';
@@ -126,7 +129,10 @@ import { externalAgentGateway } from './kodax/external-agent-gateway.js';
 import { runtimeHostAdapter, type RuntimeExitSettlement } from './kodax/runtime-host-adapter.js';
 import { startBackgroundRuntimeInitialization } from './kodax/background-runtime-startup.js';
 import { CoderRuntimeModeSwitchCoordinator } from './kodax/coder-runtime-mode-switch.js';
-import { isCoderOwnerRecoveryRestartRequired } from './kodax/coder-owner-recovery-error.js';
+import {
+  createCoderOwnerRecoveryRestartError,
+  isCoderOwnerRecoveryRestartRequired,
+} from './kodax/coder-owner-recovery-error.js';
 import {
   handleRuntimeExitRecoveryDialogResponse,
   runRuntimeStartupBoundary,
@@ -1794,6 +1800,12 @@ async function requestCompleteExit(): Promise<void> {
     const disposition = resolveCompleteExitDisposition({ spaceBlockers, runtimeBlockers });
     console.info(`[main] complete exit preflight settled in ${Date.now() - requestStartedAt}ms`);
     if (disposition === 'exit-preserve-runtime') {
+      const cleanup = await runtimeHostAdapter.stopSpaceOwnedRuntimeWorkForForcedExit();
+      if (cleanup.failed)
+        throw createCoderOwnerRecoveryRestartError(
+          [new Error('Client cleanup remains unverified.')],
+          'Space client exit needs recovery.',
+        );
       exitCommitted = true;
       sharedRuntimeExitCommitted = true;
       runPreservedRuntimeCompleteExit({
@@ -2367,6 +2379,7 @@ const startupPromise = app
     // F121 Part 1: explicit SDK-pending snapshot handlers. They report a
     // connecting projection until the published daemon adapter replaces it.
     registerRuntimeProjectionChannels();
+    registerRuntimeStatisticsChannels();
     registerLearningChannels();
     registerDiagnosticsChannels({
       getMainWindow: () => mainWindow,

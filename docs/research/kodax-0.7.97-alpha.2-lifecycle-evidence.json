@@ -1,0 +1,105 @@
+{
+  "peerProtection": {
+    "source": "Registry alpha.2 SDK and actual detached Host",
+    "receipt": {
+      "requestId": "immediate-disconnect",
+      "clientId": "client_95b27295b7340cb9b49c1315b47c05d89517e9b18ddf551b7daac94e6052cbe0",
+      "runtimeId": "rt_1e7bb31806b6",
+      "accepted": true,
+      "requestedAt": "2026-10-10T01:25:37.903Z",
+      "updatedAt": "2026-10-10T01:25:37.920Z",
+      "cleanup": {
+        "actorTurns": [],
+        "operationIds": [],
+        "runIds": [],
+        "withdrawnInputs": [],
+        "state": "succeeded",
+        "issues": []
+      },
+      "host": {
+        "requested": true,
+        "state": "protected",
+        "owner": {
+          "runtimeId": "rt_1e7bb31806b6",
+          "pid": 60700,
+          "createdAt": "2026-10-10T01:25:37.427Z",
+          "kind": "daemon",
+          "processStartIdentity": "13436069135705",
+          "processContainment": "windows-job",
+          "supervisorPid": 47788,
+          "supervisorProcessStartIdentity": "13436069135405"
+        },
+        "message": "Runtime daemon cannot stop safely: connected_clients."
+      }
+    },
+    "peerStillUsable": true
+  },
+  "exitedContinuation": {
+    "source": "Registry alpha.2 SDK and actual detached Host with localhost HTTP fixture",
+    "refused": ["after_turn", "interrupt"],
+    "errorCode": "conflict",
+    "foreignRunCompleted": true
+  },
+  "compactionRecovery": {
+    "source": "Registry alpha.2 public inline Host, offline custom Provider",
+    "ownRunPhase": "interrupted",
+    "uncertain": {
+      "requestId": "quit",
+      "clientId": "client_59b4e2d9ba1c5211c9b9a7650aaaee202e64fb9098979885827407945059a2e2",
+      "runtimeId": "rt_d6b3ecfd2353",
+      "accepted": true,
+      "requestedAt": "2026-10-10T01:25:45.776Z",
+      "updatedAt": "2026-10-10T01:25:48.783Z",
+      "cleanup": {
+        "actorTurns": [],
+        "operationIds": ["compact_a6f4648247a8407fa7e28e914d6b12d9"],
+        "runIds": ["run_e86c6c06845f2592bc16ad3a9bf8cf5f189dbcf62b9ef96472198e6dbb51676f"],
+        "withdrawnInputs": [],
+        "state": "unknown",
+        "issues": [
+          "Client compaction remains unconfirmed.",
+          "Accepted client operations remain unconfirmed."
+        ]
+      },
+      "host": {
+        "requested": false,
+        "state": "not_requested",
+        "owner": {
+          "runtimeId": "rt_d6b3ecfd2353",
+          "pid": 50232,
+          "createdAt": "2026-10-10T01:25:43.019Z",
+          "kind": "daemon",
+          "processStartIdentity": "13436069134656"
+        }
+      }
+    },
+    "recovered": {
+      "requestId": "quit",
+      "clientId": "client_59b4e2d9ba1c5211c9b9a7650aaaee202e64fb9098979885827407945059a2e2",
+      "runtimeId": "rt_d6b3ecfd2353",
+      "accepted": true,
+      "requestedAt": "2026-10-10T01:25:45.776Z",
+      "updatedAt": "2026-10-10T01:25:48.812Z",
+      "cleanup": {
+        "actorTurns": [],
+        "operationIds": ["compact_a6f4648247a8407fa7e28e914d6b12d9"],
+        "runIds": ["run_e86c6c06845f2592bc16ad3a9bf8cf5f189dbcf62b9ef96472198e6dbb51676f"],
+        "withdrawnInputs": [],
+        "state": "succeeded",
+        "issues": []
+      },
+      "host": {
+        "requested": false,
+        "state": "not_requested",
+        "owner": {
+          "runtimeId": "rt_d6b3ecfd2353",
+          "pid": 50232,
+          "createdAt": "2026-10-10T01:25:43.019Z",
+          "kind": "daemon",
+          "processStartIdentity": "13436069134656"
+        }
+      }
+    },
+    "abortedCompactionDidNotRewriteHistory": true
+  }
+}

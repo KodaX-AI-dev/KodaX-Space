@@ -66,7 +66,7 @@ for (const persistedByHost of [false, true]) {
             id: 'managed-durability',
             persistedByHost,
             storage: {
-              load: async () => stored ?? null,
+              load: async () => stored ?? { title: 'Fixture', messages: [], gitRoot: root },
               save: async (_id, data) => {
                 stored = structuredClone(data);
               },

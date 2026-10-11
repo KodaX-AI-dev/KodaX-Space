@@ -299,6 +299,12 @@ export default function App(): JSX.Element {
         .then((result) => {
           if (!result.ok) throw new Error(result.error?.message ?? 'Session live snapshot failed.');
           if (disposed) return;
+          void invokeWithTimeout(bridge, 'session.statistics', { sessionId })
+            .then((summary) => {
+              if (!disposed && summary.ok)
+                useAppStore.getState().replaceSessionStatistics(summary.data);
+            })
+            .catch((error) => console.warn('[session.statistics] read failed:', error));
           // Install the incoming causal barrier while draining. This lets a large fragment backlog
           // collapse without joining a covered delta to a post-snapshot delta.
           const previousBarrier = useAppStore.getState().runtimeSnapshotCursorBySession[sessionId];
@@ -612,15 +618,14 @@ export default function App(): JSX.Element {
       if (!sessionId) return;
       const selected = state.sessions.find((session) => session.sessionId === sessionId);
       if (selected?.surface === 'partner') return;
-      void revalidateNewestSessionHistory(
-        sessionId,
-        selected?.surface ?? 'code',
-      ).catch((error: unknown) => {
-        console.error('[session.history] foreground convergence revalidate failed', {
-          sessionId,
-          error,
-        });
-      });
+      void revalidateNewestSessionHistory(sessionId, selected?.surface ?? 'code').catch(
+        (error: unknown) => {
+          console.error('[session.history] foreground convergence revalidate failed', {
+            sessionId,
+            error,
+          });
+        },
+      );
     };
     const liveReconciliationTimer = setInterval(() => {
       if (document.hidden) return;
@@ -660,6 +665,9 @@ export default function App(): JSX.Element {
         if (shouldRequestSessionLiveSnapshot(status)) {
           requestLiveSnapshot(change.sessionId);
         }
+      }),
+      bridge.on('session.statisticsChanged', (statistics) => {
+        useAppStore.getState().replaceSessionStatistics(statistics);
       }),
       bridge.on('session.liveInvalidated', (invalidation) => {
         invalidateSessionLiveProjection(invalidation);
@@ -789,6 +797,18 @@ export default function App(): JSX.Element {
           invalidateSessionHistoryPaging(event.sessionId);
         }
         sessionEventBatcher.push(event);
+        if (
+          event.kind === 'tool_result' &&
+          event.runtimeEvent &&
+          !event.sourceItemId &&
+          useAppStore
+            .getState()
+            .liveProjectionBySession[
+              event.sessionId
+            ]?.toolEvents?.some((tool) => tool.sourceItemId && tool.toolId === event.toolId && tool.runId === event.runtimeEvent?.runId)
+        ) {
+          requestLiveSnapshot(event.sessionId, { allowEqualHydration: true });
+        }
         if (event.kind === 'session_complete' || event.kind === 'session_error') {
           requestLiveSnapshot(event.sessionId);
         }
@@ -1026,12 +1046,7 @@ export default function App(): JSX.Element {
     const selected = state.sessions.find((session) => session.sessionId === currentSessionId);
     if (selected?.surface === 'partner') return;
     let disposed = false;
-    void invokeWithTimeout(
-      bridge,
-      'agent.actor.snapshot',
-      { sessionId: currentSessionId },
-      30_000,
-    )
+    void invokeWithTimeout(bridge, 'agent.actor.snapshot', { sessionId: currentSessionId }, 30_000)
       .then((result) => {
         if (disposed) return;
         if (!result.ok) {

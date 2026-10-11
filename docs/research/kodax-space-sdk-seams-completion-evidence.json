@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-09",
+  "timezone": "Asia/Shanghai",
+  "sdkBaseline": "ba30095a6a2da143a43776402813f24734d8c53a",
+  "patchSha256": "376c7d09c649742a554b1e49c1c7ecc9dd40df44e05bfe5eb7b2695b44141e74",
+  "initialWorkingTreeContentSha256": "5c7c21bb01efb866188ebe8c842f2354f9f923c8a1714e863666e23f9c86b76b",
+  "untrackedIncluded": [
+    "docs/SPACE_SDK_SEAMS.md",
+    "packages/llm/src/provider-request-observation.test.ts",
+    "packages/llm/src/provider-request-observation.ts",
+    "src/client-host-authorization.ts",
+    "src/execution-facts.test.ts",
+    "src/execution-facts.ts",
+    "src/product-execution-authorization.ts",
+    "src/runtime-client-work.ts",
+    "src/runtime-daemon/client-lifecycle.test.ts",
+    "src/runtime-daemon/client-lifecycle.ts",
+    "src/sdk-client.exit.test.ts",
+    "src/sdk-client.host-authorization.test.ts",
+    "tests/bundled-product-exit.test.mjs"
+  ],
+  "publication": "user reports unpublished working-tree changes; Space installed dependency remains Registry alpha.1",
+  "scope": "SDK source read-only; tracked diff HEAD plus untracked files",
+  "tests": {
+    "status": "passed",
+    "files": 7,
+    "tests": 71,
+    "command": "npx vitest run src/sdk-client.host-authorization.test.ts src/sdk-client.exit.test.ts src/sdk-client.derive.test.ts src/execution-facts.test.ts src/runtime-daemon/client-lifecycle.test.ts packages/llm/src/provider-request-observation.test.ts packages/coding/src/agent-runtime/actor-runtime.test.ts",
+    "log": ".tmp-kodax-seams-completion-tests.log"
+  },
+  "sourceTypecheck": {
+    "status": "passed",
+    "command": "npm run typecheck",
+    "scope": "source and tests",
+    "log": ".tmp-kodax-seams-completion-typecheck.log"
+  },
+  "sdkConsumerTypes": {
+    "status": "passed",
+    "command": "npx tsc -p tests/fixtures/product-client-types/tsconfig.json",
+    "scope": "strict real dist subpath exports, skipLibCheck=false, types=[]"
+  },
+  "builtExitTest": {
+    "status": "passed",
+    "tests": 1,
+    "command": "node --test --test-timeout=120000 tests/bundled-product-exit.test.mjs",
+    "log": ".tmp-kodax-seams-completion-bundle-exit.log"
+  },
+  "finalWorkingTreeContentSha256": "5c7c21bb01efb866188ebe8c842f2354f9f923c8a1714e863666e23f9c86b76b",
+  "sdkSourceUnchanged": true,
+  "contentHashAlgorithm": "SHA256(raw git -c core.safecrlf=false diff --binary HEAD bytes, then each sorted untracked relative path + NUL + raw file bytes)",
+  "finalPatchSha256": "376c7d09c649742a554b1e49c1c7ecc9dd40df44e05bfe5eb7b2695b44141e74",
+  "finalSdkHead": "ba30095a6a2da143a43776402813f24734d8c53a",
+  "verificationLimits": [
+    "Author-reported full 942 tests and coverage were not independently rerun.",
+    "Existing worktree dist was exercised; this turn did not independently rebuild the full SDK.",
+    "Space production migration is not implemented; installed npm alpha.1 has not been replaced by this unpublished worktree."
+  ],
+  "independentReview": {
+    "standards": {
+      "actionableFindings": 0
+    },
+    "specLifecycle": {
+      "actionableFindings": 3,
+      "priorities": {
+        "P1": 2,
+        "P2": 1
+      }
+    },
+    "statisticsSupplement": {
+      "actionableFindings": 4,
+      "priorities": {
+        "P1": 1,
+        "P2": 3
+      },
+      "report": "kodax-space-sdk-statistics-audit.md",
+      "probe": "kodax-space-sdk-statistics-probes.mjs",
+      "evidence": "kodax-space-sdk-statistics-probe-evidence.json",
+      "rootRerun": "passed",
+      "log": ".tmp-kodax-seams-statistics-probe.log"
+    }
+  },
+  "lifecycleCounterexamples": [
+    {
+      "id": "F1",
+      "priority": "P1",
+      "violation": "Caller disconnect after requestExit closes Host with a foreign idle client still attached.",
+      "probe": "scratch/kodax-exit-peer-probe.mjs",
+      "log": ".tmp-kodax-seams-exit-peer-probe.log"
+    },
+    {
+      "id": "F2",
+      "priority": "P1",
+      "violation": "Exited principal can admit a new continuation Run via runtime.runs.submitInput.",
+      "probe": "scratch/kodax-exited-client-continuation-probe.mjs",
+      "log": ".tmp-kodax-seams-continuation-probe.log"
+    },
+    {
+      "id": "F3",
+      "priority": "P2",
+      "violation": "Uncooperative custom compaction blocks cancellation of another abort-cooperative own Run.",
+      "probe": "scratch/kodax-compaction-exit-probe.mjs",
+      "log": ".tmp-kodax-seams-compaction-exit-probe.log"
+    }
+  ],
+  "probeEnvironment": "Fresh isolated temporary profiles; fake/custom Providers and localhost HTTP/global fetch fixtures; no real model calls or user Sessions."
+}

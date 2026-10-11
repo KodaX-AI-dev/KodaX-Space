@@ -1,0 +1,830 @@
+{
+  "generatedAt": "2026-10-11T06:39:39.946475+00:00",
+  "sdkVersion": "0.7.97-alpha.3",
+  "platform": "win32-x64",
+  "runs": {
+    "existingDesktopSuite": {
+      "stats": {
+        "startTime": "2026-10-11T06:14:45.577Z",
+        "duration": 1429904.338,
+        "expected": 93,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "file": "artifact-file-preview.spec.ts",
+          "title": "File Viewer previews real Downloads files without persisting them as Artifacts",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12706
+        },
+        {
+          "file": "artifact-file-preview.spec.ts",
+          "title": "File Viewer opens a project file before the first Session without exposing Artifact state",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17554
+        },
+        {
+          "file": "artifact-file-preview.spec.ts",
+          "title": "Project HTML File Viewer runs relative modules, assets, local fetch, storage, and workers in isolation",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17666
+        },
+        {
+          "file": "artifact-file-preview.spec.ts",
+          "title": "Project HTML File Viewer loads and switches local animation frames in both network modes",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17520
+        },
+        {
+          "file": "artifact-file-preview.spec.ts",
+          "title": "PDF File Viewer supports keyboard paging after focus",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18439
+        },
+        {
+          "file": "artifact-html-runtime.spec.ts",
+          "title": "interactive HTML Artifact executes inline runtime code inside the restricted frame",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17215
+        },
+        {
+          "file": "artifact-html-runtime.spec.ts",
+          "title": "interactive HTML Artifact keeps inline controls and timer-driven playback working",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17691
+        },
+        {
+          "file": "artifact-html-runtime.spec.ts",
+          "title": "legacy static metadata recovers a large end-script presentation with storage and workers",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10484
+        },
+        {
+          "file": "artifact-html-runtime.spec.ts",
+          "title": "current Artifact payload refreshes when a new version becomes latest",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17559
+        },
+        {
+          "file": "background-tray-lifecycle.spec.ts",
+          "title": "Windows tray keeps only the background host and can recreate a closed Space window",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17941
+        },
+        {
+          "file": "coder-layout.spec.ts",
+          "title": "a manual right-sidebar toggle opens on the first click at a narrow viewport",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17628
+        },
+        {
+          "file": "coder-layout.spec.ts",
+          "title": "Coder preserves a usable workspace as persisted sidebars meet narrower screens",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11930
+        },
+        {
+          "file": "compact-composer.spec.ts",
+          "title": "S-compact-residue: /compact clears the composer immediately, not after compaction",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 13981
+        },
+        {
+          "file": "compact-composer.spec.ts",
+          "title": "S-compact-spinner: compacting spinner stays centered in the context gauge",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 13506
+        },
+        {
+          "file": "composer-after-session-delete.spec.ts",
+          "title": "composer remains focusable after deleting the current session",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11728
+        },
+        {
+          "file": "conversation-expand-lazy.spec.ts",
+          "title": "conversation expansion lazy-mounts hidden tool details and defers Monaco diff mount",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10951
+        },
+        {
+          "file": "conversation-receipts-scroll.spec.ts",
+          "title": "conversation receipt strip stays top-anchored on expand and preserves scroll through sidebar resizing",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 14622
+        },
+        {
+          "file": "conversation-receipts-scroll.spec.ts",
+          "title": "scrollback stays stable after resizing a completed streamed conversation",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 25764
+        },
+        {
+          "file": "conversation-receipts-scroll.spec.ts",
+          "title": "scrollback stays stable after resizing a active streamed conversation",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 26348
+        },
+        {
+          "file": "environment-hub-task-dock.spec.ts",
+          "title": "Task Dock stays closed on startup even with a stale open preference",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17510
+        },
+        {
+          "file": "environment-hub-task-dock.spec.ts",
+          "title": "Environment Hub routes anchored menus and changes into Task Dock and Review workspace",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18728
+        },
+        {
+          "file": "environment-hub-task-dock.spec.ts",
+          "title": "Environment Hub explains Changes when the project is not a git repository",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17239
+        },
+        {
+          "file": "environment-hub-task-dock.spec.ts",
+          "title": "Smart Popout signals focus Task Dock instead of opening a plan popout",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10667
+        },
+        {
+          "file": "environment-hub-task-dock.spec.ts",
+          "title": "Task Dock presents semantic agent status and opens the full Agents panel",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11060
+        },
+        {
+          "file": "external-agent-reference.spec.ts",
+          "title": "Reference Agent management, localization, and Workflow picker are product-complete",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 13247
+        },
+        {
+          "file": "external-agent-reference.spec.ts",
+          "title": "Task Dock continues input-required tasks and preserves independent cancellation audit",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17785
+        },
+        {
+          "file": "file-attachments.spec.ts",
+          "title": "file picker accepts images, documents, and unknown file types",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17299
+        },
+        {
+          "file": "file-attachments.spec.ts",
+          "title": "sent image renders in the user bubble and opens in Task Dock",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17865
+        },
+        {
+          "file": "full-access-mode.spec.ts",
+          "title": "mode selector exposes the four canonical profiles and Full access end to end",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18494
+        },
+        {
+          "file": "i18n-language-switch.spec.ts",
+          "title": "language switch updates settings, sidebar, and command palette copy",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12953
+        },
+        {
+          "file": "integration-migration.spec.ts",
+          "title": "Settings previews and applies the SDK legacy integration migration non-destructively",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11401
+        },
+        {
+          "file": "markdown-file-actions.spec.ts",
+          "title": "conversation file paths reuse the complete file action menu",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12925
+        },
+        {
+          "file": "mode-toggle.spec.ts",
+          "title": "S4: Shift+Tab cycles through all four permission profiles",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 6596
+        },
+        {
+          "file": "model-picker.spec.ts",
+          "title": "unknown reasoning controls preserve selection and show last sent effort separately",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11685
+        },
+        {
+          "file": "model-picker.spec.ts",
+          "title": "provider/model picker applies selections before and after session creation",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17462
+        },
+        {
+          "file": "notifications-surface.spec.ts",
+          "title": "todo drift notification close affordance is stable and dismissible",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11043
+        },
+        {
+          "file": "onboarding.spec.ts",
+          "title": "S1: first launch with isolated data dir shows welcome / no-project state",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 9885
+        },
+        {
+          "file": "onboarding.spec.ts",
+          "title": "S2: Space actually writes into the isolated data dir (OC-12 plumbing alive)",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 9663
+        },
+        {
+          "file": "partner-bundled.spec.ts",
+          "title": "Partner host switches the same library between connectors and experts",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 7132
+        },
+        {
+          "file": "partner-bundled.spec.ts",
+          "title": "bundled Partner is available with the default Coder runtime",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11730
+        },
+        {
+          "file": "partner-bundled.spec.ts",
+          "title": "a fresh Space profile can select and use the bundled Partner expert",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 8304
+        },
+        {
+          "file": "partner-layout.spec.ts",
+          "title": "Partner layout remains usable without panel overlap across common widths",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 8720
+        },
+        {
+          "file": "partner-layout.spec.ts",
+          "title": "Partner detail history and width survive a Coder round trip without changing Coder width",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 7421
+        },
+        {
+          "file": "partner-layout.spec.ts",
+          "title": "Partner menu and delete dialog stay above layout and inside the viewport",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 7587
+        },
+        {
+          "file": "partner-mode.spec.ts",
+          "title": "Partner context rail and detail launcher follow the dual-button layout",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 7688
+        },
+        {
+          "file": "partner-mode.spec.ts",
+          "title": "Partner supports normal composer use, slash clear, mode shortcut, and resume",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 8246
+        },
+        {
+          "file": "partner-mode.spec.ts",
+          "title": "Partner artifact card updates without stealing focus and opens typed file details",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 7288
+        },
+        {
+          "file": "partner-mode.spec.ts",
+          "title": "Partner material picker keeps its selection while switching detail tabs",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 7790
+        },
+        {
+          "file": "partner-mode.spec.ts",
+          "title": "Partner sources can be attached and removed, and deleting the session recovers composer",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 9565
+        },
+        {
+          "file": "partner-mode.spec.ts",
+          "title": "Partner can stage sources before the first composer send creates the session",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 7401
+        },
+        {
+          "file": "popout-position.spec.ts",
+          "title": "diff popout overlays the conversation without blocking the composer",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18429
+        },
+        {
+          "file": "popout-position.spec.ts",
+          "title": "activity toolbar opens the review popout",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11250
+        },
+        {
+          "file": "project-reorder.spec.ts",
+          "title": "archivedProjectsExpanded persists across reload",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 14472
+        },
+        {
+          "file": "project-reorder.spec.ts",
+          "title": "projectOrder lsKey is read and survives reload",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 13623
+        },
+        {
+          "file": "project-reorder.spec.ts",
+          "title": "projectOrder corrupt LS value is rejected gracefully (no white screen)",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12092
+        },
+        {
+          "file": "queued-message-toast.spec.ts",
+          "title": "queued message notification leaves the composer accessible at narrow and wide sizes",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18352
+        },
+        {
+          "file": "renderer-boot.spec.ts",
+          "title": "renderer mounts without error in prod-mode launch",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 13042
+        },
+        {
+          "file": "right-sidebar-popouts.spec.ts",
+          "title": "Changes expands a fully untracked directory into reviewable file rows",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18378
+        },
+        {
+          "file": "right-sidebar-popouts.spec.ts",
+          "title": "right sidebar reveals every plan step from the more-items row",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12618
+        },
+        {
+          "file": "right-sidebar-popouts.spec.ts",
+          "title": "right sidebar full-panel buttons open and close promptly while a session streams",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 14081
+        },
+        {
+          "file": "send-reply.spec.ts",
+          "title": "S3: send a prompt and see assistant reply via mock adapter",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12846
+        },
+        {
+          "file": "session-history-acp-filter.spec.ts",
+          "title": "ACP fixtures cannot hide real history and show-all searches beyond the recent limit",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 24268
+        },
+        {
+          "file": "session-send-retry.spec.ts",
+          "title": "history rejection restores the draft and retries the same Session with a new operation",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11508
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Settings preferences controls are keyboardable, minimal, and persist edits",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12376
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Settings interactive inventory has no unnamed controls across dynamic states",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12741
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Settings language switch localizes provider settings and custom form",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11742
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Settings providers toolbar and custom form stay compact but complete",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12109
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Custom provider form failures remain clear and non-destructive",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11771
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Provider cards support default switching, key editing, removal, and deletion",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 13221
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Provider cards cover add-key Enter, test failure, and default cleanup states",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12576
+        },
+        {
+          "file": "settings-modal-interactions.spec.ts",
+          "title": "Settings modal close controls are predictable and non-destructive",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 20050
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "Project Files sidebar keeps the Settings footer visible and functional",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18154
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "SettingsModal opens via sidebar, Esc closes, Task Dock focus toggle persists",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 13536
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "SettingsModal tab switch keeps both panels mounted (preserves in-progress edits)",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11373
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "Runtime settings exposes refreshable ASRT readiness without triggering setup",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 15596
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "SettingsModal providers tab adds a custom provider and saves its API key",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12395
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "SettingsModal keeps a partially-created custom provider visible when key save fails",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12119
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "SettingsModal does not allow an unconfigured provider to become default",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11922
+        },
+        {
+          "file": "settings-modal.spec.ts",
+          "title": "SettingsModal API key editor Escape cancels edit without closing the modal",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 11372
+        },
+        {
+          "file": "sidebar-resize.spec.ts",
+          "title": "sidebar width writes to localStorage and survives reload after manual open",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10926
+        },
+        {
+          "file": "sidebar-resize.spec.ts",
+          "title": "sidebar width clamps localStorage values to current bounds",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 19125
+        },
+        {
+          "file": "sidebar-resize.spec.ts",
+          "title": "right sidebar presets stay responsive and explicit half/max modes remain visible",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18344
+        },
+        {
+          "file": "slash.spec.ts",
+          "title": "S5: /clear wipes the conversation buffer",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10303
+        },
+        {
+          "file": "startup-overlay.spec.ts",
+          "title": "boot overlay remains above a painted Shell and is then removed atomically",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 29000
+        },
+        {
+          "file": "ui-elements-sweep.spec.ts",
+          "title": "UI button sweep keeps the shell reliable across every region",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 25084
+        },
+        {
+          "file": "ui-elements-sweep.spec.ts",
+          "title": "major surfaces and popovers are available and close cleanly",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 145592
+        },
+        {
+          "file": "user-query-collapse.spec.ts",
+          "title": "long user queries keep a four-line preview and can expand or collapse in place",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 18158
+        },
+        {
+          "file": "window-close-behavior.spec.ts",
+          "title": "Windows close behavior preference is visible, typed, and persisted",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17300
+        },
+        {
+          "file": "window-throttling.spec.ts",
+          "title": "main window restores background throttling after first reveal",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10330
+        },
+        {
+          "file": "workflow-events.spec.ts",
+          "title": "workflow push events update the sidebar and transcript through completion",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10840
+        },
+        {
+          "file": "workflow-events.spec.ts",
+          "title": "workflow manager restores completed runs persisted on disk",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 10854
+        },
+        {
+          "file": "workflow-slash.spec.ts",
+          "title": "workflow slash create sends on Enter and shows immediate progress",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 9628
+        },
+        {
+          "file": "workflow-slash.spec.ts",
+          "title": "workflow slash create send button shows immediate progress",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 9805
+        }
+      ]
+    },
+    "realSdkSourceSuite": {
+      "stats": {
+        "startTime": "2026-10-11T06:35:23.996Z",
+        "duration": 99077.575,
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "real SDK Stop admits a new prompt while the cancelled HTTP stream is still open",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17985
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "published SDK tools, statistics and canonical history survive Renderer reload and fork",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 14014
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "real Host queued input survives reload, drains once and Stop preserves a later send",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17329
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "desktop complete exit settles the last real SDK Host without fixture process killing",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 14697
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "real canonical boundaries reject stale mutations and UI Rewind permits subsequent input",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 19020
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "Space complete exit protects another connected product client",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 14356
+        }
+      ]
+    },
+    "realSdkPackagedSuite": {
+      "stats": {
+        "startTime": "2026-10-11T06:30:50.977Z",
+        "duration": 104127.967,
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "real SDK Stop admits a new prompt while the cancelled HTTP stream is still open",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 15510
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "published SDK tools, statistics and canonical history survive Renderer reload and fork",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 14877
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "real Host queued input survives reload, drains once and Stop preserves a later send",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 19162
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "desktop complete exit settles the last real SDK Host without fixture process killing",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 17435
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "real canonical boundaries reject stale mutations and UI Rewind permits subsequent input",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 19641
+        },
+        {
+          "file": "sdk-unified-contract.spec.ts",
+          "title": "Space complete exit protects another connected product client",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 15726
+        }
+      ]
+    },
+    "finalStartupAndPreview": {
+      "stats": {
+        "startTime": "2026-10-11T06:36:38.708Z",
+        "duration": 42645.659,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "file": "artifact-file-preview.spec.ts",
+          "title": "File Viewer previews real Downloads files without persisting them as Artifacts",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 12798
+        },
+        {
+          "file": "startup-overlay.spec.ts",
+          "title": "boot overlay remains above a painted Shell and is then removed atomically",
+          "status": "passed",
+          "attempts": 1,
+          "durationMs": 29123
+        }
+      ]
+    }
+  },
+  "uniqueSourceCases": 99,
+  "additionalChecks": {
+    "adapterRegression": {
+      "passed": 250,
+      "failed": 0
+    },
+    "testCredentialCleanup": {
+      "passed": 3,
+      "failed": 0
+    },
+    "packagedGateHelpers": {
+      "passed": 8,
+      "failed": 0
+    },
+    "typecheck": "passed",
+    "sdkFixtureStrictTypecheck": "passed",
+    "lint": "passed",
+    "standardsReviewRemaining": 0,
+    "specReviewRemaining": 0
+  },
+  "limitations": [
+    "Local deterministic Provider; real paid Provider availability or model quality not tested.",
+    "Existing desktop suite contains Mock adapter and injected IPC/event scenarios; 99 cases is not a claim that every feature uses a real SDK execution.",
+    "macOS and Linux not executed.",
+    "Unknown/ACK-loss/Main restart lifecycle recovery validated by published-SDK integration regression, not manufactured packaged lifecycle state."
+  ]
+}

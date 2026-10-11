@@ -2,11 +2,12 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { launchSpace, type SpaceInstance } from './fixtures.js';
 
 test.setTimeout(180_000);
 
-const DEFAULT_DOWNLOADS_ROOT = 'C:\\Users\\iceto\\Downloads';
+const DEFAULT_DOWNLOADS_ROOT = fileURLToPath(new URL('../fixtures/file-preview/', import.meta.url));
 const DOWNLOADS_ROOT = process.env.KODAX_ARTIFACT_E2E_DIR ?? DEFAULT_DOWNLOADS_ROOT;
 
 type PreviewKind = 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'image' | 'video' | 'audio' | 'text';
@@ -59,9 +60,9 @@ const CASE_GROUPS: readonly CaseGroup[] = [
       file.ext === '.png' ? 0 : file.ext === '.jpeg' || file.ext === '.jpg' ? 1 : 2,
   },
   {
-    label: 'video-mp4',
+    label: 'video',
     kind: 'video',
-    extensions: ['.mp4'],
+    extensions: ['.mp4', '.webm'],
     maxBytes: 50 * MB,
   },
   {
@@ -296,7 +297,7 @@ async function expectMountedPreview(page: Page, previewCase: PreviewCase): Promi
           () =>
             video.evaluate((node) => {
               const v = node as HTMLVideoElement;
-              return v.error === null && v.src.length > 0;
+              return v.error === null && v.src.length > 0 && v.readyState >= 1 && v.videoWidth > 0;
             }),
           { timeout: 10_000 },
         )

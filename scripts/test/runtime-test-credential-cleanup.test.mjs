@@ -64,3 +64,26 @@ test('runtime test credential cleanup rejects production paths and non-runtime a
   });
   assert.equal(deletes, 0);
 });
+
+test('runtime test credential cleanup removes both accounts after accepted exit rotates identity', async (t) => {
+  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kodax-test-credential-cleanup-'));
+  t.after(() => fs.rm(profileDir, { recursive: true, force: true }));
+  await writeIdentity(profileDir);
+  const previousAccount = 'runtime_client_00000000-0000-4000-8000-000000000133';
+  await fs.writeFile(
+    path.join(profileDir, 'space/runtime-client-identity.json'),
+    JSON.stringify({
+      secretAccount: TEST_ACCOUNT,
+      exitRecovery: { secretAccount: previousAccount },
+    }),
+  );
+  const accounts = [];
+  await cleanupRuntimeClientCredentialForTestProfile(profileDir, {
+    deletePassword: async (service, account) => {
+      assert.equal(service, 'kodax-space-test-runtime');
+      accounts.push(account);
+      return true;
+    },
+  });
+  assert.deepEqual(accounts, [TEST_ACCOUNT, previousAccount]);
+});

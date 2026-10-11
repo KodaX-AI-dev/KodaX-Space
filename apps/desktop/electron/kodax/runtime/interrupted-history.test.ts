@@ -1,191 +1,252 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { RuntimeEvent } from '@kodax-ai/kodax/runtime';
 import type { SessionHistoryItem } from '@kodax-space/space-ipc-schema';
 import { recoverInterruptedHistory } from './interrupted-history.js';
+import { interruptedViewItems, viewReader } from './runtime-view-test-fixture.js';
 import {
   expandInterruptedConversationPage,
   type RuntimeConversationHistoryPage,
 } from '../runtime-host-adapter.js';
 
-function event(seq: number, type: RuntimeEvent['type'], payload: unknown): RuntimeEvent {
-  return {
-    id: `event-${seq}`,
-    seq,
-    cursor: { sessionId: 's', journalEpoch: 'e', seq },
-    sessionId: 's',
-    runId: 'r',
-    turnId: 't',
-    time: new Date(seq).toISOString(),
-    type,
-    payload,
-  };
-}
 const user: SessionHistoryItem = { kind: 'user', content: 'query', turnId: 't', entryId: 'u' };
 const run = { runId: 'r', sessionId: 's', turnId: 't', phase: 'interrupted' as const };
-const rows = [
-  event(1, 'assistant.delta', { text: 'Saved progress' }),
-  event(2, 'tool.started', { tool: { id: 'tool', name: 'read', input: {} } }),
-  event(3, 'tool.finished', { result: { id: 'tool', name: 'read', content: 'receipt' } }),
-  event(4, 'thinking.delta', { text: 'unfinished reasoning' }),
-];
 
-test('reopens interrupted output from journal without rewriting or duplicating canonical history', async () => {
-  const service = { replay: async () => rows };
-  const items = await recoverInterruptedHistory(service, [run], 's', [user]);
-  assert.equal(items.filter((i) => i.kind === 'assistant').length, 2);
-  assert.ok(items.some((i) => i.kind === 'assistant' && i.text === 'Saved progress'));
-  assert.ok(items.some((i) => i.kind === 'assistant' && i.thinking === 'unfinished reasoning'));
-  assert.ok(items.some((i) => i.kind === 'tool_call' && i.result === 'receipt'));
-  assert.deepEqual(await recoverInterruptedHistory(service, [run], 's', items), items);
+test('combined canonical thinking and text consume separate ordered view components', async () => {
+  const saved: SessionHistoryItem[] = [
+    user,
+    { kind: 'assistant', text: 'Saved', thinking: 'Reason', turnId: 't' },
+  ];
+  const facts = [
+    {
+      id: 'opaque-thought',
+      type: 'thinking' as const,
+      text: 'Reason',
+      sourceRunId: 'r',
+      sourceTurnId: 't',
+    },
+    {
+      id: 'opaque-output',
+      type: 'assistant' as const,
+      text: 'Saved tail',
+      sourceRunId: 'r',
+      sourceTurnId: 't',
+    },
+    {
+      id: 'next-request',
+      type: 'assistant' as const,
+      text: 'Next response',
+      sourceRunId: 'r',
+      sourceTurnId: 't',
+    },
+  ];
+  const restored = await recoverInterruptedHistory(viewReader(facts), [run], 's', saved);
+  assert.deepEqual(
+    restored
+      .filter((item) => item.kind === 'assistant')
+      .map((item) => [item.text, item.thinking || undefined]),
+    [
+      ['Saved', 'Reason'],
+      [' tail', undefined],
+      ['Next response', undefined],
+    ],
+  );
+  assert.deepEqual(
+    await recoverInterruptedHistory(viewReader(facts), [run], 's', restored),
+    restored,
+  );
+  for (const barrier of [
+    interruptedViewItems[1]!,
+    { ...facts[0]!, sourceRunId: 'foreign' },
+    { ...facts[0]!, sourceTurnId: 'foreign' },
+    { ...facts[0]!, text: 'Reason tail' },
+  ]) {
+    assert.deepEqual(
+      await recoverInterruptedHistory(
+        viewReader([barrier, facts[1]!, facts[2]!]),
+        [run],
+        's',
+        saved,
+      ),
+      saved,
+    );
+  }
+});
+
+test('repeated model call IDs acquire only their own ordered receipt', async () => {
+  for (const paths of [
+    ['A', 'B'],
+    ['A', 'A'],
+  ]) {
+    const facts = paths.map((path, index) => ({
+      id: `execution-${index}`,
+      type: 'tool' as const,
+      text: `receipt-${index}`,
+      sourceRunId: 'r',
+      sourceTurnId: 't',
+      tool: {
+        callId: 'reuse',
+        name: 'read',
+        status: 'success' as const,
+        inputText: JSON.stringify({ path }),
+        executionBegan: true as const,
+        resultRecorded: true as const,
+      },
+    }));
+    const saved: SessionHistoryItem[] = [
+      user,
+      ...paths.map((path) => ({
+        kind: 'tool_call' as const,
+        turnId: 't',
+        toolId: 'reuse',
+        toolName: 'read',
+        input: { path },
+      })),
+    ];
+    const restored = await recoverInterruptedHistory(viewReader(facts), [run], 's', saved);
+    assert.deepEqual(
+      restored.filter((item) => item.kind === 'tool_call').map((item) => item.result),
+      ['receipt-0', 'receipt-1'],
+    );
+  }
+});
+
+test('reopens retained interrupted output without rewriting or duplicating canonical history', async () => {
+  const service = viewReader(interruptedViewItems);
+  const restored = await recoverInterruptedHistory(service, [run], 's', [user]);
+  assert.deepEqual(
+    restored.filter((i) => i.kind === 'assistant').map((i) => [i.text, i.thinking]),
+    [
+      ['Saved progress', undefined],
+      ['', 'unfinished reasoning'],
+    ],
+  );
+  assert.ok(restored.some((i) => i.kind === 'tool_call' && i.result === 'receipt'));
+  assert.deepEqual(await recoverInterruptedHistory(service, [run], 's', restored), restored);
   assert.deepEqual(user, { kind: 'user', content: 'query', turnId: 't', entryId: 'u' });
 });
 
-test('recovers only a missing suffix and enriches a durable tool with its real receipt', async () => {
-  const canonical: SessionHistoryItem[] = [
+test('enriches a saved tool with its real receipt and only appends the missing suffix', async () => {
+  const saved: SessionHistoryItem[] = [
     user,
-    { kind: 'assistant', text: 'Saved progress', turnId: 't', entryId: 'a' },
-    { kind: 'tool_call', toolId: 'tool', toolName: 'read', turnId: 't', entryId: 'tool-entry' },
+    { kind: 'assistant', text: 'Saved progress', turnId: 't' },
+    { kind: 'tool_call', toolId: 'tool', toolName: 'read', turnId: 't' },
   ];
   const restored = await recoverInterruptedHistory(
-    { replay: async () => rows },
+    viewReader(interruptedViewItems),
     [run],
     's',
-    canonical,
+    saved,
   );
   assert.equal(restored.filter((i) => i.kind === 'tool_call').length, 1);
-  assert.ok(restored.some((i) => i.kind === 'tool_call' && i.result === 'receipt'));
+  assert.equal(restored.find((i) => i.kind === 'tool_call')?.result, 'receipt');
   assert.ok(restored.some((i) => i.kind === 'assistant' && i.thinking === 'unfinished reasoning'));
-  assert.deepEqual(
-    await recoverInterruptedHistory({ replay: async () => rows }, [run], 's', restored),
-    restored,
-  );
 });
 
-test('does not invent output for empty, active, completed, foreign or ambiguous turns', async () => {
+test('empty, active, completed, foreign and ambiguous turns never acquire invented output', async () => {
   for (const candidate of [
     { ...run, phase: 'running' as const },
     { ...run, phase: 'completed' as const },
-    { ...run, sessionId: 'other' },
-    { ...run, turnId: 'other' },
+    { ...run, sessionId: 'foreign' },
+    { ...run, turnId: 'foreign' },
   ]) {
     assert.deepEqual(
-      await recoverInterruptedHistory({ replay: async () => rows }, [candidate], 's', [user]),
+      await recoverInterruptedHistory(viewReader(interruptedViewItems), [candidate], 's', [user]),
       [user],
     );
   }
+  assert.deepEqual(await recoverInterruptedHistory(viewReader([]), [run], 's', [user]), [user]);
+  const ambiguous = [user, { ...user, entryId: 'another-input' }];
   assert.deepEqual(
-    await recoverInterruptedHistory({ replay: async () => [] }, [run], 's', [user]),
-    [user],
-  );
-  const ambiguous: SessionHistoryItem[] = [user, { ...user, entryId: 'other-branch' }];
-  assert.deepEqual(
-    await recoverInterruptedHistory({ replay: async () => rows }, [run], 's', ambiguous),
+    await recoverInterruptedHistory(viewReader(interruptedViewItems), [run], 's', ambiguous),
     ambiguous,
   );
 });
 
-test('keeps child output separate and honours replacement of an incomplete provider segment', async () => {
-  const events = [
-    event(1, 'assistant.delta', { text: 'abandoned attempt' }),
-    event(2, 'output.segment.started', {
-      responseId: 'response',
-      providerRequestId: 'retry',
-      mode: 'replace',
-    }),
-    event(3, 'assistant.delta', { text: 'visible retry' }),
-    event(4, 'assistant.delta', { text: 'child secret', meta: { contextKind: 'child' } }),
-  ];
-  const restored = await recoverInterruptedHistory({ replay: async () => events }, [run], 's', [
-    user,
-  ]);
+test('current Host view determines replacement order and excludes unproven child output', async () => {
+  const restored = await recoverInterruptedHistory(
+    viewReader([
+      { ...interruptedViewItems[0], text: 'visible retry' },
+      { ...interruptedViewItems[0], id: 'child', text: 'child secret', sourceRunId: 'child-run' },
+    ]),
+    [run],
+    's',
+    [user],
+  );
   assert.deepEqual(
     restored.filter((i) => i.kind === 'assistant').map((i) => i.text),
     ['visible retry'],
   );
 });
 
-test('paginates journals and rejects a repeated cursor instead of looping', async () => {
-  const events = Array.from({ length: 520 }, (_, index) =>
-    event(index + 1, 'thinking.delta', { text: 'x' }),
-  );
-  const restored = await recoverInterruptedHistory(
-    {
-      replay: async (filter) =>
-        events.filter((e) => e.seq > (filter.after?.seq ?? 0)).slice(0, filter.limit),
-    },
-    [run],
-    's',
-    [user],
-  );
-  assert.equal(restored.find((i) => i.kind === 'assistant')?.thinking?.length, 520);
-  await assert.rejects(
-    recoverInterruptedHistory({ replay: async () => events.slice(0, 512) }, [run], 's', [user]),
-    /cursor/,
-  );
-});
-
-test('bounds individual recovered text rows without losing large streamed content', async () => {
+test('large retained output is split into bounded rows without losing content', async () => {
   const text = 'x'.repeat(300_000);
   const restored = await recoverInterruptedHistory(
-    { replay: async () => [event(1, 'assistant.delta', { text })] },
+    viewReader([{ ...interruptedViewItems[0], text }]),
     [run],
     's',
     [user],
   );
-  const assistants = restored.filter(
-    (i): i is Extract<SessionHistoryItem, { kind: 'assistant' }> => i.kind === 'assistant',
-  );
-  assert.ok(assistants.every((i) => i.text.length <= 262_144));
-  assert.equal(assistants.map((i) => i.text).join(''), text);
+  const rows = restored.filter((i) => i.kind === 'assistant');
+  assert.ok(rows.every((i) => i.text.length <= 262_144));
+  assert.equal(rows.map((i) => i.text).join(''), text);
 });
 
-test('does not graft a receipt onto a conflicting canonical prefix or different tool input', async () => {
-  const canonical: SessionHistoryItem[] = [
+test('conflicting canonical prefixes never receive a tool receipt from another input', async () => {
+  const saved: SessionHistoryItem[] = [
     user,
     { kind: 'assistant', text: 'different branch', turnId: 't' },
     { kind: 'tool_call', toolId: 'tool', toolName: 'read', input: { path: 'other' }, turnId: 't' },
   ];
-  const restored = await recoverInterruptedHistory(
-    { replay: async () => rows },
-    [run],
-    's',
-    canonical,
-  );
-  assert.deepEqual(restored, canonical);
-});
-
-test('unfinished recovered calls are interrupted, never running or successful', async () => {
-  const restored = await recoverInterruptedHistory(
-    { replay: async () => rows.slice(0, 2) },
-    [run],
-    's',
-    [user],
-  );
-  const tool = restored.find((i) => i.kind === 'tool_call');
-  assert.equal(tool?.interrupted, true);
-  assert.equal(tool?.result, undefined);
-});
-
-test('older partial pages cannot replay tails already present in newer pages', async () => {
-  const recovered = await recoverInterruptedHistory(
-    {
-      replay: async () => {
-        throw new Error('must not read incomplete turn');
-      },
-    },
-    [run],
-    's',
-    [user],
-    [],
-  );
   assert.deepEqual(
-    recovered.filter((item) => item.kind !== 'workflow_notice'),
+    await recoverInterruptedHistory(viewReader(interruptedViewItems), [run], 's', saved),
+    saved,
+  );
+});
+
+test('unfinished tool evidence stays interrupted and oversized receipts are bounded', async () => {
+  const item = interruptedViewItems[1];
+  const unfinished = {
+    ...item,
+    tool: { ...item.tool!, status: 'cancelled' as const, resultRecorded: undefined },
+  };
+  const restored = await recoverInterruptedHistory(viewReader([unfinished]), [run], 's', [user]);
+  const call = restored.find((i) => i.kind === 'tool_call');
+  assert.equal(call?.interrupted, true);
+  assert.equal(call?.result, undefined);
+  const huge = await recoverInterruptedHistory(
+    viewReader([{ ...item, text: 'x'.repeat(600_000) }]),
+    [run],
+    's',
     [user],
   );
-  assert.ok(
-    recovered.some((item) => item.kind === 'workflow_notice' && item.text.includes('暂未恢复')),
+  const receipt = huge.find((i) => i.kind === 'tool_call')?.result;
+  assert.ok(receipt && receipt.length <= 524_288 && receipt.endsWith('[恢复的工具输出已截断]'));
+});
+
+test('an incomplete turn does not read the retained tail from another page', async () => {
+  const service = viewReader([]);
+  service.observeView = async () => {
+    throw new Error('must not read incomplete turn');
+  };
+  const restored = await recoverInterruptedHistory(service, [run], 's', [user], []);
+  assert.deepEqual(
+    restored.filter((i) => i.kind !== 'workflow_notice'),
+    [user],
   );
+  assert.ok(restored.some((i) => i.kind === 'workflow_notice' && i.text.includes('暂未恢复')));
+});
+
+test('view recovery obeys one deadline and preserves read failures', async () => {
+  const service = viewReader([]);
+  service.observeView = () => new Promise(() => {});
+  await assert.rejects(
+    recoverInterruptedHistory(service, [run], 's', [user], undefined, Date.now() + 20),
+    /timed out/,
+  );
+  service.observeView = async () => {
+    throw new Error('view unavailable');
+  };
+  await assert.rejects(recoverInterruptedHistory(service, [run], 's', [user]), /view unavailable/);
 });
 
 test('a leading interrupted turn looks back only until its complete prefix is available', async () => {
@@ -241,60 +302,6 @@ test('a leading interrupted turn looks back only until its complete prefix is av
   );
 });
 
-test('bounds recovered receipts for both durable and missing tool calls', async () => {
-  const huge = 'x'.repeat(600_000);
-  const journal = rows.map((row) =>
-    row.type === 'tool.finished'
-      ? event(row.seq, 'tool.finished', { result: { id: 'tool', name: 'read', content: huge } })
-      : row,
-  );
-  for (const canonical of [
-    [user],
-    [
-      user,
-      { kind: 'assistant' as const, text: 'Saved progress', turnId: 't' },
-      { kind: 'tool_call' as const, toolId: 'tool', toolName: 'read', turnId: 't' },
-    ],
-  ]) {
-    const result = await recoverInterruptedHistory(
-      { replay: async () => journal },
-      [run],
-      's',
-      canonical,
-    );
-    const receipt = result.find((item) => item.kind === 'tool_call')?.result;
-    assert.ok(receipt && receipt.length <= 524_288);
-    assert.ok(receipt.endsWith('[恢复的工具输出已截断]'));
-  }
-});
-
-test('multiple journal pages share one deadline and stop issuing reads after expiry', async () => {
-  const deadline = Date.now() + 80;
-  let calls = 0;
-  await assert.rejects(
-    recoverInterruptedHistory(
-      {
-        replay: async (filter) => {
-          calls++;
-          await new Promise((resolve) => setTimeout(resolve, 50));
-          return Array.from({ length: 512 }, (_, i) =>
-            event((filter.after?.seq ?? 0) + i + 1, 'thinking.delta', { text: 'x' }),
-          );
-        },
-      },
-      [run],
-      's',
-      [user],
-      undefined,
-      deadline,
-    ),
-    /timed out/,
-  );
-  assert.equal(calls, 2);
-  await new Promise((resolve) => setTimeout(resolve, 80));
-  assert.equal(calls, 2);
-});
-
 test('lookback retains a bounded page and respects the remaining deadline', async () => {
   const entry = (index: number) => ({
     index,
@@ -330,110 +337,5 @@ test('lookback retains a bounded page and respects the remaining deadline', asyn
       Date.now() + 20,
     ),
     /timed out/,
-  );
-});
-
-test('recovers once after identical persisted prompt duplicates without joining different inputs', async () => {
-  const repeated: SessionHistoryItem[] = [
-    { ...user, sentAt: 100, turnUserOrdinal: 0 },
-    { ...user, entryId: 'duplicate-entry', sentAt: 100, turnUserOrdinal: 1 },
-  ];
-  const recovered = await recoverInterruptedHistory(
-    { replay: async () => rows },
-    [run],
-    's',
-    repeated,
-    ['t'],
-  );
-  assert.deepEqual(recovered.slice(0, 2), repeated);
-  assert.equal(
-    recovered.filter((item) => item.kind === 'assistant' && item.text === 'Saved progress').length,
-    1,
-  );
-  assert.deepEqual(
-    await recoverInterruptedHistory({ replay: async () => rows }, [run], 's', recovered, ['t']),
-    recovered,
-  );
-  for (const changed of [
-    { ...repeated[1], sentAt: 101 },
-    { ...repeated[1], content: 'different query' },
-  ]) {
-    const conflict = [repeated[0], changed] as SessionHistoryItem[];
-    assert.deepEqual(
-      await recoverInterruptedHistory({ replay: async () => rows }, [run], 's', conflict),
-      conflict,
-    );
-  }
-});
-
-test('shows prior unfinished thinking when the replacement attempt dies before producing output', async () => {
-  const events = [
-    event(1, 'thinking.delta', { text: 'prior unfinished thinking' }),
-    event(2, 'output.segment.started', {
-      responseId: 'retry',
-      providerRequestId: 'retry',
-      mode: 'replace',
-    }),
-  ];
-  const restored = await recoverInterruptedHistory({ replay: async () => events }, [run], 's', [
-    user,
-  ]);
-  assert.ok(
-    restored.some(
-      (item) =>
-        item.kind === 'assistant' && item.thinking === 'prior unfinished thinking' && !item.text,
-    ),
-  );
-  assert.ok(
-    restored.some((item) => item.kind === 'workflow_notice' && item.text.includes('重试前')),
-  );
-});
-
-test('repeated empty retries preserve prior thinking but a nonempty replacement supersedes it', async () => {
-  const retry = (seq: number) =>
-    event(seq, 'output.segment.started', {
-      responseId: 'retry',
-      providerRequestId: `retry-${seq}`,
-      mode: 'replace',
-    });
-  for (const middle of [[], [event(3, 'assistant.delta', { text: 'new attempt' })]]) {
-    const journal = [
-      event(1, 'thinking.delta', { text: 'old thought' }),
-      retry(2),
-      ...middle,
-      retry(4),
-    ];
-    const restored = await recoverInterruptedHistory({ replay: async () => journal }, [run], 's', [
-      user,
-    ]);
-    assert.equal(
-      restored.some((item) => item.kind === 'assistant' && item.thinking === 'old thought'),
-      middle.length === 0,
-    );
-  }
-});
-
-test('identical queued admissions cannot be treated as legacy duplicate persistence', async () => {
-  const repeated: SessionHistoryItem[] = [
-    { ...user, sentAt: 100 },
-    { ...user, entryId: 'other', sentAt: 100 },
-  ];
-  const queuedRun = {
-    ...run,
-    interruptInputs: [
-      {
-        inputId: 'input',
-        afterRunId: 'r',
-        delivery: 'interrupt' as const,
-        state: 'delivered' as const,
-        contentPreview: 'query',
-        queuedAt: new Date(100).toISOString(),
-        entryId: 'other',
-      },
-    ],
-  };
-  assert.deepEqual(
-    await recoverInterruptedHistory({ replay: async () => rows }, [queuedRun], 's', repeated),
-    repeated,
   );
 });

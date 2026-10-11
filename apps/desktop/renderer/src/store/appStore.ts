@@ -43,6 +43,7 @@ import type {
   SpaceSessionLiveChangedT,
   SpaceSessionLiveInvalidatedT,
   SpaceSessionLiveProjectionT,
+  SpaceSessionStatisticsT,
   AgentActorTreeSnapshotT,
   SessionHistoryItem,
 } from '@kodax-space/space-ipc-schema';
@@ -148,7 +149,8 @@ export interface SessionTokenUsageInfo {
    * KodaX 0.7.77 provider diagnostics cover every physical request. Older Runtime builds and
    * mock sessions fall back to iteration summaries until the first diagnostic is observed.
    */
-  readonly accountingSource?: 'iteration' | 'provider_diagnostic';
+  readonly accountingSource?: 'iteration' | 'provider_diagnostic' | 'host_statistics';
+  readonly statistics?: SpaceSessionStatisticsT;
   /** Bounded completed request ids retained across renderer reloads for replay deduplication. */
   readonly recentRequestIds?: readonly string[];
 }
@@ -1016,6 +1018,7 @@ interface AppState {
     options?: { readonly allowEqualHydration?: boolean },
   ): boolean;
   applySessionLiveProjectionChange(change: SpaceSessionLiveChangedT): ApplySessionLiveChangeStatus;
+  replaceSessionStatistics(statistics: SpaceSessionStatisticsT): void;
   invalidateSessionLiveProjection(invalidation: SpaceSessionLiveInvalidatedT): void;
   /** 用户在无 session 时点 picker → 暂存到 pending；下次 session.create 优先用。*/
   setPendingProviderId(id: string | null): void;
@@ -1395,6 +1398,12 @@ function runtimeJournalEventWasApplied(
     if (existing.seq > incoming.seq) return true;
     if (existing.seq < incoming.seq) return false;
     if (candidate.kind !== event.kind) continue;
+    if (
+      'sourceItemId' in event &&
+      event.sourceItemId !== undefined &&
+      (!('sourceItemId' in candidate) || candidate.sourceItemId !== event.sourceItemId)
+    )
+      continue;
     if (event.kind === 'mid_turn_user_prompt') {
       const candidateInputId =
         candidate.kind === event.kind ? (candidate.queueId ?? candidate.entryId) : undefined;
@@ -1436,6 +1445,7 @@ function appendSessionEvent(
       if (
         previous.kind === 'tool_start' &&
         previous.toolId === event.toolId &&
+        previous.sourceItemId === event.sourceItemId &&
         previous.runtimeEvent?.runtimeId === event.runtimeEvent.runtimeId &&
         previous.runtimeEvent.runId === event.runtimeEvent.runId
       ) {
@@ -4351,6 +4361,7 @@ function accumulateSessionTokenUsage(
     readonly countWhenUsageMissing?: boolean;
   },
 ): SessionTokenUsageInfo | undefined {
+  if (current?.accountingSource === 'host_statistics') return current;
   if (
     options.source === 'provider_diagnostic' &&
     options.requestId &&
@@ -8828,6 +8839,50 @@ export const useAppStore = create<AppState>((setState) => {
           ],
           pendingSendBySession,
           pendingSendRuntimeBaselineBySession,
+        };
+      }),
+    replaceSessionStatistics: (statistics) =>
+      set((state) => {
+        if (
+          !runtimeConnectionHasFreshLiveAuthority(state.runtimeConnection) ||
+          state.runtimeConnection.runtimeId !== statistics.runtimeId
+        )
+          return state;
+        const previous = state.sessionTokenUsageBySession[statistics.sessionId]?.statistics;
+        if (previous?.runtimeId === statistics.runtimeId && previous.revision > statistics.revision)
+          return state;
+        const usage = statistics.usage;
+        const updated: SessionTokenUsageInfo = {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheReadInputTokens: usage.cacheReadTokens,
+          cacheWriteInputTokens: usage.cacheWriteTokens,
+          sampleCount: statistics.requestCount,
+          childSampleCount: 0,
+          accountingSource: 'host_statistics',
+          statistics,
+        };
+        const root = statistics.contexts
+          .filter((context) => context.target.kind === 'run' && context.contextKind !== 'child')
+          .sort((left, right) => right.revision - left.revision)[0];
+        return {
+          sessionTokenUsageBySession: {
+            ...state.sessionTokenUsageBySession,
+            [statistics.sessionId]: updated,
+          },
+          ...(root && state.contextBudgetBySession[statistics.sessionId] === undefined
+            ? {
+                contextBudgetBySession: {
+                  ...state.contextBudgetBySession,
+                  [statistics.sessionId]: {
+                    ...root,
+                    kind: 'context_budget_snapshot' as const,
+                    sessionId: statistics.sessionId,
+                    observedOrder: nextRootContextReadingOrder(),
+                  },
+                },
+              }
+            : {}),
         };
       }),
     replaceSessionLiveProjection: (projection, options) => {

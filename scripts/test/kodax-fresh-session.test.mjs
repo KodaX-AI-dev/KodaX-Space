@@ -37,7 +37,7 @@ test('installed SDK creates and observes new Sessions without scanning unrelated
       tag: 'code',
     });
     const observation = await runtime.sessions.observe(session.id, () => undefined);
-    assert.equal(observation.snapshot.cursor.seq, 1);
+    assert.equal(observation.snapshot.seq, 1);
     observation.close();
     assert.equal(
       unrelatedReads,

@@ -660,10 +660,15 @@ export function ContextWindowIndicator({
                   data-testid="session-token-call-scope"
                   className="mt-0.5 font-mono text-[9px] text-fg-muted"
                 >
-                  {t('sessionTokens.callBreakdown', {
-                    root: rootProviderCallCount,
-                    child: childProviderCallCount,
-                  })}
+                  {sessionUsage.statistics
+                    ? t('sessionTokens.physicalCalls', {
+                        count: sessionUsage.statistics.physicalRequestCount,
+                        operations: sessionUsage.statistics.operationCount,
+                      })
+                    : t('sessionTokens.callBreakdown', {
+                        root: rootProviderCallCount,
+                        child: childProviderCallCount,
+                      })}
                 </div>
                 <div
                   data-testid="session-token-input-total"
@@ -762,14 +767,31 @@ export function ContextWindowIndicator({
               )}
               <div className="mt-1.5 text-[10px] text-fg-muted">
                 {t(
-                  sessionUsage.accountingSource === 'provider_diagnostic'
-                    ? 'sessionTokens.providerDiagnosticNote'
-                    : 'sessionTokens.iterationFallbackNote',
+                  sessionUsage.accountingSource === 'host_statistics'
+                    ? 'sessionTokens.hostStatisticsNote'
+                    : sessionUsage.accountingSource === 'provider_diagnostic'
+                      ? 'sessionTokens.providerDiagnosticNote'
+                      : 'sessionTokens.iterationFallbackNote',
                   {
                     count: sessionUsage.sampleCount,
                   },
                 )}
               </div>
+              {sessionUsage.statistics?.coverage === 'partial' && (
+                <div
+                  data-testid="session-statistics-partial"
+                  className="mt-1 text-[10px] text-warning"
+                >
+                  {t('sessionTokens.partialCoverage')}
+                </div>
+              )}
+              {!!sessionUsage.statistics?.requestsWithoutUsage && (
+                <div className="mt-1 text-[10px] text-fg-muted">
+                  {t('sessionTokens.missingUsage', {
+                    count: sessionUsage.statistics.requestsWithoutUsage,
+                  })}
+                </div>
+              )}
             </>
           ) : (
             <div className="text-[10px] text-fg-muted">{t('sessionTokens.unavailable')}</div>

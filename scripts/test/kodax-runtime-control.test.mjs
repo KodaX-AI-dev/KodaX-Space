@@ -4,20 +4,24 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
-import {
-  registerTool,
-  createExtensionRuntime,
-  getActiveExtensionRuntime,
-  setActiveExtensionRuntime,
-} from '@kodax-ai/kodax/coding';
+import { registerTool } from '@kodax-ai/kodax/coding';
 
-async function fixture(t) {
+async function fixture(t, extensionSource) {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'space-sdk-control-'));
   // SDK protected writes reject 8.3-style segments and CI runner temp dirs are
   // short paths (C:\Users\RUNNER~1\...), so hand the SDK the resolved long path.
   const root = await realpath(temp);
   const workspace = path.join(root, 'workspace');
   await mkdir(workspace);
+  if (extensionSource) {
+    const extension = path.join(workspace, 'command.mjs');
+    await writeFile(extension, extensionSource);
+    await mkdir(path.join(root, 'home', '.kodax'), { recursive: true });
+    await writeFile(
+      path.join(root, 'home', '.kodax', 'config.json'),
+      JSON.stringify({ extensions: [extension] }),
+    );
+  }
   const runtime = await createKodaXRuntime({
     homeDir: path.join(root, 'home'),
     sessionsDir: path.join(root, 'sessions'),
@@ -101,11 +105,8 @@ test(
 );
 
 test('published managed extension command receives its Run scope and joins nested tool effects', async (t) => {
-  const { runtime, sessionId, workspace } = await fixture(t);
-  const extension = path.join(workspace, 'command.mjs');
-  const target = path.join(workspace, 'effect.txt');
-  await writeFile(
-    extension,
+  const { runtime, sessionId, workspace } = await fixture(
+    t,
     `export default function activate(api) {
     api.registerCommand({ name: 'space-inspect', description: 'Offline command',
       handler: async (args) => {
@@ -117,27 +118,18 @@ test('published managed extension command receives its Run scope and joins neste
     });
   }`,
   );
-  const previous = getActiveExtensionRuntime();
-  const extensions = createExtensionRuntime();
-  try {
-    await extensions.loadExtensions([extension]);
-    extensions.activate();
-    setActiveExtensionRuntime(extensions);
-    const run = await runtime.runs.start({
-      sessionId,
-      prompt: '/space-inspect effect.txt',
-      options: {
-        lsp: false,
-        toolInvocation: { name: 'extension_command__space-inspect', input: { args: [target] } },
-      },
-    });
-    const result = await run.result;
-    assert.equal(result.phase, 'completed', result.result?.lastText);
-    assert.equal(await readFile(target, 'utf8'), `${sessionId}:${run.runId}`);
-  } finally {
-    setActiveExtensionRuntime(previous);
-    await extensions.dispose();
-  }
+  const target = path.join(workspace, 'effect.txt');
+  const run = await runtime.runs.start({
+    sessionId,
+    prompt: '/space-inspect effect.txt',
+    options: {
+      lsp: false,
+      toolInvocation: { name: 'extension_command__space-inspect', input: { args: [target] } },
+    },
+  });
+  const result = await run.result;
+  assert.equal(result.phase, 'completed', result.result?.lastText);
+  assert.equal(await readFile(target, 'utf8'), `${sessionId}:${run.runId}`);
 });
 
 test(

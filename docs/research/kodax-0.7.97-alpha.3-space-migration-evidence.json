@@ -1,0 +1,36 @@
+{
+  "verifiedAt": "2026-10-11",
+  "package": "@kodax-ai/kodax",
+  "version": "0.7.97-alpha.3",
+  "registry": "https://registry.npmjs.org/",
+  "alphaTag": "0.7.97-alpha.3",
+  "stableTag": "0.7.96",
+  "tarball": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.3.tgz",
+  "integrity": "sha512-44DjfLBwS6B1j3gQ/is5IFq5iMe97ZAItUbDH772cmsQQB96OwdNZCF6f+4roGPWOHwiVfspuEORmeves3LAMw==",
+  "installation": "root and Desktop exact version; deduped Registry package; no local SDK link",
+  "sdkSourceModified": false,
+  "validation": {
+    "fullTests": { "command": "npm test", "tests": 4332, "passed": 4312, "failed": 0, "skipped": 20 },
+    "finalRecoveryRegression": { "tests": 40, "passed": 40, "failed": 0 },
+    "criticalSeamCoverage": {
+      "tests": 30,
+      "passed": 30,
+      "linePercent": 97.77,
+      "branchPercent": 87.04,
+      "scope": ["interrupted-history", "runtime-tool-history", "runtime-view-read", "runtime-input-authorization-store", "runtime-client-exit"]
+    },
+    "publishedSdkHostFixture": {
+      "tests": 2,
+      "passed": 2,
+      "provider": "isolated local HTTP fixture",
+      "verified": ["Product input/canonical identity", "Main authorization and reconnect", "steer and queued input identity", "Host statistics", "Space manual tool", "exit ACK loss/offline identity recovery", "online peer protection", "last-client precise Host exit"]
+    },
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionBuild": "passed",
+    "rendererBootE2E": { "command": "playwright test tests/e2e/renderer-boot.spec.ts", "tests": 1, "passed": 1, "failed": 0 },
+    "standardsReviewRemaining": 0,
+    "specReviewRemaining": 0
+  },
+  "spaceReleasePublished": false
+}

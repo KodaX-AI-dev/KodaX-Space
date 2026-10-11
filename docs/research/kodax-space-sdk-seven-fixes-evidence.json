@@ -1,0 +1,156 @@
+{
+  "date": "2026-10-09",
+  "sdkDirectory": "C:\\Works\\GitProj\\KodaX-AI\\KodaX",
+  "sdkHead": "ba30095a6a2da143a43776402813f24734d8c53a",
+  "initialContentSha256": "a18e95d44864efb4db98f9d50bb30d6f6a6e32a37dd97dbbca9980c7dde122b8",
+  "patchSha256": "ab7c3b96a34ae1b9885033e53df723342dfae2c4edba76b6acc3b65379ae6ae9",
+  "hashAlgorithm": "SHA256(raw git -c core.safecrlf=false diff --binary HEAD bytes, then sorted untracked relative path + NUL + raw file bytes)",
+  "trackedChangedFiles": 47,
+  "untrackedFiles": 14,
+  "fileHashes": {
+    "docs/CLIENT_CONTRACT.md": "41928fb1eac69603fa885b5663e1407433dd00f22e3a06f71bcc04a799a119c0",
+    "docs/SDK_MIGRATION.md": "3d055ed995cfc70683878c27cf67b85bbd407d07f5d4ce22ab9301442aa7f266",
+    "docs/SPACE_SDK_SEAMS.md": "db17b3fb6e630e115f7d8caa6d55fe00fd208737b1168270d68e1c107032be94",
+    "package.json": "40d369ae5447070429d5f8d86852a1025afbd569194f5b8966ddb4e52325daa4",
+    "packages/coding/src/agent-runtime/__contract-tests__/cap-024-tool-dispatch.contract.test.ts": "837e3f5a38eb117409192e8ff81e6fe45de3a020fa815a94c37557a16078ddf8",
+    "packages/coding/src/agent-runtime/actor-runtime.test.ts": "2807dfd7a8f20ca8c2111ed1d18498e2521857d0cde5261d45a02a08178b3de2",
+    "packages/coding/src/agent-runtime/actor-runtime.ts": "764870882f60aec8fd677cecdbffb8e7ea7c5e4741475beb45c98d9a45ba7906",
+    "packages/coding/src/agent-runtime/event-emitter.ts": "b6183fbb50dcb0d7d1fe342117c95b93fa84c2a3f1654a7f4f9834f6db8dbb88",
+    "packages/coding/src/agent-runtime/non-streaming-fallback.ts": "960c7165faedcdcd818dc2593465dccdf81a08ab5b0d5572a49cca3058d965a3",
+    "packages/coding/src/agent-runtime/run-substrate.ts": "8411558cc2af7b5d909f681d43b531211b2f54becdbcf5a5a82af18d762b08f4",
+    "packages/coding/src/agent-runtime/tool-dispatch.ts": "5ee4dc0c8526aa3bdff8ffc712e383186a5cfff0eafad3b58b69f4620f5660ab",
+    "packages/coding/src/child-executor.test.ts": "1e341daa2629882f12705727d51353a77ebe842c7b6399bb3385f89430a96fa6",
+    "packages/coding/src/child-executor.ts": "a84cee9767773cc766368cb1eac2002642f14d2b8b0ecf519fa98ef8ab37fef5",
+    "packages/coding/src/child-fallback.test.ts": "713f8c3c02189d4b0eb932b750696bc3a16fd5ef06e8530eea8e7260ac414de4",
+    "packages/coding/src/child-fallback.ts": "6ab411cd699c1cb252700d95d1079e28155b76beeb043e1a2cf50c84efa608ff",
+    "packages/coding/src/client-contract.ts": "15af2a6ddfb857293c68129c4e76f4a2c047d67d9f8d06d22b7bddf0b094b9c5",
+    "packages/coding/src/index.ts": "cad4f2d07d17354064c44f665b7109848755f2e520e7f7f39dd3eeb56de66349",
+    "packages/coding/src/types.ts": "d232ef3115a8d9f028a00d77b3d2132919e9fdd790c1dbe4ecdb89f42f79fcb4",
+    "packages/llm/src/index.ts": "6ae04930b8d362085626e97b42fd116b1867a250868cbbd4c2e72b07a9604bd3",
+    "packages/llm/src/provider-credential-context.ts": "f94bf5eb500936c72ef8702e402a80c2dbcf3891e2bd0278fff6b1af2bcb5178",
+    "packages/llm/src/provider-request-observation.test.ts": "56c6d23d6afdf33de48634101dcdbaf24f183e21b16ae34695a709890d31e0b9",
+    "packages/llm/src/provider-request-observation.ts": "dadc8c5f1361030c529f3b01d6f51c020364811172849eb6195b709fe498fec4",
+    "packages/llm/src/providers/anthropic.ts": "f0a794f9590b1515b8d4d14db384d15c160302f8343b613d453be22ba4282074",
+    "packages/llm/src/providers/base.ts": "13a1382cdbe31d97da93d33e7c1c9a0e55b58d0a6e45d8734eef3ce218f09706",
+    "packages/llm/src/providers/openai.ts": "a460f35d9632f4c3b2b25fcad4af556b8fde8ed7da5c323b30cadf0d2f31349f",
+    "packages/repl/src/interactive/storage.ts": "26cda4dcd6ef8b81f9f0f7a9ec44d8212d9ccb66443e3b6893c16de06d9f6a3f",
+    "packages/repl/src/session/compact-session.ts": "9a0c408357a99d5e4d33d3b41fee8c7b05f5bc442ec8b0227bf8d28a4d87b6b9",
+    "public_docs/sdk/embedder-guide.md": "f4c6f14b03547b51375677e1f2b7cc0b07c4d49a7f4af00d023b34890aad4607",
+    "src/client-canonical-tools.ts": "0291bade93a77d31fef4488f810b2872c8b893c87d24499c548c2e9ce651ebe2",
+    "src/client-history.ts": "4d10ae3138e5d4d55afe7ab8812d71ff180651135ad71d6b3d577d6f97ed39a5",
+    "src/client-host-authorization.ts": "36699d9a04f04e9e817f07491f04ad0b960c9b9ef7f632b405c62e235c9ae255",
+    "src/client-runtime-adapter.ts": "518a1e81fb9d5bbbeac14c878a6a18874f9a39b121ecb31cfa72c6ad56a1e614",
+    "src/execution-facts.test.ts": "77603f7c9dcb467a65b7b4bdfdad98c1375bd838dd1d9f52fcadc801431bfb3a",
+    "src/execution-facts.ts": "298e3117842d60f745461b2059d4e88ea7283376af303d97bf6fa9279d90851b",
+    "src/product-execution-authorization.ts": "47350df3f32b55072328f581f7d1cf7d5b2251e16c757169977c2b903aecaaea",
+    "src/runtime-client-work.ts": "a788b3e2cad9cbc8ce056d4f6769fbd6daa545fe9bfabaf648bea952872be02e",
+    "src/runtime-daemon/client-lifecycle.test.ts": "a75d083c9c329e57cf20426dc3c0b3973f227429ae6f4b8d3ebd45cea141905d",
+    "src/runtime-daemon/client-lifecycle.ts": "63509da8048fedda09c622715d21fc76890119444e23a95478bd88507824eb13",
+    "src/runtime-daemon/client.ts": "52340dacabee5fae8250c5b945beb8b9863381339d7393bb7b1006c05f664c7b",
+    "src/runtime-daemon/host.test.ts": "e5fbe7a5b56460d7476a14042cd5fa97c33ff632b027b703c8bd228b163957c4",
+    "src/runtime-daemon/host.ts": "342869e88c04e4ec0994e044365cc6c8393341dea83a2a88438439c7811b4696",
+    "src/runtime-daemon/management.ts": "3e6e47f8fe9b97cada9b16dec3d7bd513020ab16b182d695d537c1cfe2da918c",
+    "src/runtime-daemon/manager.test.ts": "6af5e1702e042ed4c5ad6cc0345aef04a588ed245fb23d61cd2dda9b566b5b78",
+    "src/runtime-daemon/protocol.ts": "05ec427e52077311d798e2617d6f8ec9528fbde5ba670c50a6464759c629379a",
+    "src/runtime-daemon/reverse-bridge.ts": "3f862a9aff11efea6931f68c2246d18173f06164320a348933a70ed3aec610ec",
+    "src/runtime-daemon/schema.ts": "4b2bf8a74953049aa449a82b5e9116eb5618ad26be94140a37860e9bda4ebe76",
+    "src/runtime-daemon/server.test.ts": "b9d8d177f0dd7d40cf552eb8d3c741ff0c70a00f68b9204451ab1b578ee68d38",
+    "src/runtime-daemon/server.ts": "306b08b6b5d89221d652c8086a281e3400e6122a348d6c26f5c371753fff487c",
+    "src/runtime-product-commands.ts": "9acd442bc14d0fe364bd881f359486bfb8e1c45c7de5c23efe8239798ca4167e",
+    "src/sdk-client.derive.test.ts": "6d85dd39310a30bd05a74b9102503c5b4453fe60196622cd969207e99095ae30",
+    "src/sdk-client.exit.test.ts": "d4cf48bffa326e8440c322b9a3be8f4994ae229247d200571e15d714da7a47b8",
+    "src/sdk-client.history-boundaries.test.ts": "3167ac7f9632eed770ec3a9bc490bc8f9db9b9d879578284f63a23c10dd8ef31",
+    "src/sdk-client.host-authorization.test.ts": "4167454341bdcc8d754c06257bcee6671726e9771d5831a1315c210e153eca82",
+    "src/sdk-client.queue.test.ts": "2371e4f51ba61b988c13e3483b06951d3885f647e62582e264173c6e5963a165",
+    "src/sdk-client.statistics.test.ts": "c4e1f55de8ce1955a461ba572b6908dd7b0f927ed176f234cc5d53918a9faaaa",
+    "src/sdk-client.test.ts": "4079732e5b461a94cdf3ddb3cc353cf431633e19c87db081c79c2ca195c396b6",
+    "src/sdk-client.ts": "0ea704ce6244df9dfba8a6f6b0d6aa4a623055c195952f37cbb435c332b9c6b1",
+    "src/sdk-runtime.ts": "64fe8521d9aa8fd48f24804c94e150b19165b0ff7e757eb2dbce7c099ebedf05",
+    "src/session-input-queue.ts": "0f3342120971ffc85328356a0499d2c3cb641ef4abdd3d000686d2547206e343",
+    "tests/bundled-product-exit.test.mjs": "1abf3b30bf8df7f0e8e6e85f61830db66f10a505597cea09fa73f3aafcfb021d",
+    "tests/fixtures/product-client-types/consumer.ts": "1c6350d2cc9a3843c2392e374bff94cc76ddc0af1a3cbb71c3c114e684847436"
+  },
+  "scope": "SDK source read-only; build outputs and isolated offline fixtures permitted; Space installed npm dependency unchanged.",
+  "verification": {
+    "status": "seven_prior_counterexamples_passed",
+    "sdkBuild": {
+      "status": "passed",
+      "commands": ["npm run build:packages", "npm run build:bundle", "npm run build:dts"],
+      "log": ".tmp-kodax-seven-fixes-build.log"
+    },
+    "types": {
+      "status": "passed",
+      "commands": [
+        "npm run typecheck",
+        "npx tsc -p tests/fixtures/product-client-types/tsconfig.json"
+      ],
+      "consumer": "strict, skipLibCheck=false, types=[]",
+      "log": ".tmp-kodax-seven-fixes-types.log"
+    },
+    "keyRegressionsInitial": {
+      "status": "failed",
+      "files": 10,
+      "tests": 214,
+      "passed": 213,
+      "failed": 1,
+      "command": "npx vitest run src/sdk-client.host-authorization.test.ts src/sdk-client.exit.test.ts src/sdk-client.statistics.test.ts src/sdk-client.derive.test.ts src/execution-facts.test.ts src/runtime-daemon/client-lifecycle.test.ts packages/coding/src/agent-runtime/__contract-tests__/cap-024-tool-dispatch.contract.test.ts packages/llm/src/provider-request-observation.test.ts packages/coding/src/agent-runtime/actor-runtime.test.ts packages/coding/src/child-executor.test.ts",
+      "failure": "exit interrupt fence test finally rm returned Windows ENOTEMPTY on the isolated temporary .kodax directory",
+      "log": ".tmp-kodax-seven-fixes-tests.log"
+    },
+    "keyRegressionsRetry": {
+      "status": "passed",
+      "files": 1,
+      "tests": 3,
+      "command": "npx vitest run src/sdk-client.exit.test.ts",
+      "log": ".tmp-kodax-seven-fixes-exit-rerun.log"
+    },
+    "builtDaemon": {
+      "status": "passed",
+      "tests": 2,
+      "command": "node --test --test-timeout=120000 tests/bundled-product-exit.test.mjs",
+      "log": ".tmp-kodax-seven-fixes-daemon.log"
+    },
+    "lifecycleProbe": {
+      "status": "passed",
+      "counterexamplesClosed": 3,
+      "script": "docs/research/kodax-space-sdk-seven-fixes-lifecycle-probes.mjs",
+      "evidence": "docs/research/kodax-space-sdk-seven-fixes-lifecycle-evidence.json",
+      "log": ".tmp-kodax-seven-fixes-lifecycle-probe.log"
+    },
+    "statisticsProbe": {
+      "status": "passed",
+      "counterexamplesClosed": 4,
+      "independentRuns": 2,
+      "script": "docs/research/kodax-space-sdk-seven-fixes-statistics-probes.mjs",
+      "evidence": "docs/research/kodax-space-sdk-seven-fixes-statistics-probe-evidence.json",
+      "log": ".tmp-kodax-seven-fixes-statistics-probe.log"
+    },
+    "independentReviews": {
+      "standards": {
+        "findings": 0,
+        "mostSevere": null
+      },
+      "specLifecycle": {
+        "findings": 0,
+        "mostSevere": null
+      },
+      "statisticsResearch": {
+        "priorFindingsClosed": 4,
+        "newFindings": 0
+      }
+    },
+    "limits": [
+      "Full author-reported 977 related tests, full repository suite and scoped coverage not independently rerun.",
+      "Native OS backend build not rerun; SDK packages, bundle and declarations rebuilt.",
+      "No npm publish, package replacement or Space production migration performed.",
+      "Initial regression command failed once in test cleanup; targeted rerun passed and does not rewrite the first result."
+    ],
+    "environment": "Isolated temporary profiles; offline fake/custom Providers and localhost HTTP/global fetch fixtures; no real model or user Session."
+  },
+  "finalContentSha256": "a18e95d44864efb4db98f9d50bb30d6f6a6e32a37dd97dbbca9980c7dde122b8",
+  "sdkSourceUnchanged": true,
+  "finalSdkHead": "ba30095a6a2da143a43776402813f24734d8c53a",
+  "timezone": "Asia/Shanghai",
+  "completedDate": "2026-10-10",
+  "completedAtUtc": "2026-10-09T16:04:23.592897+00:00"
+}

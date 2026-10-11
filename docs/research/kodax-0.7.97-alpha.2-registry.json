@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-10-10T01:17:03.419Z",
+  "source": "https://registry.npmjs.org/@kodax-ai%2fkodax/0.7.97-alpha.2?space-check=1791595022601",
+  "name": "@kodax-ai/kodax",
+  "version": "0.7.97-alpha.2",
+  "dist": {
+    "shasum": "5c75ef19d2a849cacb86f3632fed8f9b319da4b0",
+    "tarball": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.2.tgz",
+    "fileCount": 1002,
+    "integrity": "sha512-MW+BNKEleWAReBKsYW9Y6BNsRW+ecVXum1LXfH5tjlMHl12yUUuTl+1OwoswGEO/XDdSlRSB5bnlI5v/zeOeUg==",
+    "signatures": [
+      {
+        "sig": "MEUCIGj5y0gbV9YJgN5jzgMqSfnNaXQ/yvryVaousuweRUz7AiEA3DJW3bDZhUzO7Xevnmx+yzLoi9SXAPq3UmymWyrW6mM=",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEQCICyoMkfPkwBpNNh8XeQOuwbjG0I4ocPuz6Gh+VhFhjlXAiBwRz2vs1ak/sn+XEvB6lEy1WN05zY44DGfX/Rn06r6og==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 32444809
+  }
+}

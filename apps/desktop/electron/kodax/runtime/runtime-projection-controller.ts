@@ -132,7 +132,7 @@ export class RuntimeProjectionController {
       current !== undefined &&
       current.cursor.runtimeId === parsed.cursor.runtimeId &&
       (parsed.projectionRevision <= current.projectionRevision ||
-        parsed.cursor.seq <= current.cursor.seq)
+        parsed.cursor.seq < current.cursor.seq)
     ) {
       return false;
     }

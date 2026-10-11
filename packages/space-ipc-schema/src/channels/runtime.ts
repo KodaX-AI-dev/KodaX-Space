@@ -32,10 +32,10 @@ export const spaceRuntimeCursorSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
-    if ((value.sessionId === undefined) !== (value.journalEpoch === undefined)) {
+    if (value.journalEpoch !== undefined && value.sessionId === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'session-bound Runtime cursors require both sessionId and journalEpoch',
+        message: 'legacy journalEpoch requires a sessionId',
       });
     }
   });
@@ -698,7 +698,7 @@ export const spaceRuntimeActiveToolSchema = z
   })
   .strict();
 
-// Journal evidence for the current bounded output window, including completed calls.
+// Retained tools for the current Turn. View recovery carries a snapshot boundary, not a replay cursor.
 const toolEventOrigin = {
   runId: idSchema,
   turnId: z.string().min(1).max(256),
@@ -706,6 +706,7 @@ const toolEventOrigin = {
   sentAt: timestampSchema,
   toolId: z.string().min(1),
   toolName: z.string().min(1),
+  sourceItemId: z.string().min(1).max(256).optional(),
 };
 const spaceRuntimeToolEventSchema = z.discriminatedUnion('kind', [
   z

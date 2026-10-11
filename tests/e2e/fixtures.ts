@@ -190,6 +190,14 @@ export async function launchSpace(
   }
 
   try {
+    // Native confirmations must never require a human during isolated tests.
+    // Cancel instead of forcing success; a genuine lifecycle failure stays red.
+    await app.evaluate(({ dialog }) => {
+      dialog.showMessageBox = async (...args: unknown[]) => {
+        const options = args.at(-1) as Electron.MessageBoxOptions;
+        return { response: options.cancelId ?? 0, checkboxChecked: false };
+      };
+    });
     await opts?.onLaunched?.(app);
     // 调试 hook：把 main process console + renderer console 都打到 test stdout，
     // 方便 30s 超时时定位卡在哪一步。CI 上可以静默掉。

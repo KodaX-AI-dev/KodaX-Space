@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-10",
+  "source": "unpublished SDK worktree and freshly rebuilt public dist entries",
+  "baseline": "3f10b34a618999a6218d56a7e42ea48616bf88a2",
+  "packageVersion": "0.7.97-alpha.2",
+  "trackedPatchSha256": "dc92d564d91ea57bf518b0d7f6e099be0f26b7a3c4aa1376138643b7081e122f",
+  "newWorkflowTestSha256": "b479bb86a36dc68d507d2c5a1338b0a9e503114d655496aabacb9068727f9019",
+  "checks": {
+    "focusedRegression": {
+      "files": 6,
+      "tests": 136,
+      "passed": true
+    },
+    "typecheck": {
+      "source": true,
+      "tests": true
+    },
+    "build": {
+      "packages": true,
+      "native": true,
+      "bundle": true,
+      "declarations": true,
+      "nodeFreeProductConsumer": true
+    },
+    "builtPublicProbe": {
+      "source": "current worktree rebuilt public dist entries",
+      "cases": [
+        {
+          "name": "Main ceiling survives Renderer forgery",
+          "spawned": 1
+        },
+        {
+          "name": "output budget blocks subsequent work",
+          "spawned": 1
+        },
+        {
+          "name": "known zero output does not spend input tokens",
+          "spawned": 2
+        },
+        {
+          "name": "parallel admissions reserve lifetime Agent slots",
+          "spawned": 1,
+          "childCalls": 1
+        },
+        {
+          "name": "existing Host concurrency config is effective",
+          "peak": 1
+        },
+        {
+          "name": "Product AMA Workflow uses Host directory and preserves canonical input identity"
+        }
+      ],
+      "authorizationCapability": {
+        "version": 2
+      },
+      "success": true
+    },
+    "realDetachedDaemon": {
+      "tests": 2,
+      "passed": true
+    },
+    "review": {
+      "standardsFindings": 0,
+      "specFindings": 0
+    }
+  },
+  "limits": [
+    "No npm publication claimed; package version still alpha.2.",
+    "The reported 1349 regressions were not all rerun by Space audit.",
+    "Space production migration is still in progress; no installed package replacement."
+  ]
+}

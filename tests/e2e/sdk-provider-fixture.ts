@@ -1,0 +1,276 @@
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
+import { expect } from '@playwright/test';
+import { launchSpace, type SpaceInstance } from './fixtures.js';
+
+interface WireMessage {
+  role: string;
+  content?: unknown;
+}
+
+export async function createLocalSdkProvider() {
+  const requests: string[] = [];
+  const pending = new Map<string, ServerResponse>();
+  const errors: string[] = [];
+  let projectRoot = '';
+  const reply = (response: ServerResponse, content: string, tools?: unknown[]) => {
+    if (!response.headersSent) response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.end(
+      `data: ${JSON.stringify({
+        id: 'space-e2e',
+        object: 'chat.completion.chunk',
+        model: 'space-e2e-model',
+        choices: [
+          {
+            index: 0,
+            delta: tools ? { tool_calls: tools } : { content },
+            finish_reason: tools ? 'tool_calls' : 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 },
+      })}\n\ndata: [DONE]\n\n`,
+    );
+  };
+  const handle = async (request: IncomingMessage, response: ServerResponse) => {
+    if (request.method === 'GET') {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ data: [{ id: 'space-e2e-model' }] }));
+      return;
+    }
+    let body = '';
+    for await (const chunk of request) body += String(chunk);
+    const parsed = JSON.parse(body) as {
+      messages: WireMessage[];
+      tools?: { function?: { name?: string } }[];
+    };
+    const prompt = String(
+      parsed.messages.findLast((message) => message.role === 'user')?.content ?? '',
+    );
+    requests.push(prompt);
+    if (request.headers.authorization !== 'Bearer space-e2e-fixture')
+      throw new Error('Main credential was not authorized');
+    if (parsed.tools?.some((tool) => tool.function?.name === 'emit_sidecar_verdict')) {
+      reply(response, '', [
+        {
+          index: 0,
+          id: 'e2e-sidecar-verdict',
+          type: 'function',
+          function: {
+            name: 'emit_sidecar_verdict',
+            arguments: JSON.stringify({
+              verdict: 'accept',
+              reason: 'Deterministic local E2E verdict.',
+            }),
+          },
+        },
+      ]);
+      return;
+    }
+    if (prompt === 'HOLD_QUEUE' || prompt === 'HOLD_CANCEL') {
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      response.flushHeaders();
+      pending.set(prompt, response);
+      return;
+    }
+    if (prompt === 'SDK_TOOLS' && parsed.messages.at(-1)?.role !== 'tool') {
+      reply(response, '', [
+        {
+          index: 0,
+          id: 'e2e-write',
+          type: 'function',
+          function: {
+            name: 'write',
+            arguments: JSON.stringify({
+              path: path.join(projectRoot, 'sdk-created.txt'),
+              content: 'REAL_SDK_TOOL_EXECUTION',
+            }),
+          },
+        },
+        {
+          index: 1,
+          id: 'e2e-read',
+          type: 'function',
+          function: {
+            name: 'read',
+            arguments: JSON.stringify({ path: path.join(projectRoot, 'README.md') }),
+          },
+        },
+        {
+          index: 2,
+          id: 'e2e-manual',
+          type: 'function',
+          function: { name: 'space_manual', arguments: JSON.stringify({ topic: 'overview' }) },
+        },
+      ]);
+      return;
+    }
+    reply(response, `SDK_REPLY:${prompt}`);
+  };
+  const server = createServer((request, response) => {
+    void handle(request, response).catch((error: unknown) => {
+      errors.push(error instanceof Error ? error.message : String(error));
+      response.destroy();
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Local Provider did not bind');
+  return {
+    url: `http://127.0.0.1:${address.port}/v1`,
+    requests,
+    errors,
+    setProject: (value: string) => {
+      projectRoot = value;
+    },
+    release: (marker: string) => {
+      for (const [prompt, response] of pending) {
+        if (!prompt.includes(marker)) continue;
+        pending.delete(prompt);
+        if (!response.destroyed) reply(response, `SDK_REPLY:${prompt}`);
+      }
+    },
+    close: async () => {
+      for (const response of pending.values()) response.destroy();
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    },
+  };
+}
+
+export async function launchRealSdkSpace(testId: string, baseUrl: string) {
+  const space = await launchSpace(testId, {
+    env: { KODAX_FORCE_MOCK: '0', SPACE_TEST_COMPLETE_EXIT_TRIGGER: '1' },
+  });
+  try {
+    const projectRoot = path.join(space.testDataDir, 'project');
+    await mkdir(projectRoot);
+    await writeFile(path.join(projectRoot, 'README.md'), '# Local SDK E2E\n');
+    const providerId = await space.page.evaluate(async (url) => {
+      const added = await window.kodaxSpace!.invoke('provider.addCustom', {
+        displayName: 'Local SDK E2E',
+        protocol: 'openai',
+        baseUrl: url,
+        skipBaseUrlValidation: true,
+        apiKeyEnv: 'SPACE_ISOLATED_E2E_KEY',
+        defaultModel: 'space-e2e-model',
+        reasoning: 'none',
+        contextWindow: 200_000,
+      });
+      if (!added.ok) throw new Error(added.error.message);
+      const id = added.data.providerId;
+      for (const result of [
+        await window.kodaxSpace!.invoke('provider.setKey', {
+          providerId: id,
+          apiKey: 'space-e2e-fixture',
+        }),
+        await window.kodaxSpace!.invoke('provider.setDefault', { providerId: id }),
+        await window.kodaxSpace!.invoke('settings.setRuntimeDefaults', {
+          runtimeDefaults: { permissionMode: 'full-access', agentMode: 'ama' },
+        }),
+      ])
+        if (!result.ok) throw new Error(result.error.message);
+      return id;
+    }, baseUrl);
+    await space.seedProject(projectRoot);
+    await expect(space.page.locator('textarea').first()).toBeEnabled({ timeout: 15_000 });
+    return { space, projectRoot, providerId };
+  } catch (error) {
+    await space.close();
+    throw error;
+  }
+}
+
+export async function currentSdkSession(space: SpaceInstance) {
+  return space.page.evaluate(async () => {
+    const result = await window.kodaxSpace!.invoke('session.list', { surface: 'code' });
+    if (!result.ok) throw new Error(result.error.message);
+    const session = result.data.sessions[0];
+    if (!session) throw new Error('No real SDK Session');
+    return session.sessionId;
+  });
+}
+
+export async function sendSdkPrompt(space: SpaceInstance, prompt: string, key = 'Enter') {
+  const composer = space.page.locator('textarea').first();
+  await composer.fill(prompt);
+  await composer.press(key);
+  await expect(
+    space.page.getByTestId('conversation-stream').getByText(prompt, { exact: true }),
+  ).toBeVisible({ timeout: 15_000 });
+}
+
+export async function readSdkHistory(space: SpaceInstance, sessionId: string) {
+  return space.page.evaluate(async (id) => {
+    const result = await window.kodaxSpace!.invoke('session.history', {
+      sessionId: id,
+      requestId: crypto.randomUUID(),
+      expectedSurface: 'code',
+    });
+    if (!result.ok) throw new Error(result.error.message);
+    return result.data;
+  }, sessionId);
+}
+
+export async function waitSdkIdle(space: SpaceInstance, sessionId: string) {
+  await expect
+    .poll(
+      async () => {
+        const result = await space.page.evaluate(
+          (id) => window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId: id }),
+          sessionId,
+        );
+        if (!result.ok) return result.error.message;
+        return (
+          (!result.data.activeRun ||
+            ['completed', 'cancelled', 'interrupted', 'failed'].includes(
+              result.data.activeRun.phase,
+            )) &&
+          !result.data.queuedInputs?.length
+        );
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true);
+}
+
+/** A fresh reader scopes the SDK's module-level config home to this profile. */
+export async function readPublicSpaceExit(space: SpaceInstance) {
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
+    import { readFile } from 'node:fs/promises';
+    import path from 'node:path';
+    const root = process.argv[1];
+    const identity = JSON.parse(await readFile(path.join(root, 'space/runtime-client-identity.json'), 'utf8')).exitRecovery;
+    if (!identity) throw new Error('Space did not preserve its accepted exit identity.');
+    const imported = await import('@napi-rs/keyring/keytar.js');
+    const keyring = imported.default ?? imported;
+    const secret = await keyring.getPassword('kodax-space-test-runtime', identity.secretAccount);
+    if (!secret) throw new Error('Isolated exit credential is unavailable.');
+    const { readKodaXClientExits } = await import('@kodax-ai/kodax/client');
+    const receipts = await readKodaXClientExits({profile:'coder', clientInfo:{
+      instanceId:identity.instanceId, instanceSecret:secret,
+    }});
+    const receipt = receipts.find(item => item.requestId === identity.requestId && item.runtimeId === identity.runtimeId);
+    if (!receipt) throw new Error('Accepted Space exit has no matching public receipt.');
+    process.stdout.write(JSON.stringify(receipt));
+  `,
+      space.testDataDir,
+    ],
+    {
+      windowsHide: true,
+      timeout: 15_000,
+      env: { ...process.env, KODAX_HOME: space.testDataDir },
+    },
+  );
+  return JSON.parse(stdout) as ClientExitReceipt;
+}

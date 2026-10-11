@@ -1,0 +1,896 @@
+{
+  "package": "@kodax-ai/kodax",
+  "version": "0.7.97-alpha.2",
+  "imports": "public installed Registry package only",
+  "sdkRetries": [
+    {
+      "provider": "published-openai-retry",
+      "fetches": 2,
+      "requests": [
+        {
+          "requestId": "request_718fc7f7-22ca-42a0-80e3-5d62e6ba3f15",
+          "logicalRequestId": "logical_ee331386-90e1-4dcc-adbe-260776a9912f",
+          "provider": "published-openai-retry",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "failed",
+          "startedAt": "2026-10-10T01:28:35.997Z",
+          "endedAt": "2026-10-10T01:28:35.998Z"
+        },
+        {
+          "requestId": "physical_6901bcd0-6f5c-435e-8bdc-6778fdb3335e",
+          "logicalRequestId": "logical_ee331386-90e1-4dcc-adbe-260776a9912f",
+          "provider": "published-openai-retry",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 2,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:36.000Z",
+          "endedAt": "2026-10-10T01:28:36.000Z",
+          "usage": {
+            "inputTokens": 9,
+            "outputTokens": 3,
+            "totalTokens": 12
+          }
+        }
+      ],
+      "usage": {
+        "inputTokens": 9,
+        "outputTokens": 3,
+        "totalTokens": 12
+      }
+    },
+    {
+      "provider": "published-anthropic-retry",
+      "fetches": 2,
+      "requests": [
+        {
+          "requestId": "request_bb6a8d4d-cdbc-4c87-9942-9f8616b5ba66",
+          "logicalRequestId": "logical_4e5c2575-3638-4bde-84d7-544af3c19e88",
+          "provider": "published-anthropic-retry",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "failed",
+          "startedAt": "2026-10-10T01:28:36.033Z",
+          "endedAt": "2026-10-10T01:28:36.033Z"
+        },
+        {
+          "requestId": "physical_2de36b45-404c-412b-a3cc-ff7be4cb67a6",
+          "logicalRequestId": "logical_4e5c2575-3638-4bde-84d7-544af3c19e88",
+          "provider": "published-anthropic-retry",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 2,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:36.037Z",
+          "endedAt": "2026-10-10T01:28:36.038Z",
+          "usage": {
+            "inputTokens": 9,
+            "outputTokens": 3,
+            "totalTokens": 12,
+            "cachedReadTokens": 2
+          }
+        }
+      ],
+      "usage": {
+        "inputTokens": 9,
+        "outputTokens": 3,
+        "totalTokens": 12,
+        "cachedReadTokens": 2
+      }
+    }
+  ],
+  "publicClient": {
+    "ordinaryAmbientChild": {
+      "rootRunId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360",
+      "target": {
+        "kind": "actor_turn",
+        "actorPath": "/root/audit-child",
+        "turnId": "turn_root_audit_child_1",
+        "parentRunId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+      },
+      "executions": ["child"],
+      "statistics": {
+        "sessionId": "20261010_092836_anc09bd258e88e",
+        "revision": 40,
+        "coverage": "complete",
+        "issues": [],
+        "usage": {
+          "inputTokens": 60,
+          "outputTokens": 12,
+          "totalTokens": 72,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0,
+          "thoughtTokens": 0
+        },
+        "requestCount": 6,
+        "requestsWithoutUsage": 0,
+        "physicalRequestCount": 6,
+        "operationCount": 0,
+        "contexts": [
+          {
+            "sessionId": "20261010_092836_anc09bd258e88e",
+            "turnId": "turn_4b37df3a618e4b2a",
+            "contextId": "20261010_092836_anc09bd258e88e",
+            "contextKind": "root",
+            "provider": "published-rpc-native",
+            "model": "fixture",
+            "profile": "report_only",
+            "contextWindow": 200000,
+            "smallWindow": false,
+            "pressure": "low",
+            "tokenBreakdown": {
+              "systemPrompt": 7662,
+              "toolSchemas": 19092,
+              "skillCatalog": 1297,
+              "mcpCatalog": 0,
+              "transcript": 811,
+              "pendingInput": 315,
+              "recentToolResults": 37,
+              "reservedResponse": 16,
+              "total": 29230
+            },
+            "usedTokens": 29230,
+            "availableTokens": 170770,
+            "usedRatio": 0.14615,
+            "toolSchemaRatio": 0.09546,
+            "recommendations": [],
+            "createdAt": "2026-10-10T01:28:38.281Z",
+            "compactionBudget": {
+              "triggerPercent": 75,
+              "absoluteTriggerTokens": 262144,
+              "triggerTokens": 150000,
+              "physicalCapacityTokens": 194159,
+              "reservedResponseTokens": 16,
+              "reservedMemoryTokens": 0
+            },
+            "seq": 43,
+            "deliveryId": "delivery_2639a64075534175",
+            "contextRevision": 0,
+            "timestamp": "2026-10-10T01:28:38.281Z",
+            "runtimeId": "rt_efda102e16b1",
+            "target": {
+              "kind": "run",
+              "runId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+            },
+            "revision": 32
+          },
+          {
+            "compactionBudget": {
+              "triggerPercent": 75,
+              "absoluteTriggerTokens": 262144,
+              "triggerTokens": 150000,
+              "physicalCapacityTokens": 194159,
+              "reservedResponseTokens": 16,
+              "reservedMemoryTokens": 0
+            },
+            "sessionId": "20261010_092836_anc09bd258e88e",
+            "turnId": "turn_root_audit_child_1",
+            "contextId": "20261010_092836_anc09bd258e88e/agent/%2Froot%2Faudit-child",
+            "contextKind": "child",
+            "parentContextId": "20261010_092836_anc09bd258e88e",
+            "agentId": "/root/audit-child",
+            "provider": "published-rpc-native",
+            "model": "fixture",
+            "profile": "report_only",
+            "contextWindow": 200000,
+            "smallWindow": false,
+            "pressure": "low",
+            "tokenBreakdown": {
+              "systemPrompt": 663,
+              "toolSchemas": 15396,
+              "skillCatalog": 0,
+              "mcpCatalog": 0,
+              "transcript": 857,
+              "pendingInput": 0,
+              "recentToolResults": 0,
+              "reservedResponse": 16,
+              "total": 16932
+            },
+            "usedTokens": 16932,
+            "availableTokens": 183068,
+            "usedRatio": 0.08466,
+            "toolSchemaRatio": 0.07698,
+            "recommendations": [],
+            "createdAt": "2026-10-10T01:28:38.169Z",
+            "seq": 36,
+            "deliveryId": "delivery_1bc8e22e4cc34fb1",
+            "contextRevision": 0,
+            "timestamp": "2026-10-10T01:28:38.169Z",
+            "runtimeId": "rt_efda102e16b1",
+            "target": {
+              "kind": "actor_turn",
+              "actorPath": "/root/audit-child",
+              "turnId": "turn_root_audit_child_1",
+              "parentRunId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+            },
+            "revision": 27
+          }
+        ]
+      },
+      "requests": [
+        {
+          "requestId": "request_1ae012c7-fc3f-420f-a372-44269507d8ad",
+          "logicalRequestId": "logical_18911bea-5551-4ebb-872f-b28cb3ca01c8",
+          "provider": "published-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:37.245Z",
+          "endedAt": "2026-10-10T01:28:37.250Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "runtimeId": "rt_efda102e16b1",
+          "revision": 6,
+          "fallback": false
+        },
+        {
+          "requestId": "request_d0993bb4-6ff6-4a04-8210-b3110366350b",
+          "logicalRequestId": "logical_29e13d81-702c-424d-9598-01fa514d4f35",
+          "provider": "published-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:37.591Z",
+          "endedAt": "2026-10-10T01:28:37.594Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "runtimeId": "rt_efda102e16b1",
+          "revision": 15,
+          "fallback": false,
+          "previousRequestId": "request_1ae012c7-fc3f-420f-a372-44269507d8ad"
+        },
+        {
+          "requestId": "request_4bfd23cf-9384-4309-9ae1-3a0e50ecfeb8",
+          "logicalRequestId": "req_1791595718012_6",
+          "provider": "published-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attribution": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1"
+          },
+          "route": {
+            "chainId": "route_9aecc303-5248-4180-9271-2b71ab4ae124",
+            "attempt": 1
+          },
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:38.025Z",
+          "endedAt": "2026-10-10T01:28:38.030Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1",
+            "parentRunId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "runtimeId": "rt_efda102e16b1",
+          "revision": 20,
+          "fallback": false
+        },
+        {
+          "requestId": "request_5aad19b1-ecde-46d6-87fd-e5069488bd56",
+          "logicalRequestId": "req_1791595718168_8",
+          "provider": "published-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attribution": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1"
+          },
+          "route": {
+            "chainId": "route_9aecc303-5248-4180-9271-2b71ab4ae124",
+            "attempt": 1
+          },
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:38.180Z",
+          "endedAt": "2026-10-10T01:28:38.184Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1",
+            "parentRunId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "runtimeId": "rt_efda102e16b1",
+          "revision": 31,
+          "fallback": false,
+          "previousRequestId": "request_4bfd23cf-9384-4309-9ae1-3a0e50ecfeb8"
+        },
+        {
+          "requestId": "request_51fabd75-368a-46e4-a42e-e697e9c4e471",
+          "logicalRequestId": "logical_c5d34774-9e2f-436b-b80a-50e444a58138",
+          "provider": "published-rpc-native",
+          "model": "fixture",
+          "purpose": "primary",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:38.292Z",
+          "endedAt": "2026-10-10T01:28:38.297Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "runtimeId": "rt_efda102e16b1",
+          "revision": 36,
+          "fallback": false,
+          "previousRequestId": "request_d0993bb4-6ff6-4a04-8210-b3110366350b"
+        },
+        {
+          "requestId": "request_a2cd9e80-fe15-4063-afd1-6392850d8b4f",
+          "logicalRequestId": "logical_9ffe14e9-61b0-43b3-8ab1-493fdb43c4ad",
+          "provider": "published-rpc-native",
+          "model": "fixture",
+          "purpose": "sidecar",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "wireObservation": "observed",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-10T01:28:38.369Z",
+          "endedAt": "2026-10-10T01:28:38.373Z",
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 12
+          },
+          "target": {
+            "kind": "run",
+            "runId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "runtimeId": "rt_efda102e16b1",
+          "revision": 40,
+          "fallback": false,
+          "previousRequestId": "request_51fabd75-368a-46e4-a42e-e697e9c4e471"
+        }
+      ],
+      "tools": [
+        {
+          "id": "execution_01426cfb-4a1b-4f23-bcad-9dbdea501864",
+          "revision": 10,
+          "toolId": "spawn",
+          "name": "spawn_agent",
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "target": {
+            "kind": "run",
+            "runId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "runtimeId": "rt_efda102e16b1",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-10T01:28:37.365Z",
+          "sandbox": []
+        },
+        {
+          "id": "execution_9dae7fa0-71e6-4f44-aa57-710ac4833b24",
+          "revision": 26,
+          "toolId": "reused-provider-id",
+          "name": "published_statistics_fixture",
+          "sessionId": "20261010_092836_anc09bd258e88e",
+          "target": {
+            "kind": "actor_turn",
+            "actorPath": "/root/audit-child",
+            "turnId": "turn_root_audit_child_1",
+            "parentRunId": "run_28b2fffa1170c20d680457e6b0e8559fe7fb3d4b42f59cef422c4822704c7360"
+          },
+          "runtimeId": "rt_efda102e16b1",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-10T01:28:38.073Z",
+          "sandbox": [
+            {
+              "version": 1,
+              "state": "not_selected"
+            },
+            {
+              "version": 1,
+              "state": "fallback",
+              "reason": "not_ready",
+              "execution": "normal_permission_policy"
+            }
+          ]
+        }
+      ]
+    },
+    "duplicates": {
+      "executions": ["one", "two"],
+      "facts": [
+        {
+          "id": "execution_27833157-f319-4d0d-838b-90723eb17393",
+          "revision": 15,
+          "toolId": "reused-provider-id",
+          "name": "published_statistics_fixture",
+          "sessionId": "20261010_092838_gwda08a174af4a",
+          "target": {
+            "kind": "run",
+            "runId": "run_93c673894e592fb8e68f87001753de0403e69f255d52bf1dcc9c3fca8d4679c7"
+          },
+          "runtimeId": "rt_efda102e16b1",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-10T01:28:39.318Z",
+          "sandbox": [
+            {
+              "version": 1,
+              "state": "not_selected"
+            }
+          ]
+        },
+        {
+          "id": "execution_b6ca273d-0a3d-4cf9-94ad-dcbbde86b17e",
+          "revision": 16,
+          "toolId": "reused-provider-id",
+          "name": "published_statistics_fixture",
+          "sessionId": "20261010_092838_gwda08a174af4a",
+          "target": {
+            "kind": "run",
+            "runId": "run_93c673894e592fb8e68f87001753de0403e69f255d52bf1dcc9c3fca8d4679c7"
+          },
+          "runtimeId": "rt_efda102e16b1",
+          "state": "completed",
+          "result": "succeeded",
+          "updatedAt": "2026-10-10T01:28:39.323Z",
+          "sandbox": [
+            {
+              "version": 1,
+              "state": "fallback",
+              "reason": "not_ready",
+              "execution": "normal_permission_policy"
+            }
+          ]
+        }
+      ],
+      "canonicalResults": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "reused-provider-id",
+          "content": "result-one",
+          "metadata": {
+            "truncated": true,
+            "capacityFallback": true,
+            "outputPath": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-alpha2-published-statistics-UXMRk5\\one-output.txt"
+          },
+          "is_error": false
+        },
+        {
+          "type": "tool_result",
+          "tool_use_id": "reused-provider-id",
+          "content": "result-two",
+          "metadata": {
+            "truncated": true,
+            "capacityFallback": true,
+            "outputPath": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-alpha2-published-statistics-UXMRk5\\two-output.txt"
+          },
+          "is_error": false
+        }
+      ]
+    }
+  },
+  "operationOnly": {
+    "started": {
+      "sessionId": "20261010_092839_fb412f0f7b2e12",
+      "revision": 3,
+      "coverage": "partial",
+      "issues": ["An executing adapter has not exposed a physical request boundary."],
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "thoughtTokens": 0
+      },
+      "requestCount": 1,
+      "requestsWithoutUsage": 1,
+      "physicalRequestCount": 0,
+      "operationCount": 1,
+      "contexts": [
+        {
+          "compactionBudget": {
+            "triggerPercent": 75,
+            "absoluteTriggerTokens": 262144,
+            "triggerTokens": 150000,
+            "physicalCapacityTokens": 159254,
+            "reservedResponseTokens": 32768,
+            "reservedMemoryTokens": 3200
+          },
+          "sessionId": "20261010_092839_fb412f0f7b2e12",
+          "turnId": "turn_f370f4893673476a",
+          "contextId": "20261010_092839_fb412f0f7b2e12",
+          "contextKind": "root",
+          "provider": "published-operation-only",
+          "model": "fixture",
+          "profile": "report_only",
+          "contextWindow": 200000,
+          "smallWindow": false,
+          "pressure": "low",
+          "tokenBreakdown": {
+            "systemPrompt": 4725,
+            "toolSchemas": 17829,
+            "skillCatalog": 0,
+            "mcpCatalog": 0,
+            "transcript": 11,
+            "pendingInput": 0,
+            "recentToolResults": 0,
+            "reservedResponse": 32768,
+            "total": 55333
+          },
+          "usedTokens": 55333,
+          "availableTokens": 144667,
+          "usedRatio": 0.276665,
+          "toolSchemaRatio": 0.089145,
+          "recommendations": [],
+          "createdAt": "2026-10-10T01:28:40.102Z",
+          "seq": 5,
+          "deliveryId": "delivery_485ceee1b91f410d",
+          "contextRevision": 0,
+          "timestamp": "2026-10-10T01:28:40.102Z",
+          "runtimeId": "rt_efda102e16b1",
+          "target": {
+            "kind": "run",
+            "runId": "run_8bebd5ed426b3fe9ff6506b4358dddbf1c30f621d2b61b57d183a5b73cbb1037"
+          },
+          "revision": 2
+        }
+      ]
+    },
+    "startedRequests": [
+      {
+        "requestId": "request_6bf78674-d766-49f9-bd73-0ff41d5938c3",
+        "logicalRequestId": "req_1791595720101_16",
+        "provider": "published-operation-only",
+        "purpose": "primary",
+        "attempt": 1,
+        "boundary": "provider_operation",
+        "wireObservation": "unavailable",
+        "dispatch": "unknown",
+        "state": "started",
+        "startedAt": "2026-10-10T01:28:40.103Z",
+        "target": {
+          "kind": "run",
+          "runId": "run_8bebd5ed426b3fe9ff6506b4358dddbf1c30f621d2b61b57d183a5b73cbb1037"
+        },
+        "sessionId": "20261010_092839_fb412f0f7b2e12",
+        "runtimeId": "rt_efda102e16b1",
+        "revision": 3,
+        "fallback": false
+      }
+    ],
+    "completed": {
+      "sessionId": "20261010_092839_fb412f0f7b2e12",
+      "revision": 4,
+      "coverage": "partial",
+      "issues": ["Some adapters report operation boundaries rather than physical wire attempts."],
+      "usage": {
+        "inputTokens": 4,
+        "outputTokens": 2,
+        "totalTokens": 6,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "thoughtTokens": 0
+      },
+      "requestCount": 1,
+      "requestsWithoutUsage": 0,
+      "physicalRequestCount": 0,
+      "operationCount": 1,
+      "contexts": [
+        {
+          "compactionBudget": {
+            "triggerPercent": 75,
+            "absoluteTriggerTokens": 262144,
+            "triggerTokens": 150000,
+            "physicalCapacityTokens": 159254,
+            "reservedResponseTokens": 32768,
+            "reservedMemoryTokens": 3200
+          },
+          "sessionId": "20261010_092839_fb412f0f7b2e12",
+          "turnId": "turn_f370f4893673476a",
+          "contextId": "20261010_092839_fb412f0f7b2e12",
+          "contextKind": "root",
+          "provider": "published-operation-only",
+          "model": "fixture",
+          "profile": "report_only",
+          "contextWindow": 200000,
+          "smallWindow": false,
+          "pressure": "low",
+          "tokenBreakdown": {
+            "systemPrompt": 4725,
+            "toolSchemas": 17829,
+            "skillCatalog": 0,
+            "mcpCatalog": 0,
+            "transcript": 11,
+            "pendingInput": 0,
+            "recentToolResults": 0,
+            "reservedResponse": 32768,
+            "total": 55333
+          },
+          "usedTokens": 55333,
+          "availableTokens": 144667,
+          "usedRatio": 0.276665,
+          "toolSchemaRatio": 0.089145,
+          "recommendations": [],
+          "createdAt": "2026-10-10T01:28:40.102Z",
+          "seq": 5,
+          "deliveryId": "delivery_485ceee1b91f410d",
+          "contextRevision": 0,
+          "timestamp": "2026-10-10T01:28:40.102Z",
+          "runtimeId": "rt_efda102e16b1",
+          "target": {
+            "kind": "run",
+            "runId": "run_8bebd5ed426b3fe9ff6506b4358dddbf1c30f621d2b61b57d183a5b73cbb1037"
+          },
+          "revision": 2
+        }
+      ]
+    }
+  },
+  "nativePending": {
+    "started": {
+      "sessionId": "20261010_092840_6x2f06ee29e774",
+      "revision": 4,
+      "coverage": "complete",
+      "issues": [],
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "thoughtTokens": 0
+      },
+      "requestCount": 1,
+      "requestsWithoutUsage": 1,
+      "physicalRequestCount": 0,
+      "operationCount": 1,
+      "contexts": [
+        {
+          "compactionBudget": {
+            "triggerPercent": 75,
+            "absoluteTriggerTokens": 262144,
+            "triggerTokens": 150000,
+            "physicalCapacityTokens": 191052,
+            "reservedResponseTokens": 16,
+            "reservedMemoryTokens": 3200
+          },
+          "sessionId": "20261010_092840_6x2f06ee29e774",
+          "turnId": "turn_e20ef8ee13a54a61",
+          "contextId": "20261010_092840_6x2f06ee29e774",
+          "contextKind": "root",
+          "provider": "published-held-native",
+          "model": "fixture",
+          "profile": "report_only",
+          "contextWindow": 200000,
+          "smallWindow": false,
+          "pressure": "low",
+          "tokenBreakdown": {
+            "systemPrompt": 4724,
+            "toolSchemas": 17829,
+            "skillCatalog": 0,
+            "mcpCatalog": 0,
+            "transcript": 9,
+            "pendingInput": 0,
+            "recentToolResults": 0,
+            "reservedResponse": 16,
+            "total": 22578
+          },
+          "usedTokens": 22578,
+          "availableTokens": 177422,
+          "usedRatio": 0.11289,
+          "toolSchemaRatio": 0.089145,
+          "recommendations": [],
+          "createdAt": "2026-10-10T01:28:40.788Z",
+          "seq": 5,
+          "deliveryId": "delivery_649e31299cd84b0a",
+          "contextRevision": 0,
+          "timestamp": "2026-10-10T01:28:40.788Z",
+          "runtimeId": "rt_efda102e16b1",
+          "target": {
+            "kind": "run",
+            "runId": "run_04f5c0e5c3b04eba9cfdf06507d49583b71fa3ac73dd38f997305aa2964f94c1"
+          },
+          "revision": 2
+        }
+      ]
+    },
+    "startedRequests": [
+      {
+        "requestId": "request_459db65b-80da-4415-8350-5915dd25c5cf",
+        "logicalRequestId": "req_1791595720787_18",
+        "provider": "published-held-native",
+        "purpose": "primary",
+        "attempt": 1,
+        "boundary": "provider_operation",
+        "wireObservation": "pending",
+        "dispatch": "unknown",
+        "state": "started",
+        "startedAt": "2026-10-10T01:28:40.789Z",
+        "model": "fixture",
+        "target": {
+          "kind": "run",
+          "runId": "run_04f5c0e5c3b04eba9cfdf06507d49583b71fa3ac73dd38f997305aa2964f94c1"
+        },
+        "sessionId": "20261010_092840_6x2f06ee29e774",
+        "runtimeId": "rt_efda102e16b1",
+        "revision": 4,
+        "fallback": false
+      }
+    ],
+    "completed": {
+      "sessionId": "20261010_092840_6x2f06ee29e774",
+      "revision": 6,
+      "coverage": "complete",
+      "issues": [],
+      "usage": {
+        "inputTokens": 10,
+        "outputTokens": 2,
+        "totalTokens": 12,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "thoughtTokens": 0
+      },
+      "requestCount": 1,
+      "requestsWithoutUsage": 0,
+      "physicalRequestCount": 1,
+      "operationCount": 0,
+      "contexts": [
+        {
+          "compactionBudget": {
+            "triggerPercent": 75,
+            "absoluteTriggerTokens": 262144,
+            "triggerTokens": 150000,
+            "physicalCapacityTokens": 191052,
+            "reservedResponseTokens": 16,
+            "reservedMemoryTokens": 3200
+          },
+          "sessionId": "20261010_092840_6x2f06ee29e774",
+          "turnId": "turn_e20ef8ee13a54a61",
+          "contextId": "20261010_092840_6x2f06ee29e774",
+          "contextKind": "root",
+          "provider": "published-held-native",
+          "model": "fixture",
+          "profile": "report_only",
+          "contextWindow": 200000,
+          "smallWindow": false,
+          "pressure": "low",
+          "tokenBreakdown": {
+            "systemPrompt": 4724,
+            "toolSchemas": 17829,
+            "skillCatalog": 0,
+            "mcpCatalog": 0,
+            "transcript": 9,
+            "pendingInput": 0,
+            "recentToolResults": 0,
+            "reservedResponse": 16,
+            "total": 22578
+          },
+          "usedTokens": 22578,
+          "availableTokens": 177422,
+          "usedRatio": 0.11289,
+          "toolSchemaRatio": 0.089145,
+          "recommendations": [],
+          "createdAt": "2026-10-10T01:28:40.788Z",
+          "seq": 5,
+          "deliveryId": "delivery_649e31299cd84b0a",
+          "contextRevision": 0,
+          "timestamp": "2026-10-10T01:28:40.788Z",
+          "runtimeId": "rt_efda102e16b1",
+          "target": {
+            "kind": "run",
+            "runId": "run_04f5c0e5c3b04eba9cfdf06507d49583b71fa3ac73dd38f997305aa2964f94c1"
+          },
+          "revision": 2
+        }
+      ]
+    },
+    "completedRequests": [
+      {
+        "requestId": "request_459db65b-80da-4415-8350-5915dd25c5cf",
+        "logicalRequestId": "req_1791595720787_18",
+        "provider": "published-held-native",
+        "model": "fixture",
+        "purpose": "primary",
+        "attempt": 1,
+        "boundary": "physical_attempt",
+        "wireObservation": "observed",
+        "dispatch": "dispatched",
+        "state": "succeeded",
+        "startedAt": "2026-10-10T01:28:40.816Z",
+        "endedAt": "2026-10-10T01:28:40.818Z",
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 2,
+          "totalTokens": 12
+        },
+        "target": {
+          "kind": "run",
+          "runId": "run_04f5c0e5c3b04eba9cfdf06507d49583b71fa3ac73dd38f997305aa2964f94c1"
+        },
+        "sessionId": "20261010_092840_6x2f06ee29e774",
+        "runtimeId": "rt_efda102e16b1",
+        "revision": 6,
+        "fallback": false
+      }
+    ]
+  },
+  "runtimeIdentity": {
+    "runtimeId": "rt_efda102e16b1",
+    "mode": "daemon",
+    "profile": "default",
+    "startedAt": "2026-10-10T01:28:36.289Z",
+    "version": "0.7.97-alpha.2",
+    "build": {
+      "origin": "c:\\works\\gitproj\\kodax-ai\\kodax-space\\node_modules\\@kodax-ai\\kodax\\dist\\kodax_cli.js",
+      "fingerprint": "f9ee9a9be4072bb826fead552bc43362fdebdfb5d32556caefefb20beffd6bf8"
+    },
+    "isolation": "inline"
+  },
+  "completedAt": "2026-10-10T01:28:41.089Z"
+}

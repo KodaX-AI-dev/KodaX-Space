@@ -4,18 +4,31 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { projectEmbeddedMidTurnUserMessages, projectEmbeddedReasoningResolution, RealKodaXSession } from '../kodax/real-session.js';
+import {
+  projectEmbeddedMidTurnUserMessages,
+  projectEmbeddedReasoningResolution,
+  RealKodaXSession,
+} from '../kodax/real-session.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 
 test('embedded reasoning observations keep root ownership', () => {
   const resolution = {
-    provider: 'OpenRouter', model: 'reasoner', requestedEffort: 'auto', sentEffort: 'max',
-    verified: false as const, fallbacks: [],
+    provider: 'OpenRouter',
+    model: 'reasoner',
+    requestedEffort: 'auto',
+    sentEffort: 'max',
+    verified: false as const,
+    fallbacks: [],
   };
   assert.deepEqual(projectEmbeddedReasoningResolution('s', resolution), {
-    kind: 'reasoning_resolved', sessionId: 's', resolution,
+    kind: 'reasoning_resolved',
+    sessionId: 's',
+    resolution,
   });
-  assert.equal(projectEmbeddedReasoningResolution('s', { ...resolution, contextKind: 'child' }), undefined);
+  assert.equal(
+    projectEmbeddedReasoningResolution('s', { ...resolution, contextKind: 'child' }),
+    undefined,
+  );
   const legacyChildResolution = { ...resolution, childAgentId: 'child' };
   assert.equal(projectEmbeddedReasoningResolution('s', legacyChildResolution), undefined);
 });
@@ -1427,7 +1440,7 @@ test('active daemon run preserves interrupt intent and requires explicit after-t
 
   adapter.submitInput = async (input: Record<string, unknown>) => {
     submittedInput = input;
-    return { accepted: true, delivery: 'after_turn', runId: 'run_follow_up' };
+    return { accepted: true, delivery: 'after_turn', inputId: 'queued_input' };
   };
   const result = await session.send('explicit after-turn follow-up', undefined, {
     queueMode: 'after-turn',
@@ -1436,7 +1449,7 @@ test('active daemon run preserves interrupt intent and requires explicit after-t
   assert.deepEqual(result, {
     accepted: true,
     queued: true,
-    queueId: 'run_follow_up',
+    queueId: 'queued_input',
     queueMode: 'after-turn',
   });
   assert.deepEqual(submittedInput, {
@@ -1444,7 +1457,7 @@ test('active daemon run preserves interrupt intent and requires explicit after-t
     afterRunId: 'run_active',
     delivery: 'after_turn',
     input: [{ type: 'text', text: 'explicit after-turn follow-up' }],
-    operation: { operationId: 'space-send-after-turn-1' },
+    inputId: 'space-send-after-turn-1',
   });
   assert.ok(settingsUpdate);
   const { shellExecution: latestShellExecution, ...latestSettingsPatch } = settingsUpdate.patch;
@@ -1478,7 +1491,7 @@ test('active daemon run preserves interrupt intent and requires explicit after-t
   );
 });
 
-test('daemon run refreshes settings and transports trusted Skill context without hook commands', async (t) => {
+test('daemon run refreshes settings and leaves raw Skill preparation to Host', async (t) => {
   const adapter = runtimeHostAdapter as unknown as Record<string, unknown>;
   const patchedMethods = new Map<string, { readonly existed: boolean; readonly value: unknown }>();
   const patchMethod = (name: string, value: unknown): void => {
@@ -1588,35 +1601,15 @@ test('daemon run refreshes settings and transports trusted Skill context without
     },
   );
   assert.equal((shellExecution as { version?: unknown } | undefined)?.version, 1);
-  const options = managedRunInput?.options as
-    | {
-        readonly context?: {
-          readonly excludeTools?: readonly string[];
-          readonly shellExecution?: unknown;
-          readonly rawUserInput?: string;
-          readonly skillInvocation?: Record<string, unknown>;
-        };
-        readonly effort?: string;
-        readonly modelOverride?: string;
-      }
-    | undefined;
-  assert.ok(options?.context?.excludeTools?.includes('exit_plan_mode'));
-  assert.deepEqual(options?.context?.shellExecution, shellExecution);
   assert.equal(managedRunCalls, 1);
-  assert.equal(options?.context?.rawUserInput, '/code-review --strict');
-  assert.equal(options?.context?.skillInvocation?.name, 'code-review');
-  assert.deepEqual(options?.context?.skillInvocation?.runtimePolicy, {
-    enforceAtRuntime: true,
-  });
-  assert.equal(options?.modelOverride, 'skill-model');
-  assert.equal(options?.effort, 'max');
-  assert.deepEqual(managedRunInput?.operation, { operationId: 'space-send-start-1' });
-  assert.deepEqual(managedRunInput?.input, [
-    { type: 'text', text: 'prepared daemon Skill prompt' },
-  ]);
-  const serializedSkill = JSON.stringify(options?.context?.skillInvocation);
-  assert.equal(serializedSkill.includes('"hooks"'), false);
-  assert.equal(serializedSkill.includes('"command"'), false);
+  assert.equal(managedRunInput?.inputId, 'space-send-start-1');
+  assert.deepEqual(managedRunInput?.input, [{ type: 'text', text: '/code-review --strict' }]);
+  assert.equal(managedRunInput?.operation, undefined);
+  const serialized = JSON.stringify(managedRunInput);
+  assert.equal(serialized.includes('trusted Skill body'), false);
+  assert.equal(serialized.includes('skillInvocation'), false);
+  assert.equal(serialized.includes('modelOverride'), false);
+  assert.equal(serialized.includes('hooks'), false);
 });
 
 test('daemon fulfilled terminal failure remains a Skill finalization failure', async (t) => {

@@ -65,7 +65,7 @@ for (const prompt of ['/inspect "src/a b.ts"', '!git status --short']) {
         ? { name: 'bash', input: { command: 'git status --short' } }
         : { name: 'extension_command__inspect', input: { args: ['src/a b.ts'] } },
     );
-    assert.equal(admitted?.operation?.operationId, 'command-operation');
+    assert.equal(admitted?.inputId, 'command-operation');
     assert.equal(admitted?.options?.context?.skillInvocation, undefined);
     await session.dispose({ abortRuntimeRun: false });
   });

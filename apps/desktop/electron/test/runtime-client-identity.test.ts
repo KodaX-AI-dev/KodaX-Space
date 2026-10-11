@@ -20,6 +20,28 @@ function memorySecretStore(): RuntimeClientSecretStore {
   };
 }
 
+test('accepted exit rotates the fenced identity and retains its offline recovery authority', async (t) => {
+  const { dir, file, secrets, store } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const metadata = { name: 'Space', version: 'fixture' };
+  const first = await store.openInstance(metadata);
+  await store.retireInstance(first.instanceId, {
+    requestId: 'exit-fixture',
+    runtimeId: 'host-fixture',
+  });
+  const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, secrets);
+  const next = await restarted.openInstance(metadata);
+  const recovery = await restarted.openExitRecovery(metadata);
+  assert.equal(next.clientId, first.clientId);
+  assert.notEqual(next.instanceId, first.instanceId);
+  assert.notEqual(next.instanceSecret, first.instanceSecret);
+  assert.equal(recovery?.instanceId, first.instanceId);
+  assert.equal(recovery?.instanceSecret, first.instanceSecret);
+  assert.doesNotMatch(await fs.readFile(file, 'utf8'), new RegExp(first.instanceSecret));
+  await restarted.clearExitRecovery(first.instanceId);
+  assert.equal(await restarted.openExitRecovery(metadata), undefined);
+});
+
 async function tempStore(): Promise<{
   dir: string;
   file: string;

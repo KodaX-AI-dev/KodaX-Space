@@ -18,7 +18,7 @@ function isAllowedTestProfile(profileDir) {
   );
 }
 
-async function readTestSecretAccount(profileDir) {
+async function readTestSecretAccounts(profileDir) {
   if (!isAllowedTestProfile(profileDir)) return undefined;
   const identityPath = path.join(profileDir, 'space', 'runtime-client-identity.json');
   let bytes;
@@ -35,14 +35,23 @@ async function readTestSecretAccount(profileDir) {
   } catch {
     return undefined;
   }
-  return typeof identity?.secretAccount === 'string' &&
-    SECRET_ACCOUNT_RE.test(identity.secretAccount)
-    ? identity.secretAccount
-    : undefined;
+  if (
+    typeof identity?.secretAccount !== 'string' ||
+    !SECRET_ACCOUNT_RE.test(identity.secretAccount)
+  )
+    return undefined;
+  return [
+    ...new Set(
+      [identity.secretAccount, identity.exitRecovery?.secretAccount].filter(
+        (account) => typeof account === 'string' && SECRET_ACCOUNT_RE.test(account),
+      ),
+    ),
+  ];
 }
 
 /**
- * Remove only the test-Runtime keychain item named by an isolated test profile.
+ * Remove only the test-Runtime keychain items named by an isolated test profile,
+ * including the retained old identity after an accepted complete exit.
  *
  * Production profiles are rejected by path, and provider credentials are
  * rejected by the runtime-client account regex. This must run before the test
@@ -50,15 +59,16 @@ async function readTestSecretAccount(profileDir) {
  * evidence and becomes impossible to clean safely.
  */
 export async function cleanupRuntimeClientCredentialForTestProfile(profileDir, options = {}) {
-  const account = await readTestSecretAccount(profileDir);
-  if (account === undefined) return { cleaned: false, reason: 'not_found_or_not_test_profile' };
-  if (options.deletePassword) {
-    const cleaned = await options.deletePassword(SERVICE_NAME, account);
-    return { cleaned, account };
-  }
-  const moduleId = '@napi-rs/keyring/keytar.js';
-  const imported = await import(moduleId);
-  const keyring = imported.default ?? imported;
-  const cleaned = await keyring.deletePassword(SERVICE_NAME, account);
-  return { cleaned, account };
+  const accounts = await readTestSecretAccounts(profileDir);
+  if (accounts === undefined) return { cleaned: false, reason: 'not_found_or_not_test_profile' };
+  const deletePassword =
+    options.deletePassword ??
+    (async (service, account) => {
+      const imported = await import('@napi-rs/keyring/keytar.js');
+      return (imported.default ?? imported).deletePassword(service, account);
+    });
+  const deleted = await Promise.all(
+    accounts.map((account) => deletePassword(SERVICE_NAME, account)),
+  );
+  return { cleaned: deleted.some(Boolean), account: accounts[0] };
 }

@@ -40,6 +40,16 @@ const stableRuntimeClientIdentitySchema = z
     instanceId: z.string().regex(INSTANCE_ID_RE),
     secretAccount: z.string().regex(SECRET_ACCOUNT_RE),
     createdAt: z.number().int().nonnegative(),
+    exitRecovery: z
+      .object({
+        instanceId: z.string().regex(INSTANCE_ID_RE),
+        secretAccount: z.string().regex(SECRET_ACCOUNT_RE),
+        createdAt: z.number().int().nonnegative(),
+        requestId: z.string().min(1).max(256),
+        runtimeId: z.string().min(1).max(256),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -69,7 +79,11 @@ type IdentityReadResult =
         | z.infer<typeof legacyRuntimeClientIdentitySchema>
         | z.infer<typeof v2RuntimeClientIdentitySchema>;
     }
-  | { readonly kind: 'valid'; readonly identity: StableRuntimeClientIdentity };
+  | {
+      readonly kind: 'valid';
+      readonly identity: StableRuntimeClientIdentity;
+      readonly hash: string;
+    };
 
 class RuntimeClientIdentityAliasError extends Error {}
 
@@ -184,6 +198,77 @@ export class RuntimeClientIdentityStore {
       ...(metadata.title === undefined ? {} : { title: metadata.title }),
       version: metadata.version,
     };
+  }
+
+  async retireInstance(
+    instanceId: string,
+    exit: { readonly requestId: string; readonly runtimeId: string },
+  ): Promise<void> {
+    const current = await this.loadOrCreate();
+    if (current.exitRecovery?.instanceId === instanceId) return;
+    if (current.instanceId !== instanceId || current.exitRecovery)
+      throw new Error('Runtime exit identity changed before retirement.');
+    const next: StableRuntimeClientIdentity = {
+      ...current,
+      instanceId: `space_instance_${this.#uuid()}`,
+      secretAccount: `runtime_client_${this.#uuid()}`,
+      exitRecovery: {
+        instanceId,
+        secretAccount: current.secretAccount,
+        createdAt: current.createdAt,
+        requestId: exit.requestId,
+        runtimeId: exit.runtimeId,
+      },
+    };
+    await this.#loadSecret(next.secretAccount, true);
+    await this.#replaceStable(current, next);
+  }
+
+  async openExitRecovery(metadata: {
+    readonly name: string;
+    readonly title?: string;
+    readonly version: string;
+  }): Promise<RuntimeClientInstanceIdentity | undefined> {
+    const current = await this.loadOrCreate();
+    const previous = current.exitRecovery;
+    if (!previous) return undefined;
+    const identity = { ...current, ...previous };
+    return {
+      ...metadata,
+      clientId: current.clientId,
+      instanceId: previous.instanceId,
+      instanceSecret: await this.#loadSecret(previous.secretAccount, false, identity),
+    };
+  }
+
+  async clearExitRecovery(instanceId: string): Promise<void> {
+    const current = await this.loadOrCreate();
+    if (!current.exitRecovery) return;
+    if (current.exitRecovery.instanceId !== instanceId)
+      throw new Error('Runtime recovery identity changed.');
+    const { exitRecovery: _exitRecovery, ...next } = current;
+    await this.#replaceStable(current, next);
+  }
+
+  async #replaceStable(
+    current: StableRuntimeClientIdentity,
+    next: StableRuntimeClientIdentity,
+  ): Promise<void> {
+    const installed = await this.#read();
+    if (
+      installed.kind !== 'valid' ||
+      JSON.stringify(installed.identity) !== JSON.stringify(current)
+    ) {
+      throw new Error('Runtime client identity changed concurrently.');
+    }
+    await replaceFileIfUnchanged(
+      this.#filePath,
+      identityBytes(next),
+      installed.hash,
+      'Runtime client identity changed concurrently.',
+      MAX_IDENTITY_BYTES,
+    );
+    this.#stablePromise = Promise.resolve(next);
   }
 
   async #loadOrCreate(): Promise<StableRuntimeClientIdentity> {
@@ -357,7 +442,16 @@ export class RuntimeClientIdentityStore {
       })();
       const parsed = stableRuntimeClientIdentitySchema.safeParse(raw);
       if (parsed.success) {
-        return { kind: 'valid', identity: Object.freeze({ ...parsed.data }) };
+        return {
+          kind: 'valid',
+          hash: sha256(bytes),
+          identity: Object.freeze({
+            ...parsed.data,
+            ...(parsed.data.exitRecovery
+              ? { exitRecovery: Object.freeze({ ...parsed.data.exitRecovery }) }
+              : {}),
+          }),
+        };
       }
       const legacy = legacyRuntimeClientIdentitySchema.safeParse(raw);
       if (legacy.success) {

@@ -22,7 +22,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { connectKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { connectKodaXRuntime, ensureKodaXRuntime } from '@kodax-ai/kodax/runtime';
 import {
   LearnedAreaStore,
   admitLearnedSkillBinding,
@@ -39,7 +39,6 @@ const profile = 'space-f118-' + process.pid;
 const requirements = {
   learningCenter: 1,
   skillLearningLoop: 1,
-  operationDeduplication: 1,
   daemonManagement: 1,
   daemonOrphanExit: 1,
 };
@@ -130,14 +129,13 @@ try {
   const primary = await seed('f118-primary-skill', 'a');
   const rejected = await seed('f118-rejected-skill', 'b');
 
-  space = await connectKodaXRuntime({
+  space = await ensureKodaXRuntime({
     profile,
-    autoStart: true,
     daemonOrphanExitMs: 30_000,
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
     clientInfo: clientInfo('kodax-space-f118-probe'),
-    capabilities: { richEvents: true, operationDeduplication: true },
+    capabilities: { richEvents: true },
     requirements,
   });
   const baseline = await space.learning.get(primary.capabilityId);
@@ -181,7 +179,7 @@ try {
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
     clientInfo: clientInfo('kodax-terminal-f118-probe'),
-    capabilities: { richEvents: true, operationDeduplication: true },
+    capabilities: { richEvents: true },
     requirements,
   });
   const terminalPrimary = await terminal.learning.get(primary.capabilityId);

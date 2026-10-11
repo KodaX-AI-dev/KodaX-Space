@@ -330,7 +330,6 @@ const SHARED_DAEMON_REQUIREMENTS = {
   learningCenter: 1,
   skillLearningLoop: 1,
   a2aConfigReconciler: 1,
-  operationDeduplication: 1,
   sessionObservation: 1,
   afterTurnInput: 1,
   interruptInput: 1,
@@ -360,14 +359,14 @@ const SHARED_DAEMON_REQUIREMENTS = {
   liveOutputSegments: 1,
   runtimeEventCoalescing: 1,
   sandboxRuntime: 11,
-  sessionEventJournal: 1,
+  productHistoryBoundaries: 1,
   integrationConfigResilience: 1,
   runtimeAutoModeGuardrail: 6,
 } as const;
 
 const PUBLISHED_SHARED_DAEMON_PEER_PROBE = String.raw`
 import path from 'node:path';
-import { connectKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { connectKodaXRuntime, ensureKodaXRuntime } from '@kodax-ai/kodax/runtime';
 
 const requirements = JSON.parse(process.env.KODAX_PROBE_REQUIREMENTS);
 let runtime;
@@ -386,7 +385,7 @@ try {
       instanceId: process.env.KODAX_PROBE_INSTANCE_ID,
       instanceSecret: process.env.KODAX_PROBE_INSTANCE_SECRET,
     },
-    capabilities: { richEvents: true, operationDeduplication: true },
+    capabilities: { richEvents: true },
     requirements,
   });
   observation = await runtime.sessions.observe(process.env.KODAX_PROBE_SESSION_ID, () => {});
@@ -478,7 +477,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { connectKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { connectKodaXRuntime, ensureKodaXRuntime } from '@kodax-ai/kodax/runtime';
 
 const requirements = JSON.parse(process.env.KODAX_PROBE_REQUIREMENTS);
 const homeDir = await mkdtemp(path.join(tmpdir(), 'kodax-space-shared-daemon-'));
@@ -539,9 +538,8 @@ let result;
 let managementBaseline;
 let daemonPid;
 try {
-  runtime = await connectKodaXRuntime({
+  runtime = await ensureKodaXRuntime({
     profile,
-    autoStart: true,
     daemonOrphanExitMs: 30_000,
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
@@ -552,7 +550,7 @@ try {
       instanceId: randomUUID(),
       instanceSecret: randomBytes(32).toString('base64url'),
     },
-    capabilities: { richEvents: true, operationDeduplication: true },
+    capabilities: { richEvents: true },
     requirements,
   });
   managementBaseline = await runtime.daemon.inspect();
@@ -614,7 +612,7 @@ try {
   const actorSettlementConvergenceCapability = runtime.capabilities.actorSettlementConvergence;
   const liveOutputSegmentsCapability = runtime.capabilities.liveOutputSegments;
   const runtimeEventCoalescingCapability = runtime.capabilities.runtimeEventCoalescing;
-  const sessionEventJournalCapability = runtime.capabilities.sessionEventJournal;
+  const productHistoryBoundariesCapability = runtime.capabilities.productHistoryBoundaries;
   const runtimeAutoModeGuardrailCapability = runtime.capabilities.runtimeAutoModeGuardrail;
   result = {
     daemonPid,
@@ -660,7 +658,7 @@ try {
       actorSettlementConvergence: actorSettlementConvergenceCapability?.version === 2,
       liveOutputSegments: liveOutputSegmentsCapability?.version === 1,
       runtimeEventCoalescing: runtimeEventCoalescingCapability?.version === 1,
-      sessionEventJournal: sessionEventJournalCapability?.version === 1,
+      productHistoryBoundaries: productHistoryBoundariesCapability?.version === 1,
       integrationConfigResilience: integrationConfigCapability?.version === 1,
       integrationHealth: managementAfterDetach.integrations?.state,
       integrationDomains: managementAfterDetach.integrations?.domains.map(
@@ -702,19 +700,13 @@ let runtime;
 try {
   runtime = await createKodaXRuntime({
     mode: 'embedded',
-    isolation: 'worker',
     requirements: {
-      hardDispose: true,
       learningCenter: 1,
       actorControlPlane: 1,
       conversationHistory: 2,
     },
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
-    worker: {
-      resourceLimits: { maxOldGenerationSizeMb: 128 },
-      shutdownTimeoutMs: 1500,
-    },
     clientInfo: { name: 'kodax-space-runtime-compat', version: '0.1.31' },
   });
   const created = await runtime.sessions.create({
@@ -734,18 +726,6 @@ try {
     limit: 1,
   });
   const learningSnapshot = await runtime.learning.getSnapshot();
-  let downgradeRejected = false;
-  try {
-    await createKodaXRuntime({
-      mode: 'embedded',
-      isolation: 'inline',
-      requirements: { hardDispose: true },
-      homeDir,
-      sessionsDir: path.join(homeDir, 'inline-sessions'),
-    });
-  } catch (error) {
-    downgradeRejected = /hardDispose|Worker/i.test(String(error));
-  }
   const externalRuntime = await createKodaXRuntime({
     mode: 'embedded',
     isolation: 'inline',
@@ -871,9 +851,10 @@ try {
       executionCwd: process.cwd(),
     });
     const eventTypes = [];
+    const failedEvents = [];
     const subscription = inlineRuntime.events.subscribe(
       { sessionId: inlineSession.id },
-      (event) => eventTypes.push(event.type),
+      (event) => { eventTypes.push(event.type); if (event.type === 'run.failed') failedEvents.push(event); },
     );
     let callbackErrors = 0;
     let callbackCompletes = 0;
@@ -893,10 +874,6 @@ try {
         },
       });
       const result = await handle.result;
-      const failedEvents = await inlineRuntime.events.replay({
-        runId: handle.runId,
-        type: 'run.failed',
-      });
       inlineManagedResult = {
         phase: result.phase,
         error: result.error?.message,
@@ -972,11 +949,10 @@ try {
       sdk: KODAX_RUNTIME_SDK_CAPABILITIES.sandboxRuntime === 11,
       runtime: runtime.capabilities.sandboxRuntime?.version === 11,
     },
-    sessionEventJournal: {
-      sdk: KODAX_RUNTIME_SDK_CAPABILITIES.sessionEventJournal === 1,
-      runtime: runtime.capabilities.sessionEventJournal?.version === 1,
+    productHistoryBoundaries: {
+      sdk: KODAX_RUNTIME_SDK_CAPABILITIES.productClient === 1,
+      runtime: runtime.capabilities.productHistoryBoundaries?.version === 1,
     },
-    downgradeRejected,
     a2aExports: {
       bearerAuth: typeof createBearerEnvA2AAuthentication === 'function',
       oauthJwtAuth: typeof createOAuth2JwtA2AAuthentication === 'function',
@@ -1112,7 +1088,7 @@ interface SharedDaemonHostResult {
     readonly actorSettlementConvergence: boolean;
     readonly liveOutputSegments: boolean;
     readonly runtimeEventCoalescing: boolean;
-    readonly sessionEventJournal: boolean;
+    readonly productHistoryBoundaries: boolean;
     readonly integrationConfigResilience: boolean;
     readonly integrationHealth?: string;
     readonly integrationDomains?: readonly string[];
@@ -1340,7 +1316,6 @@ test(
     try {
       runtime = await sdk.createKodaXRuntime({
         mode: 'embedded',
-        isolation: 'inline',
         homeDir,
         sessionsDir: path.join(homeDir, 'sessions'),
       });
@@ -1385,7 +1360,7 @@ test(
 );
 
 test(
-  `KodaX ${INSTALLED_KODAX_VERSION} Runtime satisfies Worker and external-agent compatibility`,
+  `KodaX ${INSTALLED_KODAX_VERSION} Runtime satisfies Host and external-agent compatibility`,
   {
     timeout: PROBE_TIMEOUT_MS + 5_000,
   },
@@ -1396,8 +1371,7 @@ test(
     assert.equal(result.connectAvailable, true);
     assert.ok(Number.isSafeInteger(result.protocolVersion));
     assert.equal(result.mode, 'embedded');
-    assert.equal(result.isolation, 'worker');
-    assert.ok(Number.isSafeInteger(result.workerThreadId));
+    assert.equal(result.isolation, 'inline', 'unified createKodaXRuntime owns an in-process Host');
     assert.equal(result.sessionRoundTrip, true);
     assert.deepEqual(result.sessionLifecycle, {
       statusPhase: 'idle',
@@ -1430,8 +1404,7 @@ test(
     assert.deepEqual(result.managedRunDurability, { sdk: true, runtime: true });
     assert.deepEqual(result.actorSettlementConvergence, { sdk: true, runtime: true });
     assert.deepEqual(result.sandboxRuntime, { sdk: true, runtime: true });
-    assert.deepEqual(result.sessionEventJournal, { sdk: true, runtime: true });
-    assert.equal(result.downgradeRejected, true);
+    assert.deepEqual(result.productHistoryBoundaries, { sdk: true, runtime: true });
     assert.deepEqual(result.a2aExports, {
       bearerAuth: true,
       oauthJwtAuth: true,
@@ -1678,7 +1651,7 @@ test(
     assert.equal(result.management.actorSettlementConvergence, true);
     assert.equal(result.management.liveOutputSegments, true);
     assert.equal(result.management.runtimeEventCoalescing, true);
-    assert.equal(result.management.sessionEventJournal, true);
+    assert.equal(result.management.productHistoryBoundaries, true);
     assert.equal(result.management.integrationConfigResilience, true);
     assert.equal(result.management.integrationHealth, 'healthy');
     assert.deepEqual([...result.management.integrationDomains!].sort(), [

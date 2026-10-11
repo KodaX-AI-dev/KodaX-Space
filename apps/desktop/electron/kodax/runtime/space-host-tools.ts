@@ -23,6 +23,7 @@ import {
   makeSpaceControlInspectHandler,
 } from '../../space-control/tools.js';
 import type { SdkToolExecutionContextLike } from '../session-run-context.js';
+import { buildSpaceManual } from '../space-manual-topics.js';
 
 type SpaceToolDefinition = {
   readonly name: string;
@@ -46,7 +47,20 @@ function descriptor(definition: SpaceToolDefinition): RuntimeHostToolDescriptor 
 }
 
 export function spaceHostToolDescriptors(): readonly RuntimeHostToolDescriptor[] {
-  const definitions: SpaceToolDefinition[] = [CREATE_ARTIFACT_TOOL, CREATE_OFFICE_ARTIFACT_TOOL];
+  const definitions: SpaceToolDefinition[] = [
+    CREATE_ARTIFACT_TOOL,
+    CREATE_OFFICE_ARTIFACT_TOOL,
+    {
+      name: 'space_manual',
+      sideEffect: 'readonly',
+      description:
+        'Read the KodaX Space product manual. Use this for Space UI, providers, shortcuts, settings, workflows, and product usage questions; kodax_manual covers the underlying SDK/CLI.',
+      input_schema: {
+        type: 'object',
+        properties: { topic: { type: 'string' }, query: { type: 'string' } },
+      },
+    },
+  ];
   if (isSpaceControlToolExposureEnabled()) {
     definitions.push(SPACE_CONTROL_INSPECT_TOOL, SPACE_CONTROL_APPLY_TOOL);
   }
@@ -55,6 +69,29 @@ export function spaceHostToolDescriptors(): readonly RuntimeHostToolDescriptor[]
 
 function buildHandlers(): Readonly<Record<string, SpaceToolHandler>> {
   const handlers: Record<string, SpaceToolHandler> = {
+    space_manual: async (input) => {
+      const sdk = await import('@kodax-ai/kodax/coding');
+      const manual = buildSpaceManual(sdk);
+      const result = sdk.resolveKodaXManual(
+        {
+          topic: typeof input.topic === 'string' ? input.topic : undefined,
+          query: typeof input.query === 'string' ? input.query : undefined,
+        },
+        {
+          productName: manual.productName,
+          baseTopics: manual.baseTopics,
+          extraTopics: manual.topics,
+        },
+      );
+      return [
+        `# ${result.title}`,
+        result.content,
+        result.topics.length ? `Topics: ${JSON.stringify(result.topics)}` : '',
+        result.nextTopics.length ? `Related topics: ${result.nextTopics.join(', ')}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+    },
     [CREATE_ARTIFACT_TOOL.name]: makeCreateArtifactHandler({
       store: artifactStore,
       notifyChanged: (payload) => pushToRenderer('artifact.changed', payload),
@@ -73,7 +110,7 @@ function buildHandlers(): Readonly<Record<string, SpaceToolHandler>> {
 
 /** Register or resume stable-client implementations; possession is still granted per run. */
 export async function registerSpaceHostTools(
-  runtime: KodaXRuntime,
+  runtime: Pick<KodaXRuntime, 'hostTools' | 'sessions' | 'runs'>,
   resumeLeaseId?: string,
 ): Promise<RuntimeHostToolLease> {
   const implementations = buildHandlers();

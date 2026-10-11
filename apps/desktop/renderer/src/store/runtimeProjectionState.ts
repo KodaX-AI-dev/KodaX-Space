@@ -35,7 +35,10 @@ export interface RuntimeTerminalEvidence {
 }
 
 export type ApplySessionLiveChangeStatus =
-  'applied' | 'ignored' | 'snapshot-required' | 'snapshot-pending';
+  | 'applied'
+  | 'ignored'
+  | 'snapshot-required'
+  | 'snapshot-pending';
 
 export function shouldRequestSessionLiveSnapshot(status: ApplySessionLiveChangeStatus): boolean {
   return status === 'snapshot-required' || status === 'snapshot-pending';
@@ -625,7 +628,7 @@ export function applySessionLiveChange(
 
   if (
     update.baseProjectionRevision !== current.projectionRevision ||
-    update.cursor.seq <= current.cursor.seq
+    update.cursor.seq < current.cursor.seq
   ) {
     return requireSnapshot(state, update.sessionId);
   }

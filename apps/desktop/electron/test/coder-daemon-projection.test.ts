@@ -97,7 +97,7 @@ test('Runtime transcript events carry the daemon cursor used by snapshot reconci
   const event = {
     id: 'event_7',
     seq: 7,
-    cursor: { sessionId: 's_1', journalEpoch: 'journal_epoch_1', seq: 7 },
+
     time: '2026-07-28T00:00:00.000Z',
     type: 'assistant.delta',
     sessionId: 's_1',
@@ -109,7 +109,6 @@ test('Runtime transcript events carry the daemon cursor used by snapshot reconci
     runtimeEvent: {
       runtimeId: 'rt_1',
       runId: 'run_1',
-      journalEpoch: 'journal_epoch_1',
       seq: 7,
     },
   });
@@ -347,7 +346,7 @@ test('run.updated keeps settlement uncertainty active and publishes its safe dia
   const update = reducer.apply({
     id: 'event_settlement_unknown',
     seq: 42,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 42 },
+
     time: '2026-08-28T08:00:00.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -435,11 +434,7 @@ const askUser = {
 
 const observation = {
   runtimeId: 'rt_shared',
-  cursor: {
-    sessionId: 's_code',
-    journalEpoch: 'journal_epoch_shared',
-    seq: 41,
-  },
+  seq: 41,
   transcriptRevision: 'transcript_rev_41',
   session: {
     id: 's_code',
@@ -531,7 +526,7 @@ test('atomic observation maps run, draft, tool, Todo, and interaction truth', ()
 
   assert.equal(projection.cursor.runtimeId, 'rt_shared');
   assert.equal(projection.cursor.sessionId, 's_code');
-  assert.equal(projection.cursor.journalEpoch, 'journal_epoch_shared');
+  assert.equal(projection.cursor.journalEpoch, undefined);
   assert.equal(projection.cursor.seq, 41);
   assert.equal(projection.activeRun?.runId, 'run_active');
   assert.equal(projection.activeRun?.turnId, 'turn_active');
@@ -747,7 +742,7 @@ test('equal delivered timestamps still project one deterministic repair witness'
 test('a terminal observation never projects residual or foreign Run drafts as answer text', () => {
   const terminalObservation = {
     ...observation,
-    cursor: { ...observation.cursor, seq: 42 },
+    seq: 42,
     runs: [
       {
         ...running,
@@ -866,7 +861,6 @@ test('queued projection exposes the exact send operation and public queue identi
               origin: {
                 principalId: 'client:interrupt-author',
                 clientName: 'interrupt-author',
-                operationId: 'operation-interrupt',
               },
             },
           ],
@@ -876,7 +870,6 @@ test('queued projection exposes the exact send operation and public queue identi
           origin: {
             principalId: 'client:after-turn-author',
             clientName: 'after-turn-author',
-            operationId: 'operation-after-turn',
           },
         },
       ],
@@ -888,18 +881,15 @@ test('queued projection exposes the exact send operation and public queue identi
     projection.queuedInputs.map((input) => ({
       inputId: input.inputId,
       delivery: input.delivery,
-      operationId: input.originOperationId,
     })),
     [
       {
         inputId: 'run_queued',
         delivery: 'after-turn',
-        operationId: 'operation-after-turn',
       },
       {
         inputId: 'input_interrupt_operation',
         delivery: 'interrupt',
-        operationId: 'operation-interrupt',
       },
     ],
   );
@@ -931,7 +921,7 @@ test('durable run state retains the current delivered interrupt as a bounded rep
   const change = reducer.apply({
     id: 'event_input_delivered_42',
     seq: 42,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 42 },
+
     time: '2026-07-14T08:01:30.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -974,7 +964,7 @@ test('durable run state retains the current delivered interrupt as a bounded rep
   reducer.apply({
     id: 'event_run_updated_43',
     seq: 43,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 43 },
+
     time: '2026-07-14T08:01:31.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1026,7 +1016,7 @@ test('a new root turn drops delivered and sidecar recovery owned by the previous
   reducer.apply({
     id: 'event_turn_a_delivered_42',
     seq: 42,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 42 },
+
     time: '2026-07-14T08:01:30.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1048,7 +1038,7 @@ test('a new root turn drops delivered and sidecar recovery owned by the previous
   reducer.apply({
     id: 'event_turn_a_sidecar_43',
     seq: 43,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 43 },
+
     time: '2026-07-14T08:01:31.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1066,7 +1056,7 @@ test('a new root turn drops delivered and sidecar recovery owned by the previous
   const started = reducer.apply({
     id: 'event_turn_b_started_44',
     seq: 44,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 44 },
+
     time: '2026-07-14T08:01:32.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1095,7 +1085,7 @@ test('sidecar verifier messages are retained by the live projection reducer', ()
   const change = reducer.apply({
     id: 'event_sidecar_42',
     seq: 42,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 42 },
+
     time: '2026-07-14T08:04:00.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1131,7 +1121,7 @@ test('sidecar verifier messages are retained by the live projection reducer', ()
     reducer.apply({
       id: `event_sidecar_${seq}`,
       seq,
-      cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq },
+
       time: '2026-07-14T08:04:00.000Z',
       sessionId: 's_code',
       runId: 'run_active',
@@ -1159,7 +1149,7 @@ test('terminal recovery retains its own sidecar until a new active Run takes own
   reducer.apply({
     id: 'event_terminal_sidecar_42',
     seq: 42,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 42 },
+
     time: '2026-07-14T08:04:00.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1176,7 +1166,7 @@ test('terminal recovery retains its own sidecar until a new active Run takes own
   reducer.apply({
     id: 'event_terminal_sidecar_completed_43',
     seq: 43,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 43 },
+
     time: '2026-07-14T08:04:01.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1195,7 +1185,7 @@ test('terminal recovery retains its own sidecar until a new active Run takes own
   reducer.apply({
     id: 'event_terminal_sidecar_late_44',
     seq: 44,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 44 },
+
     time: '2026-07-14T08:04:02.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1214,7 +1204,7 @@ test('terminal recovery retains its own sidecar until a new active Run takes own
   reducer.apply({
     id: 'event_terminal_sidecar_next_run_45',
     seq: 45,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 45 },
+
     time: '2026-07-14T08:05:00.000Z',
     sessionId: 's_code',
     runId: 'run_queued',
@@ -1857,7 +1847,7 @@ test('a new root turn in the same Run resets the previous turn live projection',
   reducer.apply({
     id: 'event_next_root_status_42',
     seq: 42,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 42 },
+
     time: '2026-07-14T08:04:00.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1871,7 +1861,7 @@ test('a new root turn in the same Run resets the previous turn live projection',
   const started = reducer.apply({
     id: 'event_next_root_turn_43',
     seq: 43,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 43 },
+
     time: '2026-07-14T08:04:01.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1898,7 +1888,7 @@ test('a new root turn in the same Run resets the previous turn live projection',
   reducer.apply({
     id: 'event_next_root_segment_44',
     seq: 44,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 44 },
+
     time: '2026-07-14T08:04:02.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1913,7 +1903,7 @@ test('a new root turn in the same Run resets the previous turn live projection',
   reducer.apply({
     id: 'event_next_root_text_45',
     seq: 45,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 45 },
+
     time: '2026-07-14T08:04:03.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1928,7 +1918,7 @@ test('a new root turn in the same Run resets the previous turn live projection',
   reducer.apply({
     id: 'event_next_root_thinking_46',
     seq: 46,
-    cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq: 46 },
+
     time: '2026-07-14T08:04:04.000Z',
     sessionId: 's_code',
     runId: 'run_active',
@@ -1960,7 +1950,7 @@ test('explicit output segments replace only the abandoned attempt and append con
     reducer.apply({
       id: `event_segment_${seq}`,
       seq,
-      cursor: { sessionId: 's_code', journalEpoch: 'journal_epoch_shared', seq },
+
       time: `2026-07-14T08:04:${String(seq).padStart(2, '0')}.000Z`,
       sessionId: 's_code',
       runId: 'run_active',
@@ -2179,7 +2169,6 @@ test('root iteration survives snapshots, updates independently and resets for th
   const reducer = new CoderSessionProjectionReducer(projection, snapshot.runs);
   const event = {
     id: 'iter_1',
-    cursor: { ...observation.cursor, seq: projection.cursor.seq + 1 },
     seq: projection.cursor.seq + 1,
     time: running.startedAt,
     type: 'run.progress' as const,

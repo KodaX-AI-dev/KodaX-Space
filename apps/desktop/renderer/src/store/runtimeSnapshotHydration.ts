@@ -776,7 +776,19 @@ function hydrateToolHistory(
   runId: string,
   turnId: string | undefined,
 ): readonly SessionEvent[] {
-  const next = [...events];
+  const coveredCalls = new Set((projection.toolEvents ?? []).map((tool) => tool.toolId));
+  const next = events.filter((event) => {
+    const origin = runtimeEventOrigin(event);
+    // A complete Host view replaces covered raw tool callbacks. Its opaque item
+    // identity distinguishes repeated model call IDs within the same turn.
+    return !(
+      coveredCalls.has(toolIdOf(event) ?? '') &&
+      belongsToRun(origin, projection, runId) &&
+      origin!.seq <= projection.cursor.seq &&
+      (!('turnId' in event) || event.turnId === turnId) &&
+      (!('sourceItemId' in event) || event.sourceItemId === undefined)
+    );
+  });
   for (const tool of projection.toolEvents ?? []) {
     if (tool.seq > projection.cursor.seq || tool.runId !== runId || tool.turnId !== turnId)
       continue;
@@ -784,6 +796,8 @@ function hydrateToolHistory(
       (event) =>
         event.kind === tool.kind &&
         toolIdOf(event) === tool.toolId &&
+        (!tool.sourceItemId ||
+          ('sourceItemId' in event && event.sourceItemId === tool.sourceItemId)) &&
         belongsToRun(runtimeEventOrigin(event), projection, runId),
     );
     if (existing !== -1) {

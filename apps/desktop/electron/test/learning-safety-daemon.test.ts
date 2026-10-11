@@ -38,10 +38,9 @@ import path from 'node:path';
 
 let runtime;
 try {
-  const { connectKodaXRuntime } = await import('@kodax-ai/kodax/runtime');
-  runtime = await connectKodaXRuntime({
+  const { ensureKodaXRuntime } = await import('@kodax-ai/kodax/runtime');
+  runtime = await ensureKodaXRuntime({
     profile: process.env.F118_PROFILE,
-    autoStart: true,
     daemonOrphanExitMs: 30000,
     homeDir: process.env.F118_HOME,
     sessionsDir: path.join(process.env.F118_HOME, 'sessions'),
@@ -51,7 +50,7 @@ try {
       instanceId: randomUUID(),
       instanceSecret: randomBytes(32).toString('base64url'),
     },
-    capabilities: { richEvents: true, operationDeduplication: true },
+    capabilities: { richEvents: true },
     requirements: JSON.parse(process.env.F118_REQUIREMENTS),
   });
   process.stdout.write('F118_DAEMON_READY=' + runtime.identity.runtimeId + '\n');
@@ -86,11 +85,10 @@ try {
 const requirements = {
   learningCenter: 1,
   skillLearningLoop: 1,
-  operationDeduplication: 1,
   daemonManagement: 1,
   daemonOrphanExit: 1,
   managedRunDurability: 1,
-  sessionEventJournal: 1,
+  productHistoryBoundaries: 1,
 } as const;
 
 function appendDiagnosticTail(previous: string, chunk: string): string {
@@ -262,7 +260,7 @@ test(
             instanceId: randomUUID(),
             instanceSecret: randomBytes(32).toString('base64url'),
           },
-          capabilities: { richEvents: true, operationDeduplication: true },
+          capabilities: { richEvents: true },
           requirements,
         }),
       );

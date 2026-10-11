@@ -34,3 +34,12 @@ export function registerRuntimeProjectionChannels(
   });
   register('session.liveSnapshot', ({ sessionId }) => readSessionLiveSnapshot(sessionId));
 }
+
+export function registerRuntimeStatisticsChannels(): void {
+  registerChannel('session.statistics', ({ sessionId }) =>
+    runtimeHostAdapter.readSessionStatistics(sessionId),
+  );
+  registerChannel('session.executionFacts', (input) =>
+    runtimeHostAdapter.readSessionExecutionFacts(input),
+  );
+}

@@ -600,8 +600,30 @@ function composeAssistantSegment(
   const responseSegmentTextIds = new Set<string>();
   let lastTextBubble: Extract<ConversationMessage, { kind: 'assistant_text' }> | null = null;
   let segmentHadError = false;
-  // tool_call 卡片按 toolId 查找——同一个 toolId 的 start/progress/result 合并到一张卡
-  const toolCardsByToolId = new Map<string, Extract<ConversationMessage, { kind: 'tool_call' }>>();
+  // Recoveries carry opaque execution IDs; raw model call IDs require one unfinished candidate.
+  type ToolCardEntry = {
+    card: Extract<ConversationMessage, { kind: 'tool_call' }>;
+    start: Extract<SessionEvent, { kind: 'tool_start' }>;
+  };
+  const toolCardsByToolId = new Map<string, ToolCardEntry>();
+  const findToolCard = (
+    event: Extract<SessionEvent, { kind: 'tool_progress' | 'tool_result' }>,
+  ) => {
+    const sourceItemId = 'sourceItemId' in event ? event.sourceItemId : undefined;
+    const matches = (entry: ToolCardEntry) =>
+      entry.card.toolId === event.toolId &&
+      entry.start.turnId === event.turnId &&
+      entry.start.runtimeEvent?.runtimeId === event.runtimeEvent?.runtimeId &&
+      entry.start.runtimeEvent?.runId === event.runtimeEvent?.runId;
+    if (sourceItemId) {
+      const exact = toolCardsByToolId.get(sourceItemId);
+      return exact && matches(exact) ? exact.card : undefined;
+    }
+    const candidates = [...toolCardsByToolId.values()].filter(
+      (entry) => matches(entry) && entry.card.status === 'running',
+    );
+    return candidates.length === 1 ? candidates[0]!.card : undefined;
+  };
 
   // 每段开头计数器从 0 起，id 用 segment idx + offset，避免不同段的 id 冲撞
   const segmentTag = `seg${out.length}`;
@@ -734,23 +756,23 @@ function composeAssistantSegment(
         lastTextBubble = null;
         const card: Extract<ConversationMessage, { kind: 'tool_call' }> = {
           kind: 'tool_call',
-          id: `${eventTag(evt, segmentTag)}_tool_${evt.toolId}`,
+          id: `${eventTag(evt, segmentTag)}_tool_${evt.sourceItemId ?? evt.toolId}`,
           toolId: evt.toolId,
           toolName: evt.toolName,
           input: evt.input,
           status: evt.interrupted ? 'interrupted' : 'running',
         };
-        toolCardsByToolId.set(evt.toolId, card);
+        toolCardsByToolId.set(evt.sourceItemId ?? evt.toolId, { card, start: evt });
         out.push(card);
         break;
       }
       case 'tool_progress': {
-        const card = toolCardsByToolId.get(evt.toolId);
+        const card = findToolCard(evt);
         if (card) card.progress = evt.message;
         break;
       }
       case 'tool_result': {
-        const card = toolCardsByToolId.get(evt.toolId);
+        const card = findToolCard(evt);
         if (card) {
           card.result = evt.content;
           card.status = 'done';

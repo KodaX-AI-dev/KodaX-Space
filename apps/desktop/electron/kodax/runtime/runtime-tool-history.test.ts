@@ -1,155 +1,81 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { RuntimeEvent, RuntimeEventReplayFilter } from '@kodax-ai/kodax/runtime';
 import type { SpaceSessionLiveProjectionT } from '@kodax-space/space-ipc-schema';
 import { recoverRuntimeToolHistory } from './runtime-tool-history.js';
+import { interruptedViewItems, viewReader } from './runtime-view-test-fixture.js';
 
 const snapshot: SpaceSessionLiveProjectionT = {
-  sessionId: 'session',
+  sessionId: 's',
   projectionRevision: 1,
   transcriptRevision: 'revision',
-  cursor: { runtimeId: 'runtime', sessionId: 'session', journalEpoch: 'epoch', seq: 8 },
-  activeRun: { runId: 'run', sessionId: 'session', turnId: 'turn', phase: 'running', startedAt: 1 },
+  cursor: { runtimeId: 'runtime', sessionId: 's', seq: 8 },
+  activeRun: { runId: 'r', sessionId: 's', turnId: 't', phase: 'running', startedAt: 1 },
   queuedRuns: [],
   activeTools: [],
   todos: [],
   interactions: [],
   queuedInputs: [],
-  outputSegment: {
-    retained: [],
-    active: {
-      responseId: 'response',
-      providerRequestId: 'request',
-      mode: 'append',
-      startedAtSeq: 2,
-      assistantText: 'Working',
-      thinkingText: '',
-      assistantTextStartOffset: 0,
-      thinkingTextStartOffset: 0,
-    },
-  },
 };
 
-function event(seq: number, type: RuntimeEvent['type'], payload: unknown): RuntimeEvent {
-  return {
-    id: `event-${seq}`,
-    seq,
-    cursor: { sessionId: 'session', journalEpoch: 'epoch', seq },
-    sessionId: 'session',
-    runId: 'run',
-    turnId: 'turn',
-    time: new Date(1_000 + seq).toISOString(),
-    type,
-    payload,
-  };
-}
-const started = event(3, 'tool.started', {
-  tool: { id: 'tool', name: 'read', input: { path: 'a' } },
-});
-const finished = event(4, 'tool.finished', {
-  result: { id: 'tool', name: 'read', content: 'result' },
-});
-
-test('snapshot recovery reads completed tools with their journal order and excludes foreign work', async () => {
-  const requests: RuntimeEventReplayFilter[] = [];
+test('current view restores completed tools without a journal and excludes foreign work', async () => {
+  const tool = interruptedViewItems[1];
   const result = await recoverRuntimeToolHistory(
-    {
-      replay: async (filter) => {
-        requests.push(filter);
-        return [
-          event(2, 'output.segment.started', {
-            responseId: 'response',
-            providerRequestId: 'request',
-            mode: 'append',
-          }),
-          started,
-          finished,
-          { ...started, seq: 5, turnId: 'older-turn' },
-          event(6, 'tool.started', {
-            tool: { id: 'child-tool', name: 'read', input: {} },
-            meta: { contextKind: 'child' },
-          }),
-          { ...started, seq: 7, runId: 'another-run' },
-          { ...finished, seq: 9 },
-        ];
-      },
-    },
+    viewReader([
+      ...interruptedViewItems,
+      { ...tool, id: 'foreign-run', sourceRunId: 'other' },
+      { ...tool, id: 'foreign-turn', sourceTurnId: 'other' },
+    ]),
     snapshot,
   );
   assert.deepEqual(
-    result.toolEvents?.map((item) => [item.kind, item.seq]),
+    result.toolEvents?.map((item) => [item.kind, item.toolId]),
     [
-      ['tool_start', 3],
-      ['tool_result', 4],
+      ['tool_start', 'tool'],
+      ['tool_result', 'tool'],
     ],
   );
-  assert.equal(result.outputSegment?.active?.startedAt, 1002);
-  assert.equal(requests[0]?.after?.seq, 1);
-  assert.equal(requests[0]?.runId, 'run');
+  assert.deepEqual(result.cursor, snapshot.cursor, 'view order must not invent an event sequence');
 });
 
-test('recovery paginates a filtered journal and never reads past the snapshot', async () => {
-  const rows = Array.from({ length: 520 }, (_, index) =>
-    event(index + 2, 'tool.started', {
-      tool: { id: `tool-${index}`, name: 'read', input: {} },
-    }),
-  );
-  const requests: number[] = [];
+test('unfinished tools have no invented success receipt', async () => {
+  const item = interruptedViewItems[1];
   const result = await recoverRuntimeToolHistory(
-    {
-      replay: async (filter) => {
-        requests.push(filter.after!.seq);
-        return rows.filter((row) => row.seq > filter.after!.seq).slice(0, filter.limit);
-      },
-    },
-    { ...snapshot, cursor: { ...snapshot.cursor, seq: 520 } },
-  );
-  assert.deepEqual(requests, [1, 513]);
-  assert.equal(result.toolEvents?.length, 519);
-  assert.equal(result.toolEvents?.at(-1)?.seq, 520);
-});
-
-test('replay errors propagate instead of returning a deceptively complete snapshot', async () => {
-  await assert.rejects(
-    recoverRuntimeToolHistory(
-      {
-        replay: async () => {
-          throw new Error('journal unavailable');
-        },
-      },
-      snapshot,
-    ),
-    /journal unavailable/,
-  );
-});
-
-test('a snapshot without recoverable output does not replay another run', async () => {
-  const empty = { ...snapshot, outputSegment: undefined };
-  assert.equal(
-    await recoverRuntimeToolHistory(
-      {
-        replay: async () => {
-          assert.fail('no journal replay expected');
-        },
-      },
-      empty,
-    ),
-    empty,
-  );
-});
-
-test('active replay bounds oversized receipts to the IPC limit', async () => {
-  const recovered = await recoverRuntimeToolHistory(
-    {
-      replay: async () => [
-        started,
-        event(4, 'tool.finished', {
-          result: { id: 'tool', name: 'read', content: 'x'.repeat(600_000) },
-        }),
-      ],
-    },
+    viewReader([
+      { ...item, tool: { ...item.tool!, status: 'running', resultRecorded: undefined } },
+    ]),
     snapshot,
   );
-  const receipt = recovered.toolEvents?.find((item) => item.kind === 'tool_result');
+  assert.deepEqual(
+    result.toolEvents?.map((item) => item.kind),
+    ['tool_start'],
+  );
+});
+
+test('view errors propagate and idle snapshots do not recover another Run', async () => {
+  const broken = viewReader([]);
+  broken.observeView = async () => {
+    throw new Error('view unavailable');
+  };
+  await assert.rejects(recoverRuntimeToolHistory(broken, snapshot), /view unavailable/);
+  const idle = { ...snapshot, activeRun: undefined };
+  assert.equal(await recoverRuntimeToolHistory(broken, idle), idle);
+});
+
+test('tool recovery bounds receipts and retains the complete input', async () => {
+  const item = interruptedViewItems[1];
+  const input = { path: 'x'.repeat(70_000) };
+  const result = await recoverRuntimeToolHistory(
+    viewReader([
+      {
+        ...item,
+        text: 'x'.repeat(600_000),
+        totalTextLength: 600_000,
+        tool: { ...item.tool!, inputText: JSON.stringify(input) },
+      },
+    ]),
+    snapshot,
+  );
+  assert.deepEqual(result.toolEvents?.find((item) => item.kind === 'tool_start')?.input, input);
+  const receipt = result.toolEvents?.find((item) => item.kind === 'tool_result');
   assert.ok(receipt && receipt.content.length <= 524_288);
 });

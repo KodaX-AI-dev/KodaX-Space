@@ -62,3 +62,42 @@ adding independent image-shape and induced-failure assertions.
 The automated tests prove SDK execution and content fidelity. Actual upstream
 vision quality and live desktop acceptance remain manual checks; no provider
 availability or visual interpretation claim is inferred from the offline fixture.
+
+## Unified SDK alpha.3 migration (2026-10-11)
+
+Root and Desktop now pin published `@kodax-ai/kodax@0.7.97-alpha.3`. Earlier evidence above remains historical.
+
+1. Start Coder, submit an ordinary input and an explicit tool, and verify one canonical user input per send. Skill/command hooks must execute once in Host.
+2. During AMA, submit steer and after-turn inputs. The queue uses accepted input IDs and does not claim a future Run ID. A closed steer window must report the SDK rejection.
+3. Reconnect or reload while a Run is active. Restore the current queue, tools, reasoning and interactions; completed tool receipts must stay separate when model call IDs repeat.
+4. Inspect statistics after reload. Host totals must not double after replay; missing usage and operation-only adapters remain partial. Context composition and actual tool Sandbox facts must retain their identities.
+5. Change Workflow limits and Provider configuration after accepting an input. Reconnect and retry that input or steer its Run: original captured allowlist and maxAgents/tokenBudget stay in force. New inputs use the new policy.
+6. Exit Space with another client online. Space-owned work is cleaned while the peer stays online. Without a peer, exact Host exit needs a succeeded SDK receipt. Unknown cleanup retains recovery and never displays verified success.
+7. Restart after an accepted exit. Old stable identity cannot admit new work; offline recovery checks the old receipt before the new identity resumes.
+8. Verify Partner still uses its existing inline safety boundary, and Space usage questions can call the readonly space_manual tool.
+
+Automated entry point: `apps/desktop/electron/kodax/runtime-sdk-migration.test.ts`, supported by adjacent view/exit/authorization/tool-history tests, runtime-host-adapter regressions, Renderer statistics/tool-identity tests and IPC schema tests. The real daemon fixture uses a local Provider and an isolated profile; live model behavior and desktop interaction remain separate manual acceptance checks.
+
+## Automated desktop acceptance after alpha.3 migration
+
+Run `npm run e2e` to build and run the suite, or `npm run e2e:run` with an
+existing build. Windows uses an isolated Win32 Desktop without switching the
+user's desktop or changing production window behavior. The launcher owns its
+process tree through cancellation. `npm run e2e:headed` intentionally displays
+debug windows on the current desktop.
+
+Generated `tests/fixtures/file-preview` samples cover nine preview cases without
+personal Downloads. `KODAX_ARTIFACT_E2E_DIR` selects an explicit alternate sample
+directory when needed.
+
+`npm run e2e:run -- tests/e2e/sdk-unified-contract.spec.ts` exercises the published
+SDK and local deterministic Provider: tools/manual, statistics, history/reload/
+Fork, queue/Stop, stale boundary/Rewind, verified last-client exit and peer
+protection. `npm run smoke:complete-exit` runs the same cases against the Windows
+directory package; `npm run smoke:pack` checks packaged dependencies, native
+resources, Sandbox, Worker and public Runtime lifecycle.
+
+2026-10-11: 99 distinct source E2E cases passed (93 existing plus 6 real SDK),
+6 packaged real-SDK cases passed, no failures/skips/retries. Existing cases
+include Mock/injected-event scenarios; live services and other platforms remain
+separate checks. See [scope, evidence and limits](../research/kodax-0.7.97-alpha.3-space-e2e-validation.md).

@@ -1,0 +1,302 @@
+{
+  "date": "2026-10-09",
+  "timezone": "Asia/Shanghai",
+  "spaceCommit": "118c0e1a6d6b13039c08591969547b6037c990d8",
+  "sdkTag": "v0.7.97-alpha.1",
+  "sdkSourceCommit": "ba30095a6a2da143a43776402813f24734d8c53a",
+  "dependency": {
+    "name": "@kodax-ai/kodax",
+    "version": "0.7.97-alpha.1",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.1.tgz",
+    "integrity": "sha512-n970k70WT6dJtaFiq/21D2JPyk7427Xi/jkhSL/BkLacJUAcebcLQZzYXWDHpf8sW6QA/wLEb36hVIHXCk/9Ag==",
+    "deduplicated": true,
+    "exactRegistryByteGate": "passed"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "exitCode": 2,
+    "totalDiagnostics": 96,
+    "files": [
+      {
+        "file": "apps/desktop/electron/kodax/runtime-command-send.test.ts",
+        "count": 1
+      },
+      {
+        "file": "apps/desktop/electron/kodax/runtime-host-adapter.ts",
+        "count": 21
+      },
+      {
+        "file": "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts",
+        "count": 9
+      },
+      {
+        "file": "apps/desktop/electron/kodax/runtime/interrupted-history.test.ts",
+        "count": 3
+      },
+      {
+        "file": "apps/desktop/electron/kodax/runtime/interrupted-history.ts",
+        "count": 7
+      },
+      {
+        "file": "apps/desktop/electron/kodax/runtime/runtime-tool-history.test.ts",
+        "count": 4
+      },
+      {
+        "file": "apps/desktop/electron/kodax/runtime/runtime-tool-history.ts",
+        "count": 6
+      },
+      {
+        "file": "apps/desktop/electron/test/coder-daemon-projection.test.ts",
+        "count": 6
+      },
+      {
+        "file": "apps/desktop/electron/test/kodax-runtime-compat.test.ts",
+        "count": 1
+      },
+      {
+        "file": "apps/desktop/electron/test/learning-safety-daemon.test.ts",
+        "count": 1
+      },
+      {
+        "file": "apps/desktop/electron/test/runtime-host-adapter.test.ts",
+        "count": 37
+      }
+    ],
+    "productionDiagnostics": 43,
+    "testDiagnostics": 53,
+    "diagnostics": [
+      "apps/desktop/electron/kodax/runtime-command-send.test.ts(68,28): error TS2339: Property 'operation' does not exist on type 'RuntimeDaemonStartRunInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(21,3): error TS2305: Module '\"@kodax-ai/kodax/runtime\"' has no exported member 'RuntimeDaemonRollbackResult'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(54,3): error TS2305: Module '\"@kodax-ai/kodax/runtime\"' has no exported member 'RuntimeExitSettlement'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(55,3): error TS2305: Module '\"@kodax-ai/kodax/runtime\"' has no exported member 'RuntimeExitSettlementInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(58,15): error TS2305: Module '\"@kodax-ai/kodax/runtime\"' has no exported member 'RuntimeExitSettlement'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(58,38): error TS2305: Module '\"@kodax-ai/kodax/runtime\"' has no exported member 'RuntimeExitSettlementInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(281,21): error TS2339: Property 'cursor' does not exist on type 'RuntimeTypedEvent'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(282,37): error TS2339: Property 'cursor' does not exist on type 'RuntimeTypedEvent'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(2340,9): error TS2353: Object literal may only specify known properties, and 'operationDeduplication' does not exist in type 'RuntimeClientCapabilities'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(2349,9): error TS2353: Object literal may only specify known properties, and 'operationDeduplication' does not exist in type 'RuntimeCapabilityRequirements & { readonly sandboxRuntime?: 11 | undefined; readonly daemonOrphanExit?: 1 | undefined; readonly managedRunDurability?: 1 | undefined; readonly runtimeEventCoalescing?: 1 | undefined; readonly sessionEventJournal?: 1 | undefined; readonly liveOutputSegments?: 1 | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(3592,7): error TS2345: Argument of type 'RuntimeEventService' is not assignable to parameter of type 'Pick<RuntimeEventService, \"replay\">'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(3789,31): error TS2339: Property 'operation' does not exist on type 'RuntimeCompactSessionInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(3816,65): error TS2339: Property 'operation' does not exist on type 'RuntimeCompactSessionInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(4081,55): error TS2345: Argument of type 'RuntimeEventService' is not assignable to parameter of type 'Pick<RuntimeEventService, \"replay\">'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(4559,63): error TS2339: Property 'cursor' does not exist on type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(4832,25): error TS2339: Property 'operationId' does not exist on type '{ readonly principalId: string; readonly clientName?: string | undefined; readonly clientVersion?: string | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(5793,13): error TS2339: Property 'operation' does not exist on type 'RuntimeDaemonStartRunInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(5807,51): error TS2339: Property 'operation' does not exist on type 'RuntimeDaemonStartRunInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(6016,51): error TS2339: Property 'operationId' does not exist on type '{ readonly kind: \"run\"; readonly runId: string; }'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(6326,13): error TS2339: Property 'operation' does not exist on type 'RuntimeSubmitInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(6343,51): error TS2339: Property 'operation' does not exist on type 'RuntimeSubmitInput'.",
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts(6863,39): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(246,17): error TS2339: Property 'operationId' does not exist on type '{ readonly principalId: string; readonly clientName?: string | undefined; readonly clientVersion?: string | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(246,73): error TS2339: Property 'operationId' does not exist on type '{ readonly principalId: string; readonly clientName?: string | undefined; readonly clientVersion?: string | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(899,23): error TS2339: Property 'operationId' does not exist on type '{ readonly principalId: string; readonly clientName?: string | undefined; readonly clientVersion?: string | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(899,69): error TS2339: Property 'operationId' does not exist on type '{ readonly principalId: string; readonly clientName?: string | undefined; readonly clientVersion?: string | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(949,35): error TS2339: Property 'operationId' does not exist on type '{ readonly principalId: string; readonly clientName?: string | undefined; readonly clientVersion?: string | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(950,55): error TS2339: Property 'operationId' does not exist on type '{ readonly principalId: string; readonly clientName?: string | undefined; readonly clientVersion?: string | undefined; }'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(1079,27): error TS2339: Property 'cursor' does not exist on type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(1080,30): error TS2339: Property 'cursor' does not exist on type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts(1081,21): error TS2339: Property 'cursor' does not exist on type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.test.ts(15,5): error TS2353: Object literal may only specify known properties, and 'cursor' does not exist in type 'RuntimeEventEnvelope<unknown>'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.test.ts(114,22): error TS7006: Parameter 'filter' implicitly has an 'any' type.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.test.ts(277,24): error TS7006: Parameter 'filter' implicitly has an 'any' type.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.ts(68,38): error TS2344: Type '\"replay\"' does not satisfy the constraint '\"subscribe\"'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.ts(73,27): error TS2339: Property 'cursor' does not exist on type 'RuntimeEvent'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.ts(78,9): error TS18046: 'service.replay' is of type 'unknown'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.ts(94,23): error TS18046: 'page' is of type 'unknown'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.ts(102,9): error TS18046: 'page' is of type 'unknown'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.ts(103,18): error TS18046: 'page' is of type 'unknown'.",
+      "apps/desktop/electron/kodax/runtime/interrupted-history.ts(241,37): error TS2344: Type '\"replay\"' does not satisfy the constraint '\"subscribe\"'.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.test.ts(3,29): error TS2724: '\"@kodax-ai/kodax/runtime\"' has no exported member named 'RuntimeEventReplayFilter'. Did you mean 'RuntimeEventFilter'?",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.test.ts(37,5): error TS2353: Object literal may only specify known properties, and 'cursor' does not exist in type 'RuntimeEventEnvelope<unknown>'.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.test.ts(57,22): error TS7006: Parameter 'filter' implicitly has an 'any' type.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.test.ts(100,22): error TS7006: Parameter 'filter' implicitly has an 'any' type.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.ts(48,38): error TS2344: Type '\"replay\"' does not satisfy the constraint '\"subscribe\"'.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.ts(56,49): error TS18046: 'service.replay' is of type 'unknown'.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.ts(69,15): error TS2339: Property 'cursor' does not exist on type 'RuntimeEvent'.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.ts(75,39): error TS2339: Property 'cursor' does not exist on type 'RuntimeEvent'.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.ts(77,18): error TS2339: Property 'cursor' does not exist on type 'RuntimeEvent'.",
+      "apps/desktop/electron/kodax/runtime/runtime-tool-history.ts(83,38): error TS2344: Type '\"replay\"' does not satisfy the constraint '\"subscribe\"'.",
+      "apps/desktop/electron/test/coder-daemon-projection.test.ts(100,5): error TS2353: Object literal may only specify known properties, and 'cursor' does not exist in type 'RuntimeEventEnvelope<RuntimeTextDeltaEventPayload> & { readonly type: \"assistant.delta\"; }'.",
+      "apps/desktop/electron/test/coder-daemon-projection.test.ts(750,30): error TS2339: Property 'cursor' does not exist on type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/test/coder-daemon-projection.test.ts(879,13): error TS2352: Conversion of type '{ runs: ({ interruptInputs: { inputId: string; afterRunId: \"run_active\"; delivery: \"interrupt\"; state: \"queued\"; contentPreview: string; queuedAt: string; origin: { principalId: string; clientName: string; operationId: string; }; }[]; ... 8 more ...; requirements: { ...; }; } | { ...; })[]; ... 7 more ...; live: Run...' to type 'RuntimeSessionObservationSnapshot' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      "apps/desktop/electron/test/coder-daemon-projection.test.ts(1874,5): error TS2353: Object literal may only specify known properties, and 'cursor' does not exist in type 'RuntimeEventEnvelope<KodaXTurnStartedEvent> & { readonly type: \"turn.started\"; }'.",
+      "apps/desktop/electron/test/coder-daemon-projection.test.ts(1960,19): error TS2352: Conversion of type '{ id: string; seq: number; cursor: { sessionId: string; journalEpoch: string; seq: number; }; time: string; sessionId: string; runId: string; turnId: string; type: \"output.segment.started\" | \"assistant.delta\"; payload: Readonly<...>; }' to type 'RuntimeTypedEvent' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      "apps/desktop/electron/test/coder-daemon-projection.test.ts(2182,30): error TS2339: Property 'cursor' does not exist on type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/test/kodax-runtime-compat.test.ts(1341,27): error TS2769: No overload matches this call.",
+      "apps/desktop/electron/test/learning-safety-daemon.test.ts(265,45): error TS2353: Object literal may only specify known properties, and 'operationDeduplication' does not exist in type 'RuntimeClientCapabilities'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(16,3): error TS2724: '\"@kodax-ai/kodax/runtime\"' has no exported member named 'RuntimeSessionCursor'. Did you mean 'RuntimeSession'?",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(264,5): error TS2352: Conversion of type '{ cursor: any; id: string; sessionId: string; runId: string; type: \"session.created\"; seq: number; payload: ClientSession; turnId?: string | undefined; time: string; } | { cursor: any; ... 7 more ...; time: string; } | ... 52 more ... | { ...; }' to type 'RuntimeTypedEvent' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(591,5): error TS2353: Object literal may only specify known properties, and 'journalEpoch' does not exist in type 'RuntimeConnectionState'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3363,23): error TS2339: Property 'replay' does not exist on type 'RuntimeEventService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3363,39): error TS7006: Parameter 'filter' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3428,3): error TS2322: Type '(sessionId: string, listener: RuntimeEventListener, options?: RuntimeReadOptions | undefined) => Promise<{ snapshot: RuntimeSessionObservationSnapshot | undefined; invalidated: Promise<...>; ready?: Promise<...> | undefined; close(): void; }>' is not assignable to type '(sessionId: string, listener: RuntimeEventListener, options?: RuntimeReadOptions | undefined) => Promise<RuntimeSessionObservation>'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3432,7): error TS2353: Object literal may only specify known properties, and 'cursor' does not exist in type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3529,5): error TS2353: Object literal may only specify known properties, and 'cursor' does not exist in type 'RuntimeSessionObservationSnapshot'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3882,44): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3883,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3883,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3995,44): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3996,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(3996,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4401,44): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4402,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4402,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4496,44): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4497,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4497,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4578,44): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4579,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4579,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4656,44): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4657,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4657,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4938,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(4938,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(5002,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(5002,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(5048,23): error TS2339: Property 'stopForInline' does not exist on type 'RuntimeDaemonManagementService'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(5048,46): error TS7006: Parameter 'input' implicitly has an 'any' type.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(9443,5): error TS2353: Object literal may only specify known properties, and 'operation' does not exist in type 'RuntimeDaemonStartRunInput'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(9505,41): error TS2353: Object literal may only specify known properties, and 'operationId' does not exist in type '{ readonly kind: \"run\"; readonly runId: string; }'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(9658,9): error TS2353: Object literal may only specify known properties, and 'operationId' does not exist in type '{ readonly kind: \"run\"; readonly runId: string; }'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(9713,9): error TS2353: Object literal may only specify known properties, and 'operationId' does not exist in type '{ readonly kind: \"run\"; readonly runId: string; }'.",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts(10224,5): error TS2353: Object literal may only specify known properties, and 'operation' does not exist in type 'RuntimeSubmitInput'."
+    ]
+  },
+  "releaseTests": {
+    "command": "node --test --test-timeout=60000 --test-force-exit scripts/test/kodax-runtime-control.test.mjs scripts/test/kodax-daemon-control.test.mjs scripts/test/kodax-interrupted-run-recovery.test.mjs scripts/test/kodax-managed-output-durability.test.mjs scripts/test/kodax-multimodal-contract.test.mjs scripts/test/kodax-esm-import-boundary.test.mjs",
+    "total": 17,
+    "passed": 14,
+    "failed": 3,
+    "failures": [
+      {
+        "file": "scripts/test/kodax-daemon-control.test.mjs",
+        "test": "published daemon executes explicit tools and cancels only the accepted Session frontier",
+        "message": "connectKodaXRuntime is passive; use ensureKodaXRuntime to start or update a Host."
+      },
+      {
+        "file": "scripts/test/kodax-managed-output-durability.test.mjs",
+        "test": "published managed output preserves persistence ownership (host=false)",
+        "message": "Session managed-durability was removed before its snapshot could be saved.",
+        "classification": "fixture no longer satisfies explicit persistedByHost:false identity contract; not proven production regression"
+      },
+      {
+        "file": "scripts/test/kodax-runtime-control.test.mjs",
+        "test": "published managed extension command receives its Run scope and joins nested tool effects",
+        "message": "[Tool Error] extension_command__space-inspect: Tool is not active in the current runtime.",
+        "classification": "global extension activation is no longer sufficient for a Runtime-owned invocation"
+      }
+    ]
+  },
+  "oldPackageControl": {
+    "version": "0.7.96",
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "files": "same release files excluding kodax-daemon-control",
+    "method": "isolated Registry package copied under ignored node_modules directory; synchronous module resolution hook mapped SDK imports to old package and bare dependencies to installed SDK dependency tree",
+    "limits": "not a clean npm ci of the entire old dependency tree; daemon child path was not included"
+  },
+  "adapterTests": {
+    "files": [
+      "apps/desktop/electron/test/kodax-sdk-probe.test.ts",
+      "apps/desktop/electron/test/kodax-runtime-compat.test.ts",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts",
+      "apps/desktop/electron/test/coder-daemon-projection.test.ts",
+      "apps/desktop/electron/test/space-manual-topics.test.ts"
+    ],
+    "total": 325,
+    "passed": 321,
+    "failed": 4,
+    "failures": [
+      "Runtime Worker/external-agent real-package compatibility: events.replay is not a function",
+      "daemon timeout recovery fixture: connect autoStart rejected",
+      "cross-process daemon fixture: connect autoStart rejected",
+      "Space current manual SDK version does not match updated manifest"
+    ],
+    "limits": "most tests use old interface mocks; passing mocks do not establish published SDK integration"
+  },
+  "capabilities": {
+    "productClient": 1,
+    "actorSettlementConvergence": 2,
+    "conversationHistory": 2,
+    "crashOutcomeModel": 2,
+    "daemonOrphanExit": 1,
+    "daemonShutdownVerification": 1,
+    "effectiveConfig": 1,
+    "managedRunDurability": 1,
+    "runtimeAutoModeGuardrail": 6,
+    "sandboxRuntime": 11,
+    "sharedSessionSettings": 2,
+    "runtimeEventCoalescing": 1,
+    "liveOutputSegments": 1
+  },
+  "currentSpaceGate": {
+    "status": "failed",
+    "missing": ["runtimeExitSettlement v2", "sessionEventJournal v1"],
+    "settleKodaXRuntimeExit": "undefined"
+  },
+  "productProbe": {
+    "sdk": "0.7.97-alpha.1",
+    "steps": [
+      "ensure_client_and_passive_runtime_connect",
+      "initial_complete_view",
+      "shared_settings_second_client",
+      "offline_explicit_tool_run_and_await",
+      "canonical_history_shared",
+      "host_notice_and_shared_goal",
+      "host_fork",
+      "disconnect_preserves_peer_session"
+    ],
+    "terminal": {
+      "revision": 1,
+      "kind": "completed",
+      "code": "completed",
+      "effectOutcome": "known"
+    },
+    "history": {
+      "itemCount": 2,
+      "keys": ["items", "revision", "oversized"],
+      "revision": "sha256:be6ccd9093e0c0611d243c42c0aadd43abfb28819c1fe8df66cdf93a7afa75ba"
+    },
+    "shutdown": {
+      "status": "succeeded",
+      "outcome": {
+        "version": 1,
+        "status": "succeeded",
+        "completedAt": "2026-10-09T07:13:55.966Z"
+      }
+    },
+    "success": true,
+    "bootstrap": "ensureKodaXClient on an empty isolated home; sessions.updateSettings provider=anthropic; an extra passive Runtime connection used only to inspect the shutdown owner"
+  },
+  "firstProductProbe": {
+    "bootstrap": "ensureKodaXClient with an empty isolated home",
+    "passed": ["ensure/connect", "complete initial view", "shared session settings"],
+    "failed": "runs.startTool without a Host defaultProvider rejects: runtime.runs.start requires input.options.provider or runtime defaultProvider",
+    "workaroundUsed": "Explicit Session provider selection fixes the missing provider. Verified through the pure Product Client startup route; trusted Runtime bootstrap is not required for this check."
+  },
+  "scope": {
+    "realUserSessionDataTouched": false,
+    "cloudModelRequests": false,
+    "fullTestSuiteRun": false,
+    "packagedAppReplaced": false,
+    "upstreamSDKModified": false
+  },
+  "manifestRuntimeContracts": {
+    "actorSettlementConvergence": 2,
+    "crashOutcomeModel": 2,
+    "daemonShutdownVerification": 1,
+    "integrationConfigResilience": 1,
+    "managedRunDurability": 1,
+    "runtimeAutoModeGuardrail": 6,
+    "sharedSessionSettings": 2,
+    "liveOutputSegments": 1
+  },
+  "cleanup": {
+    "temporaryProbeScripts": "removed",
+    "baselinePackageCopy": "retained in ignored node_modules/.kodax-sdk-baseline-0.7.96",
+    "cleanupStatus": "recursive Remove-Item rejected by automatic approval policy: blocked by policy; no detailed reason returned",
+    "activeSDKResolution": "0.7.97-alpha.1, deduplicated"
+  }
+}

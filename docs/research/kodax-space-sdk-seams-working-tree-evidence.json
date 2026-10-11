@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-09",
+  "timezone": "Asia/Shanghai",
+  "sdkBaseline": "ba30095a6a2da143a43776402813f24734d8c53a",
+  "patchSha256": "fdb504a8ae54625e56c53dcc4c306f67844fa4813627354191223c1a54ab21c2",
+  "worktreeContentSha256": "4a3444f3ffb035b8a2a4d2bb7c989345155dd83b00e802272bf2e7fc088e1f89",
+  "untrackedIncluded": [
+    "docs/SPACE_SDK_SEAMS.md",
+    "src/client-host-authorization.ts",
+    "src/product-execution-authorization.ts",
+    "src/sdk-client.host-authorization.test.ts"
+  ],
+  "scope": "tracked diff from HEAD plus four listed untracked seam files; SDK source read-only",
+  "tests": {
+    "command": "npx vitest run src/sdk-client.host-authorization.test.ts src/sdk-client.derive.test.ts src/sdk-client.history-boundaries.test.ts src/session-input-queue.test.ts packages/coding/src/child-executor.test.ts",
+    "files": 5,
+    "total": 158,
+    "passed": 158,
+    "failed": 0,
+    "durationSeconds": 52.26,
+    "kind": "source aliases configured by KodaX vitest.config.ts"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "source": "passed",
+    "tests": "passed"
+  },
+  "sdkConsumerTypes": {
+    "command": "npx tsc -p tests/fixtures/product-client-types/tsconfig.json",
+    "status": "passed",
+    "types": [],
+    "skipLibCheck": false,
+    "kind": "actual SDK package export and bundled declarations; not source alias"
+  },
+  "builtSdkProbe": {
+    "source": "KodaX working-tree dist",
+    "steps": [
+      "built_connector_authorization_capability_handshake",
+      "built_host_tool_reverse_bridge",
+      "built_scoped_credential_reverse_bridge",
+      "built_public_history_quality_boundary_retry_before",
+      "built_canonical_rewind_and_stale_boundary_rejection"
+    ],
+    "wireCalls": 2,
+    "credentialCalls": 2,
+    "hostToolCalls": 1,
+    "shutdown": {
+      "status": "succeeded",
+      "outcome": {
+        "version": 1,
+        "status": "succeeded",
+        "completedAt": "2026-10-09T11:10:49.629Z"
+      }
+    },
+    "success": true
+  },
+  "distribution": [
+    {
+      "file": "dist/sdk-client.js",
+      "sha256": "92d434de10686f3499e18362f0439636392c6a306a0a6b7e87b78e67fac0acca"
+    },
+    {
+      "file": "dist/sdk-client.d.ts",
+      "sha256": "9560304676683a96ae4a5a258959b3b6db574bea212a3f2c03a3119485e5535c"
+    },
+    {
+      "file": "dist/sdk-runtime.js",
+      "sha256": "950f070da572d15ac95db95378ff541e0746194043b47fafb1d538bcc6c8f0e2"
+    },
+    {
+      "file": "dist/sdk-runtime.d.ts",
+      "sha256": "2c9fc6b834e50b0213cd3be69c6090191097c9bc0608c33785206da632dca2f9"
+    },
+    {
+      "file": "dist/kodax_cli.js",
+      "sha256": "52d4388eca0c9fe1ea2cd52983b2a7a3caea4a45391013ede06d463ed5513689"
+    }
+  ],
+  "installedSpaceSDK": {
+    "version": "0.7.97-alpha.1",
+    "source": "Registry package from previous turn",
+    "includesWorkingTreeFix": false,
+    "manifestOrLockUpdatedThisTurn": false
+  },
+  "limits": {
+    "upstream519TestClaim": "not independently rerun in full; narrower 158-test set verified",
+    "upstream82_04BranchCoverage": "not independently reproduced; author reports tested modules only",
+    "releasePackageIntegrity": "unpublished working-tree dist tested; npm tarball not tested",
+    "crossPlatform": "Windows host only",
+    "spaceMigration": "not implemented",
+    "oldFullExitTransactionEquivalent": "still absent by declared contract",
+    "realUserSessionsTouched": false,
+    "remoteModelRequests": false
+  },
+  "review": {
+    "standards": {
+      "findings": 0,
+      "kind": "independent static diff review",
+      "mostSevere": null
+    },
+    "spec": {
+      "findings": 0,
+      "kind": "independent static diff review",
+      "mostSevere": null
+    }
+  },
+  "finalWorktreeContentSha256": "4a3444f3ffb035b8a2a4d2bb7c989345155dd83b00e802272bf2e7fc088e1f89",
+  "sourceUnchangedDuringReview": true
+}

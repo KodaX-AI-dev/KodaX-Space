@@ -1,0 +1,663 @@
+{
+  "childEvents": {
+    "rawParent": {
+      "prepared": {
+        "toolId": "reporter-fixture",
+        "childAgentId": "/root/a",
+        "childAgentName": "/root/a",
+        "liveOnly": true
+      },
+      "executing": {
+        "toolId": "reporter-fixture",
+        "sessionId": "fixture-session",
+        "seq": 9,
+        "turnId": "actual-child-turn",
+        "deliveryId": "delivery_4a2e9a6c022740c2",
+        "contextId": "fixture-session/child/a",
+        "contextKind": "child",
+        "agentId": "/root/a",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T14:42:12.575Z",
+        "childAgentId": "/root/a",
+        "childAgentName": "/root/a",
+        "liveOnly": true
+      },
+      "result": {
+        "toolId": "same-call",
+        "childAgentId": "/root/a",
+        "childAgentName": "/root/a",
+        "liveOnly": true
+      }
+    },
+    "attributedParent": {
+      "tool": {
+        "toolId": "actor-read",
+        "sessionId": "fixture-session",
+        "seq": 12,
+        "turnId": "root-turn",
+        "deliveryId": "delivery_49063899ffd84b92",
+        "contextId": "fixture-session/agent/%2Froot%2Faudit-child",
+        "contextKind": "child",
+        "parentContextId": "fixture-session",
+        "agentId": "/root/audit-child",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T14:42:13.434Z",
+        "childAgentId": "/root/audit-child",
+        "childAgentName": "/root/audit-child",
+        "liveOnly": true
+      },
+      "context": {
+        "compactionBudget": {
+          "triggerPercent": 75,
+          "absoluteTriggerTokens": 262144,
+          "triggerTokens": 150000,
+          "physicalCapacityTokens": 194159,
+          "reservedResponseTokens": 16,
+          "reservedMemoryTokens": 0
+        },
+        "sessionId": "fixture-session",
+        "turnId": "root-turn",
+        "contextId": "fixture-session/agent/%2Froot%2Faudit-child",
+        "contextKind": "child",
+        "parentContextId": "fixture-session",
+        "agentId": "/root/audit-child",
+        "provider": "actor-audit-fixture",
+        "model": "fixture",
+        "profile": "report_only",
+        "contextWindow": 200000,
+        "smallWindow": false,
+        "pressure": "low",
+        "tokenBreakdown": {
+          "systemPrompt": 516,
+          "toolSchemas": 461,
+          "skillCatalog": 0,
+          "mcpCatalog": 0,
+          "transcript": 713,
+          "pendingInput": 0,
+          "recentToolResults": 0,
+          "reservedResponse": 16,
+          "total": 1706
+        },
+        "usedTokens": 1706,
+        "availableTokens": 198294,
+        "usedRatio": 0.00853,
+        "toolSchemaRatio": 0.002305,
+        "recommendations": [],
+        "createdAt": "2026-10-09T14:42:13.481Z",
+        "seq": 13,
+        "deliveryId": "delivery_49063899ffd84b92",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T14:42:13.481Z"
+      }
+    },
+    "dispatchedReporterPresent": true,
+    "dispatchedReporterReachedParent": false
+  },
+  "nativeSdkRetry": [
+    {
+      "provider": "anthropic-audit-fixture",
+      "fetches": 2,
+      "facts": [
+        {
+          "requestId": "request_1a32eb24-5102-47a3-a306-cb2556b8efe4",
+          "logicalRequestId": "logical_9229329f-6d8b-4fd6-882e-84396f0ad27a",
+          "provider": "anthropic-audit-fixture",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "dispatch": "dispatched",
+          "state": "failed",
+          "startedAt": "2026-10-09T14:42:12.628Z",
+          "endedAt": "2026-10-09T14:42:12.629Z"
+        },
+        {
+          "requestId": "physical_7e558a61-0515-4d49-8522-db8e6da7846d",
+          "logicalRequestId": "logical_9229329f-6d8b-4fd6-882e-84396f0ad27a",
+          "provider": "anthropic-audit-fixture",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 2,
+          "boundary": "physical_attempt",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T14:42:12.634Z",
+          "endedAt": "2026-10-09T14:42:12.635Z",
+          "usage": {
+            "inputTokens": 9,
+            "outputTokens": 3,
+            "totalTokens": 12,
+            "cachedReadTokens": 2
+          }
+        }
+      ],
+      "usage": {
+        "inputTokens": 9,
+        "outputTokens": 3,
+        "totalTokens": 12,
+        "cachedReadTokens": 2
+      }
+    },
+    {
+      "provider": "openai-audit-fixture",
+      "fetches": 2,
+      "facts": [
+        {
+          "requestId": "request_7c742c83-d39a-400f-82ae-5ebf51546920",
+          "logicalRequestId": "logical_763ddd64-7251-4c3c-aa80-23567f574021",
+          "provider": "openai-audit-fixture",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 1,
+          "boundary": "physical_attempt",
+          "dispatch": "dispatched",
+          "state": "failed",
+          "startedAt": "2026-10-09T14:42:12.684Z",
+          "endedAt": "2026-10-09T14:42:12.684Z"
+        },
+        {
+          "requestId": "physical_0e248dd7-d3eb-437a-a15d-58786cfee28f",
+          "logicalRequestId": "logical_763ddd64-7251-4c3c-aa80-23567f574021",
+          "provider": "openai-audit-fixture",
+          "model": "fixture",
+          "purpose": "fallback",
+          "attempt": 2,
+          "boundary": "physical_attempt",
+          "dispatch": "dispatched",
+          "state": "succeeded",
+          "startedAt": "2026-10-09T14:42:12.686Z",
+          "endedAt": "2026-10-09T14:42:12.687Z",
+          "usage": {
+            "inputTokens": 9,
+            "outputTokens": 3,
+            "totalTokens": 12
+          }
+        }
+      ],
+      "usage": {
+        "inputTokens": 9,
+        "outputTokens": 3,
+        "totalTokens": 12
+      }
+    }
+  ],
+  "activeOperation": {
+    "sessionId": "fixture-session",
+    "revision": 2,
+    "coverage": "complete",
+    "issues": [],
+    "usage": {
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "totalTokens": 0,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "thoughtTokens": 0
+    },
+    "requestCount": 1,
+    "requestsWithoutUsage": 1,
+    "physicalRequestCount": 0,
+    "operationCount": 1,
+    "contexts": []
+  },
+  "pagination": {
+    "firstIds": ["request_bb0b1698-da9d-45ac-b30e-c6ac038ea325", "fact-0"],
+    "secondIds": ["fact-1", "fact-2"],
+    "newEntryExcluded": true,
+    "totals": {
+      "sessionId": "fixture-session",
+      "revision": 7,
+      "coverage": "partial",
+      "issues": ["Some adapters report operation boundaries rather than physical wire attempts."],
+      "usage": {
+        "inputTokens": 5,
+        "outputTokens": 4,
+        "totalTokens": 9,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "thoughtTokens": 0
+      },
+      "requestCount": 5,
+      "requestsWithoutUsage": 1,
+      "physicalRequestCount": 3,
+      "operationCount": 2,
+      "contexts": []
+    }
+  },
+  "completedCustomOperation": {
+    "sessionId": "fixture-session",
+    "revision": 3,
+    "coverage": "partial",
+    "issues": ["Some adapters report operation boundaries rather than physical wire attempts."],
+    "usage": {
+      "inputTokens": 2,
+      "outputTokens": 1,
+      "totalTokens": 3,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "thoughtTokens": 0
+    },
+    "requestCount": 1,
+    "requestsWithoutUsage": 0,
+    "physicalRequestCount": 0,
+    "operationCount": 1,
+    "contexts": []
+  },
+  "actorWithoutLease": {
+    "ref": {
+      "actorPath": "/root/audit-child",
+      "turnId": "turn_root_audit_child_1",
+      "state": "running"
+    },
+    "state": "completed",
+    "requests": [
+      {
+        "requestId": "request_d62d0797-22da-46db-ab4e-b379e3901e84",
+        "logicalRequestId": "req_1791556933428_2",
+        "provider": "actor-audit-fixture",
+        "model": "fixture",
+        "purpose": "primary",
+        "route": {
+          "chainId": "route_cc1200ae-18bb-4066-bee4-bf9f5821858b",
+          "attempt": 1
+        },
+        "attempt": 1,
+        "boundary": "physical_attempt",
+        "dispatch": "dispatched",
+        "state": "succeeded",
+        "startedAt": "2026-10-09T14:42:13.432Z",
+        "endedAt": "2026-10-09T14:42:13.433Z",
+        "usage": {
+          "inputTokens": 5,
+          "outputTokens": 1,
+          "totalTokens": 6
+        }
+      },
+      {
+        "requestId": "request_9807d5d6-698a-4bfb-9263-e33fb6d8ab59",
+        "logicalRequestId": "req_1791556933480_4",
+        "provider": "actor-audit-fixture",
+        "model": "fixture",
+        "purpose": "primary",
+        "route": {
+          "chainId": "route_cc1200ae-18bb-4066-bee4-bf9f5821858b",
+          "attempt": 1
+        },
+        "attempt": 1,
+        "boundary": "physical_attempt",
+        "dispatch": "dispatched",
+        "state": "succeeded",
+        "startedAt": "2026-10-09T14:42:13.482Z",
+        "endedAt": "2026-10-09T14:42:13.483Z",
+        "usage": {
+          "inputTokens": 5,
+          "outputTokens": 1,
+          "totalTokens": 6
+        }
+      }
+    ],
+    "eventProjection": {
+      "tool": {
+        "toolId": "actor-read",
+        "sessionId": "fixture-session",
+        "seq": 12,
+        "turnId": "root-turn",
+        "deliveryId": "delivery_49063899ffd84b92",
+        "contextId": "fixture-session/agent/%2Froot%2Faudit-child",
+        "contextKind": "child",
+        "parentContextId": "fixture-session",
+        "agentId": "/root/audit-child",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T14:42:13.434Z",
+        "childAgentId": "/root/audit-child",
+        "childAgentName": "/root/audit-child",
+        "liveOnly": true
+      },
+      "context": {
+        "compactionBudget": {
+          "triggerPercent": 75,
+          "absoluteTriggerTokens": 262144,
+          "triggerTokens": 150000,
+          "physicalCapacityTokens": 194159,
+          "reservedResponseTokens": 16,
+          "reservedMemoryTokens": 0
+        },
+        "sessionId": "fixture-session",
+        "turnId": "root-turn",
+        "contextId": "fixture-session/agent/%2Froot%2Faudit-child",
+        "contextKind": "child",
+        "parentContextId": "fixture-session",
+        "agentId": "/root/audit-child",
+        "provider": "actor-audit-fixture",
+        "model": "fixture",
+        "profile": "report_only",
+        "contextWindow": 200000,
+        "smallWindow": false,
+        "pressure": "low",
+        "tokenBreakdown": {
+          "systemPrompt": 516,
+          "toolSchemas": 461,
+          "skillCatalog": 0,
+          "mcpCatalog": 0,
+          "transcript": 713,
+          "pendingInput": 0,
+          "recentToolResults": 0,
+          "reservedResponse": 16,
+          "total": 1706
+        },
+        "usedTokens": 1706,
+        "availableTokens": 198294,
+        "usedRatio": 0.00853,
+        "toolSchemaRatio": 0.002305,
+        "recommendations": [],
+        "createdAt": "2026-10-09T14:42:13.481Z",
+        "seq": 13,
+        "deliveryId": "delivery_49063899ffd84b92",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T14:42:13.481Z"
+      }
+    }
+  },
+  "publicClientDuplicateTools": {
+    "requestedReads": 2,
+    "actualExecutions": 2,
+    "result": {
+      "runId": "run_4be1540775863aa2905dbf3ef6042fbe4d87893c75feef64c8694f447cb8adfa",
+      "sessionId": "20261009_224213_q3fa6e9d8c505e",
+      "phase": "completed",
+      "result": {
+        "success": true,
+        "lastText": "Offline public client fixture completed.",
+        "signal": "",
+        "signalReason": "",
+        "messages": [
+          {
+            "role": "user",
+            "content": "DUPLICATE-AUDIT-ROOT: Complete the fixture.",
+            "inputId": "duplicate-id-fixture",
+            "timestamp": "2026-10-09T14:42:14.360Z",
+            "turnId": "turn_e3e1bc3e567f4101"
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "reused-provider-id",
+                "name": "audit_count_read",
+                "input": {
+                  "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-statistics-audit-64GalH\\read-fixture.txt"
+                }
+              },
+              {
+                "type": "tool_use",
+                "id": "reused-provider-id",
+                "name": "audit_count_read",
+                "input": {
+                  "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-statistics-audit-64GalH\\read-fixture.txt"
+                }
+              }
+            ],
+            "outputId": "output_09147949-0b89-4973-8508-630f03532acc",
+            "turnId": "turn_e3e1bc3e567f4101",
+            "timestamp": "2026-10-09T14:42:15.610Z"
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "reused-provider-id",
+                "content": "fixture invocation 2",
+                "is_error": false
+              },
+              {
+                "type": "tool_result",
+                "tool_use_id": "reused-provider-id",
+                "content": "fixture invocation 2",
+                "is_error": false
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Offline public client fixture completed."
+              }
+            ],
+            "outputId": "output_09a6bed1-a95d-4082-8c25-47e2d6c0df2f",
+            "turnId": "turn_e3e1bc3e567f4101",
+            "timestamp": "2026-10-09T14:42:15.784Z"
+          }
+        ],
+        "sessionId": "20261009_224213_q3fa6e9d8c505e",
+        "routingDecision": {
+          "primaryTask": "unknown",
+          "taskFamily": "ambiguous",
+          "actionability": "ambiguous",
+          "executionPattern": "direct",
+          "confidence": 0.4,
+          "riskLevel": "low",
+          "recommendedMode": "implementation",
+          "recommendedThinkingDepth": "off",
+          "complexity": "simple",
+          "workIntent": "new",
+          "requiresBrainstorm": true,
+          "harnessProfile": "H0_DIRECT",
+          "routingSource": "fallback",
+          "routingAttempts": 1,
+          "reason": "Fallback task inference did not find enough strong signals, so it kept the task as unknown. Conservative fallback keeps balanced reasoning for ambiguous tasks.",
+          "mutationSurface": "read-only",
+          "assuranceIntent": "default",
+          "topologyCeiling": "H0_DIRECT",
+          "soloBoundaryConfidence": 0.72,
+          "needsIndependentQA": false,
+          "upgradeCeiling": "H0_DIRECT",
+          "routingNotes": [
+            "Brainstorm/planning signal detected. Judge whether to plan-first via todo_update before executing.",
+            "Intent gate ignored repository scaling signals for this request.",
+            "Review work is actionable and benefits from harness assessment for accurate scoping.",
+            "Heuristic routing only — LLM router skipped (FEATURE_061 Phase 1; FEATURE_193 retired post-routing calibration)."
+          ]
+        },
+        "contextTokenSnapshot": {
+          "currentTokens": 6,
+          "baselineEstimatedTokens": 113,
+          "source": "api",
+          "usage": {
+            "inputTokens": 5,
+            "outputTokens": 1,
+            "totalTokens": 6
+          }
+        },
+        "limitReached": false,
+        "writtenFiles": []
+      },
+      "terminal": {
+        "revision": 1,
+        "kind": "completed",
+        "code": "completed",
+        "effectOutcome": "known"
+      }
+    },
+    "tools": [
+      {
+        "id": "execution_9ac21f86-e209-4533-bc77-e5869a20b54d",
+        "revision": 6,
+        "toolId": "reused-provider-id",
+        "name": "audit_count_read",
+        "sessionId": "20261009_224213_q3fa6e9d8c505e",
+        "target": {
+          "kind": "run",
+          "runId": "run_4be1540775863aa2905dbf3ef6042fbe4d87893c75feef64c8694f447cb8adfa"
+        },
+        "runtimeId": "rt_8353202710bb",
+        "state": "prepared",
+        "updatedAt": "2026-10-09T14:42:15.614Z",
+        "sandbox": []
+      },
+      {
+        "id": "execution_7012ad01-4a6a-4a06-8fef-a69d91156641",
+        "revision": 13,
+        "toolId": "reused-provider-id",
+        "name": "audit_count_read",
+        "sessionId": "20261009_224213_q3fa6e9d8c505e",
+        "target": {
+          "kind": "run",
+          "runId": "run_4be1540775863aa2905dbf3ef6042fbe4d87893c75feef64c8694f447cb8adfa"
+        },
+        "runtimeId": "rt_8353202710bb",
+        "state": "completed",
+        "result": "succeeded",
+        "updatedAt": "2026-10-09T14:42:15.653Z",
+        "sandbox": []
+      }
+    ]
+  },
+  "publicClientChildTools": {
+    "ref": {
+      "actorPath": "/root/statistics-child",
+      "turnId": "turn_root_statistics_child_1",
+      "state": "running"
+    },
+    "state": "completed",
+    "tools": [
+      {
+        "id": "execution_9639ac37-28f4-409e-9236-edd2ddf03012",
+        "revision": 9,
+        "toolId": "reused-provider-id",
+        "name": "read",
+        "sessionId": "20261009_224215_r21cd57e061c7c",
+        "target": {
+          "kind": "actor_turn",
+          "actorPath": "/root/statistics-child",
+          "turnId": "turn_root_statistics_child_1"
+        },
+        "runtimeId": "rt_8353202710bb",
+        "state": "completed",
+        "result": "succeeded",
+        "updatedAt": "2026-10-09T14:42:16.370Z",
+        "sandbox": []
+      }
+    ],
+    "requests": [
+      {
+        "requestId": "request_49bb4048-bf60-45bd-91b8-67169738282d",
+        "logicalRequestId": "req_1791556936309_6",
+        "provider": "rpc-audit-fixture",
+        "model": "fixture",
+        "purpose": "primary",
+        "route": {
+          "chainId": "route_89154e08-db53-41ac-a4ad-6e9ee9eaf05c",
+          "attempt": 1
+        },
+        "attempt": 1,
+        "boundary": "physical_attempt",
+        "dispatch": "dispatched",
+        "state": "succeeded",
+        "startedAt": "2026-10-09T14:42:16.326Z",
+        "endedAt": "2026-10-09T14:42:16.329Z",
+        "usage": {
+          "inputTokens": 5,
+          "outputTokens": 1,
+          "totalTokens": 6
+        },
+        "target": {
+          "kind": "actor_turn",
+          "actorPath": "/root/statistics-child",
+          "turnId": "turn_root_statistics_child_1"
+        },
+        "sessionId": "20261009_224215_r21cd57e061c7c",
+        "runtimeId": "rt_8353202710bb",
+        "revision": 5,
+        "fallback": false
+      },
+      {
+        "requestId": "request_01a2cafa-7f37-48a4-b630-7a19ed937022",
+        "logicalRequestId": "req_1791556936497_8",
+        "provider": "rpc-audit-fixture",
+        "model": "fixture",
+        "purpose": "primary",
+        "route": {
+          "chainId": "route_89154e08-db53-41ac-a4ad-6e9ee9eaf05c",
+          "attempt": 1
+        },
+        "attempt": 1,
+        "boundary": "physical_attempt",
+        "dispatch": "dispatched",
+        "state": "succeeded",
+        "startedAt": "2026-10-09T14:42:16.513Z",
+        "endedAt": "2026-10-09T14:42:16.515Z",
+        "usage": {
+          "inputTokens": 5,
+          "outputTokens": 1,
+          "totalTokens": 6
+        },
+        "target": {
+          "kind": "actor_turn",
+          "actorPath": "/root/statistics-child",
+          "turnId": "turn_root_statistics_child_1"
+        },
+        "sessionId": "20261009_224215_r21cd57e061c7c",
+        "runtimeId": "rt_8353202710bb",
+        "revision": 13,
+        "fallback": false,
+        "previousRequestId": "request_49bb4048-bf60-45bd-91b8-67169738282d"
+      }
+    ],
+    "contexts": [
+      {
+        "compactionBudget": {
+          "triggerPercent": 75,
+          "absoluteTriggerTokens": 262144,
+          "triggerTokens": 150000,
+          "physicalCapacityTokens": 194159,
+          "reservedResponseTokens": 16,
+          "reservedMemoryTokens": 0
+        },
+        "sessionId": "worker-5373e0ca-7c5c-4f33-b851-6abc50f63479",
+        "turnId": "turn_root_statistics_child_1",
+        "contextId": "20261009_224215_r21cd57e061c7c/agent/%2Froot%2Fstatistics-child",
+        "contextKind": "child",
+        "parentContextId": "20261009_224215_r21cd57e061c7c",
+        "agentId": "/root/statistics-child",
+        "provider": "rpc-audit-fixture",
+        "model": "fixture",
+        "profile": "report_only",
+        "contextWindow": 200000,
+        "smallWindow": false,
+        "pressure": "low",
+        "tokenBreakdown": {
+          "systemPrompt": 663,
+          "toolSchemas": 461,
+          "skillCatalog": 0,
+          "mcpCatalog": 0,
+          "transcript": 717,
+          "pendingInput": 0,
+          "recentToolResults": 0,
+          "reservedResponse": 16,
+          "total": 1857
+        },
+        "usedTokens": 1857,
+        "availableTokens": 198143,
+        "usedRatio": 0.009285,
+        "toolSchemaRatio": 0.002305,
+        "recommendations": [],
+        "createdAt": "2026-10-09T14:42:16.497Z",
+        "seq": 18,
+        "deliveryId": "delivery_bc8b1bdb187b467e",
+        "contextRevision": 0,
+        "timestamp": "2026-10-09T14:42:16.497Z",
+        "runtimeId": "rt_8353202710bb",
+        "target": {
+          "kind": "actor_turn",
+          "actorPath": "/root/statistics-child",
+          "turnId": "turn_root_statistics_child_1"
+        },
+        "revision": 10
+      }
+    ]
+  }
+}

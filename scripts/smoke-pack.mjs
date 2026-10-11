@@ -88,6 +88,7 @@ const KODAX_PUBLIC_FACADE_FILES = [
   'sdk-a2a.js',
   'sdk-agent.js',
   'sdk-coding.js',
+  'sdk-client.js',
   'sdk-experimental-memory.js',
   'sdk-llm.js',
   'sdk-mcp.js',
@@ -740,10 +741,6 @@ async function checkAsarContents(asarPath) {
     fail('packaged KodaX metadata does not advertise actorSettlementConvergence v2');
   }
   ok('packaged KodaX metadata advertises actorSettlementConvergence v2');
-  if (packagedKodax.kodaxRuntimeContracts?.sessionEventJournal !== 1) {
-    fail('packaged KodaX metadata does not advertise sessionEventJournal v1');
-  }
-  ok('packaged KodaX metadata advertises sessionEventJournal v1');
   if (packagedKodax.kodaxRuntimeContracts?.integrationConfigResilience !== 1) {
     fail('packaged KodaX metadata does not advertise integrationConfigResilience v1');
   }
@@ -752,10 +749,6 @@ async function checkAsarContents(asarPath) {
     fail('packaged KodaX metadata does not advertise daemonShutdownVerification v1');
   }
   ok('packaged KodaX metadata advertises daemonShutdownVerification v1');
-  if (packagedKodax.kodaxRuntimeContracts?.runtimeExitSettlement !== 2) {
-    fail('packaged KodaX metadata does not advertise runtimeExitSettlement v2');
-  }
-  ok('packaged KodaX metadata advertises runtimeExitSettlement v2');
 
   let packagedRendererHtml;
   try {
@@ -850,7 +843,6 @@ async function checkAsarContents(asarPath) {
   // when Runtime or a constructed handler first starts.
   const kodaxRuntimeRequired = [
     ...KODAX_PUBLIC_FACADE_FILES.map((file) => `/node_modules/@kodax-ai/kodax/dist/${file}`),
-    '/node_modules/@kodax-ai/kodax/dist/runtime-worker.js',
     '/node_modules/@kodax-ai/kodax/dist/constructed-handler-worker.js',
     '/node_modules/@kodax-ai/kodax/dist/semantic-worker.js',
     // Windows tray "quit completely" and stale-daemon recovery launch this
@@ -1276,11 +1268,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   createKodaXRuntime,
+  ensureKodaXRuntime,
   enableKodaXDaemonOwner,
   getKodaXRuntimeOwnerState,
   KODAX_RUNTIME_SDK_CAPABILITIES,
-  settleKodaXRuntimeExit,
 } from ${JSON.stringify(runtimeModuleUrl)};
+import { randomUUID } from 'node:crypto';
+import { readKodaXClientExits } from ${JSON.stringify(pathToFileURL(path.join(asarPath, 'node_modules', '@kodax-ai', 'kodax', 'dist', 'sdk-client.js')).href)};
 import { loadHandler } from ${JSON.stringify(codingModuleUrl)};
 import { validateImageBytes } from ${JSON.stringify(mediaModuleUrl)};
 import {
@@ -1314,6 +1308,7 @@ const ownsHomeDir = isolatedHome.ownsHomeDir;
 const homeDir = isolatedHome.homeDir;
 let runtime;
 let daemonRuntime;
+let daemonClientInfo;
 let providerServer;
 const daemonProfile = 'space-pack-lifecycle';
 const providerName = 'space-pack-shell-probe';
@@ -1541,7 +1536,9 @@ function daemonRequirements() {
     runtimeEventCoalescing: 1,
     sharedSessionSettings: 2,
     sandboxRuntime: 11,
-    sessionEventJournal: 1,
+    productClient: 1,
+    productHistoryBoundaries: 1,
+    productExitControl: 1,
     ...(process.platform === 'win32' ? { daemonShutdownVerification: 1 } : {}),
     integrationConfigResilience: 1,
     skillLearningLoop: 1,
@@ -1549,15 +1546,36 @@ function daemonRequirements() {
   };
 }
 function createDaemonProbeRuntime(clientName) {
-  return createKodaXRuntime({
-    mode: 'daemon',
+  daemonClientInfo = { name: clientName, version: ${JSON.stringify(SPACE_VERSION)}, instanceId: randomUUID(), instanceSecret: randomUUID() + randomUUID() };
+  return ensureKodaXRuntime({
     profile: daemonProfile,
     homeDir,
     sessionsDir: path.join(homeDir, 'daemon-sessions'),
     daemonOrphanExitMs: 1_000,
     requirements: daemonRequirements(),
-    clientInfo: { name: clientName, version: ${JSON.stringify(SPACE_VERSION)} },
+    clientInfo: daemonClientInfo,
   });
+}
+async function settleProbeClientExit({ runtime }) {
+  const requestId = randomUUID();
+  const clientInfo = daemonClientInfo;
+  let receipt = await runtime.lifecycle.requestExit({ requestId, shutdownHost: true });
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    if (receipt.cleanup.state === 'succeeded' && receipt.host.state === 'succeeded') {
+      await runtime.close();
+      return { status: 'clean', receipt };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      receipt = await runtime.lifecycle.readExit(requestId) ?? receipt;
+    } catch (error) {
+      const offline = (await readKodaXClientExits({ homeDir, profile: daemonProfile, clientInfo })).find((item) => item.requestId === requestId);
+      if (!offline) throw error;
+      receipt = offline;
+    }
+  }
+  throw new Error('Packaged SDK exit is not verified: ' + JSON.stringify(receipt));
 }
 async function waitForDaemonOwnerRelease(runtimeId) {
   const deadline = Date.now() + 5_000;
@@ -1681,15 +1699,8 @@ try {
     }
   }
   runtime = await createKodaXRuntime({
-    mode: 'embedded',
-    isolation: 'worker',
-    requirements: { hardDispose: true },
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
-    worker: {
-      resourceLimits: { maxOldGenerationSizeMb: 128 },
-      shutdownTimeoutMs: 1500,
-    },
     clientInfo: { name: 'kodax-space-pack-smoke', version: ${JSON.stringify(SPACE_VERSION)} },
   });
   const created = await runtime.sessions.create({
@@ -1725,14 +1736,8 @@ try {
       'packaged SDK does not advertise daemonShutdownVerification v1 before auto-start',
     );
   }
-  if (KODAX_RUNTIME_SDK_CAPABILITIES?.runtimeExitSettlement !== 2) {
-    throw new Error('packaged SDK does not advertise runtimeExitSettlement v2 before auto-start');
-  }
-  if (typeof settleKodaXRuntimeExit !== 'function') {
-    throw new Error('packaged SDK does not export settleKodaXRuntimeExit');
-  }
-  if (KODAX_RUNTIME_SDK_CAPABILITIES?.sessionEventJournal !== 1) {
-    throw new Error('packaged SDK does not advertise sessionEventJournal v1 before auto-start');
+  if (KODAX_RUNTIME_SDK_CAPABILITIES?.productClient !== 1) {
+    throw new Error('packaged SDK does not advertise productClient v1 before auto-start');
   }
   if (KODAX_RUNTIME_SDK_CAPABILITIES?.conversationHistory !== 2) {
     throw new Error('packaged SDK does not advertise conversationHistory v2 before auto-start');
@@ -1800,17 +1805,9 @@ try {
       );
     }
   }
-  const sessionEventJournal = daemonRuntime.capabilities?.sessionEventJournal;
-  if (
-    typeof sessionEventJournal !== 'object' ||
-    sessionEventJournal === null ||
-    sessionEventJournal.version !== 1
-  ) {
-    throw new Error(
-      'packaged daemon did not negotiate sessionEventJournal v1: ' +
-      JSON.stringify(sessionEventJournal),
-    );
-  }
+  const productHistory = daemonRuntime.capabilities?.productHistoryBoundaries;
+  if (productHistory?.version !== 1 || daemonRuntime.capabilities?.productExitControl?.version !== 1)
+    throw new Error('packaged daemon did not negotiate public history and exit contracts');
   const daemonSandboxRuntime = daemonRuntime.capabilities?.sandboxRuntime;
   if (
     typeof daemonSandboxRuntime !== 'object' ||
@@ -1823,23 +1820,21 @@ try {
     );
   }
   const journalSession = await daemonRuntime.sessions.create({
-    title: 'Packaged Session journal probe',
+    title: 'Packaged Session current-view probe',
     projectPath: homeDir,
     surface: 'space-desktop',
     tag: 'code',
   });
   const journalObservation = await daemonRuntime.sessions.observe(journalSession.id, () => {});
-  const journalCursor = journalObservation.snapshot.cursor;
+  const journalCursor = { sessionId: journalObservation.snapshot.session.id, seq: journalObservation.snapshot.seq };
   journalObservation.close();
   if (
     journalCursor.sessionId !== journalSession.id ||
-    typeof journalCursor.journalEpoch !== 'string' ||
-    journalCursor.journalEpoch.length === 0 ||
     !Number.isSafeInteger(journalCursor.seq) ||
     journalCursor.seq < 0
   ) {
     throw new Error(
-      'packaged daemon returned an invalid Session journal cursor: ' + JSON.stringify(journalCursor),
+      'packaged daemon returned an invalid Session cursor: ' + JSON.stringify(journalCursor),
     );
   }
   let firstDaemonShellBackend;
@@ -1866,7 +1861,7 @@ try {
         management.preflight.blockers.join(','),
     );
   }
-  const firstExitSettlement = await settleKodaXRuntimeExit({
+  const firstExitSettlement = await settleProbeClientExit({
     configHome: process.env.KODAX_HOME,
     profile: daemonProfile,
     runtime: daemonRuntime,
@@ -1899,7 +1894,7 @@ try {
         restartedManagement.preflight.blockers.join(','),
     );
   }
-  const restartedExitSettlement = await settleKodaXRuntimeExit({
+  const restartedExitSettlement = await settleProbeClientExit({
     configHome: process.env.KODAX_HOME,
     profile: daemonProfile,
     runtime: daemonRuntime,
@@ -1925,7 +1920,7 @@ try {
     constructedHandlerIsMainThread: handlerResult,
     daemonOrphanExit: daemonOrphanExit.version,
     daemonSandboxRuntime: daemonSandboxRuntime.version,
-    sessionEventJournal: sessionEventJournal.version,
+    productHistoryBoundaries: productHistory.version,
     sessionCursorValid: true,
     integrationHealth: management.integrations.state,
     runtimeExitSettlement: firstExitSettlement.status,
@@ -1942,13 +1937,12 @@ try {
   if (
     result.version !== ${JSON.stringify(KODAX_VERSION)} ||
     result.mode !== 'embedded' ||
-    result.isolation !== 'worker' ||
-    !Number.isSafeInteger(result.workerThreadId) ||
+    result.isolation !== 'inline' ||
     !result.sessionRoundTrip ||
     result.constructedHandlerIsMainThread !== 'false' ||
     result.daemonOrphanExit !== 1 ||
     result.daemonSandboxRuntime !== 11 ||
-    result.sessionEventJournal !== 1 ||
+    result.productHistoryBoundaries !== 1 ||
     !result.sessionCursorValid ||
     result.integrationHealth !== 'healthy' ||
     result.runtimeExitSettlement !== 'clean' ||
@@ -1999,7 +1993,7 @@ try {
   }
   if (daemonRuntime) {
     try {
-      const cleanupSettlement = await settleKodaXRuntimeExit({
+      const cleanupSettlement = await settleProbeClientExit({
         configHome: process.env.KODAX_HOME,
         profile: daemonProfile,
         runtime: daemonRuntime,

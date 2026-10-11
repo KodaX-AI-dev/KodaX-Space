@@ -7,9 +7,14 @@ import type { InvokeChannelName } from '@kodax-space/space-ipc-schema';
 
 export type CoderActionReleasedState = 'ga' | 'capability-gated' | 'unavailable';
 export type CoderActionTargetOwner =
-  'coder-daemon' | 'space-host-provider' | 'space-ui-only' | 'reviewed-out';
+  | 'coder-daemon'
+  | 'space-host-provider'
+  | 'space-ui-only'
+  | 'reviewed-out';
 export type CoderActionUnavailableBehavior =
-  'disable-with-reason' | 'observe-only' | 'not-applicable';
+  | 'disable-with-reason'
+  | 'observe-only'
+  | 'not-applicable';
 
 export interface CoderActionDisposition {
   readonly actionId: string;
@@ -102,6 +107,8 @@ export const FROZEN_V0131_CODER_ENTRYPOINTS = [
   'session.delete',
   'session.fork',
   'session.history',
+  'session.statistics',
+  'session.executionFacts',
   'session.list',
   'session.listRunning',
   'session.liveSnapshot',
@@ -174,6 +181,8 @@ export const CODER_DAEMON_ROUTED_ENTRYPOINTS = [
   'session.delete',
   'session.fork',
   'session.history',
+  'session.statistics',
+  'session.executionFacts',
   'session.liveSnapshot',
   'session.rewind',
   'session.send',
@@ -229,6 +238,8 @@ function capabilityFor(entrypoint: InvokeChannelName): string | undefined {
   }
   if (entrypoint.startsWith('askUser.')) return 'runtime.userInput';
   if (entrypoint.startsWith('permission.')) return 'runtime.permissions';
+  if (entrypoint === 'session.statistics' || entrypoint === 'session.executionFacts')
+    return 'runtime.statistics';
   if (entrypoint === 'kodax.queueGet') return 'runtime.inputQueue';
   if (entrypoint === 'provider.setDefault') return 'runtime.config.cas';
   if (

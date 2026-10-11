@@ -877,10 +877,7 @@ export class RealKodaXSession implements ManagedSession {
         // that does not advertise interruptInput must reject that request
         // factually; silently creating an after-turn continuation changes both the
         // delivery boundary and batching semantics.
-        // Daemon after-turn inputs do not expose per-input prompt overlays yet.
-        // Preserve attachment/Partner context by placing the overlay beside the
-        // queued prompt only on this compatibility path. Fresh runs and the
-        // embedded queue keep it in system context via options.context.
+        // Attachment and Partner context are business input text; Host owns system context.
         const continuationPrompt = options?.promptOverlay
           ? `${prompt}\n\n${options.promptOverlay}`
           : prompt;
@@ -890,9 +887,7 @@ export class RealKodaXSession implements ManagedSession {
           afterRunId: activeRunId,
           delivery,
           input: this.buildRuntimeInput(continuationPrompt, artifacts),
-          ...(options?.operationId !== undefined
-            ? { operation: { operationId: options.operationId } }
-            : {}),
+          ...(options?.operationId !== undefined ? { inputId: options.operationId } : {}),
         });
         if (!result.accepted) {
           return { accepted: false, reason: result.reason, queueMode };
@@ -907,31 +902,13 @@ export class RealKodaXSession implements ManagedSession {
         return {
           accepted: true,
           queued: true,
-          queueId: result.delivery === 'interrupt' ? result.inputId : result.runId,
+          queueId: result.inputId,
           queueMode,
         };
       }
-      const skillPreparation =
-        explicitSkillReference !== undefined
-          ? await this.prepareExplicitSkillExecution(
-              prompt,
-              explicitSkillReference,
-              runPermissionMode,
-              admissionSignal,
-            )
-          : undefined;
+      // The Host resolves Skills, prepares dynamic context, and runs their hooks exactly once.
       if (admissionSignal?.aborted || this.disposed) {
-        await skillPreparation?.prepared?.finalize(
-          new Error('Session send cancelled before admission'),
-        );
         return { accepted: false, reason: 'cancelled_before_admission', queueMode };
-      }
-      if (skillPreparation?.rejectionReason !== undefined) {
-        return {
-          accepted: false,
-          reason: skillPreparation.rejectionReason,
-          queueMode,
-        };
       }
       const admission = this.startRun(
         prompt,
@@ -940,7 +917,7 @@ export class RealKodaXSession implements ManagedSession {
         runPermissionMode,
         options?.operationId,
         true,
-        skillPreparation?.prepared,
+        undefined,
         runPartnerExpert,
         runPartnerConnectors,
         toolInvocation,
@@ -1365,7 +1342,7 @@ export class RealKodaXSession implements ManagedSession {
     promptOverlay?: string,
     admission?: RuntimeAdmissionState | null,
     operationId?: string,
-    explicitSkill?: PreparedExplicitSkillExecution,
+    _explicitSkill?: PreparedExplicitSkillExecution,
     toolInvocation?: RuntimeDaemonKodaXOptions['toolInvocation'],
   ): Promise<Error | undefined> {
     const sid = this.sessionId;
@@ -1374,51 +1351,10 @@ export class RealKodaXSession implements ManagedSession {
       // send() has already established the exact Runtime Session identity before it reports
       // acceptance. Repeating that history-grade load here races normal Session writers and can
       // turn an accepted prompt into a later topology error.
-      const shellExecution = await this.syncRuntimeSessionSettings();
+      await this.syncRuntimeSessionSettings();
       await runtimeHostAdapter.ensureObserved(sid);
-
-      const [skillsPrompt, runConfig, sdk] = await Promise.all([
-        buildSkillsPromptForSurface('code', this.projectRoot),
-        loadKodaxRunConfig(),
-        loadSdkCoding(),
-      ]);
-      const selfManual = buildSpaceManual(sdk);
-      const workflowPolicy = workflowPolicyStore.get();
       const options: RuntimeDaemonKodaXOptions = {
         ...(toolInvocation ? { toolInvocation } : {}),
-        provider: this.provider,
-        effort: reasoningModeToEffort(this.reasoningMode),
-        agentMode: this.agentMode,
-        ...(this.model !== undefined ? { model: this.model } : {}),
-        ...(explicitSkill?.modelOverride !== undefined
-          ? { modelOverride: explicitSkill.modelOverride }
-          : {}),
-        ...(this.thinking !== undefined ? { thinking: this.thinking } : {}),
-        compaction: runConfig.compaction,
-        context: {
-          gitRoot: this.projectRoot,
-          executionCwd: this.projectRoot,
-          ...(shellExecution ? { shellExecution } : {}),
-          contextDiagnostics: true,
-          // Runtime daemon transport has no exitPlanMode approval callback. Hiding
-          // the unusable tool prevents a generic permission prompt followed by the
-          // inevitable "Only available in interactive REPL" tool error.
-          excludeTools: ['exit_plan_mode'],
-          ...(promptOverlay ? { promptOverlay } : {}),
-          ...(skillsPrompt ? { skillsPrompt } : {}),
-          ...(explicitSkill !== undefined
-            ? {
-                // Keep the exact slash text as the durable user record. The separately prepared
-                // prompt below is model-safe and carries the trusted expanded Skill context.
-                rawUserInput: prompt,
-                skillInvocation: explicitSkill.skillInvocation,
-              }
-            : {}),
-        },
-        selfManual,
-        workflowHostPolicy: buildWorkflowHostPolicy(workflowPolicy),
-        workflowRunsBaseDir: workflowController.getRunBaseDir(),
-        workflow: { maxConcurrency: workflowPolicy.maxConcurrency },
       };
       if (signal.aborted) {
         this.settleRuntimeAdmission(admission, 'not_admitted', !this.disposed);
@@ -1427,10 +1363,13 @@ export class RealKodaXSession implements ManagedSession {
       if (admission) admission.phase = 'starting';
       const startInput = {
         sessionId: sid,
-        input: this.buildRuntimeInput(explicitSkill?.executionPrompt ?? prompt, artifacts),
+        input: this.buildRuntimeInput(
+          promptOverlay ? `${prompt}\n\n${promptOverlay}` : prompt,
+          artifacts,
+        ),
         mode: 'managed_task' as const,
         options,
-        ...(operationId !== undefined ? { operation: { operationId } } : {}),
+        ...(operationId !== undefined ? { inputId: operationId } : {}),
       };
       let handle: Awaited<ReturnType<typeof runtimeHostAdapter.startManagedRun>>;
       let boundaryRetry = 0;
@@ -2745,22 +2684,15 @@ export class RealKodaXSession implements ManagedSession {
         // Runtime-selected Coder runs fail closed. They must never fall through to the
         // inline driver because that would bypass the daemon owner fence and could execute
         // tools twice. Partner and explicitly fenced legacy Coder runs stay on the inline path.
-        let useRuntime = false;
         if (this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()) {
-          await runtimeHostAdapter.initialize();
-          useRuntime = true;
+          throw new Error(
+            'Coder switched to the daemon while inline input was being prepared; retry the input.',
+          );
         }
-
-        if (useRuntime) {
-          await runtimeHostAdapter.ensureSession({
-            sessionId: sid,
-            projectRoot: this.projectRoot,
-            surface: this.surface,
-            ephemeral: this.ephemeral,
-          });
-          // Preserve both Space AsyncLocalStorage scopes. Runtime starts runManagedTask
-          // while resolving runs.start(), so the detached SDK run inherits these scopes.
-          const handle = await withSessionRunContext(
+        // Partner inline driver, or the explicitly selected legacy Coder rollback driver.
+        await this.requirePartnerExpertAvailable(runPartnerExpert ?? null);
+        await runWithSpaceProviderCredentialLease(this.provider, () =>
+          withSessionRunContext(
             {
               sessionId: sid,
               surface: this.surface,
@@ -2769,68 +2701,18 @@ export class RealKodaXSession implements ManagedSession {
             },
             () =>
               runWithSessionQueueScope(sid, () =>
-                runtimeHostAdapter.startManagedRun({
-                  sessionId: sid,
-                  prompt: explicitSkill?.executionPrompt ?? prompt,
-                  mode: 'managed_task',
-                  options,
-                }),
+                sdk.runManagedTask(options, explicitSkill?.executionPrompt ?? prompt),
               ),
-          );
-          const outcome = await handle.result;
-          runFinalizationError = runtimeTerminalFailure(outcome);
-          if ((outcome.phase === 'failed' || outcome.phase === 'interrupted') && !signal.aborted) {
-            await emitTerminalError(
-              outcome.error ??
-                pendingTerminalError ??
-                new Error(`KodaX Runtime run ${outcome.phase}`),
-            );
-          } else if (outcome.phase === 'cancelled' && !signal.aborted && !terminalEmitted) {
-            terminalEmitted = true;
-            flushStreamDeltas(true);
-            emitRawLive(
-              {
-                kind: 'session_error',
-                sessionId: sid,
-                error: 'cancelled',
-                category: 'cancelled',
-                retriable: true,
-              },
-              true,
-            );
-          } else if (pendingTerminalError !== null && !signal.aborted) {
-            await emitTerminalError(pendingTerminalError);
-            runFinalizationError =
-              pendingTerminalError instanceof Error
-                ? pendingTerminalError
-                : new Error(String(pendingTerminalError));
-          }
-        } else {
-          // Partner inline driver, or the explicitly selected legacy Coder rollback driver.
-          await this.requirePartnerExpertAvailable(runPartnerExpert ?? null);
-          await runWithSpaceProviderCredentialLease(this.provider, () =>
-            withSessionRunContext(
-              {
-                sessionId: sid,
-                surface: this.surface,
-                projectRoot: this.projectRoot,
-                permissionMode: runPermissionMode,
-              },
-              () =>
-                runWithSessionQueueScope(sid, () =>
-                  sdk.runManagedTask(options, explicitSkill?.executionPrompt ?? prompt),
-                ),
-            ),
-          );
-          // SA errors resolve success:false while AMA errors throw; the shared callback
-          // latch normalizes both paths to one Space terminal event.
-          if (pendingTerminalError !== null && !signal.aborted) {
-            await emitTerminalError(pendingTerminalError);
-            runFinalizationError =
-              pendingTerminalError instanceof Error
-                ? pendingTerminalError
-                : new Error(String(pendingTerminalError));
-          }
+          ),
+        );
+        // SA errors resolve success:false while AMA errors throw; the shared callback
+        // latch normalizes both paths to one Space terminal event.
+        if (pendingTerminalError !== null && !signal.aborted) {
+          await emitTerminalError(pendingTerminalError);
+          runFinalizationError =
+            pendingTerminalError instanceof Error
+              ? pendingTerminalError
+              : new Error(String(pendingTerminalError));
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {

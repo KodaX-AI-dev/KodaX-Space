@@ -1,0 +1,44 @@
+{
+  "source": "installed Registry alpha.2 public SDK",
+  "steps": [
+    "built_connector_authorization_capability_handshake",
+    "built_host_tool_reverse_bridge",
+    "built_scoped_credential_reverse_bridge",
+    "built_public_history_quality_boundary_retry_before",
+    "built_canonical_rewind_and_stale_boundary_rejection",
+    "published_independent_actor_spawn_followup_main_authorization"
+  ],
+  "wireCalls": 4,
+  "credentialCalls": 4,
+  "hostToolCalls": 1,
+  "authorizationKinds": ["tool", "input", "input", "agent_spawn", "agent_followup"],
+  "credentialTargets": [
+    {
+      "kind": "run",
+      "runId": "run_f7e4a5010ff3c6287adcda25025b79a7747d31af040290b4af49b397e4549c0f"
+    },
+    {
+      "kind": "run",
+      "runId": "run_aa40208f8f2013f0fdac7fdd8e36cb46db0d0c5404722b3bdbfab67c5845f8cd"
+    },
+    {
+      "kind": "actor_turn",
+      "actorPath": "/root/published-independent",
+      "turnId": "turn_root_published_independent_1"
+    },
+    {
+      "kind": "actor_turn",
+      "actorPath": "/root/published-independent",
+      "turnId": "turn_root_published_independent_2"
+    }
+  ],
+  "shutdown": {
+    "status": "succeeded",
+    "outcome": {
+      "version": 1,
+      "status": "succeeded",
+      "completedAt": "2026-10-10T01:29:45.809Z"
+    }
+  },
+  "success": true
+}

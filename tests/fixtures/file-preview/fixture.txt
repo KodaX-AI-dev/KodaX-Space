@@ -1,0 +1,1 @@
+Space isolated E2E preview fixture
