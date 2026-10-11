@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -144,11 +145,14 @@ export async function createLocalSdkProvider() {
 }
 
 /**
- * Windows sandboxes stay fail-closed until explicit Setup repairs their ACL
- * state; fresh CI runners never ran Setup, so the daemon would answer every
- * tool call with structured no-execution. Linux sandboxes are ready without
- * it. Runs the SDK's own doctor/setup against the isolated home, mirroring
- * the packaged smoke.
+ * Windows sandboxes stay fail-closed until explicit Setup repairs their
+ * machine-level ACL state; fresh CI runners never ran Setup, so the daemon
+ * would answer every tool call with structured no-execution. The daemon
+ * probes readiness once at boot, so the repair has to happen before
+ * launchSpace boots the app - mirroring the packaged smoke, which is proven
+ * green on the same runners. Linux sandboxes are ready without it. The
+ * home directory itself is re-derived at boot, so launchSpace's later
+ * wipe of the deterministic test dir is harmless.
  */
 async function setupSandboxForIsolatedHome(testDataDir: string): Promise<void> {
   if (process.platform !== 'win32') return;
@@ -161,6 +165,8 @@ async function setupSandboxForIsolatedHome(testDataDir: string): Promise<void> {
       '-e',
       [
         "import { doctorKodaXSandbox, setupKodaXSandbox } from '@kodax-ai/kodax';",
+        'import { mkdir } from \'node:fs/promises\';',
+        'await mkdir(process.env.KODAX_HOME, { recursive: true });',
         'let doctor = await doctorKodaXSandbox({ refresh: true });',
         'if (!doctor.ready) doctor = await setupKodaXSandbox();',
         'if (!doctor.ready)',
@@ -172,11 +178,14 @@ async function setupSandboxForIsolatedHome(testDataDir: string): Promise<void> {
 }
 
 export async function launchRealSdkSpace(testId: string, baseUrl: string) {
+  // fixtures.launchSpace derives the same path and wipes it on entry; the
+  // sandbox repair below is machine-level and survives that wipe.
+  const testDataDir = path.join(os.tmpdir(), `kodax-test-${testId}`);
+  await setupSandboxForIsolatedHome(testDataDir);
   const space = await launchSpace(testId, {
     env: { KODAX_FORCE_MOCK: '0', SPACE_TEST_COMPLETE_EXIT_TRIGGER: '1' },
   });
   try {
-    await setupSandboxForIsolatedHome(space.testDataDir);
     const projectRoot = path.join(space.testDataDir, 'project');
     await mkdir(projectRoot);
     await writeFile(path.join(projectRoot, 'README.md'), '# Local SDK E2E\n');
