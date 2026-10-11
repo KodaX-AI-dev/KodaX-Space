@@ -14,6 +14,12 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+---
+
+## [0.1.47-alpha.1] - 2026-10-11
+
+First alpha of the 0.1.47 line.
+
 ### Changed
 
 - Upgrade the installed SDK to `0.7.97-alpha.3` and migrate Space to the unified public contracts: stable Product input and captured Main authorization, Host-owned Workflow policy, canonical history/current views, execution statistics, and recoverable client exit. Keep the existing Main connection and Partner execution boundary. See the [migration and acceptance record](docs/features/SDK_0.7.97_MIGRATION.md).

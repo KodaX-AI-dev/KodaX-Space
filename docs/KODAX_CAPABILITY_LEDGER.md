@@ -3,8 +3,8 @@
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
 > Last reviewed: 2026-10-02
-> Space baseline: current source `0.1.46`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical; v0.1.46 with stable KodaX 0.7.96 is released alongside this ledger state)
-> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.96` (`sha512-7H/o0LhmlbeQsUnxGutSqMIb2Ms7UUS+kqNiPYChYT9G8Oni8RxB8ZxsDwiIlQ3ORPg4NwrDXQmKACab/uBVSA==`).
+> Space baseline: current source `0.1.47-alpha.1`; latest stable release [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; v0.1.44 / v0.1.43 remain historical; v0.1.46 with stable KodaX 0.7.96 is released alongside this ledger state)
+> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-alpha.3` (`sha512-44DjfLBwS6B1j3gQ/is5IFq5iMe97ZAItUbDH772cmsQQB96OwdNZCF6f+4roGPWOHwiVfspuEORmeves3LAMw==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
 > Workspace dependency: root and Desktop manifests and lockfile pin stable 0.7.96. Earlier rc.3 Windows packaged/boot/exit evidence remains historical; final beta.3 qualification is recorded in the release readiness document above.
 > Package/source evidence: a formal release requires both workspaces to resolve one deduplicated exact Registry package whose root/desktop manifests, lock views, installed package, tarball URL, and integrity agree. Release acceptance also imports every public KodaX facade, verifies ancestor-aware transitive dependencies, loads packaged `better-sqlite3`from unpacked native bytes, and boots the packaged application.
@@ -77,7 +77,7 @@ This is the Space-side source of truth for SDK-dependent capability planning. A 
 
 ## Runtime and session capabilities
 
-### Current SDK baseline: KodaX 0.7.96
+### Current SDK baseline: KodaX 0.7.97-alpha.3
 
 The source tree pins the exact published stable SDK in both manifests and the
 npm lockfile. SDK startup requires `sandboxRuntime:11`, `runtimeAutoModeGuardrail:6`,
@@ -89,7 +89,7 @@ daemon admission requirements and connected Runtime checks additionally require
 `commandLifetimeFilesystemLease:false`. The release dependency gate requires the
 complete universal native bundle. Electron packaging unpacks the whole
 `dist/native` directory, and packaged smoke validates each manifest-pinned file
-before running the real sandbox path. Space uses package version 0.1.46
+before running the real sandbox path. Space uses package version 0.1.47-alpha.1
 for this source candidate. Alpha.6/alpha.7 move Windows readiness to protected-cache
 generation 10, keep broad ACL repair inside explicit Setup, extend exact-authority
 proxy capacity, isolate each command's temporary leaf, and require real no-side-effect
@@ -158,6 +158,8 @@ Run/request identity, status, retry, and context-capacity facts; it never accept
 raw Provider response text, headers, URLs, prompts, paths, stacks, or errors.
 Older daemons remain compatible through the existing optional `failureKind` and
 generic terminal-message path.
+
+> Published prerelease 0.7.97-alpha.3 carries the unified public contract migration adopted by Space 0.1.47-alpha.1: stable Product input with captured Main authorization (stable inputId; retry/queue/steer reuse the original snapshot), Host-owned Workflow policy, canonical history/current views with sourceRevision-guarded boundaries and page cache v9 successors, SDK statistics for cumulative usage/physical requests/context/per-tool sandbox facts, and lifecycle receipts for recoverable client exit with other-client protection. The journal/replay path and the old complete-exit API are retired. Full delta audit and Space-side acceptance: [SDK_0.7.97_MIGRATION](features/SDK_0.7.97_MIGRATION.md).
 
 ### v0.1.45 published KodaX 0.7.95 baseline
 
