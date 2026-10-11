@@ -143,11 +143,40 @@ export async function createLocalSdkProvider() {
   };
 }
 
+/**
+ * Windows sandboxes stay fail-closed until explicit Setup repairs their ACL
+ * state; fresh CI runners never ran Setup, so the daemon would answer every
+ * tool call with structured no-execution. Linux sandboxes are ready without
+ * it. Runs the SDK's own doctor/setup against the isolated home, mirroring
+ * the packaged smoke.
+ */
+async function setupSandboxForIsolatedHome(testDataDir: string): Promise<void> {
+  if (process.platform !== 'win32') return;
+  const env: Record<string, string | undefined> = { ...process.env, KODAX_HOME: testDataDir };
+  delete env.PSMODULEPATH;
+  await promisify(execFile)(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      [
+        "import { doctorKodaXSandbox, setupKodaXSandbox } from '@kodax-ai/kodax';",
+        'let doctor = await doctorKodaXSandbox({ refresh: true });',
+        'if (!doctor.ready) doctor = await setupKodaXSandbox();',
+        'if (!doctor.ready)',
+        "  throw new Error('sandbox not ready: ' + JSON.stringify(doctor.diagnostics));",
+      ].join('\n'),
+    ],
+    { env, windowsHide: true, timeout: 120_000 },
+  );
+}
+
 export async function launchRealSdkSpace(testId: string, baseUrl: string) {
   const space = await launchSpace(testId, {
     env: { KODAX_FORCE_MOCK: '0', SPACE_TEST_COMPLETE_EXIT_TRIGGER: '1' },
   });
   try {
+    await setupSandboxForIsolatedHome(space.testDataDir);
     const projectRoot = path.join(space.testDataDir, 'project');
     await mkdir(projectRoot);
     await writeFile(path.join(projectRoot, 'README.md'), '# Local SDK E2E\n');

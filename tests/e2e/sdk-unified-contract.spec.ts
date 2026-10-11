@@ -14,7 +14,7 @@ import {
   waitSdkIdle,
 } from './sdk-provider-fixture.js';
 
-test.setTimeout(90_000);
+test.setTimeout(150_000);
 
 test('real SDK Stop admits a new prompt while the cancelled HTTP stream is still open', async () => {
   const provider = await createLocalSdkProvider();
