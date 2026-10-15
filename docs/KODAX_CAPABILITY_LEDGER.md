@@ -3,7 +3,7 @@
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
 > Last reviewed: 2026-10-15
-> Space baseline: unpublished candidate `0.1.47-alpha.2`; latest stable [v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96; latest published prerelease v0.1.47-alpha.1 / SDK 0.7.97-alpha.3.
+> Space baseline: published prerelease [`v0.1.47-alpha.2`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.2) / SDK `0.7.97-alpha.6`; latest stable [v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96.
 > Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-alpha.6` (`sha512-mYRfXyQJAGvGB7msVS5FhLSWqdBeyPGrIFBl35cQ9HkYadcGtrpR2Np8Pb6/vDshH+3imQtiaSJZYp8e9F78mw==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
 > Workspace dependency: root/Desktop/lockfile pin published 0.7.97-alpha.6. Alpha.2 qualification is recorded in [release readiness](releases/v0.1.47-alpha.2-release-readiness.md); previous release and SDK integration evidence retain their original source fingerprints.

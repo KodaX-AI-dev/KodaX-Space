@@ -32,7 +32,7 @@
 
 ### Download a release
 
-Download installers from the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest), currently `v0.1.46`. The latest published prerelease is [`v0.1.47-alpha.1`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.1). This checkout prepares `0.1.47-alpha.2`; it has not been published and does not replace the stable download.
+Download installers from the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest), currently `v0.1.46`. The latest published prerelease is [`v0.1.47-alpha.2`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.2). Prereleases do not replace the stable download.
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |
@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**This checkout prepares Space `0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`. Space alpha.2 has not been published.** Root, Desktop, IPC schema and UI kit share the candidate version; the SDK resolves to one integrity-pinned Registry package.
+**This checkout is the published Space `v0.1.47-alpha.2` prerelease, pinning npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`.** Root, Desktop, IPC schema and UI kit share the version; the SDK resolves to one integrity-pinned Registry package.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.
@@ -104,7 +104,7 @@ See [release preparation](docs/releases/v0.1.47-alpha.2-release-readiness.md), [
 
 ## Current Release
 
-The latest stable release is [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46), published on 2026-10-06 with stable KodaX `0.7.96`. The latest published prerelease is `v0.1.47-alpha.1` with SDK `0.7.97-alpha.3`; alpha.2 is the unpublished candidate described above.
+The latest stable release is [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46), published on 2026-10-06 with stable KodaX `0.7.96`. The latest published prerelease is [`v0.1.47-alpha.2`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.2) with SDK `0.7.97-alpha.6`.
 
 The earlier Partner beta.3 Release was withdrawn; its tag and acceptance records remain historical. Later stable builds and this candidate retain the existing Partner integration. See [CHANGELOG](CHANGELOG.md) for the version history.
 
