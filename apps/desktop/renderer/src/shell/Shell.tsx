@@ -66,6 +66,7 @@ import { useSpotlight } from '../lib/useSpotlight.js';
 import { RightSidebar } from './RightSidebar.js';
 import { EnvironmentHub } from './EnvironmentHub.js';
 import { PinnedTaskSummary } from './PinnedTaskSummary.js';
+import { RuntimeStartupStatus } from './RuntimeStartupStatus.js';
 import { HelpOverlayController } from './HelpOverlay.js';
 import { CommandPaletteController } from './CommandPalette.js';
 import { ToastContainer } from './ToastContainer.js';
@@ -1597,6 +1598,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
 
             <div ref={popoutBoundsRef} className="relative flex flex-1 min-h-0 flex-col">
               <PinnedTaskSummary />
+              <RuntimeStartupStatus />
               {currentHistoryWarning !== undefined && (
                 <div
                   role="status"

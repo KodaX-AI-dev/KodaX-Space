@@ -1,34 +1,11 @@
 # KodaX Space 产品需求文档（PRD）
 
-> **2026-09-14 beta.3 Partner integration candidate（过渡版，发布已撤回，随 beta.4 一同发布）**: Users of a Space build containing this change can open Partner and choose a bundled expert without installing a separate extension. The expert and method stay bound to the Partner session; service connections require explicit account and resource authorization. Existing user install/disable/uninstall choices survive restart. This is a beta delivery candidate, not a declaration that every external account or planned Coder integration has been accepted. See [user guide](USER_MANUAL.zh-CN.md#121-使用内置专家) and [release readiness](releases/v0.1.46-beta.3-release-readiness.md).
+> 更新日期：2026-10-15。当前候选为 Space `0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`，尚未发布；最新稳定版为 Space v0.1.46 / KodaX 0.7.96，已发布预发布版为 v0.1.47-alpha.1 / SDK 0.7.97-alpha.3。
+> 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，现有 SDK 验收见[alpha.6 接入](releases/kodax-0.7.97-alpha.6-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
 
-> **2026-08-24 当前正式发布基线**：KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) 对齐 npm 正式发布的精确 KodaX `0.7.95`，要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。Session 历史在 Runtime-ready 重验时保留已加载 canonical 前缀；排队输入、live 回复、分页加载和当前 Runtime 身份保持同一因果投影。退出恢复自动重试临时 `unconfirmed-owner`，不要求人工删除标记，也不阻塞无关工作。v0.1.45 还把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡（召回停靠条与队首卡 1-9/Enter/Esc 键盘操作），恢复 daemon 重连后已准入的 Runs，并保证幂等发送只产生一个气泡。
->
-> **2026-10-11 当前源码候选（0.1.47 线开启）**：Space package 为 `0.1.47-alpha.1`，精确依赖锁定已发布的 KodaX `0.7.97-alpha.3`，
-> SDK 包启动检查要求 `sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 与 `effectiveConfig:1`；`providerCredentialBroker:2` 由 daemon 准入 requirements 与连接后
-> Runtime capability 两层门禁验证。跨平台 native bundle 必须整体解包并通过 manifest hash smoke；
-> 权限档位保持 Plan、Edits、Auto[LLM]、Full Access。Beta.5 把 Windows setup generation 提升到 11（profile/SSH ACL 排除对齐 Codex 语义），连同显式 doctor/setup 的真实 target-start 证明、setup-only profile ACL 收敛、逐命令私有 Temp 与 64 端口 broker 范围；内置 deepseek 别名走官方 Anthropic 兼容端点，默认模型 deepseek-flash；Space
-> 不修改完整性锁定的依赖字节。正式发布基线保持上一段历史事实。
->
-> **2026-08-20 已发布历史基线**：KodaX Space [`v0.1.44`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.44) 对齐 npm 正式发布的精确 KodaX `0.7.93`，要求 sandboxRuntime v4、crashOutcomeModel v2、Actor settlement convergence v2、Session-scoped event journal、liveOutputSegments v1 与本地 runtimeExitSettlement v1；v0.1.43 / v0.1.42 保留为历史正式产品基线。
-> Coder daemon 必须显式提供 `managedRunDurability:1`；Space 只消费其 canonical
-> managed-Run `runId`/`turnId`，不维护第二份 Run 状态。未配置的 Auto LLM classifier timeout
-> 使用 KodaX 的首次 45 秒、重试 90 秒默认值。root/Desktop 使用同一份完整性锁定的 npm Registry
-> KodaX `0.7.95` 正式包，lockfile 与物理安装匹配正式 Registry URL/SRI。Provider 实时输出以 SDK 的
-> response/request segment 投影为唯一真理；Space 不保留 checkpoint replay 执行回退。
-> 在任何 replacement daemon 启动前恢复持久退出票据。
+共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
 
-> Last updated: 2026-08-28
-> Status: 长期产品方向文档。当前正式发布基线为 KodaX Space 0.1.45（package 0.1.45）/ npm 正式发布的精确 KodaX 0.7.95。v0.1.45 在 v0.1.44 的既有 Runtime owner、canonical Actor/Turn、精确 history/live 与 compaction、完整物理请求诊断、F145 原生 Session 提醒、可配置 Shell、独立 integration 配置和正式打包门禁基础上，把 ask_user 与 guardrail 授权改为对话流内的聚焦提问卡（FEATURE_032 v2，全屏模态移除），并收口 KodaX 0.7.95 契约对齐（`conversationHistory:2`/`runtimeExitSettlement:2`/`sandboxRuntime:5`）、daemon 重连后已准入 Run 的恢复与幂等发送的单一气泡。生命周期支持仍按能力协商，不通过 SemVer 推断；Issue 133 的 macOS/Linux process acceptance/cleanup retry gap 和 F138 完整 OS 隔离继续保持未完成。已交付能力与边界以 [USER_MANUAL.zh-CN.md](USER_MANUAL.zh-CN.md)、[KODAX_CAPABILITY_LEDGER.md](KODAX_CAPABILITY_LEDGER.md) 和 [FEATURE_LIST.md](FEATURE_LIST.md) 为准。
-> 对标：Anthropic Claude Desktop（Cowork / Code 双面板）+ OpenAI Codex Desktop App（多 agent 本机壳）
-
-> **当前落地摘要**：Coder 与 Partner 均可用；Partner 已具备 workspace-first Outputs、Sources/KB、checkpointed writes、Office/PDF 便利产物和本地 policy/audit。0.1.30 接入 KodaX 0.7.67 Reference External Agent 管理、Workflow/Worker 路由和 Task Dock 干预；v0.1.31 已发布 inline RuntimeHostAdapter 的 managed run、transcript、compact、fork、rewind；v0.1.32 由 KodaX 0.7.76 Coder daemon 在能力协商通过后提供 Runtime 配置的 A2A；v0.1.33 对齐 KodaX 0.7.77 并收口 Actor、精确回放、用量诊断、Shell、关闭行为和独立 integration 配置。底部把“距自动压缩的活动输入压力”和“Session 累计 Token 用量”拆为两个入口，避免把模型最大上下文、绝对阈值、输出容量预留和 Provider 账单混为一谈。MCP Tasks、受治理 HTTP、通用 Connector/浏览器控制/自动化/远程任务仍未作为当前能力开放。
->
-> **2026-07-30 v0.1.34 已发布增量**：精确接入 KodaX 0.7.78 的 exclusive Actor owner、Skill learning-loop、integration resilience、Auto guardrail v4 和公开 command-sandbox facade。Settings/诊断显示有界 integration health，Auto 只暴露 side-query 元数据，活动工具显示结构化 sandbox observation；main-owned startup/shutdown overlay、事务 MCP manager reload、跨平台 visible exit/orphan recovery、物理 sandbox helper 打包和 positional history replay 已通过发布门禁。完整 Learning Center UI、Memory Agent UI、Issue 133 剩余项与 F138 文档/native-resource OS 隔离仍按原计划推进。
->
-> **2026-07-12 路线重置**：从 `v0.1.31` 起，规范路线由 [FEATURE_LIST.md](FEATURE_LIST.md) 的 Runtime alignment、platform trust、workflow/review evidence、task/capability governance、Memory Agent、Learning Center 和 beta completion 版本链管理。旧 M0/M1/M2/M3 里程碑只作为产品演进历史，不再表示未交付状态或版本承诺。
-
----
+SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；已有凭据、权限、退出恢复和 Partner inline owner 边界保持。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
 
 ## 0. 中文导读（一页摘要）
 
@@ -735,7 +712,7 @@ Worker/独立子进程、私有 staging、超时取消、禁宏/链接更新和�
 - [KodaX PRD](../../KodaX/docs/PRD.md)
 - [KodaX HLD](../../KodaX/docs/HLD.md)
 - [KodaX ADR](../../KodaX/docs/ADR.md)
-- [KodaX-private 技术交底书（Repointel）](../../KodaX-private/技术交底书.md)
+- 公开架构与接入边界见 [ADR](ADR/README.md) 和 [KodaX 能力台账](KODAX_CAPABILITY_LEDGER.md)；内部 Repointel 设计资料未随本仓库公开。
 - Claude Desktop 桌面扩展规范（`.mcpb`，参 Anthropic 公开文档）
 
 ---

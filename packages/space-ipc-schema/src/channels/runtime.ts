@@ -93,6 +93,18 @@ export const spaceCoderConnectionStateSchema = z.enum([
   'disconnected',
 ]);
 
+const startupProgressSchema = z.union([
+  z
+    .object({ stage: z.enum(['checking', 'starting', 'upgrading', 'connecting', 'ready']) })
+    .strict(),
+  z
+    .object({
+      stage: z.literal('waiting'),
+      reason: z.enum(['connected_clients', 'host_starting', 'host_stopping']),
+    })
+    .strict(),
+]);
+
 export const spaceCoderConnectionProjectionSchema = z
   .object({
     state: spaceCoderConnectionStateSchema,
@@ -103,9 +115,18 @@ export const spaceCoderConnectionProjectionSchema = z
     reason: z.string().min(1).max(MAX_REASON).optional(),
     capabilities: z.array(spaceRuntimeCapabilitySchema).max(128),
     integrations: spaceRuntimeIntegrationHealthSchema.optional(),
+    /** Local startup observation; never evidence that Session subscriptions are ready. */
+    startupProgress: startupProgressSchema.optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
+    if (value.startupProgress && value.state !== 'connecting' && value.state !== 'reconnecting') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'startup progress requires a pending connection',
+        path: ['startupProgress'],
+      });
+    }
     if (value.state === 'ready' && value.stale) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -392,6 +413,7 @@ export const spaceRuntimeSessionProfileSchema = z
     projectRoot: z.string().min(1).max(4096).optional(),
     createdAt: timestampSchema,
     lastActivityAt: timestampSchema,
+    lastMessageAt: timestampSchema.optional(),
     activeRun: spaceRuntimeRunProjectionSchema.optional(),
     queuedRuns: z.array(spaceRuntimeRunProjectionSchema).max(MAX_QUEUE_ITEMS),
     lastTerminalRun: spaceRuntimeRunProjectionSchema.optional(),

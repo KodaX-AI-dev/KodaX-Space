@@ -13,7 +13,7 @@
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/KodaX-AI-dev/KodaX-Space?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-KAI--FCL-orange?style=flat-square"></a>
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/KodaX-AI-dev/KodaX-Space/ci.yml?style=flat-square&label=ci"></a>
-  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.96-2ea44f?style=flat-square">
+  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.97--alpha.6-2ea44f?style=flat-square">
   <img alt="platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-34495e?style=flat-square">
 </p>
 
@@ -32,7 +32,7 @@
 
 ### 下载安装包
 
-稳定版安装包位于 [最新稳定版](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)。Partner 插件库曾随 Space 0.1.46-beta.3 发布，该 GitHub Release 已撤回，tag 保留作历史。当前 beta.4 候选保留 Partner 并加入 rc.5 兼容修复，尚未发布。beta 不会替换普通用户默认下载的稳定版。实际发布状态见 [版本验收记录](docs/releases/v0.1.46-beta.4-release-readiness.md)。
+稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，当前为 `v0.1.46`。已发布的最新预发布版为 [`v0.1.47-alpha.1`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.1)；本地正在准备 `0.1.47-alpha.2`，尚未发布。预发布版不替代默认稳定下载。
 
 | 平台    | 安装包                                            |
 | ------- | ------------------------------------------------- |
@@ -90,100 +90,23 @@ npm run dev
 
 ## 当前源码基线
 
-**当前源码为 Space 0.1.47-alpha.1，精确锁定已发布的 KodaX 0.7.97-alpha.3，并把 Space 迁移到 SDK 统一公共契约（稳定 Product 输入 + Main 授权捕获、canonical 历史/当前视图、SDK 统计与可恢复客户端退出；journal/replay 与旧完整退出 API 移除）并要求 `sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2`、`providerCredentialBroker:2` 与 `effectiveConfig:1`；能力支持不通过语义版本号推断。** root/Desktop manifest、lockfile、物理安装、打包 ASAR 与整体解包的跨平台 native bundle 使用同一 Registry URL/SRI。Space 暴露 Plan、Edits、Auto[LLM]、Full Access 四档，并保留用户的推理意图，档位协商与拒绝缓存交由 SDK（rc.8：能力未知的 OpenAI 兼容模型可尝试关闭与全部标准档位；选择器如实上报上次发送档位与回退原因，不声称强度已生效）。0.7.96 beta 线保留 sandbox-first 语义，并携带 Windows native wire protocol 10 与 setup generation 11（beta.5 起 profile/SSH ACL 排除对齐 Codex 语义）、显式 doctor/setup 的真实 target-start 证明、setup 持有的宽 profile ACL 收敛、支持最多 32 个精确网络 authority 的 64 端口范围、逐命令私有 Temp，以及由 `sandboxRuntime:11` 隔离的安全 daemon 替换。`kodax sandbox doctor` 必须在宿主终端直接运行，也可使用 Space Settings，不要让模型通过 Bash 工具嵌套运行。Windows 凭据优先从 safeStorage/DPAPI 加密的 v1 vault 恢复（无需加载 native keyring），旧 keyring 账号按账号迁移且保护更新/删除竞争；已有 Runtime 身份保留原 secret，持久化失败明确报错而不重建（Issue 216）；打包版 updater 携带 `electron-updater` 生产依赖。macOS 后台 Git 调用先经 SDK 共享预检（仅 `/usr/bin/git`、`xcode-select -p` 退出码 2 阻断、5 秒缓存可恢复），未装开发者工具的机器不再反复弹出安装窗口（Issue 217）；Windows/Linux 行为不变。未签名的 macOS 构建禁用自动更新（请从 GitHub Releases 手动下载 DMG）；Windows 的 NSIS 更新改为静默安装并自动重启，Linux 保持 AppImage 直换与 deb 自动更新。NSIS 卸载保留 AppData；已有 Windows Runtime 身份的 secret 解密失败时，可经 SDK journal 指纹验证后从旧 Credential Manager 自愈（不确定情形一律失败关闭，绝不生成替代 secret，Issue 216 跟进）。Space 直接消费精确 Registry 字节，不做依赖补丁。新的正式发布为 Space v0.1.46 / KodaX 0.7.96 正式包；v0.1.45 / KodaX 0.7.95 转为历史产物。
+**当前候选为 Space `0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`，尚未发布。** 根目录、Desktop、共享 IPC 与 UI 包统一版本；SDK 必须来自同一个完整性锁定的正式 Registry 包。
 
-SDK rc.14 根据证据恢复旧历史，并在后续模型请求中补充有界的未确认恢复摘要。Space 保留中断日志展示，不改写对话；部分历史无法确认也不阻塞发送。见 [完整接入与验证](docs/releases/kodax-0.7.96-rc.14-integration.md)。 正式版 0.7.96 沿用这些实现，见 [正式包验证](docs/releases/kodax-0.7.96-integration.md)。
+- 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
+- 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。
+- SDK 包与 Host 分别验证能力，包含 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1`；Host 还要求 `providerCredentialBroker:2`。不以版本号代替能力协商。
+- Space 产品问题使用 `space_manual`；`kodax_manual` 保留 SDK/CLI 机制手册。SDK 内置 `relationship_scan.depth` 已使用整数范围，Gemini 兼容请求不需要客户端 schema 补丁。
+- 实时 Sidecar Verifier 与 `/verifier-log` 已移除；保留 Stall logging 和历史记录，结果检查使用工具证据与 `visual-review`。可选 `@kodax-ai/artifacts` 尚未发布，不宣称新增 PPT 工具。
 
-v0.1.45 锁定的 KodaX 0.7.95 保留 `actorSettlementConvergence:2`、`sessionEventJournal:1`、`conversationHistory:2` 与 `crashOutcomeModel:2`，并把退出结算提升到 v2、Windows sandbox 提升到 v5。同一 boot 的 `unconfirmed-owner` 票据由 SDK 后台自动重试进程排空、ACL 复原和 effect-fence 释放，只在精确 sandbox-user SID 探针证明账号空闲后清除；探针暂时失败时仅对 sandbox 工作 fail closed，不阻塞无关的非 sandbox 工作。崩溃遗留的零字节 authority lock 也会在字节/stat 未变化证明后自动回收，仍存活或已被继任者接管的 owner 不会被误删。Runtime Shell 仍是 sandbox-first；containment 无法准备时沿用普通权限策略，但普通权限执行仍取得同一 filesystem-effect fence，不重放命令、不重复 classifier，灾难性破坏操作继续硬拒绝。`worker.configuredA2A` 仍是 KodaX CLI Worker-hosted embedded Runtime 配置，不是 Space Settings 开关。
+Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS 未签名构建仍需手动下载 DMG 更新。Partner 保留自己的 inline owner、现有内置库与外部账号验收边界。
 
-当前源码还会在 Runtime-ready 重验时保留已经绘制的 canonical 历史，包括首个重叠项是 assistant 或 tool 的分页；queue query 与恢复回复保持同一因果 turn，历史分页显示加载/重试状态，活动和终态只接受当前 Runtime 身份的证据。压缩期间上下文表盘保持不确定进度，直到新的事实读数到达。发布依赖闸门会读取代理环境并在超时后有界销毁连接，应用退出则取消尚未完成的启动恢复等待。显式 Skill 准入传递原始 `rawUserInput`；KodaX 0.7.95 已只把它持久化为用户 query，并把 prepared `User request:` 保留为模型执行 overlay。包含多个已注册 Skill 引用的请求会在展开、Hook 和 Run 准入前被事实性拒绝。已准入的 Run 在 daemon 重连后按精确 `runId` 恢复，幂等发送只产生一个会话气泡；等待 Run 恢复期间重连定时器保持调度，不会让宿主事件循环提前退出。
-
-底部状态区把主 Agent 上下文压力与整个 Session 累计 Token 分开显示。“上下文窗口”使用最终自动压缩阈值和不含正文的六类构成；完成态物理请求按 request ID 去重，覆盖 root、child、retry、fallback、repair、workflow digest 和 compaction summary。F140 新增“每次询问 / 保留托盘和 Runtime / 彻底退出”偏好。Windows、macOS 或 Linux 真正退出时，Space 会先尝试安全停止 Coder daemon；若有 blocker，则提供默认的“保持开启”和显式“强行关闭”。强行关闭只终止当前 Space 的任务、保留其他客户端的 Runtime 工作，并保证退出不再回到阻塞弹窗。Space 自动拉起的孤儿 daemon 仍会在最后客户端断开且任务空闲后自回收。Terminal 与 Coder 命令工具共享同一个所选 Shell/profile PATH 契约，不接受任意可执行文件，也不把敏感变量投影给 PTY。
-
-F122-F124 继续提供 Partner 项目来源库、不可变证据/引用和自动 grounded context 闭环。F121 仅因最终人工多客户端验收台账保持 `InProgress`；v0.1.45 对缺失 daemon capability（包括 durable managed Run、Actor settlement convergence v2、Session journal、conversationHistory v2、sandboxRuntime v5、crashOutcomeModel v2 和 runtimeExitSettlement v2）明确失败，并继续保护活动 Session 的输入准入、history/live 对齐和 journal epoch 隔离。详见 [v0.1.45 发布设计](docs/features/v0.1.45.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
-
-F135 继续把许可证允许再分发的 `frontend-slides` 与 `huashu-design` 作为经审查的 Space builtin 一起打包。F137 改排到 `v0.1.61`，由 Space 独立创作四个中文优先的替代 Skill；本次 v0.1.45 不包含文档 Skill。详见 [v0.1.61 设计](docs/features/v0.1.61.md)、[builtin skill 文档](docs/BUILTIN_SKILLS.md)和 [v0.1.45 发布记录](docs/releases/v0.1.45-release-readiness.md)。
-
-F136 让 Windows 后台 owner 可见、可控；F140 允许选择“每次询问”“保留托盘运行”或“彻底退出”。完整退出通过可见准入检查后，Windows 会隐藏到托盘继续 SDK settlement；重新打开仍显示同一条已用时进度，普通成功退出保持安静，失败则恢复窗口并显示诊断。F145 把未读结果或待处理交互按唯一 Session 计数投影到 Windows 任务栏/托盘、macOS Dock 与受支持的 Linux launcher；查看 Session 或解决交互后清除。KodaX 的专用 `daemonOrphanExit:1` 能力只为 Space 自动拉起的 daemon 增加 30 秒空闲孤儿回收期。
-
-已解决的发布阻断项：KodaX 0.7.76 保留 0.7.75 引入的集中式 Windows `windowsHide` 加固，普通 daemon-backed Coder query 不再闪出短暂子进程控制台。Space 只消费官方 Registry 包，没有内置 SDK 源码补丁。详见 [Issue 091](docs/KNOWN_ISSUES.md#091-ordinary-windows-queries-can-flash-several-short-lived-command-windows-from-kodax-runtime-child-processes)。
+见[本次发布准备](docs/releases/v0.1.47-alpha.2-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
 
 ## 当前正式版本
 
-**v0.1.45 - 内联提问卡与精确 KodaX 0.7.95 发布**
+最新稳定版为 [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46)（2026-10-06），精确依赖稳定 KodaX `0.7.96`。已发布预发布版为 `v0.1.47-alpha.1`，使用 SDK `0.7.97-alpha.3`；本次 alpha.2 的当前候选与待完成发布门见上文。
 
-已于 2026-08-24 正式发布 [`v0.1.45`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.45)：Space package `0.1.45` 精确锁定 npm `latest` KodaX `0.7.95`。本版本把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡，对齐 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`，并恢复 daemon 重连后已准入的 Runs、保证幂等发送只产生一个气泡。
-
-| 范围       | 摘要                                                                                                                                     |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 最新 SDK   | npm `latest` 在发布准备时核验为 `0.7.95`，manifest、lockfile、安装包和 SRI 均精确一致。                                                  |
-| 内联提问卡 | `ask_user_question` 与 guardrail 提示渲染为对话流内的聚焦卡片；召回停靠条统计待答数量并闪定位队首卡，队首卡支持 1-9/Enter/Esc 键盘操作。 |
-| Run 恢复   | daemon 重连后已准入的 Run 按精确 `runId` 恢复，幂等发送只产生一个气泡，历史重验保留已绘制的 canonical 前缀。                             |
-| 文档与手册 | README、用户手册、PRD/HLD、Feature List、能力台账、Known Issues、release 记录、回归指南和 `kodax_manual` 统一到 v0.1.45。                |
-
-详细内容见 [v0.1.45 设计](docs/features/v0.1.45.md)、[发布记录](docs/releases/v0.1.45-release-readiness.md)、[Issue 193 回归指南](docs/test-guides/ISSUE_193_v0.1.45_REGRESSION_GUIDE.md)、[Issue 196 回归指南](docs/test-guides/ISSUE_196_v0.1.45_REGRESSION_GUIDE.md)和 [Issue 197 回归指南](docs/test-guides/ISSUE_197_v0.1.45_REGRESSION_GUIDE.md)。
-
-**v0.1.44 - 原生提醒与后台退出结算发布**
-
-已于 2026-08-20 正式发布 [`v0.1.44`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.44)：Space package `0.1.44` 精确锁定 npm `latest` KodaX `0.7.93`。本版本新增跨平台原生数字角标，让已准入的完整退出在后台继续，并对齐 Task Dock、Repointel、历史页头、外部任务恢复态与 Windows ACL 排障指引。
-
-| 范围           | 摘要                                                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 最新 SDK       | npm `latest` 在发布准备时核验为 `0.7.93`，manifest、lockfile、安装包和 SRI 均精确一致。                                   |
-| 原生提醒       | 未读结果和待处理交互按唯一 Session 计数，同步到 Windows 任务栏/托盘、macOS Dock 与受支持的 Linux launcher。               |
-| 后台退出与恢复 | Windows 后台继续已准入 settlement，普通成功退出不发系统通知；失败恢复窗口，previous-boot ACL 阻断提供可执行指引。         |
-| 文档与手册     | README、用户手册、PRD/HLD、Feature List、能力台账、Known Issues、release 记录、回归指南和 `kodax_manual` 统一到 v0.1.44。 |
-
-详细内容见 [v0.1.44 设计](docs/features/v0.1.44.md)、[发布记录](docs/releases/v0.1.44-release-readiness.md)、[F145 验收指南](docs/test-guides/FEATURE_145_v0.1.44_TEST_GUIDE.md)和 [Issue 189-192 回归指南](docs/test-guides/ISSUE_189_v0.1.44_REGRESSION_GUIDE.md)。
-
-**v0.1.43 - Runtime 退出与 filesystem-effect 收敛发布**
-
-已于 2026-08-19 发布 [`v0.1.43`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.43)，package `0.1.43` 精确锁定 KodaX `0.7.92`，引入 SDK-owned crash-resumable 完整退出、sandbox Runtime v4、crash-outcome v2 与 SDK 有效 live-output segment。详见 [v0.1.43 设计](docs/features/v0.1.43.md)与[发布记录](docs/releases/v0.1.43-release-readiness.md)。
-
-**v0.1.42 - 因果 Transcript 与最新 KodaX 对齐发布**
-
-2026-08-16 源码快照 `0.1.42` 精确锁定 KodaX `0.7.89`。该快照保持 Session/Run/Turn 因果归属，收口 canonical/live、延迟 terminal、continued Run、重连与 Ctrl+R 的顺序一致性，并同步 Actor settlement v2。
-
-详细内容见 [v0.1.42 设计](docs/features/v0.1.42.md) 与 [v0.1.42 发布记录](docs/releases/v0.1.42-release-readiness.md)。
-
-**v0.1.40 - KodaX 0.7.86 Sandbox 与 Owner 收敛发布**
-
-2026-08-14 正式发布 [`v0.1.40`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.40)：package `0.1.40` 精确对齐 npm 正式发布的 KodaX `0.7.86`，SDK 与 Runtime 同时要求 `sandboxRuntime:3`。本版本覆盖 Issue 128 打包 Electron/ASAR Windows Shell 链路、sandbox-first 普通权限 fallback，以及 stale inline owner 的 SDK 原子恢复和可重试清理。
-
-| 区域          | 内容                                                                                                                       |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Runtime 合约  | KodaX 0.7.86 精确 Registry bytes，并显式协商 `sandboxRuntime:3`、`actorSettlementConvergence:1`、`sessionEventJournal:1`。 |
-| Windows Shell | 打包烟测执行真实 contained marker command，检查 helper 物理路径、daemon sandbox v3 和重启后的 Shell。                      |
-| Owner 恢复    | abandoned inline owner 由 SDK 原子协议恢复；active、不可读和不可验证 owner 继续 fail closed，close 失败可重试。            |
-| 文档          | README、中文手册、能力台账、release 设计/记录、回归指南、CHANGELOG 和 `kodax_manual` 同步。                                |
-
-详细内容见 [v0.1.40 设计](docs/features/v0.1.40.md) 与
-[v0.1.40 发布记录](docs/releases/v0.1.40-release-readiness.md)。
-
-**v0.1.39 - KodaX 0.7.85 Runtime Convergence Maintenance Release**
-
-2026-08-11 正式发布 [`v0.1.39`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.39)：package `0.1.39` 精确对齐 npm 正式发布的
-KodaX `0.7.85`。本版本同步 Actor settlement convergence、Session journal
-epoch 隔离、unknown Run 的 after-turn 输入、精确 Stop、输入操作去重、history/live
-保护和 idle-exit client preservation，并更新 README/手册与应用内 `kodax_manual`。
-详细内容见 [v0.1.39 设计](docs/features/v0.1.39.md) 与
-[v0.1.39 发布记录](docs/releases/v0.1.39-release-readiness.md)。
-
-**v0.1.38 - KodaX 0.7.84 Maintenance Release**
-
-2026-08-07 正式发布 [`v0.1.38`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.38)：package `0.1.38` 精确对齐 npm 正式发布的
-KodaX `0.7.84`。本版本同步已落地的 Session 重新激活修复、Agent progress
-有界持久化与同 owner Stop 收敛、图标打包资源、README/手册和应用内
-`kodax_manual`。详细内容见 [v0.1.38 设计](docs/features/v0.1.38.md) 与
-[v0.1.38 发布记录](docs/releases/v0.1.38-release-readiness.md)。
-
-**v0.1.37 - Recovery and Release Alignment**
-
-[`v0.1.37`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.37) 已于 2026-08-06 正式发布，package 版本为 `0.1.37`，精确对齐 npm 正式发布的 KodaX 0.7.83。Space 继续收紧多 Session 恢复、历史分页、跨 Session 事件隔离和安全退出恢复边界。详见 [CHANGELOG.md](CHANGELOG.md)、[v0.1.37 设计](docs/features/v0.1.37.md)和[v0.1.37 发布记录](docs/releases/v0.1.37-release-readiness.md)。
-
-**v0.1.36 - Session and Runtime Reconciliation Hardening**
-
-[`v0.1.36`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.36) 已于 2026-08-05 正式发布，package 版本为 `0.1.36`，精确对齐 KodaX 0.7.82。详见 [v0.1.36 设计](docs/features/v0.1.36.md)和[v0.1.36 发布记录](docs/releases/v0.1.36-release-readiness.md)。
+先前 Partner beta.3 的 Release 已撤回，tag 和原验收记录保留为历史；后续稳定版与本候选继续包含现有 Partner 集成。完整版本变化见 [CHANGELOG](CHANGELOG.md)。
 
 ## 历史发布
 

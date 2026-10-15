@@ -514,7 +514,6 @@ function buildSlashArgSuggestions(
         ...providerSuggestions(query, providers, false, t),
       ];
       break;
-    case 'verifier-log':
     case 'stall-log':
       suggestions = staticOptions(['on', 'off']);
       break;

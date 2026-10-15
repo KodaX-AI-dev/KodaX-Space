@@ -75,29 +75,68 @@ export function mergeRuntimeActivityIntoSessions(
   let changed = false;
   const merged = sessions.map((session) => {
     if ((session.surface ?? 'code') !== 'code') return session;
-    const runtimeSession = runtimeBySessionId.get(session.sessionId);
-    const previous = previousBySessionId.get(session.sessionId);
-    const previousActivity =
-      previous &&
-      sessionMatchesScope(previous, {
+    const candidate = previousBySessionId.get(session.sessionId);
+    const previous =
+      candidate &&
+      sessionMatchesScope(candidate, {
         projectRoot: session.projectRoot,
         surface: 'code',
       })
-        ? previous.lastActivityAt
-        : 0;
-    const createdAt = session.createdAt > 0 ? session.createdAt : (runtimeSession?.createdAt ?? 0);
-    const lastActivityAt = Math.max(
-      createdAt,
-      session.lastActivityAt,
-      runtimeSession?.lastActivityAt ?? 0,
+        ? candidate
+        : undefined;
+    const next = mergeSessionActivity(
+      session,
+      runtimeBySessionId.get(session.sessionId),
+      previous,
       activityBySessionId.get(session.sessionId) ?? 0,
-      previousActivity,
     );
-    if (createdAt === session.createdAt && lastActivityAt === session.lastActivityAt) {
-      return session;
-    }
-    changed = true;
-    return { ...session, createdAt, lastActivityAt };
+    changed ||= next !== session;
+    return next;
   });
   return changed ? merged : sessions;
+}
+
+function mergeSessionActivity(
+  session: SessionMeta,
+  runtimeSession: SpaceRuntimeProfileProjectionT['sessions'][number] | undefined,
+  previous: SessionMeta | undefined,
+  runtimeActivityAt: number,
+): SessionMeta {
+  const messageTimes = [
+    session.lastMessageAt,
+    runtimeSession?.lastMessageAt,
+    previous?.lastMessageAt,
+  ].filter((time): time is number => time !== undefined);
+  const lastMessageAt = messageTimes.length > 0 ? Math.max(...messageTimes) : undefined;
+  const localInputTimes = [session.lastLocalInputAt, previous?.lastLocalInputAt].filter(
+    (time): time is number => time !== undefined,
+  );
+  const lastLocalInputAt = localInputTimes.length > 0 ? Math.max(...localInputTimes) : undefined;
+  const createdAt = session.createdAt > 0 ? session.createdAt : (runtimeSession?.createdAt ?? 0);
+  const lastActivityAt =
+    lastMessageAt !== undefined
+      ? Math.max(lastMessageAt, lastLocalInputAt ?? 0)
+      : Math.max(
+          createdAt,
+          session.lastActivityAt,
+          runtimeSession?.lastActivityAt ?? 0,
+          runtimeActivityAt,
+          previous?.lastActivityAt ?? 0,
+          lastLocalInputAt ?? 0,
+        );
+  if (
+    createdAt === session.createdAt &&
+    lastActivityAt === session.lastActivityAt &&
+    lastMessageAt === session.lastMessageAt &&
+    lastLocalInputAt === session.lastLocalInputAt
+  ) {
+    return session;
+  }
+  return {
+    ...session,
+    createdAt,
+    lastActivityAt,
+    ...(lastMessageAt !== undefined ? { lastMessageAt } : {}),
+    ...(lastLocalInputAt !== undefined ? { lastLocalInputAt } : {}),
+  };
 }

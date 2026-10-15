@@ -68,10 +68,7 @@ import {
   sdkTagToSurface,
   type PersistedConversationHistoryData,
 } from '../kodax/session-store.js';
-import {
-  runtimeHostAdapter,
-  type RuntimeConversationHistoryPage,
-} from '../kodax/runtime-host-adapter.js';
+import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 import type { RuntimeConversationHistory } from '@kodax-ai/kodax/runtime';
 import { generateKodaxSessionId } from '../kodax/session-id.js';
 import { runtimeProjectionController } from '../kodax/runtime/runtime-projection-controller.js';
@@ -79,7 +76,7 @@ import { runWithCoderAdmission } from '../kodax/coder-runtime-mode-switch.js';
 import { partnerSourceStore } from '../kodax/partner-source-store.js';
 import { parseTaskCompletedBlocks, selectWorkflowBlocks } from './workflow-result-notice.js';
 import { dedupeTranscriptEntries } from './transcript-dedup.js';
-import { limitSessionHistoryWithLocalNotices, pageSessionHistoryItems } from './history-window.js';
+import { limitSessionHistoryWithLocalNotices } from './history-window.js';
 import { resolveRuntimeDefaults } from '../kodax/runtime-defaults.js';
 import { getSessionRuntimeStore } from '../kodax/session-runtime-store.js';
 import { getSkillRegistry } from '../skill/registry.js';
@@ -101,6 +98,8 @@ import { clearSlashGoalForSession } from '../slash/builtin.js';
 import { ensureProviderKeyInjected } from './provider.js';
 import { buildAttachmentPathOverlay } from '../kodax/attachment-path-overlay.js';
 import { issueSessionImageAttachment } from '../window/session-attachment-protocol.js';
+import { projectProductItems } from '../kodax/runtime/product-view.js';
+import { sessionHistoryChannel } from '@kodax-space/space-ipc-schema';
 import type {
   AgentsFileMeta,
   ChannelInput,
@@ -176,43 +175,7 @@ type ConversationTurnBoundary = {
   readonly sourceRevision: string;
 };
 
-interface RuntimeConversationWindow {
-  readonly revision: string;
-  readonly sourceRevision: string;
-  readonly status: RuntimeConversationHistory['status'];
-  readonly issues: RuntimeConversationHistory['issues'];
-  readonly entriesByIndex: Map<number, RuntimeConversationHistory['entries'][number]>;
-  /** Tool results from the immediately newer SDK page that close tool uses in this page. */
-  seamToolResults: Map<string, { readonly content: string; readonly isError: boolean }>;
-  /** Exact turn ends that cross from this SDK page into one or more already-loaded newer pages. */
-  seamTurnBoundaries: Map<number, ConversationTurnBoundary>;
-  /**
-   * Exact final boundary before the first visible user in this page and every already-loaded
-   * newer page. A single visible turn can have a tail spanning more than two SDK pages, while
-   * the resident browsing window intentionally retains only one page at a time.
-   */
-  newerPrefixTurnBoundary?: ConversationTurnBoundary;
-  entryBytes: number;
-  /** True only after advancing to an older SDK page, never for a slice of this same page. */
-  newerSdkPageOmitted: boolean;
-  prefixOmitted: boolean;
-  hasMore: boolean;
-  nextCursor?: string;
-  projectionContinuation?: {
-    readonly cursor: string;
-    readonly endExclusive: number;
-    readonly itemCount: number;
-  };
-}
-
-const RUNTIME_HISTORY_PAGE_LIMIT = 64;
-const MAX_RUNTIME_HISTORY_WINDOWS = 16;
-const MAX_RUNTIME_HISTORY_WINDOW_ENTRIES = 2_000;
-const MAX_RUNTIME_HISTORY_PAGE_BYTES = 32 * 1024 * 1024;
-const MAX_RUNTIME_HISTORY_WINDOW_BYTES = 64 * 1024 * 1024;
-const runtimeConversationWindows = new Map<string, RuntimeConversationWindow>();
 const sessionHistoryOperationTails = new Map<string, Promise<void>>();
-let runtimeProjectionCursorCounter = 0;
 
 /**
  * The Runtime browsing window is mutable presentation state. Keep the complete history handler
@@ -250,24 +213,6 @@ export function resolveSessionHistoryBackend(
 ): SessionHistoryBackend {
   if (surface !== 'code' || selectedHost === 'legacy') return 'persisted';
   return runtimeReady ? 'runtime' : 'runtime-unavailable';
-}
-
-function nextRuntimeProjectionCursor(sessionId: string): string {
-  runtimeProjectionCursorCounter += 1;
-  return `space-projection:${runtimeProjectionCursorCounter}:${sessionId}`;
-}
-
-function rememberRuntimeConversationWindow(
-  sessionId: string,
-  window: RuntimeConversationWindow,
-): void {
-  runtimeConversationWindows.delete(sessionId);
-  runtimeConversationWindows.set(sessionId, window);
-  while (runtimeConversationWindows.size > MAX_RUNTIME_HISTORY_WINDOWS) {
-    const oldest = runtimeConversationWindows.keys().next().value;
-    if (oldest === undefined) break;
-    runtimeConversationWindows.delete(oldest);
-  }
 }
 
 function assertSafePagedHistoryMutation(
@@ -413,30 +358,6 @@ export function conversationHistoryAsTranscript(
   };
 }
 
-function runtimeWindowMatchesPage(
-  window: RuntimeConversationWindow,
-  page: RuntimeConversationHistoryPage,
-): boolean {
-  return (
-    window.revision === page.revision &&
-    window.sourceRevision === page.sourceRevision &&
-    window.status === page.status &&
-    window.issues.length === page.issues.length &&
-    window.issues.every((issue, index) => {
-      const candidate = page.issues[index];
-      return (
-        candidate !== undefined &&
-        issue.code === candidate.code &&
-        issue.message === candidate.message &&
-        issue.occurrenceCount === candidate.occurrenceCount &&
-        issue.entryCount === candidate.entryCount &&
-        issue.entryIds.length === candidate.entryIds.length &&
-        issue.entryIds.every((entryId, entryIndex) => entryId === candidate.entryIds[entryIndex])
-      );
-    })
-  );
-}
-
 function conversationHistoryDiagnostic(history: ConversationHistoryData) {
   return {
     status: history.status,
@@ -448,15 +369,6 @@ function conversationHistoryDiagnostic(history: ConversationHistoryData) {
     })),
   };
 }
-
-type RuntimeConversationWindowResult =
-  | {
-      readonly outcome: 'ready';
-      readonly window: RuntimeConversationWindow | null;
-      readonly projectionEndExclusive?: number;
-      readonly projectionItemCount?: number;
-    }
-  | { readonly outcome: 'data_changed' };
 
 interface RuntimePresentationContinuationState {
   projectionContinuation?: {
@@ -577,191 +489,6 @@ export function collectLeadingTurnTailBoundary(
     return continuedNewerPrefixBoundary;
   }
   return boundaryId === undefined ? undefined : { boundaryId, sourceRevision };
-}
-
-function conversationTurnBoundaryBytes(boundary: ConversationTurnBoundary | undefined): number {
-  return boundary === undefined
-    ? 0
-    : Buffer.byteLength(boundary.boundaryId, 'utf8') +
-        Buffer.byteLength(boundary.sourceRevision, 'utf8');
-}
-
-function appendRuntimeConversationPage(
-  window: RuntimeConversationWindow,
-  page: RuntimeConversationHistoryPage,
-): void {
-  if (!runtimeWindowMatchesPage(window, page)) {
-    throw new Error('Conversation history continuation crossed its immutable boundary.');
-  }
-  const currentIndexes = [...window.entriesByIndex.keys()].sort((a, b) => a - b);
-  if (currentIndexes.length > 0 && page.entries.length > 0) {
-    const expectedNewestOlderIndex = currentIndexes[0]! - 1;
-    const actualNewestOlderIndex = page.entries[page.entries.length - 1]!.index;
-    if (actualNewestOlderIndex !== expectedNewestOlderIndex) {
-      throw new Error('Conversation history continuation is not contiguous with the loaded tail.');
-    }
-  }
-  const pageBytes = page.entries.reduce(
-    (total, indexed) => total + Buffer.byteLength(JSON.stringify(indexed.entry), 'utf8'),
-    0,
-  );
-  if (
-    page.entries.length > MAX_RUNTIME_HISTORY_WINDOW_ENTRIES ||
-    pageBytes > MAX_RUNTIME_HISTORY_PAGE_BYTES
-  ) {
-    throw new Error('Conversation history page exceeds the bounded resident window.');
-  }
-  const seamToolResults = collectCrossPageToolResults(
-    page.entries.map(({ entry }) => entry.message),
-    [...window.entriesByIndex.values()].map((entry) => entry.message),
-  );
-  const newerEntries = [...window.entriesByIndex.entries()]
-    .sort(([left], [right]) => left - right)
-    .map(([index, entry]) => ({ index, entry }));
-  const continuedNewerPrefixBoundary = window.newerPrefixTurnBoundary;
-  const seamTurnBoundaries = collectCrossPageTurnBoundaries(
-    page.entries,
-    newerEntries,
-    window.sourceRevision,
-    continuedNewerPrefixBoundary,
-  );
-  const newerPrefixTurnBoundary = collectLeadingTurnTailBoundary(
-    page.entries,
-    window.sourceRevision,
-    continuedNewerPrefixBoundary,
-  );
-  const seamToolResultBytes = [...seamToolResults.entries()].reduce(
-    (total, [id, result]) =>
-      total + Buffer.byteLength(id, 'utf8') + Buffer.byteLength(result.content, 'utf8') + 1,
-    0,
-  );
-  const seamTurnBoundaryBytes = [...seamTurnBoundaries.values()].reduce(
-    (total, boundary) => total + conversationTurnBoundaryBytes(boundary),
-    0,
-  );
-  const seamBytes =
-    seamToolResultBytes +
-    seamTurnBoundaryBytes +
-    conversationTurnBoundaryBytes(newerPrefixTurnBoundary);
-  if (pageBytes + seamBytes > MAX_RUNTIME_HISTORY_WINDOW_BYTES) {
-    throw new Error('Conversation history page seam exceeds the bounded resident window.');
-  }
-  if (window.entriesByIndex.size > 0) {
-    // Each SDK continuation becomes its own bounded browsing window. Keeping page generations
-    // separate avoids retaining an ever-growing prefix and gives renderer navigation an explicit
-    // no-overlap boundary instead of silently evicting arbitrary accumulated rows.
-    window.entriesByIndex.clear();
-    window.entryBytes = 0;
-    window.newerSdkPageOmitted = true;
-  }
-  window.projectionContinuation = undefined;
-  window.seamToolResults = seamToolResults;
-  window.seamTurnBoundaries = seamTurnBoundaries;
-  if (newerPrefixTurnBoundary === undefined) delete window.newerPrefixTurnBoundary;
-  else window.newerPrefixTurnBoundary = newerPrefixTurnBoundary;
-  for (const indexed of page.entries) {
-    if (window.entriesByIndex.has(indexed.index)) {
-      throw new Error(`Conversation history continuation repeated index ${indexed.index}.`);
-    }
-    window.entriesByIndex.set(indexed.index, indexed.entry);
-  }
-  window.entryBytes += pageBytes + seamBytes;
-  window.prefixOmitted = page.hasMore;
-  window.hasMore = page.hasMore;
-  window.nextCursor = window.hasMore ? page.nextCursor : undefined;
-}
-
-async function loadRuntimeConversationWindow(
-  input: {
-    readonly sessionId: string;
-    readonly cursor?: string;
-    readonly revision?: string;
-    readonly sourceRevision?: string;
-  },
-  recoveryDeadline: number,
-): Promise<RuntimeConversationWindowResult> {
-  const isContinuation = input.cursor !== undefined;
-  let window = runtimeConversationWindows.get(input.sessionId);
-  if (isContinuation) {
-    if (
-      window === undefined ||
-      input.revision !== window.revision ||
-      input.sourceRevision !== window.sourceRevision
-    ) {
-      return { outcome: 'data_changed' };
-    }
-    const presentationContinuation = consumeRuntimePresentationContinuation(window, input.cursor);
-    if (presentationContinuation !== null) {
-      rememberRuntimeConversationWindow(input.sessionId, window);
-      return {
-        outcome: 'ready',
-        window,
-        projectionEndExclusive: presentationContinuation.endExclusive,
-        projectionItemCount: presentationContinuation.itemCount,
-      };
-    }
-    if (window.nextCursor !== input.cursor) {
-      return { outcome: 'data_changed' };
-    }
-  } else {
-    runtimeConversationWindows.delete(input.sessionId);
-    window = undefined;
-  }
-
-  const result = await runtimeHostAdapter.conversationHistoryPage({
-    sessionId: input.sessionId,
-    ...(input.cursor !== undefined ? { cursor: input.cursor } : {}),
-    ...(window !== undefined
-      ? { revision: window.revision, sourceRevision: window.sourceRevision }
-      : {}),
-    limit: RUNTIME_HISTORY_PAGE_LIMIT,
-    recoveryDeadline,
-  });
-  if (result.outcome === 'data_changed') {
-    runtimeConversationWindows.delete(input.sessionId);
-    return result;
-  }
-  const page = result.page;
-  if (page === null) {
-    runtimeConversationWindows.delete(input.sessionId);
-    return { outcome: 'ready', window: null };
-  }
-  if (window === undefined) {
-    const pageBytes = page.entries.reduce(
-      (total, indexed) => total + Buffer.byteLength(JSON.stringify(indexed.entry), 'utf8'),
-      0,
-    );
-    if (
-      page.entries.length > MAX_RUNTIME_HISTORY_WINDOW_ENTRIES ||
-      pageBytes > MAX_RUNTIME_HISTORY_PAGE_BYTES
-    ) {
-      throw new Error('Conversation history page exceeds the bounded resident window.');
-    }
-    const newerPrefixTurnBoundary = collectLeadingTurnTailBoundary(
-      page.entries,
-      page.sourceRevision,
-    );
-    window = {
-      revision: page.revision,
-      sourceRevision: page.sourceRevision,
-      status: page.status,
-      issues: page.issues,
-      entriesByIndex: new Map(),
-      seamToolResults: new Map(),
-      seamTurnBoundaries: new Map(),
-      ...(newerPrefixTurnBoundary !== undefined ? { newerPrefixTurnBoundary } : {}),
-      entryBytes: pageBytes + conversationTurnBoundaryBytes(newerPrefixTurnBoundary),
-      newerSdkPageOmitted: false,
-      prefixOmitted: page.hasMore,
-      hasMore: page.hasMore,
-      ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
-    };
-    for (const indexed of page.entries) window.entriesByIndex.set(indexed.index, indexed.entry);
-  } else {
-    appendRuntimeConversationPage(window, page);
-  }
-  rememberRuntimeConversationWindow(input.sessionId, window);
-  return { outcome: 'ready', window };
 }
 
 export function resolveHistoricalRuntimeIdentity(input: {
@@ -1528,8 +1255,8 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
       const defaultId = providerConfigStore.getDefaultProviderId();
       if (defaultId) persistedProviderFallback = defaultId;
     }
-    // Runtime profile owns the latest known run boundary. Older SDK SessionSummary only
-    // exposes createdAt, so use the profile to recover persisted Coder session activity.
+    // SDK summaries own genuine message time; retain Runtime activity for live work
+    // and older summaries that only expose creation time.
     // The renderer repeats this overlay because session.list can race Runtime startup.
     const runtimeProfile = runtimeProjectionController.profileSnapshot();
     const runtimeSessions = new Map(
@@ -1558,32 +1285,34 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         const runtimeSession = m.surface === 'code' ? runtimeSessions.get(m.sessionId) : undefined;
         const runtimeActivityAt =
           m.surface === 'code' ? (runtimeActivity.get(m.sessionId) ?? 0) : 0;
+        const messageAt = m.lastMessageAt !== undefined ? Date.parse(m.lastMessageAt) : NaN;
+        const lastMessageAt =
+          Number.isFinite(messageAt) && messageAt >= 0
+            ? Math.max(messageAt, runtimeSession?.lastMessageAt ?? 0)
+            : runtimeSession?.lastMessageAt;
         if (m.kind === 'in-flight') {
-          const lastActivityAt = Math.max(
-            m.lastActivityAt,
-            runtimeSession?.lastActivityAt ?? 0,
-            runtimeActivityAt,
-          );
+          const lastActivityAt =
+            lastMessageAt ??
+            Math.max(m.lastActivityAt, runtimeSession?.lastActivityAt ?? 0, runtimeActivityAt);
           return {
             item: m,
             createdAt: m.createdAt,
             lastActivityAt,
+            lastMessageAt,
             sortKey: lastActivityAt,
           };
         }
         const parsedCreatedAt = m.createdAt !== undefined ? Date.parse(m.createdAt) : 0;
         const sdkCreatedAt = Number.isFinite(parsedCreatedAt) ? parsedCreatedAt : 0;
         const createdAt = sdkCreatedAt > 0 ? sdkCreatedAt : (runtimeSession?.createdAt ?? 0);
-        const lastActivityAt = Math.max(
-          createdAt,
-          runtimeSession?.lastActivityAt ?? 0,
-          runtimeActivityAt,
-        );
-        return { item: m, createdAt, lastActivityAt, sortKey: lastActivityAt };
+        const lastActivityAt =
+          lastMessageAt ??
+          Math.max(createdAt, runtimeSession?.lastActivityAt ?? 0, runtimeActivityAt);
+        return { item: m, createdAt, lastActivityAt, lastMessageAt, sortKey: lastActivityAt };
       })
       .sort((a, b) => b.sortKey - a.sortKey);
     const sessions: SessionMeta[] = await Promise.all(
-      withTs.map(async ({ item, createdAt, lastActivityAt }) => {
+      withTs.map(async ({ item, createdAt, lastActivityAt, lastMessageAt }) => {
         if (item.kind === 'in-flight') {
           // in-flight 没有 msgCount 字段（ManagedSession 不跟用户消息计数），dashboard
           // 用 sessions[].msgCount ?? userMessagesBuffer.length 双源 fallback。
@@ -1604,6 +1333,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
             title: item.title,
             createdAt: item.createdAt,
             lastActivityAt,
+            ...(lastMessageAt !== undefined ? { lastMessageAt } : {}),
             parentSessionId: item.parentSessionId,
             forkPointTurnIdx: item.forkPointTurnIdx,
             model: item.model,
@@ -1657,6 +1387,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
           title: item.title,
           createdAt,
           lastActivityAt,
+          ...(lastMessageAt !== undefined ? { lastMessageAt } : {}),
           msgCount: item.msgCount,
           model: identity.model,
           runtimeMetadataSource: identity.runtimeMetadataSource,
@@ -1887,7 +1618,6 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
   // read-only projection and therefore must not participate in executable Coder admission.
   registerChannel('session.history', (input) =>
     runSerializedSessionHistoryOperation(input.sessionId, async () => {
-      const recoveryDeadline = Date.now() + 15_000;
       const withLocalNotices = async (
         baseItems: readonly SessionHistoryItem[],
         conversation?: ReturnType<typeof conversationHistoryDiagnostic>,
@@ -1927,24 +1657,8 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         'code';
       let data;
       let usesConversationProjection = false;
-      let runtimeWindowForResponse: RuntimeConversationWindow | undefined;
-      let runtimeProjectionEndExclusive: number | undefined;
-      let runtimeProjectionItemCount: number | undefined;
       let conversationDiagnosticValue: ReturnType<typeof conversationHistoryDiagnostic> | undefined;
-      let conversationPageValue:
-        | {
-            readonly outcome: 'ready';
-            readonly revision: string;
-            readonly sourceRevision: string;
-            readonly hasMore: boolean;
-            readonly nextCursor?: string;
-            readonly windowMode: 'replace' | 'prepend';
-            readonly hasNewer: boolean;
-          }
-        | { readonly outcome: 'data_changed' }
-        | { readonly outcome: 'runtime_unavailable' }
-        | undefined;
-      let omittedConversationEntries = 0;
+      const omittedConversationEntries = 0;
       const historyBackend = resolveSessionHistoryBackend(
         surface,
         runtimeHostAdapter.selectedHost(),
@@ -1957,39 +1671,44 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         return withLocalNotices([], undefined, { outcome: 'runtime_unavailable' });
       }
       if (historyBackend === 'runtime') {
-        const result = await loadRuntimeConversationWindow(input, recoveryDeadline);
-        if (result.outcome === 'data_changed') {
+        const result = await runtimeHostAdapter.readProductHistory(input.sessionId, input.cursor);
+        if (result.outcome === 'data_changed') return withLocalNotices([], undefined, result);
+        const page = result.page;
+        if (page === null) return withLocalNotices([]);
+        if (
+          (input.revision && input.revision !== page.revision) ||
+          (input.sourceRevision && input.sourceRevision !== page.sourceRevision)
+        ) {
           return withLocalNotices([], undefined, { outcome: 'data_changed' });
         }
-        if (result.window === null) return withLocalNotices([]);
-        const window = result.window;
-        runtimeWindowForResponse = window;
-        runtimeProjectionEndExclusive = result.projectionEndExclusive;
-        runtimeProjectionItemCount = result.projectionItemCount;
-        const boundaryEntries: IndexedConversationEntry[] = [...window.entriesByIndex.entries()]
-          .sort(([left], [right]) => left - right)
-          .map(([index, entry]) => ({ index, entry }));
-        const conversation: RuntimeConversationHistory = {
-          revision: window.revision,
-          sourceRevision: window.sourceRevision,
-          status: window.status,
-          issues: window.issues,
-          entries: boundaryEntries.map(({ entry }) => entry),
-        };
-        data = conversationHistoryAsTranscript(
-          conversation,
-          boundaryEntries,
-          boundaryEntries,
-          !window.newerSdkPageOmitted,
-          window.seamTurnBoundaries,
-        );
-        // The response is one complete bounded browsing window, not an incremental fragment.
-        // SDK pages and Space's bounded projection slices both replace the renderer window so
-        // older navigation never accumulates the complete transcript in renderer memory.
-        conversationDiagnosticValue = conversationHistoryDiagnostic(conversation);
-        omittedConversationEntries = window.prefixOmitted ? (boundaryEntries[0]?.index ?? 0) : 0;
-        usesConversationProjection = true;
-      } else {
+        return sessionHistoryChannel.output.parse({
+          sessionId: input.sessionId,
+          requestId: input.requestId,
+          items: [],
+          productItems: await projectProductItems(input.sessionId, page.items),
+          productOversized: [...page.oversized],
+          conversation: {
+            status: page.status,
+            sourceRevision: page.sourceRevision,
+            issues: page.issues.map(({ code, occurrenceCount, entryCount }) => ({
+              code,
+              occurrenceCount,
+              entryCount,
+            })),
+          },
+          page: {
+            outcome: 'ready' as const,
+            revision: page.revision,
+            sourceRevision: page.sourceRevision,
+            hasMore: page.nextCursor !== undefined,
+            ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+            windowMode: 'replace' as const,
+            hasNewer: input.cursor !== undefined,
+          },
+        });
+      }
+      /* Legacy persisted/Partner projection below; shared Coder display uses SDK items above. */
+      {
         if (input.cursor !== undefined) {
           return withLocalNotices([], undefined, { outcome: 'data_changed' });
         }
@@ -2011,9 +1730,6 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
       // 第一步: 走一遍消息收集 toolId → result 映射 (tool_result 永远在 tool_use 之后,
       // 但同一 message 里也可能有多个 tool_use,先扫一遍简化处理)
       const toolResults = new Map<string, { content: string; isError: boolean }>();
-      for (const [toolId, result] of runtimeWindowForResponse?.seamToolResults ?? []) {
-        toolResults.set(toolId, result);
-      }
       for (const msg of data.messages) {
         if (!Array.isArray(msg.content)) continue;
         for (const block of msg.content) {
@@ -2349,85 +2065,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
           omittedItems: Math.max(1, omittedConversationEntries),
         });
       }
-      if (runtimeWindowForResponse !== undefined) {
-        try {
-          const boundaries = new Set(
-            [...runtimeWindowForResponse.entriesByIndex.values()].map((entry) => entry.boundaryId),
-          );
-          const completeTurnIds = items.flatMap((item) =>
-            item.kind === 'user' &&
-            item.turnId &&
-            item.turnUserOrdinal === 0 &&
-            item.historyBoundary?.sourceRevision === runtimeWindowForResponse.sourceRevision &&
-            boundaries.has(item.historyBoundary.boundaryId)
-              ? [item.turnId]
-              : [],
-          );
-          const recovered = await runtimeHostAdapter.recoverInterruptedConversationItems(
-            input.sessionId,
-            items,
-            completeTurnIds,
-            recoveryDeadline,
-          );
-          items.splice(0, items.length, ...recovered);
-        } catch (error) {
-          console.warn(
-            '[session.history] Interrupted history recovery failed:',
-            error instanceof Error ? error.name : 'unknown',
-          );
-          items.push({
-            kind: 'workflow_notice',
-            text: '部分中断内容暂时无法恢复，已保留正式历史；重新打开会话可重试。',
-          });
-        }
-      }
-      if (runtimeWindowForResponse !== undefined) {
-        const window = runtimeWindowForResponse;
-        if (
-          runtimeProjectionItemCount !== undefined &&
-          runtimeProjectionItemCount !== items.length
-        ) {
-          runtimeConversationWindows.delete(input.sessionId);
-          return withLocalNotices([], undefined, { outcome: 'data_changed' });
-        }
-        const projectionPage = pageSessionHistoryItems(
-          items,
-          runtimeProjectionEndExclusive ?? items.length,
-        );
-        let nextCursor = window.nextCursor;
-        if (projectionPage.nextEndExclusive !== undefined) {
-          nextCursor = nextRuntimeProjectionCursor(input.sessionId);
-          window.projectionContinuation = {
-            cursor: nextCursor,
-            endExclusive: projectionPage.nextEndExclusive,
-            itemCount: items.length,
-          };
-        } else {
-          window.projectionContinuation = undefined;
-        }
-        rememberRuntimeConversationWindow(input.sessionId, window);
-        conversationPageValue = {
-          outcome: 'ready',
-          revision: window.revision,
-          sourceRevision: window.sourceRevision,
-          hasMore: nextCursor !== undefined,
-          // The newest request installs one bounded tail. Every cursor continuation is an older,
-          // non-overlapping slice and therefore extends the already loaded transcript upward.
-          // This is a presentation contract only; Runtime canonical order and cursors remain the
-          // authority for which records belong to each page.
-          windowMode: input.cursor === undefined ? 'replace' : 'prepend',
-          // A prepended response is older in isolation, but the renderer still owns the newest
-          // page it is extending. It therefore does not need replacement-window navigation.
-          hasNewer: input.cursor === undefined ? window.newerSdkPageOmitted : false,
-          ...(nextCursor !== undefined ? { nextCursor } : {}),
-        };
-        return withLocalNotices(
-          projectionPage.items,
-          conversationDiagnosticValue,
-          conversationPageValue,
-        );
-      }
-      return withLocalNotices(items, conversationDiagnosticValue, conversationPageValue);
+      return withLocalNotices(items, conversationDiagnosticValue);
     }),
   );
 }

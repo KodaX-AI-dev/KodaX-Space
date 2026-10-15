@@ -1,6 +1,10 @@
 import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { useAppStore } from '../../renderer/src/store/appStore.js';
+import {
+  productTranscriptSnapshot,
+  replaceProductSessionView,
+} from '../../renderer/src/store/productSessionView.js';
 import { composeMessages } from '../../renderer/src/features/session/composeMessages.js';
 import { messageForSelectorTurn } from '../../renderer/src/features/session/turnIndex.js';
 import { runtimeTerminalEvidenceCandidates } from '../../renderer/src/store/runtimeProjectionState.js';
@@ -5753,4 +5757,107 @@ test('an identical newest read is an idempotent no-op (fold not re-run)', async 
   const secondEvents = useAppStore.getState().eventsBySession[sessionId];
   assert.equal(secondEvents, firstEvents);
   assert.equal(useAppStore.getState().userMessagesBySession[sessionId], firstMessages);
+});
+
+test('SDK paging keeps history as a separate frozen window and never folds its text into live events', async () => {
+  const sessionId = 'sdk-product-paging';
+  seedPagingStore(sessionId);
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async (_channel: string, input: { cursor?: string }) => ({
+          ok: true as const,
+          data: {
+            items: [],
+            productItems: [
+              {
+                id: input.cursor ? 'old-history' : 'new-history',
+                type: 'user' as const,
+                text: 'history prompt',
+              },
+            ],
+            page: {
+              outcome: 'ready' as const,
+              revision: 'revision',
+              sourceRevision: 'revision',
+              hasMore: !input.cursor,
+              ...(input.cursor ? {} : { nextCursor: 'older' }),
+              windowMode: 'replace' as const,
+              hasNewer: !!input.cursor,
+            },
+          },
+        })),
+      },
+    },
+  });
+  replaceProductSessionView({
+    sessionId,
+    runtimeId: 'runtime',
+    revision: 1,
+    items: [{ id: 'sdk-live', type: 'user', text: 'SDK live prompt' }],
+  });
+  await restoreNewestSessionHistory(sessionId, 'code');
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['sdk-live'],
+  );
+  assert.deepEqual(useAppStore.getState().eventsBySession[sessionId] ?? [], []);
+  await loadOlderSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['old-history'],
+  );
+  await revalidateNewestSessionHistory(sessionId, 'code');
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['old-history'],
+  );
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).hasNewer, true);
+  replaceProductSessionView({ sessionId, runtimeId: 'runtime', revision: 2, items: [] });
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['old-history'],
+  );
+  await restoreNewestSessionHistory(sessionId, 'code');
+  assert.deepEqual(productTranscriptSnapshot(sessionId)?.items, []);
+});
+
+test('evicting a history session also releases its SDK output and completed body cache', async () => {
+  const sessionId = 'sdk-product-evicted';
+  seedPagingStore(sessionId);
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async () => ({
+          ok: true as const,
+          data: {
+            items: [],
+            productItems: [],
+            page: {
+              outcome: 'ready' as const,
+              revision: 'r',
+              sourceRevision: 'r',
+              hasMore: false,
+              windowMode: 'replace' as const,
+              hasNewer: false,
+            },
+          },
+        })),
+      },
+    },
+  });
+  replaceProductSessionView({
+    sessionId,
+    runtimeId: 'rt',
+    revision: 1,
+    items: [{ id: 'output', type: 'assistant', text: 'answer' }],
+  });
+  await restoreNewestSessionHistory(sessionId, 'code');
+  for (let index = 0; index < 33; index += 1)
+    await restoreNewestSessionHistory(`sdk-product-cache-${index}`, 'code');
+  assert.equal(productTranscriptSnapshot(sessionId), undefined);
 });

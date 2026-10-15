@@ -16,6 +16,7 @@ import type {
   SpaceVersionOutput,
 } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from './store/appStore.js';
+import { replaceProductSessionView } from './store/productSessionView.js';
 import { pushToast } from './store/toastStore.js';
 import { useI18n } from './i18n/I18nProvider.js';
 import { SettingsModal } from './features/settings/SettingsModal.js';
@@ -299,6 +300,24 @@ export default function App(): JSX.Element {
         .then((result) => {
           if (!result.ok) throw new Error(result.error?.message ?? 'Session live snapshot failed.');
           if (disposed) return;
+          void invokeWithTimeout(bridge, 'session.productSnapshot', { sessionId })
+            .then((product) => {
+              if (!product.ok) throw new Error(product.error.message);
+              if (
+                !disposed &&
+                product.data &&
+                product.data.runtimeId === useAppStore.getState().runtimeConnection.runtimeId
+              ) {
+                replaceProductSessionView(product.data);
+                for (const item of product.data.items)
+                  if (item.inputId) {
+                    useAppStore.getState().settleSendOperationMessage(sessionId, item.inputId);
+                  }
+              }
+            })
+            .catch((error: unknown) =>
+              console.warn('[session.productSnapshot] read failed:', error),
+            );
           void invokeWithTimeout(bridge, 'session.statistics', { sessionId })
             .then((summary) => {
               if (!disposed && summary.ok)
@@ -664,6 +683,15 @@ export default function App(): JSX.Element {
         }
         if (shouldRequestSessionLiveSnapshot(status)) {
           requestLiveSnapshot(change.sessionId);
+        }
+      }),
+      bridge.on('session.productChanged', (view) => {
+        if (view.runtimeId === useAppStore.getState().runtimeConnection.runtimeId) {
+          replaceProductSessionView(view);
+          for (const item of view.items)
+            if (item.inputId) {
+              useAppStore.getState().settleSendOperationMessage(view.sessionId, item.inputId);
+            }
         }
       }),
       bridge.on('session.statisticsChanged', (statistics) => {

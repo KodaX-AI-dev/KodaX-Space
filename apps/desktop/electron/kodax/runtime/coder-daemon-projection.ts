@@ -13,7 +13,6 @@ import type { KodaXOutputSegmentProjection } from '@kodax-ai/kodax/coding';
 import {
   agentIterationProgressSchema,
   spaceRuntimeProfileProjectionSchema,
-  spaceRuntimeSidecarMessagePayloadSchema,
   spaceRuntimeToolSandboxSchema,
   spaceSessionLiveChangedSchema,
   spaceSessionLiveProjectionSchema,
@@ -1181,6 +1180,7 @@ export function projectRuntimeProfile(input: {
         createdAt,
         ...ownRuns.map((run) => timestamp(run.endedAt ?? run.runningAt ?? run.startedAt)),
       );
+      const lastMessageAt = timestamp(session?.lastMessageAt, NaN);
       return {
         sessionId,
         surface: 'code' as const,
@@ -1190,6 +1190,7 @@ export function projectRuntimeProfile(input: {
           : {}),
         createdAt,
         lastActivityAt,
+        ...(Number.isFinite(lastMessageAt) ? { lastMessageAt } : {}),
         ...runs,
       };
     }),
@@ -1442,32 +1443,6 @@ export class CoderSessionProjectionReducer {
         domain: 'settings',
         settings: settingsProjection(Number(revision), settings as RuntimeSessionSettings),
       });
-    }
-    if (event.type === 'sidecar.message') {
-      const recoveryRun = this.#projection.activeRun ?? this.#projection.lastTerminalRun;
-      if (
-        recoveryRun === undefined ||
-        recoveryRun.runId !== event.runId ||
-        recoveryRun.turnId === undefined ||
-        event.turnId === undefined ||
-        recoveryRun.turnId !== event.turnId
-      ) {
-        return null;
-      }
-      const message = spaceRuntimeSidecarMessagePayloadSchema.safeParse(event.payload);
-      if (!message.success) return null;
-      const sidecarMessages = [
-        ...(this.#projection.sidecarMessages ?? []).filter((item) => item.eventId !== event.id),
-        {
-          eventId: event.id.slice(0, 128),
-          runId: event.runId.slice(0, 128),
-          ...(text(event.turnId, 256) ? { turnId: text(event.turnId, 256)! } : {}),
-          seq: event.seq,
-          createdAt: timestamp(event.time),
-          message: message.data,
-        },
-      ].slice(-100);
-      return this.#commit(event.seq, { domain: 'sidecar', sidecarMessages });
     }
     if (event.type === 'run.input.delivered') {
       const activeRun = this.#projection.activeRun;

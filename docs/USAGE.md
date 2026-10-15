@@ -1,24 +1,11 @@
 # KodaX Space 运行与开发指南
 
-> **当前发布基线（2026-08-24）**：KodaX Space `v0.1.45` / npm Registry KodaX `0.7.95`。
-> Space 管理的 daemon 需要 `managedRunDurability:1`：接受的首条/队列输入及完成回合
-> 在生命周期事件前持久化为 canonical Run。Space 绑定确认的 `runId` 和流式 `turnId`，不以版本号代替能力协商。
-> 未显式设置 Auto LLM timeout 时，SDK 使用首次 `45000ms`、重试 `90000ms`。
-> v0.1.45 的 root/Desktop/lockfile 精确锁定 npm Registry KodaX `0.7.95` 正式包及其 SRI，并要求
-> SDK 与 daemon 提供 `sandboxRuntime:5`、`crashOutcomeModel:2`、`conversationHistory:2` 和 `actorSettlementConvergence:2`；Space 还保持精确
-> Session/Run/Turn owner 关联和 continued-Run history/live 边界。完整退出使用 SDK 本地
-> `runtimeExitSettlement:2`，同一 boot 的暂时性 owner 验证由 SDK 与 Space 自动重试，不把版本号当作运行时能力证明。
+> 更新日期：2026-10-15。当前候选为 Space `0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`，尚未发布；最新稳定版为 Space v0.1.46 / KodaX 0.7.96，已发布预发布版为 v0.1.47-alpha.1 / SDK 0.7.97-alpha.3。
+> 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，现有 SDK 验收见[alpha.6 接入](releases/kodax-0.7.97-alpha.6-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
 
-> 面向源码使用者、贡献者和发布维护者。普通用户请阅读[用户使用手册](USER_MANUAL.zh-CN.md)。
->
-> 当前 `main` 对 Space 管理的 daemon 要求专用的 `daemonOrphanExit:1` 能力；
-> 不使用 KodaX 语义版本或 Auto-mode guardrail 版本代替生命周期能力判断。
-> 当前已发布版本为 KodaX Space [`v0.1.45`](https://github.com/icetomoyo/KodaX-Space/releases/tag/v0.1.45) / 精确 Registry KodaX `0.7.95`。
-> 本版本把 ask_user 与 guardrail 授权改为对话流内的聚焦提问卡（全屏模态移除，召回停靠条与队首卡 1-9/Enter/Esc 键盘操作），对齐 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`，并恢复 daemon 重连后已准入的 Runs、保证幂等发送只产生一个气泡；同时保留 v0.1.44 的 F145 原生 Session 角标、后台 complete-exit settlement、安静的普通成功退出、previous-boot Windows ACL 恢复指引与 canonical page-head、Task Dock、Repointel、外部任务恢复态对齐，以及 crash-resumable exit、crash-outcome v2、SDK 有效输出 segment 和既有多 Session/Actor/Turn 安全边界。
->
-> 当前源码候选为 Space `0.1.47-alpha.1`，精确锁定 KodaX `0.7.97-alpha.3` / `sandboxRuntime:11` / `runtimeAutoModeGuardrail:6` / `sharedSessionSettings:2` / `providerCredentialBroker:2` / `effectiveConfig:1`。Beta.5 把 Windows setup generation 提升到 11（profile/SSH ACL 排除对齐 Codex 语义），显式 doctor/setup 会证明一次真实 target start/exit，宽 profile ACL 仅由 setup 收敛，逐命令使用私有 Temp，网络 broker 扩到 64 端口，并继续安全替换空闲旧 daemon；内置 deepseek 别名走官方 Anthropic 兼容端点，默认模型 deepseek-flash。
-> 打包必须整体解包 `@kodax-ai/kodax/dist/native`；发布检查会验证 universal native
-> 文件集合和 manifest hash，再运行真实 sandbox smoke。正式 v0.1.45 说明仍对应 KodaX 0.7.95。
+共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
+
+SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；已有凭据、权限、退出恢复和 Partner inline owner 边界保持。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
 
 ## 1. 环境要求
 
@@ -45,7 +32,7 @@ Space 管理的 daemon 必须返回 `daemonOrphanExit:1`，并继续要求
 `permission:grant-admin`、`interruptInput:1`、`actorControlPlane:1`、
 `contextCompaction:3`、`transcriptPaging:1`、`transcriptSearch:1`、
 `skillLearningLoop:1`、`integrationConfigResilience:1` 和
-`runtimeAutoModeGuardrail:4`、`actorSettlementConvergence:2`。`@kodax-ai/kodax/sandbox` 通过独立 facade probe
+`runtimeAutoModeGuardrail:6`、`actorSettlementConvergence:2`。`@kodax-ai/kodax/sandbox` 通过独立 facade probe
 验证，不能用版本号冒充 backend readiness。不得伪造 lockfile URL/SRI；本地测试包必须
 使用 `kodax-ai-kodax-<version>.tgz` 命名、随 checkout 提供，并由 lockfile SRI 锁定内容。
 普通 `npm run build` 和正式发布入口始终拒绝本地 tgz。
@@ -297,7 +284,7 @@ dispatcher teardown 都有界，超时或非法 URL 会明确失败并结束进�
 `scripts/pack.mjs`，先核对 `HTTPS_PROXY`/`NO_PROXY` 和 Registry 连通性，再运行
 `npm run test:release`；不要用扩大超时或跳过完整性校验掩盖网络问题。
 
-[v0.1.45 发布记录](releases/v0.1.45-release-readiness.md)是当前正式版证据的真理源；历史
+[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)记录当前候选；历史
 [v0.1.44 发布记录](releases/v0.1.44-release-readiness.md)与
 [v0.1.34 发布记录](releases/v0.1.34-release-readiness.md)等继续保留当时事实。v0.1.45 已通过
 精确 Registry 依赖一致性、`conversationHistory:2`/`runtimeExitSettlement:2`/`sandboxRuntime:5` 契约、完整依赖闭包、

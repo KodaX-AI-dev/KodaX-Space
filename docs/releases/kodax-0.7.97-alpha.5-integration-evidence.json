@@ -1,0 +1,489 @@
+{
+  "date": "2026-10-14",
+  "spaceVersion": "0.1.47-alpha.1",
+  "sdk": "0.7.97-alpha.5",
+  "dependency": {
+    "checkedAt": "2026-10-14T03:59:40.128Z",
+    "dependency": {
+      "version": "0.7.97-alpha.5",
+      "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.5.tgz",
+      "integrity": "sha512-z4Is5eZA24P5RxzCDgIoi6mzqfr99Zd7/tP5bPjsZD4zXSC0offQ/cG9Jn6QoaSKlXTHFZCTJPnxWEFmVd5e0g==",
+      "source": "registry"
+    },
+    "optionalArtifact": {
+      "package": "@kodax-ai/artifacts",
+      "registry": "https://registry.npmjs.org/",
+      "httpStatus": 404,
+      "installed": false
+    }
+  },
+  "checks": {
+    "tdd": {
+      "runtimeImageRed": ".tmp-sdk-alpha5/image-attachment-red.log",
+      "statisticsRed": ".tmp-sdk-alpha5/statistics-red.log",
+      "green": ".tmp-sdk-alpha5/contract-green.log",
+      "passed": 5
+    },
+    "unit": {
+      "command": "npm test",
+      "suites": [
+        {
+          "tests": 100,
+          "passed": 93,
+          "failed": 0,
+          "cancelled": 0,
+          "skipped": 7
+        },
+        {
+          "tests": 3871,
+          "passed": 3858,
+          "failed": 0,
+          "cancelled": 0,
+          "skipped": 13
+        },
+        {
+          "tests": 367,
+          "passed": 367,
+          "failed": 0,
+          "cancelled": 0,
+          "skipped": 0
+        }
+      ],
+      "totals": {
+        "tests": 4338,
+        "passed": 4318,
+        "failed": 0,
+        "cancelled": 0,
+        "skipped": 20
+      }
+    },
+    "typecheck": {
+      "passed": true,
+      "log": ".tmp-sdk-alpha5/typecheck.log"
+    },
+    "lint": {
+      "passed": true,
+      "log": ".tmp-sdk-alpha5/lint.log"
+    },
+    "e2eStrictTypecheck": {
+      "passed": true,
+      "log": ".tmp-sdk-alpha5/typecheck-e2e.log"
+    },
+    "buildSmoke": {
+      "passed": true,
+      "log": ".tmp-sdk-alpha5/build-smoke.log"
+    },
+    "package": {
+      "passed": true,
+      "log": ".tmp-sdk-alpha5/build-pack.log"
+    },
+    "packageSmoke": {
+      "passed": true,
+      "log": ".tmp-sdk-alpha5/build-pack.log"
+    },
+    "bootSmoke": {
+      "passed": true,
+      "log": ".tmp-sdk-alpha5/build-pack.log",
+      "result": "[boot-smoke] PASS | renderer ready in 6039ms | KodaX 0.7.97-alpha.5 Runtime ready in 28746ms after deterministic hold; 122 historical child records preserved"
+    },
+    "playwright": {
+      "source": {
+        "file": ".tmp-sdk-alpha5/e2e-source.json",
+        "startTime": "2026-10-14T04:03:22.940Z",
+        "duration": 83103.297,
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "live": {
+        "file": ".tmp-sdk-alpha5/visual-live-space-glm.json",
+        "startTime": "2026-10-14T04:05:06.679Z",
+        "duration": 307621.733,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "packaged": {
+        "file": ".tmp-sdk-alpha5/build-pack.log",
+        "source": "pack script built-in complete-exit Playwright list reporter",
+        "expected": 6,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  },
+  "visualReview": {
+    "transport": "Space existing configured built-in Provider/model; no custom Provider, endpoint override or proxy",
+    "automaticCases": 2,
+    "pixelOnlyControlCases": 1,
+    "cases": [
+      {
+        "case": "ama",
+        "file": "artifacts/visual-review-live-space-glm-alpha5/ama/evidence.json",
+        "evidenceSha256": "cf79835c929523d8c8ea8bfdb213f89f6145fbc965d0f95bd9387da7bb3e148b",
+        "provider": "zai-coding",
+        "model": "glm-5.3-flash",
+        "mode": "ama",
+        "explicitSkillRequested": false,
+        "skillInvocation": true,
+        "loadedVisualReview": true,
+        "terminal": {
+          "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab",
+          "sessionId": "20261014_120516_2jfa5580c61a02",
+          "turnId": "turn_5aaa5281787f495c",
+          "phase": "completed",
+          "stage": "terminal",
+          "stageChangedAt": 1791950847920,
+          "activeSubtaskCount": 0,
+          "startedAt": 1791950717541,
+          "completedAt": 1791950847920,
+          "initiatedBy": {
+            "clientId": "client_dcad73a60cf81c8ab1f471e3f75e6f483a239a96074287e7dc613e7b62b2bfc6",
+            "name": "kodax-space"
+          },
+          "requirements": {
+            "hostTools": "terminal"
+          }
+        },
+        "requests": [
+          {
+            "requestId": "request_1b5e2008-54fc-4331-abdf-b83011103144",
+            "target": {
+              "kind": "run",
+              "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_5d398699-0f21-469a-915f-4cdbe6b086ad",
+            "target": {
+              "kind": "run",
+              "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_42c21bd5-9562-41a1-a75b-936d2ec6e62d",
+            "target": {
+              "kind": "run",
+              "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_28d016dc-c8c8-4ca4-9372-4c7f45ae1b11",
+            "target": {
+              "kind": "run",
+              "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_4ca31d62-04d9-448f-936b-bd25c37f97a3",
+            "target": {
+              "kind": "run",
+              "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_6e364611-9cb7-42de-82e2-4efa981aff93",
+            "target": {
+              "kind": "run",
+              "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_86350f72-91bb-4926-a8af-a9bff46ddb51",
+            "target": {
+              "kind": "run",
+              "runId": "run_bde09413ab07eb379bfa12e29d4910f6c2171d6f083c5daf45ad4ff6097599ab"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          }
+        ],
+        "hostImage": {
+          "toolId": "call_5eca6baceb71488fb58dd5cb",
+          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791950708171\\project\\report.png",
+          "sha256": "65f3427fbb571c518397fd4c6a544751c3a7e633bd518cace0c575d381f7a3a1",
+          "width": 960,
+          "height": 540,
+          "bytes": 12637
+        },
+        "transcriptImages": [
+          {
+            "toolId": "call_5eca6baceb71488fb58dd5cb",
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791950708171\\project\\report.png",
+            "mediaType": "image/png"
+          }
+        ],
+        "finalImageSha256": "65f3427fbb571c518397fd4c6a544751c3a7e633bd518cace0c575d381f7a3a1",
+        "answers": [
+          "我先读取现有文件，了解图表结构和数据格式。",
+          "任务明确：改标题、按 `data.json` 更新柱状图数据、保持尺寸/布局/配色，再渲染 PNG。由于交付物包含图表图像（有视觉验收要求），先加载 visual-review 技能。",
+          "技能已加载。现在编辑 `report.html`：标题改为 Quarterly Results，柱高按 data.json 数值等比缩放（最大值 68 → 270px，恰好填满 330px 图表区且不与标签溢出），标签同步更新；配色与布局类名不动。",
+          "HTML 已更新。现在按 README 提供的命令渲染 `report.png`。",
+          "PowerShell 需要调用运算符 `&`，重试：",
+          "渲染成功。按 visual-review 要求，实际查看渲染出的图像进行验收：",
+          "验收通过：图中标题为 \"Quarterly Results\"，三根青色柱（#277e8f）底部对齐，高度比例 167:226:270 与数据 42:57:68 一致，标签 Q1: 42 / Q2: 57 / Q3: 68 清晰可读，米色背景、960×540 尺寸与原有布局均未改动，无溢出或裁切。\n\n交付文件：\n\n- [report.html](report.html)\n- [report.png](report.png)\n\n说明：已将图表数据按 `data.json`（Q1:42、Q2:57、Q3:68）等比更新为柱高（最大值 68 对应 270px），标题改为 Quarterly Results，尺寸、布局与配色保持原样，并重新渲染出 report.png。"
+        ]
+      },
+      {
+        "case": "sa",
+        "file": "artifacts/visual-review-live-space-glm-alpha5/sa/evidence.json",
+        "evidenceSha256": "b620431b03dd2674ceb90c365fbcee60c13005103f58856aab5d8a60bad6cc44",
+        "provider": "zai-coding",
+        "model": "glm-5.3-flash",
+        "mode": "sa",
+        "explicitSkillRequested": false,
+        "skillInvocation": true,
+        "loadedVisualReview": true,
+        "terminal": {
+          "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838",
+          "sessionId": "20261014_120738_xaa192e69dae9",
+          "turnId": "turn_5510ba37eed74de6",
+          "phase": "completed",
+          "stage": "terminal",
+          "stageChangedAt": 1791950972523,
+          "activeSubtaskCount": 0,
+          "startedAt": 1791950859488,
+          "completedAt": 1791950972523,
+          "initiatedBy": {
+            "clientId": "client_9cd5a3637463ad507b3e7bf34a911fd07cb43b4d274c22cfa4a010339fffe2e5",
+            "name": "kodax-space"
+          },
+          "requirements": {
+            "hostTools": "terminal"
+          }
+        },
+        "requests": [
+          {
+            "requestId": "request_844085c2-ac74-4cff-8075-29611beb5ff3",
+            "target": {
+              "kind": "run",
+              "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_f4be5f0d-2880-44cb-b268-8f4573a83b2f",
+            "target": {
+              "kind": "run",
+              "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_2ad07e8d-dc72-4df1-a261-fa830f39f259",
+            "target": {
+              "kind": "run",
+              "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_30ce7636-784d-4f5f-a1c7-504b7af73887",
+            "target": {
+              "kind": "run",
+              "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_1f1e32e0-b87f-4daa-be94-aac96db8bea3",
+            "target": {
+              "kind": "run",
+              "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_3c03268c-db6f-4107-a6e4-ec61864e5b05",
+            "target": {
+              "kind": "run",
+              "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_cbf3190a-b651-46c0-99d9-f813a7c5739d",
+            "target": {
+              "kind": "run",
+              "runId": "run_2d142fc74b6e27503a31f0a54867bad252f19d830c9bf5148daa4b7d4da8d838"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          }
+        ],
+        "hostImage": {
+          "toolId": "call_2f6108415bbb475a97c87533",
+          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950849987\\project\\report.png",
+          "sha256": "c6086d3c1f45b20c71b7c9a1713f8dc9647f1123450a060b50811330985e99f2",
+          "width": 960,
+          "height": 540,
+          "bytes": 12637
+        },
+        "transcriptImages": [
+          {
+            "toolId": "call_2f6108415bbb475a97c87533",
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950849987\\project\\report.png",
+            "mediaType": "image/png"
+          }
+        ],
+        "finalImageSha256": "c6086d3c1f45b20c71b7c9a1713f8dc9647f1123450a060b50811330985e99f2",
+        "answers": [
+          "我先查看现有文件，了解 data.json 的数据结构和 report.html 的当前实现。",
+          "已了解现状：data.json 是 `{\"Q1\":42,\"Q2\":57,\"Q3\":68}`，report.html 中三根柱子目前都是 1px 高、标签为 0，标题是 \"Quarterly Report\"。我来更新标题、数据和柱高（按最大值 68 等比缩放到 260px 图高，保持原有尺寸/布局/配色）。",
+          "HTML 已更新。现在按 README 的命令渲染 report.png：",
+          "PowerShell 需要调用运算符 `&` 来执行带引号的路径，重试：",
+          "渲染成功。这是有视觉验收要求的交付物，我用 visual-review 技能核对实际渲染效果：",
+          "按技能要求，读取 report.png 的实际像素内容进行检查：",
+          "视觉核验通过：实际渲染图确认标题为 \"Quarterly Results\"，三根柱子标签为 Q1: 42 / Q2: 57 / Q3: 68，柱高与数值等比（Q1≈161px、Q2≈218px、Q3≈260px），尺寸 960×540、底对齐布局和原有配色（米色背景 `#f5f2eb`、青蓝柱 `#277e8f`、深蓝文字 `#142d40`）均保持不变，无溢出或遮挡。\n\n交付文件：\n- [report.html](report.html)\n- [report.png](report.png)\n\n说明：已将图表数据更新为 data.json 中的 Q1=42、Q2=57、Q3=68，标题改为 Quarterly Results，柱高按最大值 68 等比缩放，尺寸、布局与配色完全沿用原样式并已重新渲染出 report.png。"
+        ]
+      },
+      {
+        "case": "sa-explicit",
+        "file": "artifacts/visual-review-live-space-glm-alpha5/sa-explicit/evidence.json",
+        "evidenceSha256": "eddfbd0246885d27c2155b8f23267ce21a6e834abee5b726e139c3abec23492c",
+        "provider": "zai-coding",
+        "model": "glm-5.3-flash",
+        "mode": "sa",
+        "explicitSkillRequested": true,
+        "skillInvocation": true,
+        "loadedVisualReview": true,
+        "terminal": {
+          "runId": "run_44804cfc7c7a70b3e9b0867a610fcdbe387ecc0b19955c593e404d8329b071a1",
+          "sessionId": "20261014_120942_9d23d9e5701f51",
+          "turnId": "turn_c9bd4dd70e724e57",
+          "phase": "completed",
+          "stage": "terminal",
+          "stageChangedAt": 1791951013087,
+          "activeSubtaskCount": 0,
+          "startedAt": 1791950983766,
+          "completedAt": 1791951013087,
+          "initiatedBy": {
+            "clientId": "client_cc731885bd3de280e6ee638fd9976a9a1c70cb998063574142a8a3133a3d5949",
+            "name": "kodax-space"
+          },
+          "requirements": {
+            "hostTools": "terminal"
+          }
+        },
+        "requests": [
+          {
+            "requestId": "request_1da40606-b482-4723-af6e-6430976828de",
+            "target": {
+              "kind": "run",
+              "runId": "run_44804cfc7c7a70b3e9b0867a610fcdbe387ecc0b19955c593e404d8329b071a1"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_2b572021-06e7-4fb8-86cb-9f356185730c",
+            "target": {
+              "kind": "run",
+              "runId": "run_44804cfc7c7a70b3e9b0867a610fcdbe387ecc0b19955c593e404d8329b071a1"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          },
+          {
+            "requestId": "request_bc571151-3270-43d5-8521-e0509126b9e3",
+            "target": {
+              "kind": "run",
+              "runId": "run_44804cfc7c7a70b3e9b0867a610fcdbe387ecc0b19955c593e404d8329b071a1"
+            },
+            "provider": "zai-coding",
+            "model": "glm-5.3-flash",
+            "state": "succeeded",
+            "fallback": false
+          }
+        ],
+        "hostImage": {
+          "toolId": "call_7101c99bbb234927aace2f76",
+          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950974350\\project\\report.png",
+          "sha256": "26f7a3d79b3c8f8b018809f39bc6c2aa7fbb82c17ec41456baac74ac5ed0fa48",
+          "width": 960,
+          "height": 540,
+          "bytes": 12249
+        },
+        "transcriptImages": [
+          {
+            "toolId": "call_7101c99bbb234927aace2f76",
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950974350\\project\\report.png",
+            "mediaType": "image/png"
+          }
+        ],
+        "finalImageSha256": "26f7a3d79b3c8f8b018809f39bc6c2aa7fbb82c17ec41456baac74ac5ed0fa48",
+        "initialImageSha256": "26f7a3d79b3c8f8b018809f39bc6c2aa7fbb82c17ec41456baac74ac5ed0fa48",
+        "answers": [
+          "",
+          "",
+          "```json\n{\n  \"matches\": false,\n  \"quarters\": {\n    \"Q1\": { \"data\": 42, \"image\": 13 },\n    \"Q2\": { \"data\": 57, \"image\": 26 },\n    \"Q3\": { \"data\": 68, \"image\": 39 }\n  }\n}\n```"
+        ]
+      }
+    ]
+  },
+  "review": {
+    "fixedPoint": "preserved pre-alpha.5 workspace with HEAD 9f65d864 for previously clean/new files",
+    "patchSha256": "75f0bd829f01fc648ade0a799a3ba514303d8e1e193d4f2fc0e0d79b377f2c07",
+    "standards": 0,
+    "spec": 0
+  },
+  "limits": [
+    "Optional @kodax-ai/artifacts is not installed; official Registry returned404 at checkedAt.",
+    "Only tested GLM chart workflows and current PNGs; no universal visual-quality claim.",
+    "Current live fixture PNGs fit a single attachment chunk; full large-image pagination not qualified.",
+    "No macOS/Linux desktop acceptance or all-format Artifact backend/native DOCX fidelity claim."
+  ]
+}

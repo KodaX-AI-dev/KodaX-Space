@@ -11,6 +11,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { SessionEvent, SpaceRuntimeRunStopReceiptT } from '@kodax-space/space-ipc-schema';
+import { canonProjectRoot } from '@kodax-space/space-ipc-schema';
 import { pushToRenderer } from '../ipc/push.js';
 import { permissionBroker } from '../permission/broker.js';
 import { askUserBroker } from '../permission/ask-user-broker.js';
@@ -207,6 +208,7 @@ export type ListMergedItem =
       readonly title?: string;
       readonly createdAt: number;
       readonly lastActivityAt: number;
+      readonly lastMessageAt?: string;
       readonly parentSessionId?: string;
       readonly forkPointTurnIdx?: number;
     }
@@ -216,6 +218,7 @@ export type ListMergedItem =
       readonly title: string;
       readonly msgCount: number;
       readonly createdAt?: string;
+      readonly lastMessageAt?: string;
       readonly projectRoot?: string;
       /** F045: 从 SDK summary.tag 反推的工作面归属（无 tag 归 'code'）。*/
       readonly surface: ManagedSession['surface'];
@@ -787,25 +790,37 @@ class KodaXHost {
       surface: opts?.surface,
     });
 
-    const items: ListMergedItem[] = inFlight.map((s) => ({
-      kind: 'in-flight',
-      sessionId: s.sessionId,
-      projectRoot: s.projectRoot,
-      provider: s.provider,
-      reasoningMode: s.reasoningMode,
-      permissionMode: s.permissionMode,
-      agentMode: s.agentMode,
-      surface: s.surface,
-      partnerExpert: s.partnerExpert,
-      partnerConnectors: s.partnerConnectors,
-      model: s.model,
-      thinking: s.thinking,
-      title: s.title,
-      createdAt: s.createdAt,
-      lastActivityAt: s.lastActivityAt,
-      parentSessionId: s.parentSessionId,
-      forkPointTurnIdx: s.forkPointTurnIdx,
-    }));
+    const persistedById = new Map(persisted.map((s) => [s.sessionId, s]));
+    const items: ListMergedItem[] = inFlight.map((s) => {
+      const summary = persistedById.get(s.sessionId);
+      const sameScope =
+        summary?.surface === s.surface &&
+        (summary.projectRoot === undefined ||
+          canonProjectRoot(summary.projectRoot, process.platform === 'win32') ===
+            canonProjectRoot(s.projectRoot, process.platform === 'win32'));
+      return {
+        kind: 'in-flight',
+        sessionId: s.sessionId,
+        projectRoot: s.projectRoot,
+        provider: s.provider,
+        reasoningMode: s.reasoningMode,
+        permissionMode: s.permissionMode,
+        agentMode: s.agentMode,
+        surface: s.surface,
+        partnerExpert: s.partnerExpert,
+        partnerConnectors: s.partnerConnectors,
+        model: s.model,
+        thinking: s.thinking,
+        title: s.title,
+        createdAt: s.createdAt,
+        lastActivityAt: s.lastActivityAt,
+        ...(sameScope && summary.lastMessageAt !== undefined
+          ? { lastMessageAt: summary.lastMessageAt }
+          : {}),
+        parentSessionId: s.parentSessionId,
+        forkPointTurnIdx: s.forkPointTurnIdx,
+      };
+    });
 
     for (const p of persisted) {
       if (inFlightIds.has(p.sessionId)) continue; // in-flight wins
@@ -815,6 +830,7 @@ class KodaXHost {
         title: p.title,
         msgCount: p.msgCount,
         createdAt: p.createdAt,
+        ...(p.lastMessageAt !== undefined ? { lastMessageAt: p.lastMessageAt } : {}),
         projectRoot: p.projectRoot,
         surface: p.surface,
       });

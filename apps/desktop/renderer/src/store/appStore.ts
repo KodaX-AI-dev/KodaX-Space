@@ -11,6 +11,7 @@
 //   - 异步进行中标志（busy）—— 同上
 
 import { create } from 'zustand';
+import { productTranscriptSnapshot, resetProductSessionViews } from './productSessionView.js';
 import {
   retireTranscriptUnits,
   isRetiredTranscriptEvent,
@@ -369,7 +370,7 @@ function hydrateSessionEventsFromLiveSnapshot(
   events: readonly SessionEvent[],
   projection: SpaceSessionLiveProjectionT | undefined,
 ): readonly SessionEvent[] {
-  if (!projection) return events;
+  if (!projection || productTranscriptSnapshot(projection.sessionId)) return events;
   const hydrated = hydrateRuntimeSnapshotEvents(events, projection);
   const tail = liveTailBySession.get(projection.sessionId);
   return tail
@@ -6566,8 +6567,12 @@ export const useAppStore = create<AppState>((setState) => {
         rememberHistoryLiveUsers(sessionId, [msg]);
         return {
           sessions: state.sessions.map((session) =>
-            session.sessionId === sessionId && msg.sentAt > session.lastActivityAt
-              ? { ...session, lastActivityAt: msg.sentAt }
+            session.sessionId === sessionId
+              ? {
+                  ...session,
+                  lastActivityAt: Math.max(session.lastActivityAt, msg.sentAt),
+                  lastLocalInputAt: Math.max(session.lastLocalInputAt ?? 0, msg.sentAt),
+                }
               : session,
           ),
           userMessagesBySession: {
@@ -6611,8 +6616,12 @@ export const useAppStore = create<AppState>((setState) => {
         rememberHistoryLiveUsers(sessionId, [message]);
         return {
           sessions: state.sessions.map((session) =>
-            session.sessionId === sessionId && message.sentAt > session.lastActivityAt
-              ? { ...session, lastActivityAt: message.sentAt }
+            session.sessionId === sessionId
+              ? {
+                  ...session,
+                  lastActivityAt: Math.max(session.lastActivityAt, message.sentAt),
+                  lastLocalInputAt: Math.max(session.lastLocalInputAt ?? 0, message.sentAt),
+                }
               : session,
           ),
           userMessagesBySession: {
@@ -8518,6 +8527,7 @@ export const useAppStore = create<AppState>((setState) => {
       }),
 
     removeSession: (sessionId) => {
+      resetProductSessionViews(sessionId);
       clearLiveTranscriptTail(sessionId);
       clearLastOpenedFileViewerSnapshotForSession(sessionId);
       failedLocalNoticeAppends.delete(sessionId);

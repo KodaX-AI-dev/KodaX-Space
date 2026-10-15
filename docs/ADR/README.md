@@ -12,6 +12,8 @@
 | [ADR-006](ADR-006-positioning-vs-opencode.md)      | 相对 opencode 的定位 + 5 gap cluster + OC-XX backlog（planning）                           | Accepted |
 | [ADR-007](ADR-007-partner-surface-model.md)        | Partner Surface Model：同一 runtime 的画像组合（surface + skill + artifact），不等独立内核 | Accepted |
 | [ADR-008](ADR-008-mascot-soft-rig-animation.md)    | Mascot 资产动画策略：像素基准 + soft rig                                                   | Accepted |
+| [ADR-009](ADR-009-settlement-certification-identity.md) | 旧输出路径的结算认证；共享 Coder 正文范围由 ADR-010 替代 | Accepted |
+| [ADR-010](ADR-010-sdk-product-output.md) | 共享 Coder 聊天只消费 SDK 输出面，当前与历史窗口分离 | Accepted |
 
 ## 写 ADR 的约束
 

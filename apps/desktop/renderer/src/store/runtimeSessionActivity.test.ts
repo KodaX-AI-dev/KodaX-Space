@@ -42,6 +42,108 @@ beforeEach(() => {
   });
 });
 
+test('profile-only message time repairs a legacy list and survives a later stale list', () => {
+  const store = useAppStore.getState();
+  const row = {
+    ...session,
+    sessionId: 's_profile_message_time',
+    createdAt: 9000,
+    lastActivityAt: 9000,
+  };
+  store.setSessions([row]);
+  store.replaceRuntimeProfileProjection({
+    ...profile,
+    sessions: [
+      {
+        sessionId: row.sessionId,
+        surface: 'code',
+        createdAt: 9000,
+        lastActivityAt: 9000,
+        lastMessageAt: 100,
+        queuedRuns: [],
+      },
+    ],
+  });
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 100);
+  assert.equal(useAppStore.getState().sessions[0]?.lastMessageAt, 100);
+  useAppStore.setState({ runtimeProfile: null });
+  store.setSessions([row]);
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 100);
+});
+
+test('first SDK message time preserves a new local input without preserving recovery time', () => {
+  const store = useAppStore.getState();
+  const row = { ...session, sessionId: 's_first_canonical_input', lastActivityAt: 9000 };
+  store.setSessions([row]);
+  store.appendUserMessage(row.sessionId, 'local input', 4000);
+  store.setSessions([{ ...row, lastMessageAt: 100, lastActivityAt: 100 }]);
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 4000);
+  store.setSessions([
+    { ...row, projectRoot: '/different', lastMessageAt: 100, lastActivityAt: 100 },
+  ]);
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 100);
+});
+
+test('a reserved immediate send keeps its own time through the first SDK list refresh', () => {
+  const store = useAppStore.getState();
+  const row = { ...session, sessionId: 's_reserved_canonical_input', lastActivityAt: 9000 };
+  store.setSessions([row]);
+  assert.ok(
+    store.reserveSendOperationMessage(row.sessionId, {
+      content: 'actual send',
+      operationId: 'op_activity',
+      requestGeneration: 1,
+      queueMode: 'after-turn',
+      queued: false,
+      sentAt: 4000,
+    }),
+  );
+  store.replaceSessionsForScope([{ ...row, lastMessageAt: 100, lastActivityAt: 100 }], {
+    projectRoot: row.projectRoot,
+    surface: 'code',
+  });
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 4000);
+});
+
+test('SDK message time survives late Runtime metadata while actual sends retain activity', () => {
+  const store = useAppStore.getState();
+  const canonical = {
+    ...session,
+    sessionId: 's_canonical_activity',
+    createdAt: 2000,
+    lastMessageAt: 100,
+    lastActivityAt: 100,
+  };
+  store.setSessions([canonical]);
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 100);
+  store.replaceRuntimeProfileProjection({
+    ...profile,
+    sessionActivity: [{ sessionId: canonical.sessionId, lastActivityAt: 3000 }],
+  });
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 100);
+  store.appendUserMessage(canonical.sessionId, 'actual new input', 4000);
+  store.replaceSessionsForScope([canonical], { projectRoot: '/repo', surface: 'code' });
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 4000);
+  store.setSessions([{ ...canonical, lastMessageAt: 5000, lastActivityAt: 5000 }]);
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 5000);
+  store.replaceRuntimeProfileProjection({
+    ...profile,
+    projectionRevision: 2,
+    cursor: { runtimeId: 'rt_activity', seq: 2 },
+    sessions: [
+      {
+        sessionId: canonical.sessionId,
+        surface: 'code',
+        createdAt: 9000,
+        lastActivityAt: 9000,
+        lastMessageAt: 6000,
+        queuedRuns: [],
+      },
+    ],
+  });
+  assert.equal(useAppStore.getState().sessions[0]?.lastActivityAt, 6000);
+});
+
 test('list refreshes preserve activity after its Run leaves the bounded Runtime window', () => {
   const store = useAppStore.getState();
   store.setSessions([session]);

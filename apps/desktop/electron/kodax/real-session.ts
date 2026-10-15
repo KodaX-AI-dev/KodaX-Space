@@ -2237,32 +2237,6 @@ export class RealKodaXSession implements ManagedSession {
         });
       },
 
-      onSidecarMessage: (message) => {
-        emitLive({
-          kind: 'sidecar_message',
-          sessionId: message.sessionId ?? sid,
-          message: {
-            source: message.source,
-            verdict: message.verdict,
-            recipient: message.recipient,
-            delivery: message.delivery,
-            content: clampSessionEventText(message.content) ?? '',
-            ...(message.suggestedFix !== undefined
-              ? { suggestedFix: clampSessionEventText(message.suggestedFix)! }
-              : {}),
-            ...(message.trace !== undefined
-              ? { trace: clampSessionEventText(message.trace)! }
-              : {}),
-            ...(toAgentProfileSummary((message as { agentProfile?: unknown }).agentProfile)
-              ? {
-                  agentProfile: toAgentProfileSummary(
-                    (message as { agentProfile?: unknown }).agentProfile,
-                  )!,
-                }
-              : {}),
-          },
-        });
-      },
       onTodoDriftWarning: (warning) => {
         emitLive({
           kind: 'todo_drift_warning',
@@ -2387,7 +2361,6 @@ export class RealKodaXSession implements ManagedSession {
             ...(toVerificationSummary(config.verification)
               ? { verification: toVerificationSummary(config.verification)! }
               : {}),
-            ...(config.verifier !== undefined ? { verifier: config.verifier } : {}),
           },
         });
       },

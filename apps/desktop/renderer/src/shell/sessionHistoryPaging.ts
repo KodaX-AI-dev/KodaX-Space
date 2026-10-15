@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from 'react';
-import type { SessionEvent, SessionHistoryItem } from '@kodax-space/space-ipc-schema';
+import type {
+  SessionEvent,
+  SessionHistoryItem,
+  SessionProductItem,
+} from '@kodax-space/space-ipc-schema';
 import {
   registerSessionViewLifecycleReset,
   invalidateSessionCanonicalTranscriptPage,
@@ -7,6 +11,11 @@ import {
   type SettledRuntimeHistoryRun,
 } from '../store/appStore.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
+import {
+  installProductHistory,
+  productTranscriptSnapshot,
+  resetProductSessionViews,
+} from '../store/productSessionView.js';
 import {
   runtimeConnectionHasFreshLiveAuthority,
   runtimeProfileSessionHasActivity,
@@ -302,6 +311,7 @@ function touchCache(sessionId: string): void {
     terminalHistoryEvidenceBySession.delete(candidate);
     listeners.delete(candidate);
     inFlight.delete(candidate);
+    resetProductSessionViews(candidate);
     useAppStore.getState().evictRestoredSessionHistory(candidate);
   }
 }
@@ -600,6 +610,7 @@ function canonicalHistoryItemsOverlap(
 }
 
 interface HistoryResultData {
+  readonly productItems?: readonly SessionProductItem[];
   readonly sessionId: string;
   readonly requestId: string;
   readonly items: readonly SessionHistoryItem[];
@@ -882,6 +893,24 @@ async function requestHistory(
       return;
     }
     const installsPrepend = continueFromCurrentBoundary && page?.windowMode === 'prepend';
+    if (result.productItems !== undefined && page?.outcome === 'ready') {
+      installProductHistory(sessionId, result.productItems, page.hasNewer);
+      updateAllTerminalHistoryWorkflows(sessionId, 'in-flight', 'completed');
+      deferredReadyRevalidations.delete(sessionId);
+      loadedEpochs.set(sessionId, requestedEpoch);
+      clearRetry(sessionId);
+      publish(sessionId, {
+        phase: 'ready',
+        ...(surface ? { surface } : {}),
+        revision: page.revision,
+        sourceRevision: page.sourceRevision,
+        hasMore: page.hasMore,
+        hasNewer: page.hasNewer,
+        ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+        ...(result.conversation ? { conversationStatus: result.conversation.status } : {}),
+      });
+      return;
+    }
     if (!installsPrepend && previous.phase === 'ready' && sessionHasOpenLiveTurn(sessionId)) {
       // A background revalidation can overtake the next run and return a canonical copy of its
       // still-open turn. Replacing an already-painted ready window here would overlap that copy
@@ -1195,6 +1224,7 @@ export function revalidateNewestSessionHistory(
   sessionId: string,
   expectedSurface: 'code' | 'partner',
 ): Promise<void> {
+  if (productTranscriptSnapshot(sessionId)?.browsingOlder) return Promise.resolve();
   clearRetry(sessionId);
   return requestHistory(sessionId, false, expectedSurface, true);
 }
@@ -1268,3 +1298,4 @@ export function resetSessionHistoryPagingLifecycle(): void {
 }
 
 registerSessionViewLifecycleReset(resetSessionHistoryPagingLifecycle);
+registerSessionViewLifecycleReset(resetProductSessionViews);

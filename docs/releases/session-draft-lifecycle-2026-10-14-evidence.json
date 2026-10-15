@@ -1,0 +1,286 @@
+{
+  "date": "2026-10-14",
+  "scope": "unsubmitted SDK/REPL drafts and Space empty-record history handling",
+  "status": "source repair verified; SDK publication and Registry dependency qualification pending",
+  "sdkBaseline": "83aafb22",
+  "sdkVersion": "0.7.97-alpha.5 source with unreleased draft support; image fix already in baseline",
+  "spaceVersion": "0.1.47-alpha.1 source",
+  "registryPin": "0.7.97-alpha.5",
+  "localIntegration": "official link:kodax development staging",
+  "sdkPublished": false,
+  "installerPublished": false,
+  "personalSessionFilesDeleted": false,
+  "introduction": {
+    "sdkNewCommand": {
+      "commit": "3301a452",
+      "date": "2026-09-06",
+      "change": "Both REPL surfaces eagerly create a durable Host Session on /new."
+    },
+    "sdkBlankStartup": {
+      "commit": "0914f589",
+      "date": "2026-09-08",
+      "change": "Create an empty-title Host Session before startup view/settings with no user input."
+    },
+    "unifiedProductAdapter": {
+      "commit": "5aa4956c",
+      "date": "2026-09-12",
+      "change": "Carry durable creation into the common Product Client adapter."
+    },
+    "firstContainingReleaseTag": "v0.7.97-alpha.1",
+    "stableComparison": "v0.7.96 REPL sources have no Session command binding; new Sessions are local context until saving.",
+    "evidence": "Git pickaxe, blame and parent/release source comparison; code introduction dates do not date an individual user installation."
+  },
+  "checks": [
+    {
+      "repo": "SDK",
+      "name": "Draft/input/settings/CLI/schema/storage-boundary coverage regression",
+      "files": 9,
+      "passed": 61,
+      "failed": 0,
+      "log": ".tmp-session-draft-coverage.log",
+      "logSha256": "0e92821791e58924661d343e0601205e1531af52d18a1bed289f231bd9d5ff3e"
+    },
+    {
+      "repo": "SDK",
+      "name": "Existing storage/owned-read/SDK-consumer regression",
+      "files": 3,
+      "passed": 168,
+      "failed": 0,
+      "log": ".tmp-session-draft-storage-final.log",
+      "logSha256": "25c711a7943b12dd1eba833e1034f48c2adbcc8f92c0fd079eedf99819bb4cd2"
+    },
+    {
+      "repo": "Space",
+      "name": "Runtime adapter and persisted Session listing regression",
+      "passed": 258,
+      "failed": 0,
+      "log": ".tmp-session-draft-space-final-tests.log",
+      "logSha256": "71f5244c8ac33102476804c09414038a0cfeef89e2934affe0ab4ea7ea38167a"
+    },
+    {
+      "repo": "Space",
+      "name": "Final rebuilt SDK Electron regression",
+      "realSharedHostTests": 13,
+      "legacyHistoryCompatibilityTests": 1,
+      "passed": 14,
+      "failed": 0,
+      "log": ".tmp-session-draft-e2e-all-final.log",
+      "logSha256": "49f4e5188e33e3936636f813d096c237d1c8cbee68e36882c58014cd924a0a28"
+    },
+    {
+      "repo": "SDK",
+      "name": "Source and test typecheck",
+      "exitCode": 0,
+      "log": ".tmp-session-draft-final-types.log",
+      "logSha256": "9ad7871f65d336de883473ced174a5ca24051fa678f96b4bbb644080fbd7bc31"
+    },
+    {
+      "repo": "SDK",
+      "name": "Workspace build",
+      "exitCode": 0,
+      "log": ".tmp-session-draft-build-packages.log",
+      "logSha256": "7e1dcd18b250106d78a16431f10855469c6c03f0d79d18f8895f4131dc1fc2a3"
+    },
+    {
+      "repo": "SDK",
+      "name": "Final runtime bundle build",
+      "exitCode": 0,
+      "log": ".tmp-session-draft-final-bundle.log",
+      "logSha256": "2d21083aa39305c249cb461a90596b6b111fdcd166401cf6104684a497c36051"
+    },
+    {
+      "repo": "SDK",
+      "name": "Self-contained declaration build",
+      "exitCode": 0,
+      "log": ".tmp-session-draft-build-dts.log",
+      "logSha256": "5e3ef5215ee8cfa52e688a008a3bea9dc7da648571743548bc04b4e5f63eb1c2"
+    },
+    {
+      "repo": "Space",
+      "name": "Main and renderer typecheck",
+      "exitCode": 0,
+      "log": ".tmp-session-draft-space-final-types.log",
+      "logSha256": "5f32b88c294cc9f0dfa57f48b5bf788be0b0b1695f0e12bdec201ab95707f918"
+    },
+    {
+      "repo": "Space",
+      "name": "Lint",
+      "exitCode": 0,
+      "log": ".tmp-session-draft-final-lint.log",
+      "logSha256": "b8288ba36120788165f2acdf23ccb18afc63c020302612d060597e44e5d04009"
+    },
+    {
+      "repo": "Space",
+      "name": "Production packages/renderer/main build",
+      "exitCode": 0,
+      "log": ".tmp-session-draft-space-final-build.log",
+      "logSha256": "54efd7d98cbb780cee2037e4ef3eca0232dd0607445259c19cf14eb572dab2c2"
+    }
+  ],
+  "coverage": {
+    "scope": "new executable statement-start lines in three draft production seams",
+    "baseline": "83aafb22",
+    "total": 47,
+    "covered": 45,
+    "percent": 95.74,
+    "files": [
+      {
+        "path": "src/sdk-runtime.ts",
+        "total": 19,
+        "covered": 18,
+        "uncoveredLines": [
+          4427
+        ]
+      },
+      {
+        "path": "src/cli-client-plane.ts",
+        "total": 1,
+        "covered": 1,
+        "uncoveredLines": []
+      },
+      {
+        "path": "packages/repl/src/interactive/storage.ts",
+        "total": 27,
+        "covered": 26,
+        "uncoveredLines": [
+          4181
+        ]
+      }
+    ]
+  },
+  "reviews": {
+    "Standards": {
+      "remaining": 0
+    },
+    "Spec": {
+      "remaining": 0
+    }
+  },
+  "source": [
+    {
+      "repo": "SDK",
+      "path": "packages/coding/src/client-contract.ts",
+      "sha256": "ee97240c2fcf2ee7aeccec22318acca5c2248fb813e9a3a544e72428448dbd2c"
+    },
+    {
+      "repo": "SDK",
+      "path": "packages/repl/src/interactive/storage.ts",
+      "sha256": "490fea6242d97983b45d9ab58e8090567f41168978caadc451e8ca01cb325248"
+    },
+    {
+      "repo": "SDK",
+      "path": "packages/repl/src/interactive/storage.drafts.test.ts",
+      "sha256": "2fb419a6f60f0572e97e9e37c5aa78ae09c4e47e9ece7143c6c77e05d0081d5b"
+    },
+    {
+      "repo": "SDK",
+      "path": "src/cli-client-plane.ts",
+      "sha256": "bf42d6fefe14ea00f0e522dee253303f753b2cc1f18d354d0672748075d4fd99"
+    },
+    {
+      "repo": "SDK",
+      "path": "src/kodax_cli.ts",
+      "sha256": "108e60e8539cc42acf15a71edac805f77c9a95d7609fc8ba797181025b1adbe0"
+    },
+    {
+      "repo": "SDK",
+      "path": "src/runtime-daemon/schema.ts",
+      "sha256": "869a3680ac7622856beaf370bd380365f9320c62fd27112100981332017e9c4d"
+    },
+    {
+      "repo": "SDK",
+      "path": "src/runtime-daemon/server.ts",
+      "sha256": "d9f537c3c81c8f38204f6cc78538ff2d9ad6c66ab71c067b8d63ee8f92570a03"
+    },
+    {
+      "repo": "SDK",
+      "path": "src/sdk-runtime.ts",
+      "sha256": "cf0043fca8adeff5fe778f933800351925a53ba6064c0bd11e4620454185fb4d"
+    },
+    {
+      "repo": "SDK",
+      "path": "src/sdk-client.inputs.test.ts",
+      "sha256": "bec3230723d082a473d34dec929f5626d6285d58b4a2506438cc58d848563622"
+    },
+    {
+      "repo": "SDK",
+      "path": "src/sdk-runtime.session-drafts.test.ts",
+      "sha256": "45a0d2f00e9d89166d191187fe550f91c65b9da2d9df0afcd83ddffb8c0e4287"
+    },
+    {
+      "repo": "SDK",
+      "path": "CHANGELOG.md",
+      "sha256": "dd77f888648f54505aa5dd637251ab3299c4409c68315b49ce433eda73ac788c"
+    },
+    {
+      "repo": "SDK",
+      "path": "docs/KNOWN_ISSUES.md",
+      "sha256": "7784b96e1759668af19a807a80607e7cd69d1e3649f62490a61e612a3390f844"
+    },
+    {
+      "repo": "SDK",
+      "path": "docs/test-guides/ISSUE_368_v0.7.97_REGRESSION_GUIDE.md",
+      "sha256": "93199812e79e59a063561ce32a4cbd9fc3fecdc579fc4fcf1f64fa71f3fd975f"
+    },
+    {
+      "repo": "Space",
+      "path": "apps/desktop/electron/kodax/session-store.ts",
+      "sha256": "690555e4962146ebca52f78931c267efcb2de31cf666983d317220f49d65ae4d"
+    },
+    {
+      "repo": "Space",
+      "path": "apps/desktop/electron/kodax/runtime-host-adapter.ts",
+      "sha256": "076dfbee0668ecfc122b3d5025b5b9461577930fd2d6da0165c8e875ace43a3f"
+    },
+    {
+      "repo": "Space",
+      "path": "apps/desktop/electron/test/runtime-host-adapter.test.ts",
+      "sha256": "e2a0026d6d2490542ccd621546f64a56c8a0cf60ed28e961c920f36790eece7c"
+    },
+    {
+      "repo": "Space",
+      "path": "apps/desktop/renderer/src/shell/LeftSidebar.tsx",
+      "sha256": "0cf84384d9a7f670a61feef5af9de8f5dbd3c6c109a56e83cde1c137231c8ebe"
+    },
+    {
+      "repo": "Space",
+      "path": "apps/desktop/electron/test/session-empty-records.test.ts",
+      "sha256": "67c42efb547c2c53627be515315a6157bbc71df4a576a2405ab488a371670ce1"
+    },
+    {
+      "repo": "Space",
+      "path": "tests/e2e/session-empty-records.spec.ts",
+      "sha256": "6659df60e75fbd055c0d1ccb3f98768d4a3853a035979e4f53d39fcb7130614e"
+    },
+    {
+      "repo": "Space",
+      "path": "CHANGELOG.md",
+      "sha256": "c7b4a2bd78e58d857e586ff15fc97532762da7f192ee062b3cf57c4357a217c5"
+    },
+    {
+      "repo": "Space",
+      "path": "CONTEXT.md",
+      "sha256": "5ea7c8dfce12a615f03bcfd0edcfeee3466928b95df121b63e749406fc123b54"
+    },
+    {
+      "repo": "Space",
+      "path": "docs/KNOWN_ISSUES.md",
+      "sha256": "22145db380b338640f5d006801df37f1c26ded9c36da88c2fbd4a26a477323d3"
+    },
+    {
+      "repo": "Space",
+      "path": "docs/features/SDK_0.7.97_MIGRATION.md",
+      "sha256": "49dc9221f0935b9786f612bb4e5473add68cc60d4468dbd921804a597a407858"
+    },
+    {
+      "repo": "Space",
+      "path": "docs/test-guides/ISSUE_220_v0.1.47_REGRESSION_GUIDE.md",
+      "sha256": "46a083d45030f4c67d5bf574f859ea993935f017d30579dc2a616e1b4a2d68ee"
+    }
+  ],
+  "pendingReleaseSteps": [
+    "Maintainer publishes a new SDK version containing accepted-user image restoration and draft lifecycle repairs.",
+    "Space updates exact root/Desktop/lockfile versions and replaces the development link with Registry installation.",
+    "Rerun the same public-contract Electron suite and formal package gates against that Registry artifact."
+  ]
+}

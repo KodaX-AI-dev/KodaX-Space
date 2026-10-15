@@ -95,3 +95,36 @@ export function appendRuntimeFailureNotices(
     },
   ];
 }
+
+/** Decorate SDK errors; a failed Run without an error item gets a separate diagnostic notice. */
+export function decorateProductFailureNotices(
+  messages: readonly ConversationMessage[],
+  live: SpaceSessionLiveProjectionT | undefined,
+  profileSession: RuntimeProfileSession | undefined,
+): readonly ConversationMessage[] {
+  const run = currentDiagnosticRun(live, profileSession);
+  if (!run?.failureDetail) return messages;
+  if (
+    !messages.some(
+      (message) =>
+        message.kind === 'system_notice' &&
+        message.variant === 'error' &&
+        message.runtimeRunId === run.runId,
+    )
+  ) {
+    // Some SDK views expose failure only in Run status, with no error display item.
+    return appendRuntimeFailureNotices(messages, live, profileSession);
+  }
+  return messages.map((message) =>
+    message.kind === 'system_notice' &&
+    message.variant === 'error' &&
+    message.runtimeRunId === run.runId
+      ? {
+          ...message,
+          failureKind: run.failureDetail!.failureKind,
+          failureDetail: run.failureDetail,
+          ...projectedFailureAction(run),
+        }
+      : message,
+  );
+}

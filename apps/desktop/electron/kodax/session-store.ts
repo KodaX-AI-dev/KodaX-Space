@@ -335,6 +335,8 @@ export interface PersistedSessionMeta {
   readonly msgCount: number;
   /** ISO date string when available */
   readonly createdAt?: string;
+  /** SDK-owned time of the latest genuine conversation message. */
+  readonly lastMessageAt?: string;
   /** workspaceRoot (= projectRoot) 若 SDK runtimeInfo 提供 */
   readonly projectRoot?: string;
   /** F045: 从 SDK summary.tag 反推的工作面归属（无 tag 归 'code'）。决定列表归属。 */
@@ -349,6 +351,40 @@ function summaryMatchesVisibleScope(
     isVisibleInteractiveSession(summary) &&
     (surface === undefined || sdkTagToSurface(summary.tag) === surface)
   );
+}
+
+async function isConfirmedEmptySession(summary: CursorSessionSummary): Promise<boolean> {
+  if (summary.msgCount !== 0 || summary.title.trim() || !activeImpl.loadFullTranscript)
+    return false;
+  if ((await getSessionTitleStore().read(summary.id))?.trim()) return false;
+  const data = await activeImpl.loadFullTranscript(summary.id);
+  // Zero active messages can still have inactive branches, notices, artifacts or recovery state.
+  return (
+    data !== null &&
+    !data.title.trim() &&
+    Array.isArray(data.transcriptEntries) &&
+    data.transcriptEntries.length === 0 &&
+    data.messages.length === 0 &&
+    (data.lineage?.entries.length ?? 0) === 0 &&
+    (data.uiHistory?.length ?? 0) === 0 &&
+    (data.artifactLedger?.length ?? 0) === 0 &&
+    (data.extensionRecords?.length ?? 0) === 0 &&
+    Object.keys(data.extensionState ?? {}).length === 0 &&
+    data.actorSnapshot === undefined &&
+    data.errorMetadata === undefined
+  );
+}
+
+async function visibleSummaryPage(
+  page: readonly CursorSessionSummary[],
+  surface: 'code' | 'partner' | undefined,
+): Promise<CursorSessionSummary[]> {
+  const candidates = page.filter((summary) => summaryMatchesVisibleScope(summary, surface));
+  const visible: CursorSessionSummary[] = [];
+  for (const summary of candidates) {
+    if (!(await isConfirmedEmptySession(summary))) visible.push(summary);
+  }
+  return visible;
 }
 
 async function listSummaryPage(opts: CursorListSessionsOptions): Promise<CursorSessionSummary[]> {
@@ -373,16 +409,15 @@ async function listVisibleSummaryCandidates(opts: {
         summaryRoot !== undefined && canonProjectRoot(summaryRoot, IS_WIN_MAIN) === expectedRoot
       );
     });
-    const visibleCount = projectSummaries.filter((summary) =>
-      summaryMatchesVisibleScope(summary, opts.surface),
-    ).length;
+    const visible = await visibleSummaryPage(projectSummaries, opts.surface);
+    const visibleCount = visible.length;
     // A saturated global bound may have been consumed by unrelated projects.
     // Fall back rather than letting one busy project hide another's history.
     if (
       summaries.length < MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN ||
       visibleCount >= opts.requestedLimit
     ) {
-      return projectSummaries;
+      return visible;
     }
   }
 
@@ -399,7 +434,7 @@ async function listVisibleSummaryCandidates(opts: {
     listSummaryPage({
       ...baseOptions,
       limit: MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN,
-    });
+    }).then((page) => visibleSummaryPage(page, opts.surface));
 
   let page = await listSummaryPage({
     ...baseOptions,
@@ -410,29 +445,32 @@ async function listVisibleSummaryCandidates(opts: {
   // KodaX <= 0.7.66 ignores cursor and does not return one. Preserve support
   // for the published dependency until the cursor-capable SDK is released.
   if (page.at(-1)?.cursor === undefined) {
-    return page.length < PERSISTED_SESSION_SUMMARY_PAGE_SIZE ? page : loadCompatibilityWindow();
+    return page.length < PERSISTED_SESSION_SUMMARY_PAGE_SIZE
+      ? visibleSummaryPage(page, opts.surface)
+      : loadCompatibilityWindow();
   }
 
   const summaries: CursorSessionSummary[] = [];
   const seenCursors = new Set<string>();
-  let visibleCount = 0;
-  while (page.length > 0 && summaries.length < MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN) {
+  let scanned = 0;
+  while (page.length > 0 && scanned < MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN) {
     const cursor = page.at(-1)?.cursor;
     if (!cursor || seenCursors.has(cursor)) {
       return loadCompatibilityWindow();
     }
     seenCursors.add(cursor);
 
-    const remaining = MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN - summaries.length;
+    const remaining = MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN - scanned;
     const pageSlice = page.slice(0, remaining);
-    summaries.push(...pageSlice);
-    visibleCount += pageSlice.filter((summary) =>
-      summaryMatchesVisibleScope(summary, opts.surface),
-    ).length;
-    if (visibleCount >= opts.requestedLimit || page.length < PERSISTED_SESSION_SUMMARY_PAGE_SIZE) {
+    scanned += pageSlice.length;
+    summaries.push(...(await visibleSummaryPage(pageSlice, opts.surface)));
+    if (
+      summaries.length >= opts.requestedLimit ||
+      page.length < PERSISTED_SESSION_SUMMARY_PAGE_SIZE
+    ) {
       break;
     }
-    if (summaries.length >= MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN) break;
+    if (scanned >= MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN) break;
 
     page = await listSummaryPage({
       ...baseOptions,
@@ -569,9 +607,7 @@ async function listPersistedSessionsUncached(opts: {
     requestedLimit,
     surface: opts.surface,
   });
-  const visibleSummaries = summaries
-    .filter((summary) => summaryMatchesVisibleScope(summary, opts.surface))
-    .slice(0, requestedLimit);
+  const visibleSummaries = summaries.slice(0, requestedLimit);
   if (
     summaries.length >= MAX_PERSISTED_SESSION_SUMMARIES_TO_SCAN &&
     visibleSummaries.length < requestedLimit
@@ -588,6 +624,7 @@ async function listPersistedSessionsUncached(opts: {
         title: titleOverride ?? s.title,
         msgCount: s.msgCount,
         createdAt: s.createdAt,
+        ...(s.lastMessageAt !== undefined ? { lastMessageAt: s.lastMessageAt } : {}),
         projectRoot: s.runtimeInfo?.workspaceRoot ?? s.runtimeInfo?.gitRoot,
         // F045: summary.tag remains the compatibility source of truth for Space
         // surfaces. Partner fallback scans can now push the exact tag into the

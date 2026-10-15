@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
 import { expect } from '@playwright/test';
 import { launchSpace, type SpaceInstance } from './fixtures.js';
+import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
 interface WireMessage {
   role: string;
@@ -53,6 +54,23 @@ export async function createLocalSdkProvider() {
     requests.push(prompt);
     if (request.headers.authorization !== 'Bearer space-e2e-fixture')
       throw new Error('Main credential was not authorized');
+    if (prompt === 'FAIL_PRODUCT') {
+      response.writeHead(401, { 'content-type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          error: {
+            message: 'Fixture credential rejected',
+            type: 'invalid_api_key',
+            code: 'invalid_api_key',
+          },
+        }),
+      );
+      return;
+    }
+    if (prompt === 'LONG_PRODUCT_BODY') {
+      reply(response, `SDK_LONG_HEAD\n\n${'x'.repeat(100_000)}\n\nSDK_LONG_TAIL`);
+      return;
+    }
     if (parsed.tools?.some((tool) => tool.function?.name === 'emit_sidecar_verdict')) {
       reply(response, '', [
         {
@@ -74,6 +92,37 @@ export async function createLocalSdkProvider() {
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       response.flushHeaders();
       pending.set(prompt, response);
+      return;
+    }
+    if (prompt === 'STREAM_PRODUCT') {
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      response.write(
+        `data: ${JSON.stringify({
+          id: 'space-e2e',
+          object: 'chat.completion.chunk',
+          model: 'space-e2e-model',
+          choices: [{ index: 0, delta: { content: 'SDK_PARTIAL' }, finish_reason: null }],
+        })}\n\n`,
+      );
+      pending.set(prompt, response);
+      return;
+    }
+    if (prompt === 'SDK_ARTIFACT' && parsed.messages.at(-1)?.role !== 'tool') {
+      reply(response, '', [
+        {
+          index: 0,
+          id: 'e2e-artifact',
+          type: 'function',
+          function: {
+            name: 'create_artifact',
+            arguments: JSON.stringify({
+              kind: 'markdown',
+              title: 'SDK artifact output',
+              content: '# SDK Artifact\n\nComplete deliverable.',
+            }),
+          },
+        },
+      ]);
       return;
     }
     if (prompt === 'SDK_TOOLS' && parsed.messages.at(-1)?.role !== 'tool') {
@@ -130,7 +179,8 @@ export async function createLocalSdkProvider() {
       for (const [prompt, response] of pending) {
         if (!prompt.includes(marker)) continue;
         pending.delete(prompt);
-        if (!response.destroyed) reply(response, `SDK_REPLY:${prompt}`);
+        if (!response.destroyed)
+          reply(response, prompt === 'STREAM_PRODUCT' ? ':SDK_FINAL' : `SDK_REPLY:${prompt}`);
       }
     },
     close: async () => {
@@ -160,6 +210,7 @@ export async function launchRealSdkSpace(testId: string, baseUrl: string) {
         apiKeyEnv: 'SPACE_ISOLATED_E2E_KEY',
         defaultModel: 'space-e2e-model',
         reasoning: 'none',
+        imageInput: true,
         contextWindow: 200_000,
       });
       if (!added.ok) throw new Error(added.error.message);
@@ -187,13 +238,12 @@ export async function launchRealSdkSpace(testId: string, baseUrl: string) {
 }
 
 export async function currentSdkSession(space: SpaceInstance) {
-  return space.page.evaluate(async () => {
-    const result = await window.kodaxSpace!.invoke('session.list', { surface: 'code' });
-    if (!result.ok) throw new Error(result.error.message);
-    const session = result.data.sessions[0];
-    if (!session) throw new Error('No real SDK Session');
-    return session.sessionId;
-  });
+  // Sidebar recency is independent of the selected Session (e.g. copied history).
+  const sessionId = await space.page
+    .getByTestId('conversation-stream')
+    .getAttribute('data-session-id');
+  if (!sessionId) throw new Error('No current SDK Session');
+  return sessionId;
 }
 
 export async function sendSdkPrompt(space: SpaceInstance, prompt: string, key = 'Enter') {
@@ -201,20 +251,51 @@ export async function sendSdkPrompt(space: SpaceInstance, prompt: string, key = 
   await composer.fill(prompt);
   await composer.press(key);
   await expect(
-    space.page.getByTestId('conversation-stream').getByText(prompt, { exact: true }),
+    space.page.getByTestId('conversation-stream').getByText(prompt, { exact: true }).last(),
   ).toBeVisible({ timeout: 15_000 });
 }
 
 export async function readSdkHistory(space: SpaceInstance, sessionId: string) {
-  return space.page.evaluate(async (id) => {
-    const result = await window.kodaxSpace!.invoke('session.history', {
-      sessionId: id,
-      requestId: crypto.randomUUID(),
-      expectedSurface: 'code',
-    });
-    if (!result.ok) throw new Error(result.error.message);
-    return result.data;
+  const history = await space.page.evaluate(async (id) => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const result = await window.kodaxSpace!.invoke('session.history', {
+        sessionId: id,
+        requestId: crypto.randomUUID(),
+        expectedSurface: 'code',
+      });
+      if (!result.ok) throw new Error(result.error.message);
+      if (result.data.page?.outcome === 'data_changed') continue;
+      if (!result.data.productItems)
+        throw new Error(
+          `Coder history did not use the SDK product display: ${JSON.stringify(result.data.page)}`,
+        );
+      return { ...result.data, items: result.data.productItems };
+    }
+    throw new Error('SDK history did not stabilize after three boundary retries.');
   }, sessionId);
+  const items = await Promise.all(
+    history.items.map(async (item) => {
+      const read = async (part: 'text' | 'input', offset: number) => {
+        const result = await space.page.evaluate(
+          (args) => window.kodaxSpace!.invoke('session.productItem', args),
+          { sessionId, itemId: item.id, source: 'history' as const, part, offset },
+        );
+        if (!result.ok) throw new Error(result.error.message);
+        return result.data;
+      };
+      const text = await readProductItemText(
+        item,
+        (offset) => read('text', offset),
+        'text',
+        'history',
+      );
+      const inputText = item.tool
+        ? await readProductItemText(item, (offset) => read('input', offset), 'input', 'history')
+        : undefined;
+      return { ...item, text, ...(item.tool ? { tool: { ...item.tool, inputText } } : {}) };
+    }),
+  );
+  return { ...history, items };
 }
 
 export async function waitSdkIdle(space: SpaceInstance, sessionId: string) {

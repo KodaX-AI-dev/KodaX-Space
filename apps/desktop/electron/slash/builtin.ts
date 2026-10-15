@@ -2736,47 +2736,6 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
   },
 
   {
-    name: 'verifier-log',
-    description: 'Show or toggle Sidecar Verifier one-line logs',
-    argsHint: '[on|off]',
-    source: 'builtin',
-    handler: async (ctx) => {
-      const usesRuntime = usesRuntimeSession(ctx.sessionId);
-      const runtimeConfig = usesRuntime
-        ? await runtimeHostAdapter.readEffectiveRuntimeConfig()
-        : undefined;
-      const parsed = parseToggleValue(ctx.args[0]);
-      if (!ctx.args[0]) {
-        const enabled = usesRuntime
-          ? runtimeEffectiveToggle(runtimeEffectiveEntry(runtimeConfig, 'verifierLog'))
-          : process.env.KODAX_VERIFIER_LOG === '1';
-        const source = usesRuntime
-          ? runtimeEffectiveSourceNote(runtimeEffectiveEntry(runtimeConfig, 'verifierLog'))
-          : undefined;
-        return {
-          ok: true,
-          message: usesRuntime
-            ? `Sidecar Verifier log: ${enabled ? 'on' : 'off'}\n${source}\nUsage: /verifier-log [on|off]`
-            : `Sidecar Verifier log: ${enabled ? 'on' : 'off'}\nUsage: /verifier-log [on|off]`,
-          echo: true,
-        };
-      }
-      if (!parsed) return { ok: false, message: 'Usage: /verifier-log [on|off]' };
-      if (usesRuntime) {
-        await runtimeHostAdapter.patchRuntimeConfig({ verifierLog: parsed === 'on' });
-      } else if (parsed === 'on') process.env.KODAX_VERIFIER_LOG = '1';
-      else delete process.env.KODAX_VERIFIER_LOG;
-      return {
-        ok: true,
-        message: usesRuntime
-          ? `Sidecar Verifier log config saved: ${parsed}.`
-          : `Sidecar Verifier log: ${parsed} for this Space process`,
-        echo: true,
-      };
-    },
-  },
-
-  {
     name: 'stall-log',
     description: 'Show or toggle Stall Sidecar one-line logs',
     argsHint: '[on|off]',

@@ -1125,9 +1125,11 @@ function SessionRow({
               : 'text-fg-secondary hover:bg-hover-bg hover:text-fg-primary'
           }`}
           style={{ paddingLeft: padLeft }}
-          title={`${session.title ?? session.sessionId} - ${timeLabel}${statusLabel ? ` - ${statusLabel}` : ''}${runtimeFallbackLabel ? ` - ${runtimeFallbackLabel}` : ''} (${t('sidebar.session.renameHint')})`}
+          title={`${session.title?.trim() || t('sidebar.session.untitled')} - ${timeLabel}${statusLabel ? ` - ${statusLabel}` : ''}${runtimeFallbackLabel ? ` - ${runtimeFallbackLabel}` : ''} (${t('sidebar.session.renameHint')})`}
         >
-          <span className="min-w-0 truncate">{session.title ?? t('sidebar.session.untitled')}</span>
+          <span className="min-w-0 truncate">
+            {session.title?.trim() || t('sidebar.session.untitled')}
+          </span>
           <span className="flex min-w-0 items-center justify-end gap-1.5 text-[11px] text-fg-muted">
             {deleting ? (
               <span

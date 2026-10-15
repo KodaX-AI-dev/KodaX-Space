@@ -20,6 +20,36 @@ const historical: SessionMeta = {
   lastActivityAt: createdAt,
 };
 
+test('Runtime profile retains SDK message time independently of Session creation', () => {
+  const projection = projectRuntimeProfile({
+    status: {
+      runtimeId: 'rt_message_time',
+      mode: 'daemon',
+      profile: 'coder',
+      startedAt: new Date(0).toISOString(),
+      sessions: [
+        {
+          id: 'derived',
+          title: 'Derived',
+          msgCount: 2,
+          createdAt: new Date(2000).toISOString(),
+          lastMessageAt: new Date(100).toISOString(),
+        },
+      ],
+      runs: [],
+      pendingPermissions: [],
+      workflows: [],
+    },
+    userInputs: [],
+    cursor: 1,
+    projectionRevision: 1,
+    changedAt: 1,
+    capabilities: [],
+  });
+  assert.equal(projection.sessions[0]?.lastMessageAt, 100);
+  assert.equal(projection.sessions[0]?.createdAt, 2000);
+});
+
 test('completed out-of-page activity repairs sidebar recency without activating or loading the Session', () => {
   const status: RuntimeStatusSnapshot = {
     runtimeId: 'rt_activity',

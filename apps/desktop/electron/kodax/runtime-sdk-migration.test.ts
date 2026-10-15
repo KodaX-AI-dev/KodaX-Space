@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdir, mkdtemp } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import os from 'node:os';
@@ -61,6 +62,7 @@ test(
     assert.ok(address && typeof address !== 'string');
     const sdk = await import('@kodax-ai/kodax/runtime');
     let attached: Awaited<ReturnType<typeof sdk.ensureKodaXRuntime>> | undefined;
+    const startupStages: string[] = [];
     const secrets = new Map<string, string>();
     const identityStore = new RuntimeClientIdentityStore(
       path.join(homeDir, '.kodax', 'space', 'identity.json'),
@@ -86,9 +88,18 @@ test(
         credentialResolver: async () => 'offline-fixture',
         credentialProvidersResolver: async () => (extraProvider ? ['openai'] : []),
         runtimeFactory: async ({ autoStart: _autoStart, ...options }) => {
+          const launcherOptions = {
+            ...options,
+            onStartupProgress: (
+              progress: import('@kodax-ai/kodax/client').ClientStartupProgress,
+            ) => {
+              startupStages.push(progress.stage);
+              options.onStartupProgress?.(progress);
+            },
+          };
           attached = _autoStart
-            ? await sdk.ensureKodaXRuntime(options)
-            : await sdk.connectKodaXRuntime(options);
+            ? await sdk.ensureKodaXRuntime(launcherOptions)
+            : await sdk.connectKodaXRuntime(launcherOptions);
           await attached.catalog.upsertCustomProvider({
             name: 'space-offline',
             protocol: 'openai',
@@ -102,6 +113,12 @@ test(
     let adapter = createAdapter();
     try {
       await adapter.initialize();
+      assert.ok(startupStages.includes('checking'));
+      assert.ok(startupStages.includes('connecting'));
+      assert.equal(startupStages.at(-1), 'ready');
+      const skills = await attached!.catalog.skills({ projectRoot });
+      assert.ok(skills.some((skill) => skill.name === 'visual-review'));
+      assert.equal('verifierLog' in (await attached!.config.readEffective()).entries, false);
       const sessionId = await adapter.createSession({
         projectRoot,
         surface: 'code',
@@ -113,6 +130,10 @@ test(
         agentMode: 'sa',
         permissionMode: 'full-access',
       });
+      assert.equal((await attached!.sessions.list({ projectRoot })).length, 0,
+        'unsubmitted Coder drafts and their settings must not appear in persisted history');
+      assert.equal((await attached!.sessions.load(sessionId)).id, sessionId,
+        'the unsubmitted draft remains observable through the Host');
       const input = {
         sessionId,
         inputId: 'stable-space-input',
@@ -155,6 +176,7 @@ test(
             item.text.includes('KodaX Space'),
         ),
       );
+      await verifyRuntimePngAttachment(attached!, adapter, sessionId, projectRoot);
       await adapter.updateSessionSettings(sessionId, { agentMode: 'ama' });
       const active = await adapter.startManagedRun({
         ...input,
@@ -294,3 +316,48 @@ test(
     }
   },
 );
+
+async function verifyRuntimePngAttachment(
+  runtime: Awaited<ReturnType<typeof import('@kodax-ai/kodax/runtime').ensureKodaXRuntime>>,
+  adapter: RuntimeHostAdapter,
+  sessionId: string,
+  projectRoot: string,
+): Promise<void> {
+  const bytes = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64',
+  );
+  const imagePath = path.join(projectRoot, 'host-evidence.png');
+  await writeFile(imagePath, bytes);
+  const handle = await adapter.startManagedRun({
+    sessionId,
+    inputId: 'space-png-evidence',
+    prompt: 'Read current PNG evidence',
+    options: { toolInvocation: { name: 'read', input: { path: imagePath } } },
+  });
+  assert.equal((await handle.result).phase, 'completed');
+  const view = await readRuntimeSessionView(runtime.sessions, sessionId);
+  const item = view.items.find(
+    (candidate) =>
+      candidate.sourceRunId === handle.runId &&
+      candidate.attachments?.some((attachment) => attachment.path === imagePath),
+  );
+  assert.ok(item, 'the actual tool result must retain its PNG attachment');
+  const expectedImageSha256 = createHash('sha256').update(bytes).digest('hex');
+  const content = await runtime.sessions.readViewItem(sessionId, item.id, {
+    part: 'attachment',
+    attachmentIndex: 0,
+    expectedImageSha256,
+  });
+  assert.ok(content?.image);
+  assert.deepEqual(Buffer.from(content.image.dataBase64, 'base64'), bytes);
+  assert.deepEqual([content.image.width, content.image.height], [1, 1]);
+  await assert.rejects(
+    runtime.sessions.readViewItem(sessionId, item.id, {
+      part: 'attachment',
+      attachmentIndex: 0,
+      expectedImageSha256: '0'.repeat(64),
+    }),
+    /hash changed/,
+  );
+}

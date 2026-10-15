@@ -20,6 +20,7 @@ import type {
   RuntimeTypedEvent,
 } from '@kodax-ai/kodax/runtime';
 import type { AgentEvent, AgentTreeSnapshot } from '@kodax-ai/kodax/agent';
+import type { ClientSessionView, ClientViewItem } from '@kodax-ai/kodax/client';
 import { viewReader } from '../kodax/runtime/runtime-view-test-fixture.js';
 import { isCoderOwnerRecoveryRestartRequired } from '../kodax/coder-owner-recovery-error.js';
 import {
@@ -53,6 +54,348 @@ import {
 import { encodeRuntimeActorTaskId } from '../kodax/runtime/runtime-agent-projection.js';
 
 await initializeCoderDaemonProjectionSdk();
+
+test('Space creates Coder drafts when the SDK advertises draft admission', async () => {
+  const fake = createFakeRuntime();
+  assert.ok(fake.runtime.capabilities);
+  Object.assign(fake.runtime.capabilities, { sessionDrafts: { version: 1 } });
+  let draft: boolean | undefined;
+  const create = fake.runtime.sessions.create.bind(fake.runtime.sessions);
+  fake.runtime.sessions.create = async input => { draft = input?.draft; return create(input); };
+  const adapter = new RuntimeHostAdapter({ mode: 'runtime', profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async options => {
+      assert.equal(options.requirements?.sessionDrafts, 1);
+      return fake.runtime;
+    }, identityStore: testIdentityStore });
+  try {
+    await adapter.createSession({ projectRoot: 'C:\\repo', surface: 'code', ephemeral: false });
+    assert.equal(draft, true);
+  } finally { await adapter.close(); }
+});
+
+test('Space rejects an SDK without draft admission before starting a Host', async () => {
+  const sdk = await import('@kodax-ai/kodax/runtime');
+  const { sessionDrafts: _drafts, ...capabilities } = sdk.KODAX_RUNTIME_SDK_CAPABILITIES;
+  assert.throws(() => assertSpaceRuntimeSdkRequiredCapabilities({
+    KODAX_RUNTIME_SDK_CAPABILITIES: capabilities,
+  }), /sessionDrafts v1/);
+});
+
+test('SDK product snapshots replace live items, recover invalidation, and commit before observation retirement', async () => {
+  const sessionId = 's_product_output';
+  const fake = createFakeRuntime();
+  fake.sessions.add(sessionId);
+  let items: readonly ClientViewItem[] = [
+    { id: 'input', type: 'user', inputId: 'accepted', text: 'prompt' },
+  ];
+  const listeners = new Set<(view: ClientSessionView) => void>();
+  const view = (): ClientSessionView => ({
+    session: { id: sessionId, title: 'Product' },
+    items,
+    queue: [],
+    interactions: [],
+    runs: [],
+    settings: {},
+  });
+  fake.runtime.sessions.observeView = async (_id, listener) => {
+    listeners.add(listener);
+    listener(view());
+    return {
+      close: () => {
+        listeners.delete(listener);
+      },
+    };
+  };
+  const originalObserve = fake.runtime.sessions.observe.bind(fake.runtime.sessions);
+  fake.runtime.sessions.observe = async (...args) => {
+    const observation = await originalObserve(...args);
+    return {
+      ...observation,
+      snapshot: {
+        ...observation.snapshot,
+        runs: [
+          {
+            runId: 'run_product',
+            sessionId,
+            phase: 'running' as const,
+            provider: 'mock',
+            mode: 'managed_task' as const,
+            startedAt: '2026-10-14T00:00:00.000Z',
+          },
+        ],
+      },
+    };
+  };
+  const pushed: { channel: string; value: unknown }[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    push: (channel, value) => {
+      pushed.push({ channel, value });
+    },
+  });
+  try {
+    assert.deepEqual(
+      (await adapter.readSessionProductView(sessionId)).items.map((item) => item.id),
+      ['input'],
+    );
+    items = [
+      ...items,
+      {
+        id: 'output',
+        type: 'assistant',
+        outputId: 'answer',
+        outputState: 'draft',
+        text: 'partial',
+      },
+    ];
+    for (const listener of listeners) listener(view());
+    assert.deepEqual(
+      (await adapter.readSessionProductView(sessionId)).items.map((item) => item.id),
+      ['input', 'output'],
+    );
+    fake.invalidateObservation(sessionId);
+    await waitForTest(() => fake.calls.observed.length >= 2);
+    assert.deepEqual(
+      (await adapter.readSessionProductView(sessionId)).items.map((item) => item.id),
+      ['input', 'output'],
+    );
+    // Terminal notification can precede the observer's final frame. The snapshot reader is authoritative.
+    items = [
+      items[0]!,
+      {
+        id: 'output',
+        type: 'assistant',
+        outputId: 'answer',
+        outputState: 'committed',
+        text: 'complete',
+      },
+    ];
+    fake.emit({
+      id: 'product-terminal',
+      seq: 10,
+      time: '2026-10-14T00:01:00.000Z',
+      sessionId,
+      runId: 'run_product',
+      type: 'run.completed',
+      payload: {
+        runId: 'run_product',
+        sessionId,
+        phase: 'completed',
+        provider: 'mock',
+        startedAt: '2026-10-14T00:00:00.000Z',
+      },
+    });
+    await waitForTest(() =>
+      pushed.some(
+        (push) =>
+          push.channel === 'session.productChanged' &&
+          (push.value as { items: ClientViewItem[] }).items.some(
+            (item) => item.text === 'complete',
+          ),
+      ),
+    );
+    assert.equal((await adapter.readSessionProductView(sessionId)).items[1]?.text, 'complete');
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('SDK product history maps expired cursor boundaries to data_changed without hiding unrelated failures', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_history');
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    for (const code of ['data_changed', 'resync_required']) {
+      fake.runtime.sessions.readHistory = async () => {
+        throw Object.assign(new Error('SDK boundary expired'), { code });
+      };
+      assert.deepEqual(await adapter.readProductHistory('s_history', 'expired-cursor'), {
+        outcome: 'data_changed',
+      });
+    }
+    fake.runtime.sessions.readHistory = async () => {
+      throw new Error('Transport unavailable');
+    };
+    await assert.rejects(adapter.readProductHistory('s_history'), /Transport unavailable/);
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('newest history refreshes the SDK view after a quiescent observer has retired', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_mutated');
+  let items: readonly ClientViewItem[] = [
+    { id: 'removed-input', type: 'user', text: 'before rewind' },
+  ];
+  fake.runtime.sessions.observeView = async (id, listener) =>
+    viewReader(items, id).observeView(id, listener);
+  fake.runtime.sessions.readHistory = async () => ({
+    revision: 'source',
+    sourceRevision: 'source',
+    status: 'resolved',
+    issues: [],
+    items,
+    oversized: [],
+  });
+  const pushed: unknown[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    push: (channel, value) => {
+      if (channel === 'session.productChanged') pushed.push(value);
+    },
+  });
+  try {
+    await adapter.readSessionProductView('s_mutated');
+    items = [{ id: 'retained-input', type: 'user', text: 'after rewind' }];
+    await adapter.readProductHistory('s_mutated');
+    assert.equal((pushed.at(-1) as { items: ClientViewItem[] }).items[0]?.text, 'after rewind');
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('a product snapshot reads the current SDK view even while an earlier observer is attached', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_active_view');
+  let items: readonly ClientViewItem[] = [{ id: 'old-input', type: 'user', text: 'old' }];
+  fake.runtime.sessions.observeView = async (id, listener) =>
+    viewReader(items, id).observeView(id, listener);
+  const observe = fake.runtime.sessions.observe.bind(fake.runtime.sessions);
+  fake.runtime.sessions.observe = async (...args) => {
+    const value = await observe(...args);
+    return {
+      ...value,
+      snapshot: {
+        ...value.snapshot,
+        runs: [
+          {
+            runId: 'running',
+            sessionId: 's_active_view',
+            phase: 'running' as const,
+            provider: 'mock',
+            startedAt: '2026-10-14T00:00:00Z',
+          },
+        ],
+      },
+    };
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    await adapter.readSessionProductView('s_active_view');
+    items = [{ id: 'new-input', type: 'user', text: 'current' }];
+    assert.equal((await adapter.readSessionProductView('s_active_view')).items[0]?.text, 'current');
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('a fresh product snapshot cannot overwrite an observer frame delivered after its capture', async () => {
+  const fake = createFakeRuntime();
+  const sessionId = 's_snapshot_order';
+  fake.sessions.add(sessionId);
+  let primaryListener: ((view: ClientSessionView) => void) | undefined;
+  let publishNewerOnClose = false;
+  const view = (text: string, revision: number): ClientSessionView => ({
+    session: { id: sessionId, title: 'Snapshot order' },
+    items: [{ id: 'same-output', type: 'assistant', text, textRevision: revision }],
+    queue: [],
+    interactions: [],
+    runs: [],
+    settings: {},
+  });
+  fake.runtime.sessions.observeView = async (_id, listener) => {
+    primaryListener ??= listener;
+    listener(view('captured A', 1));
+    return {
+      close() {
+        if (!publishNewerOnClose) return;
+        publishNewerOnClose = false;
+        primaryListener?.(view('newer B', 2));
+      },
+    };
+  };
+  const observe = fake.runtime.sessions.observe.bind(fake.runtime.sessions);
+  fake.runtime.sessions.observe = async (...args) => {
+    const value = await observe(...args);
+    return {
+      ...value,
+      snapshot: {
+        ...value.snapshot,
+        runs: [
+          {
+            runId: 'running',
+            sessionId,
+            phase: 'running' as const,
+            provider: 'mock',
+            startedAt: '2026-10-14T00:00:00Z',
+          },
+        ],
+      },
+    };
+  };
+  const pushed: unknown[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    push: (channel, value) => {
+      if (channel === 'session.productChanged') pushed.push(value);
+    },
+  });
+  try {
+    await adapter.readSessionProductView(sessionId);
+    publishNewerOnClose = true;
+    assert.equal((await adapter.readSessionProductView(sessionId)).items[0]?.text, 'newer B');
+    assert.equal((pushed.at(-1) as { items: readonly ClientViewItem[] }).items[0]?.text, 'newer B');
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('committed Rewind remains successful when its display refresh needs recovery', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_committed');
+  const invalidations: unknown[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    push: (channel, value) => {
+      if (channel === 'session.liveInvalidated') invalidations.push(value);
+    },
+  });
+  try {
+    await adapter.readSessionProductView('s_committed');
+    fake.runtime.sessions.observeView = async () => {
+      throw new Error('Display transport unavailable');
+    };
+    const result = await adapter.rewindSession({ sessionId: 's_committed', selector: 'entry_0' });
+    assert.equal(result?.id, 's_committed');
+    assert.equal(invalidations.length, 1);
+  } finally {
+    await adapter.close();
+  }
+});
 
 test('terminal Stop retries delegate acceptance to the owner and never retarget the Run', async () => {
   const fake = createFakeRuntime();
@@ -305,6 +648,7 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
         liveOutputSegments: 1,
         managedRunDurability: 1,
         productClient: 1,
+        sessionDrafts: 1,
         runtimeEventCoalescing: 1,
         runtimeAutoModeGuardrail: 6,
         sandboxRuntime: 11,
@@ -597,6 +941,7 @@ function createFakeRuntime(runtimeId = 'rt_test') {
     },
     capabilities: {
       productClient: { version: 1 },
+      sessionDrafts: { version: 1 },
       productExecutionAuthorization: { version: 2 },
       productHistoryBoundaries: { version: 1 },
       productActorAuthorization: { version: 1 },
@@ -2387,6 +2732,133 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
     1,
     'profile refresh must not inspect management state',
   );
+});
+
+test('local startup progress reaches IPC without granting Session readiness', async () => {
+  const fake = createFakeRuntime();
+  const controller = createPendingSdkRuntimeProjection(100);
+  const updates: unknown[] = [];
+  let report: ConnectKodaXRuntimeOptions['onStartupProgress'];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    identityStore: testIdentityStore,
+    projectionController: controller,
+    runtimeFactory: async (options) => {
+      report = options.onStartupProgress;
+      assert.ok(report);
+      for (const progress of [
+        { stage: 'checking' },
+        { stage: 'upgrading' },
+        { stage: 'waiting', reason: 'connected_clients' },
+        { stage: 'ready' },
+      ] as const) {
+        report(progress);
+        assert.deepEqual(controller.profileSnapshot().connection.startupProgress, progress);
+        assert.equal(controller.profileSnapshot().connection.state, 'connecting');
+        assert.equal(controller.profileSnapshot().connection.stale, true);
+        assert.equal(adapter.snapshot().state, 'initializing');
+      }
+      const count = updates.length;
+      report({ stage: 'ready' });
+      assert.equal(updates.length, count, 'duplicate stages must not trigger another IPC push');
+      return fake.runtime;
+    },
+    push: (channel, payload) => {
+      if (channel === 'runtime.connectionChanged') updates.push(payload);
+    },
+  });
+  try {
+    await adapter.initialize();
+    assert.equal(controller.profileSnapshot().connection.state, 'ready');
+    assert.equal(controller.profileSnapshot().connection.startupProgress, undefined);
+    const count = updates.length;
+    report?.({ stage: 'starting' });
+    assert.equal(
+      updates.length,
+      count,
+      'a retired launcher callback cannot change a ready attachment',
+    );
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('closing during startup clears the pending display and ignores late launcher progress', async () => {
+  const fake = createFakeRuntime();
+  const controller = createPendingSdkRuntimeProjection(100);
+  let release!: () => void;
+  let started!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let report: ConnectKodaXRuntimeOptions['onStartupProgress'];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    identityStore: testIdentityStore,
+    projectionController: controller,
+    runtimeFactory: async (options) => {
+      report = options.onStartupProgress;
+      assert.ok(report);
+      report({ stage: 'starting' });
+      started();
+      await pending;
+      return fake.runtime;
+    },
+  });
+  const initializing = adapter.initialize();
+  await entered;
+  const closing = adapter.close();
+  try {
+    assert.equal(controller.profileSnapshot().connection.startupProgress, undefined);
+    report?.({ stage: 'ready' });
+    assert.equal(controller.profileSnapshot().connection.state, 'disconnected');
+  } finally {
+    release();
+    await Promise.all([initializing, closing]);
+  }
+});
+
+test('failed startup clears progress and fences callbacks from an earlier attempt', async () => {
+  const fake = createFakeRuntime();
+  const controller = createPendingSdkRuntimeProjection(100);
+  let retired: ConnectKodaXRuntimeOptions['onStartupProgress'];
+  let attempt = 0;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    identityStore: testIdentityStore,
+    projectionController: controller,
+    runtimeFactory: async (options) => {
+      assert.ok(options.onStartupProgress);
+      if (++attempt === 1) {
+        retired = options.onStartupProgress;
+        retired({ stage: 'starting' });
+        throw new Error('fixture startup failure');
+      }
+      options.onStartupProgress({ stage: 'connecting' });
+      retired?.({ stage: 'waiting', reason: 'host_stopping' });
+      assert.deepEqual(controller.profileSnapshot().connection.startupProgress, {
+        stage: 'connecting',
+      });
+      return fake.runtime;
+    },
+  });
+  try {
+    await assert.rejects(adapter.initialize(), /fixture startup failure/);
+    assert.equal(controller.profileSnapshot().connection.startupProgress, undefined);
+    await adapter.initialize();
+    assert.equal(adapter.snapshot().state, 'ready');
+    await adapter.close();
+    retired?.({ stage: 'starting' });
+    assert.equal(controller.profileSnapshot().connection.startupProgress, undefined);
+  } finally {
+    await adapter.close();
+  }
 });
 
 test('integration health polling projects daemon watcher changes without reconnecting Coder', async () => {
@@ -5804,6 +6276,10 @@ test('committed root compaction projects its persisted boundary once and filters
 test('committed compaction without a physical entry ID stays provisional and performs no transcript scan', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_1');
+  fake.runtime.sessions.observeView = viewReader(
+    [{ id: 'sdk-output', type: 'assistant', text: 'still streaming' }],
+    's_1',
+  ).observeView;
   let pageReads = 0;
   Object.assign(fake.runtime.sessions, {
     transcriptPage: async () => {
@@ -5865,11 +6341,7 @@ test('committed compaction without a physical entry ID stays provisional and per
   } as import('@kodax-ai/kodax/runtime').RuntimeTypedEvent);
 
   await waitForTest(() =>
-    pushed.some(
-      ({ payload }) =>
-        (payload as { kind?: unknown; text?: unknown }).kind === 'text_delta' &&
-        (payload as { text?: unknown }).text === 'still streaming',
-    ),
+    pushed.some(({ payload }) => (payload as { kind?: unknown }).kind === 'lineage_notice'),
   );
   const transcriptEvents = pushed
     .map(
@@ -5884,7 +6356,7 @@ test('committed compaction without a physical entry ID stays provisional and per
     .filter(({ kind }) => kind === 'lineage_notice' || kind === 'text_delta');
   assert.deepEqual(
     transcriptEvents.map(({ kind }) => kind),
-    ['lineage_notice', 'text_delta'],
+    ['lineage_notice'],
   );
   assert.equal(transcriptEvents[0]?.entryId, undefined);
   assert.deepEqual(transcriptEvents[0], {
@@ -5900,12 +6372,17 @@ test('committed compaction without a physical entry ID stays provisional and per
     sentAt: Date.parse('2026-07-29T07:06:50.321Z'),
   });
   assert.equal(pageReads, 0);
+  assert.equal((await adapter.readSessionProductView('s_1')).items[0]?.text, 'still streaming');
   await adapter.close();
 });
 
 test('committed compaction stays visible and does not block later output when paging fails', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_1');
+  fake.runtime.sessions.observeView = viewReader(
+    [{ id: 'sdk-output', type: 'assistant', text: 'still streaming' }],
+    's_1',
+  ).observeView;
   let pageReads = 0;
   Object.assign(fake.runtime.sessions, {
     transcriptPage: async () => {
@@ -5968,11 +6445,7 @@ test('committed compaction stays visible and does not block later output when pa
   } as import('@kodax-ai/kodax/runtime').RuntimeTypedEvent);
 
   await waitForTest(() =>
-    pushed.some(
-      ({ payload }) =>
-        (payload as { kind?: unknown; text?: unknown }).kind === 'text_delta' &&
-        (payload as { text?: unknown }).text === 'still streaming',
-    ),
+    pushed.some(({ payload }) => (payload as { kind?: unknown }).kind === 'lineage_notice'),
   );
   await waitForTest(() => pageReads >= 3);
   const transcriptEvents = pushed
@@ -5980,10 +6453,11 @@ test('committed compaction stays visible and does not block later output when pa
     .filter(({ kind }) => kind === 'lineage_notice' || kind === 'text_delta');
   assert.deepEqual(
     transcriptEvents.map(({ kind }) => kind),
-    ['lineage_notice', 'text_delta'],
+    ['lineage_notice'],
   );
   assert.equal(transcriptEvents[0]?.entryId, undefined);
   assert.equal(pageReads, 3);
+  assert.equal((await adapter.readSessionProductView('s_1')).items[0]?.text, 'still streaming');
   await adapter.close();
 });
 
@@ -6045,6 +6519,7 @@ test('new Coder Sessions use daemon allocation without a historical ID lookup', 
         gitRoot: 'C:\\repo',
         surface: 'space-desktop',
         tag: ephemeral ? 'space-ephemeral' : 'code',
+        ...(!ephemeral ? { draft: true } : {}),
       });
     }
     for (const sessionId of fake.sessions) {
@@ -11362,89 +11837,6 @@ test('terminal Runtime events fail only undelivered interrupt inputs before clos
   }
 });
 
-test('daemon terminal sidecar block is surfaced as a notice and closes without a generic failure', async () => {
-  const pushed: unknown[] = [];
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    push: (channel, payload) => {
-      if (channel === 'session.event') pushed.push(payload);
-    },
-  });
-  const bridgeRuntimeEvent = bindTestRuntimeEventBridge(adapter);
-
-  bridgeRuntimeEvent(
-    {
-      id: 'event_sidecar_blocked',
-      seq: 1,
-      time: '2026-07-24T02:30:13.157Z',
-      type: 'sidecar.message',
-      sessionId: 's_1',
-      runId: 'run_blocked',
-      payload: {
-        source: 'sidecar-verifier',
-        verdict: 'blocked',
-        recipient: 'user',
-        delivery: 'terminal-block',
-        content: 'Please confirm the next step.',
-        suggestedFix: 'Reply with approval to continue.',
-        trace: 'verifier_ok',
-        sessionId: 's_1',
-        seq: 91083,
-      },
-    },
-    'rt_1',
-  );
-  bridgeRuntimeEvent({
-    id: 'event_run_failed_after_block',
-    seq: 2,
-    time: '2026-07-24T02:30:16.281Z',
-    type: 'run.failed',
-    sessionId: 's_1',
-    runId: 'run_blocked',
-    payload: {
-      runId: 'run_blocked',
-      sessionId: 's_1',
-      phase: 'failed',
-      startedAt: '2026-07-24T02:26:35.310Z',
-      endedAt: '2026-07-24T02:30:16.279Z',
-      provider: 'mock',
-      terminal: {
-        revision: 1,
-        kind: 'failed',
-        code: 'run_failed',
-        effectOutcome: 'known',
-      },
-    },
-  });
-
-  assert.deepEqual(pushed, [
-    {
-      kind: 'sidecar_message',
-      sessionId: 's_1',
-      sentAt: Date.parse('2026-07-24T02:30:13.157Z'),
-      runtimeEvent: {
-        runtimeId: 'rt_1',
-        runId: 'run_blocked',
-        seq: 1,
-      },
-      message: {
-        source: 'sidecar-verifier',
-        verdict: 'blocked',
-        recipient: 'user',
-        delivery: 'terminal-block',
-        content: 'Please confirm the next step.',
-        suggestedFix: 'Reply with approval to continue.',
-        trace: 'verifier_ok',
-      },
-    },
-    {
-      kind: 'session_complete',
-      sessionId: 's_1',
-    },
-  ]);
-  await adapter.close();
-});
-
 test('Runtime input capability projection follows interruptInput advertisement', () => {
   const fake = createFakeRuntime();
   const adapter = new RuntimeHostAdapter({
@@ -11595,7 +11987,7 @@ test('observation bootstrap failure closes the daemon subscription', async () =>
   assert.equal(fake.calls.observationCloses, 1);
 });
 
-test('profile management conflicts cannot split terminal events from the live Run projection', async () => {
+test('busy daemon mutation conflicts cannot split terminal events from the live Run projection', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_1');
   const controller = new RuntimeProjectionController(
@@ -11619,7 +12011,7 @@ test('profile management conflicts cannot split terminal events from the live Ru
   const initialIntegrations = controller.profileSnapshot().connection.integrations;
   fake.runtime.daemon.inspect = async () => {
     fake.calls.daemonInspections += 1;
-    throw Object.assign(new Error('Runtime state changed while daemon management was inspected.'), {
+    throw Object.assign(new Error('Runtime daemon has in-flight mutations: sessions.submit (1).'), {
       code: 'conflict',
     });
   };
@@ -12357,22 +12749,6 @@ test('observation reopen keeps the same terminal sidecar once and rejects retire
     },
   });
   fake.emit({
-    id: 'evt_first_sidecar',
-    seq: 2,
-    time: '2026-08-05T01:00:00.500Z',
-    sessionId: 's_reobserve',
-    runId: 'run_first',
-    turnId: 'turn_first',
-    type: 'sidecar.message',
-    payload: {
-      source: 'sidecar-verifier',
-      verdict: 'revise',
-      recipient: 'main-agent',
-      delivery: 'synthetic-user-message',
-      content: 'Retain this verifier message.',
-    },
-  });
-  fake.emit({
     id: 'evt_first_completed',
     seq: 3,
     time: '2026-08-05T01:00:01.000Z',
@@ -12396,8 +12772,7 @@ test('observation reopen keeps the same terminal sidecar once and rejects retire
   await adapter.ensureObserved('s_reobserve');
   const reopenedTerminal = await adapter.readSessionLiveSnapshot('s_reobserve');
   assert.equal(reopenedTerminal.lastTerminalRun?.runId, 'run_first');
-  assert.equal(reopenedTerminal.sidecarMessages?.length, 1);
-  assert.equal(reopenedTerminal.sidecarMessages?.[0]?.eventId, 'evt_first_sidecar');
+  assert.deepEqual(reopenedTerminal.sidecarMessages, []);
   await waitForTest(() => fake.calls.observationCloses === 2);
 
   await adapter.ensureObserved('s_reobserve');
@@ -12407,22 +12782,6 @@ test('observation reopen keeps the same terminal sidecar once and rejects retire
   assert.ok(second.projectionRevision > firstTerminalRevision);
   pushed.length = 0;
   liveChanges.length = 0;
-  fake.emit({
-    id: 'evt_late_retired_sidecar',
-    seq: 6,
-    time: '2026-08-05T01:01:00.500Z',
-    sessionId: 's_reobserve',
-    runId: 'run_first',
-    turnId: 'turn_first',
-    type: 'sidecar.message',
-    payload: {
-      source: 'sidecar-verifier',
-      verdict: 'revise',
-      recipient: 'main-agent',
-      delivery: 'synthetic-user-message',
-      content: 'This retired verifier result arrived too late.',
-    },
-  });
   fake.emit({
     id: 'evt_late_retired_delivery',
     seq: 7,

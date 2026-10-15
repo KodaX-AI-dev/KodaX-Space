@@ -67,6 +67,8 @@ availability or visual interpretation claim is inferred from the offline fixture
 
 Root and Desktop now pin published `@kodax-ai/kodax@0.7.97-alpha.3`. Earlier evidence above remains historical.
 
+Current source now pins `0.7.97-alpha.5`; the alpha.3 acceptance below remains historical. Retain alpha.4 checks for local startup stages and waiting reasons, prompt removal on ready/failure/close, no `/verifier-log` in help or completion, retained `/stall-log`, historical verifier notes, and discoverable `visual-review`. Alpha.5 additionally checks real tool PNG attachment bytes/dimensions/hash and healthy Run projection during busy mutation conflicts. Execution-fact requests accept at most 500 items. Existing authorization/queue/history/statistics/exit checks still apply. The optional Artifact package is unpublished and is not an accepted new PPT capability. See [current integration and evidence](../releases/kodax-0.7.97-alpha.5-integration.md).
+
 1. Start Coder, submit an ordinary input and an explicit tool, and verify one canonical user input per send. Skill/command hooks must execute once in Host.
 2. During AMA, submit steer and after-turn inputs. The queue uses accepted input IDs and does not claim a future Run ID. A closed steer window must report the SDK rejection.
 3. Reconnect or reload while a Run is active. Restore the current queue, tools, reasoning and interactions; completed tool receipts must stay separate when model call IDs repeat.

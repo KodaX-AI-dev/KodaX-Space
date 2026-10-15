@@ -1,87 +1,11 @@
 # KodaX Space 高层设计（HLD）
 
-> **2026-09-14 beta.3 Partner integration candidate（过渡版，发布已撤回，随 beta.4 一同发布）**: Partner library 0.1.0 is packaged outside ASAR and provisioned once by Electron main through the existing Extension Store. Existing same-ID packages, disablement and uninstall intent are preserved. Renderer and the extension frame use typed/zod IPC; credentials, connector authorization and remote writes remain in the trusted host. Partner keeps its embedded owner and public SDK adapter; Coder daemon ownership and SDK 0.7.96-rc.4 contracts remain unchanged. See [integration boundaries](partner/releases/space-bundled-integration.md) and [release readiness](releases/v0.1.46-beta.3-release-readiness.md).
+> 更新日期：2026-10-15。当前候选为 Space `0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`，尚未发布；最新稳定版为 Space v0.1.46 / KodaX 0.7.96，已发布预发布版为 v0.1.47-alpha.1 / SDK 0.7.97-alpha.3。
+> 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，现有 SDK 验收见[alpha.6 接入](releases/kodax-0.7.97-alpha.6-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
 
-> **2026-08-24 当前发布基线**：v0.1.45 使用 root/Desktop/lockfile 精确锁定的 npm Registry KodaX `0.7.95`，并要求 `conversationHistory:2`、`runtimeExitSettlement:2` 与 `sandboxRuntime:5`。Space 在 SDK 启动门、daemon 协商、IPC status 与打包 smoke 四个边界保持同一版本；同一 boot 的临时 `unconfirmed-owner` 自动重试，等待会在应用退出时取消。
->
-> **2026-10-11 当前源码候选（0.1.47 线开启）**：Space package 为 `0.1.47-alpha.1`，root/Desktop/lockfile 精确锁定 KodaX
-> `0.7.96`。rc.8 让 Space 保留用户推理意图，SDK 负责档位协商与拒绝缓存，daemon 与 embedded 双路径转发 `reasoning_resolved` 观测（verified:false），选择器单独显示上次发送档位与回退原因。rc.2 又接入 rc.9 的 Issue 216 修复面：Windows 凭据 vault（safeStorage/DPAPI）、Runtime 身份保留、Auto Shell 启动探针、updater 生产依赖与结构化脱敏诊断（含 SDK 日志桥）。SDK 包启动门要求 `effectiveConfig:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6` 与 `sharedSessionSettings:2`；`providerCredentialBroker:2` 由 daemon 准入 requirements 和连接后 Runtime capability
-> 两层门禁验证，因为 SDK 的静态 capability 常量不发布该字段。`dist/native` 整体位于 `app.asar.unpacked`；dependency gate
-> 验证 universal native 集合，packaged smoke 按每个 manifest 的 SHA-256 验证物理 sidecar。
-> Space 只投影 Plan、Edits、Auto[LLM]、Full Access 四个 canonical profile。Beta.5 把 Windows setup generation 提升到 11（profile/SSH ACL 排除对齐 Codex 语义），真实 target-start doctor 证明、setup-only profile ACL 收敛、逐命令私有 Temp 与扩大后的网络 broker 边界仍由 v11 隔离；Space
-> 直接消费完整性锁定的 Registry 字节，不补丁依赖。Daemon 与 embedded 根 Run 的
-> SDK lease 只列出无密钥的已知 Provider 身份，并在 wire call 时按需解析凭据；独立 detached Workflow 使用带 workflowRunId
-> 归属的 derived lease，并在 managed handle 终态显式关闭。
->
-> **2026-08-20 v0.1.44 已发布历史基线**：v0.1.44 使用精确 npm Registry KodaX `0.7.93`，要求 `sandboxRuntime:4`、`crashOutcomeModel:2`、`actorSettlementConvergence:2`、`sessionEventJournal:1`、`liveOutputSegments:1` 与本地 `runtimeExitSettlement:1`。sandbox v4 在 v3 containment 基础上增加 stale coordinator-ticket / recorded-release 收敛；v0.1.43 / v0.1.42 作为历史正式产品基线保留。
-> `RuntimeHostAdapter` 要求 `managedRunDurability:1`，使 accepted prompt 与 completed turn
-> 在事件发布前已成为 canonical managed Run；Space 仅用 returned `runId`/`turnId` 关联 UI
-> optimistic state 和 history，不复制持久化职责。未设置 Auto timeout 时，SDK 默认 45 秒首次、90 秒重试。
-> root/Desktop 使用同一份完整性锁定的 npm Registry KodaX `0.7.95`
-> 正式包；manifest、lockfile、物理安装与打包 ASAR 必须匹配正式 Registry URL/SRI。Runtime raw journal 保留全部 provider attempt，live snapshot
-> 只提供 SDK 计算后的有效 segment；Space 不运行 checkpoint/text replay 状态机。
-> owner reconciliation 与 daemon auto-start 前仍先恢复精确 complete-exit 票据。
->
-> Last updated: 2026-08-29
-> Status: 核心架构决策仍有效；当前正式发布基线为 KodaX Space 0.1.45（package 0.1.45）/ npm 正式发布的精确 KodaX 0.7.95。中间方案与否决理由见 [ADR/](ADR/)；当前能力边界见 [KODAX_CAPABILITY_LEDGER.md](KODAX_CAPABILITY_LEDGER.md)。
-> Companion doc: [PRD](PRD.md)
+共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
 
-> **2026-08-19 v0.1.44 complete-exit background settlement**：完整退出仍先在
-> 可见窗口内完成 active-work、owner 与 Runtime preflight。准入后不再把最长安全清理
-> 窗口表现为不可交互的前台等待：Windows 在可用托盘下隐藏主窗口，由同一 Electron
-> main/SDK transaction 在后台自主完成清理，并通过托盘与可重新打开的 overlay 展示
-> “安全清理中”、已用时间和完成后自动退出。失败恢复可见窗口；无可用托盘的平台保持
-> 原可见 fail-closed 控制面。该交互变化不缩短 KodaX 的 orderly-exit、Job containment
-> 或 ACL recovery 安全预算。
-
-> **2026-08-17 v0.1.43 complete-exit recovery boundary**：Space 只负责退出策略、
-> admission drain、可见 UI 与启动顺序；KodaX 0.7.91 的
-> `settleKodaXRuntimeExit()` 独占 daemon owner、精确进程身份、Windows Job、ACL marker
-> 与持久恢复票据协议。恢复启动必须在 owner-policy reconciliation 和 daemon
-> initialization 之前执行。`clean/recovered` 完成原退出，`keep-open` 恢复正常 UI，
-> 其余 unresolved 结果阻止 replacement owner 启动。macOS/Linux 的正常退出可用；
-> 卡死 owner 在同一 boot 内继续 fail closed 且绝不按 cached PID/PGID 发信号，OS
-> reboot 后由持久 boot identity 自动证明旧树消失并恢复精确 owner。若常规 Runtime
-> 初始化失败，退出路径仅以 `autoStart:false` 连接现存 daemon 管理面，再交给同一
-> SDK transaction；不会退回 CLI stop，也不会为退出创建新 daemon。
-
-> **0.1.30 增量**：Electron main 继续拥有特权边界，并新增一个持久、协议中立的 External Agent Executor Plane。Renderer 仅通过 zod IPC 获取脱敏 Registration/Descriptor/Task/Event 投影；管理入口仅接受主应用窗口，任务创建从 main-owned live Session 派生项目/父任务归属，读取与干预均复核任务所属 Session。实时 Session 与 Workflow 共用同一 KodaX 0.7.67 plane。Reference Executor 已接通；v0.1.32 起，Runtime 配置的 A2A 由 KodaX 0.7.76 Coder daemon 持有并按能力协商开放，MCP Tasks/受治理 HTTP 仍按 Runtime capability 门控。Partner 自 0.1.30 起已启用 workspace-first Outputs 与 checkpointed writes。
->
-> **2026-07-12 架构重置**：`v0.1.31` 起以 `RuntimeHostAdapter -> @kodax-ai/kodax/runtime` 作为长期 host boundary，先采用 embedded inline facade，再以 capability negotiation 决定 Worker/daemon。旧 `KodaXHost/RealSession/KodaXClient` 路径是迁移基线，不再是长期目标。当前路线见 [FEATURE_LIST.md](FEATURE_LIST.md)。
->
-> **2026-07-13 `v0.1.32` 架构边界（2026-07-19 已实现）**：F121 只把 Coder 迁入 profile-scoped shared daemon，使 Space、CLI 与 IDE 共享同一 session/run/live-state truth；Partner 明确保留 Space-owned embedded inline。Space 通过 surface router/adapter 拆分 owner，不再用 Partner 的进程内 callback/tool 约束阻塞 Coder daemon。完整合同、迁移与回滚规则见 [v0.1.32](features/v0.1.32.md)。
->
-> **2026-07-21 `0.7.74` 集成（2026-07-23 已切正式包）**：根与 Desktop workspace 锁定精确版本，lockfile 现匹配 npm Registry 正式 SRI。Coder daemon 要求 Runtime-owned Auto LLM guardrail v3、公开的有效设置/时序契约、工作区编辑确定性规则、缺失 classifier model 的 prompt-free 本地拒绝、统一 Actor/Turn、Learning Center、共享设置、精确 `grantSuggestions`、interrupt input 和 daemon management 能力；缺少能力时 fail closed，不回退到隐藏 inline owner。AMAW 已并入 AMA，Workflow 只由显式命令或 KodaX 强信号策略触发。
->
-> **2026-07-23 `0.7.74` 正式发布同步**：lockfile 精确绑定官方 Registry URL/SRI，安装目录的 133 个发布文件与 Registry tarball 全部一致。Coder daemon 继续要求 `contextCompaction:3`、`transcriptPaging:1` 和 `transcriptSearch:1`；模型侧 `wait_agent` 是 mailbox yield，UI/SDK 继续消费 Actor progress telemetry。idle-yield 用户提示、未确认 root completion、Goal 常驻工具和 root live-only 投影均由 KodaX Runtime 契约持有，Space 只记录/投影，不创建第二套协调状态机。正式版在不提升 capability 版本的前提下补齐精确 checkpoint/命令式 compaction lineage、PowerShell 方括号路径升级确认、完整交互式 auto-resume、确定性 Auto 设置写入，以及 durable interrupt delivery 失败后的队列保留。
->
-> **2026-07-25 `0.7.76` 发布对齐**：根与 Desktop workspace 更新到官方 Registry 包。Runtime 保留 Sidecar 可选后续工作/预算终态修正和 Windows GUI host 非交互子进程隐藏，并将 Kimi Code 默认模型改为直连 `k3-256k`；Space 仍保持 owner split，并在 managed-task `verifying/completed` 投影上本地拒绝 interrupt，弥补 Runtime 关闭准入晚于最后 root drain boundary 的剩余窗口。
->
-> **2026-07-26 上下文与用量投影维护（v0.1.33）**：Space 启用 KodaX `contextDiagnostics`，把不含正文的根上下文分类计数和 hash-only Provider cache 诊断投影到受校验 IPC。Renderer 用最终自动压缩阈值计算主 Agent 有效窗口，把模型最大上下文与阈值分开，并以独立累计表统计根/子 Agent 的 Provider usage。输出容量预留不属于活动输入，也不再作为压缩前空间展示。
->
-> **2026-07-27 `0.7.77` npm 正式包对齐（v0.1.33）**：根与 Desktop workspace 已锁定同一 Registry tarball 并把最低 daemon 版本提升到 0.7.77。Runtime 现导出 root/child、retry、fallback、repair、workflow digest 与 compaction summary 的完成态物理请求诊断；Space 按 `requestId` 去重累计，保留有界重放 ID，并只在诊断尚未激活时回退 `iteration_end.usage`。完整 request-envelope/ephemeral-suffix/cache-affinity 哈希通过无正文 IPC，interrupt finalization 完全回归 Runtime owner。KodaX 还为逻辑 Session、retry、fallback、resume 与 compaction 提供稳定的 Provider 缓存亲和键，并归一化 CLI bridge 的缓存读取/写入用量；自定义兼容端点须由用户显式启用。
->
-> **2026-07-26 全局按钮交互维护（v0.1.33）**：Renderer 以 Session Token 控件的柔和扫光与边缘亮起为视觉基准，在 `body` 级交互层统一普通、语义、弹层和键盘焦点反馈。语义色继续来自既有 token；全宽列表降低强度；Windows 窗口控件、Monaco、xterm、disabled 与显式 opt-out 保持各自契约。该层仅绘制伪元素，不改变布局、业务 action、权限或 Runtime owner。
->
-> **2026-07-27 F140 与 Shell 生命周期收口（v0.1.33）**：Windows 用户驱动的主窗口关闭由 Electron main 串行决策为每次询问、保留托盘/Runtime，或进入 F136 安全彻底退出；记住选择只写入 Space 设置，显式托盘命令、app quit、OS session end 与无托盘 fallback 不进入该策略。Terminal Shell 设置由 main 解析登录环境，并为 PTY 与 Coder 命令工具提供同一脱敏执行环境。
->
-> **2026-08-23 Session 投影与生命周期维护**：renderer 安装 bounded newest history 时，以 canonical entry identity/index 自证与已加载前缀的交集，页首为 assistant/tool 也在所属 turn 内拼接；不依赖可选 truncation marker，不按时间或正文猜测。Runtime-ready 重验、queue delivery、sidebar activity、terminal 与 compaction 都受当前 Runtime identity 约束。历史未到达时 UI 展示 waiting/retry，压缩时展示不确定进度。main 的 shutdown coordinator 同时拥有启动恢复等待的 abort signal；release gate 的代理 dispatcher 在失败时有界销毁。
->
-> **2026-07-28 KodaX integration 配置与 self-manual 收口（v0.1.33）**：KodaX 0.7.77 的核心 `config.json` 与 `integrations/mcp.json`、`integrations/extensions.json`、`integrations/a2a.json` 已按 owner 分离。Space 的 MCP Manager、项目 MCP 兼容层、Settings 概览/迁移入口和 SDK filesystem Extension discovery 全部消费公开 reader/CRUD/migration 契约，并保留旧 `config.json#mcpServers`/`#extensions` 的只读迁移回退。`kodax_manual` 不再以 `baseTopics: []` 清空 SDK 机制手册，而是在 ESM-only `/coding` 子路径动态加载后，用 SDK 发布的底层能力主题清单做基线；同名 Space 主题动态合成当前安装 `MANUAL_REGISTRY` 的原始正文、aliases 和 sources。
->
-> **2026-07-28 v0.1.33 撤回后修正架构增量（2026-08-11 owner crash recovery 修订）**：F141 在 Settings 提供推荐 Daemon 与 Embedded 兼容 owner 的客户选择，但不提供任意 endpoint、混合 owner 或 live failover。Electron main 以一个全局 admission 边界串行化所有触碰 Coder Runtime 的 Session、Slash、Workflow、External Agent、MCP 和 Runtime-affecting Settings 操作；切换还会阻止 ManagedSession、running/paused Workflow、非终态 External Agent task、permission/AskUser 和待派发 queue。持久化模式是启动真理；启动前 reconciliation 由 Space 声明 daemon 期望，并由 SDK 在 owner-policy 临界区内恢复可证明已死亡的 inline owner。active、unreadable、legacy-kind、daemon-kind 或无法验证的 owner 继续 fail closed，Space 不直接删除 SDK owner 文件。
->
-> **2026-07-28 跨平台 daemon 退出修正**：用户/OS 真正退出统一关闭 Coder admission、排空已准入入口并读取 daemon preflight；blocker 会恢复窗口而不是退出。断开 Space 后只有 daemon stop 返回 stopped/missing 才允许 Electron 消失，失败或超时自动 relaunch 可见 Space。KodaX 的专用 `daemonOrphanExit:1` 能力只为 Space 新拉起的 detached daemon 启用 30 秒 orphan idle-exit：最后客户端异常断开且 work 空闲时自停，活动任务进入终态后重试，其他客户端始终阻止回收。该能力按 Runtime 事实协商，不通过 KodaX 版本号或 Auto-mode guardrail 版本推断。
->
-> **2026-07-29 KodaX 0.7.78 正式包接入**：当前源码精确锁定官方 Registry bytes，并把 daemon 门禁提升为 exclusive Actor owner、`daemonOrphanExit:1`、`skillLearningLoop:1`、`integrationConfigResilience:1` 与 Auto guardrail v4。Runtime management 的 MCP/A2A/Extension health 经有界 schema 投影到 Settings 和诊断导出；invalid config 继续使用 last-known-good，revision 冲突 fail closed。Auto side-query 只投影 provider/model/耗时/大小/重试/阶段元数据，不传 prompt/response。公开 `/sandbox` facade 经过启动与打包 probe，`tool.sandbox` 只更新活动工具的结构化 containment 事实，不复制 transcript，也不把 command sandbox 误称为完整 F138。
->
-> **2026-07-30 v0.1.34 安全发布边界**：所有普通退出在 Electron main 的统一 coordinator 内同步关闭 Coder admission、排空已准入操作、检查 Space-local 与 daemon work，并在仍有可见控制面时执行 revision-fenced stop；失败、blocker、超时、不可读或 late-owner race 恢复/重启 Space。主进程还统一持有 boot/shutdown overlay 和 renderer generation gate，消除第二套 renderer loading shell。Space MCP Manager 以完整 candidate 构建实现事务替换；正式包把 ASRT/helper 依赖移到物理 `resources/node_modules` 并由 package smoke 运行 sandbox doctor。历史 replay 按规范位置保持已完成 interrupt 回复早于下一条用户 query。Issue 133 的 macOS/Linux process acceptance 与异步 cleanup retry/verification 缺口、F138 完整 OS 隔离仍明确未完成。
->
-> **2026-07-23 F135 builtin 分发**：Space 通过公开 Skill plugin 注册接口加载安装包外置的 `frontend-slides` 与 `huashu-design`，来源 revision、许可证、补丁和逐文件哈希全部可审计；`huashu-design` 默认去除推广水印/签名。本机 `pdf`/`pptx`/`xlsx`/`docx` skill 的当前许可不允许再分发，因此不进入安装包。
->
-> **0.7.68 集成**：KodaX top-level managed coding path 自有 FEATURE_260 Memory Agent 生命周期，复用 F228 durable governance。Space 验证正式 `/experimental-memory` 契约、保留 metadata-only 回调诊断并继续拥有 UI 投影；不创建第二个 Memory Agent/存储/推广策略。完整 F117 仍受 activation/rollback 和桌面 query/action contract 门控。
-
----
+SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；已有凭据、权限、退出恢复和 Partner inline owner 边界保持。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
 
 ## 0. 中文导读
 
@@ -103,7 +27,7 @@ KodaX Space 不是新 agent，而是**复用 KodaX 内核的 Electron 桌面客�
 
 ### 1.1 全景图
 
-下图是当前 `v0.1.33` F121 拓扑；`v0.1.31` 的双 surface inline owner 仅作为历史兼容基线保留。
+下图保留 `v0.1.33` F121 的历史拓扑；当前共享 Coder 输出以 ADR-010 为准；`v0.1.31` 的双 surface inline owner 仅作为历史兼容基线保留。
 
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
@@ -994,7 +918,7 @@ Native helpers, `zh-Hant`, knowledge graph, remote runners, local workspace isol
 - [KodaX PRD](../../KodaX/docs/PRD.md)
 - [KodaX HLD](../../KodaX/docs/HLD.md)
 - [KodaX ADR](../../KodaX/docs/ADR.md)
-- [KodaX-private 技术交底书（Repointel）](../../KodaX-private/技术交底书.md)
+- 公开架构与接入边界见 [ADR](ADR/README.md) 和 [KodaX 能力台账](KODAX_CAPABILITY_LEDGER.md)；内部 Repointel 设计资料未随本仓库公开。
 - [KodaX REPL 实现（同进程 import 参考）](../../KodaX/packages/repl/)
 - Electron Best Practices（contextIsolation / sandbox / CSP）
 - [napi-rs](https://napi.rs/)

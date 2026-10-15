@@ -16,6 +16,31 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ---
 
+## [0.1.47-alpha.2] - 2026-10-15
+
+Prerelease candidate; publication and cross-platform installer qualification are pending.
+
+### Changed
+
+- Pin the published KodaX `0.7.97-alpha.6` in root/Desktop manifests and the lockfile. Use SDK current-view replacement and independent history browsing/search for shared Coder output; preserve long bodies, user images, tool and Artifact identities, and revision-bound Fork/Rewind actions.
+- Create ordinary Coder sessions as SDK drafts and require `sessionDrafts:1`. Hide old unnamed empty records only after complete history confirms they contain no recoverable state; preserve their files and use localized blank-title names.
+- Order sessions by the SDK's real `lastMessageAt`, including resumed and profile records. Metadata writes no longer override message recency, while newly sent local inputs retain their activity time during canonical refresh.
+- Display local SDK startup stages and waiting reasons through Runtime connection status. Retire live Sidecar Verifier callbacks/configuration and `/verifier-log`; retain Stall logging and historical records, with tool/render evidence and `visual-review` for result checks.
+
+### Fixed
+
+- Prevent duplicated live/history turns and stale snapshot overwrites; preserve repeated identical inputs by SDK identity.
+- Include the SDK's `relationship_scan.depth` integer-range fix for Gemini-compatible gateways, preserving numeric inputs and stream completion validation.
+- Preserve tool-call identity in live visual-evidence acceptance so transcript and Host image evidence can be associated correctly.
+
+### Documentation
+
+- Align current READMEs, document index, PRD/HLD/DD, user/developer guides, capability ledger, feature notes and in-app self-manual with the alpha.2 candidate. Space product questions use `space_manual`; `kodax_manual` retains the underlying SDK/CLI manual. Preserve historical release evidence and existing Partner acceptance boundaries.
+
+See [release readiness](docs/releases/v0.1.47-alpha.2-release-readiness.md), [published SDK integration](docs/releases/kodax-0.7.97-alpha.6-integration.md) and [SDK migration](docs/features/SDK_0.7.97_MIGRATION.md).
+
+---
+
 ## [0.1.47-alpha.1] - 2026-10-11
 
 First alpha of the 0.1.47 line.

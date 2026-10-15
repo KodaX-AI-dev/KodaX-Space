@@ -9,6 +9,7 @@ import type {
 import type { ConversationMessage } from './composeMessages.js';
 import {
   appendRuntimeFailureNotices,
+  decorateProductFailureNotices,
   runtimeFailureProfileHasCurrentAuthority,
 } from './runtimeFailureNotice.js';
 
@@ -19,6 +20,42 @@ const failureDetail = {
   safeMessage: 'The Runtime could not confirm settlement.',
   requestId: 'req_settlement',
 } as const;
+
+test('SDK errors keep their identity and text while receiving Runtime retry and diagnostic metadata', () => {
+  const message: ConversationMessage = {
+    kind: 'system_notice',
+    id: 'sdk-error',
+    variant: 'error',
+    text: 'SDK error text',
+    runtimeRunId: 'run_settlement',
+  };
+  const live = activeUnknownLive();
+  const result = decorateProductFailureNotices(
+    [message],
+    {
+      ...live,
+      activeRun: {
+        ...live.activeRun!,
+        action: 'retry',
+        retriable: true,
+        retryAvailableAt: 10,
+      },
+    },
+    undefined,
+  );
+  assert.equal(result.length, 1);
+  assert.deepEqual(result[0], {
+    ...message,
+    failureDetail,
+    failureKind: failureDetail.failureKind,
+    action: 'retry',
+    retriable: true,
+    retryAvailableAt: 10,
+  });
+  const diagnostics = decorateProductFailureNotices([], live, undefined);
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]?.id, 'runtime_failure_run_settlement');
+});
 
 function activeUnknownLive(): SpaceSessionLiveProjectionT {
   return {

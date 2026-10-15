@@ -52,7 +52,16 @@ import type {
   RuntimeTypedEvent,
 } from '@kodax-ai/kodax/runtime';
 import type { KodaXOutputSegmentProjection } from '@kodax-ai/kodax/coding';
-import type { KodaXClientHostAuthorization, ClientObservation } from '@kodax-ai/kodax/client';
+import type {
+  KodaXClientHostAuthorization,
+  ClientObservation,
+  ClientStartupProgress,
+  ClientSessionView,
+  ClientHistoryPage,
+  ClientHistorySearchResult,
+} from '@kodax-ai/kodax/client';
+import type { SessionProductView } from '@kodax-space/space-ipc-schema';
+import { projectProductItems } from './runtime/product-view.js';
 import { workflowPolicyStore } from './workflow-policy.js';
 export type {
   RuntimeExitSettlement,
@@ -114,6 +123,7 @@ import { areLearningMutationsEnabled } from './learning-policy.js';
 import {
   canonProjectRoot,
   sessionEventChannel,
+  spaceCoderConnectionProjectionSchema,
   spaceRuntimeRunFailureKindSchema,
   workflowProcessSnapshotSchema,
   workflowRunSchema,
@@ -261,6 +271,7 @@ export function runtimeConnectionSemanticallyEqual(
     left.runtimeId === right.runtimeId &&
     left.profile === right.profile &&
     left.reason === right.reason &&
+    isDeepStrictEqual(left.startupProgress, right.startupProgress) &&
     JSON.stringify(left.integrations) === JSON.stringify(right.integrations) &&
     left.capabilities.length === right.capabilities.length &&
     left.capabilities.every((capability, index) => {
@@ -1282,6 +1293,7 @@ type RuntimeEventParser = (
   | { readonly ok: false; readonly error: string };
 
 interface RuntimeProjectionPush {
+  (channel: 'session.productChanged', payload: SessionProductView): void;
   (
     channel: 'runtime.connectionChanged',
     payload: ReturnType<RuntimeProjectionController['profileSnapshot']>['connection'],
@@ -1381,6 +1393,7 @@ export type RuntimeExitSettler = (
 
 interface RuntimeSessionObservationState {
   productObservation?: ClientObservation;
+  productViewQueue: Promise<void>;
   readonly sessionId: string;
   readonly runtime: KodaXDaemonRuntime;
   readonly observation: RuntimeSessionObservation;
@@ -1488,6 +1501,7 @@ function projectSessionStopReceipt(
 function assertSpaceDaemonRequiredCapabilities(runtime: KodaXDaemonRuntime): void {
   for (const [name, version] of [
     ['productClient', 1],
+    ['sessionDrafts', 1],
     ['productExecutionAuthorization', 2],
     ['productHistoryBoundaries', 1],
     ['productActorAuthorization', 1],
@@ -1677,6 +1691,7 @@ async function createPublishedRuntime(
         readonly effectiveConfig?: number;
         readonly managedRunDurability?: number;
         readonly productClient?: number;
+        readonly sessionDrafts?: number;
         readonly runtimeEventCoalescing?: number;
         readonly runtimeAutoModeGuardrail?: number;
         readonly sandboxRuntime?: number;
@@ -1705,6 +1720,7 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
     readonly liveOutputSegments?: number;
     readonly managedRunDurability?: number;
     readonly productClient?: number;
+    readonly sessionDrafts?: number;
     readonly runtimeEventCoalescing?: number;
     readonly runtimeAutoModeGuardrail?: number;
     readonly sandboxRuntime?: number;
@@ -1723,6 +1739,7 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
     ...(capabilities?.liveOutputSegments === 1 ? [] : ['liveOutputSegments v1']),
     ...(capabilities?.managedRunDurability === 1 ? [] : ['managedRunDurability v1']),
     ...(capabilities?.productClient === 1 ? [] : ['productClient v1']),
+    ...(capabilities?.sessionDrafts === 1 ? [] : ['sessionDrafts v1']),
     ...(capabilities?.runtimeEventCoalescing === 1 ? [] : ['runtimeEventCoalescing v1']),
     ...((capabilities?.runtimeAutoModeGuardrail ?? 0) >= 6 ? [] : ['runtimeAutoModeGuardrail v6']),
     ...((capabilities?.sandboxRuntime ?? 0) >= 11 ? [] : ['sandboxRuntime v11']),
@@ -2022,6 +2039,7 @@ export class RuntimeHostAdapter {
   private runtime: KodaXDaemonRuntime | null = null;
   private closingRuntime: KodaXDaemonRuntime | null = null;
   private initializePromise: Promise<void> | null = null;
+  private startupAttempt = 0;
   private closePromise: Promise<void> | null = null;
   private lastError: string | undefined;
   private startupOwnerPolicyFailure: string | undefined;
@@ -2034,6 +2052,7 @@ export class RuntimeHostAdapter {
   private readonly spaceOwnedAgentTurns = new Set<string>();
   private readonly activeRuns = new Map<string, string>();
   private readonly observations = new Map<string, RuntimeSessionObservationState>();
+  private readonly productViews = new Map<string, SessionProductView>();
   private readonly observationPromises = new Map<string, Promise<void>>();
   private readonly observationOpenQueues = new WeakMap<KodaXDaemonRuntime, Promise<void>>();
   private readonly persistedOwnershipTokens = new Map<string, string>();
@@ -2093,7 +2112,6 @@ export class RuntimeHostAdapter {
   private readonly compactionProjectionTasks = new Map<string, Promise<void>>();
   /** Next canonical user ordinal, but only for root turns observed from turn.started. */
   private readonly nextUserOrdinalByTurnId = new Map<string, number>();
-  private readonly terminalSidecarBlockRuns = new Map<string, string>();
   private readonly continuationCredentialLeases = new Map<string, string>();
   private readonly credentialLeases = new Map<string, SpaceCredentialLeaseBinding>();
   private readonly continuationPrompts = new Map<
@@ -2357,6 +2375,7 @@ export class RuntimeHostAdapter {
         runtimeEventCoalescing: 1,
         sandboxRuntime: 11,
         productClient: 1,
+        sessionDrafts: 1,
         productExecutionAuthorization: 2,
         productActorAuthorization: 1,
         productHistoryBoundaries: 1,
@@ -2391,6 +2410,7 @@ export class RuntimeHostAdapter {
     if (this.state === 'closed') return Promise.reject(new Error('Runtime host is closed'));
     if (this.initializePromise !== null) return this.initializePromise;
     this.state = 'initializing';
+    const startupAttempt = ++this.startupAttempt;
     const version = this.clientVersion;
     let pendingRuntime: KodaXDaemonRuntime | null = null;
     let attachedHostToolLeaseId: string | undefined;
@@ -2403,9 +2423,13 @@ export class RuntimeHostAdapter {
         this.productClientInstanceId = identity.instanceId;
         timing.mark(activeStage, 'complete');
         activeStage = 'runtime_factory_connect';
-        const runtime = await this.runtimeFactory(
-          this.createRuntimeConnectOptions(identity, autoStart),
-        );
+        const runtime = await this.runtimeFactory({
+          ...this.createRuntimeConnectOptions(identity, autoStart),
+          onStartupProgress: (progress) => {
+            if (this.startupAttempt !== startupAttempt || this.state !== 'initializing') return;
+            this.publishStartupProgress(progress, autoStart ? 'connecting' : 'reconnecting');
+          },
+        });
         timing.mark(activeStage, 'complete', runtimeIdentityTimingData(runtime.identity));
         pendingRuntime = runtime;
         return runtime;
@@ -3291,13 +3315,36 @@ export class RuntimeHostAdapter {
     }
   }
 
+  private publishStartupProgress(
+    progress: ClientStartupProgress,
+    state: 'connecting' | 'reconnecting',
+  ): void {
+    const { reason: _reason, ...current } = this.projectionController.profileSnapshot().connection;
+    if (isDeepStrictEqual(current.startupProgress, progress) && current.state === state) return;
+    const parsed = spaceCoderConnectionProjectionSchema.safeParse({
+      ...current,
+      state,
+      changedAt: Date.now(),
+      stale: true,
+      startupProgress: progress,
+    });
+    if (!parsed.success) {
+      console.warn('[runtime] ignored malformed local startup progress');
+      return;
+    }
+    if (this.projectionController.replaceConnection(parsed.data)) {
+      this.push('runtime.connectionChanged', parsed.data);
+    }
+  }
+
   private publishUnavailable(
     state: 'degraded' | 'incompatible' | 'reconnecting' | 'disconnected',
     reason: string,
   ): void {
     const current = this.projectionController.profileSnapshot();
+    const { startupProgress: _startupProgress, ...previous } = current.connection;
     const connection = {
-      ...current.connection,
+      ...previous,
       state,
       changedAt: Date.now(),
       stale: true,
@@ -3464,6 +3511,7 @@ export class RuntimeHostAdapter {
       projectPath: input.projectRoot,
       gitRoot: input.projectRoot,
       surface: 'space-desktop',
+      ...(!input.ephemeral ? { draft: true } : {}),
       tag: input.ephemeral ? SPACE_EPHEMERAL_SESSION_TAG : 'code',
     });
     assertRuntimeSessionIdentity(session, {
@@ -3910,6 +3958,22 @@ export class RuntimeHostAdapter {
       // Mutation success is the authoritative invalidation boundary. A caller arriving
       // immediately after rewind must never join an in-flight pre-rewind history traversal.
       this.invalidateTranscriptBoundary(input.sessionId);
+      if (this.productViews.has(input.sessionId)) {
+        try {
+          await this.readSessionProductView(input.sessionId);
+        } catch (error) {
+          console.warn(
+            '[runtime] Display refresh after committed Rewind failed:',
+            sanitizeDiagnosticError(error),
+          );
+          this.push('session.liveInvalidated', {
+            sessionId: input.sessionId,
+            runtimeId: runtime.identity.runtimeId,
+            reason: 'delivery_failed',
+            message: 'Rewind committed; the SDK display needs refresh.',
+          });
+        }
+      }
       // Rewind can replace Actor state without producing a new Actor event.
       // Drop the cached cursor so renderer reload/rewind cannot resurrect the
       // pre-rewind child tree.
@@ -3961,9 +4025,6 @@ export class RuntimeHostAdapter {
     for (const [runId, continuation] of this.continuationPrompts) {
       if (continuation.sessionId === sessionId) this.continuationPrompts.delete(runId);
     }
-    for (const [runId, blockedSessionId] of this.terminalSidecarBlockRuns) {
-      if (blockedSessionId === sessionId) this.terminalSidecarBlockRuns.delete(runId);
-    }
     const sessionCredentialLeases = [...this.credentialLeases.values()]
       .filter((binding) => binding.sessionId === sessionId)
       .map((binding) => this.revokeCredentialLease(runtime, binding.leaseId));
@@ -3972,6 +4033,7 @@ export class RuntimeHostAdapter {
     this.persistedOwnershipTokens.delete(sessionId);
     this.runtimeCoderSessionIds.delete(sessionId);
     this.liveProjectionRevisions.delete(sessionId);
+    this.productViews.delete(sessionId);
     invalidatePersistedSessionCache(sessionId);
     this.scheduleProfileRefresh(this.currentProfileCursor());
     return outcome;
@@ -4142,6 +4204,106 @@ export class RuntimeHostAdapter {
     return recovered;
   }
 
+  async readSessionProductView(sessionId: string): Promise<SessionProductView> {
+    await this.ensureObserved(sessionId);
+    const state = this.observations.get(sessionId);
+    if (state) {
+      const readCurrent = async (): Promise<void> => {
+        const current = await readRuntimeSessionView(state.runtime.sessions, sessionId);
+        await this.replaceProductView(state, current);
+      };
+      const read = state.productViewQueue.then(readCurrent, readCurrent);
+      state.productViewQueue = read;
+      await read;
+      // Frames arriving during the read follow it, so a captured snapshot cannot roll them back.
+      await state.productViewQueue;
+      if (state.runtime !== this.runtime)
+        throw new Error('Runtime changed while reading Session view.');
+    }
+    const view = this.productViews.get(sessionId);
+    if (!view || view.runtimeId !== this.runtime?.identity.runtimeId) {
+      throw new Error('SDK did not supply the current Session view.');
+    }
+    this.retireObservationIfQuiescent(sessionId);
+    return view;
+  }
+
+  async readProductHistory(
+    sessionId: string,
+    cursor?: string,
+  ): Promise<{ outcome: 'ready'; page: ClientHistoryPage | null } | { outcome: 'data_changed' }> {
+    const runtime = await this.requireRuntime();
+    await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+    try {
+      const page = await runtime.sessions.readHistory(sessionId, {
+        ...(cursor ? { cursor } : {}),
+        limit: 150,
+      });
+      if (cursor === undefined) await this.readSessionProductView(sessionId);
+      if (this.runtime !== runtime)
+        throw new Error('Runtime changed while reading Session history.');
+      return { outcome: 'ready', page };
+    } catch (error) {
+      if (this.runtime !== runtime)
+        throw new Error('Runtime changed while reading Session history.');
+      if (isRuntimeResyncRequired(error)) return { outcome: 'data_changed' };
+      if (isSessionNotFoundError(error)) return { outcome: 'ready', page: null };
+      throw error;
+    }
+  }
+
+  async readProductItem(input: {
+    sessionId: string;
+    itemId: string;
+    source: 'view' | 'history';
+    part: 'text' | 'input';
+    offset: number;
+  }) {
+    const runtime = await this.requireRuntime();
+    await this.assertPersistedCoderOwnershipIfChanged(input.sessionId);
+    const options = { part: input.part, offset: input.offset };
+    const chunk =
+      input.source === 'history'
+        ? await runtime.sessions.readHistoryEntry(input.sessionId, input.itemId, options)
+        : await runtime.sessions.readViewItem(input.sessionId, input.itemId, options);
+    if (this.runtime !== runtime) throw new Error('Runtime changed while reading Session item.');
+    return chunk;
+  }
+
+  async searchProductHistory(sessionId: string, query: string): Promise<ClientHistorySearchResult> {
+    const runtime = await this.requireRuntime();
+    await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+    const result = await runtime.sessions.searchHistory(sessionId, { query });
+    if (this.runtime !== runtime)
+      throw new Error('Runtime changed while searching Session history.');
+    return result;
+  }
+
+  private async replaceProductView(
+    state: RuntimeSessionObservationState,
+    view: ClientSessionView,
+  ): Promise<void> {
+    if (view.session.id !== state.sessionId)
+      throw new Error('SDK view belongs to another Session.');
+    if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
+    const previous = this.productViews.get(state.sessionId);
+    const items = await projectProductItems(state.sessionId, view.items, previous?.items);
+    if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
+    if (
+      previous?.runtimeId === state.runtime.identity.runtimeId &&
+      isDeepStrictEqual(previous.items, items)
+    )
+      return;
+    const next = {
+      sessionId: state.sessionId,
+      runtimeId: state.runtime.identity.runtimeId,
+      revision: (previous?.revision ?? 0) + 1,
+      items,
+    };
+    this.productViews.set(state.sessionId, next);
+    this.push('session.productChanged', next);
+  }
+
   private async readObservedSessionLiveSnapshot(
     sessionId: string,
   ): Promise<SpaceSessionLiveProjectionT> {
@@ -4287,36 +4449,6 @@ export class RuntimeHostAdapter {
       if (!(error instanceof RuntimeProjectionUnavailableError)) throw error;
     }
     return revision;
-  }
-
-  private previousLiveProjection(
-    sessionId: string,
-    cursor: SpaceSessionLiveProjectionT['cursor'],
-  ): SpaceSessionLiveProjectionT | undefined {
-    try {
-      const previous = this.projectionController.sessionLiveSnapshot(sessionId);
-      if (
-        previous.cursor.runtimeId === cursor.runtimeId &&
-        previous.cursor.journalEpoch === cursor.journalEpoch &&
-        previous.cursor.seq <= cursor.seq
-      ) {
-        return previous;
-      }
-    } catch (error: unknown) {
-      if (!(error instanceof RuntimeProjectionUnavailableError)) throw error;
-    }
-    return undefined;
-  }
-
-  private restoreCurrentSidecarMessages(
-    current: SpaceSessionLiveProjectionT,
-    previous: SpaceSessionLiveProjectionT | undefined,
-  ): SpaceSessionLiveProjectionT['sidecarMessages'] {
-    const owner = current.activeRun ?? current.lastTerminalRun;
-    if (!previous || !owner?.turnId) return [];
-    return (previous.sidecarMessages ?? []).filter(
-      (item) => item.runId === owner.runId && item.turnId === owner.turnId,
-    );
   }
 
   private recordLiveProjectionRevision(projection: SpaceSessionLiveProjectionT): void {
@@ -4564,13 +4696,8 @@ export class RuntimeHostAdapter {
       }
       assertRuntimeSessionIdentity(session, { sessionId });
       const replayed = this.projectObservationSnapshot(observation.snapshot);
-      const previousProjection = this.previousLiveProjection(sessionId, replayed.projection.cursor);
       const initialProjection = {
         ...replayed.projection,
-        sidecarMessages: this.restoreCurrentSidecarMessages(
-          replayed.projection,
-          previousProjection,
-        ),
         projectionRevision: Math.max(
           replayed.projection.projectionRevision,
           this.previousLiveProjectionRevision(sessionId, replayed.projection.cursor.runtimeId) + 1,
@@ -4609,6 +4736,7 @@ export class RuntimeHostAdapter {
         settings: structuredClone(observation.snapshot.settings),
         transcriptSnapshotFresh: true,
         eventQueue: Promise.resolve(),
+        productViewQueue: Promise.resolve(),
       };
       if (this.runtime !== runtime || this.state !== 'ready') {
         throw new Error('Coder daemon connection changed while opening a session observation.');
@@ -4641,6 +4769,17 @@ export class RuntimeHostAdapter {
           if (!state || this.observations.get(sessionId) !== state || this.runtime !== runtime)
             return;
           this.updateProductQueue(state, view.queue);
+          const currentState = state;
+          currentState.productViewQueue = currentState.productViewQueue.then(
+            () => this.replaceProductView(currentState, view),
+            () => this.replaceProductView(currentState, view),
+          );
+          void currentState.productViewQueue.catch((error: unknown) => {
+            console.warn(
+              '[runtime] SDK Session view delivery failed:',
+              sanitizeDiagnosticError(error),
+            );
+          });
         },
         {
           onStatus: (status) => {
@@ -4671,6 +4810,7 @@ export class RuntimeHostAdapter {
         state.productObservation.close();
         return;
       }
+      await state.productViewQueue;
       for (const event of buffered) {
         this.enqueueRuntimeEvent(state, event);
       }
@@ -5120,14 +5260,19 @@ export class RuntimeHostAdapter {
     }
     // These transcript events synthesize user-visible rows from the same projection state. If the
     // reducer rejected their run/turn owner, bridging them anyway would bypass the causal gate and
-    // make retired queries or verifier messages reappear until the next reload.
-    const bridgeRequiresProjectionAcceptance =
-      event.type === 'sidecar.message' || event.type === 'run.input.delivered';
+    // make retired queries reappear until the next reload.
+    const bridgeRequiresProjectionAcceptance = event.type === 'run.input.delivered';
     if (!bridgeRequiresProjectionAcceptance || change) {
       await this.bridgeRuntimeEvent(event, runtime.identity.runtimeId);
     }
     if (runtimeEventChangesProfile(event.type)) {
       this.scheduleProfileRefresh(event.seq);
+    }
+    if (
+      this.productViews.has(event.sessionId) &&
+      ['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted'].includes(event.type)
+    ) {
+      await this.readSessionProductView(event.sessionId);
     }
     this.retireObservationIfQuiescent(event.sessionId);
   }
@@ -5215,6 +5360,13 @@ export class RuntimeHostAdapter {
   }
 
   private async bridgeRuntimeEvent(event: RuntimeTypedEvent, runtimeId?: string): Promise<void> {
+    if (
+      this.productViews.has(event.sessionId) &&
+      ['assistant.delta', 'thinking.delta', 'thinking.finished', 'output.segment.started'].includes(
+        event.type,
+      )
+    )
+      return;
     if (
       event.type === 'provider.cache.diagnostics' ||
       event.type === 'run.completed' ||
@@ -5494,27 +5646,6 @@ export class RuntimeHostAdapter {
       }
       return;
     }
-    if (event.type === 'sidecar.message') {
-      const sentAt = Date.parse(event.time);
-      const parsed = sessionEventChannel.payload.safeParse({
-        ...runtimeSessionEventOrigin(runtimeId, event),
-        ...runtimeTranscriptTurnIdentity(event),
-        kind: 'sidecar_message',
-        sessionId: event.sessionId,
-        ...(Number.isFinite(sentAt) ? { sentAt } : {}),
-        message: payload,
-      });
-      if (!parsed.success || parsed.data.kind !== 'sidecar_message') return;
-      this.push('session.event', parsed.data);
-      if (
-        parsed.data.message.verdict === 'blocked' &&
-        parsed.data.message.recipient === 'user' &&
-        parsed.data.message.delivery === 'terminal-block'
-      ) {
-        this.terminalSidecarBlockRuns.set(event.runId, event.sessionId);
-      }
-      return;
-    }
     if (event.type === 'run.input.delivered') {
       const sentAt = Date.parse(event.time);
       const inputs = Array.isArray(payload?.inputs) ? payload.inputs : [];
@@ -5617,7 +5748,6 @@ export class RuntimeHostAdapter {
       return;
     }
     if (event.type === 'run.completed') {
-      this.terminalSidecarBlockRuns.delete(event.runId);
       this.pushTerminalInterruptFailures(event.sessionId, payload, 'run_completed');
       this.push('session.event', {
         ...runtimeSessionEventOrigin(runtimeId, event),
@@ -5642,20 +5772,7 @@ export class RuntimeHostAdapter {
             ? 'run_cancelled'
             : 'run_interrupted',
       );
-      const terminalSidecarBlock =
-        event.type === 'run.failed' &&
-        this.terminalSidecarBlockRuns.get(event.runId) === event.sessionId;
-      this.terminalSidecarBlockRuns.delete(event.runId);
       if (event.turnId) this.nextUserOrdinalByTurnId.delete(event.turnId);
-      if (terminalSidecarBlock) {
-        this.push('session.event', {
-          ...runtimeSessionEventOrigin(runtimeId, event),
-          kind: 'session_complete',
-          sessionId: event.sessionId,
-          ...(event.turnId ? { turnId: event.turnId } : {}),
-        });
-        return;
-      }
       const terminal = runtimeEventRecord(payload?.terminal);
       const failureDetailResult = parseRuntimeFailureDetail(payload?.failureDetail);
       if (failureDetailResult.issuePaths.length > 0) {
@@ -6277,6 +6394,9 @@ export class RuntimeHostAdapter {
     this.reconnectTimer = undefined;
     this.reconnectMustContinue = false;
     this.state = 'closed';
+    if (this.projectionController.profileSnapshot().connection.startupProgress) {
+      this.publishUnavailable('disconnected', 'Runtime startup stopped.');
+    }
     this.rejectRunRecoveryWaiters(new Error('Runtime host closed during Run recovery.'));
   }
 
@@ -7522,7 +7642,6 @@ export class RuntimeHostAdapter {
     this.activeCompactionsBySession.clear();
     this.localCompactionCallsBySession.clear();
     this.nextUserOrdinalByTurnId.clear();
-    this.terminalSidecarBlockRuns.clear();
     this.continuationCredentialLeases.clear();
     this.credentialLeases.clear();
     this.continuationPrompts.clear();
@@ -7533,6 +7652,7 @@ export class RuntimeHostAdapter {
     this.rejectedOutOfPagePartnerRuns.clear();
     this.outOfPageCoderVerificationWarnings.clear();
     this.liveProjectionRevisions.clear();
+    this.productViews.clear();
     this.runtimeProfileSnapshotPromise = null;
     this.integrationHealth = undefined;
     this.integrationHealthFingerprint = '';

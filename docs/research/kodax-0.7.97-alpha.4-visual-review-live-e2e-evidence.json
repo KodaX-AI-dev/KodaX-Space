@@ -1,0 +1,1458 @@
+{
+  "date": "2026-10-13",
+  "spaceVersion": "0.1.47-alpha.1",
+  "publishedSdk": "0.7.97-alpha.4",
+  "acceptedTarget": {
+    "provider": "zai-coding",
+    "model": "glm-5.3-flash",
+    "source": "Existing KodaX user config; verified configured and built-in via Space provider.list"
+  },
+  "conclusion": {
+    "ordinaryAutomaticCases": 2,
+    "ordinaryAutomaticPassed": 2,
+    "pixelOnlyControlCases": 1,
+    "pixelOnlyControlPassed": 1,
+    "scope": "Observed automatic activation for the tested native configured model/tasks; not a universal model or visual-quality guarantee."
+  },
+  "transport": {
+    "spaceBuiltInProvider": true,
+    "customProviderCreated": false,
+    "endpointOverridden": false,
+    "httpProxy": false,
+    "scriptedResponses": false,
+    "credentialsRecorded": false
+  },
+  "visualEvidence": {
+    "sdkToolImageResults": true,
+    "exactWorkspaceDeliverablePathAsserted": true,
+    "wirePayloadCaptured": false,
+    "rawWireImageHashClaimed": false,
+    "pixelControl": {
+      "sourceHtmlRemoved": true,
+      "imageValuesNotInPrompt": true,
+      "expectedData": {
+        "Q1": 42,
+        "Q2": 57,
+        "Q3": 68
+      },
+      "expectedPixels": {
+        "Q1": 13,
+        "Q2": 26,
+        "Q3": 39
+      },
+      "pngUnchanged": true
+    }
+  },
+  "notes": [
+    "Initial AMA timed out waiting 240 seconds; initial SA failed at a harness facts limit of 512 (SDK maximum 500). These are not automatic-trigger failures.",
+    "The next AMA and SA both completed, loaded visual-review, read PNG and gave visual inspection feedback; an import-only SDK subpath was incorrectly resolved with a CJS resolver in the harness. Those Playwright runs remain failed.",
+    "The final ordinary pair passed live Electron E2E; the separate PNG-only numerical control passed with all source and image values correct.",
+    "Final AMA records one failed physical attempt followed by successful requests. Retries are preserved separately from visual acceptance.",
+    "Automatic tests ran before only the explicit control fixture/assertion changed to unseen nonzero image labels and structured JSON. Ordinary prompts, Provider/model selection and automatic assertions were unchanged. Current test digest describes the delivered harness.",
+    "Earlier external Qwen tests were outside the accepted model scenario and are archived separately, not used for this conclusion."
+  ],
+  "historicalExternalEvidence": "docs/research/kodax-0.7.97-alpha.4-visual-review-external-qwen-evidence.json",
+  "sourceReferences": [
+    {
+      "path": "C:/Works/PubProj/codex/codex-rs/ext/goal/templates/goals/continuation.md",
+      "line": 35,
+      "repositoryHead": "a07c8ebd57feedc4cf5dfe854c8e9101de54186b"
+    },
+    {
+      "path": "C:/Works/PubProj/ZCode/apps/zcode-cli/packages/browser-use-plugin/skills/web-gui-tester/SKILL.md",
+      "line": 100,
+      "repositoryHead": "aac4755666d09fdcd70272fcf063c077a639015f"
+    },
+    {
+      "path": "C:/Works/PubProj/ZCode/apps/zcode-cli/packages/browser-use-plugin/skills/control-browser/SKILL.md",
+      "line": 135,
+      "repositoryHead": "aac4755666d09fdcd70272fcf063c077a639015f"
+    },
+    {
+      "path": "C:/Works/GitProj/KodaX-AI/KodaX/packages/coding/src/prompts/execution-guidance.ts",
+      "line": 18,
+      "repositoryHead": "27d087884e0933711cfa645b3ebf7b235202d772"
+    }
+  ],
+  "deliveredHarness": {
+    "path": "tests/e2e/sdk-visual-review-live.spec.ts",
+    "sha256": "cb31ceb673fd44dabd203292573fa5111181b3ce45b8b940e6d07b38d7166211"
+  },
+  "validation": {
+    "strictTypecheck": "passed",
+    "scopedEslint": "passed",
+    "defaultPaidCallGate": "3 skipped",
+    "productionTriggerChanges": false
+  },
+  "cases": [
+    {
+      "id": "initial-native-ama",
+      "role": "automatic",
+      "evidencePath": "artifacts/visual-review-live-space-glm/ama/evidence.json",
+      "rawEvidenceSha256": "31393b796ce31d22edb3eafe4dc98da0f9394bf673afe2b9797c434ed17c5363",
+      "sdk": "0.7.97-alpha.4",
+      "provider": "zai-coding",
+      "model": "glm-5.3-flash",
+      "prompt": "请将 report.html 的季度汇报图更新为 data.json 中的数据，把标题改成 Quarterly Results，保留现有尺寸、布局和配色，交付更新后的 report.html 和 report.png。最后给我文件链接和一句说明。",
+      "configuredProvider": {
+        "id": "zai-coding",
+        "displayName": "Z.ai Coding Plan",
+        "apiKeyEnv": "ZAI_CODING_API_KEY",
+        "protocol": "anthropic",
+        "defaultModel": "glm-5.3",
+        "models": ["glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5-turbo", "glm-4.7"],
+        "configured": true,
+        "configuredSource": "env",
+        "isDefault": false,
+        "isCustom": false
+      },
+      "playwright": {
+        "title": "live ama automatically reviews its rendered result without an explicit skill request",
+        "status": "failed",
+        "durationMs": 252506,
+        "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /^(completed|failed|cancelled|interrupted)$/\nReceived string:  \"running\"\n\nCall Log:\n- Timeout 240000ms exceeded while waiting on the predicate"
+      },
+      "terminal": null,
+      "skillInvocation": null,
+      "loadedVisualReview": null,
+      "transcriptImages": null,
+      "evidencePassedFlag": false,
+      "currentPngSha256": null,
+      "initialPngSha256": null,
+      "pngUnchanged": null,
+      "actualRequests": null,
+      "allRequestsUseConfiguredModel": null,
+      "calls": null,
+      "finalAnswer": null,
+      "captureError": null,
+      "artifacts": []
+    },
+    {
+      "id": "initial-native-sa",
+      "role": "automatic",
+      "evidencePath": "artifacts/visual-review-live-space-glm/sa/evidence.json",
+      "rawEvidenceSha256": "e61b8ab75067938e72107288267bc9b645f26d936e13bbb5738e51047228aed8",
+      "sdk": "0.7.97-alpha.4",
+      "provider": "zai-coding",
+      "model": "glm-5.3-flash",
+      "prompt": "请将 report.html 的季度汇报图更新为 data.json 中的数据，把标题改成 Quarterly Results，保留现有尺寸、布局和配色，交付更新后的 report.html 和 report.png。最后给我文件链接和一句说明。",
+      "configuredProvider": {
+        "id": "zai-coding",
+        "displayName": "Z.ai Coding Plan",
+        "apiKeyEnv": "ZAI_CODING_API_KEY",
+        "protocol": "anthropic",
+        "defaultModel": "glm-5.3",
+        "models": ["glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5-turbo", "glm-4.7"],
+        "configured": true,
+        "configuredSource": "env",
+        "isDefault": false,
+        "isCustom": false
+      },
+      "playwright": {
+        "title": "live sa automatically reviews its rendered result without an explicit skill request",
+        "status": "failed",
+        "durationMs": 177430,
+        "error": "Error: page.evaluate: Error: [session.executionFacts] handler threw: Fact page limit must be 1–500.\n    at eval (eval at evaluate (:302:30), <anonymous>:12:29)\n    at async <anonymous>:328:30"
+      },
+      "terminal": null,
+      "skillInvocation": null,
+      "loadedVisualReview": null,
+      "transcriptImages": null,
+      "evidencePassedFlag": false,
+      "currentPngSha256": null,
+      "initialPngSha256": null,
+      "pngUnchanged": null,
+      "actualRequests": null,
+      "allRequestsUseConfiguredModel": null,
+      "calls": null,
+      "finalAnswer": null,
+      "captureError": null,
+      "artifacts": []
+    },
+    {
+      "id": "native-esm-harness-ama",
+      "role": "automatic",
+      "evidencePath": "artifacts/visual-review-live-space-glm-confirmed/ama/evidence.json",
+      "rawEvidenceSha256": "20406865ba868d526a6d7849bcb555e0e1b208d5f8ac5b5a84e019af8af4c340",
+      "sdk": "0.7.97-alpha.4",
+      "provider": "zai-coding",
+      "model": "glm-5.3-flash",
+      "prompt": "请将 report.html 的季度汇报图更新为 data.json 中的数据，把标题改成 Quarterly Results，保留现有尺寸、布局和配色，交付更新后的 report.html 和 report.png。最后给我文件链接和一句说明。",
+      "configuredProvider": {
+        "id": "zai-coding",
+        "displayName": "Z.ai Coding Plan",
+        "apiKeyEnv": "ZAI_CODING_API_KEY",
+        "protocol": "anthropic",
+        "defaultModel": "glm-5.3",
+        "models": ["glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5-turbo", "glm-4.7"],
+        "configured": true,
+        "configuredSource": "env",
+        "isDefault": false,
+        "isCustom": false
+      },
+      "playwright": {
+        "title": "live ama automatically reviews its rendered result without an explicit skill request",
+        "status": "failed",
+        "durationMs": 294246,
+        "error": "Error: Package subpath './session' is not defined by \"exports\" in C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\package.json"
+      },
+      "terminal": {
+        "runId": "run_f5f09f2d59df71983074fcf0f995c71dee3333911641d782b4221066f81c8b1f",
+        "sessionId": "20261013_214833_js465ec1314bf3",
+        "turnId": "turn_6e75749128a94b04",
+        "phase": "completed",
+        "stage": "terminal",
+        "stageChangedAt": 1791899597237,
+        "activeSubtaskCount": 0,
+        "startedAt": 1791899315460,
+        "completedAt": 1791899597237,
+        "initiatedBy": {
+          "clientId": "client_151d3f508c0254e19bdcf28bea7ac6f8a09a75382af609236641fe115e439811",
+          "name": "kodax-space"
+        },
+        "requirements": {
+          "hostTools": "terminal"
+        }
+      },
+      "skillInvocation": true,
+      "loadedVisualReview": true,
+      "transcriptImages": null,
+      "evidencePassedFlag": false,
+      "currentPngSha256": null,
+      "initialPngSha256": null,
+      "pngUnchanged": null,
+      "actualRequests": [
+        {
+          "requestId": "request_1de323c6-f8b1-4047-9e96-b6ba9b0141e3",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "failed",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:48:36.022Z",
+          "endedAt": "2026-10-13T13:49:49.895Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_cb03cac1-2389-4763-ab2a-87aa6e75b9cd",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:49:52.883Z",
+          "endedAt": "2026-10-13T13:50:00.203Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_299914ee-b67c-41b9-8712-59c5982f8c9b",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:50:00.445Z",
+          "endedAt": "2026-10-13T13:50:28.934Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_fe333efe-816c-4cd3-b3a7-a55eecf58d29",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:50:29.134Z",
+          "endedAt": "2026-10-13T13:50:34.759Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_2eff3880-9e30-4268-86c6-63cd3a322a87",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "failed",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:50:42.286Z",
+          "endedAt": "2026-10-13T13:52:08.604Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_f5e112e7-c82a-46c4-9e4a-3b26beee39a9",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "failed",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:52:10.768Z",
+          "endedAt": "2026-10-13T13:52:21.260Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "physical_50fead6e-69a0-4c83-8fb2-2953e3589594",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:52:21.677Z",
+          "endedAt": "2026-10-13T13:52:37.758Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_29ce957e-8050-4e1a-b463-ae4872c23829",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:52:37.938Z",
+          "endedAt": "2026-10-13T13:52:46.714Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_0d29b3c4-ba7f-4696-a429-ef23da7113cd",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:52:46.929Z",
+          "endedAt": "2026-10-13T13:53:17.041Z",
+          "wireObservation": "observed"
+        }
+      ],
+      "allRequestsUseConfiguredModel": true,
+      "calls": [
+        {
+          "toolId": "call_20c27fe5d615493abbbcb6f2",
+          "name": "read",
+          "input": {
+            "path": "data.json"
+          },
+          "result": "     1\t{\"Q1\":42,\"Q2\":57,\"Q3\":68}\n\n[End of file - 1 lines total]"
+        },
+        {
+          "toolId": "call_e64d0cc4fb7840609aa53830",
+          "name": "read",
+          "input": {
+            "path": "render.mjs"
+          },
+          "result": "     1\timport playwright from \"file:///C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/playwright/index.js\";const {chromium}=playwright;\n     2\timport {pathToFileURL} from 'node:url';import path from 'node:path';\n     3\tconst browser=await chromium.launch({headless:true});try{const page=await browser.newPage({viewport:{width:960,height:540},deviceScaleFactor:1});\n     4\tawait page.goto(pathToFileURL(path.resolve('report.html')).href);await page.evaluate(()=>document.fonts.ready);\n     5\tawait page.screenshot({path:path.resolve('report.png')});process.stdout.write('Saved report.png');}finally{await browser.close();}\n\n[End of file - 5 lines total]"
+        },
+        {
+          "toolId": "call_c37ed09fc83648729ad80aa3",
+          "name": "read",
+          "input": {
+            "path": "report.html"
+          },
+          "result": "     1\t<!doctype html><html><head><meta charset=\"utf-8\"><style>\n     2\tbody{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n     3\th1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n     4\t.quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n     5\t</style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n     6\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n     7\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n     8\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n     9\t</div></body></html>\n\n[End of file - 9 lines total]"
+        },
+        {
+          "toolId": "call_3f3fb73c1c164094b9c5f266",
+          "name": "multi_edit",
+          "input": {
+            "edits": [
+              {
+                "new_string": "<h1>Quarterly Results</h1>",
+                "old_string": "<h1>Quarterly Report</h1>"
+              },
+              {
+                "new_string": "<div class=\"quarter\"><div class=\"bar\" style=\"height:168px\"></div><div class=\"label\">Q1: 42</div></div>",
+                "old_string": "<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>"
+              },
+              {
+                "new_string": "<div class=\"quarter\"><div class=\"bar\" style=\"height:228px\"></div><div class=\"label\">Q2: 57</div></div>",
+                "old_string": "<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>"
+              },
+              {
+                "new_string": "<div class=\"quarter\"><div class=\"bar\" style=\"height:272px\"></div><div class=\"label\">Q3: 68</div></div>",
+                "old_string": "<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>"
+              }
+            ],
+            "path": "report.html"
+          },
+          "result": "File edited: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791899304070\\project\\report.html (4 edits, 4 replacements)\n  (+4 lines, -4 lines)\n\n--- C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791899304070\\project\\report.html\n+++ C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791899304070\\project\\report.html\n@@ -2,8 +2,8 @@\n  body{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n  h1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n  .quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n- </style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n+ </style></head><body><h1>Quarterly Results</h1><div class=\"chart\">\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:168px\"></div><div class=\"label\">Q1: 42</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:228px\"></div><div class=\"label\">Q2: 57</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:272px\"></div><div class=\"label\">Q3: 68</div></div>\n  </div></body></html>"
+        },
+        {
+          "toolId": "call_4bb39132a1b9431292bb54d4",
+          "name": "bash",
+          "input": {
+            "command": "node render.mjs",
+            "description": "Run Playwright render script to regenerate report.png",
+            "timeout": 120
+          },
+          "result": "Command: node render.mjs\nExit: 0\nSaved report.png\n[stderr]\n(node:3524) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+        },
+        {
+          "toolId": "call_8aa2d0b7bcec4ef4bb535147",
+          "name": "skill",
+          "input": {
+            "args": "report.png - verify updated quarterly chart: title \"Quarterly Results\", bars Q1:42 Q2:57 Q3:68, original 960x540 size/layout/colors preserved",
+            "skill": "visual-review"
+          },
+          "result": "<skill name=\"visual-review\" location=\"C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review\">\n\nSkill root: C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/@kodax-ai/kodax/dist/builtin/visual-review\nThis is a built-in KodaX skill.\n\n# Visual review\n\nUse the same workflow for creation, modification, and review. The user's\nrequirements determine the scope, not the file extension or change size.\nRespect review-only requests: report findings without modifying the subject.\n\n## Obtain evidence\n\nIdentify the current result and the visual requirements to check. Discover\navailable session tools and relevant format skills before choosing a renderer\nor capture method. Use the existing permission, sandbox, working-directory,\ntool and provider boundaries. Do not enable broader access, install software,\nor call an external model just to make a check appear successful.\n\n- **Static** images, icons, posters, diagrams, maps, plots and charts: inspect\n  the actual final image. Render SVG or drawing code to pixels; use a full\n  view and detailed crops when necessary. Include the intended background for\n  transparent assets. Compare reference images when fidelity was requested.\n- **Paginated** documents, slides, PDFs, reports and spreadsheets: render the\n  actual deliverable. Track page/slide/sheet/range, font and page size. Inspect\n  pagination, overflow, clipping, legibility and consistency. A PDF text\n  extraction or Office file listing does not replace rendered page evidence.\n- **Interactive** web, desktop, mobile, terminal, canvas and 3D surfaces:\n  capture the actual running result at the relevant viewport, terminal size,\n  state or camera. Perform requested interactions and inspect the resulting\n  states; use DOM, accessibility tree, terminal state or event evidence with\n  screenshots. Include relevant loading/error states and responsive sizes.\n  A static picture does not prove interaction or invisible 3D geometry.\n- **Temporal** video, GIF, animation, transitions and changing visualizations:\n  decode or capture the final output with timestamps/frame numbers. Inspect\n  the required start/end states, motion, transitions and captions, using\n  consecutive frames where continuity matters. A GIF read may expose only its\n  first frame. A thumbnail or sparse sampling does not prove the whole clip.\n\nUse the available image-reading tool to deliver actual image content to the\nmodel. A saved screenshot path, UI preview, successful render exit code or\ntool-call receipt does not mean the model received or inspected the image.\nIf image input, rendering or capture is unavailable, identify the affected\nrequirement as **unverified** and state the reason. Continue other useful work.\n\n## Check and repair\n\nCheck against the brief: missing or wrong content, illegible text, unintended\ncropping/distortion, overlaps, overflow, poor contrast and requested visual\nfidelity. Cite a concrete page, region, state, camera or timestamp with each\nfinding. Do not invent pixels, constraints or aesthetic preferences.\n\nVisual evidence supplements content and behavior checks. Verify chart source\nvalues and spreadsheet calculations separately; use functional checks for\nbackend behavior and audio/timing checks for sound or synchronization.\n\nSelf-review in single-agent mode. When an independent view is useful and\ncollaboration is available, the main agent captures evidence and spawns an\nordinary read-only child within the current task. Give it the brief, current\nartifact identity, evidence references and exact scope, with fresh history.\nIt reports findings and gaps; the main agent owns repairs and final delivery.\nDo not create independent background work or repeat the same full review.\n\nAfter a repair, obtain new evidence for the affected scope. Associate findings\nwith the artifact version and capture settings actually inspected; an old\nscreenshot cannot certify a changed result. Use existing task/actor results\nand artifact metadata, not a separate verification database or completion API.\n\n## Report honestly\n\nRecord the checked requirements, current artifact/version, evidence references,\npages/regions/states/viewports/cameras/time ranges inspected, concrete findings\nand unverified scope. Distinguish **passed**, **issues** and **unverified** for\neach requirement. State sampling limits. Missing evidence never means passed.\nRespect current cancellation and budgets; do not restart an interrupted action\nor repeatedly spawn reviewers without new evidence. Final delivery follows\nthe required checks and repairs; lifecycle completion is not a quality verdict.\n\nUser provided arguments: report.png - verify updated quarterly chart: title \"Quarterly Results\", bars Q1:42 Q2:57 Q3:68, original 960x540 size/layout/colors preserved\n\n</skill>"
+        },
+        {
+          "toolId": "call_a45bc2845c0f4b3bbb08979a",
+          "name": "read",
+          "input": {
+            "path": "report.png"
+          },
+          "result": "[Read image: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791899304070\\project\\report.png (12.3KB, image/png)] — image content delivered as inline vision below; describe what you see in your next response."
+        }
+      ],
+      "finalAnswer": "视觉校验通过。已检查实际渲染图（960×540 PNG）：标题显示 \"Quarterly Results\"，三根柱子高度与数据成比例（42 < 57 < 68，比例 168:228:272 ≈ 42:57:68），标签 \"Q1: 42 / Q2: 57 / Q3: 68\" 清晰无遮挡、无裁切溢出，米色背景、深蓝文字、青色柱体的原配色与布局完全保留。\n\n交付文件：\n\n- [report.html](report.html) — 标题已改为 \"Quarterly Results\"，柱子按 data.json 数据（Q1:42、Q2:57、Q3:68）按比例填充高度\n- [report.png](report.png) — 通过 render.mjs 重新渲染的最新截图\n\n一句说明：已将季度汇报图更新为 data.json 的最新数据并改标题为 \"Quarterly Results\"，尺寸、布局与配色均保持原样，report.html 与 report.png 已同步交付。",
+      "captureError": null,
+      "artifacts": []
+    },
+    {
+      "id": "native-esm-harness-sa",
+      "role": "automatic",
+      "evidencePath": "artifacts/visual-review-live-space-glm-confirmed/sa/evidence.json",
+      "rawEvidenceSha256": "e3409ace960fd1329db43153f8b725bc48be36ec819fb5160186c562a383189d",
+      "sdk": "0.7.97-alpha.4",
+      "provider": "zai-coding",
+      "model": "glm-5.3-flash",
+      "prompt": "请将 report.html 的季度汇报图更新为 data.json 中的数据，把标题改成 Quarterly Results，保留现有尺寸、布局和配色，交付更新后的 report.html 和 report.png。最后给我文件链接和一句说明。",
+      "configuredProvider": {
+        "id": "zai-coding",
+        "displayName": "Z.ai Coding Plan",
+        "apiKeyEnv": "ZAI_CODING_API_KEY",
+        "protocol": "anthropic",
+        "defaultModel": "glm-5.3",
+        "models": ["glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5-turbo", "glm-4.7"],
+        "configured": true,
+        "configuredSource": "env",
+        "isDefault": false,
+        "isCustom": false
+      },
+      "playwright": {
+        "title": "live sa automatically reviews its rendered result without an explicit skill request",
+        "status": "failed",
+        "durationMs": 299822,
+        "error": "Error: Package subpath './session' is not defined by \"exports\" in C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\package.json"
+      },
+      "terminal": {
+        "runId": "run_79182318eb2e18cb5660d92a0efa527c494691d2478a0509127bd666e2e4d408",
+        "sessionId": "20261013_215327_il7e15e6292d62",
+        "turnId": "turn_3a3f61a716664d59",
+        "phase": "completed",
+        "stage": "terminal",
+        "stageChangedAt": 1791899897091,
+        "activeSubtaskCount": 0,
+        "startedAt": 1791899609298,
+        "completedAt": 1791899897091,
+        "initiatedBy": {
+          "clientId": "client_de5b7ab046f97f40268e03930cbcb149bba35c366ad7eee3f7d380e9a5a946f0",
+          "name": "kodax-space"
+        },
+        "requirements": {
+          "hostTools": "terminal"
+        }
+      },
+      "skillInvocation": true,
+      "loadedVisualReview": true,
+      "transcriptImages": null,
+      "evidencePassedFlag": false,
+      "currentPngSha256": null,
+      "initialPngSha256": null,
+      "pngUnchanged": null,
+      "actualRequests": [
+        {
+          "requestId": "request_a6a3c020-ad8e-4779-b210-e3715eeabbf5",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "failed",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:53:30.799Z",
+          "endedAt": "2026-10-13T13:54:45.013Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_f8174d38-cb48-4e40-9d14-94a0729d7ca5",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:54:47.784Z",
+          "endedAt": "2026-10-13T13:54:57.021Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_a04588b7-deeb-4019-8750-cae67ccb22c1",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:54:57.244Z",
+          "endedAt": "2026-10-13T13:55:31.162Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_33e2f463-21ea-4149-a610-a4f30faf7f4e",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:55:31.271Z",
+          "endedAt": "2026-10-13T13:55:44.265Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_95cc797d-c41b-41f1-b5cb-006fc9492e38",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:55:44.379Z",
+          "endedAt": "2026-10-13T13:55:50.968Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_79dc2abc-f8fd-476d-9709-179a266347b6",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:55:58.423Z",
+          "endedAt": "2026-10-13T13:56:08.110Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_816cde47-8049-433d-88cb-27059162a015",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:56:09.756Z",
+          "endedAt": "2026-10-13T13:56:24.579Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_80bccee0-986c-4e01-bf4d-e865cd012f43",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "failed",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:56:26.163Z",
+          "endedAt": "2026-10-13T13:57:44.792Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_66cbf199-4b50-4b35-8793-5e0919740760",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:57:47.220Z",
+          "endedAt": "2026-10-13T13:57:54.458Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_f87ee959-63f5-41e8-bb52-0deb1244cbb9",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T13:57:54.636Z",
+          "endedAt": "2026-10-13T13:58:16.941Z",
+          "wireObservation": "observed"
+        }
+      ],
+      "allRequestsUseConfiguredModel": true,
+      "calls": [
+        {
+          "toolId": "call_d309bdba9864451d8d5fdf30",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.html"
+          },
+          "result": "     1\t<!doctype html><html><head><meta charset=\"utf-8\"><style>\n     2\tbody{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n     3\th1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n     4\t.quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n     5\t</style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n     6\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n     7\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n     8\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n     9\t</div></body></html>\n\n[End of file - 9 lines total]"
+        },
+        {
+          "toolId": "call_15d68553b81e47a6bce3eb61",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\data.json"
+          },
+          "result": "     1\t{\"Q1\":42,\"Q2\":57,\"Q3\":68}\n\n[End of file - 1 lines total]"
+        },
+        {
+          "toolId": "call_49129e3ca02e4e8d9882454f",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\render.mjs"
+          },
+          "result": "     1\timport playwright from \"file:///C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/playwright/index.js\";const {chromium}=playwright;\n     2\timport {pathToFileURL} from 'node:url';import path from 'node:path';\n     3\tconst browser=await chromium.launch({headless:true});try{const page=await browser.newPage({viewport:{width:960,height:540},deviceScaleFactor:1});\n     4\tawait page.goto(pathToFileURL(path.resolve('report.html')).href);await page.evaluate(()=>document.fonts.ready);\n     5\tawait page.screenshot({path:path.resolve('report.png')});process.stdout.write('Saved report.png');}finally{await browser.close();}\n\n[End of file - 5 lines total]"
+        },
+        {
+          "toolId": "call_5c1a34d8d75b45959b1ebf64",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\README.md"
+          },
+          "result": "     1\t# Quarterly report workspace\n     2\tThe source is report.html; the data is data.json. Render the HTML to report.png using:\n     3\t\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\fnm_multishells\\\\15120_1791852875558\\\\node.exe\" render.mjs\n     4\tChromium and Playwright are installed. No package installation is needed.\n\n[End of file - 4 lines total]"
+        },
+        {
+          "toolId": "call_7280ad387d614cfd91924074",
+          "name": "skill",
+          "input": {
+            "args": "report.html 季度柱状图更新数据并渲染 report.png",
+            "skill": "visual-review"
+          },
+          "result": "<skill name=\"visual-review\" location=\"C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review\">\n\nSkill root: C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/@kodax-ai/kodax/dist/builtin/visual-review\nThis is a built-in KodaX skill.\n\n# Visual review\n\nUse the same workflow for creation, modification, and review. The user's\nrequirements determine the scope, not the file extension or change size.\nRespect review-only requests: report findings without modifying the subject.\n\n## Obtain evidence\n\nIdentify the current result and the visual requirements to check. Discover\navailable session tools and relevant format skills before choosing a renderer\nor capture method. Use the existing permission, sandbox, working-directory,\ntool and provider boundaries. Do not enable broader access, install software,\nor call an external model just to make a check appear successful.\n\n- **Static** images, icons, posters, diagrams, maps, plots and charts: inspect\n  the actual final image. Render SVG or drawing code to pixels; use a full\n  view and detailed crops when necessary. Include the intended background for\n  transparent assets. Compare reference images when fidelity was requested.\n- **Paginated** documents, slides, PDFs, reports and spreadsheets: render the\n  actual deliverable. Track page/slide/sheet/range, font and page size. Inspect\n  pagination, overflow, clipping, legibility and consistency. A PDF text\n  extraction or Office file listing does not replace rendered page evidence.\n- **Interactive** web, desktop, mobile, terminal, canvas and 3D surfaces:\n  capture the actual running result at the relevant viewport, terminal size,\n  state or camera. Perform requested interactions and inspect the resulting\n  states; use DOM, accessibility tree, terminal state or event evidence with\n  screenshots. Include relevant loading/error states and responsive sizes.\n  A static picture does not prove interaction or invisible 3D geometry.\n- **Temporal** video, GIF, animation, transitions and changing visualizations:\n  decode or capture the final output with timestamps/frame numbers. Inspect\n  the required start/end states, motion, transitions and captions, using\n  consecutive frames where continuity matters. A GIF read may expose only its\n  first frame. A thumbnail or sparse sampling does not prove the whole clip.\n\nUse the available image-reading tool to deliver actual image content to the\nmodel. A saved screenshot path, UI preview, successful render exit code or\ntool-call receipt does not mean the model received or inspected the image.\nIf image input, rendering or capture is unavailable, identify the affected\nrequirement as **unverified** and state the reason. Continue other useful work.\n\n## Check and repair\n\nCheck against the brief: missing or wrong content, illegible text, unintended\ncropping/distortion, overlaps, overflow, poor contrast and requested visual\nfidelity. Cite a concrete page, region, state, camera or timestamp with each\nfinding. Do not invent pixels, constraints or aesthetic preferences.\n\nVisual evidence supplements content and behavior checks. Verify chart source\nvalues and spreadsheet calculations separately; use functional checks for\nbackend behavior and audio/timing checks for sound or synchronization.\n\nSelf-review in single-agent mode. When an independent view is useful and\ncollaboration is available, the main agent captures evidence and spawns an\nordinary read-only child within the current task. Give it the brief, current\nartifact identity, evidence references and exact scope, with fresh history.\nIt reports findings and gaps; the main agent owns repairs and final delivery.\nDo not create independent background work or repeat the same full review.\n\nAfter a repair, obtain new evidence for the affected scope. Associate findings\nwith the artifact version and capture settings actually inspected; an old\nscreenshot cannot certify a changed result. Use existing task/actor results\nand artifact metadata, not a separate verification database or completion API.\n\n## Report honestly\n\nRecord the checked requirements, current artifact/version, evidence references,\npages/regions/states/viewports/cameras/time ranges inspected, concrete findings\nand unverified scope. Distinguish **passed**, **issues** and **unverified** for\neach requirement. State sampling limits. Missing evidence never means passed.\nRespect current cancellation and budgets; do not restart an interrupted action\nor repeatedly spawn reviewers without new evidence. Final delivery follows\nthe required checks and repairs; lifecycle completion is not a quality verdict.\n\nUser provided arguments: report.html 季度柱状图更新数据并渲染 report.png\n\n</skill>"
+        },
+        {
+          "toolId": "call_4eb0e72084894304a888ddb8",
+          "name": "multi_edit",
+          "input": {
+            "edits": [
+              {
+                "new_string": ".bar{background:#277e8f;width:180px}",
+                "old_string": ".bar{background:#277e8f;width:180px;height:1px}"
+              },
+              {
+                "new_string": "<h1>Quarterly Results</h1><div class=\"chart\">\n<div class=\"quarter\"><div class=\"bar\" style=\"height:126px\"></div><div class=\"label\">Q1: 42</div></div>\n<div class=\"quarter\"><div class=\"bar\" style=\"height:171px\"></div><div class=\"label\">Q2: 57</div></div>\n<div class=\"quarter\"><div class=\"bar\" style=\"height:204px\"></div><div class=\"label\">Q3: 68</div></div>",
+                "old_string": "<h1>Quarterly Report</h1><div class=\"chart\">\n<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>"
+              }
+            ],
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.html"
+          },
+          "result": "File edited: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.html (2 edits, 2 replacements)\n  (+5 lines, -5 lines)\n\n--- C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.html\n+++ C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.html\n@@ -1,9 +1,9 @@\n  <!doctype html><html><head><meta charset=\"utf-8\"><style>\n  body{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n  h1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n- .quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n- </style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n+ .quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px}.label{padding:16px}\n+ </style></head><body><h1>Quarterly Results</h1><div class=\"chart\">\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:126px\"></div><div class=\"label\">Q1: 42</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:171px\"></div><div class=\"label\">Q2: 57</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:204px\"></div><div class=\"label\">Q3: 68</div></div>\n  </div></body></html>"
+        },
+        {
+          "toolId": "call_972c026d7ccf41eca79ae7cf",
+          "name": "bash",
+          "input": {
+            "command": "cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\" && \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs",
+            "description": "用 Playwright 渲染 report.html 生成 report.png"
+          },
+          "result": "Command: cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\" && \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\nExit: 1\n\n[stderr]\n所在位置 行:1 字符: 92\r\n+ ... \\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\" && \"C:\\Use ...\r\n+                                                                ~~\r\n标记“&&”不是此版本中的有效语句分隔符。\r\n所在位置 行:1 字符: 95\r\n+ ... project\" && \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_17918 ...\r\n+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n只允许将表达式作为管道的第一个元素。\r\n所在位置 行:1 字符: 171\r\n+ ... ppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\r\n+                                                                ~~~~~~~~~~\r\n表达式或语句中包含意外的标记“render.mjs”。\r\n    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException\r\n    + FullyQualifiedErrorId : InvalidEndOfLine\r\n \r\n\n[warn] Output encoding fallback fired (UTF-8 → GBK). If text looks garbled, the command may mix encodings; re-run with an explicit encoding (e.g. PYTHONIOENCODING=utf-8)."
+        },
+        {
+          "toolId": "call_4da4f03ca72f4e22bfede889",
+          "name": "bash",
+          "input": {
+            "command": "cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\"; \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs",
+            "description": "用 Playwright 渲染 report.html 生成 report.png"
+          },
+          "result": "Command: cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\"; \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\nExit: 1\n\n[stderr]\n所在位置 行:1 字符: 169\r\n+ ... ppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\r\n+                                                                ~~~~~~~~~~\r\n表达式或语句中包含意外的标记“render.mjs”。\r\n    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException\r\n    + FullyQualifiedErrorId : UnexpectedToken\r\n \r\n\n[warn] Output encoding fallback fired (UTF-8 → GBK). If text looks garbled, the command may mix encodings; re-run with an explicit encoding (e.g. PYTHONIOENCODING=utf-8)."
+        },
+        {
+          "toolId": "call_5167601c853641fa85bdc93a",
+          "name": "bash",
+          "input": {
+            "command": "cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\"; & \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs",
+            "description": "用 Playwright 渲染 report.html 生成 report.png"
+          },
+          "result": "Command: cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\"; & \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\nExit: 0\nSaved report.png\n[stderr]\n(node:58248) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+        },
+        {
+          "toolId": "call_d046c27ff86444dda3ecff75",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.png"
+          },
+          "result": "[Read image: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.png (12.3KB, image/png)] — image content delivered as inline vision below; describe what you see in your next response."
+        }
+      ],
+      "finalAnswer": "验收通过。渲染图中确认：标题为 \"Quarterly Results\"；三根柱子为原配色 #277e8f，高度 126/171/204px 等比对应 Q1:42、Q2:57、Q3:68（比例 42:57:68 精确一致）；标签清晰无遮挡、无裁剪；画布 960×540，标题位置、三列布局、留白与原版完全一致。\n\n交付文件：\n\n- [report.html](report.html)\n- [report.png](report.png)\n\n说明：已按 data.json 的数据（Q1:42、Q2:57、Q3:68）等比更新柱状图高度并把标题改为 \"Quarterly Results\"，原有尺寸、布局与配色全部保留，report.png 已重新渲染并经实际图像核验无误。",
+      "captureError": null,
+      "artifacts": []
+    },
+    {
+      "id": "final-automatic-ama",
+      "role": "automatic",
+      "evidencePath": "artifacts/visual-review-live-space-glm-final/ama/evidence.json",
+      "rawEvidenceSha256": "9458e82a9c8dca2f0ab38df39d8cb351f53b0c0071bf2c9337e90a6d30e78388",
+      "sdk": "0.7.97-alpha.4",
+      "provider": "zai-coding",
+      "model": "glm-5.3-flash",
+      "prompt": "请将 report.html 的季度汇报图更新为 data.json 中的数据，把标题改成 Quarterly Results，保留现有尺寸、布局和配色，交付更新后的 report.html 和 report.png。最后给我文件链接和一句说明。",
+      "configuredProvider": {
+        "id": "zai-coding",
+        "displayName": "Z.ai Coding Plan",
+        "apiKeyEnv": "ZAI_CODING_API_KEY",
+        "protocol": "anthropic",
+        "defaultModel": "glm-5.3",
+        "models": ["glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5-turbo", "glm-4.7"],
+        "configured": true,
+        "configuredSource": "env",
+        "isDefault": false,
+        "isCustom": false
+      },
+      "playwright": {
+        "title": "live ama automatically reviews its rendered result without an explicit skill request",
+        "status": "passed",
+        "durationMs": 232201
+      },
+      "terminal": {
+        "runId": "run_6ab8ae8e86f46bb0cac54161ee40ce27ec41535194b7f28f040a3598966eaa0e",
+        "sessionId": "20261013_220020_ep06a147ba0f9b",
+        "turnId": "turn_96189160061f4b1e",
+        "phase": "completed",
+        "stage": "terminal",
+        "stageChangedAt": 1791900241571,
+        "activeSubtaskCount": 0,
+        "startedAt": 1791900022267,
+        "completedAt": 1791900241571,
+        "initiatedBy": {
+          "clientId": "client_a9c4fb72c155e5b92ce0d12105e4cb06f969a92688b9f424c242de8241359a68",
+          "name": "kodax-space"
+        },
+        "requirements": {
+          "hostTools": "terminal"
+        }
+      },
+      "skillInvocation": true,
+      "loadedVisualReview": true,
+      "transcriptImages": [
+        {
+          "toolId": "call_5f214338ce464f2790e766bd",
+          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791900011163\\project\\report.png",
+          "mediaType": "image/png"
+        }
+      ],
+      "evidencePassedFlag": true,
+      "currentPngSha256": "cc883e61ca944abb09741f8c99b661e4bd5eac026539b2e254f4828572a04ec5",
+      "initialPngSha256": null,
+      "pngUnchanged": null,
+      "actualRequests": [
+        {
+          "requestId": "request_a13ea5d9-2c32-4f78-a9e2-a78014f40e9c",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:00:22.814Z",
+          "endedAt": "2026-10-13T14:00:51.683Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_e55ee91b-f0b4-4e38-b160-a2a34cb353f3",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:00:51.855Z",
+          "endedAt": "2026-10-13T14:01:07.802Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_895fb3f2-7cb8-4309-bad4-92d1e306218f",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "failed",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:01:08.113Z",
+          "endedAt": "2026-10-13T14:02:31.654Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_d735dda3-6159-4e63-95db-0f889a5bde7f",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:02:34.429Z",
+          "endedAt": "2026-10-13T14:03:11.289Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_1919b4e1-49d1-4fe8-ba9b-0951d5fc1e1a",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:03:11.521Z",
+          "endedAt": "2026-10-13T14:03:18.217Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_a8ba936d-ebde-4f60-9efb-3c342ef36c2c",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:03:25.135Z",
+          "endedAt": "2026-10-13T14:03:33.373Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_5c4e052b-fb0a-4060-b810-44687fd3ac73",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:03:34.959Z",
+          "endedAt": "2026-10-13T14:03:40.881Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_61475a21-5dd3-4269-b0d6-b603832392fc",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:03:41.151Z",
+          "endedAt": "2026-10-13T14:03:53.232Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_ed781826-7d5c-4dc9-b9c6-57b3b0db2994",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:03:53.451Z",
+          "endedAt": "2026-10-13T14:04:01.306Z",
+          "wireObservation": "observed"
+        }
+      ],
+      "allRequestsUseConfiguredModel": true,
+      "calls": [
+        {
+          "toolId": "call_6c3e8a8d109846068a7b5d46",
+          "name": "skill",
+          "input": {
+            "args": "report.html 季度汇报图更新后的 report.png 视觉验证",
+            "skill": "visual-review"
+          },
+          "result": "<skill name=\"visual-review\" location=\"C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review\">\n\nSkill root: C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/@kodax-ai/kodax/dist/builtin/visual-review\nThis is a built-in KodaX skill.\n\n# Visual review\n\nUse the same workflow for creation, modification, and review. The user's\nrequirements determine the scope, not the file extension or change size.\nRespect review-only requests: report findings without modifying the subject.\n\n## Obtain evidence\n\nIdentify the current result and the visual requirements to check. Discover\navailable session tools and relevant format skills before choosing a renderer\nor capture method. Use the existing permission, sandbox, working-directory,\ntool and provider boundaries. Do not enable broader access, install software,\nor call an external model just to make a check appear successful.\n\n- **Static** images, icons, posters, diagrams, maps, plots and charts: inspect\n  the actual final image. Render SVG or drawing code to pixels; use a full\n  view and detailed crops when necessary. Include the intended background for\n  transparent assets. Compare reference images when fidelity was requested.\n- **Paginated** documents, slides, PDFs, reports and spreadsheets: render the\n  actual deliverable. Track page/slide/sheet/range, font and page size. Inspect\n  pagination, overflow, clipping, legibility and consistency. A PDF text\n  extraction or Office file listing does not replace rendered page evidence.\n- **Interactive** web, desktop, mobile, terminal, canvas and 3D surfaces:\n  capture the actual running result at the relevant viewport, terminal size,\n  state or camera. Perform requested interactions and inspect the resulting\n  states; use DOM, accessibility tree, terminal state or event evidence with\n  screenshots. Include relevant loading/error states and responsive sizes.\n  A static picture does not prove interaction or invisible 3D geometry.\n- **Temporal** video, GIF, animation, transitions and changing visualizations:\n  decode or capture the final output with timestamps/frame numbers. Inspect\n  the required start/end states, motion, transitions and captions, using\n  consecutive frames where continuity matters. A GIF read may expose only its\n  first frame. A thumbnail or sparse sampling does not prove the whole clip.\n\nUse the available image-reading tool to deliver actual image content to the\nmodel. A saved screenshot path, UI preview, successful render exit code or\ntool-call receipt does not mean the model received or inspected the image.\nIf image input, rendering or capture is unavailable, identify the affected\nrequirement as **unverified** and state the reason. Continue other useful work.\n\n## Check and repair\n\nCheck against the brief: missing or wrong content, illegible text, unintended\ncropping/distortion, overlaps, overflow, poor contrast and requested visual\nfidelity. Cite a concrete page, region, state, camera or timestamp with each\nfinding. Do not invent pixels, constraints or aesthetic preferences.\n\nVisual evidence supplements content and behavior checks. Verify chart source\nvalues and spreadsheet calculations separately; use functional checks for\nbackend behavior and audio/timing checks for sound or synchronization.\n\nSelf-review in single-agent mode. When an independent view is useful and\ncollaboration is available, the main agent captures evidence and spawns an\nordinary read-only child within the current task. Give it the brief, current\nartifact identity, evidence references and exact scope, with fresh history.\nIt reports findings and gaps; the main agent owns repairs and final delivery.\nDo not create independent background work or repeat the same full review.\n\nAfter a repair, obtain new evidence for the affected scope. Associate findings\nwith the artifact version and capture settings actually inspected; an old\nscreenshot cannot certify a changed result. Use existing task/actor results\nand artifact metadata, not a separate verification database or completion API.\n\n## Report honestly\n\nRecord the checked requirements, current artifact/version, evidence references,\npages/regions/states/viewports/cameras/time ranges inspected, concrete findings\nand unverified scope. Distinguish **passed**, **issues** and **unverified** for\neach requirement. State sampling limits. Missing evidence never means passed.\nRespect current cancellation and budgets; do not restart an interrupted action\nor repeatedly spawn reviewers without new evidence. Final delivery follows\nthe required checks and repairs; lifecycle completion is not a quality verdict.\n\nUser provided arguments: report.html 季度汇报图更新后的 report.png 视觉验证\n\n</skill>"
+        },
+        {
+          "toolId": "call_1326e4b56ccc4a26bdec6440",
+          "name": "todo_create",
+          "input": {
+            "activeForm": "正在更新 report.html 数据与标题",
+            "description": "读取 data.json 与 report.html，替换图表数据为 data.json 内容，标题改为 Quarterly Results，保留现有尺寸、布局和配色。",
+            "subject": "更新 report.html 数据与标题"
+          },
+          "result": "{\"ok\":true,\"id\":\"todo_1\"}"
+        },
+        {
+          "toolId": "call_650e87f4e23c424882b8a29a",
+          "name": "todo_create",
+          "input": {
+            "activeForm": "正在渲染 report.png",
+            "description": "使用 render.mjs 将更新后的 report.html 渲染为 report.png。",
+            "subject": "渲染 report.png"
+          },
+          "result": "{\"ok\":true,\"id\":\"todo_2\"}"
+        },
+        {
+          "toolId": "call_0563eec4f9b445d89aacbd24",
+          "name": "todo_create",
+          "input": {
+            "activeForm": "正在做视觉验证",
+            "description": "按 visual-review 流程检查 report.png：数据与 data.json 一致、标题为 Quarterly Results、尺寸/布局/配色保持不变、无裁剪或重叠。",
+            "subject": "视觉验证更新结果"
+          },
+          "result": "{\"ok\":true,\"id\":\"todo_3\"}"
+        },
+        {
+          "toolId": "call_16d09ad9ae144f84b128e6e1",
+          "name": "read",
+          "input": {
+            "path": "data.json"
+          },
+          "result": "     1\t{\"Q1\":42,\"Q2\":57,\"Q3\":68}\n\n[End of file - 1 lines total]"
+        },
+        {
+          "toolId": "call_054fe27cc27446d3a72a2b60",
+          "name": "read",
+          "input": {
+            "path": "report.html"
+          },
+          "result": "     1\t<!doctype html><html><head><meta charset=\"utf-8\"><style>\n     2\tbody{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n     3\th1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n     4\t.quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n     5\t</style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n     6\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n     7\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n     8\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n     9\t</div></body></html>\n\n[End of file - 9 lines total]"
+        },
+        {
+          "toolId": "call_45548856f2ed42a289082318",
+          "name": "read",
+          "input": {
+            "path": "render.mjs"
+          },
+          "result": "     1\timport playwright from \"file:///C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/playwright/index.js\";const {chromium}=playwright;\n     2\timport {pathToFileURL} from 'node:url';import path from 'node:path';\n     3\tconst browser=await chromium.launch({headless:true});try{const page=await browser.newPage({viewport:{width:960,height:540},deviceScaleFactor:1});\n     4\tawait page.goto(pathToFileURL(path.resolve('report.html')).href);await page.evaluate(()=>document.fonts.ready);\n     5\tawait page.screenshot({path:path.resolve('report.png')});process.stdout.write('Saved report.png');}finally{await browser.close();}\n\n[End of file - 5 lines total]"
+        },
+        {
+          "toolId": "call_35c5e1fa0716412ea99b2417",
+          "name": "read",
+          "input": {
+            "path": "README.md"
+          },
+          "result": "     1\t# Quarterly report workspace\n     2\tThe source is report.html; the data is data.json. Render the HTML to report.png using:\n     3\t\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\fnm_multishells\\\\15120_1791852875558\\\\node.exe\" render.mjs\n     4\tChromium and Playwright are installed. No package installation is needed.\n\n[End of file - 4 lines total]"
+        },
+        {
+          "toolId": "call_260fab27303e459c8253e05f",
+          "name": "todo_update",
+          "input": {
+            "id": "todo_1",
+            "status": "in_progress"
+          },
+          "result": "{\"ok\":true}"
+        },
+        {
+          "toolId": "call_9615757b71a54ddfa94f82b9",
+          "name": "multi_edit",
+          "input": {
+            "edits": [
+              {
+                "new_string": "<h1>Quarterly Results</h1>",
+                "old_string": "<h1>Quarterly Report</h1>"
+              },
+              {
+                "new_string": "<div class=\"quarter\"><div class=\"bar\" style=\"height:204px\"></div><div class=\"label\">Q1: 42</div></div>",
+                "old_string": "<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>"
+              },
+              {
+                "new_string": "<div class=\"quarter\"><div class=\"bar\" style=\"height:277px\"></div><div class=\"label\">Q2: 57</div></div>",
+                "old_string": "<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>"
+              },
+              {
+                "new_string": "<div class=\"quarter\"><div class=\"bar\" style=\"height:330px\"></div><div class=\"label\">Q3: 68</div></div>",
+                "old_string": "<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>"
+              }
+            ],
+            "path": "report.html"
+          },
+          "result": "File edited: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791900011163\\project\\report.html (4 edits, 4 replacements)\n  (+4 lines, -4 lines)\n\n--- C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791900011163\\project\\report.html\n+++ C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791900011163\\project\\report.html\n@@ -2,8 +2,8 @@\n  body{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n  h1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n  .quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n- </style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n+ </style></head><body><h1>Quarterly Results</h1><div class=\"chart\">\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:204px\"></div><div class=\"label\">Q1: 42</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:277px\"></div><div class=\"label\">Q2: 57</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:330px\"></div><div class=\"label\">Q3: 68</div></div>\n  </div></body></html>"
+        },
+        {
+          "toolId": "call_7f750cee34e54bca94e6946e",
+          "name": "todo_update",
+          "input": {
+            "id": "todo_1",
+            "status": "completed"
+          },
+          "result": "{\"ok\":true}"
+        },
+        {
+          "toolId": "call_f51ebfc7c33d4e10aeb634c7",
+          "name": "todo_update",
+          "input": {
+            "id": "todo_2",
+            "status": "in_progress"
+          },
+          "result": "{\"ok\":true}"
+        },
+        {
+          "toolId": "call_a939bbec5e2d4bbbbf60b5ef",
+          "name": "bash",
+          "input": {
+            "command": "\"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs",
+            "description": "用 Playwright Chromium 将 report.html 渲染为 report.png"
+          },
+          "result": "Command: \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\nExit: 1\n\n[stderr]\n所在位置 行:1 字符: 77\r\n+ ... ppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\r\n+                                                                ~~~~~~~~~~\r\n表达式或语句中包含意外的标记“render.mjs”。\r\n    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException\r\n    + FullyQualifiedErrorId : UnexpectedToken\r\n \r\n\n[warn] Output encoding fallback fired (UTF-8 → GBK). If text looks garbled, the command may mix encodings; re-run with an explicit encoding (e.g. PYTHONIOENCODING=utf-8)."
+        },
+        {
+          "toolId": "call_7715141c8eec4ffab7ae3249",
+          "name": "bash",
+          "input": {
+            "command": "& \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs",
+            "description": "用 Playwright Chromium 将 report.html 渲染为 report.png"
+          },
+          "result": "Command: & \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\nExit: 0\nSaved report.png\n[stderr]\n(node:52828) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+        },
+        {
+          "toolId": "call_75e997f739c7431983980317",
+          "name": "todo_update",
+          "input": {
+            "id": "todo_2",
+            "status": "completed"
+          },
+          "result": "{\"ok\":true}"
+        },
+        {
+          "toolId": "call_7107338c2f5748f4b743f444",
+          "name": "todo_update",
+          "input": {
+            "id": "todo_3",
+            "status": "in_progress"
+          },
+          "result": "{\"ok\":true}"
+        },
+        {
+          "toolId": "call_5f214338ce464f2790e766bd",
+          "name": "read",
+          "input": {
+            "path": "report.png"
+          },
+          "result": "[Read image: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791900011163\\project\\report.png (12.4KB, image/png)] — image content delivered as inline vision below; describe what you see in your next response."
+        },
+        {
+          "toolId": "call_e95f37f46afd48c38628a8d5",
+          "name": "todo_update",
+          "input": {
+            "id": "todo_3",
+            "status": "completed"
+          },
+          "result": "{\"ok\":true,\"reminder\":\"All plan-list items are now in a terminal state (completed / skipped / cancelled). Before declaring the task done, run the deterministic verification that applies (build / test / lint as appropriate), surface any failures, and only then write your final answer. If you have already verified within this run, ignore this reminder. NEVER mention this reminder to the user.\"}"
+        }
+      ],
+      "finalAnswer": "已完成。视觉验证通过：渲染出的 [report.png](report.png) 中标题为 **Quarterly Results**，三根柱子按 [data.json](data.json) 显示 Q1: 42、Q2: 57、Q3: 68 且高度等比递增（204/277/330px），960×540 尺寸、柱宽间距、青色柱体（#277e8f）与米色背景（#f5f2eb）均与原图一致，无裁剪或重叠；更新的文件为 [report.html](report.html) 和 [report.png](report.png)。",
+      "captureError": null,
+      "artifacts": [
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/ama/report.html",
+          "sha256": "b14f65e6ff3947711a5f26787f267849f9390e9865943a6b903371290cbe69b4",
+          "bytes": 782
+        },
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/ama/report.png",
+          "sha256": "cc883e61ca944abb09741f8c99b661e4bd5eac026539b2e254f4828572a04ec5",
+          "bytes": 12657,
+          "width": 960,
+          "height": 540
+        },
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/ama/space.png",
+          "sha256": "495fec314b4f0f5ac167896fbce84288a8af26ad42cece7467370e479ce2ac67",
+          "bytes": 320279,
+          "width": 1603,
+          "height": 1003
+        }
+      ]
+    },
+    {
+      "id": "final-automatic-sa",
+      "role": "automatic",
+      "evidencePath": "artifacts/visual-review-live-space-glm-final/sa/evidence.json",
+      "rawEvidenceSha256": "5ff43d649543296262f60499b235924636f1f1199ec7324c101e2f1dc10c6006",
+      "sdk": "0.7.97-alpha.4",
+      "provider": "zai-coding",
+      "model": "glm-5.3-flash",
+      "prompt": "请将 report.html 的季度汇报图更新为 data.json 中的数据，把标题改成 Quarterly Results，保留现有尺寸、布局和配色，交付更新后的 report.html 和 report.png。最后给我文件链接和一句说明。",
+      "configuredProvider": {
+        "id": "zai-coding",
+        "displayName": "Z.ai Coding Plan",
+        "apiKeyEnv": "ZAI_CODING_API_KEY",
+        "protocol": "anthropic",
+        "defaultModel": "glm-5.3",
+        "models": ["glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5-turbo", "glm-4.7"],
+        "configured": true,
+        "configuredSource": "env",
+        "isDefault": false,
+        "isCustom": false
+      },
+      "playwright": {
+        "title": "live sa automatically reviews its rendered result without an explicit skill request",
+        "status": "passed",
+        "durationMs": 143471
+      },
+      "terminal": {
+        "runId": "run_b0d042c386f231605e23c829d2e1f0d5f2c093e22c5870afaeeb8d4ae040b730",
+        "sessionId": "20261013_220412_i1f96c3eec21d6",
+        "turnId": "turn_8f4a32c25ae540cc",
+        "phase": "completed",
+        "stage": "terminal",
+        "stageChangedAt": 1791900384510,
+        "activeSubtaskCount": 0,
+        "startedAt": 1791900254389,
+        "completedAt": 1791900384510,
+        "initiatedBy": {
+          "clientId": "client_80e5026f143e77af8537e29bbcf9df0b1bee2a7183723ee6b0d0d465cea435ce",
+          "name": "kodax-space"
+        },
+        "requirements": {
+          "hostTools": "terminal"
+        }
+      },
+      "skillInvocation": true,
+      "loadedVisualReview": true,
+      "transcriptImages": [
+        {
+          "toolId": "call_c90cc2c9afa24bb0b6c4420c",
+          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.png",
+          "mediaType": "image/png"
+        }
+      ],
+      "evidencePassedFlag": true,
+      "currentPngSha256": "65f3427fbb571c518397fd4c6a544751c3a7e633bd518cace0c575d381f7a3a1",
+      "initialPngSha256": null,
+      "pngUnchanged": null,
+      "actualRequests": [
+        {
+          "requestId": "request_a4a517d7-9bf7-463b-9907-92956c51e384",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:04:16.050Z",
+          "endedAt": "2026-10-13T14:04:26.322Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_41bac65e-6507-4a63-8edc-b2c37d47eff7",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:04:26.567Z",
+          "endedAt": "2026-10-13T14:05:04.805Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_b30ee928-c083-42c4-80b8-a7514720c44c",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:05:04.918Z",
+          "endedAt": "2026-10-13T14:05:28.983Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_88ebff8b-59d3-4ea7-9c9a-0ab0cbe2857f",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:05:29.097Z",
+          "endedAt": "2026-10-13T14:05:35.348Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_0a21cb03-081b-4299-b764-c1418441404e",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:05:42.236Z",
+          "endedAt": "2026-10-13T14:05:53.711Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_6b4c53fd-b1e6-4877-9216-b27c5be70451",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:05:55.410Z",
+          "endedAt": "2026-10-13T14:06:01.730Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_aee527cd-8406-4aa0-9b36-53f358536265",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:06:01.890Z",
+          "endedAt": "2026-10-13T14:06:24.331Z",
+          "wireObservation": "observed"
+        }
+      ],
+      "allRequestsUseConfiguredModel": true,
+      "calls": [
+        {
+          "toolId": "call_76c8d180a8bf4397925b44bb",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.html"
+          },
+          "result": "     1\t<!doctype html><html><head><meta charset=\"utf-8\"><style>\n     2\tbody{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n     3\th1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n     4\t.quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n     5\t</style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n     6\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n     7\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n     8\t<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n     9\t</div></body></html>\n\n[End of file - 9 lines total]"
+        },
+        {
+          "toolId": "call_10b7e5a29f4941c89868c2ce",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\data.json"
+          },
+          "result": "     1\t{\"Q1\":42,\"Q2\":57,\"Q3\":68}\n\n[End of file - 1 lines total]"
+        },
+        {
+          "toolId": "call_dd5d5b77a63b486c8cbcb996",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\render.mjs"
+          },
+          "result": "     1\timport playwright from \"file:///C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/playwright/index.js\";const {chromium}=playwright;\n     2\timport {pathToFileURL} from 'node:url';import path from 'node:path';\n     3\tconst browser=await chromium.launch({headless:true});try{const page=await browser.newPage({viewport:{width:960,height:540},deviceScaleFactor:1});\n     4\tawait page.goto(pathToFileURL(path.resolve('report.html')).href);await page.evaluate(()=>document.fonts.ready);\n     5\tawait page.screenshot({path:path.resolve('report.png')});process.stdout.write('Saved report.png');}finally{await browser.close();}\n\n[End of file - 5 lines total]"
+        },
+        {
+          "toolId": "call_bd75e36859aa43b2b2bf0e46",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\README.md"
+          },
+          "result": "     1\t# Quarterly report workspace\n     2\tThe source is report.html; the data is data.json. Render the HTML to report.png using:\n     3\t\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\fnm_multishells\\\\15120_1791852875558\\\\node.exe\" render.mjs\n     4\tChromium and Playwright are installed. No package installation is needed.\n\n[End of file - 4 lines total]"
+        },
+        {
+          "toolId": "call_96ba3fd85fd24feaae888b31",
+          "name": "skill",
+          "input": {
+            "args": "report.html 季度柱状图更新后与渲染出的 report.png",
+            "skill": "visual-review"
+          },
+          "result": "<skill name=\"visual-review\" location=\"C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review\">\n\nSkill root: C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/@kodax-ai/kodax/dist/builtin/visual-review\nThis is a built-in KodaX skill.\n\n# Visual review\n\nUse the same workflow for creation, modification, and review. The user's\nrequirements determine the scope, not the file extension or change size.\nRespect review-only requests: report findings without modifying the subject.\n\n## Obtain evidence\n\nIdentify the current result and the visual requirements to check. Discover\navailable session tools and relevant format skills before choosing a renderer\nor capture method. Use the existing permission, sandbox, working-directory,\ntool and provider boundaries. Do not enable broader access, install software,\nor call an external model just to make a check appear successful.\n\n- **Static** images, icons, posters, diagrams, maps, plots and charts: inspect\n  the actual final image. Render SVG or drawing code to pixels; use a full\n  view and detailed crops when necessary. Include the intended background for\n  transparent assets. Compare reference images when fidelity was requested.\n- **Paginated** documents, slides, PDFs, reports and spreadsheets: render the\n  actual deliverable. Track page/slide/sheet/range, font and page size. Inspect\n  pagination, overflow, clipping, legibility and consistency. A PDF text\n  extraction or Office file listing does not replace rendered page evidence.\n- **Interactive** web, desktop, mobile, terminal, canvas and 3D surfaces:\n  capture the actual running result at the relevant viewport, terminal size,\n  state or camera. Perform requested interactions and inspect the resulting\n  states; use DOM, accessibility tree, terminal state or event evidence with\n  screenshots. Include relevant loading/error states and responsive sizes.\n  A static picture does not prove interaction or invisible 3D geometry.\n- **Temporal** video, GIF, animation, transitions and changing visualizations:\n  decode or capture the final output with timestamps/frame numbers. Inspect\n  the required start/end states, motion, transitions and captions, using\n  consecutive frames where continuity matters. A GIF read may expose only its\n  first frame. A thumbnail or sparse sampling does not prove the whole clip.\n\nUse the available image-reading tool to deliver actual image content to the\nmodel. A saved screenshot path, UI preview, successful render exit code or\ntool-call receipt does not mean the model received or inspected the image.\nIf image input, rendering or capture is unavailable, identify the affected\nrequirement as **unverified** and state the reason. Continue other useful work.\n\n## Check and repair\n\nCheck against the brief: missing or wrong content, illegible text, unintended\ncropping/distortion, overlaps, overflow, poor contrast and requested visual\nfidelity. Cite a concrete page, region, state, camera or timestamp with each\nfinding. Do not invent pixels, constraints or aesthetic preferences.\n\nVisual evidence supplements content and behavior checks. Verify chart source\nvalues and spreadsheet calculations separately; use functional checks for\nbackend behavior and audio/timing checks for sound or synchronization.\n\nSelf-review in single-agent mode. When an independent view is useful and\ncollaboration is available, the main agent captures evidence and spawns an\nordinary read-only child within the current task. Give it the brief, current\nartifact identity, evidence references and exact scope, with fresh history.\nIt reports findings and gaps; the main agent owns repairs and final delivery.\nDo not create independent background work or repeat the same full review.\n\nAfter a repair, obtain new evidence for the affected scope. Associate findings\nwith the artifact version and capture settings actually inspected; an old\nscreenshot cannot certify a changed result. Use existing task/actor results\nand artifact metadata, not a separate verification database or completion API.\n\n## Report honestly\n\nRecord the checked requirements, current artifact/version, evidence references,\npages/regions/states/viewports/cameras/time ranges inspected, concrete findings\nand unverified scope. Distinguish **passed**, **issues** and **unverified** for\neach requirement. State sampling limits. Missing evidence never means passed.\nRespect current cancellation and budgets; do not restart an interrupted action\nor repeatedly spawn reviewers without new evidence. Final delivery follows\nthe required checks and repairs; lifecycle completion is not a quality verdict.\n\nUser provided arguments: report.html 季度柱状图更新后与渲染出的 report.png\n\n</skill>"
+        },
+        {
+          "toolId": "call_545de80deab54a76ba3c2422",
+          "name": "multi_edit",
+          "input": {
+            "edits": [
+              {
+                "new_string": "<body><h1>Quarterly Results</h1><div class=\"chart\">\n<div class=\"quarter\"><div class=\"bar\" style=\"height:167px\"></div><div class=\"label\">Q1: 42</div></div>\n<div class=\"quarter\"><div class=\"bar\" style=\"height:226px\"></div><div class=\"label\">Q2: 57</div></div>\n<div class=\"quarter\"><div class=\"bar\" style=\"height:270px\"></div><div class=\"label\">Q3: 68</div></div>",
+                "old_string": "<body><h1>Quarterly Report</h1><div class=\"chart\">\n<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n<div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>"
+              }
+            ],
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.html"
+          },
+          "result": "File edited: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.html (1 edits, 1 replacement)\n  (+4 lines, -4 lines)\n\n--- C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.html\n+++ C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.html\n@@ -2,8 +2,8 @@\n  body{margin:0;background:#f5f2eb;color:#142d40;font:24px Arial;width:960px;height:540px;box-sizing:border-box;padding:48px}\n  h1{margin:0 0 40px;font-size:42px}.chart{height:330px;display:flex;gap:70px;align-items:flex-end}\n  .quarter{width:180px;text-align:center}.bar{background:#277e8f;width:180px;height:1px}.label{padding:16px}\n- </style></head><body><h1>Quarterly Report</h1><div class=\"chart\">\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q1: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q2: 0</div></div>\n- <div class=\"quarter\"><div class=\"bar\"></div><div class=\"label\">Q3: 0</div></div>\n+ </style></head><body><h1>Quarterly Results</h1><div class=\"chart\">\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:167px\"></div><div class=\"label\">Q1: 42</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:226px\"></div><div class=\"label\">Q2: 57</div></div>\n+ <div class=\"quarter\"><div class=\"bar\" style=\"height:270px\"></div><div class=\"label\">Q3: 68</div></div>\n  </div></body></html>"
+        },
+        {
+          "toolId": "call_3d01dc64ca3f4ecd8469d176",
+          "name": "bash",
+          "input": {
+            "command": "cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\" && \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs",
+            "description": "用 Playwright 渲染 report.html 为 report.png"
+          },
+          "result": "Command: cd \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\" && \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\nExit: 1\n\n[stderr]\n所在位置 行:1 字符: 92\r\n+ ... \\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\" && \"C:\\Use ...\r\n+                                                                ~~\r\n标记“&&”不是此版本中的有效语句分隔符。\r\n所在位置 行:1 字符: 95\r\n+ ... project\" && \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_17918 ...\r\n+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n只允许将表达式作为管道的第一个元素。\r\n所在位置 行:1 字符: 171\r\n+ ... ppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\r\n+                                                                ~~~~~~~~~~\r\n表达式或语句中包含意外的标记“render.mjs”。\r\n    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException\r\n    + FullyQualifiedErrorId : InvalidEndOfLine\r\n \r\n\n[warn] Output encoding fallback fired (UTF-8 → GBK). If text looks garbled, the command may mix encodings; re-run with an explicit encoding (e.g. PYTHONIOENCODING=utf-8)."
+        },
+        {
+          "toolId": "call_549ce843a6b64fd28cb51cc1",
+          "name": "bash",
+          "input": {
+            "command": "Set-Location \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\"; & \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs",
+            "description": "用 Playwright 渲染 report.html 为 report.png"
+          },
+          "result": "Command: Set-Location \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\"; & \"C:\\Users\\ADMIN\\AppData\\Local\\fnm_multishells\\15120_1791852875558\\node.exe\" render.mjs\nExit: 0\nSaved report.png\n[stderr]\n(node:26352) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+        },
+        {
+          "toolId": "call_c90cc2c9afa24bb0b6c4420c",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.png"
+          },
+          "result": "[Read image: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900243368\\project\\report.png (12.3KB, image/png)] — image content delivered as inline vision below; describe what you see in your next response."
+        }
+      ],
+      "finalAnswer": "渲染结果检查通过。视觉验收对照：\n\n- **标题**：显示为 \"Quarterly Results\"，字体、字号、位置与原版一致 ✅\n- **数据**：三根柱子标签 Q1: 42 / Q2: 57 / Q3: 68，与 data.json 完全一致 ✅\n- **比例**：柱高 167/226/270px，按最大值 68 等比缩放，42:57:68 比例准确，未超出图表区、无裁切或溢出 ✅\n- **尺寸/布局/配色**：960×540、柱宽 180px、青色 `#277e8f`、米色背景 `#f5f2eb`、flex 间距与底对齐均未改动 ✅\n\n交付文件：\n\n- [report.html](file:///C:/Users/ADMIN/AppData/Local/Temp/kodax-test-sdk-visual-live-sa-1791900243368/project/report.html)\n- [report.png](file:///C:/Users/ADMIN/AppData/Local/Temp/kodax-test-sdk-visual-live-sa-1791900243368/project/report.png)\n\n说明：已将图表数据更新为 data.json 中的 Q1:42、Q2:57、Q3:68，标题改为 Quarterly Results，柱高按数值等比缩放，其余尺寸、布局与配色保持原样，并重新渲染出 report.png（经实际渲染图检查确认无误）。",
+      "captureError": null,
+      "artifacts": [
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/sa/report.html",
+          "sha256": "bd76e5b495b4808306a181763fd156028888e24128d16f9ab5b2b7b4118b0a76",
+          "bytes": 782
+        },
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/sa/report.png",
+          "sha256": "65f3427fbb571c518397fd4c6a544751c3a7e633bd518cace0c575d381f7a3a1",
+          "bytes": 12637,
+          "width": 960,
+          "height": 540
+        },
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/sa/space.png",
+          "sha256": "b8c4f3f09b58ed342d6861e70a258944f4456fcd27af9aa4cfb07cffe9fda52c",
+          "bytes": 349438,
+          "width": 1603,
+          "height": 1003
+        }
+      ]
+    },
+    {
+      "id": "final-pixel-control",
+      "role": "explicit-pixels",
+      "evidencePath": "artifacts/visual-review-live-space-glm-final/sa-explicit/evidence.json",
+      "rawEvidenceSha256": "cd60acb955568f295c34bba2ab0e6014292a8ebb73adb8c0736975619b728ff4",
+      "sdk": "0.7.97-alpha.4",
+      "provider": "zai-coding",
+      "model": "glm-5.3-flash",
+      "prompt": "请使用 visual-review 检查 report.png 的数值是否与 data.json 一致，不改动文件。只返回 JSON：matches 为是否一致，quarters 中 Q1/Q2/Q3 各有 data（JSON 源数据值）与 image（图片中实际显示值）两个数值字段。",
+      "configuredProvider": {
+        "id": "zai-coding",
+        "displayName": "Z.ai Coding Plan",
+        "apiKeyEnv": "ZAI_CODING_API_KEY",
+        "protocol": "anthropic",
+        "defaultModel": "glm-5.3",
+        "models": ["glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5-turbo", "glm-4.7"],
+        "configured": true,
+        "configuredSource": "env",
+        "isDefault": false,
+        "isCustom": false
+      },
+      "playwright": {
+        "title": "live explicit control inspects current pixels and reports data differences",
+        "status": "passed",
+        "durationMs": 42806
+      },
+      "terminal": {
+        "runId": "run_a7fc2e00905354ad0201d6f035e9f5044c38697a6b86c5a2ce55cd16f67b7b6b",
+        "sessionId": "20261013_220832_nka285807c753f",
+        "turnId": "turn_8d19f1a5b3024282",
+        "phase": "completed",
+        "stage": "terminal",
+        "stageChangedAt": 1791900544748,
+        "activeSubtaskCount": 0,
+        "startedAt": 1791900514629,
+        "completedAt": 1791900544748,
+        "initiatedBy": {
+          "clientId": "client_32df0eb300106827aa30d1842f1e1f519eb6bd50d241cb9ad7ceb177effa9f1e",
+          "name": "kodax-space"
+        },
+        "requirements": {
+          "hostTools": "terminal"
+        }
+      },
+      "skillInvocation": true,
+      "loadedVisualReview": true,
+      "transcriptImages": [
+        {
+          "toolId": "call_25235a02bac546299bbff82c",
+          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900503175\\project\\report.png",
+          "mediaType": "image/png"
+        }
+      ],
+      "evidencePassedFlag": true,
+      "currentPngSha256": "26f7a3d79b3c8f8b018809f39bc6c2aa7fbb82c17ec41456baac74ac5ed0fa48",
+      "initialPngSha256": "26f7a3d79b3c8f8b018809f39bc6c2aa7fbb82c17ec41456baac74ac5ed0fa48",
+      "pngUnchanged": true,
+      "actualRequests": [
+        {
+          "requestId": "request_3b6dbe7f-3fe9-4d95-8632-5d7c7a1563d7",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:08:36.214Z",
+          "endedAt": "2026-10-13T14:08:45.620Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_29dc02d9-8508-408d-a103-73abe1b0e9e8",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:08:45.805Z",
+          "endedAt": "2026-10-13T14:08:51.788Z",
+          "wireObservation": "observed"
+        },
+        {
+          "requestId": "request_3da63450-2961-4f51-b7f6-425d5302dea9",
+          "provider": "zai-coding",
+          "model": "glm-5.3-flash",
+          "purpose": "primary",
+          "state": "succeeded",
+          "boundary": "physical_attempt",
+          "fallback": false,
+          "startedAt": "2026-10-13T14:08:52.045Z",
+          "endedAt": "2026-10-13T14:09:04.612Z",
+          "wireObservation": "observed"
+        }
+      ],
+      "allRequestsUseConfiguredModel": true,
+      "calls": [
+        {
+          "toolId": "call_04fdfc9b7f6d4f9e842cdc60",
+          "name": "skill",
+          "input": {
+            "args": "检查 report.png 中 Q1/Q2/Q3 数值是否与 data.json 一致，不改动文件",
+            "skill": "visual-review"
+          },
+          "result": "<skill name=\"visual-review\" location=\"C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review\">\n\nSkill root: C:/Works/GitProj/KodaX-AI/KodaX-Space/node_modules/@kodax-ai/kodax/dist/builtin/visual-review\nThis is a built-in KodaX skill.\n\n# Visual review\n\nUse the same workflow for creation, modification, and review. The user's\nrequirements determine the scope, not the file extension or change size.\nRespect review-only requests: report findings without modifying the subject.\n\n## Obtain evidence\n\nIdentify the current result and the visual requirements to check. Discover\navailable session tools and relevant format skills before choosing a renderer\nor capture method. Use the existing permission, sandbox, working-directory,\ntool and provider boundaries. Do not enable broader access, install software,\nor call an external model just to make a check appear successful.\n\n- **Static** images, icons, posters, diagrams, maps, plots and charts: inspect\n  the actual final image. Render SVG or drawing code to pixels; use a full\n  view and detailed crops when necessary. Include the intended background for\n  transparent assets. Compare reference images when fidelity was requested.\n- **Paginated** documents, slides, PDFs, reports and spreadsheets: render the\n  actual deliverable. Track page/slide/sheet/range, font and page size. Inspect\n  pagination, overflow, clipping, legibility and consistency. A PDF text\n  extraction or Office file listing does not replace rendered page evidence.\n- **Interactive** web, desktop, mobile, terminal, canvas and 3D surfaces:\n  capture the actual running result at the relevant viewport, terminal size,\n  state or camera. Perform requested interactions and inspect the resulting\n  states; use DOM, accessibility tree, terminal state or event evidence with\n  screenshots. Include relevant loading/error states and responsive sizes.\n  A static picture does not prove interaction or invisible 3D geometry.\n- **Temporal** video, GIF, animation, transitions and changing visualizations:\n  decode or capture the final output with timestamps/frame numbers. Inspect\n  the required start/end states, motion, transitions and captions, using\n  consecutive frames where continuity matters. A GIF read may expose only its\n  first frame. A thumbnail or sparse sampling does not prove the whole clip.\n\nUse the available image-reading tool to deliver actual image content to the\nmodel. A saved screenshot path, UI preview, successful render exit code or\ntool-call receipt does not mean the model received or inspected the image.\nIf image input, rendering or capture is unavailable, identify the affected\nrequirement as **unverified** and state the reason. Continue other useful work.\n\n## Check and repair\n\nCheck against the brief: missing or wrong content, illegible text, unintended\ncropping/distortion, overlaps, overflow, poor contrast and requested visual\nfidelity. Cite a concrete page, region, state, camera or timestamp with each\nfinding. Do not invent pixels, constraints or aesthetic preferences.\n\nVisual evidence supplements content and behavior checks. Verify chart source\nvalues and spreadsheet calculations separately; use functional checks for\nbackend behavior and audio/timing checks for sound or synchronization.\n\nSelf-review in single-agent mode. When an independent view is useful and\ncollaboration is available, the main agent captures evidence and spawns an\nordinary read-only child within the current task. Give it the brief, current\nartifact identity, evidence references and exact scope, with fresh history.\nIt reports findings and gaps; the main agent owns repairs and final delivery.\nDo not create independent background work or repeat the same full review.\n\nAfter a repair, obtain new evidence for the affected scope. Associate findings\nwith the artifact version and capture settings actually inspected; an old\nscreenshot cannot certify a changed result. Use existing task/actor results\nand artifact metadata, not a separate verification database or completion API.\n\n## Report honestly\n\nRecord the checked requirements, current artifact/version, evidence references,\npages/regions/states/viewports/cameras/time ranges inspected, concrete findings\nand unverified scope. Distinguish **passed**, **issues** and **unverified** for\neach requirement. State sampling limits. Missing evidence never means passed.\nRespect current cancellation and budgets; do not restart an interrupted action\nor repeatedly spawn reviewers without new evidence. Final delivery follows\nthe required checks and repairs; lifecycle completion is not a quality verdict.\n\nUser provided arguments: 检查 report.png 中 Q1/Q2/Q3 数值是否与 data.json 一致，不改动文件\n\n</skill>"
+        },
+        {
+          "toolId": "call_041e277c26414a439e82af7e",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900503175\\project\\data.json"
+          },
+          "result": "     1\t{\"Q1\":42,\"Q2\":57,\"Q3\":68}\n\n[End of file - 1 lines total]"
+        },
+        {
+          "toolId": "call_25235a02bac546299bbff82c",
+          "name": "read",
+          "input": {
+            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900503175\\project\\report.png"
+          },
+          "result": "[Read image: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791900503175\\project\\report.png (12.0KB, image/png)] — image content delivered as inline vision below; describe what you see in your next response."
+        }
+      ],
+      "finalAnswer": "```json\n{\n  \"matches\": false,\n  \"quarters\": {\n    \"Q1\": { \"data\": 42, \"image\": 13 },\n    \"Q2\": { \"data\": 57, \"image\": 26 },\n    \"Q3\": { \"data\": 68, \"image\": 39 }\n  }\n}\n```",
+      "captureError": null,
+      "artifacts": [
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/sa-explicit/report.png",
+          "sha256": "26f7a3d79b3c8f8b018809f39bc6c2aa7fbb82c17ec41456baac74ac5ed0fa48",
+          "bytes": 12249,
+          "width": 960,
+          "height": 540
+        },
+        {
+          "path": "artifacts/visual-review-live-space-glm-final/sa-explicit/space.png",
+          "sha256": "8ae7820a6495ee24afcf3e5f0ae4166bde5548ff325bfaada1446f15966b48b8",
+          "bytes": 212627,
+          "width": 1603,
+          "height": 1003
+        }
+      ]
+    }
+  ]
+}

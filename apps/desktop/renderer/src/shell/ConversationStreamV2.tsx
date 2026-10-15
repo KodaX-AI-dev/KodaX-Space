@@ -34,8 +34,17 @@ import {
   type WorkflowNoticeMessage,
 } from '../store/appStore.js';
 import { composeMessages, type ConversationMessage } from '../features/session/composeMessages.js';
+import { projectProductConversation } from '../features/session/productConversation.js';
+import {
+  useProductSessionTranscript,
+  productTranscriptSnapshot,
+  installProductItemContent,
+} from '../store/productSessionView.js';
+import { readProductItemText } from '../lib/productItemContent.js';
+import { ProductHistorySearch } from '../features/session/ProductHistorySearch.js';
 import {
   appendRuntimeFailureNotices,
+  decorateProductFailureNotices,
   runtimeFailureProfileHasCurrentAuthority,
 } from '../features/session/runtimeFailureNotice.js';
 import { runtimeFailureProjectionMatches } from '../features/session/runtimeFailureProjection.js';
@@ -830,6 +839,61 @@ export function ConversationStreamV2(): JSX.Element {
   const { t } = useI18n();
   const isStreaming = useIsStreaming();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const productTranscript = useProductSessionTranscript(currentSessionId);
+  const productBodyReads = useRef(new Set<string>());
+  useEffect(() => {
+    if (!currentSessionId || !productTranscript || !window.kodaxSpace) return;
+    const sessionId = currentSessionId;
+    const source = productTranscript.browsingOlder || !productTranscript.view ? 'history' : 'view';
+    for (const item of productTranscript.items) {
+      if (item.outputState === 'draft') continue;
+      for (const part of ['text', 'input'] as const) {
+        const length = part === 'text' ? item.totalTextLength : item.tool?.totalInputLength;
+        const preview = part === 'text' ? item.text : (item.tool?.inputText ?? '');
+        if (
+          length === undefined ||
+          (preview.length === length && (part === 'input' || !item.textOffset))
+        )
+          continue;
+        const key = JSON.stringify([
+          sessionId,
+          item.id,
+          part,
+          item.outputState,
+          item.textRevision,
+          length,
+        ]);
+        if (productBodyReads.current.has(key)) continue;
+        productBodyReads.current.add(key);
+        void readProductItemText(
+          item,
+          async (offset) => {
+            const result = await window.kodaxSpace!.invoke('session.productItem', {
+              sessionId,
+              itemId: item.id,
+              source,
+              part,
+              offset,
+            });
+            if (!result.ok) throw new Error(result.error.message);
+            return result.data;
+          },
+          part,
+          source,
+        )
+          .then((text) => {
+            installProductItemContent(sessionId, item, part, text);
+          })
+          .catch((error: unknown) => {
+            pushToast(
+              error instanceof Error ? error.message : 'SDK item body read failed.',
+              'warning',
+            );
+          })
+          .finally(() => productBodyReads.current.delete(key));
+      }
+    }
+  }, [currentSessionId, productTranscript]);
   const historyPaging = useSessionHistoryPaging(currentSessionId);
   const [olderHistoryFeedback, setOlderHistoryFeedback] = useState<{
     readonly sessionId: string;
@@ -848,7 +912,7 @@ export function ConversationStreamV2(): JSX.Element {
       ? s.runtimeProfile?.sessions.find((session) => session.sessionId === currentSessionId)
       : undefined,
   );
-  const userMessages = useAppStore((s) =>
+  const legacyUserMessages = useAppStore((s) =>
     currentSessionId
       ? (s.userMessagesBySession[currentSessionId] ?? EMPTY_USER_MESSAGES)
       : EMPTY_USER_MESSAGES,
@@ -868,6 +932,22 @@ export function ConversationStreamV2(): JSX.Element {
       ? (s.workflowNoticesBySession[currentSessionId] ?? EMPTY_WORKFLOW_NOTICES)
       : EMPTY_WORKFLOW_NOTICES,
   );
+  const productConversation = useMemo(
+    () =>
+      productTranscript
+        ? projectProductConversation(
+            productTranscript.items,
+            productTranscript.browsingOlder ? [] : legacyUserMessages,
+            productTranscript.browsingOlder ? [] : queuedUserMessages,
+            productTranscript.historyItems,
+            productTranscript.browsingOlder
+              ? {}
+              : { local: localNotices, workflow: workflowNotices },
+          )
+        : undefined,
+    [productTranscript, legacyUserMessages, queuedUserMessages, localNotices, workflowNotices],
+  );
+  const userMessages = productConversation?.userMessages ?? legacyUserMessages;
   // 用来判断 "is this session loading history?" — persisted session 在 SDK summary
   // 有 msgCount > 0,而 in-memory buffer 还是空的 → history.IPC 在 flight,显示骨架更友好
   const currentSessionMsgCount = useAppStore((s) => {
@@ -901,6 +981,7 @@ export function ConversationStreamV2(): JSX.Element {
   }>({ sessionId: null, entries: new Map() });
 
   const eventMessages = useMemo(() => {
+    if (productConversation) return productConversation.messages;
     const cache = composeCacheRef.current;
     const inputsUnchangedExceptEvents =
       cache?.sessionId === currentSessionId &&
@@ -928,7 +1009,15 @@ export function ConversationStreamV2(): JSX.Element {
             includeAuditLineage: false,
           });
     return nextMessages;
-  }, [currentSessionId, events, userMessages, localNotices, queuedUserMessages, workflowNotices]);
+  }, [
+    currentSessionId,
+    events,
+    userMessages,
+    localNotices,
+    queuedUserMessages,
+    workflowNotices,
+    productConversation,
+  ]);
   useLayoutEffect(() => {
     composeCacheRef.current = {
       sessionId: currentSessionId,
@@ -949,8 +1038,11 @@ export function ConversationStreamV2(): JSX.Element {
     eventMessages,
   ]);
   const messages = useMemo(
-    () => appendRuntimeFailureNotices(eventMessages, runtimeLive, runtimeProfileSession),
-    [eventMessages, runtimeLive, runtimeProfileSession],
+    () =>
+      productConversation
+        ? decorateProductFailureNotices(eventMessages, runtimeLive, runtimeProfileSession)
+        : appendRuntimeFailureNotices(eventMessages, runtimeLive, runtimeProfileSession),
+    [eventMessages, runtimeLive, runtimeProfileSession, productConversation],
   );
   const groupedProjection = useMemo(() => {
     const pendingTokenEntries = new Map<
@@ -1939,7 +2031,10 @@ export function ConversationStreamV2(): JSX.Element {
       const state = useAppStore.getState();
       const session = state.sessions.find((s) => s.sessionId === currentSessionId);
       if (!session) return;
-      const userMsgs = state.userMessagesBySession[currentSessionId] ?? [];
+      const product = productTranscriptSnapshot(currentSessionId);
+      const userMsgs = product
+        ? projectProductConversation(product.items, [], [], product.historyItems).userMessages
+        : (state.userMessagesBySession[currentSessionId] ?? []);
       const selectorIndexes = selectorTurnIndexesByMessageId(userMsgs);
       const selectedMessage = userMsgs.find(
         (message) => selectorIndexes.get(message.id) === turnIndex,
@@ -2008,7 +2103,10 @@ export function ConversationStreamV2(): JSX.Element {
       const state = useAppStore.getState();
       const session = state.sessions.find((candidate) => candidate.sessionId === currentSessionId);
       if (!session) return;
-      const userMsgs = state.userMessagesBySession[currentSessionId] ?? [];
+      const product = productTranscriptSnapshot(currentSessionId);
+      const userMsgs = product
+        ? projectProductConversation(product.items, [], [], product.historyItems).userMessages
+        : (state.userMessagesBySession[currentSessionId] ?? []);
       if (turnIndex < 0 || !canRewindSelectorTurn(userMsgs, turnIndex)) return;
       const selectorIndexes = selectorTurnIndexesByMessageId(userMsgs);
       const selectedMessage = userMsgs.find(
@@ -2062,7 +2160,11 @@ export function ConversationStreamV2(): JSX.Element {
   }
 
   return (
-    <div className="relative flex-1 overflow-hidden" data-testid="conversation-stream">
+    <div
+      className="relative flex-1 overflow-hidden"
+      data-testid="conversation-stream"
+      data-session-id={currentSessionId}
+    >
       <div
         ref={scrollRef}
         data-testid="conversation-scroll-container"
@@ -2203,6 +2305,9 @@ export function ConversationStreamV2(): JSX.Element {
             placeholder={t('conversation.searchPlaceholder')}
             className="bg-transparent text-xs outline-none w-44 text-fg-primary placeholder:text-fg-muted"
           />
+          {productTranscript && currentSessionId && (
+            <ProductHistorySearch sessionId={currentSessionId} query={searchQuery} />
+          )}
           <span className="text-[11px] text-fg-muted font-mono w-12 text-right select-none">
             {searchQuery
               ? matchIds.length === 0

@@ -251,9 +251,7 @@ export function snapshotFromEvents(
     if (acc.ascii + acc.nonAscii > 0) toolInputTokens = estTokens(acc.ascii, acc.nonAscii);
   }
 
-  // FEATURE_184/F193 — Sidecar Verifier 在 Worker 文字结束后再跑一次 LLM 评判
-  // (~3-10s 尾延迟)。SDK 通过 onManagedTaskStatus 发 phase='verifying'，验证结束
-  // 后转回 phase='worker'。覆盖 status，避免 spinner 卡在 "Writing…" 看着像没反应。
+  // The managed phase describes in-run result review, including older saved activities.
   if (managedPhase === 'verifying' && !compacting) {
     status = 'Verifying…';
     toolPath = undefined;

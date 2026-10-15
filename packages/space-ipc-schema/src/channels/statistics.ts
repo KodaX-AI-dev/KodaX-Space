@@ -183,7 +183,7 @@ export const sessionExecutionFactsChannel = {
       sessionId: id,
       kind: z.enum(['requests', 'tools']),
       cursor: id.optional(),
-      limit: z.number().int().min(1).max(512).optional(),
+      limit: z.number().int().min(1).max(500).optional(),
     })
     .strict(),
   output: z

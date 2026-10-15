@@ -62,7 +62,6 @@ const STATIC_ARG_OPTIONS: Readonly<Record<string, readonly string[]>> = {
   'stall-log': ['on', 'off'],
   status: ['workspace', 'worktree', 'runtime', 'peers'],
   thinking: ['on', 'off', 'auto', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
-  'verifier-log': ['on', 'off'],
 };
 
 const NESTED_STATIC_ARG_OPTIONS: Readonly<

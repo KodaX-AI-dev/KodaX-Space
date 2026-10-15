@@ -146,6 +146,10 @@ const sessionMetaSchema = z.object({
   title: z.string().max(256).optional(),
   createdAt: z.number().int().nonnegative(),
   lastActivityAt: z.number().int().nonnegative(),
+  /** SDK canonical conversation time; metadata/Run recovery must not advance it. */
+  lastMessageAt: z.number().int().nonnegative().optional(),
+  /** Renderer-only optimistic input time, retained independently of SDK/metadata time. */
+  lastLocalInputAt: z.number().int().nonnegative().optional(),
   /**
    * 用户消息条数。来源：
    *   - persisted session: SDK listSessions summary 的 msgCount（落盘权威值）
@@ -280,6 +284,159 @@ export const sessionImageAttachmentSchema = z.discriminatedUnion('status', [
   }),
 ]);
 export type SessionImageAttachment = z.infer<typeof sessionImageAttachmentSchema>;
+
+/** SDK display items cross IPC without rebuilding their identity, content, or order. */
+export const sessionProductItemSchema = z
+  .object({
+    id: z.string().min(1).max(4096),
+    type: z.enum([
+      'user',
+      'assistant',
+      'thinking',
+      'info',
+      'error',
+      'event',
+      'hint',
+      'sidecar',
+      'system',
+      'tool',
+    ]),
+    text: z.string().max(16 * 1024 * 1024),
+    inputId: z.string().max(4096).optional(),
+    outputId: z.string().max(4096).optional(),
+    outputState: z.enum(['draft', 'committed']).optional(),
+    textRevision: z.number().int().nonnegative().optional(),
+    textOffset: z.number().int().nonnegative().optional(),
+    totalTextLength: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(16 * 1024 * 1024)
+      .optional(),
+    timestamp: z.number().finite().optional(),
+    sourceRunId: z.string().max(4096).optional(),
+    sourceTurnId: z.string().max(4096).optional(),
+    afterInputId: z.string().max(4096).optional(),
+    icon: z.string().max(128).optional(),
+    compactText: z.string().max(65536).optional(),
+    historyBoundary: z
+      .object({ entryId: z.string().min(1).max(4096), sourceRevision: z.string().min(1).max(4096) })
+      .optional(),
+    attachments: z
+      .array(
+        z.object({
+          kind: z.literal('image'),
+          path: z.string().max(32768),
+          mediaType: z.string().max(256).optional(),
+        }),
+      )
+      .max(32)
+      .optional(),
+    imageAttachments: z.array(sessionImageAttachmentSchema).max(32).optional(),
+    sidecar: z
+      .object({
+        verdict: z.enum(['revise', 'blocked']).optional(),
+        delivery: z
+          .enum(['synthetic-user-message', 'budget-exhausted', 'terminal-block'])
+          .optional(),
+      })
+      .optional(),
+    tool: z
+      .object({
+        assistantOutputId: z.string().max(4096).optional(),
+        executionBegan: z.literal(true).optional(),
+        resultRecorded: z.literal(true).optional(),
+        callId: z.string().max(4096),
+        name: z.string().max(512),
+        status: z.enum(['running', 'success', 'error', 'cancelled', 'awaiting_approval']),
+        inputText: z
+          .string()
+          .max(16 * 1024 * 1024)
+          .optional(),
+        totalInputLength: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(16 * 1024 * 1024)
+          .optional(),
+        progress: z.string().max(65536).optional(),
+        startedAt: z.number().finite().optional(),
+        endedAt: z.number().finite().optional(),
+      })
+      .optional(),
+  })
+  .strict();
+
+export const sessionProductViewSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    runtimeId: z.string().min(1),
+    revision: z.number().int().nonnegative(),
+    items: z.array(sessionProductItemSchema).max(150),
+  })
+  .strict()
+  .superRefine((view, ctx) => {
+    if (new Set(view.items.map((item) => item.id)).size !== view.items.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'SDK display item IDs must be unique in a current view',
+        path: ['items'],
+      });
+    }
+  });
+export type SessionProductItem = z.infer<typeof sessionProductItemSchema>;
+export type SessionProductView = z.infer<typeof sessionProductViewSchema>;
+
+export const sessionProductSnapshotChannel = {
+  name: 'session.productSnapshot',
+  direction: 'invoke',
+  input: z.object({ sessionId: z.string().min(1) }),
+  output: sessionProductViewSchema.nullable(),
+} as const;
+export const sessionProductChangedChannel = {
+  name: 'session.productChanged',
+  direction: 'push',
+  payload: sessionProductViewSchema,
+} as const;
+export const sessionProductItemChannel = {
+  name: 'session.productItem',
+  direction: 'invoke',
+  input: z.object({
+    sessionId: z.string().min(1),
+    itemId: z.string().min(1).max(4096),
+    source: z.enum(['view', 'history']),
+    part: z.enum(['text', 'input']).default('text'),
+    offset: z.number().int().nonnegative().default(0),
+  }),
+  output: z
+    .object({
+      id: z.string(),
+      text: z.string().max(16 * 1024 * 1024),
+      offset: z.number().int().nonnegative(),
+      totalLength: z.number().int().nonnegative(),
+      nextOffset: z.number().int().nonnegative().optional(),
+      outputState: z.enum(['draft', 'committed']).optional(),
+      textRevision: z.number().int().nonnegative().optional(),
+    })
+    .nullable(),
+} as const;
+export const sessionProductSearchChannel = {
+  name: 'session.productSearch',
+  direction: 'invoke',
+  input: z.object({ sessionId: z.string().min(1), query: z.string().min(1).max(4096) }),
+  output: z.object({
+    revision: z.string(),
+    hits: z.array(
+      z.object({
+        itemId: z.string(),
+        entryIndex: z.number().int().nonnegative(),
+        role: z.enum(['user', 'assistant']),
+        timestamp: z.string().optional(),
+        snippet: z.string(),
+      }),
+    ),
+  }),
+} as const;
 
 const attachmentPathSchema = z.object({
   kind: z.enum(['file', 'directory']),
@@ -782,6 +939,11 @@ export const sessionHistoryChannel = {
     /** Exact request identity supplied by the renderer. */
     requestId: z.string().min(1).max(128),
     items: z.array(sessionHistoryItemSchema).max(2000),
+    /** Official SDK presentation; present for shared Coder Host history only. */
+    productItems: z.array(sessionProductItemSchema).max(2000).optional(),
+    productOversized: z
+      .array(z.object({ itemId: z.string(), byteLength: z.number().int().nonnegative() }))
+      .optional(),
     /** SDK-owned ordinary-conversation confidence. Missing only on legacy fallback readers. */
     conversation: conversationHistoryDiagnosticSchema.optional(),
     /** Present for Runtime-backed bounded history; legacy readers still return one complete result. */

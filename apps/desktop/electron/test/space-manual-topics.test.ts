@@ -79,6 +79,52 @@ test('Space kodax_manual preserves the installed SDK mechanism manual', () => {
   assert.match(config.content, /--cleanup-legacy/);
 });
 
+test('Space product manual directs shared Coder usage questions to space_manual', () => {
+  const manual = resolveKodaXManual(
+    { topic: 'self-manual' },
+    {
+      productName: SPACE_PRODUCT_NAME,
+      baseTopics: SPACE_MANUAL_BASE_TOPICS,
+      extraTopics: SPACE_MANUAL_TOPICS,
+    },
+  );
+  assert.match(manual.content, /共享 Coder.*space_manual/);
+  assert.match(manual.content, /kodax_manual.*SDK\/CLI/);
+  assert.doesNotMatch(manual.content, /产品使用问题时，AI 会调用 SDK 的 kodax_manual/);
+});
+
+test('Space session manual explains drafts, message recency and separate history browsing', () => {
+  const manual = resolveKodaXManual(
+    { topic: 'sessions' },
+    {
+      productName: SPACE_PRODUCT_NAME,
+      baseTopics: SPACE_MANUAL_BASE_TOPICS,
+      extraTopics: SPACE_MANUAL_TOPICS,
+    },
+  );
+  assert.match(manual.content, /首个有效输入.*持久化/);
+  assert.match(manual.content, /旧空记录.*隐藏.*不删除/);
+  assert.match(manual.content, /真实消息时间.*排序/);
+  assert.match(manual.content, /当前 view.*历史浏览窗口.*分开/);
+  assert.match(manual.content, /搜索.*SDK/);
+});
+
+test('Space exit manual describes current Product lifecycle and recovery receipts', () => {
+  const manual = resolveKodaXManual(
+    { topic: 'background-runtime' },
+    {
+      productName: SPACE_PRODUCT_NAME,
+      baseTopics: SPACE_MANUAL_BASE_TOPICS,
+      extraTopics: SPACE_MANUAL_TOPICS,
+    },
+  );
+  assert.match(manual.content, /lifecycle\.requestExit.*readExit/);
+  assert.match(manual.content, /readKodaXClientExits/);
+  assert.match(manual.content, /原 requestId/);
+  assert.match(manual.content, /工作清理.*Host.*退出.*分开/);
+  assert.doesNotMatch(manual.content, /完整事务交给 KodaX SDK 的 settleKodaXRuntimeExit/);
+});
+
 test('Space kodax_manual documents the required current KodaX capability boundary', () => {
   const topics = new Map(SPACE_MANUAL_TOPICS.map((topic) => [topic.id, topic]));
   const ids = [...topics.keys()];

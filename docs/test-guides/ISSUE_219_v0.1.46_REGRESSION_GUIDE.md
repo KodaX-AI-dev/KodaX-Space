@@ -1,5 +1,20 @@
 # Issue 219 — Sidebar Session activity and recency
 
+## Registry alpha.6 update (2026-10-15)
+
+SDK `lastMessageAt`, when present, now owns conversation recency even if it precedes
+the Session creation time. Main preserves it for persisted and resumed Sessions;
+the renderer accepts the same fact from a Runtime profile and retains it across
+list refreshes. Metadata and recovery activity cannot advance it. Actual local
+input time is retained independently for the same Session/project/surface.
+The Runtime compensation described below remains the legacy fallback when the
+SDK supplies no message-time fact. See [current qualification](../releases/kodax-0.7.97-alpha.6-integration.md).
+
+The real-SDK `session-empty-records.spec.ts` test seeds an older continued Session
+and a newer Session with older messages; both public IPC order and sidebar order
+must follow message time across two reloads. Public store/IPC regressions also
+cover resumed Sessions, profile-first arrival, and a send before the first canonical refresh.
+
 ## Required behavior
 
 - A known Coder Session outside Runtime's default 50-summary page must use its

@@ -1,0 +1,652 @@
+{
+  "date": "2026-10-15",
+  "verifiedAt": "2026-10-15T15:24:54.169Z",
+  "scope": "Space 0.1.47-alpha.2 local prerelease preparation and Windows candidate qualification",
+  "status": "local Windows candidate verified; commit, cross-platform CI and publication pending",
+  "baseCommit": "9f65d864f2fc3825282b024346e6af280735916e",
+  "candidateState": "uncommitted working tree",
+  "manifests": [
+    {
+      "path": "package.json",
+      "version": "0.1.47-alpha.2"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "version": "0.1.47-alpha.2"
+    },
+    {
+      "path": "packages/space-ipc-schema/package.json",
+      "version": "0.1.47-alpha.2"
+    },
+    {
+      "path": "packages/space-ui-kit/package.json",
+      "version": "0.1.47-alpha.2"
+    }
+  ],
+  "sdk": {
+    "version": "0.7.97-alpha.6",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.6.tgz",
+    "integrity": "sha512-mYRfXyQJAGvGB7msVS5FhLSWqdBeyPGrIFBl35cQ9HkYadcGtrpR2Np8Pb6/vDshH+3imQtiaSJZYp8e9F78mw==",
+    "installedRealpath": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax",
+    "developmentLink": false
+  },
+  "package": {
+    "spaceVersion": "0.1.47-alpha.2",
+    "sdkVersion": "0.7.97-alpha.6",
+    "mainMatchesCurrentBuild": true,
+    "containsFinalExitManual": true,
+    "mainSha256": "fb4293166e0cb092a6751f9f6dab262f137dc4d1d15d03ac3779515cc5849d55"
+  },
+  "sourceFingerprints": [
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "ddf4205eb1847392856780b202191c1a552afcf2c57b20586b934dea946b4694"
+    },
+    {
+      "path": "CONTEXT.md",
+      "sha256": "0783de93bc205107e17368efd9fd4992d1e0d7599599006df76b86f0c7725ac9"
+    },
+    {
+      "path": "README.md",
+      "sha256": "feff871ea7930a07a1210dac18b1344692dc7d28ad21868c7f1f45203e1fda87"
+    },
+    {
+      "path": "README_CN.md",
+      "sha256": "a7e7b721597fe037ae76a980b0a3c3d613514ad769507ec835ec48c12b9170a1"
+    },
+    {
+      "path": "apps/desktop/electron/ipc/runtime.ts",
+      "sha256": "44f4f9eda352e40883748c56e2d0a51b4385f2237eed5f861329c712a0d31401"
+    },
+    {
+      "path": "apps/desktop/electron/ipc/session.activity.test.ts",
+      "sha256": "b3ab5119a20b138bf52e2c5f0ea9ef2315f741acebc8bbe7ad9e2d276b377729"
+    },
+    {
+      "path": "apps/desktop/electron/ipc/session.ts",
+      "sha256": "cb12a12e4a4ed4396df9ec3d96bc0b23393c9805e4c1feff3c3e2c4512c96ccb"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/host.ts",
+      "sha256": "eeb7ef18fda6131d025e95132b11f6d732a53871e8231155469140ad098f53db"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/real-session.ts",
+      "sha256": "edca2ed5e43e305646eb5c8de522ce4a0d8f5c606bcc52ecd837b81498a6cf37"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/runtime-host-adapter.ts",
+      "sha256": "a951eb7d5a881e1aadb6c3e2a803cab7e74824118fcd7fa0cbb7e4d1c1c75af1"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/runtime-sdk-migration.test.ts",
+      "sha256": "1d0f2212c8f31891bfda35416fe31cc60fe63dd6dac1015e0666bf2abe9b808f"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/runtime/coder-action-manifest.ts",
+      "sha256": "267a915c183814532be7a323a57bff4e6dd648385e75f1869ee657aa8d9d0cdc"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/runtime/coder-daemon-projection.activity.test.ts",
+      "sha256": "dfd29b6d6488f1388bc3b361ac835d1afd60df19ef00c9f1ff80297ab75cd484"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/runtime/coder-daemon-projection.ts",
+      "sha256": "08c4540f12425adc377b182bed4d53ee9c99d074e19ff7076102c57df378a376"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/runtime/product-view.ts",
+      "sha256": "b5a8bc3b0f7e52f5d57107f479d608de572455ed5f88975c78377d4119429c8e"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/session-store.ts",
+      "sha256": "ac17ae8a2dadd9aea135b0047aa90c6b940dbafe339bce02da327ad41a1bf717"
+    },
+    {
+      "path": "apps/desktop/electron/kodax/space-manual-topics.ts",
+      "sha256": "2e241f1f9983be2a788cbb7dd5be6acef1082330860ed23da237f62b21d25e22"
+    },
+    {
+      "path": "apps/desktop/electron/slash/builtin.ts",
+      "sha256": "e3c012b161fad0e3f7168bc1f656c2ad9d776f325b6f8a9fa35f59165c9642de"
+    },
+    {
+      "path": "apps/desktop/electron/test/coder-daemon-projection.test.ts",
+      "sha256": "9132a8b8875a8f075e7888e44d739e510e48a7d22f42f54acc350c19371adf67"
+    },
+    {
+      "path": "apps/desktop/electron/test/product-view-projection.test.ts",
+      "sha256": "cab5b6e7e0be66141093cb21626cfca8122f844c07f7d57959132eb8b9b3671b"
+    },
+    {
+      "path": "apps/desktop/electron/test/runtime-host-adapter.test.ts",
+      "sha256": "30c264eee819a0fca14587401f44395703d82426d7d3e39085da1d6fa6222e05"
+    },
+    {
+      "path": "apps/desktop/electron/test/session-empty-records.test.ts",
+      "sha256": "67c42efb547c2c53627be515315a6157bbc71df4a576a2405ab488a371670ce1"
+    },
+    {
+      "path": "apps/desktop/electron/test/session-history-paging.test.ts",
+      "sha256": "e5d1b5cb6ef34c55121e0789183f3ddb087c5e4ccac03c76e440943695447efc"
+    },
+    {
+      "path": "apps/desktop/electron/test/skill-registry.test.ts",
+      "sha256": "e466b289283c5a14a80c82c63b57cff1ac0955c940fdc1febb3bb67ae828506a"
+    },
+    {
+      "path": "apps/desktop/electron/test/slash-builtin.test.ts",
+      "sha256": "b3c41dc399ba6c75e62bda04b3bd22d43535fde336305e134c004c11e0bc196c"
+    },
+    {
+      "path": "apps/desktop/electron/test/space-manual-topics.test.ts",
+      "sha256": "0f599eab4b9841890bba157384e8947864b7de4c6c37026085f41dcd9486679e"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "sha256": "a5492fcd5f3119cc2f76d9284fdf0666c5419d37a2ff780e2b652fa6e265a044"
+    },
+    {
+      "path": "apps/desktop/renderer/src/App.tsx",
+      "sha256": "9cd4c4f69d042c59ca8c341c04f04cc6dd0a47d5bd44c500fb65ab5acc87268f"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/session/ProductHistorySearch.tsx",
+      "sha256": "1f2f18ece048b88a907f57e1bd059acd02b68fc7cbe297a7fabfa99822a5e43a"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/session/productConversation.test.ts",
+      "sha256": "87e0b542ddafd54e3c15d30e9937850158cd1800699fcc9a6724bc8d15e3b169"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/session/productConversation.ts",
+      "sha256": "0dc8c88a183124280514ea98fa132ca580d79cbb0ec8c2c96a3e38ddcb3ad11e"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/session/runtimeFailureNotice.test.ts",
+      "sha256": "051b4883c8eb9c1ad40f06074ca4bb774f8ca1b0ebc628eb1599c158073f55c7"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/session/runtimeFailureNotice.ts",
+      "sha256": "7fc43b4ce52b94885f01b2153461c1aac6c4be5d4cfde2dbf96e9aefb94e3bb9"
+    },
+    {
+      "path": "apps/desktop/renderer/src/i18n/messages.ts",
+      "sha256": "93f68127ad0148b91920d4710577c383a094bda460fd8cac31726ca9559d3f9d"
+    },
+    {
+      "path": "apps/desktop/renderer/src/lib/productItemContent.test.ts",
+      "sha256": "f618ba3d63b62aae5765389266349d6f14dbcc8eb7b47e49313092685eb873fa"
+    },
+    {
+      "path": "apps/desktop/renderer/src/lib/productItemContent.ts",
+      "sha256": "cc0248962bd9830cf5b60aff321ad01e428f1ef38943491bfb8ab08dd643b697"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/ActivitySpinner.tsx",
+      "sha256": "38f7e1fed42d101cb56fdea96ad19cecc0365452820b1a5207567c17edcdf87f"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/ConversationStreamV2.tsx",
+      "sha256": "94a683d9c24f906348fedb359e2884979e1c908a8497c95df275fa4f6801df2c"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/LeftSidebar.tsx",
+      "sha256": "0cf84384d9a7f670a61feef5af9de8f5dbd3c6c109a56e83cde1c137231c8ebe"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/RuntimeStartupStatus.test.ts",
+      "sha256": "a3e7fe9271bb22f3437477ca83e4f6e95e7188d70bdfe0ea0a16c1dcb7eded34"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/RuntimeStartupStatus.tsx",
+      "sha256": "9aadd91205fd48a0a14737de37d013c9d757edc97251cc1af4dc3ce4f8f4d28d"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/Shell.tsx",
+      "sha256": "a1ab7135466d0ac1c27189e0e2321e0e6cec7d366063e5f3ef1fa6afb1decb5f"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/SlashCommandPopover.tsx",
+      "sha256": "024ec7caea7504f03a2a50e4cc5468d902bac23cdbd00088426c6f27db059020"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/sessionHistoryPaging.ts",
+      "sha256": "0ea31c5af4f2d9b8f04d2b1caf9ed54005727c7a09da64228d1e5870ed8c25f7"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/slashCommandDescriptions.ts",
+      "sha256": "d6170a126e3ae042797d096d3cda20ccf2c4547585161c0b6cffd22286d9680e"
+    },
+    {
+      "path": "apps/desktop/renderer/src/shell/slashInput.ts",
+      "sha256": "f87b9296caa0ef38ce26e617a23469d38fd8c969664ce82c9031c59e94e716a8"
+    },
+    {
+      "path": "apps/desktop/renderer/src/store/appStore.ts",
+      "sha256": "9e98443bf70db6f62d1f74b6ae59c140069759f49e675e33ac03a12fbfa2c99d"
+    },
+    {
+      "path": "apps/desktop/renderer/src/store/productSessionView.test.ts",
+      "sha256": "aee414453c8887a5e5f096db22619a211f5e28e4176ad2c02a6b2b752a63cb6f"
+    },
+    {
+      "path": "apps/desktop/renderer/src/store/productSessionView.ts",
+      "sha256": "3d31e7289ee0561a3ff7627cdb8db77e5979fc8f6a248a716cbf32076b6dba22"
+    },
+    {
+      "path": "apps/desktop/renderer/src/store/runtimeSessionActivity.test.ts",
+      "sha256": "405dc0fa129177142430109a3d289ed9cbdefb4a4cf276e2c49cf03039937dce"
+    },
+    {
+      "path": "apps/desktop/renderer/src/store/runtimeSessionSettings.ts",
+      "sha256": "5efa329680a126411aaef41d275c4ca0dc82fbb4bc5f4d233a54b6519f28327b"
+    },
+    {
+      "path": "docs/ADR/ADR-010-sdk-product-output.md",
+      "sha256": "c2fac36f5b0bf2f516df3f00286ee03426820693356c1b6e73f4cb75a2b94a90"
+    },
+    {
+      "path": "docs/ADR/README.md",
+      "sha256": "7a5aa8d7b746e05378bf4b57d96fb4746348d332c95dd99f7abdedd92324ba05"
+    },
+    {
+      "path": "docs/DD.md",
+      "sha256": "973719e54562218d84c9541d712b28e94878099eeb7a18efd8c26b781f4f3feb"
+    },
+    {
+      "path": "docs/FEATURE_LIST.md",
+      "sha256": "43cad1e8bd23949b6aa3e99c81549a45534ffd2f50144d90eea651a80a2f64f9"
+    },
+    {
+      "path": "docs/HLD.md",
+      "sha256": "24abdac4813cbb3cd1233ab0c9870150d5d3af5396ef4d9dc3c888afcc44af05"
+    },
+    {
+      "path": "docs/KNOWN_ISSUES.md",
+      "sha256": "e481cbeb4eb234cd3a30ef402b626bb6258ad8d21d131c502186bad9a12d0415"
+    },
+    {
+      "path": "docs/KODAX_CAPABILITY_LEDGER.md",
+      "sha256": "f924d6c3f196d3b3541c20a96f460518446c01cbbf0917493157ba8be656c9b4"
+    },
+    {
+      "path": "docs/PRD.md",
+      "sha256": "c6c36be1333e610ed91d652455f3a60574a8ba50c40f0eaee92996976657eefc"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "99e1554d43972a613e406e1f16ed59f2ef8899157e5745dfa4ce0363c7933451"
+    },
+    {
+      "path": "docs/USAGE.md",
+      "sha256": "0b392414ea0cc5c8368b148ba711efb6afe01fe0fa7c35d426d8975395e38611"
+    },
+    {
+      "path": "docs/USER_MANUAL.zh-CN.md",
+      "sha256": "232eca8a50d1ed0bace11da5a7fe7618618f3d6a72fedf09ffd471d26794a886"
+    },
+    {
+      "path": "docs/features/SDK_0.7.97_MIGRATION.md",
+      "sha256": "24d16687652af8bb23ca3369231f3619cf3daed41c6f1145993bcf2c9ba2e90b"
+    },
+    {
+      "path": "docs/features/v0.1.46.md",
+      "sha256": "329cc2aa9846e485c32199106b08d285550b0e9928d13c42fa4b22ea952257b1"
+    },
+    {
+      "path": "docs/features/v0.1.47.md",
+      "sha256": "f330f6efc8cb1002fb9cee9bbf2c4ddd9604ce390762a80abc1b6f2c655e2365"
+    },
+    {
+      "path": "docs/partner/FEATURE_LIST.md",
+      "sha256": "543e5776e05f1be0e89ff0b7cf8ae44a0b5accb004aa089f70bcd2232fe0d677"
+    },
+    {
+      "path": "docs/partner/INTEGRATION.md",
+      "sha256": "ecd0ec4a849027bfeb046f1f20d9a316d9111b21674716d4a3da7cd5c402c1d6"
+    },
+    {
+      "path": "docs/releases/coder-output-migration-2026-10-14-evidence.json",
+      "sha256": "dcf280111ea515d969c0aad61370890f2e732a27718659ea21fca2a8b49848a8"
+    },
+    {
+      "path": "docs/releases/kodax-0.7.97-alpha.4-integration-evidence.json",
+      "sha256": "016ccb68cbd4870f766b7d7cd9e79f44bd4032589e0fd040d8cb8a4ffa7d0a06"
+    },
+    {
+      "path": "docs/releases/kodax-0.7.97-alpha.4-integration.md",
+      "sha256": "ddf3e1b2c7636aca5892631d307c39ea7fee3c4f0743dba3ccc3190f4f9370d7"
+    },
+    {
+      "path": "docs/releases/kodax-0.7.97-alpha.5-integration-evidence.json",
+      "sha256": "7f6154b4e88c4f0cf0a98219177810e2e7640d1cd5bc0e64d2ad2fb97e8e75f7"
+    },
+    {
+      "path": "docs/releases/kodax-0.7.97-alpha.5-integration.md",
+      "sha256": "d70f5843cec809671a4a7d6173e672821ce859e2e2bcfec76a9459ac1bec52fe"
+    },
+    {
+      "path": "docs/releases/kodax-0.7.97-alpha.6-integration-evidence.json",
+      "sha256": "055bea615bbd8ed45d9d95c9e6ddc62d981a29da214175aaf1a61339678702c6"
+    },
+    {
+      "path": "docs/releases/kodax-0.7.97-alpha.6-integration.md",
+      "sha256": "a8c9f51b06924626dbd7db9f4a20a95e721d3c6ba5fbddc9e2df7ed5f7e2a930"
+    },
+    {
+      "path": "docs/releases/session-draft-lifecycle-2026-10-14-evidence.json",
+      "sha256": "025b0d4d6ebb714191f7d7e7e35f6830b875c89d611f49a862450138868aa5cc"
+    },
+    {
+      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-external-qwen-evidence.json",
+      "sha256": "753256bbc2e2a86fa589131c69edbc460d4a3f1e1000cad4b3caf47470728cbd"
+    },
+    {
+      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-external-qwen.md",
+      "sha256": "687047773feb7300e2243f3d0db2440ff10cdee2a3d77532eb37ebb6945fc9d0"
+    },
+    {
+      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-live-e2e-evidence.json",
+      "sha256": "420410d882ae591c4a27c0d9628a4597da648c7fb2dda5ee7bf9a9702993412c"
+    },
+    {
+      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-live-e2e.md",
+      "sha256": "09c0faa799a057d242777aee787b4f0d70c2e78054d3c36a2e950e95bf02337b"
+    },
+    {
+      "path": "docs/test-guides/FEATURE_121_v0.1.46_TEST_GUIDE.md",
+      "sha256": "34edc46a42ced5b1d1b235434270a9ea3c29040980c33e42fd1ea998b90c0bc7"
+    },
+    {
+      "path": "docs/test-guides/FEATURE_121_v0.1.47_TEST_GUIDE.md",
+      "sha256": "d424a06e90b9ad4f008e05b902a462ff47384cee14487d8cbe29b5d23a308820"
+    },
+    {
+      "path": "docs/test-guides/ISSUE_219_v0.1.46_REGRESSION_GUIDE.md",
+      "sha256": "64abdedc8976d21d86707e379f5a41199a9a8938535311451b03205dc6d65b62"
+    },
+    {
+      "path": "docs/test-guides/ISSUE_220_v0.1.47_REGRESSION_GUIDE.md",
+      "sha256": "e3b1c5e3744e2c97b0f29a3e852b53efdb99531ec9a969f1e53d1d2c1c3fd01b"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "1d83b0eb749e9698a33341680e13a840b799ffd2e430e016bf84982fac4fd0b1"
+    },
+    {
+      "path": "package.json",
+      "sha256": "2a9cc49a633a622d2518fdd694c9a58ad1aac5745e314ab4b798aeb94fc934d8"
+    },
+    {
+      "path": "packages/space-ipc-schema/package.json",
+      "sha256": "c605dc15cf0299d54b3b6a4ffd8218b10e19143acb57dc4c39ea33ac194a87b2"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/channels/index.ts",
+      "sha256": "f90f62467d50083f9b73ae841b5b9ccfee31e87aa3fb0daa3d63076d47491c25"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/channels/runtime-startup.test.ts",
+      "sha256": "f4304f386aa89ad2d1b7f47ce6338324f59db2bc6c77f44242d77f74feec586c"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/channels/runtime.ts",
+      "sha256": "7a4a559537b5eb2ce018f1d326fecb8603120ea1fd42b8c958ed27ca74f453a9"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/channels/session-product-view.test.ts",
+      "sha256": "12f965a75d54aec726a527f37074ef3343f7e541c877ec533b839f3180b2f6c2"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/channels/session.ts",
+      "sha256": "7c1ddd2157ef4cbc35d71074eb1f8a80081b74bdad0c107420852e76bb72151b"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/channels/statistics.test.ts",
+      "sha256": "2af313f69d0057a166797ebcd02bbeee0b2461e7d9ff4b6bf0ed26e27e96763f"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/channels/statistics.ts",
+      "sha256": "f2728d09f3d733b5eea5fcf224be6f3b5f0c0658df01fe06ff1bc0f6648b68c3"
+    },
+    {
+      "path": "packages/space-ipc-schema/src/index.ts",
+      "sha256": "d8576455633bb20970b286dd055433b5e7e025dae4b8b50a644a88f7fa8412b4"
+    },
+    {
+      "path": "packages/space-ui-kit/package.json",
+      "sha256": "7cf0a5ca8d24904ec01108a5ee87f3e87e926b8e474ae37b73a83b5a2334b04d"
+    },
+    {
+      "path": "tests/e2e/sdk-product-output.spec.ts",
+      "sha256": "0cf58c95f2d6f36b7dc35fb71de97564ad231d95dd869af47822e9a3f3f167ff"
+    },
+    {
+      "path": "tests/e2e/sdk-provider-fixture.ts",
+      "sha256": "aaa2a3ca7941e69c11b5f276091e5a1d90701571859029e82347119d209cd989"
+    },
+    {
+      "path": "tests/e2e/sdk-unified-contract.spec.ts",
+      "sha256": "2f4d2f3ca2807203a3e48dcce646d0473bdc69f21df9b9e8740188d452d5fd27"
+    },
+    {
+      "path": "tests/e2e/sdk-visual-review-live.spec.ts",
+      "sha256": "521cc2af7978ad9f5ae3d8db8017c01d0217b8ef64861aa42d8fc03bb78c5368"
+    },
+    {
+      "path": "tests/e2e/session-empty-records.spec.ts",
+      "sha256": "bdf568b2ed7e7fb89f8deb54042c34d08aecfe4fb0d1f653598c7078d8d1e535"
+    }
+  ],
+  "fingerprintExclusions": [
+    "docs/releases/v0.1.47-alpha.2-release-readiness.md",
+    "docs/releases/v0.1.47-alpha.2-release-evidence.json"
+  ],
+  "artifacts": [
+    {
+      "path": "out/KodaX-Space-Setup-0.1.47-alpha.2.exe",
+      "bytes": 181099853,
+      "sha256": "07512268d7e3f9f19378cadeb1dc4cf5b2890a44a9ce16bb626099e3371899e8"
+    },
+    {
+      "path": "out/KodaX-Space-Portable-0.1.47-alpha.2.exe",
+      "bytes": 180889957,
+      "sha256": "73de3deda125134f5c96363c9e54a3398181ceec740ac3988fb1d4af9ad981bf"
+    },
+    {
+      "path": "out/KodaX-Space-Setup-0.1.47-alpha.2.exe.blockmap",
+      "bytes": 190122,
+      "sha256": "be05aaaae3b682f8de2a45ca582f1269ab2f3db82524b97020184642f39b7513"
+    },
+    {
+      "path": "out/win-unpacked/resources/app.asar",
+      "bytes": 129339932,
+      "sha256": "d0587111ab7dae846b87d395329f0a589b48cfdcb24f6dfd8ac491453d8f9d48"
+    }
+  ],
+  "checks": {
+    "fullSuite": {
+      "suites": [
+        {
+          "name": "release",
+          "total": 100,
+          "passed": 93,
+          "failed": 0,
+          "skipped": 7
+        },
+        {
+          "name": "desktop",
+          "total": 3908,
+          "passed": 3895,
+          "failed": 0,
+          "skipped": 13
+        },
+        {
+          "name": "ipc-schema",
+          "total": 369,
+          "passed": 369,
+          "failed": 0,
+          "skipped": 0
+        }
+      ],
+      "total": 4377,
+      "passed": 4357,
+      "failed": 0,
+      "skipped": 20,
+      "finalEditBoundary": "The full suite preceded the final exit-manual text and its added public test; final manual suite, Electron Main typecheck, changed-file ESLint and rebuilt Main passed afterward."
+    },
+    "finalManual": {
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "tdd": "Three public manual regressions failed before their corresponding wording changes; the latest exit regression RED log is included."
+    },
+    "typecheck": "passed; final Main typecheck also passed",
+    "lint": "passed; final changed-file lint also passed",
+    "build": "build:smoke and final Main build passed",
+    "sourceElectron": {
+      "passed": 18,
+      "failed": 0
+    },
+    "windowsPack": {
+      "registryAndIntegrityGate": "passed",
+      "dependencyFacadeNativeWorkerSmoke": "passed",
+      "bootSmoke": "passed",
+      "rendererReadyMs": 4913,
+      "runtimeReadyMs": 25805,
+      "deterministicDaemonHold": true,
+      "historicalChildrenPreserved": 122,
+      "packagedSdkContractPassed": 6,
+      "packagedSessionPassed": 2,
+      "failed": 0
+    },
+    "docs": {
+      "checkedMarkdownFiles": 271,
+      "activeDocuments": 18,
+      "activeLocalLinksBroken": 0,
+      "historicalUnresolvableReferenceCount": 38,
+      "historicalUnresolvableReferencesPreserved": true
+    },
+    "reviews": {
+      "standardsRemaining": 0,
+      "specRemaining": 0
+    },
+    "provider": {
+      "path": "C:/Users/ADMIN/AppData/Local/Temp/kodax-4router-diagnosis-20261014/installed-alpha6-full-tools.json",
+      "sha256": "91c1ffc285e27f85a82be4fa2306d42aec64d16510bff634504bf187ff2b3208",
+      "mode": "installed-alpha6-full-tools",
+      "model": "gemini-4-argon",
+      "sdkVersion": "0.7.97-alpha.6",
+      "toolCount": 78,
+      "depthSchema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 3,
+        "description": "Requested traversal depth. Light mode reports bounded direct edges first."
+      },
+      "passed": true,
+      "stopReason": "stop",
+      "durationMs": 8079,
+      "scope": "direct installed SDK with all SDK tools; not a full Space UI or all-model acceptance"
+    }
+  },
+  "logs": {
+    "full": {
+      "path": ".tmp-alpha2-full-tests.log",
+      "sha256": "dcdc5fdfcda02b08bb776ec75484223057a664c197ae07aedc5e80f9c3344f19",
+      "bytes": 1107706
+    },
+    "manualRed": {
+      "path": ".tmp-alpha2-manual-exit-red.log",
+      "sha256": "f6c2093a9f0c00399dad354392dcb24bb0bea429fcf3714fb2b3858b4321ac76",
+      "bytes": 16642
+    },
+    "manualFinal": {
+      "path": ".tmp-alpha2-manual-final.log",
+      "sha256": "2917edc75e69cb772be12dbe8798e7b2eae3120bee65205b5b92a7c3ca7c9214",
+      "bytes": 2466
+    },
+    "typecheck": {
+      "path": ".tmp-alpha2-typecheck.log",
+      "sha256": "781902e2d5adda3a082945559eb11b7fc97485e0c6062b45ccfd7443d79e4411",
+      "bytes": 430
+    },
+    "finalMainTypecheck": {
+      "path": ".tmp-alpha2-typecheck-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "lint": {
+      "path": ".tmp-alpha2-lint.log",
+      "sha256": "e11eb3769aca7fa970665c3bbf7545d7687903ebef8fb7e9ebd50fb928049e9a",
+      "bytes": 88
+    },
+    "finalChangedFileLint": {
+      "path": ".tmp-alpha2-lint-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "build": {
+      "path": ".tmp-alpha2-build-smoke.log",
+      "sha256": "5245e962639d141e9681e73150f2d2c3851e94d67f4de1344a0f26b7bffe929c",
+      "bytes": 37926
+    },
+    "finalMainBuild": {
+      "path": ".tmp-alpha2-main-final.log",
+      "sha256": "14832d26e2949d5ad5a3ea4e09962788a03d305e1125d4dd830490bb309bae84",
+      "bytes": 650
+    },
+    "sourceElectron": {
+      "path": ".tmp-alpha2-e2e.log",
+      "sha256": "b7acb6319a7523bd32aea3fe123118f7ec9185883eb1ef37dcf4ea1dd17b3ecf",
+      "bytes": 8833
+    },
+    "windowsPack": {
+      "path": ".tmp-alpha2-pack.log",
+      "sha256": "01e3339c778a4fb0fd4c040e8e4a69ea78768c96c02784a56a9f077aad4e0142",
+      "bytes": 16625
+    },
+    "packagedSessions": {
+      "path": ".tmp-alpha2-packaged-sessions.log",
+      "sha256": "a818acd09ee83cbf144ea5a23a5e23b3b7849c42c8fc5f93d8e7fc6a459bff0f",
+      "bytes": 966
+    },
+    "format": {
+      "path": ".tmp-alpha2-format-final.log",
+      "sha256": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283",
+      "bytes": 68
+    },
+    "diffCheck": {
+      "path": ".tmp-alpha2-diff-check.log",
+      "sha256": "773c096d7d1b2be41fbf125fc625f36c07d29c3b136f62678c12a7acc6cdd2d1",
+      "bytes": 148
+    },
+    "docLinkScan": {
+      "path": ".tmp-alpha2-doc-links.json",
+      "sha256": "01689cbbf41491aa1e59d79e2a3d3fd7090a85770eba238e1e5d6326b87683d3",
+      "bytes": 9275
+    }
+  },
+  "publication": {
+    "commitCreated": false,
+    "tagCreated": false,
+    "pushed": false,
+    "releasePublished": false,
+    "latestStableVerified": "v0.1.46",
+    "latestPublishedPrereleaseVerified": "v0.1.47-alpha.1",
+    "targetTagAvailableAtReadOnlyCheck": true
+  },
+  "remaining": [
+    "One reviewed commit and organization CI for the identical candidate",
+    "macOS x64/arm64 and Linux installer matrix",
+    "Existing F121/F141 manual multi-client/platform and real external-service acceptance",
+    "Issue 218 exact intermittent switch-away/queued-delivery disappearance remains unconfirmed"
+  ],
+  "notRun": [
+    "NSIS installation wizard",
+    "All real models and external accounts",
+    "Opt-in live visual-review E2E during this preparation run"
+  ],
+  "historicalEvidencePolicy": "Previous SDK integration and release evidence is retained unchanged. Old out/win-unpacked paths refer to their recorded historical bytes; this alpha.2 build has new hashes."
+}

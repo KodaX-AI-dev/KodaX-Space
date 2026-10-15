@@ -46,6 +46,15 @@ test('registry: empty .kodax/skills under tmp project (no project-level skill re
   assert.equal(projectSkills.length, 0, 'no project-source skills when .kodax/skills is empty');
 });
 
+test('registry: discovers and loads the published SDK visual-review builtin', async () => {
+  const reg = await getSkillRegistry(tmpProjectRoot);
+  assert.ok(reg.listUserInvocable().some((skill) => skill.name === 'visual-review'));
+  const skill = await reg.loadFull('visual-review');
+  assert.ok(skill);
+  assert.match(skill.content, /unverified/i);
+  assert.match(skill.content, /render/i);
+});
+
 test('registry: discovers project-level skill from .kodax/skills/<name>/SKILL.md', async () => {
   const skillsDir = path.join(tmpProjectRoot, '.kodax', 'skills');
   fs.mkdirSync(skillsDir, { recursive: true });

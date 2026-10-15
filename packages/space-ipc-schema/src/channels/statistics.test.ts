@@ -2,6 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sessionExecutionFactsChannel, spaceSessionStatisticsSchema } from './statistics.js';
 
+test('execution fact requests respect the installed SDK page limit', () => {
+  const request = { sessionId: 's', kind: 'tools', limit: 500 };
+  assert.equal(sessionExecutionFactsChannel.input.parse(request).limit, 500);
+  for (const limit of [501, 512]) {
+    assert.equal(
+      sessionExecutionFactsChannel.input.safeParse({ ...request, limit }).success,
+      false,
+    );
+  }
+});
+
 test('statistics retain partial coverage and reject malformed cumulative usage', () => {
   const summary = {
     runtimeId: 'host',

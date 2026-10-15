@@ -1,0 +1,252 @@
+{
+  "date": "2026-10-13",
+  "timezone": "Asia/Shanghai",
+  "platform": "Windows x64",
+  "spaceVersion": "0.1.47-alpha.1",
+  "sdkVersion": "0.7.97-alpha.4",
+  "registry": {
+    "tarball": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.4.tgz",
+    "integrity": "sha512-an+SIt29EI34pEWnrsE7KXunC4RdYyP5skJ2F+Hm7aCXce7SsGJbpobjocKAMrovt/V2vkW0LNk3sxhK6aYJ6Q==",
+    "shasum": "fb9fba535310bc31027e1dcb68d67a43b8ac08ca",
+    "distTags": {
+      "hotfix": "0.7.72-hotfix.0",
+      "latest": "0.7.96",
+      "alpha": "0.7.97-alpha.4"
+    },
+    "dependencyGate": {
+      "version": "0.7.97-alpha.4",
+      "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.4.tgz",
+      "integrity": "sha512-an+SIt29EI34pEWnrsE7KXunC4RdYyP5skJ2F+Hm7aCXce7SsGJbpobjocKAMrovt/V2vkW0LNk3sxhK6aYJ6Q==",
+      "source": "registry"
+    },
+    "installation": "Root/Desktop deduped Registry package; no SDK development link or source edits"
+  },
+  "optionalArtifacts": {
+    "package": "@kodax-ai/artifacts",
+    "query": "npm view @kodax-ai/artifacts version dist-tags --json --registry=https://registry.npmjs.org/",
+    "result": "E404",
+    "integrated": false
+  },
+  "validation": {
+    "fullTests": {
+      "command": "npm test",
+      "tests": 4337,
+      "passed": 4317,
+      "failed": 0,
+      "skipped": 20,
+      "suites": [
+        {
+          "name": "release",
+          "tests": 100,
+          "passed": 93,
+          "failed": 0,
+          "skipped": 7
+        },
+        {
+          "name": "desktop",
+          "tests": 3871,
+          "passed": 3858,
+          "failed": 0,
+          "skipped": 13
+        },
+        {
+          "name": "ipc-schema",
+          "tests": 366,
+          "passed": 366,
+          "failed": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "status": "passed"
+    },
+    "lint": {
+      "command": "npm run lint",
+      "status": "passed"
+    },
+    "productionBuild": {
+      "command": "npm run build:smoke",
+      "status": "passed"
+    },
+    "e2eFixtureTypes": {
+      "command": "npx tsc --noEmit --strict --skipLibCheck --allowJs --module NodeNext --moduleResolution NodeNext --target ES2023 --types node tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-provider-fixture.ts apps/desktop/renderer/src/types/global.d.ts",
+      "status": "passed"
+    },
+    "redGreen": [
+      "retired verifier command catalog/help",
+      "startup IPC data schema",
+      "launcher callback/readiness and retired attempt fence",
+      "closing during startup clears display",
+      "startup Renderer status"
+    ],
+    "startupComponentCoverage": {
+      "scope": "apps/desktop/renderer/src/shell/RuntimeStartupStatus.tsx",
+      "linePercent": 94.44,
+      "branchPercent": 87.5,
+      "functionPercent": 100
+    },
+    "sourceE2E": {
+      "command": "npm run e2e:run -- tests/e2e/sdk-unified-contract.spec.ts --reporter=list,json",
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "retried": 0,
+      "startTime": "2026-10-13T10:44:16.058Z",
+      "durationMs": 77510.09,
+      "cases": [
+        {
+          "title": "real SDK Stop admits a new prompt while the cancelled HTTP stream is still open",
+          "status": "expected",
+          "annotations": [],
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 12720,
+              "retry": 0
+            }
+          ]
+        },
+        {
+          "title": "published SDK tools, statistics and canonical history survive Renderer reload and fork",
+          "status": "expected",
+          "annotations": [],
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 11943,
+              "retry": 0
+            }
+          ]
+        },
+        {
+          "title": "real Host queued input survives reload, drains once and Stop preserves a later send",
+          "status": "expected",
+          "annotations": [],
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 14183,
+              "retry": 0
+            }
+          ]
+        },
+        {
+          "title": "desktop complete exit settles the last real SDK Host without fixture process killing",
+          "status": "expected",
+          "annotations": [],
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 11994,
+              "retry": 0
+            }
+          ]
+        },
+        {
+          "title": "real canonical boundaries reject stale mutations and UI Rewind permits subsequent input",
+          "status": "expected",
+          "annotations": [],
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 12770,
+              "retry": 0
+            }
+          ]
+        },
+        {
+          "title": "Space complete exit protects another connected product client",
+          "status": "expected",
+          "annotations": [],
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 12267,
+              "retry": 0
+            }
+          ]
+        }
+      ]
+    },
+    "packaging": {
+      "command": "npm run build:pack -- --dir",
+      "status": "passed",
+      "dependencyNativeSandboxWorkerSmoke": "passed",
+      "sdkBuiltinMarkdownFiles": 9,
+      "spaceBuiltinFiles": 289,
+      "boot": {
+        "status": "passed",
+        "rendererReadyMs": 5836,
+        "runtimeReadyMs": 28531,
+        "deterministicRuntimeDelay": true,
+        "historicalChildRecords": 122
+      },
+      "packagedE2E": {
+        "tests": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "retried": 0,
+        "cases": [
+          {
+            "title": "real SDK Stop admits a new prompt while the cancelled HTTP stream is still open",
+            "status": "passed",
+            "durationSecondsFromListReport": 12.9
+          },
+          {
+            "title": "published SDK tools, statistics and canonical history survive Renderer reload and fork",
+            "status": "passed",
+            "durationSecondsFromListReport": 12
+          },
+          {
+            "title": "real Host queued input survives reload, drains once and Stop preserves a later send",
+            "status": "passed",
+            "durationSecondsFromListReport": 14.3
+          },
+          {
+            "title": "desktop complete exit settles the last real SDK Host without fixture process killing",
+            "status": "passed",
+            "durationSecondsFromListReport": 12.2
+          },
+          {
+            "title": "real canonical boundaries reject stale mutations and UI Rewind permits subsequent input",
+            "status": "passed",
+            "durationSecondsFromListReport": 13.2
+          },
+          {
+            "title": "Space complete exit protects another connected product client",
+            "status": "passed",
+            "durationSecondsFromListReport": 12.5
+          }
+        ]
+      }
+    },
+    "review": {
+      "fixedPoint": "9f65d864",
+      "standardsRemaining": 0,
+      "specRemaining": 0
+    }
+  },
+  "rawLocalEvidence": {
+    "directory": ".tmp-sdk-alpha4",
+    "sha256": {
+      "full-tests.log": "a82392644a0c110f05f1fd895d0cb5e72e9fd3b3bc96879ebbb2b753c42e8fdd",
+      "typecheck-final.log": "5f32b88c294cc9f0dfa57f48b5bf788be0b0b1695f0e12bdec201ab95707f918",
+      "lint-final.log": "b8288ba36120788165f2acdf23ccb18afc63c020302612d060597e44e5d04009",
+      "build.log": "e5f22e3ce289431f4e233a78e48ad0a568e385610293ccb5afd424ea3ea6c8fe",
+      "e2e-types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "e2e-source.json": "496a7565427c3b1a5d6a856d113122f09a5d48eb9b6c0b2cb5d920833dcd062d",
+      "pack.log": "4c493f17abf0b0125fca7a9630c2c0fe95b23d2d2fdd300f84e5852319ca7c5e",
+      "startup-ui-coverage.log": "d8a5ceeb601019920c8c94e21459458c00d05162649b02f0d212adaf4068353a"
+    }
+  },
+  "limits": [
+    "Offline local HTTP provider; no paid/live-model quality acceptance",
+    "Windows UI only; no macOS/Linux UI acceptance",
+    "Optional Artifact package unpublished; new PPT tools not integrated",
+    "Local directory app built; no new Space release or installer published"
+  ]
+}

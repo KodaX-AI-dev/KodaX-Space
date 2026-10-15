@@ -25,7 +25,6 @@ const SLASH_COMMAND_DESCRIPTION_KEYS: Readonly<Record<string, MessageKey>> = {
   review: 'slash.command.review.desc',
   auto: 'slash.command.auto.desc',
   fallback: 'slash.command.fallback.desc',
-  'verifier-log': 'slash.command.verifierLog.desc',
   'stall-log': 'slash.command.stallLog.desc',
   goal: 'slash.command.goal.desc',
   learn: 'slash.command.learn.desc',

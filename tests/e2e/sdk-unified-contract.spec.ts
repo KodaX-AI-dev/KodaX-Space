@@ -53,6 +53,19 @@ test('published SDK tools, statistics and canonical history survive Renderer rel
   const { space, projectRoot } = await launchRealSdkSpace(`sdk-tools-${Date.now()}`, provider.url);
   provider.setProject(projectRoot);
   try {
+    const catalogs = await space.page.evaluate(async (root) => {
+      const skills = await window.kodaxSpace!.invoke('skill.discover', { projectRoot: root });
+      const commands = await window.kodaxSpace!.invoke('slash.discover', undefined);
+      if (!skills.ok || !commands.ok) throw new Error('Space catalogs unavailable');
+      return {
+        skills: skills.data.skills.map((skill) => skill.name),
+        commands: commands.data.commands.map((command) => command.name),
+      };
+    }, projectRoot);
+    expect(catalogs.skills).toContain('visual-review');
+    expect(catalogs.commands).not.toContain('verifier-log');
+    expect(catalogs.commands).toContain('stall-log');
+    await expect(space.page.getByTestId('runtime-startup-status')).toHaveCount(0);
     await sendSdkPrompt(space, 'SDK_TOOLS');
     try {
       await expect
@@ -94,7 +107,7 @@ test('published SDK tools, statistics and canonical history survive Renderer rel
     );
     const history = await readSdkHistory(space, sessionId);
     expect(history.conversation?.status).toBe('resolved');
-    expect(history.items.filter((item) => item.kind === 'user').length).toBe(1);
+    expect(history.items.filter((item) => item.type === 'user').length).toBe(1);
     await space.page.reload();
     await space.page
       .getByTestId('sidebar-session-row')
@@ -112,7 +125,7 @@ test('published SDK tools, statistics and canonical history survive Renderer rel
     await expect.poll(() => currentSdkSession(space)).not.toBe(sessionId);
     const forkId = await currentSdkSession(space);
     expect(
-      (await readSdkHistory(space, forkId)).items.filter((item) => item.kind === 'user').length,
+      (await readSdkHistory(space, forkId)).items.filter((item) => item.type === 'user').length,
     ).toBe(1);
     expect(provider.errors).toEqual([]);
   } finally {
@@ -158,7 +171,7 @@ test('real Host queued input survives reload, drains once and Stop preserves a l
       .poll(
         async () =>
           (await readSdkHistory(space, sessionId)).items.filter(
-            (item) => item.kind === 'user' && item.content === 'QUEUED_AFTER_TURN',
+            (item) => item.type === 'user' && item.text === 'QUEUED_AFTER_TURN',
           ).length,
         { timeout: 15_000 },
       )
@@ -234,7 +247,7 @@ test('real canonical boundaries reject stale mutations and UI Rewind permits sub
     );
     await waitSdkIdle(space, sessionId);
     const before = await readSdkHistory(space, sessionId);
-    const boundary = before.items.find((item) => item.kind === 'user')?.historyBoundary;
+    const boundary = before.items.find((item) => item.type === 'user')?.historyBoundary;
     expect(boundary).toBeDefined();
     await sendSdkPrompt(space, 'SECOND_TURN');
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
@@ -246,13 +259,16 @@ test('real canonical boundaries reject stale mutations and UI Rewind permits sub
         window.kodaxSpace!.invoke('session.rewind', {
           sessionId: id,
           rewindPastTurnIdx: 0,
-          historyBoundary,
+          historyBoundary: {
+            boundaryId: historyBoundary.entryId,
+            sourceRevision: historyBoundary.sourceRevision,
+          },
         }),
       { id: sessionId, historyBoundary: boundary },
     );
     expect(stale.ok && stale.data.ok).toBe(false);
     expect(
-      (await readSdkHistory(space, sessionId)).items.filter((item) => item.kind === 'user'),
+      (await readSdkHistory(space, sessionId)).items.filter((item) => item.type === 'user'),
     ).toHaveLength(2);
     await space.page.getByRole('button', { name: 'Rewind to here', exact: true }).first().click();
     await space.page
@@ -262,11 +278,34 @@ test('real canonical boundaries reject stale mutations and UI Rewind permits sub
     await expect
       .poll(
         async () =>
-          (await readSdkHistory(space, sessionId)).items.filter((item) => item.kind === 'user')
+          (await readSdkHistory(space, sessionId)).items.filter((item) => item.type === 'user')
             .length,
       )
       .toBe(1);
-    await expect(space.page.getByTestId('conversation-stream')).not.toContainText('SECOND_TURN');
+    try {
+      await expect(space.page.getByTestId('conversation-stream')).not.toContainText('SECOND_TURN');
+    } catch (error) {
+      const facts = await space.page.evaluate(
+        async (id) => ({
+          view: await window.kodaxSpace!.invoke('session.productSnapshot', { sessionId: id }),
+          history: await window.kodaxSpace!.invoke('session.history', {
+            sessionId: id,
+            requestId: crypto.randomUUID(),
+            expectedSurface: 'code',
+          }),
+          rows: [...document.querySelectorAll('[data-msg-id]')].map((row) => ({
+            id: row.getAttribute('data-msg-id'),
+            text: row.textContent,
+          })),
+        }),
+        sessionId,
+      );
+      await test.info().attach('rewind-display.json', {
+        body: JSON.stringify(facts),
+        contentType: 'application/json',
+      });
+      throw error;
+    }
     await sendSdkPrompt(space, 'AFTER_REWIND');
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
       'SDK_REPLY:AFTER_REWIND',

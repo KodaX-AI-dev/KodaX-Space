@@ -1,0 +1,306 @@
+{
+  "date": "2026-10-14",
+  "scope": "shared Coder output migration",
+  "status": "source and local SDK integration complete; Registry dependency qualification pending",
+  "registryPin": "0.7.97-alpha.5",
+  "localSdk": "0.7.97-alpha.5 source with accepted-user image fix",
+  "dependencyInstallation": "official link:kodax development staging; manifests/lockfile unchanged by this task",
+  "sdkPatchPublished": false,
+  "spaceInstallerPublished": false,
+  "checks": [
+    {
+      "name": "Desktop full suite before final snapshot/image increments",
+      "total": 3892,
+      "passed": 3879,
+      "skipped": 13,
+      "failed": 0,
+      "log": ".tmp-product-desktop-final.log",
+      "logSha256": "e170d92519d56d6e4ea3728cd0e5b1b93c38367e58bbc2d854b507806291caf0"
+    },
+    {
+      "name": "Affected Main/renderer regressions after snapshot fix",
+      "passed": 286,
+      "failed": 0,
+      "log": ".tmp-product-candidate-unit.log",
+      "logSha256": "e7bdc85409f7f4991b1ab7816ee247c4b9bcfefe782bad94712011809031d138"
+    },
+    {
+      "name": "Affected paging/body regressions",
+      "passed": 73,
+      "failed": 0,
+      "log": ".tmp-product-final-paging-body.log",
+      "logSha256": "031d886711cf4040aa97c902f7deba8a0b3f00abe67be221a6629f92126495a2"
+    },
+    {
+      "name": "Product IPC schema regressions",
+      "passed": 2,
+      "failed": 0,
+      "log": ".tmp-product-final-schema.log",
+      "logSha256": "575e1a3bdc2f61bf9ad937bba760548b8acf0d1d16cb2a5dce1d6d9e50bbc6a3"
+    },
+    {
+      "name": "Electron E2E with patched SDK (13 real Host + 3 compatibility)",
+      "passed": 16,
+      "failed": 0,
+      "log": ".tmp-product-local-sdk-acceptance.log",
+      "logSha256": "b10099652fcd62f5c419a5c2a7680a28df8992a58473967746ca2e6327f345cc"
+    },
+    {
+      "name": "Repeated E2E after snapshot ordering fix; not additional unique tests",
+      "passed": 4,
+      "failed": 0,
+      "log": ".tmp-product-final-race-e2e.log",
+      "logSha256": "6ebf7d0eef2fa79567a27e2308e36aedb373a94fa14e2570b6b5e7ccc8280b34"
+    },
+    {
+      "name": "New output seams coverage (4 modules)",
+      "passed": 17,
+      "linePercent": 95.79,
+      "branchPercent": 88.61,
+      "log": ".tmp-product-candidate-coverage.log",
+      "logSha256": "65546dd6fb75d1d5ee796e4a323c9cc0eae26f05cd7cbd97990ea5c61cf4ad02"
+    },
+    {
+      "name": "Space typecheck",
+      "status": "passed",
+      "log": ".tmp-product-candidate-typecheck.log",
+      "logSha256": "5f32b88c294cc9f0dfa57f48b5bf788be0b0b1695f0e12bdec201ab95707f918"
+    },
+    {
+      "name": "Space lint",
+      "status": "passed",
+      "log": ".tmp-product-candidate-lint.log",
+      "logSha256": "b8288ba36120788165f2acdf23ccb18afc63c020302612d060597e44e5d04009"
+    },
+    {
+      "name": "Space build:smoke",
+      "status": "passed",
+      "log": ".tmp-product-candidate-build.log",
+      "logSha256": "ad593b7e792ace46c2f0e50c1341314a955dbc68c93923e49999a665482187a3"
+    }
+  ],
+  "sdkChecks": [
+    "70 Session view/history tests passed",
+    "source and test typechecks passed",
+    "bundle and declaration builds passed"
+  ],
+  "reviews": {
+    "standards": {
+      "residual": 0
+    },
+    "spec": {
+      "residual": 0
+    }
+  },
+  "releaseGate": {
+    "status": "expected_rejection",
+    "reason": "[pack] Installed KodaX content mismatch at LICENSE: entry is missing."
+  },
+  "remainingReleaseSteps": [
+    "Publish SDK accepted-user image fix",
+    "Pin matching Registry SDK in root/Desktop/lockfile and restore physical package",
+    "Repeat E2E and production package gates"
+  ],
+  "unchangedScope": [
+    "personal session history",
+    "empty unsent Session draft lifecycle",
+    "Partner and Quick Ask ownership"
+  ],
+  "sourceFingerprints": [
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/ipc/runtime.ts",
+      "sha256": "44f4f9eda352e40883748c56e2d0a51b4385f2237eed5f861329c712a0d31401"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/ipc/session.ts",
+      "sha256": "acb80760c43b10bc123b45a866debe11ecf869d20f2683305f916f2e19f68403"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/kodax/runtime-host-adapter.ts",
+      "sha256": "0226ebf0be15965ea3345552b3f1e9304e5d2ec9f49ec733d2b4fe9b6514bb2b"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/kodax/runtime/product-view.ts",
+      "sha256": "b5a8bc3b0f7e52f5d57107f479d608de572455ed5f88975c78377d4119429c8e"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/kodax/runtime/coder-action-manifest.ts",
+      "sha256": "267a915c183814532be7a323a57bff4e6dd648385e75f1869ee657aa8d9d0cdc"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/test/runtime-host-adapter.test.ts",
+      "sha256": "ce485bd7df27017a948084c37348773d04b6219e4b82c47eb5ed58711df6ee09"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/test/product-view-projection.test.ts",
+      "sha256": "cab5b6e7e0be66141093cb21626cfca8122f844c07f7d57959132eb8b9b3671b"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/electron/test/session-history-paging.test.ts",
+      "sha256": "e5d1b5cb6ef34c55121e0789183f3ddb087c5e4ccac03c76e440943695447efc"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/App.tsx",
+      "sha256": "9cd4c4f69d042c59ca8c341c04f04cc6dd0a47d5bd44c500fb65ab5acc87268f"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/shell/ConversationStreamV2.tsx",
+      "sha256": "d2d12eb5be352652e44109ecba504ed717bcc8f583d77766f4fb34daf1d12998"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/shell/sessionHistoryPaging.ts",
+      "sha256": "0ea31c5af4f2d9b8f04d2b1caf9ed54005727c7a09da64228d1e5870ed8c25f7"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/store/appStore.ts",
+      "sha256": "e53086f52b64e5ee18b696c628e4aa8e65b3d738fd80a877ec35e673fd3a1fe7"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/store/productSessionView.ts",
+      "sha256": "3d31e7289ee0561a3ff7627cdb8db77e5979fc8f6a248a716cbf32076b6dba22"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/store/productSessionView.test.ts",
+      "sha256": "aee414453c8887a5e5f096db22619a211f5e28e4176ad2c02a6b2b752a63cb6f"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/lib/productItemContent.ts",
+      "sha256": "cc0248962bd9830cf5b60aff321ad01e428f1ef38943491bfb8ab08dd643b697"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/lib/productItemContent.test.ts",
+      "sha256": "f618ba3d63b62aae5765389266349d6f14dbcc8eb7b47e49313092685eb873fa"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/features/session/ProductHistorySearch.tsx",
+      "sha256": "1f2f18ece048b88a907f57e1bd059acd02b68fc7cbe297a7fabfa99822a5e43a"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/features/session/productConversation.ts",
+      "sha256": "0dc8c88a183124280514ea98fa132ca580d79cbb0ec8c2c96a3e38ddcb3ad11e"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/features/session/productConversation.test.ts",
+      "sha256": "87e0b542ddafd54e3c15d30e9937850158cd1800699fcc9a6724bc8d15e3b169"
+    },
+    {
+      "repository": "Space",
+      "path": "packages/space-ipc-schema/src/channels/session.ts",
+      "sha256": "15f57b04253382284fd37508c20034e49cb51c9c7281d88190e05e3534eb8fd4"
+    },
+    {
+      "repository": "Space",
+      "path": "packages/space-ipc-schema/src/channels/index.ts",
+      "sha256": "f90f62467d50083f9b73ae841b5b9ccfee31e87aa3fb0daa3d63076d47491c25"
+    },
+    {
+      "repository": "Space",
+      "path": "packages/space-ipc-schema/src/index.ts",
+      "sha256": "d8576455633bb20970b286dd055433b5e7e025dae4b8b50a644a88f7fa8412b4"
+    },
+    {
+      "repository": "Space",
+      "path": "packages/space-ipc-schema/src/channels/session-product-view.test.ts",
+      "sha256": "12f965a75d54aec726a527f37074ef3343f7e541c877ec533b839f3180b2f6c2"
+    },
+    {
+      "repository": "Space",
+      "path": "tests/e2e/sdk-provider-fixture.ts",
+      "sha256": "e1365f44dba4b02c4899890ccaf6e43d71115aef49b555f2cf6e7f6534eff965"
+    },
+    {
+      "repository": "Space",
+      "path": "tests/e2e/sdk-product-output.spec.ts",
+      "sha256": "0cf58c95f2d6f36b7dc35fb71de97564ad231d95dd869af47822e9a3f3f167ff"
+    },
+    {
+      "repository": "Space",
+      "path": "tests/e2e/sdk-unified-contract.spec.ts",
+      "sha256": "2f4d2f3ca2807203a3e48dcce646d0473bdc69f21df9b9e8740188d452d5fd27"
+    },
+    {
+      "repository": "Space",
+      "path": "docs/features/SDK_0.7.97_MIGRATION.md",
+      "sha256": "b0d8e6aeb7030309a7864da5d6bcee010b4aac65cebab018eda1bd3e971a6e06"
+    },
+    {
+      "repository": "Space",
+      "path": "docs/ADR/ADR-010-sdk-product-output.md",
+      "sha256": "c2fac36f5b0bf2f516df3f00286ee03426820693356c1b6e73f4cb75a2b94a90"
+    },
+    {
+      "repository": "Space",
+      "path": "docs/ADR/README.md",
+      "sha256": "7a5aa8d7b746e05378bf4b57d96fb4746348d332c95dd99f7abdedd92324ba05"
+    },
+    {
+      "repository": "Space",
+      "path": "CONTEXT.md",
+      "sha256": "1ca0fd708ea6980d3f23752b96f843915ebabd4110cd58bc98f4db8e27cdf163"
+    },
+    {
+      "repository": "Space",
+      "path": "CHANGELOG.md",
+      "sha256": "8f673f686fbd1c05081e271e0f7b22e38e564748e9e2b42365db6ed676a0daf7"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/features/session/runtimeFailureNotice.ts",
+      "sha256": "7fc43b4ce52b94885f01b2153461c1aac6c4be5d4cfde2dbf96e9aefb94e3bb9"
+    },
+    {
+      "repository": "Space",
+      "path": "apps/desktop/renderer/src/features/session/runtimeFailureNotice.test.ts",
+      "sha256": "051b4883c8eb9c1ad40f06074ca4bb774f8ca1b0ebc628eb1599c158073f55c7"
+    },
+    {
+      "repository": "Space",
+      "path": "docs/HLD.md",
+      "sha256": "88fe905fb104792fc48a5595f87b5b3e56aff46530a2ba470a3df8c9521d6483"
+    },
+    {
+      "repository": "Space",
+      "path": "docs/test-guides/FEATURE_121_v0.1.47_TEST_GUIDE.md",
+      "sha256": "f2189d0486a4783ce17bd2aa5ac8118fb0a6b1aafbdb2960f4f8bc753f9d21e8"
+    },
+    {
+      "repository": "Space",
+      "path": "tests/e2e/sdk-visual-review-live.spec.ts",
+      "sha256": "290dadd156873b001a4c85138020fefe7081b51c901774c7dacd590f6ff6e635"
+    },
+    {
+      "repository": "SDK",
+      "path": "src/session-view.ts",
+      "sha256": "9ac3e710baa139a7d09a1d962cef80bb4f3e76b20f2ab63bae35ba311666a984"
+    },
+    {
+      "repository": "SDK",
+      "path": "src/session-view.attachments.test.ts",
+      "sha256": "e451b4ec72f15f4b7a322d2fa0e31c88e58d7d9ee9b2e317dceace6ea9f16e19"
+    },
+    {
+      "repository": "SDK",
+      "path": "CHANGELOG.md",
+      "sha256": "11c92dd996e4375cf9476f926989f9d21c3451f7c4a540424293b2706928c80c"
+    }
+  ]
+}

@@ -215,7 +215,6 @@ test('listSlashCommands returns all builtin commands in alpha order', () => {
     'stall-log',
     'status',
     'thinking',
-    'verifier-log',
     'workflow',
   ]);
   const sorted = cmds.slice().sort();
@@ -224,6 +223,17 @@ test('listSlashCommands returns all builtin commands in alpha order', () => {
   }
   // 排序正确性仍校验
   assert.deepEqual(sorted, [...cmds].sort());
+});
+
+test('retired verifier logging is absent from the Space command catalog and help', async () => {
+  assert.equal(getSlashHandler('verifier-log'), undefined);
+  assert.equal(
+    listSlashCommands().some((command) => command.name === 'verifier-log'),
+    false,
+  );
+  const help = await runCmd('help', 'unused-session');
+  assert.doesNotMatch(help.message ?? '', /verifier-log/);
+  assert.ok(getSlashHandler('stall-log'));
 });
 
 test('/fallback reads and patches the selected Coder daemon config', async (t) => {
@@ -312,9 +322,7 @@ test('/fallback does not infer shared daemon state from the Electron environment
 });
 
 test('daemon observability slash commands patch Runtime config instead of Electron env', async (t) => {
-  const originalVerifierOverride = process.env.KODAX_VERIFIER_LOG;
   const originalStallOverride = process.env.KODAX_STALL_LOG;
-  delete process.env.KODAX_VERIFIER_LOG;
   delete process.env.KODAX_STALL_LOG;
   const adapter = runtimeHostAdapter as unknown as {
     isRuntimeSelected(): boolean;
@@ -328,16 +336,13 @@ test('daemon observability slash commands patch Runtime config instead of Electr
   };
   const patches: Record<string, unknown>[] = [];
   adapter.isRuntimeSelected = () => true;
-  adapter.readEffectiveRuntimeConfig = async () =>
-    effectiveRuntimeConfig({ verifierLog: true, stallLog: false });
+  adapter.readEffectiveRuntimeConfig = async () => effectiveRuntimeConfig({ stallLog: false });
   adapter.patchRuntimeConfig = async (patch) => {
     patches.push(patch);
     return {};
   };
   t.after(() => {
     Object.assign(adapter, originals);
-    if (originalVerifierOverride === undefined) delete process.env.KODAX_VERIFIER_LOG;
-    else process.env.KODAX_VERIFIER_LOG = originalVerifierOverride;
     if (originalStallOverride === undefined) delete process.env.KODAX_STALL_LOG;
     else process.env.KODAX_STALL_LOG = originalStallOverride;
   });
@@ -347,18 +352,14 @@ test('daemon observability slash commands patch Runtime config instead of Electr
     provider: 'mock',
     surface: 'code',
   });
-  assert.match((await runCmd('verifier-log', sessionId)).message ?? '', /on/);
   assert.match((await runCmd('stall-log', sessionId)).message ?? '', /off/);
-  await runCmd('verifier-log', sessionId, ['off']);
   await runCmd('stall-log', sessionId, ['on']);
 
-  assert.deepEqual(patches, [{ verifierLog: false }, { stallLog: true }]);
+  assert.deepEqual(patches, [{ stallLog: true }]);
 });
 
 test('daemon observability commands do not infer shared daemon state from Electron env', async (t) => {
-  const originalVerifierOverride = process.env.KODAX_VERIFIER_LOG;
   const originalStallOverride = process.env.KODAX_STALL_LOG;
-  process.env.KODAX_VERIFIER_LOG = '1';
   process.env.KODAX_STALL_LOG = '0';
   const adapter = runtimeHostAdapter as unknown as {
     isRuntimeSelected(): boolean;
@@ -373,8 +374,7 @@ test('daemon observability commands do not infer shared daemon state from Electr
   const patches: Record<string, unknown>[] = [];
   adapter.isRuntimeSelected = () => true;
   adapter.readEffectiveRuntimeConfig = async () =>
-    effectiveRuntimeConfig({ verifierLog: '1', stallLog: '1' }, 'environment', {
-      verifierLog: false,
+    effectiveRuntimeConfig({ stallLog: '1' }, 'environment', {
       stallLog: true,
     });
   adapter.patchRuntimeConfig = async (patch) => {
@@ -383,8 +383,6 @@ test('daemon observability commands do not infer shared daemon state from Electr
   };
   t.after(() => {
     Object.assign(adapter, originals);
-    if (originalVerifierOverride === undefined) delete process.env.KODAX_VERIFIER_LOG;
-    else process.env.KODAX_VERIFIER_LOG = originalVerifierOverride;
     if (originalStallOverride === undefined) delete process.env.KODAX_STALL_LOG;
     else process.env.KODAX_STALL_LOG = originalStallOverride;
   });
@@ -394,23 +392,19 @@ test('daemon observability commands do not infer shared daemon state from Electr
     provider: 'mock',
     surface: 'code',
   });
-  assert.match((await runCmd('verifier-log', sessionId)).message ?? '', /log: off/i);
   assert.match((await runCmd('stall-log', sessionId)).message ?? '', /log: on/i);
   assert.match(
-    (await runCmd('verifier-log', sessionId)).message ?? '',
-    /effective Runtime source: environment \(not applied\)/i,
+    (await runCmd('stall-log', sessionId)).message ?? '',
+    /effective Runtime source: environment/i,
   );
-  assert.equal((await runCmd('verifier-log', sessionId, ['off'])).ok, true);
   assert.equal((await runCmd('stall-log', sessionId, ['on'])).ok, true);
-  assert.deepEqual(patches, [{ verifierLog: false }, { stallLog: true }]);
+  assert.deepEqual(patches, [{ stallLog: true }]);
 });
 
 test('Partner config commands stay on the embedded process when Runtime is selected', async (t) => {
   const originalFallback = process.env.KODAX_FALLBACK_PROVIDERS;
-  const originalVerifier = process.env.KODAX_VERIFIER_LOG;
   const originalStall = process.env.KODAX_STALL_LOG;
   process.env.KODAX_FALLBACK_PROVIDERS = 'partner-old';
-  process.env.KODAX_VERIFIER_LOG = '0';
   process.env.KODAX_STALL_LOG = '1';
   const adapter = runtimeHostAdapter as unknown as {
     isRuntimeSelected(): boolean;
@@ -433,8 +427,6 @@ test('Partner config commands stay on the embedded process when Runtime is selec
     Object.assign(adapter, originals);
     if (originalFallback === undefined) delete process.env.KODAX_FALLBACK_PROVIDERS;
     else process.env.KODAX_FALLBACK_PROVIDERS = originalFallback;
-    if (originalVerifier === undefined) delete process.env.KODAX_VERIFIER_LOG;
-    else process.env.KODAX_VERIFIER_LOG = originalVerifier;
     if (originalStall === undefined) delete process.env.KODAX_STALL_LOG;
     else process.env.KODAX_STALL_LOG = originalStall;
   });
@@ -446,15 +438,12 @@ test('Partner config commands stay on the embedded process when Runtime is selec
 
   const fallbackStatus = await runCmd('fallback', sessionId, ['status']);
   const fallbackUpdate = await runCmd('fallback', sessionId, ['partner-new']);
-  const verifierUpdate = await runCmd('verifier-log', sessionId, ['on']);
   const stallUpdate = await runCmd('stall-log', sessionId, ['off']);
 
   assert.match(fallbackStatus.message ?? '', /partner-old/);
   assert.match(fallbackUpdate.message ?? '', /current Space process/i);
-  assert.equal(verifierUpdate.ok, true);
   assert.equal(stallUpdate.ok, true);
   assert.equal(process.env.KODAX_FALLBACK_PROVIDERS, 'partner-new');
-  assert.equal(process.env.KODAX_VERIFIER_LOG, '1');
   assert.equal(process.env.KODAX_STALL_LOG, undefined);
 });
 

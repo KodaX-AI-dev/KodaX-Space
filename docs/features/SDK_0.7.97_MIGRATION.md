@@ -1,8 +1,73 @@
-# Space 接入 KodaX 0.7.97-alpha.3
+# Space 接入 KodaX 0.7.97-alpha.6
+
+当前源码精确安装 Registry alpha.6，包含 accepted-user 图片恢复和草稿生命周期修复。根目录、Desktop、lockfile 与物理安装已对齐，开发链接已撤下。当前验收见 [alpha.6 接入](../releases/kodax-0.7.97-alpha.6-integration.md)。下方 2026-10-14 及 alpha.3–5 记录是历史时点，其中的“待发布”不代表当前状态。
+
+### 2026-10-15 Registry 接入
+
+Space 同时要求 SDK 与 Host `sessionDrafts:1`；普通 Coder 明确创建草稿，缺少能力即拒绝准入。SDK 的可选 `lastMessageAt` 保留到持久化、恢复后的内存会话、公开 IPC 与 Renderer；列表/Runtime 启动顺序不再把创建时间或恢复时间当成真实消息时间。本地实际输入时间独立记录，首次 canonical 刷新不会丢掉刚发送的活动。原有统一 view 替换和历史独立窗口继续适用。
 
 本次是 v0.1.46 已有能力的依赖与契约迁移。用户已要求完成 Space 侧接入；不增加客户端产品、服务器或新的应用配置。
 
 ## 已确认的公共接缝
+
+### 聊天输出面迁移（2026-10-14，源码与本地联调完成，Registry 发布闭环待完成）
+
+真实 Session `20261014_140626_nub2876ee9a86e` 的落盘历史和 SDK 官方 view 各有一份输入与回答；Space 将底层 delta 与 canonical history 再次拼接后显示两份，刷新后恢复一份。首个输入已有 inputId，却不带 turnId，附件路径说明还使实时和历史正文不同。补 turnId 只能修补旧合并路径，不能完成输出面迁移。
+
+本次 Coder Host 输出迁移的公共接缝和验收标准：
+
+- Main 透传 SDK 完整当前 view 的显示项身份、顺序和替换语义；Renderer 只改变布局，不重建 assistant/thinking/tool 正文。底层 Runtime 仍承接可信凭据、执行授权和非正文诊断。
+- 历史与搜索使用 SDK readHistory/readHistoryEntry/searchHistory；正文补读校验项身份、版本、偏移和长度。保留附件、工具参数/结果、Artifact、Fork/Retry/Rewind 的 SDK historyBoundary。
+- 当前窗口与历史浏览窗口分开；较早页不与另一个修订的实时正文拼接。相同输入和输出按 SDK item ID 更新；不同身份的相同正文完整保留。
+- 回归覆盖真实问题的数据形状（inputId 存在而 turnId 缺失、含本地附件）、运行中→落盘→终态、相同文本的不同输入、队列/steer、重连与刷新、长正文、历史分页和边界失效。
+- Mock 与 Partner 的既有独立执行路径保持适用范围，不把它们的本地事件冒充共享 Coder Host view；所有接入共享 Coder Host 的普通聊天均只消费统一输出面。
+- 完成判据是上述接缝回归、真实发布 SDK 的 Electron E2E、类型检查、lint、构建和双轴评审通过；不得仅凭 SDK 版本或输入入口更新宣布完成。
+
+本次实现已切换共享 Coder 的当前聊天、历史分页、搜索与完整正文补读。Main 只投影 SDK item，并为图片签发安全预览引用；Renderer 按完整快照替换当前窗口，较早历史窗口保持冻结。普通聊天不再从 Runtime assistant/thinking delta 拼正文；SDK 的不同 item 即使共享 outputId，也完整保留。发送占位只按 Host 接受的 inputId 结束。
+
+复核补齐了快照与实时帧的排序：快照读取与替换进入同一 productViewQueue，读取期间到达的新帧随后应用；终态也复用这一入口。公开 observeView 反例先证明旧快照覆盖新帧，再验证修复。Rewind 已提交但后续显示读取失败时，保留成功回执并请求重新同步。
+
+真实 SDK 联调另发现 alpha.5 的上游缺口：canonical accepted user 恢复成 SDK view 时丢掉图片引用。已在相邻 KodaX 仓库的 `src/session-view.ts` 修复，按原 inputId 恢复原消息的图片引用，不改变显示项身份、顺序或正文；两个相同提示、不同 inputId/图片的 SDK 公共回归通过。Space 不从本地历史补造附件。
+
+**验证与发布状态**：
+
+- Desktop 全量回归最后一轮 3,892 项，3,879 通过、13 项既有条件跳过、0 失败；后续快照/历史/正文/诊断等改动另跑关联回归，不叠加到全量计数。
+- 本地补丁 SDK 的 Electron E2E 16/16 通过：13 项真实共享 Host 契约回归与 3 项 Mock 附件/启动兼容。覆盖流式时刷新、无 turnId 的附件输入、重复文本的不同输入、长正文补读、用户图片、Artifact、队列/Stop、Fork/Rewind、过期游标、多客户端退出和失败诊断。最后快照排序修复另跑流式刷新、队列、失败诊断与 Rewind，4/4 通过；这些重复用例不增加 16 项总数。
+- 新输出接缝 4 个模块的 17 项覆盖率回归通过，行覆盖率 95.79%、分支覆盖率 88.61%；这不是全仓覆盖率声明。
+- Space `typecheck`、`lint`、`build:smoke` 通过；SDK 70 项 Session view/history 回归、源码与测试类型检查、bundle 与声明构建通过。Standards、Spec 两轴均 0 项残留。
+- 根/Desktop manifest 和 lockfile 仍锁 Registry `0.7.97-alpha.5`。当前本机使用官方 `link:kodax` 链接补丁 SDK 联调，没有修改 Registry 实体包或发布新版本；开发链接不能作为正式包依赖。正常打包会按 lockfile 重装 Registry 包，因此升级版本锁以前仍会装回缺少图片修复的 alpha.5。
+- **正式发布的剩余步骤**：SDK 维护者发布同时包含用户图片修复与下方草稿生命周期修复的版本；Space 精确更新根/Desktop/lockfile，撤下开发链接，重跑同一 E2E 和正式打包 gate。未经这一步，不宣称 Registry 接入或新安装包已经完成。
+
+手动回归见 [F121 v0.1.47 输出迁移测试指南](../test-guides/FEATURE_121_v0.1.47_TEST_GUIDE.md)，架构边界见 [ADR-010](../ADR/ADR-010-sdk-product-output.md)。本次输出迁移没有删除个人历史；未发送输入的空 Session 已按下方生命周期修复处理。
+
+本轮检查、源码指纹与待发布边界见 [机器可读验收记录](../releases/coder-output-migration-2026-10-14-evidence.json)。
+
+### 未发送 Session 草稿生命周期（2026-10-14，源码修复，待同批 SDK 发布）
+
+SDK 的公开 `sessions.create({ draft: true })` 与 Host `sessionDrafts:1` 能力支持
+可观察、可设置的内存草稿。生产 Ink/classic REPL 共用的命令绑定声明草稿，CLI
+启动协商新能力，避免继续连接不能保证草稿语义的旧 Host。首个有效用户输入进入
+canonical 历史时转正并保存设置；拒绝输入、未发送即退出不会留下新的 Session
+或设置文件。显式普通创建的持久化语义继续适用。
+
+Space 仅在 Host 提供新能力时使用草稿创建普通 Coder 会话。旧 metadata-only 空
+记录经 SDK 完整历史确认后隐藏，原文件保留；命名、旧分支、Artifact、错误和
+恢复状态均保留。空标题有本地化名称，过滤不占可见额度。复核补上草稿删除、
+转正期间并发设置读取、设置写盘失败后重试，以及 SDK 完整记录已重命名而摘要
+仍为空的反例。
+
+SDK 的创建/输入/设置/CLI/schema/存储边界关联回归 61/61 通过，另跑存储
+关联回归 168/168 通过；Space adapter/历史列表关联回归 258/258 通过。
+重建后的本地 SDK Electron 回归 14/14 通过（13 项真实 Host + 1 项旧记录兼容），
+确认输出、队列、退出及旧记录保留、侧栏标题与刷新。SDK 三个草稿接缝新增
+可执行语句起始行覆盖 45/47（95.74%），不是全仓覆盖率；类型检查、lint、
+构建及双轴复审通过。
+测试没有删除或迁移个人记录。SDK 的 Issue 368 回归指南位于其仓库
+`docs/test-guides/ISSUE_368_v0.7.97_REGRESSION_GUIDE.md`；本仓库的
+[Space Issue 220 回归指南](../test-guides/ISSUE_220_v0.1.47_REGRESSION_GUIDE.md)
+记录桌面验证步骤。
+
+本轮独立证据见 [草稿生命周期验收记录](../releases/session-draft-lifecycle-2026-10-14-evidence.json)。
 
 测试通过现有 RuntimeHostAdapter、RealKodaXSession、IPC 和已发布 SDK 的公共接口验证。保留现有 Coder/Partner 隔离、可信 Main 凭据与 Host Tools、共享设置与 Shell 合同、历史与实时输出身份规则（ADR-009）。
 
@@ -27,8 +92,7 @@
 - 动态输入补充包含附件路径和 Partner 提供的上下文，不应统一升级为可信 system prompt。先核对现有文本/附件/引用业务接口能否承接；只有确实无法保留现有语义的部分才提窄的业务接缝，不预设任意 promptOverlay 参数或任意运行配置袋。
 - Skill/command/review 的准备、hooks 和工具限制应由 Host 的现有产品执行入口负责，Space 不继续双重准备。
 
-依据：SDK [统一迁移边界](C:/Works/GitProj/KodaX-AI/KodaX/docs/SDK_MIGRATION.md:9)、[FEATURE_298 设计目标](C:/Works/GitProj/KodaX-AI/KodaX/docs/features/v0.7.97.md:181)，Space [现有 Workflow 上限](../../apps/desktop/electron/kodax/workflow-policy.ts:78)。已发布 alpha.2 的公共入口实测确认普通低层 runs.start 带 inputId 会被拒绝；该路径不能替代产品输入身份。
-
+依据：SDK [统一迁移边界](C:/Works/GitProj/KodaX-AI/KodaX/docs/SDK_MIGRATION.md:9)、[FEATURE_298 设计目标](C:/Works/GitProj/KodaX-AI/KodaX/docs/features/v0.7.97.md:181)，Space [现有 Workflow 上限](../../apps/desktop/electron/kodax/workflow-policy.ts#L78)。已发布 alpha.2 的公共入口实测确认普通低层 runs.start 带 inputId 会被拒绝；该路径不能替代产品输入身份。
 
 ## alpha.3 接入落点（2026-10-11）
 
