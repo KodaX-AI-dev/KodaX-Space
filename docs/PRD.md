@@ -9,6 +9,8 @@ SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntim
 
 ## 0. 中文导读（一页摘要）
 
+2026-10-16 F147（当前源码，未发布）：用户已批准连续工作区与完整设置页面的融合方向。全部现有 Coder/Partner 功能、多项目并行、深浅/系统主题和三档视觉质量默认保留；任何功能删除须先对齐。正文、代码与长表格保持连续画布，玻璃和动效集中于局部 chrome，兼顾减少动态效果及后台/流式降载。参见 [功能保留清单](design/space-ui-integration.md) 与 [F147 设计](features/v0.1.47.md#feature_147-integrated-workspace-and-full-settings-surface)。
+
 KodaX Space 是 KodaX 生态的**桌面客户端**——不是另一个 IDE，也不是另一个 Chatbot，而是把 KodaX 已有的能力以**桌面级体验**重新组织，并扩展到非终端用户。
 
 - **对标定位**：本地 agent 桌面壳（对标 Claude Desktop / Codex Desktop App）+ **双面板 Code / Partner** + **Quick Ask popover**

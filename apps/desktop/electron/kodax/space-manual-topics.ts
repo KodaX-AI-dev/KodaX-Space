@@ -430,12 +430,15 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'settings',
     title: 'Settings',
-    summary: 'Settings 分 Preferences、Providers、Runtime、License 四类。',
+    summary: 'Settings 分 Preferences、Providers、Runtime、Extensions、License、Diagnostics 六类。',
     body: text(
       'Preferences：显示语言、默认 workspace、Smart Popout Director、原生完成通知、workflow policy、Terminal Shell 和主窗口关闭行为。',
+      'Settings 是完整工作页面，返回工作区、关闭按钮或 Escape 可回到原会话，左栏仍可查看项目与并行会话状态。打开设置不停止运行，也不重置工作区输入草稿。嵌套编辑器或确认框优先处理 Escape。',
+      'Preferences 的 Appearance 提供浅色、深色、跟随系统主题，以及极简、均衡、全特效三档视觉质量，与标题栏和 View 菜单共用偏好。极简无模糊；均衡使用静态环境光和局部玻璃；全特效增加通透层次与缓慢环境光，后台、流式输出和密集交互时降载，并尊重系统减少动态效果设置。',
       'Providers：内置/custom provider、key 保存与测试、默认 provider、custom provider 管理。',
       'Runtime：KodaX 核心配置概览、compaction 设置、MCP 全局/项目 integrations 配置与 reload、MCP/A2A/Extension health、Skills 用户/项目目录、安装 skill 文件夹/zip/archive。',
       'License：查看社区/授权/过期/降级状态，导入 .kodax-license，导出授权请求，刷新状态。',
+      'Extensions：管理已安装插件与连接组件。Diagnostics：导出脱敏诊断包。原有六类操作与权限边界保留。Coder 标题栏的对话/成果切换复用 Artifact 工作区，完整成果和审查页可进入专注再返回；Activity、Transcript view 与 Task Dock 原有入口继续可用。',
       '',
       'Settings 改 UI 偏好和运行时默认值；会话内临时 model/mode 仍可以通过底部控件或 slash command 调整。',
       'Runtime 页面里的 MCP/Skills 是桌面管理入口；同页的 Coder runtime mode 可在无活动工作时把 Coder 从推荐 Daemon 安全切换到 Embedded 兼容模式，或切回 Daemon，并自动重启。Coder 的目录发现与 MCP reload 会同步 daemon，MCP 子进程与日志仍由 Space MCP Manager 管理。Terminal Shell 选择会让 Space PTY 与 Coder 命令工具共享所选 shell 的登录 PATH，同时剥离常见密钥变量。',

@@ -14,7 +14,8 @@
 //
 // 默认全 ama；用户主动选 sa 才走 fallback。
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 import type { AgentMode } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
 import { pushToast } from '../store/toastStore.js';
@@ -47,6 +48,7 @@ function nextAgentMode(current: AgentMode): AgentMode {
 }
 
 export function AgentModeSelector(): JSX.Element {
+  const rootRef = useRef<HTMLDivElement>(null);
   const { t } = useI18n();
   const sessions = useAppStore((s) => s.sessions);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
@@ -100,6 +102,7 @@ export function AgentModeSelector(): JSX.Element {
   // P3: Alt+M cycles AMA / SA.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (!isSurfaceInteractive(rootRef.current)) return;
       if (e.altKey && !e.ctrlKey && !e.shiftKey && (e.key === 'm' || e.key === 'M')) {
         e.preventDefault();
         void pick(nextAgentMode(current));
@@ -114,7 +117,7 @@ export function AgentModeSelector(): JSX.Element {
   const labelText = LABELS[current];
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

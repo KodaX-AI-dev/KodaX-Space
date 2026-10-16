@@ -409,7 +409,13 @@ PowerShell 的 `-Path` 支持 `[...]` 通配符。最新版 KodaX 会把这类�
 
 ## 9. Provider、Model、Effort 与 Agent Mode
 
-Settings 有四个主标签：Preferences、Providers、Runtime、License。
+Settings 有六个主标签：Preferences、Providers、Runtime、Extensions、License、Diagnostics。
+
+当前开发版（F147，尚未发布）的设置是完整工作页面。左侧项目导航继续显示并行会话状态，返回工作区、关闭按钮或 Escape 可回到原会话；后台任务和输入草稿保持。设置内编辑器或确认框优先处理 Escape。原有设置项全部保留。
+
+Preferences → Appearance 可选择浅色、深色、跟随系统，以及极简、均衡、全特效三档视觉质量，与标题栏和 View 菜单同步。极简使用实色；均衡使用静态环境光与局部玻璃；全特效增加通透层次与缓慢环境光，失焦、后台和密集交互时降载，遵循系统减少动态效果偏好。中央正文保持连续画布，玻璃留在侧栏、输入区和局部控件。
+
+Coder 标题栏的“对话 / 成果”切换复用已有 Artifact 工作区；完整成果或审查页可切换专注并返回。Activity、Transcript view、Task Dock、终端、文件、审批、通知和全部原有操作继续可用。
 
 ### Provider
 

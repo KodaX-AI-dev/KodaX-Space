@@ -182,7 +182,7 @@ test('right sidebar presets stay responsive and explicit half/max modes remain v
       .toBeGreaterThanOrEqual(520);
 
     // Max mode is a focused Task Dock workspace: center and its resize handle leave
-    // flex layout, so the dock fills from the left-sidebar gutter to the right edge.
+    // flex layout, so the dock fills to the continuous workbench's right edge.
     for (const viewportWidth of [1600, 2048]) {
       await page.setViewportSize({ width: viewportWidth, height: 760 });
       await page.getByLabel('Max width').click();
@@ -191,13 +191,13 @@ test('right sidebar presets stay responsive and explicit half/max modes remain v
       await expect
         .poll(async () => {
           const rightBox = await right.boundingBox();
-          return Math.abs((rightBox?.x ?? 0) + (rightBox?.width ?? 0) - (viewportWidth - 10));
+          return Math.abs((rightBox?.x ?? 0) + (rightBox?.width ?? 0) - viewportWidth);
         })
         .toBeLessThanOrEqual(1);
       const leftBox = await left.boundingBox();
       const rightBox = await right.boundingBox();
       expect((rightBox?.x ?? 0) - ((leftBox?.x ?? 0) + (leftBox?.width ?? 0))).toBeLessThanOrEqual(
-        25,
+        4,
       );
     }
 

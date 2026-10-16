@@ -570,7 +570,9 @@ type QuickAskParams = {
 
 ### 9.6 共享按钮交互层
 
-- `styles.css` 在应用 `body` 上为 enabled `<button>` 提供统一的 hover 扫光、内描边、active 与 `focus-visible` 反馈，因此 React root 与 portal-mounted Settings/Quick Ask/确认弹层使用同一语言。
+2026-10-16 F147（当前源码，未发布）：工作区改为连续中央画布与分栏，设置作为 Shell 内完整工作面；原会话、输入框及详情工作区保持挂载，隐藏区 inert，Portal 工作面可 suspended 暂停显示/焦点/快捷键而不销毁终端。玻璃仅保留于静态 chrome；深浅/系统主题、三档视觉质量共用已有 store/持久化。全部能力映射与性能边界见 [F147 清单](design/space-ui-integration.md)。不改 SDK、IPC 或执行 owner。
+
+- `styles.css` 在应用 `body` 上为 enabled `<button>` 提供统一反馈；F147 的 `workspace.css` 在连续工作面中进一步统一材质与焦点，密集导航不移动命中目标。设置位于 Shell 内，Quick Ask/确认弹层继续使用 Portal。
 - 交互色由现有 `--accent`、`--ok`、`--info`、`--thinking`、`--warn`、`--danger` token 派生；组件原有背景、阴影、尺寸、圆角和文案仍是 owner。
 - `.session-token-indicator` 保留其专用蓝绿 sweep/orbit；`.window-control-button`、`.monaco-editor`、`.xterm`、`.no-ix`、`.no-button-sheen` 与 disabled 控件不接管。
 - 普通按钮保持无 JS 的伪元素绘制；宽列表/菜单降低 opacity，避免重复行产生闪烁噪声。`prefers-reduced-motion` 取消 sweep travel，保留静态可见反馈。

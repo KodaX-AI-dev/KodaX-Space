@@ -178,7 +178,7 @@ export function LeftSidebar({
     <aside
       data-testid="left-sidebar"
       style={width !== undefined ? { width: `${width}px` } : undefined}
-      className="glass lift ix-zone flex flex-col border border-border-default rounded-xl overflow-hidden bg-surface flex-shrink-0 text-[13px]"
+      className="workspace-navigation glass ix-zone flex min-h-0 flex-col overflow-hidden bg-surface flex-shrink-0 text-[13px]"
     >
       {/* Surface tab — F045: [Coder][Partner] 切换（Partner 自本版起可点） */}
       <SurfaceTabs />
@@ -1117,6 +1117,7 @@ function SessionRow({
             onContextMenu(e.clientX, e.clientY);
           }}
           aria-busy={deleting}
+          aria-current={isSelected ? 'page' : undefined}
           className={`group/sessionrow w-full min-w-0 text-left text-xs px-2 py-1 rounded grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-2 min-h-[1.625rem] transition-opacity duration-150 ${
             deleting ? 'opacity-40 pointer-events-none' : ''
           } ${

@@ -1,6 +1,6 @@
 // Shell — F011-revised (alpha.1)
 //
-// Claude Desktop 风 layout 总入口，替代旧 App.tsx。
+// F147 continuous workspace shell; business surfaces keep their existing owners.
 //
 //   ┌───────────────────────────────────────────────────────────┐
 //   │                    顶部空白 (drag region)                  │
@@ -20,7 +20,7 @@
 // 不在这里做的：
 //   - IPC 连接 / store 订阅 → 留在各子组件
 //   - popout 业务实现 → 留 popouts/ 子目录
-//   - Permission modal / Settings overlay → 复用旧 App 的实现挂载点
+//   - Permission modal / Settings workspace → Shell 统一托管其挂载点
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -155,8 +155,8 @@ const RIGHT_SIDEBAR_DEFAULT_MAX_WIDTH = 520;
 const RIGHT_SIDEBAR_DEFAULT_RATIO = 0.3;
 const RIGHT_SIDEBAR_MIN_WIDTH = 180;
 const PARTNER_DETAIL_DEFAULT_WIDTH = 440;
-const SHELL_PANEL_HORIZONTAL_PADDING_PX = 20;
-const SHELL_PANEL_GAP_PX = 10;
+const SHELL_PANEL_HORIZONTAL_PADDING_PX = 0;
+const SHELL_PANEL_GAP_PX = 0;
 const RESIZE_HANDLE_WIDTH_PX = 4;
 const CODER_MIN_CENTER_PX = 520;
 const PARTNER_RIGHT_SIDEBAR_MAX_RATIO = 0.75;
@@ -634,7 +634,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const [fullscreenRead, setFullscreenRead] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (currentSurface === 'partner') return;
+      if (currentSurface === 'partner' || settingsOpen) return;
       if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === '\\') {
         e.preventDefault();
         setFullscreenRead((v) => !v);
@@ -642,9 +642,9 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [currentSurface]);
+  }, [currentSurface, settingsOpen]);
 
-  const preferredLeftSidebarVisible = leftSidebarOpen && !fullscreenRead;
+  const preferredLeftSidebarVisible = leftSidebarOpen && (!fullscreenRead || settingsOpen);
   const preferredRightSidebarVisible = rightSidebarOpen && !fullscreenRead;
   const surfaceMinCenterWidth =
     currentSurface === 'partner' ? PARTNER_MIN_CENTER_PX : CODER_MIN_CENTER_PX;
@@ -717,8 +717,9 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
       viewportWidth,
     ) < surfaceMinCenterWidth;
   const rightSidebarVisibleBeforeLeft = preferredRightSidebarVisible && !responsiveHideRightSidebar;
-  const responsiveHideLeftSidebar =
-    currentSurface === 'partner'
+  const responsiveHideLeftSidebar = settingsOpen
+    ? viewportWidth - leftWidth - RESIZE_HANDLE_WIDTH_PX < CODER_MIN_CENTER_PX
+    : currentSurface === 'partner'
       ? preferredLeftSidebarVisible && !partnerPreliminaryLayout?.leftSidebarVisible
       : preferredLeftSidebarVisible &&
         rightSidebarWidthMode !== 'max' &&
@@ -954,6 +955,25 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const openPreferencesSettings = useCallback((): void => {
     openSettingsAt('preferences');
   }, [openSettingsAt]);
+  const closeSettings = useCallback((): void => setSettingsOpen(false), []);
+  const navigateWorkspace = useCallback((): void => {
+    closeSettings();
+    closeExtensionView();
+  }, [closeExtensionView, closeSettings]);
+
+  useEffect(() => {
+    closeSettings();
+  }, [currentSessionIdForPlan, currentSurface, closeSettings]);
+
+  useEffect(() => {
+    const openProviders = (): void => openSettingsAt('providers');
+    window.addEventListener('kodax-space.open-provider-settings', openProviders);
+    window.addEventListener(NEW_CONVERSATION_EVENT, closeSettings);
+    return () => {
+      window.removeEventListener('kodax-space.open-provider-settings', openProviders);
+      window.removeEventListener(NEW_CONVERSATION_EVENT, closeSettings);
+    };
+  }, [closeSettings, openSettingsAt]);
 
   const showLeftSidebar = useCallback((): void => {
     if (fullscreenRead) setFullscreenRead(false);
@@ -1207,10 +1227,11 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const setActivePopoutKindInStore = useAppStore((s) => s.setActivePopoutKind);
   const activePopoutKindFromStore = useAppStore((s) => s.activePopoutKind);
   const openFilesInLeftSidebar = useCallback((): void => {
+    closeSettings();
     showLeftSidebar();
     setLeftSidebarMode('files');
     setActivePopoutRaw(null);
-  }, [showLeftSidebar]);
+  }, [closeSettings, showLeftSidebar]);
   useEffect(() => {
     setActivePopoutKindInStore(activePopout);
   }, [activePopout, setActivePopoutKindInStore]);
@@ -1406,7 +1427,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     <div
       ref={shellRootRef}
       data-space-shell-ready
-      className={`h-screen flex flex-col bg-surface text-fg-primary overflow-hidden relative isolate ${platformClass} ${
+      className={`space-shell h-screen flex flex-col bg-surface text-fg-primary overflow-hidden relative isolate ${platformClass} ${
         rightSidebarWidthSettling ? 'right-sidebar-width-settling' : ''
       }`}
     >
@@ -1425,8 +1446,14 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
           focusMode={fullscreenRead}
           diagnosticsOpen={diagnosticsOpen}
           onToggleLeftSidebar={toggleLeftSidebar}
-          onToggleRightSidebar={toggleRightSidebar}
-          onToggleFocusMode={() => setFullscreenRead((v) => !v)}
+          onToggleRightSidebar={() => {
+            closeSettings();
+            toggleRightSidebar();
+          }}
+          onToggleFocusMode={() => {
+            closeSettings();
+            setFullscreenRead((v) => !v);
+          }}
           onToggleDiagnostics={() => setDiagnosticsOpen((v) => !v)}
           onOpenSettings={() => openSettingsAt('preferences')}
         />
@@ -1474,7 +1501,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
 
       {/* F060: 面板区。Liquid Glass —— 立体感来自光影材质（光向描边 + 光标 specular + 分层柔影），
           不靠运动；模态/命令面板放在面板区之外保持 position:fixed 正常。 */}
-      <div className="flex flex-1 min-h-0 gap-2.5 p-2.5">
+      <div className="workspace-layout relative z-10 flex flex-1 min-h-0">
         {leftSidebarVisible && (
           <>
             {leftSidebarMode === 'files' ? (
@@ -1493,9 +1520,10 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
                 pluginsAvailable={enabledExtensions.length > 0}
                 pluginsActive={visibleExtension !== null}
                 onOpenPlugins={() => {
+                  closeSettings();
                   if (enabledExtensions[0]) openExtensionView(enabledExtensions[0]);
                 }}
-                onNavigate={closeExtensionView}
+                onNavigate={navigateWorkspace}
               />
             )}
             <ResizeHandle
@@ -1511,164 +1539,182 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
           </>
         )}
 
-        {currentSurface === 'partner' ? (
-          // F045: Partner surface 只替换主区（对话区）。LeftSidebar 是全局导航
-          // （项目 / session / SurfaceTabs），两 surface 共用；右侧栏外壳也由 Shell 统一托管。
-          <>
-            {/* Keep the conversation mounted so opening a library never resets its draft. */}
-            <div
-              style={{ display: visibleExtension ? 'none' : 'contents' }}
-              aria-hidden={visibleExtension ? true : undefined}
-            >
-              <PartnerWorkspace
-                leftSidebarOpen={leftSidebarVisible}
-                rightSidebarOpen={rightSidebarVisible}
-                workspaceMode={rightSidebarWorkspaceMode}
-                onToggleLeftSidebar={toggleLeftSidebar}
-                onToggleRightSidebar={toggleRightSidebar}
-                onOpenDetail={openPartnerDetail}
-              />
-            </div>
-            {visibleExtension && (
-              <PartnerExtensionView
-                key={`${visibleExtension.id}:${visibleExtension.version}:${visibleExtension.installedAt}`}
-                extension={visibleExtension}
-                extensions={enabledExtensions}
-                onSelect={openExtensionView}
-                onClose={closeExtensionView}
-                onManage={() => openSettingsAt('extensions')}
-                initialTab={extensionTab}
-                navigationRevision={extensionNavigationRevision}
-                onExpertSelected={() => {
-                  closeExtensionView();
-                  window.dispatchEvent(new Event('kodax-space.focus-textarea'));
-                }}
-                onExpertDetails={(expert) => {
-                  closeExtensionView();
-                  openPartnerDetail({ kind: 'expert', expert });
-                }}
-                onConnectorDetails={(connector) => {
-                  setConnectorDialog({
-                    selection: createExtensionViewSelection(visibleExtension, extensionContext),
-                    request: {
-                      context: extensionContext,
-                      extensionId: visibleExtension.id,
-                      connector,
-                    },
-                  });
-                }}
-              />
-            )}
-          </>
-        ) : (
-          /* 中央阅读区：默认实色；全特效档使用半透明玻璃，并在滚动/拖拽期间临时卸下
-              大面积 backdrop-filter，避免内容位移和极光动画叠加触发 re-composite。 */
+        <div className="workspace-host flex min-h-0 min-w-0 flex-1">
           <div
-            className="center-pane flex-1 flex flex-col min-w-0 relative bg-surface rounded-xl border border-border-default overflow-hidden lift"
-            data-testid="coder-workspace"
-            style={rightSidebarWorkspaceMode ? { display: 'none' } : undefined}
+            className="workspace-body contents"
+            style={settingsOpen ? { display: 'none' } : undefined}
+            inert={settingsOpen || undefined}
+            aria-hidden={settingsOpen || undefined}
           >
-            <div className="ix-zone flex items-center px-3 h-10 border-b border-border-default flex-shrink-0 gap-1">
-              {/* 左侧栏切换按钮 — 始终常驻，让收起后仍能一键展开 */}
-              <SidebarToggleButton
-                side="left"
-                open={leftSidebarVisible}
-                onClick={toggleLeftSidebar}
-              />
-              <Breadcrumb />
-              <CommandToolbar active={activePopout} onToggle={setActivePopout} />
-              <EnvironmentHub />
-              {fullscreenRead && (
-                <button
-                  type="button"
-                  onClick={() => setFullscreenRead(false)}
-                  className="ml-1 text-[11px] px-2 py-0.5 rounded border border-border-default text-fg-muted hover:text-fg-primary"
-                  title={t('shell.exitFocusModeTitle')}
-                >
-                  ↗ {t('shell.exitFocusMode')}
-                </button>
-              )}
-              {/* 右侧栏切换按钮 */}
-              <SidebarToggleButton
-                side="right"
-                open={rightSidebarVisible}
-                onClick={toggleRightSidebar}
-              />
-            </div>
-
-            <div ref={popoutBoundsRef} className="relative flex flex-1 min-h-0 flex-col">
-              <PinnedTaskSummary />
-              <RuntimeStartupStatus />
-              {currentHistoryWarning !== undefined && (
+            {currentSurface === 'partner' ? (
+              // F045: Partner surface 只替换主区（对话区）。LeftSidebar 是全局导航
+              // （项目 / session / SurfaceTabs），两 surface 共用；右侧栏外壳也由 Shell 统一托管。
+              <>
+                {/* Keep the conversation mounted so opening a library never resets its draft. */}
                 <div
-                  role="status"
-                  aria-live="polite"
-                  data-testid="conversation-history-warning"
-                  className="flex flex-shrink-0 items-start gap-2 border-b border-warning/25 bg-warning/10 px-3 py-2 text-[11px] text-fg-secondary"
+                  style={{ display: visibleExtension ? 'none' : 'contents' }}
+                  aria-hidden={visibleExtension ? true : undefined}
                 >
-                  <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-warning" />
-                  <span>
-                    {t(
-                      currentHistoryWarning === 'ambiguous'
-                        ? 'session.historyAmbiguousWarning'
-                        : 'session.historyPartialWarning',
-                    )}
-                  </span>
+                  <PartnerWorkspace
+                    leftSidebarOpen={leftSidebarVisible}
+                    rightSidebarOpen={rightSidebarVisible}
+                    workspaceMode={rightSidebarWorkspaceMode}
+                    onToggleLeftSidebar={toggleLeftSidebar}
+                    onToggleRightSidebar={toggleRightSidebar}
+                    onOpenDetail={openPartnerDetail}
+                  />
                 </div>
-              )}
-              <ConversationStreamV2 key={currentSessionIdForPlan ?? 'no-session'} />
+                {visibleExtension && (
+                  <PartnerExtensionView
+                    key={`${visibleExtension.id}:${visibleExtension.version}:${visibleExtension.installedAt}`}
+                    extension={visibleExtension}
+                    extensions={enabledExtensions}
+                    onSelect={openExtensionView}
+                    onClose={closeExtensionView}
+                    onManage={() => openSettingsAt('extensions')}
+                    initialTab={extensionTab}
+                    navigationRevision={extensionNavigationRevision}
+                    onExpertSelected={() => {
+                      closeExtensionView();
+                      window.dispatchEvent(new Event('kodax-space.focus-textarea'));
+                    }}
+                    onExpertDetails={(expert) => {
+                      closeExtensionView();
+                      openPartnerDetail({ kind: 'expert', expert });
+                    }}
+                    onConnectorDetails={(connector) => {
+                      setConnectorDialog({
+                        selection: createExtensionViewSelection(visibleExtension, extensionContext),
+                        request: {
+                          context: extensionContext,
+                          extensionId: visibleExtension.id,
+                          connector,
+                        },
+                      });
+                    }}
+                  />
+                )}
+              </>
+            ) : (
+              /* 连续正文画布在所有档位保持实色；玻璃留在静态 chrome，避免长文滚动重复采样。 */
+              <div
+                className="center-pane flex-1 flex flex-col min-w-0 relative bg-surface overflow-hidden"
+                data-testid="coder-workspace"
+                style={rightSidebarWorkspaceMode ? { display: 'none' } : undefined}
+              >
+                <div className="workspace-header ix-zone flex items-center px-4 h-14 border-b border-border-default flex-shrink-0 gap-1">
+                  {/* 左侧栏切换按钮 — 始终常驻，让收起后仍能一键展开 */}
+                  <SidebarToggleButton
+                    side="left"
+                    open={leftSidebarVisible}
+                    onClick={toggleLeftSidebar}
+                  />
+                  <Breadcrumb />
+                  <CommandToolbar active={activePopout} onToggle={setActivePopout} />
+                  <EnvironmentHub />
+                  {fullscreenRead && (
+                    <button
+                      type="button"
+                      onClick={() => setFullscreenRead(false)}
+                      className="ml-1 text-[11px] px-2 py-0.5 rounded border border-border-default text-fg-muted hover:text-fg-primary"
+                      title={t('shell.exitFocusModeTitle')}
+                    >
+                      ↗ {t('workspace.exitFocus')}
+                    </button>
+                  )}
+                  {/* 右侧栏切换按钮 */}
+                  <SidebarToggleButton
+                    side="right"
+                    open={rightSidebarVisible}
+                    onClick={toggleRightSidebar}
+                  />
+                </div>
 
-              {activePopout !== null && (
-                <PopoutOverlay
-                  kind={activePopout}
-                  boundsRef={popoutBoundsRef}
-                  onClose={() => setActivePopout(null)}
-                />
-              )}
-            </div>
+                <div ref={popoutBoundsRef} className="relative flex flex-1 min-h-0 flex-col">
+                  <PinnedTaskSummary />
+                  <RuntimeStartupStatus />
+                  {currentHistoryWarning !== undefined && (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      data-testid="conversation-history-warning"
+                      className="flex flex-shrink-0 items-start gap-2 border-b border-warning/25 bg-warning/10 px-3 py-2 text-[11px] text-fg-secondary"
+                    >
+                      <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-warning" />
+                      <span>
+                        {t(
+                          currentHistoryWarning === 'ambiguous'
+                            ? 'session.historyAmbiguousWarning'
+                            : 'session.historyPartialWarning',
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  <ConversationStreamV2 key={currentSessionIdForPlan ?? 'no-session'} />
 
-            <BottomBar />
-          </div>
-        )}
+                  {activePopout !== null && (
+                    <PopoutOverlay
+                      suspended={settingsOpen}
+                      kind={activePopout}
+                      boundsRef={popoutBoundsRef}
+                      onClose={() => setActivePopout(null)}
+                      focused={fullscreenRead}
+                      onToggleFocus={() => setFullscreenRead((value) => !value)}
+                    />
+                  )}
+                </div>
 
-        {rightSidebarVisible && !rightSidebarWorkspaceMode && !visibleExtension && (
-          <ResizeHandle
-            side="right"
-            width={rightWidth}
-            defaultWidth={surfaceRightSidebarDefaultWidth(
-              currentSurface,
-              leftSidebarVisible,
-              leftWidth,
-              viewportWidth,
+                <BottomBar />
+              </div>
             )}
-            onPreview={(px) => setRightWidthDraft(clampRightSidebarWidth(px))}
-            onCommit={(px) => {
-              setRightWidthDraft(null);
-              setRightSidebarWidthMode('custom');
-              commitRightSidebarWidth(currentSurface, clampRightSidebarNonMaxWidth(px));
-            }}
-          />
-        )}
-        {currentSurface === 'code' && rightSidebarVisible && (
-          <RightSidebar
-            width={rightWidth}
-            widthMode={rightSidebarWidthMode}
-            onDefaultWidth={openRightSidebarAtDefaultWidth}
-            onHalfWidth={openRightSidebarAtBalancedWidth}
-            onMaxWidth={openRightSidebarAtMaxWidth}
-            onClose={() => setRightSidebarOpenForCurrentSurface(false)}
-            shellFocusRequest={taskDockFocusRequest}
-          />
-        )}
-        {mountedPartnerDetailContext && (
-          <PartnerRightSidebar
-            key={partnerDetailContextKey ?? 'partner-detail'}
-            open={currentSurface === 'partner' && rightSidebarVisible && !visibleExtension}
-            width={currentSurface === 'partner' ? rightWidth : partnerRightSidebarWidth}
-            openRequest={visiblePartnerDetailOpenRequest}
-            onConsumeOpenRequest={consumePartnerDetailRequest}
-          />
-        )}
+
+            {rightSidebarVisible && !rightSidebarWorkspaceMode && !visibleExtension && (
+              <ResizeHandle
+                side="right"
+                width={rightWidth}
+                defaultWidth={surfaceRightSidebarDefaultWidth(
+                  currentSurface,
+                  leftSidebarVisible,
+                  leftWidth,
+                  viewportWidth,
+                )}
+                onPreview={(px) => setRightWidthDraft(clampRightSidebarWidth(px))}
+                onCommit={(px) => {
+                  setRightWidthDraft(null);
+                  setRightSidebarWidthMode('custom');
+                  commitRightSidebarWidth(currentSurface, clampRightSidebarNonMaxWidth(px));
+                }}
+              />
+            )}
+            {currentSurface === 'code' && rightSidebarVisible && (
+              <RightSidebar
+                width={rightWidth}
+                widthMode={rightSidebarWidthMode}
+                onDefaultWidth={openRightSidebarAtDefaultWidth}
+                onHalfWidth={openRightSidebarAtBalancedWidth}
+                onMaxWidth={openRightSidebarAtMaxWidth}
+                onClose={() => setRightSidebarOpenForCurrentSurface(false)}
+                shellFocusRequest={taskDockFocusRequest}
+              />
+            )}
+            {mountedPartnerDetailContext && (
+              <PartnerRightSidebar
+                key={partnerDetailContextKey ?? 'partner-detail'}
+                open={currentSurface === 'partner' && rightSidebarVisible && !visibleExtension}
+                width={currentSurface === 'partner' ? rightWidth : partnerRightSidebarWidth}
+                openRequest={visiblePartnerDetailOpenRequest}
+                onConsumeOpenRequest={consumePartnerDetailRequest}
+              />
+            )}
+          </div>
+          {settingsOpen && (
+            <SettingsModal
+              initialTab={settingsInitialTab}
+              onTabChange={setSettingsInitialTab}
+              onClose={closeSettings}
+            />
+          )}
+        </div>
       </div>
 
       {/* 模态/命令面板：在面板区之外，保证 position:fixed 相对视口正常铺满 */}
@@ -1700,19 +1746,12 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
       <ConfirmDialog />
       {/* FEATURE_032 v2：max 模式下 center-pane 隐藏，停靠条在此兜底常驻
           （点击「查看」会退出 max 模式并定位到队首卡，见上方 FOCUS_ASK_USER_EVENT 监听） */}
-      {rightSidebarWorkspaceMode && (
+      {rightSidebarWorkspaceMode && !settingsOpen && (
         <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
           <div className="pointer-events-auto">
             <AskUserDockBar />
           </div>
         </div>
-      )}
-      {settingsOpen && (
-        <SettingsModal
-          initialTab={settingsInitialTab}
-          onTabChange={setSettingsInitialTab}
-          onClose={() => setSettingsOpen(false)}
-        />
       )}
       <SpaceControlBroker
         settingsOpen={settingsOpen}

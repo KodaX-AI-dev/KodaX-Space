@@ -130,7 +130,7 @@ export function FilesPanel({
         style={width !== undefined ? { width: `${width}px` } : undefined}
         className={
           asSidebar
-            ? 'glass lift ix-zone flex flex-col border border-border-default rounded-xl overflow-hidden bg-surface flex-shrink-0 text-[13px]'
+            ? 'workspace-navigation glass ix-zone flex flex-col overflow-hidden bg-surface flex-shrink-0 text-[13px]'
             : 'flex h-full items-center justify-center p-6 text-center text-sm text-fg-muted'
         }
       >
@@ -159,7 +159,7 @@ export function FilesPanel({
       data-testid="files-panel"
       className={
         asSidebar
-          ? 'glass lift ix-zone flex min-h-0 flex-col border border-border-default rounded-xl overflow-hidden bg-surface flex-shrink-0 text-[13px]'
+          ? 'workspace-navigation glass ix-zone flex min-h-0 flex-col overflow-hidden bg-surface flex-shrink-0 text-[13px]'
           : 'flex h-full min-h-0 flex-col bg-surface'
       }
     >

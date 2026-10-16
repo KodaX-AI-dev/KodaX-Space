@@ -40,6 +40,8 @@ export interface FloatingSurfaceBehavior {
 }
 
 export interface FloatingSurfaceHostProps {
+  /** Hide without unmounting workspaces such as a live terminal. */
+  readonly suspended?: boolean;
   readonly surface: FloatingSurfaceDescriptor;
   readonly children: ReactNode;
   readonly onClose?: () => void;
@@ -95,9 +97,7 @@ class FloatingSurfaceErrorBoundary extends Component<
     return (
       <div className="pointer-events-auto flex h-full w-full items-center justify-center p-4">
         <div className="max-w-[420px] rounded-lg border border-danger/40 bg-surface-2 p-4 text-center shadow-xl">
-          <div className="text-sm font-medium text-fg-primary">
-            {this.props.panelFailedText}
-          </div>
+          <div className="text-sm font-medium text-fg-primary">{this.props.panelFailedText}</div>
           {this.state.message && (
             <div className="mt-2 break-words text-xs leading-relaxed text-fg-muted">
               {this.state.message}
@@ -171,6 +171,7 @@ export function floatingSurfaceZIndex(surface: FloatingSurfaceDescriptor): numbe
 }
 
 export function FloatingSurfaceHost({
+  suspended = false,
   surface,
   children,
   onClose,
@@ -199,6 +200,7 @@ export function FloatingSurfaceHost({
   }, []);
 
   useLayoutEffect(() => {
+    if (suspended) return;
     const unregister = registerFloatingSurface(token, behavior.zIndex);
     const unsubscribe = subscribeFloatingSurfaceStack(() => setIsTopmost(isTopmostSurface(token)));
     setIsTopmost(isTopmostSurface(token));
@@ -206,9 +208,10 @@ export function FloatingSurfaceHost({
       unsubscribe();
       unregister();
     };
-  }, [behavior.zIndex, token]);
+  }, [behavior.zIndex, suspended, token]);
 
   useLayoutEffect(() => {
+    if (suspended) return;
     if (!boundsRef?.current) {
       setBounds(null);
       return;
@@ -231,10 +234,10 @@ export function FloatingSurfaceHost({
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [boundsRef]);
+  }, [boundsRef, suspended]);
 
   useLayoutEffect(() => {
-    if (!behavior.moveFocus) return;
+    if (!behavior.moveFocus || suspended) return;
     const frame = requestAnimationFrame(() => {
       const root = contentRef.current;
       if (!root) return;
@@ -244,9 +247,10 @@ export function FloatingSurfaceHost({
       target.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
-  }, [behavior.moveFocus, initialFocusRef, surface.id]);
+  }, [behavior.moveFocus, initialFocusRef, surface.id, suspended]);
 
   useEffect(() => {
+    if (suspended) return;
     const onKeyDown = (event: KeyboardEvent): void => {
       if (!isTopmost) return;
       if (event.key === 'Escape' && behavior.closeOnEscape && onClose) {
@@ -301,14 +305,25 @@ export function FloatingSurfaceHost({
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [behavior.closeOnEscape, behavior.trapFocus, isTopmost, onClose, onEnterKey, onEscapeKey]);
+  }, [
+    behavior.closeOnEscape,
+    behavior.trapFocus,
+    isTopmost,
+    onClose,
+    onEnterKey,
+    onEscapeKey,
+    suspended,
+  ]);
 
   useEffect(() => {
     return () => {
       if (!behavior.restoreFocus) return;
       const target = previousFocusRef.current;
       if (target && document.contains(target)) {
-        requestAnimationFrame(() => target.focus({ preventScroll: true }));
+        requestAnimationFrame(() => {
+          if (target.getClientRects().length > 0 && !target.closest('[inert]'))
+            target.focus({ preventScroll: true });
+        });
       }
     };
   }, [behavior.restoreFocus]);
@@ -321,6 +336,8 @@ export function FloatingSurfaceHost({
   return (
     <Portal>
       <div
+        hidden={suspended}
+        inert={suspended || undefined}
         className="pointer-events-none"
         style={rootStyle}
         data-floating-surface-host={surface.id}

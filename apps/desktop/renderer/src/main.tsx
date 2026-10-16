@@ -10,6 +10,7 @@ import { RendererErrorBoundary } from './RendererErrorBoundary';
 import '@fontsource-variable/geist';
 import '@fontsource-variable/jetbrains-mono';
 import './styles.css';
+import './workspace.css';
 
 // v0.1.3.1 修复 F019 FOUC：在 React render 之前同步把 theme class 打到 <html>，
 // 防"启动一帧暗色 → 用户的 light/system 偏好生效后再切"的视觉闪屏。

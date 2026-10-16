@@ -23,7 +23,8 @@
 //
 // Ctrl+I 切换打开；底部 effort 块保持以前用法。
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 import { BrainCircuit, ChevronDown } from 'lucide-react';
 import type { ProviderInfo, SessionMeta, SessionEvent } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
@@ -33,7 +34,11 @@ import { useI18n } from '../i18n/I18nProvider.js';
 import { setSpaceReasoningDefault } from '../space-control/semanticActions.js';
 import type { MessageKey } from '../i18n/messages.js';
 import { resolveActiveModel } from './resolveActiveModel.js';
-import { sdkEffortToReasoningMode, visibleEffortLadder, latestReasoningResolution } from './effortLadder.js';
+import {
+  sdkEffortToReasoningMode,
+  visibleEffortLadder,
+  latestReasoningResolution,
+} from './effortLadder.js';
 
 // Re-export the pure ladder helpers (kept as this module's public API; logic lives in effortLadder.ts).
 export { sdkEffortToReasoningMode, visibleEffortLadder };
@@ -67,7 +72,9 @@ export function ModelEffortSelector(): JSX.Element {
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
   const sessions = useAppStore((s) => s.sessions);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
-  const events = useAppStore((s) => currentSessionId ? (s.eventsBySession[currentSessionId] ?? EMPTY_EVENTS) : EMPTY_EVENTS);
+  const events = useAppStore((s) =>
+    currentSessionId ? (s.eventsBySession[currentSessionId] ?? EMPTY_EVENTS) : EMPTY_EVENTS,
+  );
   const providers = useAppStore((s) => s.providers);
   const defaultProviderId = useAppStore((s) => s.defaultProviderId);
   const kodaxDefaults = useAppStore((s) => s.kodaxDefaults);
@@ -84,6 +91,7 @@ export function ModelEffortSelector(): JSX.Element {
 
   const session = sessions.find((x) => x.sessionId === currentSessionId);
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   // 右列展示哪个 provider 的 models — 默认跟随 active provider；
   // 用户在左列点别的 provider 时只改这个，不立即 commit (等点 model 才 commit)。
@@ -100,6 +108,7 @@ export function ModelEffortSelector(): JSX.Element {
   // Ctrl+I 打开/关闭
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
+      if (!isSurfaceInteractive(rootRef.current)) return;
       if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'i') {
         e.preventDefault();
         setOpen((v) => !v);
@@ -137,12 +146,15 @@ export function ModelEffortSelector(): JSX.Element {
   const activeEffort = sdkEffortToReasoningMode(configuredEffort) ?? 'auto';
   const resolution = latestReasoningResolution(events, activeProviderId, activeModel, activeEffort);
   const sentMode = resolution?.sentEffort ? sdkEffortToReasoningMode(resolution.sentEffort) : null;
-  const resolutionLabel = resolution ? t('modelPicker.reasoning.sent', {
-    effort: sentMode ? effortLabel(sentMode, t) : t('modelPicker.reasoning.omitted'),
-  }) : null;
-  const fallbackLabel = resolution?.fallbacks.map((fallback) =>
-    t(`modelPicker.reasoning.reason.${fallback.reason}`)).filter((value, index, all) => all.indexOf(value) === index).join(' · ');
-
+  const resolutionLabel = resolution
+    ? t('modelPicker.reasoning.sent', {
+        effort: sentMode ? effortLabel(sentMode, t) : t('modelPicker.reasoning.omitted'),
+      })
+    : null;
+  const fallbackLabel = resolution?.fallbacks
+    .map((fallback) => t(`modelPicker.reasoning.reason.${fallback.reason}`))
+    .filter((value, index, all) => all.indexOf(value) === index)
+    .join(' · ');
 
   // Effort ladder built from the active model's SDK-declared efforts (falls back
   // to a stable fallback ladder when unknown). The model's own default rung is
@@ -291,6 +303,7 @@ export function ModelEffortSelector(): JSX.Element {
   // Keep Ctrl+T as a legacy cycle shortcut. Cycles only the model-supported rungs.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (!isSurfaceInteractive(rootRef.current)) return;
       const key = e.key.toLowerCase();
       const isLegacyCycle = e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && key === 't';
       const isEffortCycle = e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && key === 'e';
@@ -334,7 +347,7 @@ export function ModelEffortSelector(): JSX.Element {
   }
 
   return (
-    <div className="relative min-w-0">
+    <div ref={rootRef} className="relative min-w-0">
       <button
         type="button"
         data-testid="model-effort-selector"
@@ -462,7 +475,8 @@ export function ModelEffortSelector(): JSX.Element {
 
           {resolutionLabel && (
             <p className="px-3 py-1 text-fg-muted" data-testid="reasoning-resolution">
-              {resolutionLabel}{fallbackLabel ? ` · ${fallbackLabel}` : ''}
+              {resolutionLabel}
+              {fallbackLabel ? ` · ${fallbackLabel}` : ''}
             </p>
           )}
           {modelEfforts?.supportedEfforts === undefined && (

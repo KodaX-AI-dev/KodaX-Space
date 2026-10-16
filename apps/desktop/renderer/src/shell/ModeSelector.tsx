@@ -14,6 +14,7 @@
 // Shift-Tab / Ctrl+M 循环 4 档；数字键 1/2/3/4 直接切。
 
 import { useEffect, useRef, useState } from 'react';
+import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 import { ShieldCheck } from 'lucide-react';
 import type { PermissionMode } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
@@ -101,6 +102,7 @@ export function ModeSelector(): JSX.Element {
 
   const [open, setOpen] = useState(false);
   const modeMutations = useRef(new Map<string, OptimisticMutationState<PermissionMode>>());
+  const rootRef = useRef<HTMLDivElement>(null);
   // v0.1.4：spinner 修复 —— "切 auto 时 session 还在跑"的提示从 main 端 push
   // session_error 改成 renderer 端 pushToast，避免 ActivitySpinner 误判 session 已结束
   const isStreaming = useIsStreaming();
@@ -120,6 +122,7 @@ export function ModeSelector(): JSX.Element {
   // 不再 gate 在 session 上——无 session 时也能 toggle pending mode
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (!isSurfaceInteractive(rootRef.current)) return;
       if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         setOpen((v) => !v);
@@ -256,7 +259,7 @@ export function ModeSelector(): JSX.Element {
       : baseLabel;
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

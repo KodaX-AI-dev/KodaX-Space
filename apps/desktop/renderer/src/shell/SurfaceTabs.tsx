@@ -22,7 +22,11 @@ export function SurfaceTabs(): JSX.Element {
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
 
   return (
-    <div className="p-2 flex gap-1 border-b border-border-default flex-shrink-0">
+    <div
+      className="surface-tabs mx-3 my-3 flex flex-shrink-0 rounded-lg border border-border-default p-1"
+      data-surface={currentSurface}
+    >
+      <span className="surface-selection" aria-hidden />
       {TABS.map(({ surface, label, Icon }) => {
         const active = currentSurface === surface;
         const disabled = surface === 'partner' && !PARTNER_ENABLED;
@@ -40,7 +44,7 @@ export function SurfaceTabs(): JSX.Element {
               disabled
                 ? 'text-fg-muted opacity-40 cursor-not-allowed'
                 : active
-                  ? 'bg-surface-3 text-fg-primary'
+                  ? 'text-fg-primary'
                   : 'text-fg-muted hover:text-fg-primary'
             }`}
           >

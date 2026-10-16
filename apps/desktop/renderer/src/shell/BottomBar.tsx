@@ -2572,7 +2572,7 @@ export function BottomBar(): JSX.Element {
 
   return (
     <div
-      className="ix-zone px-3 pt-1 pb-3 flex-shrink-0 space-y-1"
+      className="workspace-composer ix-zone px-5 pt-2 pb-4 flex-shrink-0 space-y-2"
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -2613,7 +2613,7 @@ export function BottomBar(): JSX.Element {
         <div
           onMouseDownCapture={(e) => focusComposerFromContainer(e.target)}
           className={[
-            'glass lift rounded-2xl border bg-surface-2 px-3 pt-2 pb-2 space-y-1.5 transition-colors',
+            'composer-surface glass lift rounded-xl border bg-surface-2 px-4 pt-3 pb-3 space-y-2 transition-colors',
             currentSurface === 'partner' ? 'partner-composer-panel' : '',
             draggingFiles
               ? 'border-accent/70 bg-accent/5'

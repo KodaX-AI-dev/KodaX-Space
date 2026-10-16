@@ -1,14 +1,14 @@
 // GlassAurora — F060 背景柔光层（Liquid Glass）
 //
 //   - minimal  → 不渲染，零开销。
-//   - balanced → 3 团静止柔光：玻璃 backdrop-filter 模糊结果可被缓存，空闲与鼠标移动近零开销。
+//   - balanced → 3 团静止柔光：避免持续改变玻璃背景，减少重复采样。
 //   - full     → 同 3 团但慢漂（transform 动画），更有生命感；失焦/隐藏/重交互时自动暂停。
 //
 // 立体感不在背景，而在玻璃面板本身（光向描边 + 光标 specular + 分层柔影，见 styles.css）。
 // 背景只提供克制的环境光，遵循 visionOS「别堆叠花哨元素、保持简洁」。
 //
 // 性能护栏：漂移动画仅在 full 档开启；窗口失焦 / 隐藏时暂停，滚动、拖拽与窗口缩放期间
-// 也会短暂停漂，并通过 html class 临时卸下中央大面积 backdrop-filter。
+// 也会短暂停漂。F147 的中央画布在所有档位均不采样背景。
 
 import type { WindowActivityPayload } from '@kodax-space/space-ipc-schema';
 import { useEffect, useRef } from 'react';

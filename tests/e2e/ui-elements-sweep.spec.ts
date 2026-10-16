@@ -30,7 +30,13 @@ const DESTRUCTIVE_LABEL_RE =
 
 interface ClickOutcome {
   readonly label: string;
-  readonly outcome: 'overlay' | 'toggle' | 'effect' | 'no-visible-effect' | 'skipped-destructive' | 'gone';
+  readonly outcome:
+    | 'overlay'
+    | 'toggle'
+    | 'effect'
+    | 'no-visible-effect'
+    | 'skipped-destructive'
+    | 'gone';
 }
 
 const consoleErrors: string[] = [];
@@ -61,7 +67,9 @@ async function shellAlive(page: Page): Promise<void> {
   expect(rootPainted).toBe(true);
 }
 
-async function readState(page: Page): Promise<{ expanded: number; pressed: number; dialogs: number }> {
+async function readState(
+  page: Page,
+): Promise<{ expanded: number; pressed: number; dialogs: number }> {
   return page.evaluate(() => ({
     expanded: document.querySelectorAll('[aria-expanded="true"]').length,
     pressed: document.querySelectorAll('[aria-pressed="true"]').length,
@@ -77,14 +85,14 @@ async function sweepRegion(
   const outcomes: ClickOutcome[] = [];
   const handles = await rootLocator.locator('button:visible').elementHandles();
   for (const handle of handles) {
-    const label = (await handle
+    const label = await handle
       .evaluate((el) => {
         const b = el as HTMLButtonElement;
         const text = (b.textContent ?? '').trim().slice(0, 40);
         const title = b.title || b.getAttribute('aria-label') || '';
         return `${text || '(icon)'}${title ? ` [${String(title).slice(0, 50)}]` : ''}`;
       })
-      .catch(() => '(gone)'));
+      .catch(() => '(gone)');
     // Native window controls legitimately close/minimize the app — they are OS
     // chrome, not product UI. Recorded and skipped so the sweep can continue.
     if (/close window|minimi|maximi|restore down/i.test(label)) {
@@ -119,9 +127,7 @@ async function sweepRegion(
     await page.waitForTimeout(350);
     const after = await readState(page);
     const overlayOpened = after.dialogs > before.dialogs;
-    const toggled =
-      after.expanded !== before.expanded ||
-      after.pressed !== before.pressed;
+    const toggled = after.expanded !== before.expanded || after.pressed !== before.pressed;
     let effect: ClickOutcome['outcome'] = 'no-visible-effect';
     if (overlayOpened) effect = 'overlay';
     else if (toggled) effect = 'toggle';
@@ -129,8 +135,9 @@ async function sweepRegion(
       // Any DOM mutation at all counts as a generic effect.
       const mutated = await page.evaluate(
         () =>
-          document.querySelector('[role="dialog"], [role="menu"], [role="listbox"], .animate-spin') !==
-          null,
+          document.querySelector(
+            '[role="dialog"], [role="menu"], [role="listbox"], .animate-spin',
+          ) !== null,
       );
       if (mutated) effect = 'effect';
     }
@@ -138,9 +145,7 @@ async function sweepRegion(
     await dismissOverlays(page);
     await shellAlive(page);
   }
-  const report = outcomes
-    .map((o) => `[${regionName}] ${o.outcome}: ${o.label}`)
-    .join('\n');
+  const report = outcomes.map((o) => `[${regionName}] ${o.outcome}: ${o.label}`).join('\n');
   console.log(`--- sweep ${regionName} (${outcomes.length} buttons) ---\n${report}`);
   return outcomes;
 }
@@ -166,8 +171,20 @@ async function seedRichSession(space: SpaceInstance): Promise<string> {
   ];
   for (let i = 0; i < 3; i++) {
     events.push(
-      { kind: 'tool_start', sessionId, toolId: `sweep-tool-${i}`, toolName: i % 2 ? 'read' : 'bash', input: { path: 'README.md' } },
-      { kind: 'tool_result', sessionId, toolId: `sweep-tool-${i}`, toolName: i % 2 ? 'read' : 'bash', content: `sweep output ${i}\n${'x'.repeat(200)}` },
+      {
+        kind: 'tool_start',
+        sessionId,
+        toolId: `sweep-tool-${i}`,
+        toolName: i % 2 ? 'read' : 'bash',
+        input: { path: 'README.md' },
+      },
+      {
+        kind: 'tool_result',
+        sessionId,
+        toolId: `sweep-tool-${i}`,
+        toolName: i % 2 ? 'read' : 'bash',
+        content: `sweep output ${i}\n${'x'.repeat(200)}`,
+      },
     );
   }
   events.push({ kind: 'session_complete', sessionId });
@@ -175,7 +192,9 @@ async function seedRichSession(space: SpaceInstance): Promise<string> {
     const win = BrowserWindow.getAllWindows()[0];
     for (const payload of payloads) win.webContents.send('session.event', payload);
   }, events);
-  await expect(page.getByTestId('process-receipt-tool_cluster').first()).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByTestId('process-receipt-tool_cluster').first()).toBeVisible({
+    timeout: 8_000,
+  });
   return sessionId;
 }
 
@@ -206,7 +225,11 @@ test('UI button sweep keeps the shell reliable across every region', async () =>
     await sweepRegion(page, 'left-sidebar', page.locator('aside').first());
 
     // Region 3: the composer toolbar row between the stream and the sidebar.
-    await sweepRegion(page, 'composer-toolbar', page.locator('[data-testid="composer-footer-toolbar"]'));
+    await sweepRegion(
+      page,
+      'composer-toolbar',
+      page.locator('[data-testid="composer-footer-toolbar"]'),
+    );
 
     // Region 4: right sidebar (last aside / frame section).
     const rightSidebar = page.locator('aside').nth(1);
@@ -225,10 +248,7 @@ test('UI button sweep keeps the shell reliable across every region', async () =>
     // Reliability bar: no renderer exceptions and no console errors anywhere.
     const reactErrors = consoleErrors.filter((e) => /React error #\d{3}/i.test(e));
     expect(reactErrors, `React errors:\n${reactErrors.join('\n')}`).toEqual([]);
-    expect(
-      pageErrors,
-      `Uncaught pageerrors:\n${pageErrors.join('\n')}`,
-    ).toEqual([]);
+    expect(pageErrors, `Uncaught pageerrors:\n${pageErrors.join('\n')}`).toEqual([]);
     // Known mock-environment noise (isolated test daemon + mock-host sessions):
     // the optional Runtime bootstrap and the live-snapshot reconciliation for a
     // Session the daemon has never persisted both fail open with bounded
@@ -265,11 +285,15 @@ test('major surfaces and popovers are available and close cleanly', async () => 
     const alive = () => shellAlive(page);
 
     // Settings modal + every top-level tab must render content.
-    const settingsTrigger = page.locator('button[aria-label*="Settings" i], button[title*="Settings" i], button[aria-label*="设置"], button[title*="设置"]').first();
+    const settingsTrigger = page
+      .locator(
+        'button[aria-label*="Settings" i], button[title*="Settings" i], button[aria-label*="设置"], button[title*="设置"]',
+      )
+      .first();
     await settingsTrigger.click();
-    const dialog = page.locator('[role="dialog"]').first();
+    const dialog = page.getByTestId('settings-workspace');
     await expect(dialog).toBeVisible({ timeout: 8_000 });
-    const tabButtons = await dialog.locator('button').elementHandles();
+    const tabButtons = await dialog.getByRole('tab').elementHandles();
     let tabsVisited = 0;
     for (const tab of tabButtons) {
       const info = await tab
@@ -288,9 +312,13 @@ test('major surfaces and popovers are available and close cleanly', async () => 
     await alive();
 
     // Theme dropdown lists the three canonical options.
-    const themeToggle = page.locator('button[aria-label*="Theme" i], button[title*="Theme" i]').first();
+    const themeToggle = page
+      .locator('button[aria-label*="Theme" i], button[title*="Theme" i]')
+      .first();
     await themeToggle.click();
-    await expect(page.getByText(/^Light$|^Dark$|^System$/i).first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/^Light$|^Dark$|^System$/i).first()).toBeVisible({
+      timeout: 5_000,
+    });
     await page.keyboard.press('Escape');
     await alive();
 
@@ -299,9 +327,9 @@ test('major surfaces and popovers are available and close cleanly', async () => 
       .locator('button[aria-label*="attach" i], button[title*="附件"], button[aria-label*="附件"]')
       .first();
     await attach.click();
-    await expect(
-      page.getByText(/Add folder|添加文件夹|Upload|添加文件/i).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/Add folder|添加文件夹|Upload|添加文件/i).first()).toBeVisible({
+      timeout: 5_000,
+    });
     await page.keyboard.press('Escape');
     await alive();
 
@@ -315,7 +343,11 @@ test('major surfaces and popovers are available and close cleanly', async () => 
 
     // Transcript search (Find in transcript).
     await page.keyboard.press('Control+f');
-    const search = page.locator('input[placeholder*="Find in transcript" i], [data-testid="transcript-search-bar"] input').first();
+    const search = page
+      .locator(
+        'input[placeholder*="Find in transcript" i], [data-testid="transcript-search-bar"] input',
+      )
+      .first();
     if (await search.isVisible().catch(() => false)) {
       await search.fill('sweep');
       await page.waitForTimeout(300);
@@ -335,7 +367,9 @@ test('major surfaces and popovers are available and close cleanly', async () => 
 
     // Terminal surface.
     const terminalTrigger = page
-      .locator('button[title*="Terminal" i], button[aria-label*="Terminal" i], button[title*="终端"]')
+      .locator(
+        'button[title*="Terminal" i], button[aria-label*="Terminal" i], button[title*="终端"]',
+      )
       .first();
     if (await terminalTrigger.isVisible().catch(() => false)) {
       await terminalTrigger.click();

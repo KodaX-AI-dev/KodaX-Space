@@ -4,7 +4,7 @@
 //   - minimal  极简：玻璃退化为实色（无 backdrop-filter）、无景深叠加、无 aurora。
 //              远程桌面 / 弱核显 / 省电场景最稳。
 //   - balanced 均衡（默认）：CSS 玻璃 + 景深 + 纯 CSS aurora。无 WebGL，性能最稳的「好看」。
-//   - full     全特效：更厚玻璃 + 半透明中央阅读区（极光透进主表面）+ 更强景深。纯 CSS。
+//   - full     全特效：更通透的局部玻璃 + 更强景深与缓慢环境光。纯 CSS。
 //
 // 实现方式：在 <html> 上挂 class `q-minimal` / `q-balanced` / `q-full`，styles.css 里
 // 每档定义一组 CSS 变量（--glass-blur / --glass-alpha / --depth / --aurora-opacity）。
@@ -24,7 +24,7 @@ export const VISUAL_QUALITY_OPTIONS: ReadonlyArray<{
 }> = [
   { key: 'minimal', label: '极简', hint: '实色无模糊 · 最省，远程/弱机首选' },
   { key: 'balanced', label: '均衡', hint: '液态玻璃 + 光标高光 · 默认，性能稳' },
-  { key: 'full', label: '全特效', hint: '半透明阅读区 + 更厚玻璃 · 最通透' },
+  { key: 'full', label: '全特效', hint: '通透玻璃 + 更强景深 · 视觉最完整' },
 ];
 
 export function isVisualQuality(v: unknown): v is VisualQuality {

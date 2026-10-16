@@ -1,5 +1,7 @@
 # KodaX Space 详细设计
 
+F147（2026-10-16，源码未发布）：Shell 内设置工作面复用全部六分类面板，保留面板 tab ID 与语义控制接口；后台 workspace 保持挂载并隐藏/inert，Portal 详情通过 `FloatingSurfaceHost.suspended` 暂停可见性、焦点与键盘捕获而保留子组件。外观直接共用原 appStore 主题/质量键；正文连续实色、局部 chrome 玻璃。功能映射与回归边界见 [实施清单](design/space-ui-integration.md)。
+
 更新日期：2026-10-15。当前候选为 Space `0.1.47-alpha.2`，精确依赖发布到 npm Registry 的 KodaX `0.7.97-alpha.6`；尚未发布 Space alpha.2。
 
 本文描述当前公共边界。高层结构见 [HLD](HLD.md)，共享输出的决策见 [ADR-010](ADR/ADR-010-sdk-product-output.md)，完整迁移清单见 [SDK 迁移](features/SDK_0.7.97_MIGRATION.md)。

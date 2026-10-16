@@ -1,3 +1,4 @@
+import { isSurfaceInteractive } from '../../lib/surfaceVisibility.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PartnerCitationResolutionT } from '@kodax-space/space-ipc-schema';
 import { AlertTriangle, BookOpenCheck, ExternalLink, Loader2, X } from 'lucide-react';
@@ -78,6 +79,7 @@ export function PartnerEvidenceDetail(): JSX.Element | null {
     if (!citationId) return;
     closeButtonRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (!isSurfaceInteractive(dialogRef.current)) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         close();

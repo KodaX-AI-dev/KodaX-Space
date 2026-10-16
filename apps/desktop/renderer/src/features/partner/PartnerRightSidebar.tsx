@@ -150,7 +150,7 @@ export function PartnerRightSidebar({
         ...(width !== undefined ? { width: `${width}px` } : {}),
         ...(!open ? { display: 'none' } : {}),
       }}
-      className="glass lift ix-zone flex flex-shrink-0 flex-col overflow-hidden rounded-xl border border-border-default bg-surface text-[13px]"
+      className="workspace-inspector glass ix-zone flex flex-shrink-0 flex-col overflow-hidden bg-surface text-[13px]"
     >
       <div className="flex h-10 flex-shrink-0 items-stretch border-b border-border-default/70 bg-surface">
         <div

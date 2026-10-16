@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { TranscriptViewMenu } from './TranscriptViewMenu.js';
+import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import type { MessageKey } from '../i18n/messages.js';
 
@@ -76,6 +77,7 @@ export function CommandToolbar({ active, onToggle }: CommandToolbarProps): JSX.E
   // Esc 关闭；点击外部关闭
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
+      if (!isSurfaceInteractive(ref.current)) return;
       if (e.key === 'Escape') {
         setOpen(false);
         return;
@@ -120,6 +122,24 @@ export function CommandToolbar({ active, onToggle }: CommandToolbarProps): JSX.E
 
   return (
     <div className="flex items-center gap-1 flex-shrink-0">
+      <div
+        className="workspace-view-switch"
+        role="group"
+        aria-label={t('command.activityViews')}
+        data-results={active === 'artifact'}
+      >
+        <span aria-hidden className="workspace-view-selection" />
+        <button type="button" aria-pressed={active !== 'artifact'} onClick={() => onToggle(null)}>
+          {t('workspace.conversation')}
+        </button>
+        <button
+          type="button"
+          aria-pressed={active === 'artifact'}
+          onClick={() => onToggle('artifact')}
+        >
+          {t('workspace.results')}
+        </button>
+      </div>
       <TranscriptViewMenu />
 
       <div className="relative" ref={ref}>

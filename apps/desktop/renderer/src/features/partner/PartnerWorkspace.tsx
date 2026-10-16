@@ -137,13 +137,13 @@ export function PartnerWorkspace({
   return (
     <div
       ref={workspaceRef}
-      className="center-pane flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-default bg-surface lift"
+      className="center-pane flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface"
       data-testid="partner-workspace"
       style={workspaceMode ? { display: 'none' } : undefined}
     >
       <PartnerBaseTaskAutoOpener onOpenDetail={onOpenDetail} />
       <PartnerNativeDocumentAutoOpener onOpenDetail={onOpenDetail} />
-      <div className="flex h-10 flex-shrink-0 items-center gap-1 border-b border-border-default px-3">
+      <div className="workspace-header flex h-14 flex-shrink-0 items-center gap-1 border-b border-border-default px-4">
         <SidebarToggleButton
           side="left"
           open={leftSidebarOpen}

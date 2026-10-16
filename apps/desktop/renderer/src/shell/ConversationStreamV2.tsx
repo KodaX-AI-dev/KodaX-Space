@@ -1,3 +1,4 @@
+import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 // ConversationStreamV2 — alpha.1
 //
 // 跟 Claude Desktop 截图对齐的对话流：
@@ -1225,6 +1226,7 @@ export function ConversationStreamV2(): JSX.Element {
   // Esc 关闭并清空 query。
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (!isSurfaceInteractive(scrollRef.current)) return;
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setSearchOpen(true);

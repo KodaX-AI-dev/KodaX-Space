@@ -8,8 +8,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 import {
+  ArrowLeft,
   Archive,
   AlertTriangle,
   Bot,
@@ -73,6 +73,7 @@ import { setSpaceLanguage } from '../../space-control/semanticActions.js';
 import { requestSpaceVersionRefresh } from '../../lib/versionEvents.js';
 import { SpaceExtensionsProvider } from '../extensions/SpaceExtensionsProvider.js';
 import { ExtensionSettingsPanel } from '../extensions/ExtensionSettingsPanel.js';
+import { AppearanceSettings } from './AppearanceSettings.js';
 
 export type SettingsTab =
   | 'providers'
@@ -151,10 +152,12 @@ function SettingsModalContent({
 }: SettingsModalProps): JSX.Element {
   const { t } = useI18n();
   const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   function selectTab(next: SettingsTab): void {
     setTab(next);
+    scrollRef.current?.scrollTo({ top: 0 });
     onTabChange?.(next);
     window.requestAnimationFrame(() => {
       document.getElementById(`settings-tab-${next}`)?.focus();
@@ -187,28 +190,48 @@ function SettingsModalContent({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // A nested confirmation/editor owns Escape before this page does.
+      const visibleModal = Array.from(
+        document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'),
+      ).some((node) => !node.closest('[inert]') && node.getClientRects().length > 0);
+      if (visibleModal) return;
+      onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const modal = (
+  useEffect(() => {
+    const previous = document.activeElement;
+    document.getElementById('settings-tab-' + initialTab)?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
+    // Focus moves only when entering the workspace, not on every tab change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/55 px-4 py-4 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
+      className="settings-workspace min-h-0 min-w-0 flex flex-1 text-sm text-fg-primary"
+      data-testid="settings-workspace"
+      role="region"
       aria-labelledby="settings-modal-title"
-      onMouseDown={onClose}
     >
-      <div
-        className="glass lift ix-zone flex h-[min(780px,calc(100vh-32px))] w-[min(1120px,calc(100vw-32px))] min-h-[560px] overflow-hidden rounded-xl border border-border-default bg-surface-2 text-sm text-fg-primary"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <aside className="flex w-64 shrink-0 flex-col border-r border-border-default bg-surface/55">
-          <div className="border-b border-border-default px-4 py-4">
+      <div className="settings-layout flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <aside className="settings-navigation glass ix-zone flex shrink-0 flex-col border-r border-border-default">
+          <div className="px-4 py-5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="settings-back mb-5 inline-flex items-center gap-2 rounded-md text-xs text-fg-secondary hover:text-fg-primary"
+            >
+              <ArrowLeft size={14} aria-hidden />
+              {t('settings.backToWorkspace')}
+            </button>
             <div className="mb-1 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-default bg-surface-3 text-accent-ink">
+              <div className="settings-mark flex h-8 w-8 items-center justify-center rounded-lg text-accent-ink">
                 <Settings2 className="h-4 w-4" strokeWidth={1.8} aria-hidden />
               </div>
               <div className="min-w-0">
@@ -222,8 +245,9 @@ function SettingsModalContent({
 
           <nav
             role="tablist"
+            aria-orientation="vertical"
             aria-label={t('settings.sections')}
-            className="flex-1 space-y-1 px-3 py-3"
+            className="settings-nav-list min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-2"
             onKeyDown={handleTabListKeyDown}
           >
             {TABS.map((t) => (
@@ -238,7 +262,7 @@ function SettingsModalContent({
             ))}
           </nav>
 
-          <div className="m-3 rounded-lg border border-border-default bg-surface-2 p-3">
+          <div className="settings-key-safety m-3 border-t border-border-default p-3">
             <div className="mb-1 flex items-center gap-2 text-xs font-medium text-fg-primary">
               <ShieldCheck className="h-3.5 w-3.5 text-ok" strokeWidth={1.8} aria-hidden />
               {t('settings.keySafety.title')}
@@ -249,11 +273,13 @@ function SettingsModalContent({
           </div>
         </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col">
-          <header className="flex min-h-[72px] shrink-0 items-center gap-3 border-b border-border-default px-5 py-3">
+        <section className="settings-content flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
+          <header className="workspace-header flex min-h-[72px] shrink-0 items-center gap-3 border-b border-border-default px-6 py-4">
             <activeTab.Icon className="h-5 w-5 text-fg-secondary" strokeWidth={1.8} aria-hidden />
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold leading-tight">{t(activeTab.labelKey)}</div>
+              <h1 className="text-lg font-semibold tracking-tight leading-tight">
+                {t(activeTab.labelKey)}
+              </h1>
               <div className="truncate text-xs text-fg-muted">{t(activeTab.descriptionKey)}</div>
             </div>
             <button
@@ -267,7 +293,7 @@ function SettingsModalContent({
             </button>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto bg-surface/30">
+          <div ref={scrollRef} className="settings-scroll min-h-0 flex-1 overflow-y-auto">
             <div
               id="settings-panel-preferences"
               role="tabpanel"
@@ -327,8 +353,6 @@ function SettingsModalContent({
       </div>
     </div>
   );
-
-  return createPortal(modal, document.body);
 }
 
 function DiagnosticsPanel(): JSX.Element {
@@ -415,9 +439,9 @@ function SettingsNavButton({
       tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={[
-        'flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left',
+        'settings-nav-button flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left',
         active
-          ? 'border border-border-default bg-surface-3 text-fg-primary shadow-sm'
+          ? 'border border-border-default bg-surface-3 text-fg-primary'
           : 'border border-transparent text-fg-secondary hover:bg-hover-bg hover:text-fg-primary',
       ].join(' ')}
     >
@@ -495,6 +519,13 @@ function PreferencesPanel(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-5">
+      <SettingsSection
+        title={t('settings.appearance')}
+        description={t('settings.appearance.description')}
+        icon={SlidersHorizontal}
+      >
+        <AppearanceSettings />
+      </SettingsSection>
       <LanguageSection />
       <TerminalShellSection />
       {window.kodaxSpace?.platform === 'win32' && <WindowCloseBehaviorSection />}
@@ -3185,9 +3216,9 @@ function SettingsSection({
   readonly children: ReactNode;
 }): JSX.Element {
   return (
-    <section className="rounded-lg border border-border-default bg-surface-2 p-4">
-      <div className="mb-4 flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-3 text-fg-secondary">
+    <section className="settings-section border-b border-border-default py-6">
+      <div className="settings-section-heading mb-4 flex items-start gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg-secondary">
           <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
         </div>
         <div className="min-w-0">

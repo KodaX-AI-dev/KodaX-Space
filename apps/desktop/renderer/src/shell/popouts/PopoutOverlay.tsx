@@ -15,11 +15,6 @@
 // **F059c**: artifact 加入 full-cover —— HTML/图表/报告在 760px 窄条里被截、读不全
 // (用户反馈 2026-06-15)。⤢ 后铺满整个中间对话区 (像 diff)；再"单独打开"走 L3 独立窗口。
 const FULL_COVER_KINDS = new Set<string>(['files', 'diff', 'artifact', 'workflow']);
-// 全覆盖 popout 里，diff / artifact 的内容区自带不透明表面（Monaco 编辑器 / 渲染出的产出），
-// 玻璃半透明只剩标题栏薄边，从不透字；只有 workflow 是纯文字行直接铺在半透明 .glass 上，
-// 没有不透明内容层 → 下层对话会透上来。故只给这类「内容透明」的全覆盖层补不透明度，
-// 不动 diff / artifact 本来就没问题的观感。
-const TRANSPARENT_CONTENT_KINDS = new Set<string>(['workflow']);
 const POPOUT_WIDTH: Record<string, string> = {
   preview: 'w-[880px]',
   terminal: 'w-[800px]',
@@ -29,7 +24,7 @@ const POPOUT_WIDTH: Record<string, string> = {
 const DEFAULT_POPOUT_WIDTH = 'w-[480px]';
 
 import { Component, Suspense, lazy, type ErrorInfo, type ReactNode, type RefObject } from 'react';
-import { X } from 'lucide-react';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 import type { PopoutKind } from '../CommandToolbar.js';
 import { PreviewPanel } from './PreviewPanel.js';
 import { FilesPanel } from './FilesPanel.js';
@@ -56,9 +51,12 @@ import { useI18n } from '../../i18n/I18nProvider.js';
 import type { MessageKey } from '../../i18n/messages.js';
 
 interface PopoutOverlayProps {
+  readonly suspended?: boolean;
   kind: PopoutKind;
   onClose: () => void;
   boundsRef: RefObject<HTMLElement | null>;
+  readonly focused?: boolean;
+  readonly onToggleFocus?: () => void;
 }
 
 interface PopoutPanelErrorBoundaryProps {
@@ -137,11 +135,17 @@ const POPOUT_TITLE_KEYS: Record<PopoutKind, MessageKey> = {
   workflow: 'popout.title.workflow',
 };
 
-export function PopoutOverlay({ kind, onClose, boundsRef }: PopoutOverlayProps): JSX.Element {
+export function PopoutOverlay({
+  suspended = false,
+  kind,
+  onClose,
+  boundsRef,
+  focused = false,
+  onToggleFocus,
+}: PopoutOverlayProps): JSX.Element {
   const { t } = useI18n();
   const surface = floatingSurfaceForPopout(kind);
   const fullCover = FULL_COVER_KINDS.has(kind);
-  const transparentContent = TRANSPARENT_CONTENT_KINDS.has(kind);
   const title = t(POPOUT_TITLE_KEYS[kind]);
   // full-cover：left-0 铺满整个对话区；窄 panel：固定宽度从右侧贴边 slide-in。
   const widthCls = fullCover
@@ -149,6 +153,7 @@ export function PopoutOverlay({ kind, onClose, boundsRef }: PopoutOverlayProps):
     : `${POPOUT_WIDTH[kind] ?? DEFAULT_POPOUT_WIDTH} max-w-[95vw]`;
   return (
     <FloatingSurfaceHost
+      suspended={suspended}
       surface={surface}
       boundsRef={boundsRef}
       onClose={onClose}
@@ -159,16 +164,23 @@ export function PopoutOverlay({ kind, onClose, boundsRef }: PopoutOverlayProps):
         data-popout-kind={kind}
         data-surface-kind={surface.kind}
         data-surface-placement={surface.placement}
-        // `!absolute`：`.glass`（styles.css，无 @layer 的裸规则）带 `position: relative`，
-        // 在级联里永远压过 Tailwind `@layer utilities` 的 `.absolute` —— 不加 important 这个
-        // 浮层会退回文档流、掉到 BottomBar(输入框) 下面（F060 起的回归）。important utility
-        // 精准压住，且全仓仅此一处 glass+absolute 冲突，零波及其它 glass 面板。
-        // 内容透明的全覆盖层（workflow）盖在对话流上面：加 `glass-cover` 拉高不透明度，避免下层
-        // 对话文字透上来干扰阅读。diff / artifact 内容自带不透明表面、窄侧 panel 需透出上下文，均不加。
-        className={`glass ix-zone pointer-events-auto ${transparentContent ? 'glass-cover' : ''} !absolute right-0 top-10 bottom-0 ${widthCls} border-l border-border-default flex flex-col`}
+        className={`${fullCover ? 'full-work-surface' : 'glass'} ix-zone pointer-events-auto !absolute right-0 top-0 bottom-0 ${widthCls} border-l border-border-default flex flex-col`}
       >
         <div className="px-3 py-2 border-b border-border-default flex items-center text-xs text-fg-muted flex-shrink-0">
           <span>{title}</span>
+          <div className="flex-1" />
+          {fullCover && onToggleFocus && (
+            <button
+              type="button"
+              onClick={onToggleFocus}
+              aria-pressed={focused}
+              aria-label={t(focused ? 'workspace.exitFocus' : 'menu.view.focusMode')}
+              title={t(focused ? 'workspace.exitFocus' : 'menu.view.focusMode')}
+              className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded hover:bg-surface-3 hover:text-fg-primary"
+            >
+              {focused ? <Minimize2 size={13} aria-hidden /> : <Maximize2 size={13} aria-hidden />}
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

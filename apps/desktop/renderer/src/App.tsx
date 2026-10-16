@@ -19,7 +19,6 @@ import { useAppStore } from './store/appStore.js';
 import { replaceProductSessionView } from './store/productSessionView.js';
 import { pushToast } from './store/toastStore.js';
 import { useI18n } from './i18n/I18nProvider.js';
-import { SettingsModal } from './features/settings/SettingsModal.js';
 import { QuickAskPopover } from './features/quick-ask/QuickAskPopover.js';
 import { useSessionCompleteNotification } from './features/notifications/useSessionCompleteNotification.js';
 import { useAppBadgeCount } from './features/notifications/useAppBadgeCount.js';
@@ -73,7 +72,6 @@ const MAX_BACKGROUND_LIVE_RECONCILIATIONS = 4;
 
 export default function App(): JSX.Element {
   const [version, setVersion] = useState<SpaceVersionOutput | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   // F018 Quick Ask popover —— Cmd/Ctrl+K toggles
   const [showQuickAsk, setShowQuickAsk] = useState(false);
   const { t } = useI18n();
@@ -1107,16 +1105,6 @@ export default function App(): JSX.Element {
     replaceAgentActorSnapshot,
   ]);
 
-  // (Esc 关 settings 面板已下放到 SettingsModal 自己 own —— 见 features/settings/SettingsModal.tsx)
-
-  // OC-11: SystemNotice 的 "Provider settings" 按钮派发 CustomEvent —— 这里接住
-  // 打开 Settings 模态，让 auth/quota 错误一键能跳转到改 key 的界面。
-  useEffect(() => {
-    const open = (): void => setShowSettings(true);
-    window.addEventListener('kodax-space.open-provider-settings', open);
-    return () => window.removeEventListener('kodax-space.open-provider-settings', open);
-  }, []);
-
   // F018 Quick Ask global shortcut: Cmd+K (macOS) / Ctrl+K (others)
   // 跟 VSCode Quick Open / Slack / Linear 一致的 muscle memory。
   useEffect(() => {
@@ -1199,13 +1187,10 @@ export default function App(): JSX.Element {
     };
   }, []);
 
-  // Settings overlay 仍 hoist 在这里；PermissionModal 由 Shell 内部 mount；askUser 走对话流内联卡（AskUserInline）。
+  // Shell owns the settings workspace and permissions; Quick Ask remains independent.
   return (
     <>
       <Shell version={version} />
-      {showSettings && (
-        <SettingsModal initialTab="providers" onClose={() => setShowSettings(false)} />
-      )}
       <QuickAskPopover open={showQuickAsk} onClose={() => setShowQuickAsk(false)} />
       <CompleteExitOverlay />
     </>

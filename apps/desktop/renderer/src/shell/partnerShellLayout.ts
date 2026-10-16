@@ -1,8 +1,8 @@
 export const PARTNER_MIN_CENTER_PX = 420;
 
 const PARTNER_MIN_RIGHT_SIDEBAR_PX = 180;
-const SHELL_HORIZONTAL_PADDING_PX = 20;
-const SHELL_PANEL_GAP_PX = 10;
+const SHELL_HORIZONTAL_PADDING_PX = 0;
+const SHELL_PANEL_GAP_PX = 0;
 const RESIZE_HANDLE_WIDTH_PX = 4;
 
 export interface PartnerShellLayoutInput {

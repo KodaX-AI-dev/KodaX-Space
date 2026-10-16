@@ -35,7 +35,7 @@ export function RightSidebarFrame({
       data-testid="right-sidebar"
       data-dock-kind={dockKind}
       style={width !== undefined ? { width: `${width}px` } : undefined}
-      className="glass lift ix-zone border border-border-default rounded-xl overflow-hidden bg-surface flex flex-col flex-shrink-0 text-[13px]"
+      className="workspace-inspector glass ix-zone overflow-hidden bg-surface flex min-h-0 flex-col flex-shrink-0 text-[13px]"
     >
       <RightSidebarWidthToolbar
         mode={widthMode}
@@ -71,7 +71,7 @@ function RightSidebarWidthToolbar({
   const { t } = useI18n();
   const closeLabel = t('shell.hideSidebar', { side: t('shell.side.right') });
   return (
-    <div className="flex items-center justify-between gap-2 border-b border-border-default/60 px-2 py-1.5 flex-shrink-0">
+    <div className="inspector-header flex h-14 items-center justify-between gap-2 border-b border-border-default/60 px-4 flex-shrink-0">
       <span className="text-[10px] uppercase tracking-wider text-fg-faint">{t('right.panel')}</span>
       <div className="flex items-center gap-0.5">
         {compact ? (

@@ -13,7 +13,7 @@ async function openSettings(page: Page): Promise<void> {
 }
 
 function settingsDialog(page: Page) {
-  return page.locator('[role="dialog"]').filter({ has: page.locator('#settings-modal-title') });
+  return page.getByTestId('settings-workspace');
 }
 
 async function openProviders(page: Page): Promise<void> {
@@ -80,7 +80,7 @@ interface InteractiveSnapshot {
 }
 
 async function collectSettingsInteractives(page: Page): Promise<readonly InteractiveSnapshot[]> {
-  return page.locator('[role="dialog"]').evaluate((dialog) => {
+  return page.getByTestId('settings-workspace').evaluate((dialog) => {
     const selectors = [
       'button',
       'input',
@@ -519,10 +519,7 @@ test('Provider cards support default switching, key editing, removal, and deleti
 
     // Confirm path: dialog Delete button actually removes the card.
     await beta.getByRole('button', { name: 'Delete' }).click();
-    await page
-      .locator(CONFIRM_DIALOG)
-      .getByRole('button', { name: 'Delete' })
-      .click();
+    await page.locator(CONFIRM_DIALOG).getByRole('button', { name: 'Delete' }).click();
     await expect(beta).toHaveCount(0);
   } finally {
     await space.close();
@@ -593,17 +590,14 @@ test('Provider cards cover add-key Enter, test failure, and default cleanup stat
 
     // Delete now uses the in-app ConfirmDialog; click its confirm button.
     await gamma.getByRole('button', { name: 'Delete' }).click();
-    await page
-      .locator(CONFIRM_DIALOG)
-      .getByRole('button', { name: 'Delete' })
-      .click();
+    await page.locator(CONFIRM_DIALOG).getByRole('button', { name: 'Delete' }).click();
     await expect(gamma).toHaveCount(0);
   } finally {
     await space.close();
   }
 });
 
-test('Settings modal close controls are predictable and non-destructive', async () => {
+test('Settings workspace close controls are predictable and non-destructive', async () => {
   const space = await launchSpace(`${TEST_ID}-close-controls`);
   try {
     const { page } = space;
@@ -616,7 +610,9 @@ test('Settings modal close controls are predictable and non-destructive', async 
 
     await page.getByTestId('settings-button').click();
     await expect(page.locator('#settings-modal-title')).toBeVisible();
-    await page.mouse.click(8, 8);
+    await page.locator('#settings-modal-title').click();
+    await expect(page.locator('#settings-modal-title')).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(page.locator('#settings-modal-title')).toHaveCount(0);
   } finally {
     await space.close();
