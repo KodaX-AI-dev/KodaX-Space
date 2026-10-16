@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T03:22:19.543Z",
+  "generatedAt": "2026-10-16T03:22:53.535Z",
   "platform": "win32-x64",
   "spaceVersion": "0.1.47-alpha.2.issue222.4",
   "dependency": {
@@ -11,9 +11,9 @@
   "sources": {
     "space": {
       "base": "97e3172d",
-      "worktreeHead": "4829742bafe934d288499fd84752c06b8146b97a",
-      "sourceCommit": null,
-      "workingTreeDirty": true,
+      "worktreeHead": "29e9c3bd22f369d9a76bf3deaa2657556b1c6461",
+      "sourceCommit": "29e9c3bd22f369d9a76bf3deaa2657556b1c6461",
+      "workingTreeDirty": false,
       "fingerprints": {
         "apps/desktop/electron/kodax/host.ts": "dec17e30d9ae74767e33aef035ceb42aa2f3a7792e1753d5589978bc3baeac0e",
         "apps/desktop/electron/kodax/runtime-host-adapter.ts": "5a69cfdcd737b2f744f973fdf7e9196a44233059873248581f777893dcf5377f",
