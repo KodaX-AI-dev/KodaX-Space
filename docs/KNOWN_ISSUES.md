@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-15
+Last Updated: 2026-10-16
 
 > Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96; the current unpublished candidate is Space 0.1.47-alpha.2 with exact SDK 0.7.97-alpha.6. Start from the [documentation hub](README.md) and [alpha.2 readiness](releases/v0.1.47-alpha.2-release-readiness.md) for current behavior, qualification and remaining investigations.
 
@@ -216,6 +216,8 @@ Last Updated: 2026-10-15
 | 218 | High     | Legacy fix superseded; intermittent switch case under investigation                                          | Queued inputs and whole answers duplicate after reload; recovered live history omits completed tools                                                                                                       | Observed v0.1.46-rc.5                                                     | 2026-09-28 |
 | 219 | Medium   | Resolved; Registry alpha.6 verified                                                                          | Old completed Sessions fall back to creation time in sidebar recency                                                                                                                                       | Runtime activity overlay introduced 2026-08-03                            | 2026-09-28 |
 | 220 | Medium   | Resolved; SDK alpha.6 published and verified                                                                 | Unsubmitted REPL Sessions appear as blank tasks                                                                                                                                                            | SDK v0.7.97-alpha.1 Host migration (3301a452 / 0914f589)                  | 2026-10-14 |
+| 221 | Medium   | Resolved in source                                                                                           | Session deletion failures are misreported as another running KodaX process                                                                                                                                 | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                            | 2026-10-16 |
+| 222 | High     | ready                                                                                                        | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                            | 2026-10-16 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -250,6 +252,166 @@ claim this symptom resolved by the above fixes.
 Regression guide: [Issue 218](test-guides/ISSUE_218_v0.1.46-rc.6_REGRESSION_GUIDE.md).
 
 ## Issue Details
+
+## Issue 222: A conflicting shared Session Host blocks all Coder history with no actionable recovery flow
+
+- Priority: High
+- Status: Resolved in source; isolated Windows packaged recovery verified
+- Introduced: Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6; first affected version unknown
+- Created: 2026-10-16
+
+### Original Problem
+
+Every Coder history in the packaged Space window displayed an empty conversation
+and the same daemon bootstrap failure, while project/sidebar titles still loaded.
+After a diagnostic restart, Ctrl+R instead showed a generic capability-upgrade
+message with no preflight or usable recovery action. Historical messages remained
+intact on disk. Expected: shared-Host conflicts identify the actual owner and
+provide a safe, actionable recovery path; history availability and connection
+failure must not look like an empty Session.
+
+### Reproduction / Evidence
+
+1. Start a daemon using profile `default` against an isolated Session directory.
+   Leave it alive, then start Space using profile `coder` against that directory.
+2. SDK storage permits only one product Host per canonical Session directory;
+   profiles name connections rather than separating the writer ownership domain.
+3. The competing Coder startup fails with `session_storage_owned` in the daemon
+   bootstrap path; the window exposes only the child-exited startup error.
+4. Select several existing Coder Sessions. Sidebar metadata loads independently,
+   but current product views and bounded history require a ready compatible Host.
+
+In the reported personal profile, the live alpha.5 `default` owner started on
+October 15, PID 60612, and used the KodaX checkout CLI with the personal home.
+Its original launcher could not be established after it exited; do not label it
+a test leak without further evidence. Safe status reported zero active/queued
+Runs, permissions and Workflows, and guarded `daemon stop` succeeded.
+
+A diagnostic recovery started a same-version alpha.6 Host without Space's
+`daemonOrphanExitMs:30000` policy. This omitted the dynamic `daemonOrphanExit:1`
+capability. The SDK correctly refused a connection requiring it, and rejected
+automatic replacement because the existing Host was not provably older. The
+Space wrapper then exposed generic upgrade/no-preflight text instead of the
+specific missing capability and the distinction between build and startup policy.
+
+### Recovery Performed
+
+The incompatible diagnostic Host accepted guarded shutdown. Initializing the
+actual Space Runtime adapter with its full requirements succeeded, and three
+real product views contained 136, 120 and 115 items with assistant text. The user
+confirmed on October 16 that history browsing returned to normal after Ctrl+R.
+Issue 221 fixes deletion error classification only; it does not close this issue.
+
+### Acceptance Criteria
+
+- Surface the shared-directory owner/profile and structured startup cause through
+  the SDK's supported diagnostics; preserve the missing capability in errors.
+- Provide verified idle-owner recovery or a clear active-work blocker without
+  removing ownership locks, bypassing capability checks, or terminating live work.
+- Keep historical-view failure distinguishable from confirmed empty history and
+  recover the selected view when a compatible Host becomes available. Preserve
+  ADR-010's SDK item authority; no local transcript reconstruction fallback.
+- Add isolated end-to-end coverage for an existing default-profile owner, idle
+  recovery versus active-work refusal, and same-version startup-policy mismatch.
+  Acceptance must read visible user/assistant content through the packaged app;
+  process health or SDK version checks alone are insufficient.
+
+### Resolution / Verification
+
+The SDK now discovers the canonical shared writer across profiles, authenticates
+that actual owner and rechecks a new winner after a competing startup exits.
+Managed shutdown retains preflight, both owner fences and exact process-exit
+verification. An identical-build Host can refresh the explicitly requested
+orphan-exit policy; active work remains protected. Supported diagnostics include
+owner/profile, capability and blockers, and transient ownership failures are
+retryable. Space keeps retrying beyond the SDK startup deadline and reconciles
+the selected SDK product view when ready, without requiring another row click or
+Ctrl+R. Passive reconnect and persisted exit recovery retain the actual profile.
+
+Issue 060 only recognized the exact unhealthy-daemon error and did not cover
+shared-profile conflicts, a concurrent startup winner or startup-policy mismatch.
+Those cases now have dedicated regressions. Isolated source and packaged Windows
+tests both passed idle recovery and a real active Run held beyond the first
+startup deadline. The Run completed successfully before replacement, and two
+histories displayed saved user and assistant text. Full Space tests passed
+(4,362 passed, 20 platform/permission skips); packaged lifecycle regressions
+passed 6/6. The local candidate is Space `0.1.47-alpha.2.issue222.3` with SDK
+`0.7.97-alpha.6.issue222.3`. See the
+[regression guide](test-guides/ISSUE_222_v0.1.47_REGRESSION_GUIDE.md) and
+[candidate evidence](releases/issue-222-recovery-verification.md).
+
+## Issue 221: Session deletion failures are misreported as another running KodaX process
+
+- Priority: Medium
+- Status: Resolved in source; Windows candidate rebuilt and verified
+- Introduced: Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6; first affected version unknown
+- Created / Resolution Date: 2026-10-16
+- Fixed: v0.1.47-alpha.2.issue222.3 local Windows candidate
+
+### Original Problem
+
+Deleting Session `20261001_100437_ra63d3a88ba19c` (title `- V`) reported that
+another KodaX process was running it. Its history contained one user message and
+no assistant response. Coder initialization also showed a daemon startup failure.
+Expected: deletion succeeds through the owning Host, or reports the actual failure
+while preserving the Session and its local sidecars.
+
+### Root Cause
+
+An isolated copy reproduced SDK `deleteSession()` returning `delete_failed`.
+The raw storage error was `actor_owner_conflict`: the record retained an Actor
+owner from October 1 whose PID and liveness endpoint no longer existed. The
+ordinary storage delete path requires Runtime-owned records to be deleted through
+a Host; it does not reclaim their Actor ownership. Runtime deletion of the same
+copy succeeded.
+
+A live SDK alpha.5 `default` daemon held the product Host lock for the shared
+Session directory, preventing Space's alpha.6 `coder` daemon from starting. With
+Coder unavailable, Space used ordinary SDK deletion. `deletePersistedSession()`
+collapsed `delete_failed` into `busy`, and `host.delete()` separately collapsed
+every Runtime exception into a running-session result.
+
+### Resolution
+
+Only SDK `session_running` returns the busy result. SDK `delete_failed` throws
+`session_delete_failed`; Runtime exceptions retain their original error. Both
+failure paths restore any disposed local Session before reporting the error, and
+the existing IPC error envelope preserves runtime, title, notice and attachment
+sidecars by skipping successful-deletion cleanup.
+
+For the reported local data, four Session files were backed up before deletion
+through the existing `default` Host's public Runtime API. The idle daemon then
+accepted guarded `daemon stop`; the alpha.6 Coder daemon subsequently started
+and reported healthy. No ownership lock was manually removed.
+
+The health-only check did not establish Space compatibility: that diagnostic
+startup omitted `daemonOrphanExitMs`, so the SDK did not advertise
+`daemonOrphanExit:1`, despite using the same alpha.6 version. The existing Space
+window consequently rejected the Host after Ctrl+R and could not display any
+Coder history. Three strict disk reads confirmed 134, 78 and 146 messages; no
+history was lost. The incompatible diagnostic Host was stopped through the
+guarded API, then the real Space `RuntimeHostAdapter.initialize()` path started
+its replacement with the complete requirements and the 30-second orphan policy.
+That adapter reached `ready` and returned 136, 120 and 115 nonempty product-view
+items for those Sessions, including assistant text. The user refreshed the
+existing window and confirmed normal history browsing on October 16. The wider
+shared-Host startup/history recovery gap is tracked separately as Issue 222.
+
+### Files Changed / Tests Added
+
+- `apps/desktop/electron/kodax/session-store.ts`
+- `apps/desktop/electron/kodax/host.ts`
+- `apps/desktop/electron/test/host.test.ts`: SDK failure classification and Runtime
+  error propagation with local Session restoration; both observed RED before fixes.
+
+### Verification
+
+- Host, Runtime adapter and Session runtime-store suites: 313 passed, 0 failed.
+- The original Session copy fails ordinary SDK deletion and passes public Runtime deletion.
+- Electron TypeScript, changed-file ESLint/format checks and the main-process build passed.
+- Personal-history recovery uses the actual Space adapter and verifies user and
+  assistant items; daemon health alone is not sufficient acceptance evidence.
+- Regression procedure: [Issue 221 guide](test-guides/ISSUE_221_v0.1.47_REGRESSION_GUIDE.md).
 
 ## Issue 220: Unsubmitted REPL Sessions appear as blank tasks
 
@@ -15621,14 +15783,14 @@ misclassified as missing before the durable mutation is attempted.
 
 ## Summary
 
-- Total: 207
+- Total: 209
 - Open: 1
-- Ready: 1
+- Ready: 2
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 194
-- High: 108
-- Medium: 87
+- Resolved (including source-only fixes): 195
+- High: 109
+- Medium: 88
 - Low: 12
-- Next ready to resolve: 213
+- Next ready to resolve: 222

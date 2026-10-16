@@ -47,6 +47,10 @@ const stableRuntimeClientIdentitySchema = z
         createdAt: z.number().int().nonnegative(),
         requestId: z.string().min(1).max(256),
         runtimeId: z.string().min(1).max(256),
+        profile: z
+          .string()
+          .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
+          .optional(),
       })
       .strict()
       .optional(),
@@ -56,6 +60,7 @@ const stableRuntimeClientIdentitySchema = z
 export type StableRuntimeClientIdentity = z.infer<typeof stableRuntimeClientIdentitySchema>;
 
 export interface RuntimeClientInstanceIdentity {
+  readonly profile?: string;
   readonly clientId: string;
   readonly instanceId: string;
   readonly instanceSecret: string;
@@ -202,7 +207,7 @@ export class RuntimeClientIdentityStore {
 
   async retireInstance(
     instanceId: string,
-    exit: { readonly requestId: string; readonly runtimeId: string },
+    exit: { readonly requestId: string; readonly runtimeId: string; readonly profile?: string },
   ): Promise<void> {
     const current = await this.loadOrCreate();
     if (current.exitRecovery?.instanceId === instanceId) return;
@@ -218,6 +223,7 @@ export class RuntimeClientIdentityStore {
         createdAt: current.createdAt,
         requestId: exit.requestId,
         runtimeId: exit.runtimeId,
+        ...(exit.profile ? { profile: exit.profile } : {}),
       },
     };
     await this.#loadSecret(next.secretAccount, true);
@@ -238,6 +244,7 @@ export class RuntimeClientIdentityStore {
       clientId: current.clientId,
       instanceId: previous.instanceId,
       instanceSecret: await this.#loadSecret(previous.secretAccount, false, identity),
+      ...(previous.profile ? { profile: previous.profile } : {}),
     };
   }
 

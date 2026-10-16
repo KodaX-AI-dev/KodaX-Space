@@ -11,10 +11,10 @@ const PROBE_MARKER = 'KODAX_RUNTIME_PROBE=';
 const PROBE_TIMEOUT_MS = 30_000;
 const require = createRequire(import.meta.url);
 const EXPECTED_KODAX_VERSION = (
-  require('../../../../package.json') as {
-    readonly dependencies: { readonly '@kodax-ai/kodax': string };
+  require('../../../../package-lock.json') as {
+    readonly packages: { readonly 'node_modules/@kodax-ai/kodax': { readonly version: string } };
   }
-).dependencies['@kodax-ai/kodax'];
+).packages['node_modules/@kodax-ai/kodax'].version;
 const INSTALLED_KODAX_VERSION = (
   require('@kodax-ai/kodax/package.json') as { readonly version: string }
 ).version;

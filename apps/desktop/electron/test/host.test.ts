@@ -753,6 +753,37 @@ test('delete: returns false and preserves persisted state when SDK reports sessi
   assert.equal(mockState.has(sessionId), true);
 });
 
+test('delete: SDK delete_failed is an error rather than a running-session result', async () => {
+  const sessionId = 's_delete_failed';
+  setSessionStoreImpl({
+    listSessions: async () => [],
+    forkSession: async () => null,
+    rewindSession: async () => null,
+    deleteSession: async () => ({ error: { code: 'delete_failed' } }),
+    loadSession: async () => null,
+    watchSessions: () => ({ close: () => undefined }),
+  });
+
+  await assert.rejects(() => kodaxHost.delete(sessionId), { code: 'session_delete_failed' });
+});
+
+test('delete: Runtime failure remains an error and restores the local session', async (t) => {
+  const { sessionId } = kodaxHost.createSession({ projectRoot: '/r', provider: 'mock' });
+  mockState.seed(sessionId, '/r', 'Deletion failed');
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
+  const failure = new Error('Runtime transport disconnected');
+  t.mock.method(runtimeHostAdapter, 'deleteSession', async () => {
+    throw failure;
+  });
+
+  await assert.rejects(
+    () => kodaxHost.delete(sessionId),
+    (error) => error === failure,
+  );
+  assert.ok(kodaxHost.get(sessionId), 'failed delete should restore the local session');
+  assert.equal(mockState.has(sessionId), true);
+});
+
 test('delete: preserves committed attachments while SDK reports session_running', async () => {
   const previousTestProfile = process.env.KODAX_TEST_ONBOARDING;
   process.env.KODAX_TEST_ONBOARDING = `host-busy-attachments-${process.pid}`;

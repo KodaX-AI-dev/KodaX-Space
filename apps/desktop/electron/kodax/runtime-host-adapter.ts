@@ -1621,7 +1621,14 @@ function runtimeInitializationDiagnostic(error: unknown): string {
       : preflight.blockers?.length
         ? ` Safe automatic restart is blocked by: ${preflight.blockers.join(', ')}.`
         : ' Safe replacement was attempted but did not complete; follow the SDK diagnostic before restarting KodaX Space.';
-  return `Coder daemon capability upgrade required.${blockers} ${diagnostic}`.slice(
+  const capability = (error as { capability?: unknown }).capability;
+  const requirement = typeof capability === 'string' ? ` (${capability})` : '';
+  const ownerProfile = (error as { ownerProfile?: unknown }).ownerProfile;
+  const owner = typeof ownerProfile === 'string' ? ` Host profile: ${ownerProfile}.` : '';
+  const recovery = isRetryableSharedHostFailure(error)
+    ? ' Space will retry automatically when the Host is idle.'
+    : '';
+  return `Coder daemon capability upgrade required${requirement}.${owner}${blockers}${recovery} ${diagnostic}`.slice(
     0,
     MAX_DIAGNOSTIC_ERROR,
   );
@@ -1631,6 +1638,16 @@ function isTransientDaemonHealthFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /^Runtime daemon is unhealthy; refusing to start a competing owner\.?$/i.test(
     message.trim(),
+  );
+}
+
+function isRetryableSharedHostFailure(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error)) return false;
+  return (
+    (error.code === 'session_storage_owned' ||
+      error.code === 'daemon_capability_upgrade_required') &&
+    'retryable' in error &&
+    error.retryable === true
   );
 }
 
@@ -2046,6 +2063,7 @@ export class RuntimeHostAdapter {
   private runtimeReadyRevision = 0;
   private readonly runtimeReadyObservers = new Set<(revision: number) => void>();
   private clientExitSettlement: Promise<RuntimeExitSettlement> | undefined;
+  private runtimeProfile = 'coder';
   /** Exact Run identities accepted through this Space process, retained for child-workflow provenance. */
   private readonly spaceOwnedRunIds = new Set<string>();
   /** Exact Runtime Agent turn identities started through this Space process. */
@@ -2321,7 +2339,7 @@ export class RuntimeHostAdapter {
     autoStart: boolean,
   ): SpaceRuntimeConnectOptions {
     return {
-      profile: 'coder',
+      profile: autoStart ? 'coder' : this.runtimeProfile,
       autoStart,
       daemonOrphanExitMs: 30_000,
       ...(this.runtimeHomeDir !== undefined ? { homeDir: this.runtimeHomeDir } : {}),
@@ -2482,6 +2500,7 @@ export class RuntimeHostAdapter {
         this.hostToolLeaseId = hostToolLease.id;
         this.hostToolLeaseIds.add(hostToolLease.id);
         this.runtime = runtime;
+        this.runtimeProfile = runtime.identity.profile;
         this.integrationHealth = undefined;
         this.integrationHealthFingerprint = '';
         activeStage = 'connection_validate';
@@ -2603,7 +2622,9 @@ export class RuntimeHostAdapter {
         this.initializePromise = null;
         if (this.state === 'closed') throw error;
         this.lastError = runtimeInitializationDiagnostic(error);
-        const retryableHealthFailure = isTransientDaemonHealthFailure(error);
+        const retryableOwnerFailure = isRetryableSharedHostFailure(error);
+        const retryableHealthFailure =
+          isTransientDaemonHealthFailure(error) || retryableOwnerFailure;
         this.state = 'failed';
         this.publishUnavailable(
           retryableHealthFailure ? 'reconnecting' : 'incompatible',
@@ -2614,7 +2635,7 @@ export class RuntimeHostAdapter {
         // That condition can clear without user action, so keep probing through
         // the existing bounded backoff instead of leaving Coder permanently in
         // a failed state until the first send happens to retry initialize().
-        if (retryableHealthFailure) this.scheduleReconnect(true);
+        if (retryableHealthFailure) this.scheduleReconnect(true, retryableOwnerFailure);
         throw error;
       });
     return this.initializePromise;
@@ -2776,7 +2797,10 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private scheduleReconnect(retryOnlyTransientHealthFailure = false): void {
+  private scheduleReconnect(
+    retryOnlyTransientHealthFailure = false,
+    recoverSharedHost = false,
+  ): void {
     if (this.state === 'closed' || this.rollbackInProgress) return;
     if (!retryOnlyTransientHealthFailure) this.reconnectMustContinue = true;
     if (this.reconnectTimer) return;
@@ -2787,7 +2811,7 @@ export class RuntimeHostAdapter {
         this.reconnectMustContinue = false;
         return;
       }
-      void this.initialize(undefined, false)
+      void this.initialize(undefined, recoverSharedHost)
         .then(() => {
           this.reconnectTimer = undefined;
           this.reconnectAttempt = 0;
@@ -2803,8 +2827,9 @@ export class RuntimeHostAdapter {
             this.rejectRunRecoveryWaiters(error);
           }
           if (!this.reconnectMustContinue) {
-            if (!isTransientDaemonHealthFailure(error)) return;
-            this.scheduleReconnect(true);
+            if (!isTransientDaemonHealthFailure(error) && !isRetryableSharedHostFailure(error))
+              return;
+            this.scheduleReconnect(true, isRetryableSharedHostFailure(error));
             return;
           }
           this.publishUnavailable('disconnected', sanitizeDiagnosticError(error));
@@ -6710,7 +6735,7 @@ export class RuntimeHostAdapter {
         this.runtimeExitSettler ?? ((input) => this.settlePublishedRuntimeExit(input))
       )({
         configHome: this.runtimeConfigHome(),
-        profile: 'coder',
+        profile: runtime?.identity.profile ?? this.runtimeProfile,
         ...(runtime ? { runtime } : {}),
       });
     }
@@ -7242,7 +7267,7 @@ export class RuntimeHostAdapter {
     try {
       const settlement = await this.settlePublishedRuntimeExit({
         configHome: this.runtimeConfigHome(),
-        profile: 'coder',
+        profile: runtime.identity.profile,
         runtime,
         requestId: operationId,
       });
@@ -7315,11 +7340,15 @@ export class RuntimeHostAdapter {
     try {
       const result = await settleRuntimeClientExit({
         ...input,
+        profile: passive?.identity.profile ?? recovery?.profile ?? input.profile,
         runtime: input.runtime ?? passive,
         homeDir: this.runtimeHomeDir,
         clientInfo: identity,
         onAccepted: async (receipt) => {
-          await this.identityStore.retireInstance?.(identity.instanceId, receipt);
+          await this.identityStore.retireInstance?.(identity.instanceId, {
+            ...receipt,
+            profile: passive?.identity.profile ?? recovery?.profile ?? input.profile,
+          });
         },
       });
       if (result.status !== 'blocked' && !input.runtime) {
@@ -7713,7 +7742,7 @@ export class RuntimeHostAdapter {
 
   private runtimeOwnerTarget(): { readonly homeDir?: string; readonly profile: string } {
     return {
-      profile: 'coder',
+      profile: this.runtimeProfile,
       ...(this.runtimeHomeDir !== undefined ? { homeDir: this.runtimeHomeDir } : {}),
     };
   }

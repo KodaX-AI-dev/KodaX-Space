@@ -895,6 +895,9 @@ export function ConversationStreamV2(): JSX.Element {
     }
   }, [currentSessionId, productTranscript]);
   const historyPaging = useSessionHistoryPaging(currentSessionId);
+  const historyRuntimeReason = useAppStore((s) =>
+    s.runtimeConnection.state === 'ready' ? undefined : s.runtimeConnection.reason,
+  );
   const [olderHistoryFeedback, setOlderHistoryFeedback] = useState<{
     readonly sessionId: string;
     readonly phase: 'loading' | 'error';
@@ -2225,7 +2228,11 @@ export function ConversationStreamV2(): JSX.Element {
               )}
             {displayMessages.length === 0 &&
               (historyPaging.phase === 'waiting' && currentSessionMsgCount > 0 ? (
-                <HistoryPagingSentinel phase="waiting" onRetry={() => undefined} />
+                <HistoryPagingSentinel
+                  phase="waiting"
+                  reason={historyRuntimeReason}
+                  onRetry={() => undefined}
+                />
               ) : historyPaging.phase === 'error' && historyPaging.runtimeUnavailable === true ? (
                 // Runtime 不可用导致正文读不到:重试已终止。明确告知文件未损坏,避免被当成空白/损坏。
                 <div
@@ -2234,6 +2241,7 @@ export function ConversationStreamV2(): JSX.Element {
                   data-testid="history-runtime-unavailable"
                 >
                   {historyPaging.runtimeFailureReason ??
+                    historyRuntimeReason ??
                     t('conversation.historyRuntimeUnavailable')}
                 </div>
               ) : currentSessionMsgCount > 0 ? (
@@ -3065,11 +3073,12 @@ function HistoryPagingSentinel({
       >
         <LoaderCircle className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
         <span>
-          {t(
-            phase === 'waiting'
-              ? 'session.waitingForHistoryRuntime'
-              : 'session.loadingEarlierHistory',
-          )}
+          {reason ??
+            t(
+              phase === 'waiting'
+                ? 'session.waitingForHistoryRuntime'
+                : 'session.loadingEarlierHistory',
+            )}
         </span>
       </div>
     );

@@ -13,6 +13,11 @@ const manifest = createRequire(import.meta.url)('../../../../package.json') as {
   readonly version: string;
   readonly dependencies: { readonly '@kodax-ai/kodax': string };
 };
+const sdkVersion = (
+  createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as {
+    readonly version: string;
+  }
+).version;
 
 const sdkManual = buildSpaceManual({
   KODAX_UNDERLYING_CAPABILITY_TOPICS,
@@ -137,11 +142,7 @@ test('Space kodax_manual documents the required current KodaX capability boundar
   }
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.45 正式发布.*KodaX 0\.7\.95/);
   assert.ok(
-    topics
-      .get('runtime-host')
-      ?.body.includes(
-        `v${manifest.version} 精确锁定 KodaX ${manifest.dependencies['@kodax-ai/kodax']}`,
-      ),
+    topics.get('runtime-host')?.body.includes(`v${manifest.version} 精确锁定 KodaX ${sdkVersion}`),
     'The current manual must match the declared Space and SDK versions',
   );
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.46-alpha\.11 落地 FEATURE_275/);

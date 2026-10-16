@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**This checkout is the published Space `v0.1.47-alpha.2` prerelease, pinning npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`.** Root, Desktop, IPC schema and UI kit share the version; the SDK resolves to one integrity-pinned Registry package.
+**This checkout carries the local Issue 222 recovery candidate `0.1.47-alpha.2.issue222.3`, with SDK `0.7.97-alpha.6.issue222.3`.** Root, Desktop, IPC schema and UI kit share the version; the SDK is an integrity-pinned public tarball under `vendor/issue-222/`. See [recovery verification](docs/releases/issue-222-recovery-verification.md). The published base remains Space `v0.1.47-alpha.2` / Registry SDK `0.7.97-alpha.6`; the local candidate has not been published.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.

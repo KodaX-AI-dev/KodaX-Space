@@ -1,0 +1,184 @@
+{
+  "generatedAt": "2026-10-16T02:26:58.284Z",
+  "platform": "win32-x64",
+  "spaceVersion": "0.1.47-alpha.2.issue222.3",
+  "dependency": {
+    "version": "0.7.97-alpha.6.issue222.3",
+    "resolved": "file:vendor/issue-222/kodax-ai-kodax-0.7.97-alpha.6.issue222.3.tgz",
+    "integrity": "sha512-6kbjcxtC8mOk0pm8zr+SgOcrUqfrm8ewObr4iPtalQg30amS7sO6siigDbCHuj74uq+87Bt/xZZor0ZksLhO+g==",
+    "source": "local-tarball"
+  },
+  "sources": {
+    "space": {
+      "base": "97e3172d",
+      "worktreeHead": "97e3172d349031b3fb343fef01ea53ca32cd03a5",
+      "sourceCommit": null,
+      "workingTreeDirty": true,
+      "fingerprints": {
+        "apps/desktop/electron/kodax/host.ts": "dec17e30d9ae74767e33aef035ceb42aa2f3a7792e1753d5589978bc3baeac0e",
+        "apps/desktop/electron/kodax/runtime-host-adapter.ts": "61e16c7469b471a2c7b919e43726092e1f9f58347387c58a397f139ff5bfc16b",
+        "apps/desktop/electron/kodax/runtime/runtime-client-identity.ts": "1c6e4f67d84518962e503e98f5a1df382b9c1eab7bd5f86f03be002e3c9875e9",
+        "apps/desktop/electron/kodax/session-store.ts": "11b21cbb62e0b7316cfdcab920457c28c6ec4076864620e605c8957ee0e053d3",
+        "apps/desktop/electron/kodax/space-manual-topics.ts": "c7e9ad2c172b3c0ce181ecae6cadaff5b11d904cecf729be9a9c06b7d426de90",
+        "apps/desktop/electron/test/host.test.ts": "8890669ee1d31ba46bb8050c67a0e8611146975cb4ad45a46f70d1bd5593a593",
+        "apps/desktop/electron/test/kodax-runtime-compat.test.ts": "1c28016ab8bfee3d7ae0896daaf30620d3f6f4d3a58edd102676626235583b8f",
+        "apps/desktop/electron/test/runtime-client-identity.test.ts": "9d44e37591347ecd2b1f3b8bdafffa25c18a68ab0c0cdac11b77e33647d1bb2e",
+        "apps/desktop/electron/test/runtime-host-adapter.test.ts": "081d5700308ebdd8dbd45d3c38fd225783f7423d8031675fdd60249e4e9e2e4d",
+        "apps/desktop/electron/test/space-manual-topics.test.ts": "aca3d98272e339d5c0a2b8f261bf0c5f22c6f800a45fecc193586554a9492242",
+        "apps/desktop/package.json": "bf0ff0705d9d3a4f71e10b155389e47f5b48bbd60460c4666f8442ba6874effc",
+        "apps/desktop/renderer/src/shell/ConversationStreamV2.tsx": "3ca7c46ed95659292b0167ff1c22d26e458ecfe94d36b199e80fd09296a606b0",
+        "package-lock.json": "9f3719af15bf314e1ad981aeafbf4854a6144166b77d8297a7619514dd0baa44",
+        "package.json": "261b020c9f39f2aab2f83305970aa66e4281f0cd53f7bcf15b94e4b0eb6c6dc7",
+        "packages/space-ipc-schema/package.json": "cfb37c5f8901e7b142b6c8d53d6ead2157dcc21d2779f0f16339746bb23fda37",
+        "packages/space-ui-kit/package.json": "fe172c6746404aadfc9d7ea217b0367050979cb4b6fd8bdda78ca791e8f53744",
+        "tests/e2e/fixtures.ts": "bf2150938ac1c2c5f20ec0d85d2d2e64ef60de6512a2aa7f0734d0cd699379fb",
+        "tests/e2e/shared-host-fixture.ts": "f8b6fc0400417c1929725e78403e7bbc43a54627d966598b81e4740bea728011",
+        "tests/e2e/shared-host-history-recovery.spec.ts": "1306945516686e689967508a5ec6dab484d35ea4ec0df3362b60872a015e01f3"
+      }
+    },
+    "sdk": {
+      "base": "8b0893d6",
+      "worktreeHead": "d45938b90eafabf5764cab4de008b057a64092c4",
+      "sourceCommit": "d45938b90eafabf5764cab4de008b057a64092c4",
+      "workingTreeDirty": false,
+      "fingerprints": {
+        "package-lock.json": "9fb82fc3658413d6185762ee77a9fbf053a5188fc5a8c90f85cd8f25f12d0fcc",
+        "package.json": "6c11925f4cece39c4abddc0b7f0db4b8461d313e36f6c354fa8a5c108c4f84ce",
+        "packages/agent/package.json": "9ae40fdbdeef391fda39340ef4fb34ec931d9cca3f336b77fb5e85bec60e1ebe",
+        "packages/artifacts/package.json": "49f7222d24af044e7963c9202bf93602f8430dc5fb740cc0713ec78278d99c2f",
+        "packages/coding/package.json": "2735e4f67051939980b7487f4325c38e2540f52ec8a1f3bb4b839969e249382f",
+        "packages/llm/package.json": "88de165c107b144b8293213822611d17132c1f4bdf271316b8c7a185c4eb5b74",
+        "packages/repl/package.json": "5b369bcf77d3bdb46f6a677fb2ec79a0b14a779a5a86222a0b4cf2a4dd56a501",
+        "src/runtime-daemon/state.test.ts": "b209c0188b4a4471cc7574dc1a60a72c34bf0a274081d281574a742a75a688fa",
+        "src/runtime-daemon/state.ts": "506543e65dec76fcce23c07deebd64aa934d7e4e0bafb691533a71e7fadf696d",
+        "src/sdk-runtime-daemon-upgrade.test.ts": "b82accd3c440d4229eef807578b6857c21024e232ef4eed36e326816cc9960f7",
+        "src/sdk-runtime.ts": "7f0173d1fdd2ade8d61f30adcdd1144e64193e9de8be4dc0c5cb0a99ba9505cb",
+        "tests/bundled-shared-host-recovery.test.mjs": "c6070b4107a75b0c32cfd796f5f5da7afa86d271adf57853c582494794d94a7b"
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "path": "out/issue-222/KodaX-Space-Setup-0.1.47-alpha.2.issue222.3.exe",
+      "bytes": 181101899,
+      "sha256": "c9367cefa0897390a6013c68c10ed2b9597f525993b8d0429b356da54431d2ba"
+    },
+    {
+      "path": "out/issue-222/KodaX-Space-Portable-0.1.47-alpha.2.issue222.3.exe",
+      "bytes": 180891887,
+      "sha256": "adbb757c33076da62ebd0ea257b83433705927060437b90889fb7c3631cdbe7d"
+    },
+    {
+      "path": "out/issue-222/win-unpacked/resources/app.asar",
+      "bytes": 129341484,
+      "sha256": "dc6b217884f8475bc9fd32b0ec3d2006a33671cf0313e65c49b9dd02310bc4a9"
+    },
+    {
+      "path": "out/issue-222/win-unpacked/KodaX Space.exe",
+      "bytes": 232351232,
+      "sha256": "edd1cb2385aa371ca35813cea8d53ba53deac9a8cd22ac4562d265421ef2490e"
+    },
+    {
+      "path": "vendor/issue-222/kodax-ai-kodax-0.7.97-alpha.6.issue222.3.tgz",
+      "bytes": 11316713,
+      "sha256": "83153e63e20d7084a3cd40288372301d5220c6aa24a3b270f7bd6fba8a78f236"
+    }
+  ],
+  "packagedMainMatchesBuiltMain": true,
+  "testEvidence": {
+    "sourceSharedHostScenarios": {
+      "passed": 2,
+      "testedVersion": "0.1.47-alpha.2.issue222.2"
+    },
+    "packagedSharedHostScenarios": {
+      "passed": 2,
+      "testedVersion": "0.1.47-alpha.2.issue222.3"
+    },
+    "packagedLifecycleScenarios": {
+      "passed": 6
+    },
+    "packagedDependencySmoke": "passed",
+    "packagedBoot": {
+      "result": "passed",
+      "rendererReadyMs": 5344,
+      "runtimeReadyMs": 26279,
+      "deterministicHoldMs": 20000,
+      "preservedHistoricalChildRecords": 122
+    },
+    "spaceFull": {
+      "release": {
+        "passed": 93,
+        "skipped": 7
+      },
+      "desktop": {
+        "passed": 3900,
+        "skipped": 13
+      },
+      "ipc": {
+        "passed": 369
+      },
+      "failed": 0
+    },
+    "sdkRelatedRegressions": {
+      "passed": 110
+    },
+    "sdkBundledSharedHostRecovery": {
+      "passed": 1
+    },
+    "sdkChangedExecutableLineCoverage": {
+      "scope": "SDK changed executable lines since 8b0893d6",
+      "total": 42,
+      "covered": 39,
+      "percent": 92.85714285714286,
+      "details": [
+        {
+          "file": "src/runtime-daemon/state.ts",
+          "changedExecutableLines": 14,
+          "covered": 14,
+          "uncovered": []
+        },
+        {
+          "file": "src/sdk-runtime.ts",
+          "changedExecutableLines": 28,
+          "covered": 25,
+          "uncovered": [
+            6210,
+            6312,
+            6404
+          ]
+        }
+      ]
+    },
+    "sdkTiers": {
+      "fast": {
+        "passed": 2317,
+        "skipped": 44
+      },
+      "unit": {
+        "passed": 11982,
+        "skipped": 3
+      },
+      "contract": {
+        "passed": 950,
+        "todo": 19
+      },
+      "system": {
+        "initialFilesPassed": 77,
+        "failedFilesRetested": 5,
+        "retestPassed": 151,
+        "retestFailed": 0,
+        "originalFullRunWasGreen": false
+      }
+    },
+    "typecheck": {
+      "space": "passed",
+      "sdkSourceAndTests": "passed"
+    },
+    "spaceFullLint": "passed",
+    "reviews": {
+      "standardsRemaining": 0,
+      "specRemaining": 0
+    }
+  },
+  "publication": "local verification candidate; not published"
+}

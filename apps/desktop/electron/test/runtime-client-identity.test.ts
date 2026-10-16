@@ -28,6 +28,7 @@ test('accepted exit rotates the fenced identity and retains its offline recovery
   await store.retireInstance(first.instanceId, {
     requestId: 'exit-fixture',
     runtimeId: 'host-fixture',
+    profile: 'default',
   });
   const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, secrets);
   const next = await restarted.openInstance(metadata);
@@ -37,6 +38,7 @@ test('accepted exit rotates the fenced identity and retains its offline recovery
   assert.notEqual(next.instanceSecret, first.instanceSecret);
   assert.equal(recovery?.instanceId, first.instanceId);
   assert.equal(recovery?.instanceSecret, first.instanceSecret);
+  assert.equal(recovery?.profile, 'default');
   assert.doesNotMatch(await fs.readFile(file, 'utf8'), new RegExp(first.instanceSecret));
   await restarted.clearExitRecovery(first.instanceId);
   assert.equal(await restarted.openExitRecovery(metadata), undefined);

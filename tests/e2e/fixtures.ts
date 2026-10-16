@@ -102,6 +102,8 @@ export interface SpaceInstance {
 }
 
 export interface LaunchSpaceOptions {
+  /** Seed a real isolated storage owner before the desktop starts. */
+  readonly prepareProfile?: (testDataDir: string) => Promise<void>;
   /** Run the same isolated acceptance fixture against a built desktop executable. */
   readonly executablePath?: string;
   /**
@@ -164,6 +166,7 @@ export async function launchSpace(
   let app: ElectronApplication;
   const executablePath = opts?.executablePath ?? process.env.SPACE_E2E_EXECUTABLE;
   try {
+    await opts?.prepareProfile?.(testDataDir);
     app = await _electron.launch({
       ...(executablePath ? { executablePath } : {}),
       args: executablePath ? [] : [ELECTRON_MAIN],

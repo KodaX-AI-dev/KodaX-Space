@@ -61,24 +61,37 @@ test('Space creates Coder drafts when the SDK advertises draft admission', async
   Object.assign(fake.runtime.capabilities, { sessionDrafts: { version: 1 } });
   let draft: boolean | undefined;
   const create = fake.runtime.sessions.create.bind(fake.runtime.sessions);
-  fake.runtime.sessions.create = async input => { draft = input?.draft; return create(input); };
-  const adapter = new RuntimeHostAdapter({ mode: 'runtime', profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async options => {
+  fake.runtime.sessions.create = async (input) => {
+    draft = input?.draft;
+    return create(input);
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async (options) => {
       assert.equal(options.requirements?.sessionDrafts, 1);
       return fake.runtime;
-    }, identityStore: testIdentityStore });
+    },
+    identityStore: testIdentityStore,
+  });
   try {
     await adapter.createSession({ projectRoot: 'C:\\repo', surface: 'code', ephemeral: false });
     assert.equal(draft, true);
-  } finally { await adapter.close(); }
+  } finally {
+    await adapter.close();
+  }
 });
 
 test('Space rejects an SDK without draft admission before starting a Host', async () => {
   const sdk = await import('@kodax-ai/kodax/runtime');
   const { sessionDrafts: _drafts, ...capabilities } = sdk.KODAX_RUNTIME_SDK_CAPABILITIES;
-  assert.throws(() => assertSpaceRuntimeSdkRequiredCapabilities({
-    KODAX_RUNTIME_SDK_CAPABILITIES: capabilities,
-  }), /sessionDrafts v1/);
+  assert.throws(
+    () =>
+      assertSpaceRuntimeSdkRequiredCapabilities({
+        KODAX_RUNTIME_SDK_CAPABILITIES: capabilities,
+      }),
+    /sessionDrafts v1/,
+  );
 });
 
 test('SDK product snapshots replace live items, recover invalidation, and commit before observation retirement', async () => {
@@ -4279,6 +4292,101 @@ test('a retired Runtime cannot install credential bindings after observation att
   ).credentialLeases;
   assert.equal(credentialLeases.has('credential_retired_binding'), false);
   await adapter.close();
+});
+
+test('shared Host conflicts recover the selected product view automatically after the owner becomes idle', async () => {
+  const fake = createFakeRuntime();
+  const sessionId = 's_shared_host_history';
+  fake.sessions.add(sessionId);
+  fake.runtime.sessions.observeView = async (_id, listener) => {
+    listener({
+      session: { id: sessionId, title: 'Saved history' },
+      items: [
+        { id: 'saved-user', type: 'user', text: 'saved question' },
+        { id: 'saved-assistant', type: 'assistant', text: 'saved answer' },
+      ],
+      queue: [],
+      interactions: [],
+      runs: [],
+      settings: {},
+    });
+    return { close() {} };
+  };
+  let attempts = 0;
+  const controller = createPendingSdkRuntimeProjection();
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    projectionController: controller,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async (options) => {
+      attempts++;
+      assert.equal(
+        options.autoStart,
+        true,
+        'recovery must allow the SDK to replace a verified idle Host',
+      );
+      if (attempts === 1)
+        throw Object.assign(new Error('Shared Host has active work'), {
+          code: 'daemon_capability_upgrade_required',
+          capability: 'daemonOrphanExit',
+          retryable: true,
+          preflight: { canStop: false, blockers: ['active_runs'] },
+        });
+      return fake.runtime;
+    },
+  });
+  try {
+    await assert.rejects(adapter.initialize(), /Shared Host has active work/);
+    assert.equal(controller.profileSnapshot().connection.state, 'reconnecting');
+    await waitForTest(() => adapter.hasReadyRuntime(), 2_500);
+    const view = await adapter.readSessionProductView(sessionId);
+    assert.deepEqual(
+      view.items.map((item) => item.text),
+      ['saved question', 'saved answer'],
+    );
+    assert.equal(attempts, 2);
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('a shared default Host keeps its actual profile for passive reconnect and complete exit', async () => {
+  const first = createFakeRuntime('rt_shared_default_first');
+  const second = createFakeRuntime('rt_shared_default_second');
+  Object.assign(first.runtime.identity, { profile: 'default' });
+  Object.assign(second.runtime.identity, { profile: 'default' });
+  let attempts = 0;
+  let exitProfile: string | undefined;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async (options) => {
+      if (++attempts === 1) return first.runtime;
+      assert.equal(options.profile, 'default');
+      assert.equal(options.autoStart, false, 'transport recovery stays passive');
+      return second.runtime;
+    },
+    runtimeExitSettler: async (input) => {
+      exitProfile = input.profile;
+      return { status: 'clean', repairs: [] };
+    },
+  });
+  try {
+    await adapter.initialize();
+    first.disconnect();
+    await waitForTest(
+      () => adapter.snapshot().identity?.runtimeId === second.runtime.identity.runtimeId,
+      2_500,
+    );
+    await adapter.stopDaemonForCompleteExit();
+    assert.equal(exitProfile, 'default');
+  } finally {
+    await adapter.close();
+  }
 });
 
 test('transient unhealthy daemon startup retries until the existing safety window clears', async () => {

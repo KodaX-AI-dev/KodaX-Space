@@ -694,7 +694,7 @@ export async function rewindPersistedSession(opts: {
 }
 
 /**
- * 持久化删除。session 当前在跑（其他 KodaX 进程 hold 着）时返回 'busy'。
+ * 持久化删除。仅 SDK 确认其他进程正在运行时返回 'busy'；其他删除失败向调用方抛出。
  *
  * 与 host.delete 区别：host.delete 是 dispose in-memory in-flight；这里是擦盘。
  * 通常调用顺序：host.delete (cancel + dispose) → deletePersistedSession (擦盘)。
@@ -707,7 +707,10 @@ export async function deletePersistedSession(opts: {
     invalidatePersistedSessionCache(opts.sessionId);
     return 'ok';
   }
-  return 'busy';
+  if (result.error.code === 'session_running') return 'busy';
+  throw Object.assign(new Error(`Session could not be deleted: ${opts.sessionId}`), {
+    code: 'session_delete_failed' as const,
+  });
 }
 
 /**

@@ -1345,35 +1345,35 @@ class KodaXHost {
       this.sessions.delete(sessionId);
     }
     // 持久化擦盘——即便 in-memory 不存在也尝试擦（用户对 historical session 直接删）
-    const diskDeleteResult =
+    const diskDeleteResult = await (
       surface === 'code' && runtimeHostAdapter.hasReadyRuntime()
-        ? await runtimeHostAdapter
+        ? runtimeHostAdapter
             .deleteSession(sessionId)
             .then((outcome) =>
               outcome === 'not_found'
                 ? deletePersistedSession({ sessionId })
                 : Promise.resolve('ok' as const),
             )
-            .catch((error: unknown) => {
-              console.warn(
-                `[host.delete] Runtime rejected deletion for ${sessionId}:`,
-                error instanceof Error ? error.message : String(error),
-              );
-              return 'session_running' as const;
-            })
-        : await deletePersistedSession({ sessionId });
+        : deletePersistedSession({ sessionId })
+    ).catch((error: unknown) => ({ error }));
     if (diskDeleteResult !== 'ok') {
       if (s) {
         const restored = await this.resumePersistedSession(sessionId, this.disposeEpoch, {
           ignoreDeleteFence: true,
         }).catch((error: unknown) => {
-          console.warn(`[host.delete] failed to restore busy session ${sessionId}:`, error);
+          console.warn(
+            `[host.delete] failed to restore session ${sessionId} after deletion failed:`,
+            error,
+          );
           return false;
         });
         if (!restored) {
-          console.warn(`[host.delete] busy session ${sessionId} is no longer attached locally`);
+          console.warn(
+            `[host.delete] session ${sessionId} is no longer attached after deletion failed`,
+          );
         }
       }
+      if (typeof diskDeleteResult === 'object') throw diskDeleteResult.error;
       return false;
     }
     await getSessionTitleStore().delete(sessionId);
