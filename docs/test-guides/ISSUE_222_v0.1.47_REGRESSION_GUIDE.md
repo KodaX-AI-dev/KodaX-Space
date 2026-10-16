@@ -29,6 +29,15 @@ against the personal `~/.kodax` directory or remove an ownership lock by hand.
    pending, `ensureKodaXRuntime` must wait for descriptor publication. Releasing
    discovery permits attachment; exhausting the original deadline preserves
    the retryable ownership cause. No competing process is started while waiting.
+8. After idle recovery, stop only the isolated fixture's verified `coder` Host.
+   Keep the same saved history selected. Passive profile polling must observe
+   a different ready Runtime ID, and its saved answer must remain available
+   without another row click, input or refresh.
+9. Cover structured readiness timeout, socket `ETIMEDOUT`, missing endpoint and
+   the legacy unhealthy message with its real diagnostic suffix. Recoverable
+   startup failures continue with SDK startup enabled; permanent incompatibility
+   stops retries and preserves its diagnostic. Closing during a pending retry
+   must not republish recovery or start another Host.
 
 ## Commands
 
@@ -46,6 +55,7 @@ In the SDK checkout:
 
 ```powershell
 npx vitest run src/sdk-runtime-daemon-upgrade.test.ts src/runtime-daemon/state.test.ts src/acp_server.daemon.test.ts
+npx vitest run src/runtime-daemon/process.test.ts src/runtime-daemon/transport.test.ts src/runtime-daemon/transport.connection-timeout.test.ts
 npm run build
 node --test tests/bundled-shared-host-recovery.test.mjs
 ```

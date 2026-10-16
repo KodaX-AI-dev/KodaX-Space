@@ -216,8 +216,8 @@ Last Updated: 2026-10-16
 | 218 | High     | Legacy fix superseded; intermittent switch case under investigation                                          | Queued inputs and whole answers duplicate after reload; recovered live history omits completed tools                                                                                                       | Observed v0.1.46-rc.5                                                     | 2026-09-28 |
 | 219 | Medium   | Resolved; Registry alpha.6 verified                                                                          | Old completed Sessions fall back to creation time in sidebar recency                                                                                                                                       | Runtime activity overlay introduced 2026-08-03                            | 2026-09-28 |
 | 220 | Medium   | Resolved; SDK alpha.6 published and verified                                                                 | Unsubmitted REPL Sessions appear as blank tasks                                                                                                                                                            | SDK v0.7.97-alpha.1 Host migration (3301a452 / 0914f589)                  | 2026-10-14 |
-| 221 | Medium   | Resolved in source                                                                                           | Session deletion failures are misreported as another running KodaX process                                                                                                                                 | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                            | 2026-10-16 |
-| 222 | High     | ready                                                                                                        | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                            | 2026-10-16 |
+| 221 | Medium   | Resolved in source                                                                                           | Session deletion failures are misreported as another running KodaX process                                                                                                                                 | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
+| 222 | High     | ready                                                                                                        | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -328,15 +328,24 @@ retryable. Space keeps retrying beyond the SDK startup deadline and reconciles
 the selected SDK product view when ready, without requiring another row click or
 Ctrl+R. Passive reconnect and persisted exit recovery retain the actual profile.
 
+The candidate 4 follow-up also covers a Host exiting after readiness, temporary
+socket/readiness timeout and the real legacy unhealthy diagnostic suffix.
+SDK startup failures now expose structured retryability; Space retains guarded
+startup authority across retries, stops on permanent incompatibility and fences
+late reconnect results after close. See the [adjacent availability audit](releases/issue-222-self-healing-audit.md)
+for the recovery matrix and deliberate non-destructive boundaries.
+
 Issue 060 only recognized the exact unhealthy-daemon error and did not cover
 shared-profile conflicts, a concurrent startup winner or startup-policy mismatch.
 Those cases now have dedicated regressions. Isolated source and packaged Windows
 tests both passed idle recovery and a real active Run held beyond the first
 startup deadline. The Run completed successfully before replacement, and two
-histories displayed saved user and assistant text. Full Space tests passed
-(4,362 passed, 20 platform/permission skips); packaged lifecycle regressions
-passed 6/6. The local candidate is Space `0.1.47-alpha.2.issue222.3` with SDK
-`0.7.97-alpha.6.issue222.3`. See the
+histories displayed saved user and assistant text. Candidate 3 full Space tests passed
+(4,362 passed, 20 platform/permission skips). Candidate 4 full checks found only
+a stale built-in manual version string, now corrected with its full 10-test file
+passing; functional recovery tests passed. Packaged lifecycle regressions passed
+6/6. The local candidate is Space `0.1.47-alpha.2.issue222.4` with SDK
+`0.7.97-alpha.6.issue222.4`. See the
 [regression guide](test-guides/ISSUE_222_v0.1.47_REGRESSION_GUIDE.md) and
 [candidate evidence](releases/issue-222-recovery-verification.md).
 

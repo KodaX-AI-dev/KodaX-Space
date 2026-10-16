@@ -1,6 +1,6 @@
 {
   "name": "kodax-space",
-  "version": "0.1.47-alpha.2.issue222.3",
+  "version": "0.1.47-alpha.2.issue222.4",
   "description": "KodaX Space — Provider-neutral, local-first AI agent desktop client (KodaX 生态桌面客户端)",
   "private": true,
   "type": "module",
@@ -56,7 +56,7 @@
     "smoke:complete-exit": "node e2e/complete-exit-packaged.mjs"
   },
   "dependencies": {
-    "@kodax-ai/kodax": "file:vendor/issue-222/kodax-ai-kodax-0.7.97-alpha.6.issue222.3.tgz",
+    "@kodax-ai/kodax": "file:vendor/issue-222/kodax-ai-kodax-0.7.97-alpha.6.issue222.4.tgz",
     "@napi-rs/keyring": "^1.3.0",
     "better-sqlite3": "12.11.1",
     "electron-updater": "^6.8.3",

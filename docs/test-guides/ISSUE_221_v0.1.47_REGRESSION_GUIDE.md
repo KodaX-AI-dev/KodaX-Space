@@ -51,5 +51,5 @@ The wider startup/history gap was subsequently fixed and verified as Issue 222;
 see its separate regression guide and candidate evidence.
 
 The source fix does not change the ordinary SDK storage ownership contract or
-add a force-delete path. Windows candidate `0.1.47-alpha.2.issue222.3` now
+add a force-delete path. Windows candidate `0.1.47-alpha.2.issue222.4` now
 includes the corrected feedback under `out/issue-222`.

@@ -4352,6 +4352,99 @@ test('shared Host conflicts recover the selected product view automatically afte
   }
 });
 
+test('a missing Host after transport loss recovers through SDK startup without another user action', async () => {
+  const first = createFakeRuntime('rt_before_exit');
+  const second = createFakeRuntime('rt_after_exit');
+  const attempts: boolean[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async (options) => {
+      attempts.push(options.autoStart === true);
+      if (attempts.length === 1) return first.runtime;
+      if (!options.autoStart) {
+        throw Object.assign(new Error('The Host endpoint no longer exists'), { code: 'ENOENT' });
+      }
+      return second.runtime;
+    },
+  });
+  try {
+    await adapter.initialize();
+    first.disconnect();
+    await waitForTest(() => adapter.snapshot().identity?.runtimeId === 'rt_after_exit', 4_000);
+    assert.deepEqual(attempts, [true, false, true]);
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('closing during a pending reconnect cannot republish recovery after the Host is closed', async () => {
+  const first = createFakeRuntime();
+  const controller = createPendingSdkRuntimeProjection();
+  let rejectConnect: ((error: Error) => void) | undefined;
+  let attempts = 0;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    projectionController: controller,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async (options) => {
+      if (++attempts === 1) return first.runtime;
+      await options.onStartupProgress?.({ stage: 'connecting' });
+      return new Promise<KodaXDaemonRuntime>((_resolve, reject) => { rejectConnect = reject; });
+    },
+  });
+  try {
+    await adapter.initialize();
+    first.disconnect();
+    await waitForTest(() => rejectConnect !== undefined, 2_500);
+    const closing = adapter.close();
+    rejectConnect!(Object.assign(new Error('Host endpoint disappeared during close'), { code: 'ENOENT' }));
+    await closing;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(adapter.snapshot().state, 'closed');
+    assert.equal(controller.profileSnapshot().connection.state, 'disconnected');
+    assert.equal(attempts, 2);
+  } finally {
+    rejectConnect?.(new Error('fixture cleanup'));
+    await adapter.close();
+  }
+});
+
+test('transport recovery stops retrying when the SDK reports a permanent incompatibility', async () => {
+  const first = createFakeRuntime();
+  const controller = createPendingSdkRuntimeProjection();
+  let attempts = 0;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    projectionController: controller,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async () => {
+      if (++attempts === 1) return first.runtime;
+      throw Object.assign(new Error('A newer Host requires a compatible installation'), {
+        code: 'daemon_capability_upgrade_required',
+        retryable: false,
+      });
+    },
+  });
+  try {
+    await adapter.initialize();
+    first.disconnect();
+    await waitForTest(() => attempts === 2, 2_500);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(controller.profileSnapshot().connection.state, 'incompatible');
+    await new Promise<void>((resolve) => setTimeout(resolve, 2_200));
+    assert.equal(attempts, 2, 'permanent errors must not create an endless reconnect loop');
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('a shared default Host keeps its actual profile for passive reconnect and complete exit', async () => {
   const first = createFakeRuntime('rt_shared_default_first');
   const second = createFakeRuntime('rt_shared_default_second');
@@ -4389,42 +4482,58 @@ test('a shared default Host keeps its actual profile for passive reconnect and c
   }
 });
 
-test('transient unhealthy daemon startup retries until the existing safety window clears', async () => {
-  const fake = createFakeRuntime();
-  let factoryCalls = 0;
-  const adapter = new RuntimeHostAdapter({
-    mode: 'runtime',
-    profileRoot: path.resolve('C:\\isolated-profile'),
-    runtimeFactory: async () => {
-      factoryCalls += 1;
-      if (factoryCalls === 1) {
-        throw new Error('Runtime daemon is unhealthy; refusing to start a competing owner.');
-      }
-      return fake.runtime;
-    },
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
+for (const startupError of [
+  new Error('Runtime daemon is unhealthy; refusing to start a competing owner.'),
+  new Error(
+    'Runtime daemon is unhealthy; refusing to start a competing owner. [state pid=42 status=ready endpoint=pipe pidAlive=true reachable=false identityMatches=false]',
+  ),
+  Object.assign(new Error('Host startup exceeded its readiness deadline'), {
+    code: 'daemon_startup_failed',
+    reason: 'timeout',
+    retryable: true,
+  }),
+])
+  test(`transient unhealthy daemon startup retries until the existing safety window clears: ${startupError.message}`, async () => {
+    const fake = createFakeRuntime();
+    let factoryCalls = 0;
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      profileRoot: path.resolve('C:\\isolated-profile'),
+      runtimeFactory: async (options) => {
+        factoryCalls += 1;
+        if (factoryCalls === 1) {
+          throw startupError;
+        }
+        assert.equal(
+          options.autoStart,
+          true,
+          'the SDK must restart an owner that exits during the safety window',
+        );
+        return fake.runtime;
+      },
+      identityStore: testIdentityStore,
+      runtimeEventParser: testRuntimeEventParser,
+    });
+    const readyRevisions: number[] = [];
+    adapter.subscribeRuntimeReady((revision) => {
+      readyRevisions.push(revision);
+    });
+    (adapter as unknown as { reconnectAttempt: number }).reconnectAttempt = -10;
+
+    await assert.rejects(adapter.initialize(), (error: unknown) => error === startupError);
+    assert.equal(adapter.snapshot().state, 'failed');
+
+    const deadline = Date.now() + 2_000;
+    while (!adapter.hasReadyRuntime() && Date.now() < deadline) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 20));
+    }
+
+    assert.equal(factoryCalls, 2);
+    assert.equal(adapter.hasReadyRuntime(), true);
+    await waitForTest(() => readyRevisions.length === 1);
+    assert.deepEqual(readyRevisions, [1]);
+    await adapter.close();
   });
-  const readyRevisions: number[] = [];
-  adapter.subscribeRuntimeReady((revision) => {
-    readyRevisions.push(revision);
-  });
-  (adapter as unknown as { reconnectAttempt: number }).reconnectAttempt = -10;
-
-  await assert.rejects(adapter.initialize(), /daemon is unhealthy/);
-  assert.equal(adapter.snapshot().state, 'failed');
-
-  const deadline = Date.now() + 2_000;
-  while (!adapter.hasReadyRuntime() && Date.now() < deadline) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 20));
-  }
-
-  assert.equal(factoryCalls, 2);
-  assert.equal(adapter.hasReadyRuntime(), true);
-  await waitForTest(() => readyRevisions.length === 1);
-  assert.deepEqual(readyRevisions, [1]);
-  await adapter.close();
-});
 
 test('transient startup retry stops if the daemon then reports a permanent incompatibility', async () => {
   let factoryCalls = 0;

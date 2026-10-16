@@ -1,111 +1,94 @@
 # Issue 222 recovery verification
 
 Date: 2026-10-16. Local Windows candidate: Space
-`0.1.47-alpha.2.issue222.3` / SDK `0.7.97-alpha.6.issue222.3`.
+`0.1.47-alpha.2.issue222.4` / SDK `0.7.97-alpha.6.issue222.4`.
 
 ## Cause and recurrence
 
 The Session directory has one product writer, while `default` and `coder` name
 daemon connections. Previously startup inspected only the requested profile;
-an already running `default` owner therefore made the new `coder` child fail.
-Sidebar metadata remained readable, but all SDK-backed historical bodies were
-unavailable. A same-build daemon without the requested orphan-exit startup
-policy also failed the capability gate, even though restarting that verified
-idle build with the policy would be sufficient.
+an existing `default` owner therefore made the new `coder` child fail. Sidebar
+metadata remained readable, but SDK-backed historical bodies were unavailable.
+An identical-build Host without Space's requested orphan-exit policy also failed
+the capability gate despite being eligible for safe idle policy refresh.
 
-Space treated those failures as permanent incompatibility. Issue 060's older
-recovery only recognized one exact unhealthy-daemon message, so it did not
-cover cross-profile ownership, policy mismatch or a concurrent startup winner.
-This incident exposed those missing cases. The earlier diagnostic-only Host
-restart also omitted Space's full policy requirements; this is why health alone
-was an insufficient recovery check.
+Issue 060's recovery recognized only one exact unhealthy-daemon message. It
+missed cross-profile ownership, startup-policy mismatch, concurrent startup and
+the real message's diagnostic suffix. The earlier diagnostic-only restart also
+omitted Space's full startup requirements; health alone was insufficient.
 
-## Change
+## Change and follow-up audit
 
-- The SDK discovers the canonical shared owner, authenticates its actual
-  profile/runtime, and rechecks ownership after a startup loser exits. Supported
-  diagnostics retain owner profile, runtime ID/PID, capability and blockers.
-  An owner still publishing its descriptor is awaited within the original
-  deadline and cancellation signal, at both discovery entry points.
-- Existing managed shutdown remains the authority. Live work and connected
-  clients block replacement; owner identity is rechecked at both fences before
-  shutdown, and the old process must exit before another writer can start.
-  Same-build restart is allowed only for the explicitly requested orphan policy.
-- Space keeps retryable ownership failures in automatic recovery, including
-  after the first SDK startup deadline. Existing ready reconciliation restores
-  the selected SDK product view. Waiting/error views display the current cause.
-- Actual attachment profile survives passive reconnect and persisted client-exit
-  recovery. Issue 221 deletion errors are included in the candidate as well.
-- The SDK tarball is committed under `vendor/issue-222/` and pinned by lockfile
-  integrity in both Space manifests. It is a local candidate, not an npm release.
+The SDK discovers/authenticates the actual shared owner, waits for descriptor
+publication and rechecks a competing startup winner. Managed replacement retains
+preflight, both owner fences and exact process-exit verification. Active work and
+other connected clients remain protected. Space retries recoverable failures and
+restores the selected SDK view, with the actual Host profile retained through
+reconnect and durable exit recovery. Issue 221 deletion-error fixes remain included.
+
+Candidate 4 also fixes missing-Host passive reconnect, temporary connection and
+readiness timeout classification, permanent-error retry loops and late reconnect
+results after close. SDK startup errors now carry typed retryability; socket
+connect timeout carries `ETIMEDOUT`. See the
+[adjacent recovery audit](issue-222-self-healing-audit.md) for all inspected
+conditions, regression evidence and deliberate recovery boundaries.
 
 ## Verification
 
-Final candidate Space full tests passed: release 93 passed / 7 skipped, Desktop 3,900 passed /
-13 skipped, IPC schema 369 passed; zero failures. Main/renderer typechecks,
-full lint and production build passed. See the
-[regression guide](../test-guides/ISSUE_222_v0.1.47_REGRESSION_GUIDE.md) for the
-acceptance paths and isolation boundaries.
+SDK related regressions passed **164/164** across six files, including actual
+unreachable-owner preservation, pending-socket timeout, ownership, process exit
+and capability upgrade. Bundled real-process shared-Host recovery passed **1/1**.
+Full SDK source/test typechecks passed. V8 coverage covers **4/4 changed executable
+lines** in this SDK follow-up since `d45938b9`; this is patch coverage, not a
+repository-wide coverage claim.
 
-Source and packaged recovery scenarios passed 2/2 each. Packaged dependency
-smoke and exact SDK/tarball/native gate passed. Boot smoke measured renderer
-readiness at 5,344 ms and Runtime at 26,279 ms with a deliberate 20-second hold,
-preserving 122 historical child records. Packaged lifecycle tests passed 6/6,
-including Stop/next input, queue/reload, canonical history/Fork/Rewind, final
-client exit and protection of another connected client.
+The full Space test command completed with release **93 passed / 7 skipped**,
+Desktop **3,904 passed / 13 skipped / 1 failed**, and IPC **369 passed**. Its only
+failure was the built-in manual still naming candidate 3 after the candidate 4
+version bump. That version text was corrected; the entire manual test file then
+passed **10/10**, and Main was rebuilt. No functional code changed after the full
+run. There are no unresolved test failures, but this record does not claim that
+the initial `npm test` command itself exited successfully. Full lint, Main/renderer
+typechecks and production build passed; the final manual correction also passed
+focused lint.
 
-The first packaged recovery attempt used a Node installation's Host, whose
-fingerprint differs from the packaged SDK after platform-resource pruning.
-The guard correctly refused same-version, different-build automatic replacement.
-The same-build policy fixture was corrected to use the executable's own public
-SDK. This did not weaken production build/owner checks; both final scenarios
-then passed, including the visible blocker and successful protected Run.
+The new packaged Host-exit regression failed against candidate 3: no replacement
+ready Runtime appeared within 35 seconds. Candidate 4 passed that same scenario,
+requiring a different ready Runtime ID and the same selected saved answer without
+input, reclick or refresh. Both packaged recovery scenarios passed **2/2**;
+the protected active Run survived beyond the first SDK startup deadline and
+completed before automatic replacement and history restoration.
+Packaged lifecycle tests passed **6/6**, including Stop/next input, queue/reload,
+canonical history/Fork/Rewind, final-client exit and another-client protection.
 
-SDK checks: related regression tests 110/110 and bundled real-process recovery
-1/1 passed, with full source/test typechecks. Fast tier: 2,317 passed / 44 skipped;
-unit tier: 11,982 passed / 3 skipped; contract tier: 950 passed / 19 todo.
-V8 coverage from the related regressions covered 39 of 42 changed executable
-SDK lines (92.86%); this measures the patch, not repository-wide coverage.
-The broad system run covered 82 files: 77 passed; all five failing files were
-rerun against the frozen final source and valid isolated home, passing 151/151.
-Those files include the full 25-case daemon CLI suite, real concurrent launcher,
-52-case upgrade suite, public Session API and MCP transport suite.
+Packaged dependency and exact SDK/tarball/native gates passed. Boot smoke measured
+renderer readiness at **4,467 ms** and Runtime at **25,451 ms** with a deliberate
+20-second hold, preserving 122 historical child records; these are acceptance
+observations, not performance benchmarks. Fixtures use isolated profiles and the
+executable's own public SDK. Production ownership/build guards were not relaxed.
 
-The first broad SDK harness forced `KODAX_HOME`, conflicting with tests that
-mock `homedir`; another trial placed HOME inside system temp and changed the
-permission boundary assumptions. The authoritative unit rerun used an isolated
-home outside system temp with no forced `KODAX_HOME`. A stale-launcher rejection
-also occurred while source was changing during the first system run. The final
-five-file rerun used frozen source and the same valid isolation. The A2A startup
-fence failure was a real regression: it was independently reproduced before the
-bounded descriptor wait fix, then passed, including in the full daemon suite.
-MCP's temporary-port `bad port` failure also passed the final file rerun without
-changing transport code. These records do not claim the initial `test:full`
-command itself exited successfully.
+## Standards
 
-## Review
+Independent read-only Standards review: **0 remaining findings**. Its pending
+reconnect/close finding was reproduced, fixed and covered by a regression.
 
-Standards and Spec were reviewed independently. Findings about missing bundled
-test wiring, actual profile lifecycle, structured diagnostics, a real active Run,
-the concurrent startup winner, unpublished startup descriptor and failure-path
-fixture cleanup were corrected.
-Final Standards findings: 0. Final Spec findings: 0.
+## Spec
 
-## Final artifacts and provenance
+Independent read-only Spec review: **0 remaining findings**. Its untyped socket
+connection-timeout finding was reproduced and fixed in the SDK with a regression.
 
-SDK source commit: `d45938b90eafabf5764cab4de008b057a64092c4`.
+## Artifacts and provenance
+
+SDK source commit: `bfe8f376236a55d9bff16e56c7eccab80d9cdb74`.
 The [vendored package provenance](../../vendor/issue-222/README.md) records its
-exact SHA-256 and SRI. Windows Setup is 181,101,899 bytes and Portable is
-180,891,887 bytes, both below the 200 MiB package gate. Artifact SHA-256 values,
-source file fingerprints and the Space source commit are recorded in
-[machine evidence](issue-222-recovery-evidence.json). Packaged Main is verified
-byte-for-byte against the final built Main; package metadata confirms both
-candidate versions. All new shared-Host fixture profiles were removed, and no
-daemon profiles remained in the explicitly isolated SDK/Space test homes.
+SHA-256/SRI. Setup is 181,185,599 bytes and Portable is 180,975,586 bytes, both
+below 200 MiB. [Machine evidence](issue-222-recovery-evidence.json) records exact
+source commits, source fingerprints, candidate versions and artifact hashes.
+Packaged Main is checked byte-for-byte against the final built Main.
 
-## Scope
-
-This verification targets Windows x64. macOS/Linux installer acceptance and an
-external model/account matrix are outside this local candidate. The existing
-personal Space process and its history are not replaced by the build; installer
-artifacts are written to `out/issue-222`.
+An Electron download failed with a TLS disconnect. Packaging then used the local
+installed Electron distribution; both its package and runtime versions were
+verified as the pinned `42.5.0`. Standard after-pack and product smoke gates ran
+against the resulting package. Artifacts are under `out/issue-222`; the personal
+Space installation was not replaced. These are local Windows x64 candidates,
+not npm/GitHub releases or macOS/Linux installer qualification.

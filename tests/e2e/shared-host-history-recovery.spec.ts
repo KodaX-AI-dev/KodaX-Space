@@ -3,6 +3,7 @@ import path from 'node:path';
 import { launchSpace, type SpaceInstance } from './fixtures.js';
 import { startConflictingHistoryHost } from './shared-host-fixture.js';
 import { createLocalSdkProvider } from './sdk-provider-fixture.js';
+import { stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
 
 test.setTimeout(180_000);
 
@@ -50,6 +51,31 @@ for (const holdClient of [false, true]) {
         await expect(conversation).toContainText(`saved question ${label}`, { timeout: 35_000 });
         await expect(conversation).toContainText(`saved answer ${label}`, { timeout: 35_000 });
         await expect(space.page.getByTestId('history-runtime-unavailable')).toHaveCount(0);
+      }
+      if (!holdClient) {
+        const readConnection = () =>
+          space!.page.evaluate(async () => {
+            const result = await window.kodaxSpace!.invoke('runtime.profileSnapshot', undefined);
+            if (!result.ok) throw new Error('Runtime profile read failed');
+            return result.data.connection;
+          });
+        const beforeExit = await readConnection();
+        expect(beforeExit.state).toBe('ready');
+        expect(await stopOwnedTestDaemon(space.testDataDir)).toBe(true);
+        // The same selected history must reattach after a real isolated Host exit.
+        // Reading this IPC snapshot is passive; it must not trigger startup.
+        await expect
+          .poll(
+            async () => {
+              const connection = await readConnection();
+              return connection.state === 'ready' && connection.runtimeId !== beforeExit.runtimeId;
+            },
+            { timeout: 35_000 },
+          )
+          .toBe(true);
+        await expect(space.page.getByTestId('conversation-stream')).toContainText(
+          'saved answer second',
+        );
       }
     } finally {
       provider.release('HOLD_QUEUE');

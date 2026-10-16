@@ -1625,7 +1625,7 @@ function runtimeInitializationDiagnostic(error: unknown): string {
   const requirement = typeof capability === 'string' ? ` (${capability})` : '';
   const ownerProfile = (error as { ownerProfile?: unknown }).ownerProfile;
   const owner = typeof ownerProfile === 'string' ? ` Host profile: ${ownerProfile}.` : '';
-  const recovery = isRetryableSharedHostFailure(error)
+  const recovery = isRetryableDaemonStartupFailure(error)
     ? ' Space will retry automatically when the Host is idle.'
     : '';
   return `Coder daemon capability upgrade required${requirement}.${owner}${blockers}${recovery} ${diagnostic}`.slice(
@@ -1636,18 +1636,32 @@ function runtimeInitializationDiagnostic(error: unknown): string {
 
 function isTransientDaemonHealthFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /^Runtime daemon is unhealthy; refusing to start a competing owner\.?$/i.test(
+  return /^Runtime daemon is unhealthy; refusing to start a competing owner\.?(?: \[state [^\r\n]*\])?$/i.test(
     message.trim(),
   );
 }
 
-function isRetryableSharedHostFailure(error: unknown): boolean {
+function isRetryableDaemonStartupFailure(error: unknown): boolean {
   if (!error || typeof error !== 'object' || !('code' in error)) return false;
   return (
     (error.code === 'session_storage_owned' ||
-      error.code === 'daemon_capability_upgrade_required') &&
+      error.code === 'daemon_capability_upgrade_required' ||
+      error.code === 'daemon_startup_failed') &&
     'retryable' in error &&
     error.retryable === true
+  );
+}
+
+function isTransientDaemonConnectFailure(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error.code === 'ENOENT' ||
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ECONNRESET' ||
+      error.code === 'EPIPE' ||
+      error.code === 'ETIMEDOUT')
   );
 }
 
@@ -2013,8 +2027,16 @@ function isReconnectableInitializationFailure(error: unknown): boolean {
   return error instanceof RuntimeInitializationAuthorityLostError || isReconnectableFailure(error);
 }
 
+function isDaemonEnsureRecoveryFailure(error: unknown): boolean {
+  return (
+    isTransientDaemonHealthFailure(error) ||
+    isRetryableDaemonStartupFailure(error) ||
+    isTransientDaemonConnectFailure(error)
+  );
+}
+
 function isRunRecoveryInitializationFailure(error: unknown): boolean {
-  return isReconnectableInitializationFailure(error) || isTransientDaemonHealthFailure(error);
+  return isReconnectableInitializationFailure(error) || isDaemonEnsureRecoveryFailure(error);
 }
 
 function isReconnectableRunTransportLoss(error: unknown): boolean {
@@ -2148,7 +2170,6 @@ export class RuntimeHostAdapter {
   private connectionSubscription: RuntimeSubscription | undefined;
   private workflowSubscription: RuntimeSubscription | undefined;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-  private reconnectMustContinue = false;
   private readonly runRecoveryWaiters = new Set<{
     readonly resolve: () => void;
     readonly reject: (error: Error) => void;
@@ -2593,7 +2614,6 @@ export class RuntimeHostAdapter {
             // Runtime attachment by throwing from its observer.
           }
         }
-        this.reconnectMustContinue = false;
         this.resolveRunRecoveryWaiters();
       })
       .catch(async (error: unknown) => {
@@ -2622,20 +2642,13 @@ export class RuntimeHostAdapter {
         this.initializePromise = null;
         if (this.state === 'closed') throw error;
         this.lastError = runtimeInitializationDiagnostic(error);
-        const retryableOwnerFailure = isRetryableSharedHostFailure(error);
-        const retryableHealthFailure =
-          isTransientDaemonHealthFailure(error) || retryableOwnerFailure;
+        const retryableFailure = isRunRecoveryInitializationFailure(error);
         this.state = 'failed';
-        this.publishUnavailable(
-          retryableHealthFailure ? 'reconnecting' : 'incompatible',
-          this.lastError,
-        );
-        // The SDK deliberately refuses to start a competing daemon while a
-        // previous owner's health record is still within its safety window.
-        // That condition can clear without user action, so keep probing through
-        // the existing bounded backoff instead of leaving Coder permanently in
-        // a failed state until the first send happens to retry initialize().
-        if (retryableHealthFailure) this.scheduleReconnect(true, retryableOwnerFailure);
+        this.publishUnavailable(retryableFailure ? 'reconnecting' : 'incompatible', this.lastError);
+        // Restart authority stays in the SDK. Retry transient attach/startup failures
+        // with startup enabled when a missing or retiring Host may need replacement.
+        if (retryableFailure)
+          this.scheduleReconnect(autoStart || isDaemonEnsureRecoveryFailure(error));
         throw error;
       });
     return this.initializePromise;
@@ -2797,43 +2810,33 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private scheduleReconnect(
-    retryOnlyTransientHealthFailure = false,
-    recoverSharedHost = false,
-  ): void {
+  private scheduleReconnect(ensureHost = false): void {
     if (this.state === 'closed' || this.rollbackInProgress) return;
-    if (!retryOnlyTransientHealthFailure) this.reconnectMustContinue = true;
     if (this.reconnectTimer) return;
     const delay = Math.min(30_000, 1_000 * 2 ** Math.min(this.reconnectAttempt, 5));
     this.reconnectTimer = setTimeout(() => {
       if (this.state === 'closed') {
         this.reconnectTimer = undefined;
-        this.reconnectMustContinue = false;
         return;
       }
-      void this.initialize(undefined, recoverSharedHost)
+      void this.initialize(undefined, ensureHost)
         .then(() => {
           this.reconnectTimer = undefined;
           this.reconnectAttempt = 0;
-          this.reconnectMustContinue = false;
         })
         .catch((error: unknown) => {
           // Keep the timer registered until initialize() settles. Its own error
           // path may observe the same transient health failure and request a
           // retry; retaining this handle prevents two retry chains from racing.
           this.reconnectTimer = undefined;
+          if (this.state === 'closed' || this.rollbackInProgress) return;
           this.reconnectAttempt += 1;
           if (!isRunRecoveryInitializationFailure(error)) {
             this.rejectRunRecoveryWaiters(error);
-          }
-          if (!this.reconnectMustContinue) {
-            if (!isTransientDaemonHealthFailure(error) && !isRetryableSharedHostFailure(error))
-              return;
-            this.scheduleReconnect(true, isRetryableSharedHostFailure(error));
             return;
           }
-          this.publishUnavailable('disconnected', sanitizeDiagnosticError(error));
-          this.scheduleReconnect();
+          this.publishUnavailable('reconnecting', this.lastError ?? sanitizeDiagnosticError(error));
+          this.scheduleReconnect(ensureHost || isDaemonEnsureRecoveryFailure(error));
         });
     }, delay);
     // An admitted Run waiting for recovery is real pending work: its reconnect
@@ -6417,7 +6420,6 @@ export class RuntimeHostAdapter {
   private enterClosedState(): void {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = undefined;
-    this.reconnectMustContinue = false;
     this.state = 'closed';
     if (this.projectionController.profileSnapshot().connection.startupProgress) {
       this.publishUnavailable('disconnected', 'Runtime startup stopped.');

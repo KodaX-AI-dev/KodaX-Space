@@ -1,12 +1,13 @@
 # Issue 222 SDK integration candidate
 
-- Package: `@kodax-ai/kodax@0.7.97-alpha.6.issue222.3`
-- SDK source commit: `d45938b90eafabf5764cab4de008b057a64092c4`
-- Tarball SHA-256: `83153e63e20d7084a3cd40288372301d5220c6aa24a3b270f7bd6fba8a78f236`
-- Lockfile SRI: `sha512-6kbjcxtC8mOk0pm8zr+SgOcrUqfrm8ewObr4iPtalQg30amS7sO6siigDbCHuj74uq+87Bt/xZZor0ZksLhO+g==`
+- Package: `@kodax-ai/kodax@0.7.97-alpha.6.issue222.4`
+- SDK source commit: `bfe8f376236a55d9bff16e56c7eccab80d9cdb74`
+- Tarball SHA-256: `603b1093f854e2d3f1c05ca907f0673914bee20e455aab85938fb8b492bbc3e1`
+- Lockfile SRI: `sha512-GPQWD7ZK3lCDx+LflgLU82aM/MzIYDI7gquz62jexxAuqdpeoaPXIGrnKBuoiFsLJn8lXuhTUgsbp+2kFQktlQ==`
 
 This local public-SDK tarball carries the shared storage owner discovery,
-bounded descriptor waiting, guarded orphan-policy refresh and diagnostics fix.
+bounded descriptor waiting, guarded orphan-policy refresh and diagnostics fix,
+plus structured retryable startup/connect timeout errors.
 It was built with the SDK release pack/audit path and installed as a physical
 package. Both Space manifests resolve this same file; `npm ci` does not require
 a sibling checkout. Installed package bytes and native authorities are checked
