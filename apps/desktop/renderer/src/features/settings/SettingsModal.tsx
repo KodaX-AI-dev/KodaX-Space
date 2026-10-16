@@ -2503,6 +2503,13 @@ function SkillInstallButton({
 function LanguageSection(): JSX.Element {
   const { languageMode, effectiveLocale, setLanguageMode, t } = useI18n();
   const [busy, setBusy] = useState<LanguageModeT | null>(null);
+  const [languageSaved, setLanguageSaved] = useState(false);
+  useEffect(() => {
+    if (!languageSaved) return;
+    // Notify after the new locale renders, rather than using the previous handler's translation.
+    pushToast(t('toast.languageSaved'), 'success', 1800);
+    setLanguageSaved(false);
+  }, [languageSaved, t]);
   const options: ReadonlyArray<{ readonly mode: LanguageModeT; readonly label: MessageKey }> = [
     { mode: 'system', label: 'language.followSystem' },
     { mode: 'zh-CN', label: 'language.zhCN' },
@@ -2514,7 +2521,7 @@ function LanguageSection(): JSX.Element {
     setBusy(next);
     try {
       const ok = await setSpaceLanguage(next, setLanguageMode);
-      if (ok) pushToast(t('toast.languageSaved'), 'success', 1800);
+      if (ok) setLanguageSaved(true);
       else pushToast(t('toast.languageSaveFailed'), 'error');
     } finally {
       setBusy(null);
