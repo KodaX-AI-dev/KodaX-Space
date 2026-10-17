@@ -135,7 +135,8 @@ test('Reference Agent management, localization, and Workflow picker are product-
     await page.getByRole('button', { name: 'English' }).click();
     await page.getByRole('button', { name: 'Close settings' }).click();
 
-    await page.getByRole('button', { name: 'Open workflow panel' }).click();
+    await page.getByRole('button', { name: 'Activity views', exact: true }).click();
+    await page.getByRole('button', { name: 'Workflow', exact: true }).click();
     await page.getByText('Start workflow', { exact: true }).click();
     const picker = page.getByTestId('workflow-agent-target-picker');
     await expect(picker).toBeVisible();

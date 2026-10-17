@@ -43,7 +43,6 @@ import { ProjectContextMenu } from './ProjectContextMenu.js';
 import { ProjectSessionPicker } from './ProjectSessionPicker.js';
 import { RecentsFilterMenu } from './RecentsFilterMenu.js';
 import { SidebarFooter } from './SidebarFooter.js';
-import { WorkflowNavPanel } from '../features/workflow/WorkflowNavPanel.js';
 import { useSessionStatusMap, type SessionStatus } from '../features/session/useSessionStatus.js';
 import { SessionAwaitingIndicator } from '../features/session/SessionAwaitingIndicator.js';
 import { prioritizeAttentionItems } from '../features/session/sessionInteractionRouting.js';
@@ -195,7 +194,6 @@ export function LeftSidebar({
           <Plus className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} aria-hidden />
           {t('sidebar.newSession')}
         </button>
-        {shellChrome.showWorkflowNavigation && <WorkflowNavPanel />}
         <button
           type="button"
           onClick={handleOpenFiles}

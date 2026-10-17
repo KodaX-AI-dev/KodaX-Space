@@ -1,7 +1,6 @@
 import type { Surface } from '@kodax-space/space-ipc-schema';
 
 export interface ShellChromeProjection {
-  readonly showWorkflowNavigation: boolean;
   readonly showFutureFeatures: boolean;
   readonly showLocalEnvironment: boolean;
   readonly showPlaceholderBranch: boolean;
@@ -12,7 +11,6 @@ export interface ShellChromeProjection {
 export function projectShellChrome(surface: Surface): ShellChromeProjection {
   const showCoderChrome = surface === 'code';
   return {
-    showWorkflowNavigation: showCoderChrome,
     showFutureFeatures: showCoderChrome,
     showLocalEnvironment: showCoderChrome,
     showPlaceholderBranch: showCoderChrome,

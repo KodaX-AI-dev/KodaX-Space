@@ -8,6 +8,7 @@
 - `npm run typecheck`、`npm run lint`、`npm run build:smoke`。
 - `npm run e2e:run -- integrated-workspace.spec.ts`：实际 Electron 设置页；六分类、草稿、全部主题/质量、窄窗、reduced-motion、Portal 暂停/恢复、Shift+Tab、Provider 定向入口；本机 HTTP fixture 驱动已发布 SDK，在两个不同项目保持真实活动 Run，打开设置不停止它们，结束一个不影响另一个；成果/专注/设置往返保持原状态。没有调用外部模型。
 - `npm run e2e:run -- i18n-language-switch.spec.ts`：中文/英文即时切换、重载后保留个人语言、恢复跟随真实系统语言、六分类与外观选项翻译；保存提示使用切换后的语言。测试夹具显式选择英文便于固定选择器，产品默认仍跟随系统。中文深浅色设置与工作区截图保存在测试输出目录。
+- Workflow 入口降级：`npm run e2e:run -- workflow-events.spec.ts external-agent-reference.spec.ts right-sidebar-popouts.spec.ts`。验证无运行及运行中左栏均无 Workflow 卡片；顶部活动视图菜单可打开管理面、恢复历史及完整结果、选择外部 Agent；右侧进度/结果及工作面切换保留。
 - 既有 settings、i18n、左右侧栏、弹出工作面、Coder/Partner 布局、输入模式/模型、文件/产物与通知回归仍适用。设置的六类 tab ID 保留；测试用命名 region / `settings-workspace`，不再将设置视为 modal。
 - `partnerShellLayout.test.ts` 覆盖 600/900/1440 宽度、关闭详情、隐藏导航和无效保存宽度；覆盖率命令：`node --test --experimental-test-coverage --test-coverage-include=apps/desktop/renderer/src/shell/partnerShellLayout.ts --test-coverage-lines=80 --test-coverage-branches=80 --import tsx apps/desktop/renderer/src/shell/partnerShellLayout.test.ts`。
 
@@ -20,6 +21,7 @@
 5. 成果/审查进入专注，再用菜单或 `Ctrl+,` 进入设置。宽度允许时项目栏可见；设置内 `Ctrl+\` 不改变后台专注。返回后仍是原专注状态，明确退出即可恢复侧栏。
 6. 深浅/系统主题分别检查三档效果：极简无背景模糊、均衡静态柔光、全特效局部玻璃与缓慢环境光。无正文透字，长代码/表格不加全局窄宽度限制；键盘焦点可见。
 7. 全特效时流式输出、恢复历史、滚动/拖动、切后台；观察环境动画暂停及输入响应。系统 reduced-motion 禁止装饰动画。不同显卡/屏幕缩放的主观流畅度需要目标机器体验，不把本机通过当作跨设备性能保证。
+8. 左栏仅保留既有其他入口与项目/会话导航；Workflow 从顶部活动视图菜单打开。当前会话有运行时可在右侧查看进度和控制，结束后最近结果仍可查看；运行不会重新生成左栏常驻卡片。
 
 ## 验证记录
 
@@ -38,3 +40,4 @@
 - 完整 Electron E2E：112 项通过、3 项按条件跳过、0 失败；三个跳过项需要显式启用真实外部模型视觉检查。最终 typecheck、lint、build:smoke 与改动文件格式检查通过；实际深浅色工作区和设置截图保存在本机 `artifacts/f147/`。
 - 中文截图补验发现保存提示捕获了异步切换前的翻译函数；先添加提示语言断言并确认 RED，再将成功通知移到新语言渲染后的 effect。语言解析与设置存储定向单测 33 项通过、1 项因 Windows 符号链接权限跳过。
 - 修复后重跑 i18n 与完整工作区定向 E2E，3 项通过；中英保存提示、语言重载保持、系统跟随、工作区状态与双项目运行均通过。typecheck、renderer 构建、改动文件 lint/格式检查通过；中文实图已补齐。
+- 2026-10-17 Workflow 入口降级：先用现有历史恢复 E2E 验证左栏卡片缺席并确认 RED（原实现仍有 1 个入口）；移除卡片专用代码后，相关单测 47/47、四个相关 spec 的 Electron E2E 8/8 通过。顶部菜单、外部 Agent 选择、运行时暂停/停止按钮、进度与完成结果、历史磁盘恢复和完整工作面切换均通过；typecheck、renderer 构建、改动文件 lint/格式及 diff 检查通过。中文实图：本机 `artifacts/f147/workspace-zh-without-workflow.png`。

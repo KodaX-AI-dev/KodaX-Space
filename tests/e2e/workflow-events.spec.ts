@@ -380,9 +380,14 @@ test('workflow push events update the sidebar and transcript through completion'
     });
 
     const sidebar = space.page.getByTestId('right-sidebar');
+    await expect(
+      space.page.getByTestId('left-sidebar').getByRole('button', { name: 'Open workflow panel' }),
+    ).toHaveCount(0);
     // First render after the workflow event round-trips main -> renderer -> store;
     // on the loaded Windows CI runner this can take longer than the default 5s.
     await expect(sidebar).toContainText('E2E Workflow Review', { timeout: 15_000 });
+    await expect(sidebar.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Stop', exact: true })).toBeVisible();
     await expect(sidebar.getByLabel('Workflow runtime status')).toContainText('Collect changes', {
       timeout: 15_000,
     });
@@ -509,10 +514,13 @@ test('workflow push events update the sidebar and transcript through completion'
   }
 });
 
-test('workflow manager restores completed runs persisted on disk', async () => {
+test('workflow stays off primary navigation while the tool menu restores completed runs', async () => {
   const testId = `workflow-history-${Date.now()}`;
   const { space, projectDir } = await launchSeededSpace(testId);
   try {
+    await expect(
+      space.page.getByTestId('left-sidebar').getByRole('button', { name: 'Open workflow panel' }),
+    ).toHaveCount(0);
     const textarea = space.page.locator('textarea').first();
     const stream = space.page.getByTestId('conversation-stream');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
@@ -532,7 +540,8 @@ test('workflow manager restores completed runs persisted on disk', async () => {
     await writePersistedWorkflowRun(space, activeProjectRoot, sessionId);
     await writeEventsOnlyWorkflowRun(space, activeProjectRoot);
 
-    await space.page.getByRole('button', { name: 'Open workflow panel' }).click();
+    await space.page.getByRole('button', { name: 'Activity views', exact: true }).click();
+    await space.page.getByRole('button', { name: 'Workflow', exact: true }).click();
     const panel = space.page.getByTestId('workflow-management-panel');
     await expect(panel).toBeVisible({ timeout: 5_000 });
     await expect(panel).toContainText('Persisted Workflow Review', { timeout: 5_000 });
