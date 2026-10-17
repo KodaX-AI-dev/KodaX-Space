@@ -2596,7 +2596,7 @@ export function BottomBar(): JSX.Element {
       <div className="relative">
         {mascotMode === 'legacy' && (
           <KodaXDogMascot
-            className="pointer-events-none absolute -top-1 right-4 z-10 h-7 w-[35px] opacity-90 drop-shadow-[0_4px_6px_rgb(0_0_0_/_0.10)]"
+            className="pointer-events-none absolute -top-[27px] right-3 z-10 h-7 w-[35px] opacity-90 drop-shadow-[0_4px_6px_rgb(0_0_0_/_0.10)]"
             inputActive={mascotInputActive}
             working={busy || isAttaching || isStreaming}
           />
