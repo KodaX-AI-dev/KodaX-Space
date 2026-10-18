@@ -133,7 +133,9 @@ export async function launchSpace(
   testId: string,
   opts?: LaunchSpaceOptions,
 ): Promise<SpaceInstance> {
-  const testDataDir = path.join(os.tmpdir(), `kodax-test-${testId}`);
+  // Keep the parent fixture and child Host on the same physical macOS profile.
+  const tempRoot = process.platform === 'darwin' ? await fs.realpath(os.tmpdir()) : os.tmpdir();
+  const testDataDir = path.join(tempRoot, `kodax-test-${testId}`);
   // 清掉可能上一次跑的同名残留 (testId 来自 spec 名 + timestamp，正常情况不冲突)
   await cleanupRuntimeClientCredentialForTestProfile(testDataDir).catch(() => undefined);
   await fs.rm(testDataDir, { recursive: true, force: true }).catch(() => {});
