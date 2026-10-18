@@ -275,7 +275,7 @@ test('real SDK items replace live output, survive reload, and retain repeated di
         const result = await window.kodaxSpace!.invoke('session.productSnapshot', {
           sessionId: id,
         });
-        if (!result.ok || !result.data) throw new Error('Official product view unavailable');
+        if (!result.ok || !result.data) throw new Error('Official product view unavailable: '+JSON.stringify(result));
         return result.data;
       }, sessionId);
     await expect
@@ -347,6 +347,9 @@ test('real SDK items replace live output, survive reload, and retain repeated di
       'ONE_DISPLAY_INTENT',
     );
     expect(provider.errors).toEqual([]);
+  } catch (error) {
+    await test.info().attach('first-product-failure.json', {body:JSON.stringify({error:String(error),requests:provider.requests,errors}),contentType:'application/json'});
+    throw error;
   } finally {
     await provider.close();
     await space.close();
