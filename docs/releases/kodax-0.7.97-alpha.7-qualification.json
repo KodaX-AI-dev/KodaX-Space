@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T02:52:06.660Z",
+  "generatedAt": "2026-10-18T03:26:18.963Z",
   "spaceVersion": "0.1.47-alpha.3",
   "published": false,
   "dependency": {
@@ -52,7 +52,7 @@
     "runId": 39090294249,
     "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39090294249",
     "sourceCommit": "2bc01b0e04ea3f9cbf85a9a834b35f93f6aa74ed",
-    "status": "in_progress_with_linux_wrapper_failure",
+    "status": "linux_passed_windows_and_macos_failures_under_investigation",
     "retries": 0,
     "releaseJob": "tag_only; manual branch run cannot publish",
     "initialLinuxFailure": {
@@ -68,9 +68,78 @@
       "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39091399878",
       "sourceCommit": "847f03922d77768e8bd29fbcf7f851172f8e8006",
       "parentSourceCommit": "a95cbc3f843fcf5ff622af86ba235abbec69e969",
+      "status": "passed",
+      "onlyDifferenceFromParent": "workflow matrix limited to Linux; all source/test/build gates preserved",
+      "e2e": {
+        "passed": 20,
+        "failed": 0,
+        "retries": 0,
+        "durationMinutes": 4.1
+      }
+    },
+    "initialWindows": {
+      "jobId": 117565417222,
+      "fullUnitSuite": "passed",
+      "installer": "passed",
+      "packagedDependencySmoke": "passed",
+      "e2e": {
+        "passed": 16,
+        "failed": 4,
+        "retries": 0
+      },
+      "failureArtifact": 12123009083
+    },
+    "macosFirstFailure": {
+      "runId": 39092027331,
+      "jobId": 117570623412,
+      "sourceCommit": "850e82d3602aafb75e519cc0484186eb388c2f48",
+      "failureArtifact": 12122804581,
+      "rendererAssertions": "passed",
+      "electronClosedAtTraceMs": 17500,
+      "timeoutAtTraceMs": 47028,
+      "phase": "post-close fixture cleanup"
+    },
+    "macosCredentialProbe": {
+      "runId": 39093045237,
+      "sourceCommit": "7032772914e8b31e4597951795b3c992523998e2",
+      "creatorMs": 1888,
+      "nodeDeleteTimeoutMs": 15015,
+      "securityDeleteMs": 29,
+      "invalidEarlierProbe": 39092912444,
+      "fixCommit": "91c9b006",
+      "packagedVerification": "pending",
+      "sameCreatorOfflineRead": {
+        "runId": 39093226383,
+        "sourceCommit": "b4c2f467ff7f66ad8bdd38702300fc0296847023",
+        "durationMs": 154,
+        "fixCommit": "7685665b3bfe6b76f2393b0a50fbb6110ece9cc2"
+      },
+      "actualPackagedStageProbe": {
+        "runId": 39092820170,
+        "jobId": 117572967833,
+        "sourceCommit": "3dc7816189402f52874a565eb88a2624533342f0",
+        "lastCompletedStage": "keyring import",
+        "blockedStage": "keyring.deletePassword"
+      }
+    },
+    "macosFollowup": {
+      "runId": 39093390590,
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39093390590",
+      "sourceCommit": "4675b96b6b5ecd0f944452b2386ab59829244a90",
+      "parentSourceCommit": "7685665b3bfe6b76f2393b0a50fbb6110ece9cc2",
       "status": "in_progress",
-      "onlyDifferenceFromParent": "workflow matrix limited to Linux; all source/test/build gates preserved"
-    }
+      "onlyDifferenceFromParent": "workflow matrix limited to macOS x64 and arm64; all full gates preserved"
+    },
+    "initialMacJobs": [
+      {
+        "jobId": 117565417164,
+        "conclusion": "cancelled"
+      },
+      {
+        "jobId": 117565417212,
+        "conclusion": "cancelled"
+      }
+    ]
   },
   "windows": {
     "node": "v22.23.1",
@@ -234,6 +303,15 @@
       "passed": 1,
       "failed": 0,
       "retries": 0
+    },
+    "macosCleanup": {
+      "passed": 6,
+      "failed": 0,
+      "coverage": {
+        "lines": 92,
+        "branches": 83.78,
+        "functions": 100
+      }
     }
   },
   "artifacts": {
@@ -294,6 +372,46 @@
       "path": ".tmp-alpha7-job-117565417153.log",
       "bytes": 2045151,
       "sha256": "dd4668024ce6b9b1a0564de71c5728da0a93038cbb4046f15b803ae235707bd8"
+    },
+    {
+      "path": ".tmp-alpha7-job-117568752787.log",
+      "bytes": 2038701,
+      "sha256": "d3afd73154e37b6d02894ac34037235e010618d652fd5c22804917ffb265d7d9"
+    },
+    {
+      "path": ".tmp-alpha7-job-117565417222.log",
+      "bytes": 2092410,
+      "sha256": "6dde287012f9c9fd954d8348d28fc6a2d6a21a5c640a9b0d1c19e670b1839f82"
+    },
+    {
+      "path": ".tmp-alpha7-job-117573642523.log",
+      "bytes": 19636,
+      "sha256": "602fce576a19835a375906ae2369149afe230d8c562aec498ac70a7c161487ad"
+    },
+    {
+      "path": ".tmp-alpha7-macos-cleanup-red.log",
+      "bytes": 2446,
+      "sha256": "830219dcaef8a4fb85f6614f70fa9a0e697c0e7ea7e7c7b653de8a60b813fc43"
+    },
+    {
+      "path": ".tmp-alpha7-macos-cleanup-green.log",
+      "bytes": 2315,
+      "sha256": "6d54a0035f5f9a1540c7cbb07d9b3a14fdad8a22645728f9628d18b47cf593b0"
+    },
+    {
+      "path": ".tmp-alpha7-job-117574190933.log",
+      "bytes": 19875,
+      "sha256": "da35d93ff2f95dfd5eb5a02539a41ed288eec2e1a431a28b5d6fb5d0d91bcea7"
+    },
+    {
+      "path": ".tmp-alpha7-job-117572967833.log",
+      "bytes": 123783,
+      "sha256": "5677602368a975686ddb69dacc93c4f593190363c493ed0b76e7ce4ca4772ca5"
+    },
+    {
+      "path": ".tmp-alpha7-credential-e2e-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ]
 }

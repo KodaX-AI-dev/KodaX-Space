@@ -109,11 +109,49 @@ Commit `a95cbc3f` replaces that function with explicit argument forwarding.
 The [Linux-only follow-up](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39091399878)
 uses `847f0392`, whose only difference from `a95cbc3f` is its Linux-only workflow
 matrix. It repeats every gate, including the full unit suite. The production
-workflow retains all four targets. Both runs' unfinished jobs remain pending.
+workflow retains all four targets. This follow-up passed its full unit suite,
+installer construction, packaged dependency smoke and **20/20 packaged E2E cases
+in 4.1 minutes, with retries disabled**.
 Two earlier runs were explicitly cancelled after review found the macOS fixture
 path issues; they are not acceptance results.
 Manual branch dispatch cannot enter the tag-only Release job, and the packer
 continues using `-p never`.
+
+The initial Windows CI job passed 16 cases and failed four. Three observed a
+first input before a Run/reply existed; the fourth read an `unknown` cleanup
+receipt after complete exit with a peer connected. These original failures and
+their [traces](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39090294249/artifacts/12123009083)
+remain evidence; local 20/20 does not erase them. Their causes are still under
+investigation.
+
+The [macOS first-failure diagnostic](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39092027331)
+passed all Renderer/preload assertions and closed Electron by 17.5 seconds from
+the trace origin, then timed out during fixture cleanup. A separate corrected
+[cross-process probe](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39093045237)
+created a credential in Electron in 1,888 ms; deleting it through Node's native
+keyring call exceeded 15 seconds, while `/usr/bin/security delete-generic-password`
+deleted that same item in 29 ms. The earlier probe run `39092912444` used an
+incorrect Electron module import and is not credential-failure evidence.
+
+Commit `91c9b006` changes only test cleanup: macOS deletes the exact validated
+test service/account through the system command, bounded to five seconds.
+Missing items are tolerated; permission/time-out errors propagate and preserve
+the profile's ownership evidence. Six cleanup tests pass (92% line, 83.78%
+branch, 100% function coverage). No production credential ACL, Host liveness
+assertion or startup deadline changes. Packaged macOS requalification remains
+pending.
+
+The [same-binary follow-up](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39093226383)
+also read the Electron-created credential after app exit in 154 ms by running
+that same executable in Node mode. Commit `7685665b` uses this existing OS
+authorization for the test's public offline exit-receipt reader. It neither
+exports a credential through Renderer IPC nor expands the credential's ACL.
+The [full macOS x64/arm64 qualification](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39093390590)
+uses `4675b96b`, whose only difference from `7685665b` is its two-target workflow
+matrix; it retains the complete unit/build/smoke/E2E gates. Commits `450675d4`
+and `11cd75dd` additionally preserve original launch/Renderer errors together
+with any cleanup failure through `AggregateError`; they do not alter success
+paths. The temporary stage probes remain confined to the diagnostic branch.
 
 This gate checks installer construction, packaged dependencies and the actual
 packaged application. It does not exercise a human installer wizard, OS signing
