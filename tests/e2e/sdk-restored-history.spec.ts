@@ -134,7 +134,7 @@ async function readPage(space: SpaceInstance, sessionId: string, page?: ReadyHis
       });
       if (!result.ok) throw new Error(result.error.message);
       if (result.data.page?.outcome !== 'ready')
-        throw new Error('Saved history unexpectedly invalidated');
+        throw new Error('Saved history unexpectedly invalidated: '+JSON.stringify(result));
       return { ...result.data, page: result.data.page };
     },
     { id: sessionId, previous: page },
