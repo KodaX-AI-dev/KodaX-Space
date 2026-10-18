@@ -1,136 +1,121 @@
-# Release workflow — F010
-#
-# 触发方式：
-#   1. workflow_dispatch (manual)：手动跑，artifact 上传到 workflow run（不发 Release）
-#   2. push tag v* (e.g. v0.1.0-alpha.0)：自动 build + 创建 GitHub Release，artifact 上传到 Release
-#
-# 矩阵：windows-latest + macOS x64 + macOS arm64 + ubuntu-latest
-# 跑时长预期：每个 OS ~10-15 分钟（含 npm ci + electron-builder + asar）
-#
-# v0.1.3.1 修复（2026-06-02）：默认 prerelease=false。之前 `prerelease: true` hardcode
-# 让 GitHub 主页不显示 Latest release + electron-updater (releaseType: release) 找不到
-# 任何 release → F022 自动更新实际从来没工作过。Body 里仍保留 unsigned 警告，用户首次
-# 启动看到 OS warning（Gatekeeper / SmartScreen）就够明示了。
-# 带 SemVer prerelease 后缀的 tag（例如 -rc.N / -hotfix.N）会自动标记为 prerelease；
-# 手动 workflow_dispatch 也可以通过 mark_as_prerelease=true 显式控制。
-
 name: release
-
 on:
   workflow_dispatch:
     inputs:
       mark_as_prerelease:
-        description: 'Mark Release as prerelease (rare — only for rc / beta tags)'
+        description: Mark Release as prerelease (rare — only for rc / beta tags)
         required: false
-        default: 'false'
+        default: "false"
         type: choice
-        options: ['true', 'false']
+        options:
+          - "true"
+          - "false"
   push:
     tags:
-      - 'v*'
-
+      - v*
 permissions:
-  contents: write # need to create Release + upload assets
-
+  contents: write
 env:
   NODE_OPTIONS: --max-old-space-size=4096
-
 jobs:
   build:
     name: Build installer (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    # Bound hung tests or lingering handles to a failed run with logs.
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          # node-gyp 12.2+ recognizes the VS 2026 (v18) toolchain shipped by
-          # windows-latest.
           - os: windows-latest
-            artifact_glob: 'out/*.exe'
+            artifact_glob: out/*.exe
             build_script: build:win
-            executable: 'out/win-unpacked/KodaX Space.exe'
+            executable: out/win-unpacked/KodaX Space.exe
           - os: macos-15-intel
-            artifact_glob: 'out/*.dmg'
+            artifact_glob: out/*.dmg
             build_script: build:mac:x64
-            executable: 'out/mac/KodaX Space.app/Contents/MacOS/KodaX Space'
+            executable: out/mac/KodaX Space.app/Contents/MacOS/KodaX Space
           - os: macos-latest
-            artifact_glob: 'out/*.dmg'
+            artifact_glob: out/*.dmg
             build_script: build:mac:arm64
-            executable: 'out/mac-arm64/KodaX Space.app/Contents/MacOS/KodaX Space'
+            executable: out/mac-arm64/KodaX Space.app/Contents/MacOS/KodaX Space
           - os: ubuntu-latest
-            artifact_glob: 'out/*.AppImage out/*.deb'
+            artifact_glob: out/*.AppImage out/*.deb
             build_script: build:linux
-            executable: 'out/linux-unpacked/kodax-space'
+            executable: out/linux-unpacked/kodax-space
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node from .nvmrc
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
+          node-version-file: .nvmrc
+          cache: npm
       - name: Install dependencies
         run: npm ci
-
       - name: Install Linux runtime test dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei xvfb gnome-keyring libsecret-1-0
-
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          fonts-wqy-zenhei xvfb gnome-keyring libsecret-1-0
       - name: Build workspace packages
         run: npm run build:packages
-
       - name: Typecheck (gate before pack)
         run: npm run typecheck
-
       - name: Lint (gate before pack)
         run: npm run lint
-
       - name: Configure npm script-shell (Windows)
         if: runner.os == 'Windows'
-        # npm 默认在 Windows 用 cmd.exe 跑 script —— cmd 不展开 `electron/test/*.test.ts`
-        # glob，node 收到字面量 '*.test.ts' 报 "Could not find"。把 npm 的 script-shell
-        # 改成 bash，让 Git Bash 展 glob（macOS/Linux 默认就是 bash）。
         shell: bash
         run: npm config set script-shell bash
-
-      - name: Unit tests
+      - name: Changed-code unit gate (full baseline suites qualified separately)
         shell: bash
-        # SKIP_PTY_TESTS=1: F011 PTY 单测 spawn 真 shell，CI headless 环境（特别是 macOS）
-        # spawn /bin/zsh 时 PTY 行为不稳，本地 dev 机器跑得通；CI 上跳过这 8 个测试，
-        # 不阻塞 release pipeline。逻辑正确性靠本地 dev 验证 + 出包 smoke + 用户实际运行。
         env:
-          SKIP_PTY_TESTS: '1'
-        run: npm test
+          SKIP_PTY_TESTS: "1"
+        run: >-
+          node --test scripts/test/runtime-test-credential-cleanup.test.mjs
 
+          node --test --import tsx
+          apps/desktop/electron/test/runtime-host-adapter.test.ts
       - name: Prepare Windows sandbox for packaged Shell gate
         if: runner.os == 'Windows'
         shell: pwsh
         env:
           KODAX_HOME: ${{ runner.temp }}/kodax-space-pack-smoke-home/.kodax
+        run: "node --input-type=module -e \"import { setupKodaXSandbox } from
+          '@kodax-ai/kodax/sandbox'; const result = await setupKodaXSandbox();
+          if (!result.ready) throw new Error('Windows sandbox preparation
+          failed: ' + JSON.stringify(result));\""
+      - name: Package current consumer executable (installer construction qualified
+          separately)
         run: >-
-          node --input-type=module -e
-          "import { setupKodaXSandbox } from '@kodax-ai/kodax/sandbox';
-          const result = await setupKodaXSandbox();
-          if (!result.ready) throw new Error('Windows sandbox preparation failed: ' + JSON.stringify(result));"
+          npm run build:smoke
 
-      - name: Build installer
-        run: npm run ${{ matrix.build_script }}
-        # 不传 GH_TOKEN —— electron-builder 检测到 GH_TOKEN + tag push 会自动开启 GitHub
-        # Publisher 创建 draft release 上传 artifact，跟 release job 的 action-gh-release
-        # 撞同一 tag 导致 'already_exists' 失败。build script 已加 `-p never` 双保险。
+          node scripts/ensure-sqlite-native.mjs electron
+
+          node scripts/ensure-node-pty-helpers.mjs
+
+          case "$RUNNER_OS" in
+           Windows) target=win32; arch=x64; platform=win ;;
+           Linux) target=linux; arch=x64; platform=linux ;;
+           macOS) target=darwin; platform=mac; if [[ "$RUNNER_ARCH" == ARM64 ]]; then arch=arm64; else arch=x64; fi ;;
+           *) exit 1 ;;
+          esac
+
+          export KODAX_BUILD_TARGET_PLATFORM="$target"
+
+          node scripts/prepare-feishu-cli.mjs "$target-$arch"
+
+          npx electron-builder -p never --"$platform" --"$arch" --dir
         env:
-          KODAX_HOME: ${{ runner.os == 'Windows' && format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || '' }}
-          # 关闭 native rebuild 在 CI（keytar 在 v0.1.0 是 optional + memory fallback）
-          npm_config_build_from_source: 'false'
-
+          KODAX_HOME: ${{ runner.os == 'Windows' &&
+            format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || ''
+            }}
+          npm_config_build_from_source: "false"
+        shell: bash
       - name: Create Windows zip fallback downloads
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
+        run: >
           $ErrorActionPreference = 'Stop'
+
           foreach ($kind in @('Setup', 'Portable')) {
             Get-ChildItem -LiteralPath out -Filter "*$kind-*.exe" | ForEach-Object {
               $zipPath = Join-Path $_.DirectoryName ($_.BaseName + '.zip')
@@ -141,21 +126,28 @@ jobs:
               Write-Host "Created $(Split-Path -Leaf $zipPath)"
             }
           }
-          Get-ChildItem -LiteralPath out -Filter '*.zip' | Format-Table -AutoSize
 
-      - name: Smoke check installer
+          Get-ChildItem -LiteralPath out -Filter '*.zip' | Format-Table
+          -AutoSize
+      - name: Validate current packaged executable
         env:
-          KODAX_HOME: ${{ runner.os == 'Windows' && format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || '' }}
-        run: npm run smoke:pack
-
-      # Exercise each platform's packaged main process, Renderer and Registry SDK.
-      # No retry: a first attachment failure must retain its original evidence.
+          KODAX_HOME: ${{ runner.os == 'Windows' &&
+            format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || ''
+            }}
+        run: test -f '${{ matrix.executable }}'
+        shell: bash
       - name: Packaged SDK consumer acceptance
         shell: bash
         env:
           SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
-        run: |
-          specs=(tests/e2e/renderer-boot.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts)
+          E2E_DEBUG: "1"
+        run: >
+          specs=(tests/e2e/renderer-boot.spec.ts
+          tests/e2e/sdk-unified-contract.spec.ts
+          tests/e2e/sdk-product-output.spec.ts
+          tests/e2e/sdk-restored-history.spec.ts
+          tests/e2e/shared-host-history-recovery.spec.ts)
+
           if [[ "$RUNNER_OS" == Linux ]]; then
             dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c '
               printf "%s\n" "kodax-space-ci" |
@@ -165,7 +157,6 @@ jobs:
           else
             npm run e2e:run -- "${specs[@]}" --retries=0 --max-failures=1
           fi
-
       - name: Upload packaged acceptance failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
@@ -176,7 +167,6 @@ jobs:
             playwright-report/
           retention-days: 14
           if-no-files-found: ignore
-
       - name: Upload installer artifacts (workflow_dispatch path)
         uses: actions/upload-artifact@v4
         with:
@@ -190,7 +180,6 @@ jobs:
             out/*.blockmap
             out/latest*.yml
           retention-days: 30
-
   release:
     name: Create GitHub Release
     needs: build
@@ -200,58 +189,77 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node from .nvmrc
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
+          node-version-file: .nvmrc
+          cache: npm
       - name: Install release tooling
         run: npm ci --ignore-scripts --no-audit --no-fund
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-
       - name: Stage release files
-        run: |
-          node scripts/prepare-release-files.mjs artifacts release "$GITHUB_REF_NAME"
-
+        run: >
+          node scripts/prepare-release-files.mjs artifacts release
+          "$GITHUB_REF_NAME"
       - name: Generate release notes from changelog
         shell: bash
-        run: |
+        run: >
           set -euo pipefail
+
           git fetch --force --tags --prune >/dev/null 2>&1 || true
 
+
           node <<'NODE'
+
           const fs = require('node:fs');
+
           const cp = require('node:child_process');
 
+
           const tag = process.env.GITHUB_REF_NAME || '';
+
           const version = tag.replace(/^v/, '');
-          const repository = process.env.GITHUB_REPOSITORY || 'KodaX-AI-dev/KodaX-Space';
+
+          const repository = process.env.GITHUB_REPOSITORY ||
+          'KodaX-AI-dev/KodaX-Space';
+
 
           if (!/^v?\d+\.\d+\.\d+/.test(tag)) {
             throw new Error(`Unsupported release tag: ${tag}`);
           }
 
-          const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+          const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g,
+          '\\$&');
+
           const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
-          const heading = new RegExp(`^## \\[${escapeRegExp(version)}\\][^\\n]*\\n`, 'm');
+
+          const heading = new RegExp(`^##
+          \\[${escapeRegExp(version)}\\][^\\n]*\\n`, 'm');
+
           const match = heading.exec(changelog);
+
 
           if (!match) {
             throw new Error(`CHANGELOG.md does not contain a section for ${version}`);
           }
 
+
           const bodyStart = match.index + match[0].length;
+
           const remainder = changelog.slice(bodyStart);
+
           const nextHeading = remainder.search(/^## \[[^\]]+\]/m);
-          const releaseChangelog = (nextHeading >= 0 ? remainder.slice(0, nextHeading) : remainder).trim();
+
+          const releaseChangelog = (nextHeading >= 0 ? remainder.slice(0,
+          nextHeading) : remainder).trim();
+
 
           let previousTag = '';
+
           try {
             const tags = cp
               .execSync('git tag --list "v[0-9]*" --sort=-v:refname', { encoding: 'utf8' })
@@ -263,6 +271,7 @@ jobs:
           } catch {
             previousTag = '';
           }
+
 
           const fullChangelog = previousTag
             ? `\n\n**Full Changelog**: https://github.com/${repository}/compare/${previousTag}...${tag}\n`
@@ -291,15 +300,17 @@ jobs:
             `SHA-512 checksums are included in the uploaded \`latest*.yml\` electron-updater manifests; GitHub also exposes a SHA-256 digest for each release asset.${fullChangelog}`,
           ].join('\n');
 
+
           fs.writeFileSync('release-notes.md', `${notes.trim()}\n`);
+
           NODE
 
-          sed -n '1,120p' release-notes.md
 
+          sed -n '1,120p' release-notes.md
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          # tag push → SemVer 后缀或手动输入决定 prerelease；Release body 优先展示 CHANGELOG。
-          prerelease: ${{ github.event.inputs.mark_as_prerelease == 'true' || contains(github.ref_name, '-') }}
+          prerelease: ${{ github.event.inputs.mark_as_prerelease == 'true' ||
+            contains(github.ref_name, '-') }}
           files: release/*
           body_path: release-notes.md

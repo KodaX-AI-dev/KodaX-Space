@@ -275,7 +275,7 @@ test('real SDK items replace live output, survive reload, and retain repeated di
         const result = await window.kodaxSpace!.invoke('session.productSnapshot', {
           sessionId: id,
         });
-        if (!result.ok || !result.data) throw new Error('Official product view unavailable');
+        if (!result.ok || !result.data) throw new Error('Official product view unavailable: '+JSON.stringify(result));
         return result.data;
       }, sessionId);
     await expect
