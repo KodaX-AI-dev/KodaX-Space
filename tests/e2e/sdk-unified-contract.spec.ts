@@ -212,6 +212,7 @@ test('desktop complete exit settles the last real SDK Host without fixture proce
     await writeFile(path.join(space.testDataDir, 'space/complete-exit.trigger'), 'exit');
     await expect.poll(() => applicationProcess.exitCode, { timeout: 30_000 }).toBe(0);
     const receipt = await readPublicSpaceExit(space);
+    await test.info().attach('public-exit-receipt.json', { body: JSON.stringify(receipt), contentType: 'application/json' });
     expect(receipt.runtimeId).toBe(descriptor.runtimeId);
     expect(receipt.cleanup.state).toBe('succeeded');
     expect(receipt.host.state).toBe('succeeded');
@@ -345,6 +346,7 @@ test('Space complete exit protects another connected product client', async () =
     await writeFile(path.join(space.testDataDir, 'space/complete-exit.trigger'), 'exit');
     await expect.poll(() => applicationProcess.exitCode, { timeout: 30_000 }).toBe(0);
     const receipt = await readPublicSpaceExit(space);
+    await test.info().attach('public-exit-receipt.json', { body: JSON.stringify(receipt), contentType: 'application/json' });
     expect(receipt.runtimeId).toBe((JSON.parse(descriptor) as { runtimeId: string }).runtimeId);
     expect(receipt.cleanup.state).toBe('succeeded');
     expect(receipt.host.state).toBe('protected');

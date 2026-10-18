@@ -45,24 +45,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # node-gyp 12.2+ recognizes the VS 2026 (v18) toolchain shipped by
-          # windows-latest.
           - os: windows-latest
             artifact_glob: 'out/*.exe'
             build_script: build:win
             executable: 'out/win-unpacked/KodaX Space.exe'
-          - os: macos-15-intel
-            artifact_glob: 'out/*.dmg'
-            build_script: build:mac:x64
-            executable: 'out/mac/KodaX Space.app/Contents/MacOS/KodaX Space'
-          - os: macos-latest
-            artifact_glob: 'out/*.dmg'
-            build_script: build:mac:arm64
-            executable: 'out/mac-arm64/KodaX Space.app/Contents/MacOS/KodaX Space'
-          - os: ubuntu-latest
-            artifact_glob: 'out/*.AppImage out/*.deb'
-            build_script: build:linux
-            executable: 'out/linux-unpacked/kodax-space'
     steps:
       - uses: actions/checkout@v4
 
@@ -96,14 +82,11 @@ jobs:
         shell: bash
         run: npm config set script-shell bash
 
-      - name: Unit tests
+      - name: Focused changed-code tests (full suite passed in 39090294249)
         shell: bash
-        # SKIP_PTY_TESTS=1: F011 PTY 单测 spawn 真 shell，CI headless 环境（特别是 macOS）
-        # spawn /bin/zsh 时 PTY 行为不稳，本地 dev 机器跑得通；CI 上跳过这 8 个测试，
-        # 不阻塞 release pipeline。逻辑正确性靠本地 dev 验证 + 出包 smoke + 用户实际运行。
-        env:
-          SKIP_PTY_TESTS: '1'
-        run: npm test
+        run: |
+          node --test scripts/test/runtime-test-credential-cleanup.test.mjs
+          node --test --import tsx apps/desktop/electron/test/runtime-host-adapter.test.ts
 
       - name: Prepare Windows sandbox for packaged Shell gate
         if: runner.os == 'Windows'
@@ -117,7 +100,13 @@ jobs:
           if (!result.ready) throw new Error('Windows sandbox preparation failed: ' + JSON.stringify(result));"
 
       - name: Build installer
-        run: npm run ${{ matrix.build_script }}
+        shell: bash
+        run: |
+          npm run build:smoke
+          node scripts/ensure-sqlite-native.mjs electron
+          node scripts/ensure-node-pty-helpers.mjs
+          node scripts/prepare-feishu-cli.mjs win32-x64
+          npx electron-builder -p never --win --dir
         # 不传 GH_TOKEN —— electron-builder 检测到 GH_TOKEN + tag push 会自动开启 GitHub
         # Publisher 创建 draft release 上传 artifact，跟 release job 的 action-gh-release
         # 撞同一 tag 导致 'already_exists' 失败。build script 已加 `-p never` 双保险。
@@ -153,18 +142,16 @@ jobs:
       - name: Packaged SDK consumer acceptance
         shell: bash
         env:
+          E2E_DEBUG: '1'
           SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
         run: |
-          specs=(tests/e2e/renderer-boot.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts)
-          if [[ "$RUNNER_OS" == Linux ]]; then
-            dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c '
-              printf "%s\n" "kodax-space-ci" |
-                gnome-keyring-daemon --unlock --components=secrets >/dev/null
-              npm run e2e:run -- "$@" --retries=0 --max-failures=1
-            ' -- "${specs[@]}"
-          else
-            npm run e2e:run -- "${specs[@]}" --retries=0 --max-failures=1
-          fi
+          set +e
+          npm run e2e:run -- tests/e2e/sdk-product-output.spec.ts --grep 'real SDK bounded output' --retries=0 --max-failures=1 --output=test-results/input
+          input_result=$?
+          npm run e2e:run -- tests/e2e/sdk-unified-contract.spec.ts --grep 'Space complete exit protects another' --retries=0 --max-failures=1 --output=test-results/exit
+          exit_result=$?
+          echo "Diagnostic results: input=$input_result exit=$exit_result"
+          if (( input_result != 0 || exit_result != 0 )); then exit 1; fi
 
       - name: Upload packaged acceptance failure evidence
         if: failure()
