@@ -4131,9 +4131,12 @@ export class RuntimeHostAdapter {
       });
       if (!changed) return;
       try {
+        const phaseStarted = Date.now();
+        console.warn('[DEBUG-alpha7-input] settings:begin', {sessionId,attempt});
         const updated = await runtime.sessions.updateSettingsVersioned(sessionId, effectivePatch, {
           expectedRevision: current.revision,
         });
+        console.warn('[DEBUG-alpha7-input] settings:end', {sessionId,attempt,elapsedMs:Date.now()-phaseStarted});
         this.recordObservedSettings(sessionId, runtime, updated);
         return;
       } catch (error) {
@@ -6317,6 +6320,8 @@ export class RuntimeHostAdapter {
           },
         };
     const authorization = await this.authorizeProductExecution(request, runtime);
+    const admissionStarted = Date.now();
+    console.warn('[DEBUG-alpha7-input] admission:begin', {sessionId:input.sessionId,inputId});
     const accepted =
       request.kind === 'tool'
         ? await runtime.runs.start({
@@ -6327,6 +6332,7 @@ export class RuntimeHostAdapter {
             authorization,
           })
         : await runtime.runs.acceptInput({ ...request.input, authorization });
+    console.warn('[DEBUG-alpha7-input] admission:end', {sessionId:input.sessionId,inputId,elapsedMs:Date.now()-admissionStarted});
     if (!accepted.runId) throw new Error('Immediate product input did not return an admitted Run.');
     this.productRunAuthorizations.set(accepted.runId, authorization);
     const handle: RuntimeRunHandle = {
