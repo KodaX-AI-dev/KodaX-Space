@@ -12,7 +12,15 @@ const cli = path.join(
   'dist/kodax_cli.js',
 );
 
-export async function startConflictingHistoryHost(root: string, providerUrl?: string) {
+export async function startConflictingHistoryHost(
+  root: string,
+  options: {
+    readonly providerUrl?: string;
+    readonly sdkDirectory?: string;
+    readonly persistent?: boolean;
+  } = {},
+) {
+  const { providerUrl } = options;
   const source = `
     import { promises as fs } from 'node:fs';
     import path from 'node:path';
@@ -30,7 +38,8 @@ export async function startConflictingHistoryHost(root: string, providerUrl?: st
         { role: 'assistant', content: [{ type: 'text', text: 'saved answer ' + label }] },
       ],
     });
-    const runtime = await ensureKodaXRuntime({ profile: 'default', sessionsDir: path.join(root, 'sessions') });
+    const runtime = await ensureKodaXRuntime({ profile: 'default', sessionsDir: path.join(root, 'sessions'),
+      ...(process.argv[5] === 'persistent' ? { daemonLifecycle: 'persistent' } : {}) });
     let run;
     if (process.argv[2]) {
       const session = await runtime.sessions.create({ projectPath: project });
@@ -50,7 +59,7 @@ export async function startConflictingHistoryHost(root: string, providerUrl?: st
         await runtime.close(); process.disconnect();
       });
     } else { await runtime.close(); }
-    process.send({ ready: true, pid: owner.pid });
+    process.send({ ready: true, pid: owner.pid, runtimeId: runtime.identity.runtimeId });
     if (!run) process.disconnect();
   `;
   if (providerUrl) {
@@ -74,15 +83,17 @@ export async function startConflictingHistoryHost(root: string, providerUrl?: st
   }
   const executable = process.env.SPACE_E2E_EXECUTABLE;
   const modulePath = (name: string) =>
-    executable
-      ? pathToFileURL(
-          path.join(
-            path.dirname(executable),
-            'resources/app.asar/node_modules/@kodax-ai/kodax/dist',
-            `sdk-${name}.js`,
-          ),
-        ).href
-      : `@kodax-ai/kodax/${name}`;
+    options.sdkDirectory
+      ? pathToFileURL(path.join(options.sdkDirectory, 'dist', `sdk-${name}.js`)).href
+      : executable
+        ? pathToFileURL(
+            path.join(
+              path.dirname(executable),
+              'resources/app.asar/node_modules/@kodax-ai/kodax/dist',
+              `sdk-${name}.js`,
+            ),
+          ).href
+        : `@kodax-ai/kodax/${name}`;
   const child = spawn(
     executable ?? process.execPath,
     [
@@ -93,6 +104,7 @@ export async function startConflictingHistoryHost(root: string, providerUrl?: st
       providerUrl ?? '',
       modulePath('session'),
       modulePath('runtime'),
+      options.persistent ? 'persistent' : '',
     ],
     {
       env: {
@@ -110,7 +122,7 @@ export async function startConflictingHistoryHost(root: string, providerUrl?: st
   });
   const exited = once(child, 'exit');
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const pid = await new Promise<number>((resolve, reject) => {
+  const owner = await new Promise<{ pid: number; runtimeId: string }>((resolve, reject) => {
     timer = setTimeout(() => reject(new Error('Isolated shared Host did not start')), 20_000);
     child.once('error', reject);
     child.once('exit', (code) => {
@@ -121,10 +133,12 @@ export async function startConflictingHistoryHost(root: string, providerUrl?: st
         !message ||
         typeof message !== 'object' ||
         !('pid' in message) ||
-        typeof message.pid !== 'number'
+        typeof message.pid !== 'number' ||
+        !('runtimeId' in message) ||
+        typeof message.runtimeId !== 'string'
       )
         return reject(new Error('Shared Host fixture returned no owner identity'));
-      resolve(message.pid);
+      resolve({ pid: message.pid, runtimeId: message.runtimeId });
     });
   }).finally(() => clearTimeout(timer));
   const confirmExit = async () => {
@@ -133,7 +147,7 @@ export async function startConflictingHistoryHost(root: string, providerUrl?: st
       throw new Error(`Protected shared Host client failed (${code ?? signal}): ${stderr}`);
   };
   return {
-    pid,
+    ...owner,
     async release() {
       if (child.connected) child.send('release');
       await confirmExit();

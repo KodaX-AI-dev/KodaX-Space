@@ -1256,6 +1256,21 @@ test('installed KodaX version matches the exact Space dependency pin', () => {
   assert.equal(INSTALLED_KODAX_VERSION, EXPECTED_KODAX_VERSION);
 });
 
+test('Issue 222 uses the published alpha.7 SDK in both Space dependency manifests', () => {
+  const root = require('../../../../package.json') as { dependencies: Record<string, string> };
+  const desktop = require('../../package.json') as { dependencies: Record<string, string> };
+  const lock = require('../../../../package-lock.json') as {
+    packages: Record<string, { version?: string; resolved?: string }>;
+  };
+  assert.equal(root.dependencies['@kodax-ai/kodax'], '0.7.97-alpha.7');
+  assert.equal(desktop.dependencies['@kodax-ai/kodax'], '0.7.97-alpha.7');
+  assert.equal(INSTALLED_KODAX_VERSION, '0.7.97-alpha.7');
+  assert.match(
+    lock.packages['node_modules/@kodax-ai/kodax']?.resolved ?? '',
+    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-alpha\.7\.tgz$/,
+  );
+});
+
 test(
   `KodaX ${EXPECTED_KODAX_VERSION} persists raw explicit-Skill input instead of its execution overlay`,
   { timeout: SHARED_DAEMON_TIMEOUT_MS + 5_000 },

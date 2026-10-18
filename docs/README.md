@@ -6,7 +6,7 @@
 
 Space 产品用法由只读 Host Tool `space_manual` 提供，SDK/CLI 机制仍由内建 `kodax_manual` 提供；组合主题保留当前 SDK 原始正文与来源。Partner/Embedded 使用各自 inline owner 的手册配置。
 
-版本与打包事实以[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)、[alpha.6 正式 SDK 接入](releases/kodax-0.7.97-alpha.6-integration.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。SDK 与 Host 能力分别校验；不按 SemVer 猜测支持，不改写历史 release/research 证据。Partner、真实外部服务和跨平台人工验收仍按各自边界记录。
+当前未发布 Space alpha.3 的版本与打包事实以[alpha.7 SDK 接入](releases/kodax-0.7.97-alpha.7-integration.md)、历史已发布基线的[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。SDK 与 Host 能力分别校验；不按 SemVer 猜测支持，不改写历史 release/research 证据。Partner、真实外部服务和跨平台人工验收仍按各自边界记录。
 
 ## 我想要……
 
@@ -50,7 +50,7 @@ Space 产品用法由只读 Host Tool `space_manual` 提供，SDK/CLI 机制仍�
 | `partner/README.md`                                  | Partner 产品线文档中心           | Partner 内部产品、架构、Feature、测试与融合证据从这里进入                |
 | `KNOWN_ISSUES.md`                                    | 当前问题                         | 已解决项保留结论，新增问题需有复现和状态                                 |
 | `BUILTIN_SKILLS.md`                                  | builtin 分发维护                 | 固定来源、许可、补丁、更新和打包完整性                                   |
-| `features/v0.1.47.md`                                | 当前候选设计                     | alpha.2 / SDK alpha.6 的实际范围与未完成边界                             |
+| `features/v0.1.47.md`                                | 当前候选设计                     | 0.1.47 系列设计；当前 SDK 依赖与恢复验收见 alpha.7 接入                             |
 | `releases/v0.1.47-alpha.2-release-readiness.md`      | 当前发布准备                     | 本轮验证、候选哈希、未执行的跨平台及发布门                               |
 | `features/v0.1.45.md`                                | historical release design        | Inline ask-user conversation cards and exact KodaX 0.7.95 boundary       |
 | `releases/v0.1.45-release-readiness.md`              | historical release record        | Gates, GitHub CI, artifact evidence, and regression items                |

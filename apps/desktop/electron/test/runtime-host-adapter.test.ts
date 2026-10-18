@@ -2686,7 +2686,8 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
     'default daemon selection must follow KODAX_HOME instead of treating the .kodax root as CLI homeDir',
   );
   assert.equal(options[0]?.sessionsDir, path.join(profileRoot, 'sessions'));
-  assert.equal(options[0]?.daemonOrphanExitMs, 30_000);
+  assert.equal(options[0]?.daemonOrphanExitMs, undefined);
+  assert.equal(options[0]?.daemonLifecycle, 'interactive');
   assert.equal(options[0]?.clientInfo?.version, '0.1.30');
   assert.equal(options[0]?.clientInfo?.instanceId, 'space_instance_stable');
   assert.equal(options[0]?.clientInfo?.instanceSecret, 'space_secret_stable_0123456789abcdef');
@@ -2710,7 +2711,7 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
   assert.equal(options[0]?.requirements?.sharedSessionSettings, 2);
   assert.equal(options[0]?.requirements?.durableRecoveryQueries, 1);
   assert.equal(options[0]?.requirements?.daemonManagement, 1);
-  assert.equal(options[0]?.requirements?.daemonOrphanExit, 1);
+  assert.equal(options[0]?.requirements?.daemonOrphanExit, undefined);
   assert.equal(options[0]?.requirements?.actorSettlementConvergence, 2);
   assert.equal(options[0]?.requirements?.daemonShutdownVerification, undefined);
   assert.equal(options[0]?.requirements?.runtimeEventCoalescing, 1);
@@ -2795,6 +2796,69 @@ test('local startup progress reaches IPC without granting Session readiness', as
   } finally {
     await adapter.close();
   }
+});
+
+test('closing Space cancels SDK startup instead of waiting for its readiness deadline', async () => {
+  let rejectConnect: ((error: Error) => void) | undefined;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    identityStore: testIdentityStore,
+    runtimeFactory: async (options) =>
+      new Promise<KodaXDaemonRuntime>((_resolve, reject) => {
+        rejectConnect = reject;
+        options.daemonStartupSignal?.addEventListener(
+          'abort',
+          () => reject(options.daemonStartupSignal!.reason),
+          { once: true },
+        );
+      }),
+  });
+  const initializing = adapter.initialize();
+  const rejected = assert.rejects(initializing, /Runtime host closed during startup/);
+  try {
+    await waitForTest(() => rejectConnect !== undefined);
+    const closing = adapter.close();
+    const outcome = await Promise.race([
+      closing.then(() => 'closed'),
+      new Promise<string>((resolve) => setTimeout(() => resolve('still-waiting'), 500)),
+    ]);
+    assert.equal(outcome, 'closed');
+    await rejected;
+    assert.equal(adapter.snapshot().state, 'closed');
+  } finally {
+    rejectConnect?.(new Error('Runtime host closed during startup'));
+    await Promise.all([rejected, adapter.close()]);
+  }
+});
+
+test('closing while client identity opens never starts a late Host', async () => {
+  let releaseIdentity:
+    | ((identity: Awaited<ReturnType<typeof testIdentityStore.openInstance>>) => void)
+    | undefined;
+  let factoryCalls = 0;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    identityStore: {
+      openInstance: async () =>
+        new Promise((resolve) => {
+          releaseIdentity = resolve;
+        }),
+    },
+    runtimeFactory: async () => {
+      factoryCalls++;
+      return createFakeRuntime().runtime;
+    },
+  });
+  const initializing = adapter.initialize();
+  const rejected = assert.rejects(initializing, /Runtime host closed during startup/);
+  await waitForTest(() => releaseIdentity !== undefined);
+  const closing = adapter.close();
+  releaseIdentity!(await testIdentityStore.openInstance({ version: 'test' }));
+  await Promise.all([rejected, closing]);
+  assert.equal(factoryCalls, 0);
+  assert.equal(adapter.snapshot().state, 'closed');
 });
 
 test('closing during startup clears the pending display and ignores late launcher progress', async () => {
@@ -4394,7 +4458,9 @@ test('closing during a pending reconnect cannot republish recovery after the Hos
     runtimeFactory: async (options) => {
       if (++attempts === 1) return first.runtime;
       await options.onStartupProgress?.({ stage: 'connecting' });
-      return new Promise<KodaXDaemonRuntime>((_resolve, reject) => { rejectConnect = reject; });
+      return new Promise<KodaXDaemonRuntime>((_resolve, reject) => {
+        rejectConnect = reject;
+      });
     },
   });
   try {
@@ -4402,7 +4468,9 @@ test('closing during a pending reconnect cannot republish recovery after the Hos
     first.disconnect();
     await waitForTest(() => rejectConnect !== undefined, 2_500);
     const closing = adapter.close();
-    rejectConnect!(Object.assign(new Error('Host endpoint disappeared during close'), { code: 'ENOENT' }));
+    rejectConnect!(
+      Object.assign(new Error('Host endpoint disappeared during close'), { code: 'ENOENT' }),
+    );
     await closing;
     await new Promise<void>((resolve) => setImmediate(resolve));
     assert.equal(adapter.snapshot().state, 'closed');
@@ -4461,6 +4529,11 @@ test('a shared default Host keeps its actual profile for passive reconnect and c
       if (++attempts === 1) return first.runtime;
       assert.equal(options.profile, 'default');
       assert.equal(options.autoStart, false, 'transport recovery stays passive');
+      assert.equal(
+        options.daemonLifecycle,
+        undefined,
+        'passive attach must not change Host retention',
+      );
       return second.runtime;
     },
     runtimeExitSettler: async (input) => {
@@ -8522,7 +8595,7 @@ test('initialization accepts any Runtime identity version that negotiates requir
   await adapter.close();
 });
 
-test('initialization requires the dedicated orphan-exit capability instead of a version proxy', async () => {
+test('Space reuses a retained Host without imposing interactive idle exit on it', async () => {
   const fake = createFakeRuntime();
   delete (fake.runtime.capabilities as Record<string, unknown>).daemonOrphanExit;
   const adapter = new RuntimeHostAdapter({
@@ -8532,8 +8605,13 @@ test('initialization requires the dedicated orphan-exit capability instead of a 
     identityStore: testIdentityStore,
   });
 
-  await assert.rejects(adapter.initialize(), /daemonOrphanExit v1/i);
-  assert.equal(adapter.snapshot().state, 'failed');
+  try {
+    await adapter.initialize();
+    assert.equal(adapter.snapshot().state, 'ready');
+    assert.equal(fake.calls.close, 0);
+  } finally {
+    await adapter.close();
+  }
   assert.equal(fake.calls.close, 1);
 });
 

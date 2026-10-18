@@ -2,7 +2,7 @@
 
 F147（2026-10-16，源码未发布）：Shell 内设置工作面复用全部六分类面板，保留面板 tab ID 与语义控制接口；后台 workspace 保持挂载并隐藏/inert，Portal 详情通过 `FloatingSurfaceHost.suspended` 暂停可见性、焦点与键盘捕获而保留子组件。外观直接共用原 appStore 主题/质量键；正文连续实色、局部 chrome 玻璃。功能映射与回归边界见 [实施清单](design/space-ui-integration.md)。
 
-更新日期：2026-10-15。当前候选为 Space `0.1.47-alpha.2`，精确依赖发布到 npm Registry 的 KodaX `0.7.97-alpha.6`；尚未发布 Space alpha.2。
+更新日期：2026-10-18。当前候选为尚未发布的 Space `0.1.47-alpha.3`，精确依赖 npm Registry 已发布的 KodaX `0.7.97-alpha.7`。
 
 本文描述当前公共边界。高层结构见 [HLD](HLD.md)，共享输出的决策见 [ADR-010](ADR/ADR-010-sdk-product-output.md)，完整迁移清单见 [SDK 迁移](features/SDK_0.7.97_MIGRATION.md)。
 
@@ -47,3 +47,9 @@ Space 保留 SDK 的结构化失败分类、原显示项身份与重试信息；
 根目录、Desktop、共享 IPC 和 UI 包统一版本，root/Desktop/lockfile 与安装包必须包含相同 Registry SDK。依赖门校验 tarball integrity、公开能力及完整 native bundle，安装包 smoke 校验解包字节并启动真实应用。
 
 当前候选的验证和待完成门见 [alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)。历史 release/research 记录保留原版本和文件指纹；局部测试或 Windows 构建不代表跨平台、外部账号或完整 F121/F141 人工验收完成。
+
+## 共享 Host 恢复（Issue 222 / SDK alpha.7）
+
+首次连接及可恢复断线后的 ensure 使用 `daemonLifecycle: interactive`，仅为 SDK 新建 Host 请求默认 30 秒空闲回收；不向已有 Host 强加 `daemonOrphanExit` 要求。SDK 静态能力仍检查 orphan 支持，动态 Host 保留其他 Product/权限/凭据契约、安装 build 和 owner 校验。被动 reconnect 不改变生命周期，保留实际连接的 profile。旧 Host 的替换由 SDK preflight 与精确退出证明决定；活动工作、未验证 owner 和永久不兼容不会变成强制终止授权。
+
+每次初始化持有独立 AbortController 并传入 `daemonStartupSignal`。close 先关闭接纳再取消启动；身份存储迟到返回必须先检查 signal，禁止之后创建 Host。可恢复错误继续等待并重连所选 SDK view；Run 只重新观察既有身份，不重提输入或执行工具。退出仍使用 SDK 显式完整退出契约，包括已复用的 retained Host。验证与已知边界见[当前证据](releases/kodax-0.7.97-alpha.7-integration.md)。

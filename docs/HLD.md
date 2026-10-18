@@ -1,11 +1,13 @@
 # KodaX Space 高层设计（HLD）
 
-> 更新日期：2026-10-15。当前源码对应已发布的 Space `v0.1.47-alpha.2` 预发布版 / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`；最新稳定版为 Space v0.1.46 / KodaX 0.7.96。
-> 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，现有 SDK 验收见[alpha.6 接入](releases/kodax-0.7.97-alpha.6-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
+> 更新日期：2026-10-18。当前源码为未发布的 Space `0.1.47-alpha.3` 候选，精确依赖已发布 npm Registry `@kodax-ai/kodax@0.7.97-alpha.7`；最新已发布 Space 预发布版为 alpha.2，稳定版为 v0.1.46 / KodaX 0.7.96。
+> 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，当前 SDK 与 Issue 222 恢复验收见[alpha.7 接入](releases/kodax-0.7.97-alpha.7-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
 
 共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
 
 SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；已有凭据、权限、退出恢复和 Partner inline owner 边界保持。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
+
+共享 Session 目录以实际 Host 为唯一 writer；`default` / `coder` 是连接 profile，不是两个独立 writer 域。SDK 负责发现、认证和安全替换 owner。新建 Host 使用交互式生命周期；已有同安装兼容 Host 保留其 persistent/service 生命周期。Space 连接失败保持可见并自动恢复所选 SDK view，不能从本地正文文件拼造历史。
 
 ## 0. 中文导读
 

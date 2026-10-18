@@ -338,7 +338,7 @@ export async function readPublicSpaceExit(space: SpaceInstance) {
     const secret = await keyring.getPassword('kodax-space-test-runtime', identity.secretAccount);
     if (!secret) throw new Error('Isolated exit credential is unavailable.');
     const { readKodaXClientExits } = await import('@kodax-ai/kodax/client');
-    const receipts = await readKodaXClientExits({profile:'coder', clientInfo:{
+    const receipts = await readKodaXClientExits({profile:identity.profile ?? 'coder', clientInfo:{
       instanceId:identity.instanceId, instanceSecret:secret,
     }});
     const receipt = receipts.find(item => item.requestId === identity.requestId && item.runtimeId === identity.runtimeId);

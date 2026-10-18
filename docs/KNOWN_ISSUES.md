@@ -2,7 +2,7 @@
 
 Last Updated: 2026-10-16
 
-> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96; the current unpublished candidate is Space 0.1.47-alpha.2 with exact SDK 0.7.97-alpha.6. Start from the [documentation hub](README.md) and [alpha.2 readiness](releases/v0.1.47-alpha.2-release-readiness.md) for current behavior, qualification and remaining investigations.
+> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96; the current unpublished candidate is Space 0.1.47-alpha.3 with exact Registry SDK 0.7.97-alpha.7. Start from the [documentation hub](README.md) and [alpha.2 readiness](releases/v0.1.47-alpha.2-release-readiness.md) for current behavior, qualification and remaining investigations.
 
 ## Issue Index
 
@@ -217,7 +217,7 @@ Last Updated: 2026-10-16
 | 219 | Medium   | Resolved; Registry alpha.6 verified                                                                          | Old completed Sessions fall back to creation time in sidebar recency                                                                                                                                       | Runtime activity overlay introduced 2026-08-03                            | 2026-09-28 |
 | 220 | Medium   | Resolved; SDK alpha.6 published and verified                                                                 | Unsubmitted REPL Sessions appear as blank tasks                                                                                                                                                            | SDK v0.7.97-alpha.1 Host migration (3301a452 / 0914f589)                  | 2026-10-14 |
 | 221 | Medium   | Resolved in source                                                                                           | Session deletion failures are misreported as another running KodaX process                                                                                                                                 | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
-| 222 | High     | ready                                                                                                        | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
+| 222 | High     | Resolved in source; Registry alpha.7 integrated                                                                                                        | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -317,6 +317,22 @@ Issue 221 fixes deletion error classification only; it does not close this issue
   process health or SDK version checks alone are insufficient.
 
 ### Resolution / Verification
+
+The current follow-up integrates published Registry SDK `0.7.97-alpha.7` in Space
+`0.1.47-alpha.3`. SDK alpha.7 addresses the Linux zombie-owner/startup identity
+race and bounds recovery discovery. Space now requests `daemonLifecycle:
+interactive` for newly started Hosts rather than imposing idle-exit capability
+on every existing Host; same-installation persistent Hosts can therefore serve
+history without replacement. Installed SDK capability support is still checked,
+and all other Host capability/build/ownership checks remain enforced. Closing
+Space cancels SDK startup and prevents a late Host start after identity opens.
+Final full Space tests passed 4,373 with 20 skips and zero failures; packaged
+recovery passed 4/4 and lifecycle passed 6/6. Added executable adapter-line
+coverage is 9/9. Registry/native, boot, typecheck, lint and production build gates
+passed. See [current integration evidence](releases/kodax-0.7.97-alpha.7-integration.md).
+
+The following paragraphs preserve candidate 4's earlier investigation and tests;
+its orphan-policy requirement has been superseded by the lifecycle policy above.
 
 The SDK now discovers the canonical shared writer across profiles, authenticates
 that actual owner and rechecks a new winner after a competing startup exits.

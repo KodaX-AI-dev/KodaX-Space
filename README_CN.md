@@ -13,7 +13,7 @@
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/KodaX-AI-dev/KodaX-Space?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-KAI--FCL-orange?style=flat-square"></a>
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/KodaX-AI-dev/KodaX-Space/ci.yml?style=flat-square&label=ci"></a>
-  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.97--alpha.6-2ea44f?style=flat-square">
+  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.97--alpha.7-2ea44f?style=flat-square">
   <img alt="platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-34495e?style=flat-square">
 </p>
 
@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前源码为 Issue 222 本地恢复候选 `0.1.47-alpha.2.issue222.4`，依赖 SDK `0.7.97-alpha.6.issue222.4`。** 根目录、Desktop、共享 IPC 与 UI 包统一版本；SDK 使用 `vendor/issue-222/` 下完整性锁定的公共包 tarball，详见[恢复验证记录](docs/releases/issue-222-recovery-verification.md)。已发布基线仍为 Space `v0.1.47-alpha.2` / Registry SDK `0.7.97-alpha.6`，本地候选尚未对外发布。
+**当前源码为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.7`。** 根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本；lockfile 校验 Registry 包完整性，详见[alpha.7 集成与恢复验证](docs/releases/kodax-0.7.97-alpha.7-integration.md)。Space alpha.3 为本地 Windows 候选，尚未发布；最新已发布的 Space 预发布版仍为 `v0.1.47-alpha.2`。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。

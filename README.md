@@ -13,7 +13,7 @@
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/KodaX-AI-dev/KodaX-Space?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-KAI--FCL-orange?style=flat-square"></a>
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/KodaX-AI-dev/KodaX-Space/ci.yml?style=flat-square&label=ci"></a>
-  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.97--alpha.6-2ea44f?style=flat-square">
+  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.97--alpha.7-2ea44f?style=flat-square">
   <img alt="platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-34495e?style=flat-square">
 </p>
 
@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**This checkout carries the local Issue 222 recovery candidate `0.1.47-alpha.2.issue222.4`, with SDK `0.7.97-alpha.6.issue222.4`.** Root, Desktop, IPC schema and UI kit share the version; the SDK is an integrity-pinned public tarball under `vendor/issue-222/`. See [recovery verification](docs/releases/issue-222-recovery-verification.md). The published base remains Space `v0.1.47-alpha.2` / Registry SDK `0.7.97-alpha.6`; the local candidate has not been published.
+**This checkout carries Space `0.1.47-alpha.3`, with the published Registry SDK `0.7.97-alpha.7` pinned exactly.** Root, Desktop, IPC schema and UI kit share the Space version; the lockfile verifies the Registry package integrity. See [alpha.7 integration and recovery verification](docs/releases/kodax-0.7.97-alpha.7-integration.md). Space alpha.3 is a local Windows candidate and has not been published; the latest published Space prerelease remains `v0.1.47-alpha.2`.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.

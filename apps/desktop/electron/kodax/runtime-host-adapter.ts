@@ -1566,12 +1566,6 @@ function assertSpaceDaemonRequiredCapabilities(runtime: KodaXDaemonRuntime): voi
         'Install a compatible KodaX package and restart the Coder daemon.',
     );
   }
-  if (runtimeCapabilityVersion(runtime, 'daemonOrphanExit') < 1) {
-    throw new Error(
-      'KodaX Runtime does not support the required daemonOrphanExit v1 capability. ' +
-        'Install a compatible KodaX package and restart the Coder daemon.',
-    );
-  }
   if (runtimeCapabilityVersion(runtime, 'runtimeEventCoalescing') < 1) {
     throw new Error(
       'KodaX Runtime does not support the required runtimeEventCoalescing v1 capability. ' +
@@ -2078,6 +2072,7 @@ export class RuntimeHostAdapter {
   private runtime: KodaXDaemonRuntime | null = null;
   private closingRuntime: KodaXDaemonRuntime | null = null;
   private initializePromise: Promise<void> | null = null;
+  private startupAbort: AbortController | undefined;
   private startupAttempt = 0;
   private closePromise: Promise<void> | null = null;
   private lastError: string | undefined;
@@ -2362,7 +2357,7 @@ export class RuntimeHostAdapter {
     return {
       profile: autoStart ? 'coder' : this.runtimeProfile,
       autoStart,
-      daemonOrphanExitMs: 30_000,
+      ...(autoStart ? { daemonLifecycle: 'interactive' as const } : {}),
       ...(this.runtimeHomeDir !== undefined ? { homeDir: this.runtimeHomeDir } : {}),
       sessionsDir: path.join(this.profileRoot, 'sessions'),
       clientInfo: {
@@ -2408,7 +2403,6 @@ export class RuntimeHostAdapter {
         sharedSessionSettings: 2,
         durableRecoveryQueries: 1,
         daemonManagement: 1,
-        daemonOrphanExit: 1,
         managedRunDurability: 1,
         actorSettlementConvergence: 2,
         runtimeEventCoalescing: 1,
@@ -2449,6 +2443,8 @@ export class RuntimeHostAdapter {
     if (this.state === 'closed') return Promise.reject(new Error('Runtime host is closed'));
     if (this.initializePromise !== null) return this.initializePromise;
     this.state = 'initializing';
+    const startupAbort = new AbortController();
+    this.startupAbort = startupAbort;
     const startupAttempt = ++this.startupAttempt;
     const version = this.clientVersion;
     let pendingRuntime: KodaXDaemonRuntime | null = null;
@@ -2459,11 +2455,13 @@ export class RuntimeHostAdapter {
     this.initializePromise = this.identityStore
       .openInstance({ name: 'kodax-space', title: 'KodaX Space', version })
       .then(async (identity) => {
+        startupAbort.signal.throwIfAborted();
         this.productClientInstanceId = identity.instanceId;
         timing.mark(activeStage, 'complete');
         activeStage = 'runtime_factory_connect';
         const runtime = await this.runtimeFactory({
           ...this.createRuntimeConnectOptions(identity, autoStart),
+          daemonStartupSignal: startupAbort.signal,
           onStartupProgress: (progress) => {
             if (this.startupAttempt !== startupAttempt || this.state !== 'initializing') return;
             this.publishStartupProgress(progress, autoStart ? 'connecting' : 'reconnecting');
@@ -2650,6 +2648,9 @@ export class RuntimeHostAdapter {
         if (retryableFailure)
           this.scheduleReconnect(autoStart || isDaemonEnsureRecoveryFailure(error));
         throw error;
+      })
+      .finally(() => {
+        if (this.startupAbort === startupAbort) this.startupAbort = undefined;
       });
     return this.initializePromise;
   }
@@ -7698,6 +7699,7 @@ export class RuntimeHostAdapter {
     this.desiredObservations.clear();
     this.runtimeReadyObservers.clear();
     this.enterClosedState();
+    this.startupAbort?.abort(new Error('Runtime host closed during startup'));
     const closing = (async () => {
       const errors: unknown[] = [];
       try {

@@ -1,5 +1,8 @@
 # Issue 222 recovery verification
 
+Historical candidate 4 record. The current published-SDK integration is recorded
+[separately](kodax-0.7.97-alpha.7-integration.md); the results below describe candidate 4.
+
 Date: 2026-10-16. Local Windows candidate: Space
 `0.1.47-alpha.2.issue222.4` / SDK `0.7.97-alpha.6.issue222.4`.
 

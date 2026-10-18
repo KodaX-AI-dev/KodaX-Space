@@ -1,5 +1,8 @@
 # Issue 222 — adjacent availability and recovery audit
 
+Historical candidate-4 audit. Current SDK alpha.7 lifecycle/cancellation changes
+and package acceptance are recorded in [current integration](kodax-0.7.97-alpha.7-integration.md).
+
 Date: 2026-10-16. Follow-up to the shared Host recovery fix.
 
 The recovery boundary is SDK startup/attachment. Space never removes a writer
