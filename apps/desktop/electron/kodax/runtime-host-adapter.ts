@@ -6746,6 +6746,24 @@ export class RuntimeHostAdapter {
   }
 
   async submitInput(input: SpaceRuntimeSubmitInput): Promise<SpaceRuntimeSubmitInputResult> {
+    const sessionId = input.sessionId;
+    this.pendingRunAdmissionsBySession.set(
+      sessionId,
+      (this.pendingRunAdmissionsBySession.get(sessionId) ?? 0) + 1,
+    );
+    try {
+      return await this.admitProductInput(input);
+    } finally {
+      const remaining = (this.pendingRunAdmissionsBySession.get(sessionId) ?? 1) - 1;
+      if (remaining > 0) this.pendingRunAdmissionsBySession.set(sessionId, remaining);
+      else this.pendingRunAdmissionsBySession.delete(sessionId);
+      this.retireObservationIfQuiescent(sessionId);
+    }
+  }
+
+  private async admitProductInput(
+    input: SpaceRuntimeSubmitInput,
+  ): Promise<SpaceRuntimeSubmitInputResult> {
     const runtime = await this.requireRuntime();
     await this.ensureObserved(input.sessionId);
     if (input.credential !== undefined || input.hostTools !== undefined) {
