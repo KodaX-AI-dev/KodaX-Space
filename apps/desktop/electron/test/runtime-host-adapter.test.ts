@@ -807,6 +807,7 @@ function createFakeRuntime(runtimeId = 'rt_test') {
     rewound: [] as unknown[],
     close: 0,
     observationCloses: 0,
+    inputReads: 0,
     observed: [] as string[],
     settingsUpdates: [] as Array<{
       sessionId: string;
@@ -1292,6 +1293,7 @@ function createFakeRuntime(runtimeId = 'rt_test') {
     },
     runs: {
       async getInput() {
+        calls.inputReads += 1;
         return null;
       },
       async acceptInput(input: Parameters<KodaXDaemonRuntime['runs']['acceptInput']>[0]) {
@@ -12906,6 +12908,19 @@ function createInputObservationFixture() {
     },
   };
 }
+
+test('ordinary idle Session reads retire observers without any input admission query', async () => {
+  const { fake, adapter } = createInputObservationFixture();
+  try {
+    for (let index = 0; index < 20; index += 1) {
+      await adapter.readSessionProductView('s_admitting_input');
+    }
+    assert.equal(fake.calls.inputReads, 0, 'historical reads add no input metadata RPC');
+    assert.equal(fake.calls.observationCloses, 20, 'idle Sessions remain reclaimable');
+  } finally {
+    await adapter.close();
+  }
+});
 
 test('after-turn input retains observation until delayed canonical delivery settles', async () => {
   const { fake, adapter, publish } = createInputObservationFixture();
