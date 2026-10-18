@@ -75,6 +75,20 @@ application or claim a new full `npm test` run. The original integration's
 full-suite/package evidence remains separate. Test timings are acceptance
 observations, not a startup performance benchmark.
 
+## Standards
+
+Independent read-only review of `6ab30cd2...ad99503d`: **0 hard-rule violations,
+0 actionable smells**. All eight files were reviewed. The fixture forwards the
+existing profile-preparation seam; the new tests use public contracts and isolated
+profiles. Repository rules and the twelve smell-baseline checks were applied.
+
+## Spec
+
+Independent read-only review of the same range: **0 findings**. The regression
+assertions preserve SDK output authority, distinct input identity and no replay.
+Current results remain separate from earlier full-suite/package evidence, and
+performance/cross-platform limits are explicit.
+
 ## Remaining scope
 
 There is no additional mandatory alpha.7 API migration identified for the shared
