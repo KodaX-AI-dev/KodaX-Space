@@ -87,9 +87,10 @@ export async function startConflictingHistoryHost(
       ? pathToFileURL(path.join(options.sdkDirectory, 'dist', `sdk-${name}.js`)).href
       : executable
         ? pathToFileURL(
-            path.join(
+            path.resolve(
               path.dirname(executable),
-              'resources/app.asar/node_modules/@kodax-ai/kodax/dist',
+              process.platform === 'darwin' ? '../Resources' : 'resources',
+              'app.asar/node_modules/@kodax-ai/kodax/dist',
               `sdk-${name}.js`,
             ),
           ).href

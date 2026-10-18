@@ -50,15 +50,19 @@ jobs:
           - os: windows-latest
             artifact_glob: 'out/*.exe'
             build_script: build:win
+            executable: 'out/win-unpacked/KodaX Space.exe'
           - os: macos-15-intel
             artifact_glob: 'out/*.dmg'
             build_script: build:mac:x64
+            executable: 'out/mac/KodaX Space.app/Contents/MacOS/KodaX Space'
           - os: macos-latest
             artifact_glob: 'out/*.dmg'
             build_script: build:mac:arm64
+            executable: 'out/mac-arm64/KodaX Space.app/Contents/MacOS/KodaX Space'
           - os: ubuntu-latest
             artifact_glob: 'out/*.AppImage out/*.deb'
             build_script: build:linux
+            executable: 'out/linux-unpacked/kodax-space'
     steps:
       - uses: actions/checkout@v4
 
@@ -71,9 +75,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Unicode PDF font (Linux)
+      - name: Install Linux runtime test dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei xvfb gnome-keyring libsecret-1-0
 
       - name: Build workspace packages
         run: npm run build:packages
@@ -144,20 +148,39 @@ jobs:
           KODAX_HOME: ${{ runner.os == 'Windows' && format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || '' }}
         run: npm run smoke:pack
 
-      # 拦"installer build 通过但 renderer 启动崩"这一类 v0.1.7-shape regression：
-      # 真起 packed Electron + 等 5s + 抓 console.error / pageerror / React 错误码。
-      # 只在 Linux runner 跑一次就够（renderer JS bundle 跨平台一致），用 xvfb 给 X display。
-      - name: Install xvfb for renderer boot smoke (Linux only)
-        if: matrix.os == 'ubuntu-latest'
-        # --no-install-recommends 跳掉非必要 deps，省 ~10s（xvfb 通常已预装在 ubuntu-latest runner 上）
-        run: sudo apt-get install -y --no-install-recommends xvfb
-
-      - name: Renderer boot smoke (last gate before release)
-        if: matrix.os == 'ubuntu-latest'
+      # Exercise each platform's packaged main process, Renderer and Registry SDK.
+      # No retry: a first attachment failure must retain its original evidence.
+      - name: Packaged SDK consumer acceptance
         shell: bash
         env:
-          KODAX_FORCE_MOCK: '1'
-        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" npx playwright test tests/e2e/renderer-boot.spec.ts --reporter=list
+          SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+        run: |
+          run_acceptance() {
+            npm run e2e:run -- tests/e2e/renderer-boot.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts --retries=0
+          }
+          export -f run_acceptance
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            dbus-run-session -- bash -euo pipefail -c '
+              xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c "
+                printf \"%s\\n\" \"kodax-space-ci\" |
+                  gnome-keyring-daemon --unlock --components=secrets >/dev/null
+                run_acceptance
+              "
+            '
+          else
+            run_acceptance
+          fi
+
+      - name: Upload packaged acceptance failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-sdk-failure-${{ matrix.os }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Upload installer artifacts (workflow_dispatch path)
         uses: actions/upload-artifact@v4

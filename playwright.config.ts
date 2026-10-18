@@ -9,8 +9,8 @@
 //   npm run e2e:run      —— 只跑（假定已 build）
 //   npm run e2e:headed   —— 显示窗口（debug 用）
 //
-// CI 待接：v0.1.x 暂不进 release.yml，避免给三平台 build 加 ~5min；
-// 先在本地 + 手动触发的 e2e job 里跑。
+// ci.yml runs the source suite in shards. release.yml runs the SDK acceptance
+// subset against each platform's packaged executable with retries disabled.
 
 import { defineConfig } from '@playwright/test';
 
