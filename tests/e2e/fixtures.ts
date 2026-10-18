@@ -75,6 +75,12 @@ async function cleanupIsolatedSpace(
   // Sweep both sides of Electron shutdown: under a loaded serial suite the daemon spawn can
   // still be finishing when the first sweep runs, and deleting the profile immediately after
   // app.close would otherwise orphan that late child together with its inherited launch pipes.
+  const evidence = path.join(REPO_ROOT, 'test-results', 'runtime-diagnostics', path.basename(testDataDir));
+  await fs.mkdir(evidence, { recursive: true });
+  for (const relative of ['runtime/daemon/coder/bootstrap.log', 'runtime/daemon/coder/daemon.log', 'space/electron-user-data/diagnostics/space-main.jsonl']) {
+    const data = await fs.readFile(path.join(testDataDir, relative)).catch(() => undefined);
+    if (data) await fs.writeFile(path.join(evidence, path.basename(relative)), data.subarray(-256 * 1024));
+  }
   await stopOwnedTestDaemonQuietly(testDataDir);
   if (app !== undefined) await closeElectronBounded(app);
   for (const retryDelayMs of DAEMON_POST_CLOSE_RETRY_DELAYS_MS) {

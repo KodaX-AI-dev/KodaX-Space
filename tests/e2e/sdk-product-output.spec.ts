@@ -275,7 +275,7 @@ test('real SDK items replace live output, survive reload, and retain repeated di
         const result = await window.kodaxSpace!.invoke('session.productSnapshot', {
           sessionId: id,
         });
-        if (!result.ok || !result.data) throw new Error('Official product view unavailable');
+        if (!result.ok || !result.data) throw new Error('Official product view unavailable: '+JSON.stringify(result));
         return result.data;
       }, sessionId);
     await expect
@@ -347,6 +347,9 @@ test('real SDK items replace live output, survive reload, and retain repeated di
       'ONE_DISPLAY_INTENT',
     );
     expect(provider.errors).toEqual([]);
+  } catch (error) {
+    await test.info().attach('first-product-failure.json', {body:JSON.stringify({error:String(error),requests:provider.requests,errors}),contentType:'application/json'});
+    throw error;
   } finally {
     await provider.close();
     await space.close();
@@ -371,6 +374,14 @@ test('real SDK bounded output restores the complete immutable body through its p
       .click();
     await expect(stream).toContainText('SDK_LONG_HEAD', { timeout: 20_000 });
     await expect(stream).toContainText('SDK_LONG_TAIL');
+  } catch (error) {
+    const sessionId = await currentSdkSession(space);
+    const state = await Promise.race([space.page.evaluate(async id => ({
+      live: await window.kodaxSpace!.invoke('session.liveSnapshot', {sessionId:id}),
+      profile: await window.kodaxSpace!.invoke('runtime.profileSnapshot', undefined),
+    }), sessionId), new Promise(resolve => setTimeout(() => resolve({diagnosticTimeout:true}),5000))]).catch(error => ({captureError:String(error)}));
+    await test.info().attach('public-failure-state.json', {body: JSON.stringify({state, requests:provider.requests}), contentType:'application/json'});
+    throw error;
   } finally {
     await provider.close();
     await space.close();
