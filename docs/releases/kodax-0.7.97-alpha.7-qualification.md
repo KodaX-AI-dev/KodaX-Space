@@ -99,9 +99,19 @@ retaining its profile-prefix and account-ownership checks. A public cleanup
 regression failed before that fix and passes after it (4/4 cleanup cases).
 
 The [manual qualification run](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39090294249)
-uses source `2bc01b0e` on `codex/alpha7-space-qualification`. Results are pending
-until that run finishes. Two earlier runs were explicitly cancelled after
-review found the macOS fixture path issues; they are not acceptance results.
+uses source `2bc01b0e` on `codex/alpha7-space-qualification`. Linux passed the
+full unit suite, installer construction and packaged dependency smoke, then
+failed before executing an E2E case: D-Bus did not preserve the exported shell
+function (`run_acceptance: command not found`). This is a failed wrapper run,
+not a Linux Runtime test failure or a passed qualification.
+
+Commit `a95cbc3f` replaces that function with explicit argument forwarding.
+The [Linux-only follow-up](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39091399878)
+uses `847f0392`, whose only difference from `a95cbc3f` is its Linux-only workflow
+matrix. It repeats every gate, including the full unit suite. The production
+workflow retains all four targets. Both runs' unfinished jobs remain pending.
+Two earlier runs were explicitly cancelled after review found the macOS fixture
+path issues; they are not acceptance results.
 Manual branch dispatch cannot enter the tag-only Release job, and the packer
 continues using `-p never`.
 

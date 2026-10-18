@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T02:40:49.486Z",
+  "generatedAt": "2026-10-18T02:52:06.660Z",
   "spaceVersion": "0.1.47-alpha.3",
   "published": false,
   "dependency": {
@@ -52,9 +52,25 @@
     "runId": 39090294249,
     "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39090294249",
     "sourceCommit": "2bc01b0e04ea3f9cbf85a9a834b35f93f6aa74ed",
-    "status": "in_progress",
+    "status": "in_progress_with_linux_wrapper_failure",
     "retries": 0,
-    "releaseJob": "tag_only; manual branch run cannot publish"
+    "releaseJob": "tag_only; manual branch run cannot publish",
+    "initialLinuxFailure": {
+      "jobId": 117565417153,
+      "fullUnitSuite": "passed",
+      "installer": "passed",
+      "packagedDependencySmoke": "passed",
+      "e2e": "not executed: exported function missing after D-Bus wrapper",
+      "fixedBy": "a95cbc3f843fcf5ff622af86ba235abbec69e969"
+    },
+    "linuxFollowup": {
+      "runId": 39091399878,
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39091399878",
+      "sourceCommit": "847f03922d77768e8bd29fbcf7f851172f8e8006",
+      "parentSourceCommit": "a95cbc3f843fcf5ff622af86ba235abbec69e969",
+      "status": "in_progress",
+      "onlyDifferenceFromParent": "workflow matrix limited to Linux; all source/test/build gates preserved"
+    }
   },
   "windows": {
     "node": "v22.23.1",
@@ -205,7 +221,19 @@
     "targetedLintAndFormatting": "pass",
     "independentFinalReviews": {
       "standards": 0,
-      "spec": 0
+      "spec": 0,
+      "reviewedRange": "bf1a1f3a...fc21caa9"
+    },
+    "coverage": {
+      "lines": 87.95,
+      "branches": 80,
+      "functions": 85.71,
+      "scope": "scripts/runtime-test-credential-cleanup.mjs"
+    },
+    "additionalPackagedFixtureCheck": {
+      "passed": 1,
+      "failed": 0,
+      "retries": 0
     }
   },
   "artifacts": {
@@ -251,6 +279,21 @@
       "path": ".tmp-alpha7-qualification-registry.log",
       "bytes": 265,
       "sha256": "20cfd0e40747727b68525d1e955e60f6a4fc4eeb5c583bb9d69264b8faab621d"
+    },
+    {
+      "path": ".tmp-alpha7-cleanup-coverage.log",
+      "bytes": 1900,
+      "sha256": "c5e777db8efd54fd02dafdca7bba9a82910fd80ce2660a363624fdb80663d75e"
+    },
+    {
+      "path": ".tmp-alpha7-packaged-fixture-final.log",
+      "bytes": 818,
+      "sha256": "27503ceb5442e4137491bfe3830a63b460759355c8b2046cb878120fd8b1614c"
+    },
+    {
+      "path": ".tmp-alpha7-job-117565417153.log",
+      "bytes": 2045151,
+      "sha256": "dd4668024ce6b9b1a0564de71c5728da0a93038cbb4046f15b803ae235707bd8"
     }
   ]
 }
