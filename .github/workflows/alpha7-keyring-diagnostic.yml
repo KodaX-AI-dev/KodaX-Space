@@ -1,0 +1,16 @@
+name: alpha7-keyring-diagnostic
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  keyring:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: node scripts/alpha7-keyring-diagnostic.mjs
