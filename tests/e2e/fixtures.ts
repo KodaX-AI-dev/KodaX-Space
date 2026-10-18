@@ -292,9 +292,13 @@ export async function launchSpace(
     };
   } catch (error) {
     await cleanupIsolatedSpace(app, testDataDir).catch((cleanupError: unknown) => {
-      throw new AggregateError([error, cleanupError], 'Space renderer and isolated cleanup failed', {
-        cause: error,
-      });
+      throw new AggregateError(
+        [error, cleanupError],
+        'Space renderer and isolated cleanup failed',
+        {
+          cause: error,
+        },
+      );
     });
     throw error;
   }
