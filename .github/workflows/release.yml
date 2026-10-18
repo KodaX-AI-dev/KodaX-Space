@@ -100,10 +100,9 @@ jobs:
           if (!result.ready) throw new Error('Windows sandbox preparation failed: ' + JSON.stringify(result));"
 
       - name: Build installer
-        env:
-          KODAX_BUILD_TARGET_PLATFORM: win32
         shell: bash
         run: |
+          export KODAX_BUILD_TARGET_PLATFORM=win32
           npm run build:smoke
           node scripts/ensure-sqlite-native.mjs electron
           node scripts/ensure-node-pty-helpers.mjs
