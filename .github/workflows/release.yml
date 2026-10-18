@@ -100,6 +100,8 @@ jobs:
           if (!result.ready) throw new Error('Windows sandbox preparation failed: ' + JSON.stringify(result));"
 
       - name: Build installer
+        env:
+          KODAX_BUILD_TARGET_PLATFORM: win32
         shell: bash
         run: |
           npm run build:smoke
