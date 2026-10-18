@@ -84,7 +84,7 @@ async function cleanupIsolatedSpace(
   // Runtime client identities use the OS keychain even though the rest of the
   // profile is isolated. Delete the exact account while its owner evidence is
   // still present, then remove the temporary filesystem profile.
-  await cleanupRuntimeClientCredentialForTestProfile(testDataDir).catch(() => undefined);
+  await cleanupRuntimeClientCredentialForTestProfile(testDataDir);
   await fs.rm(testDataDir, { recursive: true, force: true }).catch(() => {});
 }
 
@@ -137,7 +137,7 @@ export async function launchSpace(
   const tempRoot = process.platform === 'darwin' ? await fs.realpath(os.tmpdir()) : os.tmpdir();
   const testDataDir = path.join(tempRoot, `kodax-test-${testId}`);
   // 清掉可能上一次跑的同名残留 (testId 来自 spec 名 + timestamp，正常情况不冲突)
-  await cleanupRuntimeClientCredentialForTestProfile(testDataDir).catch(() => undefined);
+  await cleanupRuntimeClientCredentialForTestProfile(testDataDir);
   await fs.rm(testDataDir, { recursive: true, force: true }).catch(() => {});
   const testWorkspaceDir = path.join(testDataDir, 'workspace');
   const testSpaceDir = path.join(testDataDir, 'space');

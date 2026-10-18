@@ -3,10 +3,27 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import childProcess from 'node:child_process';
 
 import { cleanupRuntimeClientCredentialForTestProfile } from '../runtime-test-credential-cleanup.mjs';
 
 const TEST_ACCOUNT = 'runtime_client_00000000-0000-4000-8000-000000000132';
+
+function useMacPlatform(t) {
+  const original = Object.getOwnPropertyDescriptor(process, 'platform');
+  Object.defineProperty(process, 'platform', { value: 'darwin' });
+  t.after(() => Object.defineProperty(process, 'platform', original));
+}
+
+function useSecurityCommand(t, run) {
+  const original = childProcess.execFile;
+  childProcess.execFile = (file, args, options, callback) => {
+    Promise.resolve()
+      .then(() => run(file, args, options))
+      .then(() => callback(null, '', ''), callback);
+  };
+  t.after(() => (childProcess.execFile = original));
+}
 
 async function writeIdentity(profileDir, account = TEST_ACCOUNT) {
   const spaceDir = path.join(profileDir, 'space');
@@ -115,4 +132,42 @@ test('runtime test credential cleanup accepts the physical profile behind a temp
   });
   assert.equal(result.cleaned, true);
   assert.deepEqual(accounts, [TEST_ACCOUNT]);
+});
+
+test('macOS cleanup deletes the owned test credential without reading its protected password', async (t) => {
+  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kodax-test-credential-cleanup-'));
+  t.after(() => fs.rm(profileDir, { recursive: true, force: true }));
+  await writeIdentity(profileDir);
+  useMacPlatform(t);
+  const calls = [];
+  useSecurityCommand(t, async (file, args, options) => {
+    calls.push({ file, args, options });
+  });
+
+  const result = await cleanupRuntimeClientCredentialForTestProfile(profileDir);
+  assert.equal(result.cleaned, true);
+  assert.deepEqual(calls, [
+    {
+      file: '/usr/bin/security',
+      args: ['delete-generic-password', '-s', 'kodax-space-test-runtime', '-a', TEST_ACCOUNT],
+      options: { timeout: 5000 },
+    },
+  ]);
+});
+
+test('macOS cleanup tolerates an absent item and surfaces permission or timeout failures', async (t) => {
+  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kodax-test-credential-cleanup-'));
+  t.after(() => fs.rm(profileDir, { recursive: true, force: true }));
+  await writeIdentity(profileDir);
+  useMacPlatform(t);
+  let failure = Object.assign(new Error('Item not found'), { code: 44 });
+  useSecurityCommand(t, async () => {
+    throw failure;
+  });
+
+  assert.equal((await cleanupRuntimeClientCredentialForTestProfile(profileDir)).cleaned, false);
+  failure = Object.assign(new Error('Keychain access denied'), { code: 36 });
+  await assert.rejects(cleanupRuntimeClientCredentialForTestProfile(profileDir), failure);
+  failure = Object.assign(new Error('Command timed out'), { code: 'ETIMEDOUT' });
+  await assert.rejects(cleanupRuntimeClientCredentialForTestProfile(profileDir), failure);
 });
