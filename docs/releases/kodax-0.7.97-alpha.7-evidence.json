@@ -1,0 +1,211 @@
+{
+  "generatedAt": "2026-10-18T00:50:28.888Z",
+  "platform": "win32-x64",
+  "spaceVersion": "0.1.47-alpha.3",
+  "dependency": {
+    "version": "0.7.97-alpha.7",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.7.tgz",
+    "integrity": "sha512-whrhfZDI7k6YH5FGwEuscyV2tE8XuFjM/LAkVV2tO9mizHqrAT7IidrqnZC21e5zsVUVtZBsvAj3rYBjdkQO7Q==",
+    "source": "registry"
+  },
+  "publishedTarball": {
+    "bytes": 11322997,
+    "sha256": "981fcebe903dea3b4202f17abb8f7be447defcf7ba6e6cd51c2bc8f0e7e70a58",
+    "integrityVerified": true,
+    "gitHead": null
+  },
+  "source": {
+    "base": "8e9b66d7",
+    "sourceCommit": "abd17d4294a530073478d23d3acb1ef0050722e7",
+    "trackedWorkingTreeClean": true,
+    "unrelatedUserUntrackedFilesPreserved": true,
+    "fingerprints": {
+      "apps/desktop/electron/kodax/runtime-host-adapter.ts": "d85840aff8e7765a906e4523c92221f93d6bfd4e0ed230e3e343efbae4ca2229",
+      "apps/desktop/electron/kodax/space-manual-topics.ts": "73616a1129abb70978acbc4e54049228fb03bcb9745cad85921a095dca45ff56",
+      "apps/desktop/electron/test/kodax-runtime-compat.test.ts": "805d1844a65cbf7a4825d50833410e23d54797e739c3759d199d39c81521eff8",
+      "apps/desktop/electron/test/runtime-host-adapter.test.ts": "c8ce66c588cefab19cff5719985516489a2a78f966095e1025efcb865b7af33a",
+      "apps/desktop/package.json": "2360692c8ef5628555beb641afdf96fe775ec369d89db997ee0b61fe4ef3f4a2",
+      "package-lock.json": "fabe3d8a1d51833176f48c63e9fac9259663ebc79ff516750ae596902da06de0",
+      "package.json": "e949733ebb523432c7ee90c8d07e425ad43bcb268f70a4f1f1928d43ed65620d",
+      "packages/space-ipc-schema/package.json": "5f0646e11a01bd77f58cf050f65a6b1809b558de828d5aebaa551d35668e1baa",
+      "packages/space-ui-kit/package.json": "6c27c9ea7ebbfb010c03f8b47e57e069d50b3855965eb65adcd1862cf14277ab",
+      "tests/e2e/sdk-provider-fixture.ts": "4ecd2630219570553ed570e622c6f86c0e7b81bc0c9488391c406cbbd07576a7",
+      "tests/e2e/shared-host-fixture.ts": "071ba3996cb79465a6268920761561d655f697537cdd8b88174be86857579087",
+      "tests/e2e/shared-host-history-recovery.spec.ts": "cdded61e792327c78ca591e20c8d62bee150853e179c1699bfefb4af64f4ef88"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "out/sdk-alpha7/KodaX-Space-Setup-0.1.47-alpha.3.exe",
+      "bytes": 181187586,
+      "sha256": "cbc33c99f355c00f086371364c618f1e4e278e7126f4bdcf9666fb85b6a15e4d"
+    },
+    {
+      "path": "out/sdk-alpha7/KodaX-Space-Portable-0.1.47-alpha.3.exe",
+      "bytes": 180977627,
+      "sha256": "4353f960afbf3ab4d66fd04764529555410812e20e0fd59fbe9f3ce76c288624"
+    },
+    {
+      "path": "out/sdk-alpha7/win-unpacked/resources/app.asar",
+      "bytes": 129359826,
+      "sha256": "b3be32279bb946a2746c3aba1cb8e1c0af11491d4dfe034832649f4a6cf4ec95"
+    },
+    {
+      "path": "out/sdk-alpha7/win-unpacked/KodaX Space.exe",
+      "bytes": 232351744,
+      "sha256": "447a6b0e18b45d935274ecd28adeaedc568e131b5aca8543da1567e0d2dd071b"
+    }
+  ],
+  "packagedMainMatchesBuiltMain": true,
+  "testEvidence": {
+    "fullInitial": [
+      {
+        "suite": "release",
+        "tests": 100,
+        "passed": 93,
+        "failed": 0,
+        "skipped": 7
+      },
+      {
+        "suite": "desktop",
+        "tests": 3924,
+        "passed": 3910,
+        "failed": 1,
+        "skipped": 13
+      },
+      {
+        "suite": "ipc",
+        "tests": 369,
+        "passed": 369,
+        "failed": 0,
+        "skipped": 0
+      }
+    ],
+    "fullFinal": [
+      {
+        "suite": "release",
+        "tests": 100,
+        "passed": 93,
+        "failed": 0,
+        "skipped": 7
+      },
+      {
+        "suite": "desktop",
+        "tests": 3924,
+        "passed": 3911,
+        "failed": 0,
+        "skipped": 13
+      },
+      {
+        "suite": "ipc",
+        "tests": 369,
+        "passed": 369,
+        "failed": 0,
+        "skipped": 0
+      }
+    ],
+    "initialNetworkFailure": {
+      "test": "Space submits a stable product input and retains its canonical identity",
+      "failureKind": "network",
+      "stage": "transport",
+      "requestPhase": "before_first_delta",
+      "focusedRetest": {
+        "passed": 2,
+        "failed": 0
+      }
+    },
+    "adapter": {
+      "passed": 267,
+      "failed": 0
+    },
+    "compatibility": {
+      "passed": 10,
+      "failed": 0
+    },
+    "changedExecutableLineCoverage": {
+      "base": "8e9b66d7",
+      "file": "apps/desktop/electron/kodax/runtime-host-adapter.ts",
+      "method": "V8 block ranges mapped through tsx source map to added executable source lines",
+      "covered": 9,
+      "total": 9,
+      "lines": [
+        {
+          "line": 2075,
+          "source": "private startupAbort: AbortController | undefined;",
+          "covered": true
+        },
+        {
+          "line": 2360,
+          "source": "...(autoStart ? { daemonLifecycle: 'interactive' as const } : {}),",
+          "covered": true
+        },
+        {
+          "line": 2446,
+          "source": "const startupAbort = new AbortController();",
+          "covered": true
+        },
+        {
+          "line": 2447,
+          "source": "this.startupAbort = startupAbort;",
+          "covered": true
+        },
+        {
+          "line": 2458,
+          "source": "startupAbort.signal.throwIfAborted();",
+          "covered": true
+        },
+        {
+          "line": 2464,
+          "source": "daemonStartupSignal: startupAbort.signal,",
+          "covered": true
+        },
+        {
+          "line": 2652,
+          "source": ".finally(() => {",
+          "covered": true
+        },
+        {
+          "line": 2653,
+          "source": "if (this.startupAbort === startupAbort) this.startupAbort = undefined;",
+          "covered": true
+        },
+        {
+          "line": 7702,
+          "source": "this.startupAbort?.abort(new Error('Runtime host closed during startup'));",
+          "covered": true
+        }
+      ],
+      "percent": 100
+    },
+    "packagedRecovery": {
+      "passed": 4,
+      "failed": 0,
+      "scenarios": [
+        "genuine older idle Host upgrade and second Host crash",
+        "active Run protection beyond initial startup deadline and automatic selected-history recovery",
+        "same-installation retained published Host reuse and production complete exit",
+        "streaming Host crash without input resubmission"
+      ]
+    },
+    "packagedLifecycle": {
+      "passed": 6,
+      "failed": 0
+    },
+    "packagedDependencies": "passed",
+    "packagedBoot": {
+      "rendererReadyMs": 4152,
+      "runtimeReadyMs": 25327,
+      "deterministicHoldMs": 20000,
+      "historicalChildRecords": 122
+    },
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionBuild": "passed",
+    "reviews": {
+      "standardsRemaining": 0,
+      "specRemaining": 0
+    }
+  },
+  "publication": "Space local Windows candidate; not published; SDK is published Registry alpha.7",
+  "sdkCheckoutModified": false
+}
