@@ -160,10 +160,10 @@ jobs:
             dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c '
               printf "%s\n" "kodax-space-ci" |
                 gnome-keyring-daemon --unlock --components=secrets >/dev/null
-              npm run e2e:run -- "$@" --retries=0
+              npm run e2e:run -- "$@" --retries=0 --max-failures=1
             ' -- "${specs[@]}"
           else
-            npm run e2e:run -- "${specs[@]}" --retries=0
+            npm run e2e:run -- "${specs[@]}" --retries=0 --max-failures=1
           fi
 
       - name: Upload packaged acceptance failure evidence
