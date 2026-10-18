@@ -16,17 +16,17 @@ function patchRuntime(t: TestContext, overrides: Record<string, unknown>): void 
   }
 }
 
-function pendingResult(): { promise: Promise<RuntimeRunResult>; finish: () => void } {
+function pendingResult(runId: string): { promise: Promise<RuntimeRunResult>; finish: () => void } {
   let finish!: () => void;
   const promise = new Promise<RuntimeRunResult>((resolve) => {
-    finish = () => resolve({ runId: 'old', sessionId: 'stop_session', phase: 'cancelled' });
+    finish = () => resolve({ runId, sessionId: 'stop_session', phase: 'cancelled' });
   });
   return { promise, finish };
 }
 
 function stoppedSession(t: TestContext, confirmed = true) {
-  const old = pendingResult();
-  const next = pendingResult();
+  const old = pendingResult('old');
+  const next = pendingResult('next');
   const starts: string[] = [];
   patchRuntime(t, {
     isRuntimeSelected: () => true,
