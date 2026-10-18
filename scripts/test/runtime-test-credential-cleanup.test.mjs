@@ -87,3 +87,25 @@ test('runtime test credential cleanup removes both accounts after accepted exit 
   });
   assert.deepEqual(accounts, [TEST_ACCOUNT, previousAccount]);
 });
+
+test('runtime test credential cleanup accepts the physical profile behind a temp directory alias', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'space-credential-alias-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const physical = path.join(root, 'physical');
+  const alias = path.join(root, 'alias');
+  await fs.mkdir(physical);
+  await fs.symlink(physical, alias, 'junction');
+  const profile = await fs.mkdtemp(path.join(physical, 'kodax-test-credential-'));
+  await writeIdentity(profile);
+  t.mock.method(os, 'tmpdir', () => alias);
+  const accounts = [];
+  const result = await cleanupRuntimeClientCredentialForTestProfile(profile, {
+    deletePassword: async (service, account) => {
+      assert.equal(service, 'kodax-space-test-runtime');
+      accounts.push(account);
+      return true;
+    },
+  });
+  assert.equal(result.cleaned, true);
+  assert.deepEqual(accounts, [TEST_ACCOUNT]);
+});

@@ -8,9 +8,18 @@ const SECRET_ACCOUNT_RE =
 const ALLOWED_PROFILE_PREFIXES = ['kodax-test-', 'kodax-space-boot-smoke-'];
 const MAX_IDENTITY_BYTES = 4 * 1024;
 
-function isAllowedTestProfile(profileDir) {
-  const resolvedProfile = path.resolve(profileDir);
-  const resolvedTemp = path.resolve(os.tmpdir());
+async function isAllowedTestProfile(profileDir) {
+  let resolvedProfile;
+  let resolvedTemp;
+  try {
+    [resolvedProfile, resolvedTemp] = await Promise.all([
+      fs.realpath(profileDir),
+      fs.realpath(os.tmpdir()),
+    ]);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
   const relative = path.relative(resolvedTemp, resolvedProfile);
   if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) return false;
   return ALLOWED_PROFILE_PREFIXES.some((prefix) =>
@@ -19,7 +28,7 @@ function isAllowedTestProfile(profileDir) {
 }
 
 async function readTestSecretAccounts(profileDir) {
-  if (!isAllowedTestProfile(profileDir)) return undefined;
+  if (!(await isAllowedTestProfile(profileDir))) return undefined;
   const identityPath = path.join(profileDir, 'space', 'runtime-client-identity.json');
   let bytes;
   try {
