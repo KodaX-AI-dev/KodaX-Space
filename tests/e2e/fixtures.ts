@@ -75,8 +75,11 @@ async function cleanupIsolatedSpace(
   // Sweep both sides of Electron shutdown: under a loaded serial suite the daemon spawn can
   // still be finishing when the first sweep runs, and deleting the profile immediately after
   // app.close would otherwise orphan that late child together with its inherited launch pipes.
+  process.stderr.write('[DEBUG-alpha7] cleanup pre-daemon\n');
   await stopOwnedTestDaemonQuietly(testDataDir);
+  process.stderr.write('[DEBUG-alpha7] cleanup pre-close\n');
   if (app !== undefined) await closeElectronBounded(app);
+  process.stderr.write('[DEBUG-alpha7] cleanup post-close\n');
   for (const retryDelayMs of DAEMON_POST_CLOSE_RETRY_DELAYS_MS) {
     if (retryDelayMs > 0) await delay(retryDelayMs);
     if (await stopOwnedTestDaemonQuietly(testDataDir)) break;
@@ -84,8 +87,12 @@ async function cleanupIsolatedSpace(
   // Runtime client identities use the OS keychain even though the rest of the
   // profile is isolated. Delete the exact account while its owner evidence is
   // still present, then remove the temporary filesystem profile.
+  process.stderr.write('[DEBUG-alpha7] cleanup credential-start\n');
   await cleanupRuntimeClientCredentialForTestProfile(testDataDir).catch(() => undefined);
+  process.stderr.write('[DEBUG-alpha7] cleanup credential-done\n');
+  process.stderr.write('[DEBUG-alpha7] cleanup filesystem-start\n');
   await fs.rm(testDataDir, { recursive: true, force: true }).catch(() => {});
+  process.stderr.write('[DEBUG-alpha7] cleanup filesystem-done\n');
 }
 
 export interface SpaceInstance {

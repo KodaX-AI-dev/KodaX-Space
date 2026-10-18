@@ -73,7 +73,9 @@ export async function cleanupRuntimeClientCredentialForTestProfile(profileDir, o
   const deletePassword =
     options.deletePassword ??
     (async (service, account) => {
+      process.stderr.write('[DEBUG-alpha7] keyring import-start\n');
       const imported = await import('@napi-rs/keyring/keytar.js');
+      process.stderr.write('[DEBUG-alpha7] keyring delete-start\n');
       return (imported.default ?? imported).deletePassword(service, account);
     });
   const deleted = await Promise.all(
