@@ -120,3 +120,24 @@ and [machine evidence](../releases/kodax-0.7.97-alpha.7-qualification.json) for
 actual per-platform results and the boundary between a Host-attachment timing
 observation and a complete TUI/rebuild performance claim. Keep any first-run
 failure in that record; do not treat a later pass as its diagnosis.
+
+The alpha.7 input handoff regressions additionally hold acceptance before its
+canonical view, batch after-turn input IDs, delay image projection, and retain
+unknown/lost replies without resubmission. Twenty ordinary idle reads must cause
+zero `runs.getInput` calls and reclaim all twenty observers. An older submitted
+Run outside the current view window must be checked by its exact Run identity.
+
+For Stop, hold the old result promise open after a confirmed terminal receipt,
+then send a new input. It must enter one new Run; settling the old promise or
+replaying its exact Stop must not clear that successor. Unknown/nonterminal
+receipts must retain admission protection. These checks use the public adapter
+and RealSession seams:
+
+```powershell
+node --test --test-force-exit --import tsx apps/desktop/electron/test/runtime-host-adapter.test.ts apps/desktop/electron/test/real-session-runtime-queue.test.ts apps/desktop/electron/test/real-session-runtime-stop.test.ts
+```
+
+Run the original `sdk-unified-contract.spec.ts` against each actual packaged
+target afterward. A unit pass or a later E2E pass cannot replace the first
+failure's phase log. Do not increase admission deadlines or replay input to
+make a failed case pass.

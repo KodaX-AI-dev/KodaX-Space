@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T03:26:18.963Z",
+  "generatedAt": "2026-10-18T05:01:33.660Z",
   "spaceVersion": "0.1.47-alpha.3",
   "published": false,
   "dependency": {
@@ -139,7 +139,271 @@
         "jobId": 117565417212,
         "conclusion": "cancelled"
       }
-    ]
+    ],
+    "currentConsumer": {
+      "runId": 39095484685,
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39095484685",
+      "sourceCommit": "f10de75fe4187c454f9756f9c26d5f4a77a022bb",
+      "productionCommit": "ee568fbb8e75c9a14d68380fa797a1da25c80165",
+      "fullBaselineUnitSuite": false,
+      "installerConstruction": false,
+      "retries": 0,
+      "jobs": [
+        {
+          "id": 117580933392,
+          "name": "Build installer (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 117580933480,
+          "name": "Build installer (macos-15-intel)",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 117580933502,
+          "name": "Build installer (macos-latest)",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 117580933530,
+          "name": "Build installer (windows-latest)",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 117583108944,
+          "name": "Create GitHub Release",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "firstWindowsFailure": {
+        "jobId": 117580933530,
+        "artifactId": 12124123289,
+        "passed": 12,
+        "failed": 1,
+        "firstOrdinaryInputBeforeQueue": true,
+        "hostReady": true,
+        "inFlightMethod": "session.settings.updateVersioned",
+        "providerRequests": 0,
+        "cause": "unresolved",
+        "log": {
+          "file": ".tmp-alpha7-job-117580933530.log",
+          "sha256": "499cdb0fdc196e38801c7d15d8d4e744f406512a844e608978127c36a8056e30"
+        },
+        "inFlightEvidence": "one health-poll warning; full write duration not recorded in that run"
+      }
+    },
+    "windowsFocusedDiagnostic": {
+      "runId": 39095329899,
+      "sourceCommit": "cb481304fe7bdd6605aa9a5813d69ced58904d4d",
+      "productionCommit": "1195b75d",
+      "passed": 2,
+      "retries": 0,
+      "explainsOriginalFailure": false,
+      "log": {
+        "file": ".tmp-alpha7-job-117580469225.log",
+        "sha256": "2e3b109a1b91825d8faa72cf5d8a24c0840f1d8dadf4f5f9c83ec4f2b20a53be"
+      }
+    },
+    "macFullQualification": {
+      "runId": 39093390590,
+      "sourceCommit": "4675b96b6b5ecd0f944452b2386ab59829244a90",
+      "jobs": [
+        {
+          "id": 117574682066,
+          "arch": "arm64",
+          "passed": 6,
+          "failed": 1,
+          "firstFailure": "Official product view unavailable"
+        },
+        {
+          "id": 117574682275,
+          "arch": "x64",
+          "passed": 9,
+          "failed": 1,
+          "firstFailure": "Saved history unexpectedly invalidated"
+        }
+      ],
+      "logs": [
+        {
+          "file": ".tmp-alpha7-job-117574682066.log",
+          "sha256": "d6e9ece7a7b5e76c39693ef8b9329c2d21eea97c7e0e08e19e89621c79052052"
+        },
+        {
+          "file": ".tmp-alpha7-job-117574682275.log",
+          "sha256": "3549f6e1df9de5be66656366d4ac25ecc53eb7c85c80f74b5f0cc16b3f7d012b"
+        }
+      ]
+    },
+    "macReceiptReaderFix": {
+      "commit": "0f491ab4c807d67f1ddcf8c417d83625de9489e4",
+      "originalFailure": {
+        "runId": 39095331539,
+        "jobId": 117580474152,
+        "artifactId": 12123679034,
+        "message": "Playwright app.process() accessed after dispatcher released",
+        "log": {
+          "file": ".tmp-alpha7-job-117580474152.log",
+          "sha256": "3c3f715c1a8e85ed5b274d880656d9924fc94a421382c1d26e5afcefe3ff9263"
+        }
+      },
+      "followupRun": 39095816440,
+      "status": "passed",
+      "passed": 2,
+      "retries": 0,
+      "log": {
+        "file": ".tmp-alpha7-job-117581911472.log",
+        "sha256": "7be6caef4723d7bc7dab5e60e45f918ca1f4db62b48e452bec9ad84c3bb7d39b"
+      }
+    },
+    "macStopFirstFailures": {
+      "runId": 39096054925,
+      "sourceCommit": "e588fe33dc46f68f00080d8b021627081ad9b2ff",
+      "productionCommit": "ee568fbb",
+      "arm64": {
+        "jobId": 117582620244,
+        "artifactId": 12125315454,
+        "passed": 10,
+        "failed": 1,
+        "confirmedTerminalPublicSnapshot": true,
+        "requests": [
+          "HOLD_CANCEL"
+        ],
+        "log": {
+          "file": ".tmp-alpha7-job-117582620244.log",
+          "sha256": "d0743a6837a2e49446475980b4a995fa0a2f43dbe350b5da495ab5c493dd6aa4"
+        }
+      },
+      "x64": {
+        "jobId": 117582620146,
+        "artifactId": 12124921280,
+        "passed": 10,
+        "failed": 1,
+        "log": {
+          "file": ".tmp-alpha7-job-117582620146.log",
+          "sha256": "552d0f25a4f69879d35826c505136b994842cecfd866b528ae7b562798d13541"
+        }
+      },
+      "failure": "AFTER_STOP did not reach a new reply; later passing samples are not a diagnosis"
+    },
+    "windowsInputPhaseDiagnostic": {
+      "runId": 39096185393,
+      "sourceCommit": "9026f959e076b1853324f21a58deea9baf090804",
+      "jobId": 117583014842,
+      "artifactId": 12125161304,
+      "independentPassingSamples": 4,
+      "firstFailedSample": 5,
+      "settingsMs": 47,
+      "firstImmediateAdmissionMs": 397,
+      "failure": "AFTER_STOP: no new immediate admission; optimistic input disappears",
+      "retries": 0,
+      "log": {
+        "file": ".tmp-alpha7-job-117583014842.log",
+        "sha256": "7548f95a7277a70f7549625c664b509c15c5f73a52c5984b23ba6dfb601ea765"
+      }
+    },
+    "stopReceiptQualification": {
+      "runId": 39097232475,
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39097232475",
+      "base": "290c5fcb2f065772d9eada7361966efbab1ce809",
+      "sha": "86d8439dbd4e84fa87e0ff0462f0954694459dd7",
+      "ref": "refs/heads/codex/alpha7-stop-receipt-qualification",
+      "sdkModified": false,
+      "diagnosticOnly": true,
+      "retries": 0,
+      "status": "completed_failure",
+      "installerConstruction": false,
+      "fullBaselineUnitSuite": false,
+      "actualPackagedConsumer": true,
+      "casesPerPlatform": 20,
+      "jobs": [
+        {
+          "id": 117586096452,
+          "platform": "linux-x64",
+          "unitPassed": 314,
+          "applicationPassed": 20,
+          "retries": 0,
+          "durationMinutes": 3.7,
+          "log": {
+            "file": ".tmp-alpha7-job-117586096452.log",
+            "sha256": "c8db4032af869f437bceb8c2dde943837f98fb81a5a10c6d8d6714509ca8627a"
+          }
+        },
+        {
+          "id": 117586096435,
+          "platform": "darwin-arm64",
+          "unitPassed": 314,
+          "applicationPassed": 20,
+          "retries": 0,
+          "durationMinutes": 5.4,
+          "log": {
+            "file": ".tmp-alpha7-job-117586096435.log",
+            "sha256": "aac58f80283f36e16a04d33e20f977d13af1464a9232608c1e0e0cc3f71b783e"
+          }
+        },
+        {
+          "id": 117586096446,
+          "platform": "darwin-x64",
+          "unitPassed": 314,
+          "applicationPassed": 20,
+          "retries": 0,
+          "durationMinutes": 5.6,
+          "log": {
+            "file": ".tmp-alpha7-job-117586096446.log",
+            "sha256": "69221a05f289e55f68ec31a6a940080dcaafac3d2fcc787b295ec80a9595ec0c"
+          }
+        },
+        {
+          "id": 117586096340,
+          "platform": "win32-x64",
+          "unitPassed": 314,
+          "applicationPassed": 9,
+          "applicationFailed": 1,
+          "applicationNotRun": 10,
+          "retries": 0,
+          "firstFailure": "Saved history unexpectedly invalidated: first-page non-ready outcome not preserved",
+          "originalStopTestsExecuted": false,
+          "artifactId": 12124834146,
+          "log": {
+            "file": ".tmp-alpha7-job-117586096340.log",
+            "sha256": "8479141ec1bbfdaa8ade72df2a9cfde96802058b5c074121655abe50bc98943b"
+          }
+        }
+      ],
+      "releaseJob": "skipped"
+    },
+    "windowsHistoryFollowup": {
+      "runId": 39098059757,
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39098059757",
+      "base": "8a0de95b883ace20c0eff3970dcdb5e6d3fa383f",
+      "sha": "75a5e75d3ba27e8e47189bb1f19612e265d7e3f1",
+      "ref": "refs/heads/codex/alpha7-windows-history-contract-qualification",
+      "productionCommit": "290c5fcb2f065772d9eada7361966efbab1ce809",
+      "retries": 0,
+      "fullBaselineUnitSuite": false,
+      "installerConstruction": false,
+      "actualPackagedConsumer": true,
+      "status": "completed_success",
+      "jobId": 117588499774,
+      "result": {
+        "unitPassed": 314,
+        "fixtureBoundaryPassed": 11,
+        "packagedApplicationPassed": 20,
+        "packagedApplicationFailed": 0,
+        "retries": 0,
+        "applicationDurationMinutes": 8.8
+      },
+      "releaseJob": "skipped",
+      "log": {
+        "file": ".tmp-alpha7-job-117588499774.log",
+        "sha256": "49ac62cde6af512ff339047fdabf5e5d68921807b811d6fb615c98a76dd06810"
+      },
+      "artifactId": 12126120714
+    }
   },
   "windows": {
     "node": "v22.23.1",
@@ -176,7 +440,10 @@
           "readyMs": 1502,
           "runtimeId": "rt_baa9803aceb9",
           "pid": 54256,
-          "histories": [1, 1],
+          "histories": [
+            1,
+            1
+          ],
           "stages": [
             {
               "elapsedMs": 162,
@@ -205,7 +472,10 @@
           "readyMs": 5698,
           "runtimeId": "rt_c36b3181fbdb",
           "pid": 43844,
-          "histories": [1, 1],
+          "histories": [
+            1,
+            1
+          ],
           "stages": [
             {
               "elapsedMs": 318,
@@ -250,7 +520,10 @@
           "readyMs": 610,
           "runtimeId": "rt_c36b3181fbdb",
           "pid": 43844,
-          "histories": [1, 1],
+          "histories": [
+            1,
+            1
+          ],
           "stages": [
             {
               "elapsedMs": 310,
@@ -273,6 +546,119 @@
     "conptyExperiment": {
       "status": "not_fully_passed",
       "reason": "One of two children required forced teardown; node-pty AttachConsole failed. Composer-readiness timings are not acceptance results."
+    },
+    "currentProductionBoot": {
+      "productionCommit": "ee568fbb8e75c9a14d68380fa797a1da25c80165",
+      "artifactDirectory": "out/sdk-alpha7-final",
+      "historicalRecordsPerProfile": 122,
+      "artificialDelayMs": 0,
+      "results": [
+        {
+          "rendererReadyMs": 5298,
+          "runtimeReadyMs": 6204
+        },
+        {
+          "rendererReadyMs": 3129,
+          "runtimeReadyMs": 4035
+        }
+      ],
+      "logs": [
+        {
+          "file": ".tmp-alpha7-final-boot-first.log",
+          "sha256": "2d44b137272d05b949ceda913a0f83dcdde7e73ec8d72aaa3c250da44bd35cb2"
+        },
+        {
+          "file": ".tmp-alpha7-final-boot-second.log",
+          "sha256": "54b0ca4e71a9932fc82abd6876396e89137a0d0ff04f2b9ffbdb01b9c47a6872"
+        }
+      ],
+      "universalLatencyGuarantee": false
+    },
+    "intermediateConsumer": {
+      "productionCommit": "f29b0aee",
+      "artifactDirectory": "out/sdk-alpha7-input-current",
+      "passed": 20,
+      "failed": 0,
+      "retries": 0,
+      "duration": "4.4m",
+      "log": {
+        "file": ".tmp-alpha7-input-f29-packaged-e2e.log",
+        "sha256": "c624d789718be5d3021e19cea0995127519e30b43e689b0309da17dd55f7c5f2"
+      }
+    },
+    "final886Consumer": {
+      "sourceCommit": "886841e7",
+      "artifactDirectory": "out/sdk-alpha7-final886",
+      "passed": 20,
+      "failed": 0,
+      "retries": 0,
+      "duration": "4.3m",
+      "log": {
+        "file": ".tmp-alpha7-final886-packaged-e2e.log",
+        "sha256": "8ece24cc596e46f188021e7a3bcbf688aa441ae7b9e14abe29edd3baf7e7b1db"
+      },
+      "diagnosesEarlierFailure": false
+    },
+    "currentStopArtifact": {
+      "productionCommit": "290c5fcb",
+      "fixtureCommit": "8a0de95b",
+      "artifactDirectory": "out/sdk-alpha7-stop-final",
+      "passed": 7,
+      "failed": 1,
+      "retries": 0,
+      "bothOriginalStopCasesPassed": true,
+      "firstFailure": "SDK_TOOLS: Provider network error",
+      "log": {
+        "file": ".tmp-alpha7-stop-packaged-local.log",
+        "sha256": "0a992c5acdfa484a07546370e2a5877c50e575f7c208ac21c9fcfa0bc802b93c"
+      },
+      "errorContext": {
+        "file": ".tmp-alpha7-stop-local-failure/error-context.md",
+        "sha256": "6f17c6fe2c24f2c725b16e7264aa942a594fda42d56806e0ab11454ae55c9f7d"
+      },
+      "trace": {
+        "file": ".tmp-alpha7-stop-local-failure/trace.zip",
+        "sha256": "b99ddba756f997dc6362d3c23a18a2df47dd08f169e729e9f17e689acad4dab2"
+      },
+      "separateDiagnostic": {
+        "passed": 1,
+        "retries": 0,
+        "durationSeconds": 8.5,
+        "log": {
+          "file": ".tmp-alpha7-local-tools-diagnostic.log",
+          "sha256": "e19f60ce91f8e462708a327caeb3cc3a552b20c5ff227c6724f2aab93b91b1aa"
+        },
+        "diagnosesFirstFailure": false
+      },
+      "extraEvidence": "test Provider attaches existing synthetic requests/errors after close; no auth headers or real user content",
+      "networkFailureResolved": false,
+      "boundedNetworkDiagnostic": {
+        "independentSamples": 8,
+        "passed": 8,
+        "retries": 0,
+        "stopAtFirstFailure": true,
+        "sourceTestFixture": "8e002930",
+        "productionCommit": "290c5fcb",
+        "sdkModified": false,
+        "log": {
+          "file": ".tmp-alpha7-tools-first-failure-diagnostic.log",
+          "sha256": "00c68a600b49c9697bc4a4b05850d4896de55d1bfd94e956acb9d855c79a0d91"
+        },
+        "diagnosesOriginalFailure": false
+      },
+      "boot": {
+        "rendererReadyMs": 3235,
+        "runtimeReadyMs": 4042,
+        "historicalRecords": 122,
+        "historicalRecordsPreserved": true,
+        "artificialReadyDelayMs": 0,
+        "universalLatencyGuarantee": false,
+        "diagnosesEarlierIntermittentInput": false,
+        "log": {
+          "file": ".tmp-alpha7-stop-boot.log",
+          "sha256": "8df3e3b468d79b3f634901695e784e204f39f9d1e833ac88017b641592d51ac9"
+        }
+      }
     }
   },
   "fixtureChecks": {
@@ -413,5 +799,226 @@
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
-  ]
+  ],
+  "spaceInputObservation": {
+    "productionCommit": "886841e7",
+    "sourceCommits": [
+      "7d29a365",
+      "1195b75d",
+      "f29b0aee",
+      "2c74d509",
+      "ee568fbb",
+      "958ef82e",
+      "886841e7"
+    ],
+    "behavior": [
+      "pin pending admission",
+      "publish canonical view before handoff",
+      "reconcile batched input and dropped steer by exact input ID",
+      "preserve lost-ack/null uncertainty without replay",
+      "fence retired Runtime callbacks",
+      "query exact older submitted Run when it is outside the current view window"
+    ],
+    "adapterFileTests": {
+      "sourceCommit": "886841e7",
+      "passed": 273,
+      "failed": 0,
+      "lineCoverage": 90.36,
+      "branchCoverage": 76.42,
+      "functionCoverage": 78.54,
+      "log": {
+        "file": ".tmp-alpha7-older-run-coverage.log",
+        "sha256": "1f27858b4b7b90aebb1da5f882320aeb3c4043af77e70ef56e178db4f5e0566f"
+      }
+    },
+    "coldReadTest": {
+      "reads": 20,
+      "inputMetadataRpc": 0,
+      "observerCloses": 20,
+      "log": {
+        "file": ".tmp-alpha7-input-cold-green.log",
+        "sha256": "514f94d015eb84d8ccca87863f81d27a8a3bf803a74f7c30decb86812bcea5f5"
+      }
+    },
+    "redEvidence": [
+      {
+        "file": ".tmp-alpha7-input-terminal-red.log",
+        "sha256": "138b4f484085004dfde18c27ce80366b8d94c6ff1075764f8f6f3871ac49a7dc"
+      },
+      {
+        "file": ".tmp-alpha7-input-image-red.log",
+        "sha256": "2f360514c2367304eb2d03bc042ec83107bdb03422ebf02b51939e8981629df3"
+      }
+    ],
+    "limitations": [
+      "same-owner unknown admission with no later facts has no public settlement barrier; retain uncertainty, no replay",
+      "late metadata-rejection identity fence is defensive, not independently reproduced"
+    ],
+    "reviews": {
+      "standards": {
+        "hardViolations": 0,
+        "actionableSmells": 0
+      },
+      "spec": {
+        "findings": 0
+      }
+    }
+  },
+  "registryRecheck": {
+    "checkedAt": "2026-10-18T05:00:50.208Z",
+    "sdkAlpha": "0.7.97-alpha.7",
+    "sdkLatest": "0.7.96",
+    "artifactPackageHttpStatus": 404
+  },
+  "confirmedStopHandoff": {
+    "productionCommit": "290c5fcb2f065772d9eada7361966efbab1ce809",
+    "contract": "only confirmed terminal Stop clears matching old local admission hints; preserve unknown state and successor identities; never replay input",
+    "redEvidence": [
+      {
+        "file": ".tmp-alpha7-stop-pending-red.log",
+        "sha256": "721ae3e0bb6fab35a1dfeb5336bd16db478a12f456b8ee4ba886c6ccf7d39b33"
+      },
+      {
+        "file": ".tmp-alpha7-stop-cache-red.log",
+        "sha256": "f3eb449c31356c4458bb07a83297398c3b06bfda6841a2748ac36b52f4b847b6"
+      }
+    ],
+    "unit": {
+      "passed": 314,
+      "failed": 0,
+      "log": {
+        "file": ".tmp-alpha7-stop-all-green.log",
+        "sha256": "2380955c77a2047f9a8f327f73eb5bc1d8c0bfe787cc7cead26f0d76a8bc4700"
+      }
+    },
+    "coverage": {
+      "combinedLines": 86.18,
+      "combinedBranches": 75.99,
+      "combinedFunctions": 68.7,
+      "adapterLines": 90.46,
+      "adapterBranches": 76.7,
+      "adapterFunctions": 78.59,
+      "scope": "two changed production files using adapter/queue/Stop test subset; not whole-project coverage",
+      "log": {
+        "file": ".tmp-alpha7-stop-coverage.log",
+        "sha256": "47f25f31b8a4936c1f80ac91d86e767355b1108db804ad1c8c04713437343fab"
+      }
+    },
+    "typecheck": {
+      "file": ".tmp-alpha7-stop-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "eslint": {
+      "file": ".tmp-alpha7-stop-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reviews": {
+      "standards": 0,
+      "spec": 0
+    },
+    "originalCiCauseFullyEstablished": false,
+    "delayedResultFixtureCommit": "9eab47f6"
+  },
+  "productReadConflictFixture": {
+    "commits": [
+      "db28f121",
+      "8e4f191b"
+    ],
+    "retriesOnly": "HANDLER_ERROR with exact Session data changed during the read boundary: <sha256>.lock message",
+    "budgetMs": 5000,
+    "firstErrorEnvelopeRetained": true,
+    "otherErrorsAndNullFailImmediately": true,
+    "boundaryTests": 5,
+    "log": {
+      "file": ".tmp-alpha7-read-helper-green.log",
+      "sha256": "0689bc9e8ce7f2270a8cf1db6cb4da69870f6a4696bd5987c3df15c1d53320d1"
+    }
+  },
+  "historyBoundaryFixture": {
+    "commit": "8a0de95b",
+    "productionChanged": false,
+    "onlyFreshExplicitDataChangedRetried": true,
+    "totalBudgetMs": 5000,
+    "oldRevisionNeverRetried": true,
+    "missingCursorRejectedBeforeRpc": true,
+    "fullEnvelopesRetained": true,
+    "runtimeUnavailableOrProtocolErrorNeverRetried": true,
+    "boundaryTests": 11,
+    "red": {
+      "file": ".tmp-alpha7-history-reader-red.log",
+      "sha256": "0c7b33148dfc4d5fd90d645902ec0615ad5131aab5a92d091b9b6b3d8ea5a11c"
+    },
+    "green": {
+      "file": ".tmp-alpha7-history-reader-green.log",
+      "sha256": "067b3227cc8efb1d420197d00458e910a2be8b1ed34f41910ac058c1127add8c"
+    },
+    "strictTypes": {
+      "file": ".tmp-alpha7-history-reader-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "eslint": {
+      "file": ".tmp-alpha7-history-reader-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "localPackagedHistory": {
+      "productionCommit": "886841e7",
+      "passed": 2,
+      "retries": 0,
+      "log": {
+        "file": ".tmp-alpha7-history-reader-packaged.log",
+        "sha256": "04d4d4b7558fbede6b03ee797de4b83e963d83c73a4baff3c02c5a49c945355c"
+      }
+    },
+    "reviews": {
+      "standards": 0,
+      "spec": 0
+    },
+    "diagnosesOriginalGenericFailure": false
+  },
+  "testEvidencePersistence": {
+    "commit": "8c52228369858f4d4a38d245bc994c5225b831f1",
+    "productionChanged": false,
+    "issue": "attach(body) under list reporter did not persist successful-test evidence in upload directory",
+    "behavior": "three existing evidence types write unique UUID files inside test outputPath and attach paths",
+    "red": {
+      "file": ".tmp-alpha7-evidence-file-red.log",
+      "sha256": "723a8e3088604b03ab78d7a3f4fbc01ff987201a5acd66fccd3edca304d7b6f7"
+    },
+    "green": {
+      "file": ".tmp-alpha7-evidence-file-green.log",
+      "sha256": "64918fc55b4f4274c93f1b6796e2ae192d568df14a177886ade1e6fb0e90b4a5"
+    },
+    "tests": 11,
+    "strictTypes": {
+      "file": ".tmp-alpha7-evidence-file-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "eslint": {
+      "file": ".tmp-alpha7-evidence-file-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reviews": {
+      "standards": 0,
+      "spec": 0
+    }
+  },
+  "completionStatus": {
+    "spaceProductionCommit": "290c5fcb2f065772d9eada7361966efbab1ce809",
+    "fourPlatformPackagedAcceptance": "passed across source-pinned runs; fixture read-contract difference on Windows, no production difference",
+    "targets": [
+      "win32-x64",
+      "linux-x64",
+      "darwin-x64",
+      "darwin-arm64"
+    ],
+    "casesPerTarget": 20,
+    "retries": 0,
+    "allRequestedWorkClosed": false,
+    "releaseReady": false,
+    "released": false,
+    "remaining": [
+      "Independent Artifact SDK has no published Registry package/export",
+      "Earlier intermittent Windows first-input and local Provider network failures are cause-unconfirmed; later passes do not erase them"
+    ]
+  }
 }

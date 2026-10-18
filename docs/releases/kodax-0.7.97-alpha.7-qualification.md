@@ -4,6 +4,159 @@ Date: 2026-10-18. Space `0.1.47-alpha.3` remains unpublished. This continues the
 [consumer audit](kodax-0.7.97-alpha.7-space-followup.md); it does not replace the
 earlier Registry/native/package integrity evidence.
 
+## Additional Space input-observation fix
+
+Commits `7d29a365` through `886841e7` fix an additional public consumer race:
+`submitInput` did not hold the same admission guard as `startManagedRun`, so an
+idle snapshot could retire its Session observer while acceptance was pending.
+An acceptance reply also need not wait for the canonical view notification.
+
+The guard now bridges that notification gap. Matching canonical queue/user IDs
+release demand only after the adapted product view has been published, including
+asynchronous image capabilities. Batched after-turn inputs and undelivered steer
+inputs require the SDK's `runs.getInput` identity query: the former need not have
+a separate user item, and the latter never enters the retractable queue.
+Explicit dropped/withdrawn facts and submitted inputs with a confirmed terminal
+Run release demand. If the current view's terminal window no longer includes a
+submitted input's Run, the adapter queries that exact `runId`; absence from the
+window is not evidence of termination. Active work retains its ordinary observation protection.
+
+A lost reply, null input record or failed metadata query does not establish
+rejection and never authorizes replay. Unknown demand remains conservative on
+that Host; a new owner first restores its canonical view and ends the old
+owner's observation demand without declaring the old input rejected. The SDK
+has no same-Host admission-settlement barrier for an unknown call with no later
+facts; no timeout or fabricated exactly-once claim was added to conceal that
+limit. Old observer jobs are fenced against the current Runtime and observation
+both before and after successful or failed asynchronous metadata reads. The
+late-rejection fence is defensive hardening, not a separately reproduced defect.
+
+Deterministic public-adapter regressions failed before the fixes for concurrent
+idle retirement, acceptance-before-view delivery, lost acknowledgement, batched
+input identity, dropped steer and image-projection publication. The adapter
+file passed 273 tests at `886841e7` (90.36% line coverage;
+branch coverage 76.42%, function coverage 78.54% for this file, not whole-project
+coverage). That regression repeats 20 idle Session reads, verifies **zero input
+metadata RPCs**, and verifies all 20 observers retire. No startup/history loading RPC, arbitrary sleep, mutation retry, SDK
+source patch or shared-owner bypass was introduced.
+
+The intermediate `f29b0aee` packaged Windows consumer passed **20/20 in 4.4 minutes**
+without retries. Production source `ee568fbb` was then packaged
+separately; two fresh-profile observations (122 preserved historical child
+records each, artificial delay disabled) measured Runtime readiness at
+**6,204 ms and 4,035 ms**, with Renderer readiness at 5,298 ms and 3,129 ms.
+These timings are observations under the local test load, not a universal latency
+guarantee or a diagnosis of the user's earlier 20-second terminal observation.
+
+The [current four-platform consumer run](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39095484685)
+uses `f10de75f`, with the production tree at `ee568fbb`. It repeats the changed
+unit tests and all 20 actual packaged-app cases without retries; full baseline
+unit suites and installer construction were qualified separately. It is not a
+new full installer qualification. Results must not be inferred from dispatch.
+Its Linux job passed all 20 packaged-app cases in 3.4 minutes, with retries
+disabled. Windows passed 12 cases and failed its first ordinary input in the
+queue test: the Host was ready, a health poll reported
+`session.settings.updateVersioned` in flight and the Provider received no
+request. That log does not establish the full write duration. Neither queued delivery nor the
+observation handoff had begun. The first failure remains undiagnosed.
+
+The `886841e7` Windows executable subsequently passed **20/20 in 4.3 minutes**,
+with retries disabled. This later result does not diagnose that first CI failure.
+
+## Stop receipt and result-stream handoff
+
+The [Windows phase diagnostic](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39096185393)
+passed four independent samples, then failed sample five after Stop. Its first
+settings write took 47 ms and its first admission 397 ms; there was no new
+immediate admission for `AFTER_STOP`. The [macOS x64/arm64 follow-up](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39096054925)
+failed the original Stop case on both targets after ten passing cases. arm64's
+attached public snapshot showed a confirmed interrupted Run, no active/queued
+Run and only `HOLD_CANCEL` in the Provider request log. These failures are
+preserved separately from the earlier Windows settings-write stall.
+
+Commit `290c5fcb` fixes a deterministically reproduced Space boundary: a confirmed
+terminal Stop could arrive before the old result stream settled, leaving both
+RealSession's admission gate and the adapter's active-Run hint set. The public
+`send` regression rejected the next input with "still accepting the current run";
+the public adapter regression continued returning the old `activeRunId`.
+
+Only a confirmed terminal receipt releases matching old admission hints. Unknown
+or nonterminal receipts retain them; object/Run/Runtime comparisons protect a
+successor from old Stop replies and late result completion. No input is replayed,
+no SDK product item is synthesized, and no extra startup/history RPC is added.
+The related adapter, queue and Stop tests pass **314/314**; Electron typecheck
+and focused ESLint pass. Independent Standards and Spec reviews each report zero
+findings. This proves the deterministic consumer defect, not every original CI
+failure's cause.
+
+The [new four-platform run](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39097232475)
+uses diagnostic source `86d8439d` over production `290c5fcb`. It runs the original
+20 packaged cases without retries, retains bounded Space-side phase logs, and
+does not change the SDK or any deadlines. Linux, macOS arm64 and macOS x64 each
+passed the 314 related unit cases and all 20 packaged cases without retries
+(3.7, 5.4 and 5.6 minutes respectively for the application cases). The tag-only
+Release job was skipped.
+
+Windows passed nine application cases, then failed the unfinished-tool history
+case before either original Stop case ran. Its first-page helper discarded the
+non-ready response behind a generic "Saved history unexpectedly invalidated"
+error. The original artifact is retained; its exact non-ready outcome cannot be
+deduced from that generic error.
+
+Commit `8a0de95b` corrects the test reader's explicit history contract: only an
+initial page with `data_changed` may be re-read within one five-second budget,
+with all result envelopes preserved. A continuation with an old revision is
+never silently restarted, and a previous page without a continuation cursor is
+rejected before RPC. Missing pages, `runtime_unavailable` and protocol errors
+fail immediately. This is a test-fixture change, not a production recovery or
+a diagnosis of the generic first failure. Eleven fixture-boundary cases pass
+after a deterministic failed initial-page regression; both restored-history
+cases pass against the existing `886841e7` Windows binary. Strict E2E types,
+ESLint and independent Standards/Spec review pass.
+
+The [Windows follow-up](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39098059757)
+uses `75a5e75d` over `8a0de95b`, with unchanged production `290c5fcb`. It repeats
+the actual packaged 20-case suite and the fixture-boundary cases without test
+retries. It passed **314 related unit cases, 11 fixture-boundary cases and
+20/20 actual packaged application cases** (8.8 minutes for the application
+cases). The Release job was skipped. Together with the source-pinned Linux
+and two macOS results above, current production `290c5fcb` has passed all four
+targets. This does not erase the recorded intermittent first failures.
+
+A new local `290c5fcb` Windows artifact passed seven of eight targeted lifecycle
+and history cases, including both Stop paths. The tool/statistics case failed
+with an SDK Provider network error. Its first trace and error context were
+preserved. A separate diagnostic of that same case passed in 8.5 seconds; this
+does not diagnose or repair the original network failure. The test Provider now
+attaches its existing synthetic request/error arrays after server shutdown, so
+a future first failure can distinguish missing requests from fixture errors.
+No credential headers or real user conversations are recorded by that fixture.
+Eight further independent tool-case diagnostic samples, each with a fresh
+profile and retries disabled, passed without reproducing the network error.
+They were capped at eight samples with stop-on-first-failure; their success is
+not a diagnosis of the original failure.
+
+The evidence follow-up `8c522283` also proved a reporting defect: attaching a
+body to a successful test under the list reporter did not leave a file in the
+upload directory. The new regression failed on the missing file. All three
+existing evidence types now write separate UUID files inside the test's output
+directory before attaching their paths. The 11 fixture-boundary cases, strict
+types and ESLint pass, including a disk read of the complete first conflict and
+later ready envelope. This changes test evidence only, not production behavior.
+
+The same new artifact's fresh-profile boot, with the artificial daemon delay
+disabled and 122 historical child records retained, measured Renderer readiness
+at **3,235 ms** and Runtime readiness at **4,042 ms**. All records remained intact.
+This is consistent with the earlier local 4,035 ms Runtime observation, and is
+not a universal startup guarantee or a diagnosis of the intermittent CI input.
+
+The product-view test reader now retries only the observed `HANDLER_ERROR`
+whose message exactly identifies a `Session data changed during the read
+boundary: <sha256>.lock` conflict, within its existing five-second read budget.
+It preserves the first full error envelope. Schema/output errors, other handler
+errors and successful null results fail immediately. Five boundary tests and
+strict E2E typecheck pass; no input mutation or invalid history page is retried.
+
 ## SDK Linux recovery and queue race
 
 The SDK's [CI run 39046250003](https://github.com/icetomoyo/KodaX/actions/runs/39046250003)
@@ -138,8 +291,8 @@ test service/account through the system command, bounded to five seconds.
 Missing items are tolerated; permission/time-out errors propagate and preserve
 the profile's ownership evidence. Six cleanup tests pass (92% line, 83.78%
 branch, 100% function coverage). No production credential ACL, Host liveness
-assertion or startup deadline changes. Packaged macOS requalification remains
-pending.
+assertion or startup deadline changes. Subsequent macOS qualification advanced
+past this cleanup hang.
 
 The [same-binary follow-up](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39093226383)
 also read the Electron-created credential after app exit in 154 ms by running
@@ -152,6 +305,26 @@ matrix; it retains the complete unit/build/smoke/E2E gates. Commits `450675d4`
 and `11cd75dd` additionally preserve original launch/Renderer errors together
 with any cleanup failure through `AggregateError`; they do not alter success
 paths. The temporary stage probes remain confined to the diagnostic branch.
+
+That full macOS run subsequently failed on arm64's product-view read (6 cases
+passed) and x64's restored-history read (9 cases passed). Their first failures
+remain recorded. A later arm64 diagnostic passed the original product case but
+found an independent test-only offline receipt-reader error: Playwright's
+process dispatcher had already been released when `app.process()` was called.
+Commit `0f491ab4` captures the creator executable while the app is alive and
+uses that retained path after exit. This does not change production keychain
+permissions, Host lifecycle or shutdown results. The corrected
+[macOS targeted run](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39095816440)
+passed both the original product case and complete-exit receipt read, without
+retries. It does not explain the original Windows unknown cleanup receipt.
+
+The [Windows focused diagnostic](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39095329899)
+passed both its long-body input and peer-exit cases without retries. This does
+not explain the earlier input stalls or unknown cleanup receipt; they remain
+unresolved first-failure evidence. Diagnostic setup attempts that stopped at
+an invalid interrupt fixture, missing platform packaging environment, or an
+installer-only smoke check against an unpacked directory executed no relevant
+acceptance cases and are not counted as product failures or passes.
 
 This gate checks installer construction, packaged dependencies and the actual
 packaged application. It does not exercise a human installer wizard, OS signing
@@ -170,3 +343,28 @@ remain separate, exercised behavior. They do not prove the unavailable package's
 nine operations or independent PPTX/PDF/DOCX/HTML/SMIL renderer backends.
 No local SDK copy, invented capability, bypass of shared ownership or direct
 Renderer access to Host evidence files was added to hide this blocker.
+
+## Remaining closure conditions
+
+Current production passes the four packaged application targets, but this task
+is not fully closed and no Space release has been made. The independent Artifact
+SDK needs an actual public package/export from upstream. Earlier intermittent
+Windows first-input and local Provider-network failures remain cause-unconfirmed;
+their preserved first evidence must not be replaced by the later passing runs.
+The final Registry recheck at 2026-10-18 05:00:50 UTC still reports SDK alpha.7,
+stable 0.7.96, and HTTP 404 for the independent Artifact package.
+
+## Standards
+
+Independent read-only review found **0 hard-rule violations and 0 actionable
+smells** in the final input-observation and offline-reader changes. The review
+applied repository rules and the twelve smell-baseline checks. Earlier function
+length findings were corrected by extracting focused test fixtures.
+
+## Spec
+
+Independent read-only review found **0 residual findings** in those changes.
+The review closed the acceptance/view handoff, input terminal reconciliation and
+asynchronous publication issues. These conclusions concern the patch's contract
+implementation; they do not substitute for pending platform acceptance or explain
+the previously recorded intermittent Windows first failures.
