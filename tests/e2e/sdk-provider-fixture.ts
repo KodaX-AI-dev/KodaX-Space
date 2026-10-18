@@ -5,7 +5,12 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
 import { expect, test } from '@playwright/test';
-import type { IpcError, SessionProductView } from '@kodax-space/space-ipc-schema';
+import type {
+  ChannelOutput,
+  IpcError,
+  IpcResult,
+  SessionProductView,
+} from '@kodax-space/space-ipc-schema';
 import { launchSpace, type SpaceInstance } from './fixtures.js';
 import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
@@ -261,24 +266,77 @@ export async function sendSdkPrompt(space: SpaceInstance, prompt: string, key = 
   ).toBeVisible({ timeout: 15_000 });
 }
 
-export async function readSdkHistory(space: SpaceInstance, sessionId: string) {
-  const history = await space.page.evaluate(async (id) => {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const result = await window.kodaxSpace!.invoke('session.history', {
+type ReadyHistoryPage = Extract<
+  NonNullable<ChannelOutput<'session.history'>['page']>,
+  { outcome: 'ready' }
+>;
+
+async function readHistoryBoundary(
+  space: SpaceInstance,
+  sessionId: string,
+  previous?: ReadyHistoryPage,
+) {
+  return space.page.evaluate(
+    async ({ id, previous }) =>
+      window.kodaxSpace!.invoke('session.history', {
         sessionId: id,
         requestId: crypto.randomUUID(),
         expectedSurface: 'code',
+        ...(previous?.nextCursor
+          ? {
+              cursor: previous.nextCursor,
+              revision: previous.revision,
+              sourceRevision: previous.sourceRevision,
+            }
+          : {}),
+      }),
+    { id: sessionId, previous },
+  );
+}
+
+export async function readSdkHistoryPage(
+  space: SpaceInstance,
+  sessionId: string,
+  previous?: ReadyHistoryPage,
+) {
+  if (previous !== undefined && !previous.nextCursor) {
+    throw new Error('History continuation has no cursor');
+  }
+  let history: ChannelOutput<'session.history'> | undefined;
+  const outcomes: IpcResult<ChannelOutput<'session.history'>>[] = [];
+  try {
+    await expect
+      .poll(
+        async () => {
+          const result = await readHistoryBoundary(space, sessionId, previous);
+          if (!result.ok) throw new Error(`Saved history unavailable: ${JSON.stringify(result)}`);
+          outcomes.push(result);
+          if (result.data.page?.outcome === 'ready') {
+            history = result.data;
+            return true;
+          }
+          if (previous === undefined && result.data.page?.outcome === 'data_changed') return false;
+          throw new Error(`Saved history unavailable: ${JSON.stringify(result)}`);
+        },
+        { timeout: 5_000 },
+      )
+      .toBe(true);
+  } finally {
+    if (outcomes.some((value) => value.ok && value.data.page?.outcome === 'data_changed')) {
+      await test.info().attach('history-read-boundaries.json', {
+        body: JSON.stringify({ sessionId, outcomes }),
+        contentType: 'application/json',
       });
-      if (!result.ok) throw new Error(result.error.message);
-      if (result.data.page?.outcome === 'data_changed') continue;
-      if (!result.data.productItems)
-        throw new Error(
-          `Coder history did not use the SDK product display: ${JSON.stringify(result.data.page)}`,
-        );
-      return { ...result.data, items: result.data.productItems };
     }
-    throw new Error('SDK history did not stabilize after three boundary retries.');
-  }, sessionId);
+  }
+  if (history?.page?.outcome !== 'ready') throw new Error('SDK supplied no ready history page');
+  return { ...history, page: history.page };
+}
+
+export async function readSdkHistory(space: SpaceInstance, sessionId: string) {
+  const raw = await readSdkHistoryPage(space, sessionId);
+  if (!raw.productItems) throw new Error('Coder history did not use the SDK product display');
+  const history = { ...raw, items: raw.productItems };
   const items = await Promise.all(
     history.items.map(async (item) => {
       const read = async (part: 'text' | 'input', offset: number) => {

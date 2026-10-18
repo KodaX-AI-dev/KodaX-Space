@@ -3,7 +3,6 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createSessionManager, type KodaXSessionUiHistoryItem } from '@kodax-ai/kodax/session';
 import type { KodaXMessage } from '@kodax-ai/kodax/agent';
-import type { ChannelOutput } from '@kodax-space/space-ipc-schema';
 import type { SpaceInstance } from './fixtures.js';
 import {
   createLocalSdkProvider,
@@ -11,14 +10,11 @@ import {
   sendSdkPrompt,
   waitSdkIdle,
   readSdkProductView as readView,
+  readSdkHistoryPage as readPage,
 } from './sdk-provider-fixture.js';
 
 test.setTimeout(120_000);
 const SAVED_AT = '2026-10-15T01:29:00.000Z';
-type ReadyHistoryPage = Extract<
-  NonNullable<ChannelOutput<'session.history'>['page']>,
-  { outcome: 'ready' }
->;
 
 function checkpointHistory() {
   const messages: KodaXMessage[] = [
@@ -108,30 +104,6 @@ async function seedRestoredHistory(root: string): Promise<void> {
       },
     ],
   });
-}
-
-async function readPage(space: SpaceInstance, sessionId: string, page?: ReadyHistoryPage) {
-  return space.page.evaluate(
-    async ({ id, previous }) => {
-      const result = await window.kodaxSpace!.invoke('session.history', {
-        sessionId: id,
-        requestId: crypto.randomUUID(),
-        expectedSurface: 'code',
-        ...(previous?.nextCursor
-          ? {
-              cursor: previous.nextCursor,
-              revision: previous.revision,
-              sourceRevision: previous.sourceRevision,
-            }
-          : {}),
-      });
-      if (!result.ok) throw new Error(result.error.message);
-      if (result.data.page?.outcome !== 'ready')
-        throw new Error('Saved history unexpectedly invalidated');
-      return { ...result.data, page: result.data.page };
-    },
-    { id: sessionId, previous: page },
-  );
 }
 
 async function assertCheckpointHistory(space: SpaceInstance): Promise<void> {
