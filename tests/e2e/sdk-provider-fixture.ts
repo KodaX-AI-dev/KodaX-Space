@@ -195,6 +195,10 @@ export async function createLocalSdkProvider() {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );
+      await test.info().attach('local-provider-state.json', {
+        body: JSON.stringify({ requests, errors }),
+        contentType: 'application/json',
+      });
     },
   };
 }
