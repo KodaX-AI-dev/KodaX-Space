@@ -6777,20 +6777,21 @@ export class RuntimeHostAdapter {
         const fact = await state.runtime.runs.getInput(state.sessionId, inputId);
         if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state)
           return;
+        const run =
+          fact?.state === 'submitted' && fact.runId
+            ? (view.runs.find((run) => run.runId === fact.runId) ??
+              (await state.runtime.runs.get(fact.runId)))
+            : undefined;
+        if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state)
+          return;
         // null is not rejection: a lost reply may race admission, or belong to a retired Host.
         // Batched after_turn inputs and undelivered steer inputs need this identity query.
         if (
           fact &&
           (fact.state === 'dropped' ||
             fact.state === 'withdrawn' ||
-            (fact.state === 'submitted' &&
-              view.runs.some(
-                (run) =>
-                  run.runId === fact.runId &&
-                  ['completed', 'cancelled', 'failed', 'interrupted', 'unknown'].includes(
-                    run.phase,
-                  ),
-              )))
+            (run &&
+              ['completed', 'cancelled', 'failed', 'interrupted', 'unknown'].includes(run.phase)))
         )
           this.releaseInputObservationDemand(state.sessionId, inputId);
       } catch (error) {

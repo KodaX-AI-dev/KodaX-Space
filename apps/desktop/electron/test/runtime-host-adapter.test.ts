@@ -12985,6 +12985,41 @@ test('a submitted batched input absent from user item identities releases its ob
   }
 });
 
+test('a batched input retires when its terminal Run is older than the current view Run', async () => {
+  const { fake, adapter, publish } = createInputObservationFixture();
+  try {
+    const result = await adapter.submitInput({
+      sessionId: 's_admitting_input',
+      afterRunId: 'previous',
+      delivery: 'after_turn',
+      input: { type: 'text', text: 'an earlier batch member' },
+    });
+    fake.runtime.runs.getInput = async (sessionId, inputId) => ({
+      sessionId,
+      inputId,
+      state: 'submitted',
+      runId: 'earlier-batch',
+    });
+    fake.runtime.runs.get = async (runId) => ({
+      runId,
+      sessionId: result.sessionId,
+      phase: 'completed',
+      provider: 'anthropic',
+      startedAt: '2026-10-18T00:00:00Z',
+    });
+    publish({ runs: [{ runId: 'later', provider: 'anthropic', phase: 'completed' }] });
+    await adapter.readSessionProductView(result.sessionId);
+    assert.equal(
+      fake.calls.observationCloses,
+      1,
+      'the SDK view retains only its latest terminal Run',
+    );
+    assert.equal(fake.calls.submitted.length, 1);
+  } finally {
+    await adapter.close();
+  }
+});
+
 function holdInputImagePreview(t: TestContext) {
   const artifact = path.join(
     getKodaxRuntimeDir(),
