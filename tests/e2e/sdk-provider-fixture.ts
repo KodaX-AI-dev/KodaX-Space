@@ -327,8 +327,11 @@ export async function waitSdkIdle(space: SpaceInstance, sessionId: string) {
 
 /** A fresh reader scopes the SDK's module-level config home to this profile. */
 export async function readPublicSpaceExit(space: SpaceInstance) {
+  // macOS authorizes this test identity's creator executable. Keep the same
+  // binary for offline recovery rather than requesting Node's GUI consent.
+  const useCreatorBinary = process.platform === 'darwin';
   const { stdout } = await promisify(execFile)(
-    process.execPath,
+    useCreatorBinary ? space.app.process().spawnfile : process.execPath,
     [
       '--input-type=module',
       '-e',
@@ -355,7 +358,11 @@ export async function readPublicSpaceExit(space: SpaceInstance) {
     {
       windowsHide: true,
       timeout: 15_000,
-      env: { ...process.env, KODAX_HOME: space.testDataDir },
+      env: {
+        ...process.env,
+        KODAX_HOME: space.testDataDir,
+        ...(useCreatorBinary ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+      },
     },
   );
   return JSON.parse(stdout) as ClientExitReceipt;
