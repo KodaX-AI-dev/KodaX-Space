@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import test, { afterEach, beforeEach } from 'node:test';
+import test, { afterEach, beforeEach, type TestContext } from 'node:test';
 
 import type {
   ConnectKodaXRuntimeOptions,
@@ -12970,8 +12970,7 @@ test('a submitted batched input absent from user item identities releases its ob
   }
 });
 
-test('accepted input publishes its image projection before a concurrent idle read can retire it', async (t) => {
-  const { fake, adapter, publish } = createInputObservationFixture();
+function holdInputImagePreview(t: TestContext) {
   const artifact = path.join(
     getKodaxRuntimeDir(),
     'space',
@@ -12995,6 +12994,12 @@ test('accepted input publishes its image projection before a concurrent idle rea
     }
     return file;
   });
+  return { artifact, entered, release };
+}
+
+test('accepted input publishes its image projection before a concurrent idle read can retire it', async (t) => {
+  const { fake, adapter, publish } = createInputObservationFixture();
+  const { artifact, entered, release } = holdInputImagePreview(t);
   try {
     const result = await adapter.submitInput({
       sessionId: 's_admitting_input',

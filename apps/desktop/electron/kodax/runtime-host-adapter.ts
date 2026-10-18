@@ -6794,6 +6794,8 @@ export class RuntimeHostAdapter {
         )
           this.releaseInputObservationDemand(state.sessionId, inputId);
       } catch (error) {
+        if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state)
+          return;
         console.warn(
           '[runtime] input acceptance remains unconfirmed:',
           sanitizeDiagnosticError(error),
