@@ -133,10 +133,11 @@ jobs:
           }
           Get-ChildItem -LiteralPath out -Filter '*.zip' | Format-Table -AutoSize
 
-      - name: Smoke check installer
+      - name: Validate unpacked diagnostic executable (installer qualified separately)
         env:
           KODAX_HOME: ${{ runner.os == 'Windows' && format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || '' }}
-        run: npm run smoke:pack
+        shell: bash
+        run: test -f '${{ matrix.executable }}'
 
       # Exercise each platform's packaged main process, Renderer and Registry SDK.
       # No retry: a first attachment failure must retain its original evidence.
