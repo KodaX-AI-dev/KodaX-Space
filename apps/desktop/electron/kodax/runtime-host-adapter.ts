@@ -2121,6 +2121,7 @@ export class RuntimeHostAdapter {
   private readonly desiredObservations = new Set<string>();
   /** Keep the live observer through authorization and the owner's admission ACK. */
   private readonly pendingRunAdmissionsBySession = new Map<string, number>();
+  private readonly acceptedInputObservationDemands = new Map<string, Set<string>>();
   /** Context compactions can outlive an individual Run terminal event. */
   private readonly activeCompactionsBySession = new Map<string, Set<string>>();
   /** Space-issued compact() calls whose command promise has not settled on this connection. */
@@ -4063,6 +4064,7 @@ export class RuntimeHostAdapter {
     this.runtimeCoderSessionIds.delete(sessionId);
     this.liveProjectionRevisions.delete(sessionId);
     this.productViews.delete(sessionId);
+    this.acceptedInputObservationDemands.delete(sessionId);
     invalidatePersistedSessionCache(sessionId);
     this.scheduleProfileRefresh(this.currentProfileCursor());
     return outcome;
@@ -4315,6 +4317,14 @@ export class RuntimeHostAdapter {
     if (view.session.id !== state.sessionId)
       throw new Error('SDK view belongs to another Session.');
     if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
+    if (this.acceptedInputObservationDemands.has(state.sessionId)) {
+      for (const item of view.items) {
+        if (item.type === 'user' && item.inputId)
+          this.releaseInputObservationDemand(state.sessionId, item.inputId);
+      }
+      for (const input of view.queue)
+        this.releaseInputObservationDemand(state.sessionId, input.inputId);
+    }
     const previous = this.productViews.get(state.sessionId);
     const items = await projectProductItems(state.sessionId, view.items, previous?.items);
     if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
@@ -4543,7 +4553,8 @@ export class RuntimeHostAdapter {
     if (
       !state ||
       this.activeRuns.has(sessionId) ||
-      this.pendingRunAdmissionsBySession.has(sessionId)
+      this.pendingRunAdmissionsBySession.has(sessionId) ||
+      this.acceptedInputObservationDemands.has(sessionId)
     )
       return false;
     const projection = state.reducer.snapshot();
@@ -6745,6 +6756,13 @@ export class RuntimeHostAdapter {
     return this.clientExitSettlement;
   }
 
+  private releaseInputObservationDemand(sessionId: string, inputId: string): void {
+    const pending = this.acceptedInputObservationDemands.get(sessionId);
+    if (!pending) return;
+    pending.delete(inputId);
+    if (pending.size === 0) this.acceptedInputObservationDemands.delete(sessionId);
+  }
+
   async submitInput(input: SpaceRuntimeSubmitInput): Promise<SpaceRuntimeSubmitInputResult> {
     const sessionId = input.sessionId;
     this.pendingRunAdmissionsBySession.set(
@@ -6791,8 +6809,20 @@ export class RuntimeHostAdapter {
       },
     };
     const authorization = await this.authorizeProductExecution(request, runtime);
-    const accepted = await runtime.runs.acceptInput({ ...request.input, authorization });
+    // An acceptance reply can precede the SDK view notification. Keep this
+    // input's observer until its canonical queue/user identity has arrived.
+    const pending = this.acceptedInputObservationDemands.get(input.sessionId) ?? new Set<string>();
+    pending.add(inputId);
+    this.acceptedInputObservationDemands.set(input.sessionId, pending);
+    let accepted;
+    try {
+      accepted = await runtime.runs.acceptInput({ ...request.input, authorization });
+    } catch (error) {
+      this.releaseInputObservationDemand(input.sessionId, inputId);
+      throw error;
+    }
     if (accepted.state === 'dropped' || accepted.state === 'withdrawn') {
+      this.releaseInputObservationDemand(input.sessionId, inputId);
       return {
         accepted: false,
         delivery: input.delivery,
@@ -7703,6 +7733,7 @@ export class RuntimeHostAdapter {
     this.outOfPageCoderVerificationWarnings.clear();
     this.liveProjectionRevisions.clear();
     this.productViews.clear();
+    this.acceptedInputObservationDemands.clear();
     this.runtimeProfileSnapshotPromise = null;
     this.integrationHealth = undefined;
     this.integrationHealthFingerprint = '';

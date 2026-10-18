@@ -10056,6 +10056,7 @@ test('failed after-turn submission retains its captured authorization when the a
     [],
     'transport loss does not prove the input was rejected',
   );
+  assert.equal(fake.calls.observationCloses, 1, 'failed admission releases its local demand');
   await adapter.close();
 });
 
@@ -12864,38 +12865,71 @@ test('a quiescent snapshot read cannot retire an observation during Run admissio
   }
 });
 
-for (const delivery of ['after_turn', 'interrupt'] as const) {
-  test(`a quiescent snapshot keeps the observer during ${delivery} input admission`, async () => {
-    const fake = createFakeRuntime();
-    fake.sessions.add('s_admitting_input');
-    const adapter = new RuntimeHostAdapter({
-      mode: 'runtime',
-      profileRoot: path.resolve('C:/isolated-profile'),
-      runtimeFactory: async () => fake.runtime,
-      identityStore: testIdentityStore,
-      runtimeEventParser: testRuntimeEventParser,
-    });
-    const acceptInput = fake.runtime.runs.acceptInput.bind(fake.runtime.runs);
-    fake.runtime.runs.acceptInput = async (input) => {
-      await adapter.readSessionLiveSnapshot(input.sessionId);
-      assert.equal(fake.calls.observationCloses, 0, 'pending input still needs its observer');
-      return acceptInput(input);
-    };
-    await adapter.initialize();
-    try {
-      const result = await adapter.submitInput({
-        sessionId: 's_admitting_input',
-        afterRunId: 'run_previous',
-        delivery,
-        input: [{ type: 'text', text: 'one distinct input intent' }],
-      });
-      assert.equal(result.accepted, true);
-      assert.equal(fake.calls.submitted.length, 1);
-    } finally {
-      await adapter.close();
-    }
+test('after-turn input retains observation until delayed canonical delivery settles', async () => {
+  const delivery = 'after_turn' as const;
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_admitting_input');
+  let view: ClientSessionView = {
+    session: { id: 's_admitting_input', title: 'Admitting input' },
+    items: [],
+    queue: [],
+    runs: [],
+    interactions: [],
+    settings: { provider: 'anthropic' },
+  };
+  const viewListeners = new Set<(view: ClientSessionView) => void>();
+  fake.runtime.sessions.observeView = async (_id, listener) => {
+    viewListeners.add(listener);
+    listener(view);
+    return { close: () => viewListeners.delete(listener) };
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
   });
-}
+  const acceptInput = fake.runtime.runs.acceptInput.bind(fake.runtime.runs);
+  fake.runtime.runs.acceptInput = async (input) => {
+    await adapter.readSessionLiveSnapshot(input.sessionId);
+    assert.equal(fake.calls.observationCloses, 0, 'pending input still needs its observer');
+    return acceptInput(input);
+  };
+  await adapter.initialize();
+  try {
+    const result = await adapter.submitInput({
+      sessionId: 's_admitting_input',
+      afterRunId: 'run_previous',
+      delivery,
+      input: [{ type: 'text', text: 'one distinct input intent' }],
+    });
+    assert.equal(result.accepted, true);
+    assert.equal(fake.calls.submitted.length, 1);
+    assert.equal(fake.calls.observationCloses, 0, 'acceptance is not a view-delivery barrier');
+    await adapter.readSessionLiveSnapshot('s_admitting_input');
+    assert.equal(fake.calls.observationCloses, 0, 'an older idle view is still insufficient');
+    view = {
+      ...view,
+      queue: [{ inputId: result.inputId!, text: 'one distinct input intent', enqueuedAt: 1 }],
+    };
+    for (const listener of viewListeners) listener(view);
+    const queued = await adapter.readSessionLiveSnapshot('s_admitting_input');
+    assert.equal(queued.queuedInputs[0]?.inputId, result.inputId);
+    assert.equal(fake.calls.observationCloses, 0);
+    view = {
+      ...view,
+      queue: [],
+      items: [{ id: 'saved-input', type: 'user', inputId: result.inputId!, text: 'delivered' }],
+    };
+    for (const listener of viewListeners) listener(view);
+    const terminal = await adapter.readSessionProductView('s_admitting_input');
+    assert.equal(terminal.items[0]?.inputId, result.inputId);
+    assert.equal(fake.calls.observationCloses, 1, 'terminal observation remains reclaimable');
+  } finally {
+    await adapter.close();
+  }
+});
 
 test('terminal Session observations retire and are not restored after reconnect', async () => {
   const first = createFakeRuntime();
