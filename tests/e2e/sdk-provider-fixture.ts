@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
 import { expect, test } from '@playwright/test';
 import type {
@@ -17,6 +18,13 @@ import { readProductItemText } from '../../apps/desktop/renderer/src/lib/product
 interface WireMessage {
   role: string;
   content?: unknown;
+}
+
+async function attachSdkEvidence(name: string, value: unknown): Promise<void> {
+  const file = test.info().outputPath(`${randomUUID()}-${name}`);
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, JSON.stringify(value));
+  await test.info().attach(name, { path: file, contentType: 'application/json' });
 }
 
 export async function createLocalSdkProvider() {
@@ -195,10 +203,7 @@ export async function createLocalSdkProvider() {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );
-      await test.info().attach('local-provider-state.json', {
-        body: JSON.stringify({ requests, errors }),
-        contentType: 'application/json',
-      });
+      await attachSdkEvidence('local-provider-state.json', { requests, errors });
     },
   };
 }
@@ -327,10 +332,7 @@ export async function readSdkHistoryPage(
       .toBe(true);
   } finally {
     if (outcomes.some((value) => value.ok && value.data.page?.outcome === 'data_changed')) {
-      await test.info().attach('history-read-boundaries.json', {
-        body: JSON.stringify({ sessionId, outcomes }),
-        contentType: 'application/json',
-      });
+      await attachSdkEvidence('history-read-boundaries.json', { sessionId, outcomes });
     }
   }
   if (history?.page?.outcome !== 'ready') throw new Error('SDK supplied no ready history page');
@@ -420,10 +422,7 @@ export async function readSdkProductView(space: SpaceInstance, sessionId: string
       .toBe('ready');
   } finally {
     if (conflicts.length > 0)
-      await test.info().attach('product-read-conflicts.json', {
-        body: JSON.stringify({ sessionId, conflicts }),
-        contentType: 'application/json',
-      });
+      await attachSdkEvidence('product-read-conflicts.json', { sessionId, conflicts });
   }
   if (!view) throw new Error('SDK supplied no product view');
   return view;

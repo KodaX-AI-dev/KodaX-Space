@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { readSdkHistoryPage, readSdkProductView } from './sdk-provider-fixture.js';
 import type { SpaceInstance } from './fixtures.js';
 import type { ChannelOutput, IpcResult } from '@kodax-space/space-ipc-schema';
+import { readdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
 const view: ChannelOutput<'session.productSnapshot'> = {
   sessionId: 'fixture',
   runtimeId: 'runtime',
@@ -78,6 +80,15 @@ test('a changed first history page is read again without mixing revisions', asyn
   ]);
   expect(await readSdkHistoryPage(fixture.space, 'fixture')).toEqual(history);
   expect(fixture.count()).toBe(2);
+  const saved = (await readdir(test.info().outputDir)).find((name) =>
+    name.endsWith('history-read-boundaries.json'),
+  );
+  expect(saved).toBeDefined();
+  const evidence = JSON.parse(await readFile(path.join(test.info().outputDir, saved!), 'utf8'));
+  expect(evidence.outcomes).toEqual([
+    { ok: true, data: changed },
+    { ok: true, data: history },
+  ]);
 });
 
 for (const nextCursor of ['cursor', undefined]) {
