@@ -1,6 +1,12 @@
-# Space 接入 KodaX 0.7.97-alpha.6
+# Space 接入 KodaX 0.7.97-alpha.7
 
-当前源码精确安装 Registry alpha.6，包含 accepted-user 图片恢复和草稿生命周期修复。根目录、Desktop、lockfile 与物理安装已对齐，开发链接已撤下。当前验收见 [alpha.6 接入](../releases/kodax-0.7.97-alpha.6-integration.md)。下方 2026-10-14 及 alpha.3–5 记录是历史时点，其中的“待发布”不代表当前状态。
+当前源码为未发布的 Space `0.1.47-alpha.3`，精确安装 Registry SDK `0.7.97-alpha.7`。根目录、Desktop、lockfile、物理安装及 Registry 原生文件校验已对齐，没有开发链接。当前验收见 [alpha.7 接入](../releases/kodax-0.7.97-alpha.7-integration.md)及[消费端复核](../releases/kodax-0.7.97-alpha.7-space-followup.md)。下方 alpha.6 及 2026-10-14 的 alpha.3–5 记录保留历史时点，不代表当前依赖或发布状态。
+
+### 2026-10-18 Registry alpha.7 接入
+
+新建 Host 请求 `daemonLifecycle: interactive`，复用兼容 Host 时保留其显式常驻或服务意图，关闭时取消当前启动。共享存储 owner 发现、zombie/PID 身份判断、启动期限及 owner 更替重试由 SDK 负责；Space 不接管锁或重放已接受输入。
+
+SDK 当前 view 仍为有界替换窗口，最多 150 项，可从 Thinking 或工具开始。Space 按 SDK 项身份与顺序显示，不再向下一条 query 裁剪，也不把窗口起点当作完整历史起点。更早内容通过同修订的 `readHistory` 分页读取；工具时间戳保留 SDK 保存值，末尾无结果工具仍允许正常到达 EOF。SDK 的终端 Logo 与按键处理不属于 Space 适配范围。
 
 ### 2026-10-15 Registry 接入
 

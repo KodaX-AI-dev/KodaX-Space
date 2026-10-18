@@ -25,6 +25,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 Local Windows verification candidate: Space `0.1.47-alpha.3` with published SDK `0.7.97-alpha.7`. See [integration evidence](docs/releases/kodax-0.7.97-alpha.7-integration.md). Space candidate artifacts are not a GitHub release.
 
+- Add published-SDK Electron regressions for a restored checkpoint window followed by repeated input, and pending-tool history EOF/timestamps across reload. Correct stale alpha.6 documentation entry points; no further Runtime or Renderer production changes are required. See [consumer verification](docs/releases/kodax-0.7.97-alpha.7-space-followup.md).
+
 ---
 
 ## [0.1.47-alpha.2] - 2026-10-15

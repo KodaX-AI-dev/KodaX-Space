@@ -1,6 +1,6 @@
 # KodaX Space 文档中心
 
-> 更新日期：2026-10-15。当前源码对应已发布的 Space `v0.1.47-alpha.2` 预发布版 / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`。最新稳定版为 [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96。
+> 更新日期：2026-10-18。当前源码为未发布的 Space `0.1.47-alpha.3` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.7`；上一已发布预发布版为 Space `v0.1.47-alpha.2` / SDK alpha.6。最新稳定版为 [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96。
 
 本轮候选统一 SDK 聊天输出、图片与长正文恢复、未发送草稿、真实消息时间排序和启动进度，移除实时 Verifier 与旧 journal/replay 路径，并接入 Gemini 工具 schema 修复。当前聊天与历史浏览独立；首个有效输入才持久化普通 Coder 草稿；旧记录只经完整历史确认后隐藏，不删除。
 

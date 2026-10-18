@@ -58,6 +58,7 @@ against the personal `~/.kodax` directory or remove an ownership lock by hand.
 node --test --test-force-exit --import tsx apps/desktop/electron/test/runtime-host-adapter.test.ts apps/desktop/electron/test/runtime-client-identity.test.ts
 npm run build:smoke
 node scripts/e2e-run.mjs shared-host-history-recovery.spec.ts
+node scripts/e2e-run.mjs sdk-restored-history.spec.ts sdk-product-output.spec.ts
 ```
 
 For the packaged executable, set `SPACE_E2E_EXECUTABLE` to its absolute path and
@@ -80,6 +81,11 @@ packaged verification and final artifact hashes are recorded in the linked
 [published alpha.7 integration evidence](../releases/kodax-0.7.97-alpha.7-integration.md).
 
 ## Data authority
+
+The restored-history follow-up covers a 150-item current window beginning inside
+a saved checkpoint turn, repeated query text with distinct input identities,
+no tool replay, and pending-tool EOF/timestamps across reload. See the
+[consumer follow-up](../releases/kodax-0.7.97-alpha.7-space-followup.md).
 
 Visible messages must come from SDK `observeView`/history items. No renderer or
 Main fallback reads JSONL text to conceal an unavailable Runtime. Failed reads

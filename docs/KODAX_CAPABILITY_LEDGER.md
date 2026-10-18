@@ -87,6 +87,13 @@ SDK static orphan support remains required. Exact build, owner, capabilities and
 active-work fences remain SDK-owned; no input/Run is replayed to recover history.
 See [current integration](releases/kodax-0.7.97-alpha.7-integration.md).
 
+The alpha.7 bounded current view can start inside a turn; Space preserves the
+SDK's suffix without requiring a leading query. Pending-tool EOF and canonical
+tool timestamps use the existing history contract. SDK Windows cleanup and
+attachment improvements are internal; Space adds no extra scans, delays or
+input retries. See the [consumer follow-up](releases/kodax-0.7.97-alpha.7-space-followup.md)
+for the published-package checks and the remaining adaptation boundaries.
+
 Alpha.6 adds required `sessionDrafts:1` admission in Space: ordinary Coder Sessions
 are observable drafts until the first valid input is accepted. The published
 package includes accepted-user image recovery. Shared chat consumes complete SDK

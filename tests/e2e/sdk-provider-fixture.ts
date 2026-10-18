@@ -193,13 +193,18 @@ export async function createLocalSdkProvider() {
   };
 }
 
-export async function launchRealSdkSpace(testId: string, baseUrl: string) {
+export async function launchRealSdkSpace(
+  testId: string,
+  baseUrl: string,
+  prepareProfile?: (root: string) => Promise<void>,
+) {
   const space = await launchSpace(testId, {
     env: { KODAX_FORCE_MOCK: '0', SPACE_TEST_COMPLETE_EXIT_TRIGGER: '1' },
+    prepareProfile,
   });
   try {
     const projectRoot = path.join(space.testDataDir, 'project');
-    await mkdir(projectRoot);
+    await mkdir(projectRoot, { recursive: true });
     await writeFile(path.join(projectRoot, 'README.md'), '# Local SDK E2E\n');
     const providerId = await space.page.evaluate(async (url) => {
       const added = await window.kodaxSpace!.invoke('provider.addCustom', {
