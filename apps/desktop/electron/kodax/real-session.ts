@@ -763,12 +763,19 @@ export class RealKodaXSession implements ManagedSession {
     this.sendAdmissionTail = predecessor.then(() => reservation);
     await predecessor;
     try {
-      return await this.sendWithAdmissionReservation(
+      const debugStarted = Date.now();
+      console.warn('[DEBUG-alpha7-send] begin', {sessionId:this.sessionId,localRun:!!this.currentAbort});
+      const result = await this.sendWithAdmissionReservation(
         prompt,
         artifacts,
         options,
         admissionAbort.signal,
       );
+      console.warn('[DEBUG-alpha7-send] end', {sessionId:this.sessionId,elapsedMs:Date.now()-debugStarted,...result});
+      return result;
+    } catch(error) {
+      console.warn('[DEBUG-alpha7-send] failed', {sessionId:this.sessionId,code:(error as {code?:string}).code,message:error instanceof Error?error.message:String(error)});
+      throw error;
     } finally {
       this.sendAdmissionAborts.delete(admissionAbort);
       releaseReservation();
