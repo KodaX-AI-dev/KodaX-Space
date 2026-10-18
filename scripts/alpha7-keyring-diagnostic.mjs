@@ -20,5 +20,6 @@ try{const result=await run(exe,args,{timeout:15000,killSignal:'SIGKILL',env:{...
 catch(e){process.stdout.write(e.stdout??'');process.stdout.write(name+' failed '+(Date.now()-start)+'ms code='+e.code+' killed='+e.killed+'\n');}
 }
 await stage('creator',electron,[script,service,account]);
+await stage('creator-binary-read',electron,['--input-type=module','-e',"const m=await import('@napi-rs/keyring/keytar.js');const value=await (m.default??m).getPassword(process.argv[1],process.argv[2]);if(value!=='isolated-test-value')throw new Error('Credential mismatch');process.stdout.write('read-verified\\n');",service,account],{ELECTRON_RUN_AS_NODE:'1'});
 await stage('node-delete',process.execPath,['--input-type=module','-e',"const m=await import('@napi-rs/keyring/keytar.js'); await (m.default??m).deletePassword(process.argv[1],process.argv[2]);",service,account]);
 await stage('security-delete','/usr/bin/security',['delete-generic-password','-s',service,'-a',account]);
