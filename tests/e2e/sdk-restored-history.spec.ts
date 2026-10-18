@@ -10,6 +10,7 @@ import {
   launchRealSdkSpace,
   sendSdkPrompt,
   waitSdkIdle,
+  readSdkProductView as readView,
 } from './sdk-provider-fixture.js';
 
 test.setTimeout(120_000);
@@ -107,14 +108,6 @@ async function seedRestoredHistory(root: string): Promise<void> {
       },
     ],
   });
-}
-
-async function readView(space: SpaceInstance, sessionId: string) {
-  return space.page.evaluate(async (id) => {
-    const result = await window.kodaxSpace!.invoke('session.productSnapshot', { sessionId: id });
-    if (!result.ok || !result.data) throw new Error('Restored SDK view unavailable');
-    return result.data;
-  }, sessionId);
 }
 
 async function readPage(space: SpaceInstance, sessionId: string, page?: ReadyHistoryPage) {

@@ -4,7 +4,8 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import type { SessionProductView } from '@kodax-space/space-ipc-schema';
 import { launchSpace, type SpaceInstance } from './fixtures.js';
 import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
@@ -323,6 +324,40 @@ export async function waitSdkIdle(space: SpaceInstance, sessionId: string) {
       { timeout: 20_000 },
     )
     .toBe(true);
+}
+
+/** A read may race a canonical writer; retry reads only, preserving the first conflict. */
+export async function readSdkProductView(space: SpaceInstance, sessionId: string) {
+  let view: SessionProductView | undefined;
+  const conflicts: string[] = [];
+  try {
+    await expect
+      .poll(
+        async () => {
+          const result = await space.page.evaluate(
+            (id) => window.kodaxSpace!.invoke('session.productSnapshot', { sessionId: id }),
+            sessionId,
+          );
+          if (result.ok && result.data) {
+            view = result.data;
+            return 'ready';
+          }
+          const failure = result.ok ? 'SDK supplied no product view' : result.error.message;
+          conflicts.push(failure);
+          return failure;
+        },
+        { timeout: 5_000 },
+      )
+      .toBe('ready');
+  } finally {
+    if (conflicts.length > 0)
+      await test.info().attach('product-read-conflicts.json', {
+        body: JSON.stringify({ sessionId, conflicts }),
+        contentType: 'application/json',
+      });
+  }
+  if (!view) throw new Error('SDK supplied no product view');
+  return view;
 }
 
 /** A fresh reader scopes the SDK's module-level config home to this profile. */

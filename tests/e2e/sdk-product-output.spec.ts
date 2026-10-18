@@ -9,6 +9,7 @@ import {
   launchRealSdkSpace,
   sendSdkPrompt,
   waitSdkIdle,
+  readSdkProductView,
 } from './sdk-provider-fixture.js';
 
 test.setTimeout(150_000);
@@ -25,12 +26,8 @@ test('SDK error output retains Provider actions and diagnostics without a second
         .getByRole('button', { name: 'Provider settings', exact: true }),
     ).toBeVisible({ timeout: 20_000 });
     await waitSdkIdle(space, sessionId);
-    const snapshot = await space.page.evaluate(
-      (id) => window.kodaxSpace!.invoke('session.productSnapshot', { sessionId: id }),
-      sessionId,
-    );
-    if (!snapshot.ok || !snapshot.data) throw new Error('SDK error view unavailable');
-    const errorItem = snapshot.data.items.find((item) => item.type === 'error');
+    const snapshot = await readSdkProductView(space, sessionId);
+    const errorItem = snapshot.items.find((item) => item.type === 'error');
     if (errorItem)
       await expect(space.page.locator(`[data-msg-id="${errorItem.id}"]`)).toHaveCount(1);
     await expect(
@@ -270,14 +267,7 @@ test('real SDK items replace live output, survive reload, and retain repeated di
     await sendSdkPrompt(space, prompt);
     const sessionId = await currentSdkSession(space);
     await waitSdkIdle(space, sessionId);
-    const readView = () =>
-      space.page.evaluate(async (id) => {
-        const result = await window.kodaxSpace!.invoke('session.productSnapshot', {
-          sessionId: id,
-        });
-        if (!result.ok || !result.data) throw new Error('Official product view unavailable');
-        return result.data;
-      }, sessionId);
+    const readView = () => readSdkProductView(space, sessionId);
     await expect
       .poll(async () => (await readView()).items.filter((item) => item.type === 'assistant').length)
       .toBe(1);
