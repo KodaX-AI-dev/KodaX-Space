@@ -6706,6 +6706,20 @@ export class RuntimeHostAdapter {
     });
     if (!receipt) return undefined;
     const stop = projectSessionStopReceipt(input, receipt);
+    // The result transport may lag behind the owner's confirmed terminal receipt. Retire only
+    // this Run's admission hints; a newer Run and the SDK-owned product view remain authoritative.
+    if (
+      this.runtime === runtime &&
+      this.state === 'ready' &&
+      stop.state === 'confirmed' &&
+      ['completed', 'cancelled', 'failed', 'interrupted'].includes(stop.phase)
+    ) {
+      if (this.activeRuns.get(sessionId) === stop.runId) this.activeRuns.delete(sessionId);
+      const observed = this.observations.get(sessionId);
+      if (observed?.runtime === runtime && observed.activeRunId === stop.runId) {
+        observed.activeRunId = undefined;
+      }
+    }
     this.scheduleProfileRefresh(this.currentProfileCursor());
     return stop;
   }

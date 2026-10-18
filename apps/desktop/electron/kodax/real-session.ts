@@ -1265,12 +1265,22 @@ export class RealKodaXSession implements ManagedSession {
           return { kind: 'local_cancelled_before_admission' };
         }
       }
-      return runtimeHostAdapter.cancelSessionRuns(
+      const stop = await runtimeHostAdapter.cancelSessionRuns(
         this.sessionId,
         runId ?? admission?.runId,
         requestId,
         retry,
       );
+      if (
+        stop?.state === 'confirmed' &&
+        ['completed', 'cancelled', 'failed', 'interrupted'].includes(stop.phase) &&
+        stop.sessionId === this.sessionId &&
+        stop.runId === admission?.runId
+      ) {
+        if (this.currentAbort === currentAbort) this.currentAbort = null;
+        if (this.runtimeAdmission === admission) this.runtimeAdmission = null;
+      }
+      return stop;
     }
     // Stop should also drop queued follow-up prompts so cancel means
     // "do not continue". Drain failure must not block abort.

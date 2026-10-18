@@ -8512,6 +8512,80 @@ test('managed run tracking aborts the active Runtime run and close is idempotent
   assert.deepEqual(fake.calls.hostToolRevokes, []);
 });
 
+test('confirmed Session Stop releases only its bound Run before the result stream settles', async (t) => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_1');
+  fake.runtime.sessions.cancel = async (input) => ({
+    ...input,
+    frontier: 1,
+    receipts: [
+      {
+        runId: input.expectedRunId,
+        sessionId: 's_1',
+        accepted: true,
+        state: 'confirmed',
+        outcome: 'interrupted',
+        phase: 'interrupted',
+        revision: 1,
+      },
+    ],
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  t.after(() => adapter.close());
+  const first = await adapter.startManagedRun({ sessionId: 's_1', prompt: 'first' });
+  await adapter.cancelSessionRuns('s_1', first.runId);
+  assert.equal(adapter.activeRunId('s_1'), undefined);
+  const next = await adapter.startManagedRun({ sessionId: 's_1', prompt: 'next' });
+  await adapter.cancelSessionRuns('s_1', first.runId);
+  assert.equal(adapter.activeRunId('s_1'), next.runId);
+  await fake.runtime.runs.abort(first.runId);
+  await first.result;
+  assert.equal(adapter.activeRunId('s_1'), next.runId);
+});
+
+test('unconfirmed or nonterminal Session Stop keeps the bound Run admission hint', async (t) => {
+  for (const [state, phase] of [
+    ['unknown', 'running'],
+    ['unknown', 'cancelled'],
+    ['confirmed', 'running'],
+  ] as const) {
+    const fake = createFakeRuntime();
+    fake.sessions.add('s_1');
+    fake.runtime.sessions.cancel = async (input) => ({
+      ...input,
+      frontier: 1,
+      receipts: [
+        {
+          runId: input.expectedRunId,
+          sessionId: 's_1',
+          accepted: true,
+          state,
+          outcome: 'unknown',
+          phase,
+          revision: 1,
+        },
+      ],
+    });
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      profileRoot: path.resolve('C:\\isolated-profile'),
+      runtimeFactory: async () => fake.runtime,
+      identityStore: testIdentityStore,
+      runtimeEventParser: testRuntimeEventParser,
+    });
+    t.after(() => adapter.close());
+    const first = await adapter.startManagedRun({ sessionId: 's_1', prompt: 'first' });
+    await adapter.cancelSessionRuns('s_1', first.runId);
+    assert.equal(adapter.activeRunId('s_1'), first.runId, `${state}/${phase}`);
+  }
+});
+
 test('same-session starts are delegated to daemon ordering instead of rejected locally', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_1');
