@@ -1,0 +1,90 @@
+{
+  "scope": "Publication recheck only; no product qualification results are replaced",
+  "publication": [
+    {
+      "source": "releases",
+      "status": 200,
+      "releases": [
+        {
+          "tag": "v0.7.97-alpha.7",
+          "date": "2026-10-17T17:00:23Z",
+          "url": "https://github.com/icetomoyo/KodaX/releases/tag/v0.7.97-alpha.7"
+        },
+        {
+          "tag": "v0.7.97-alpha.6",
+          "date": "2026-10-15T09:56:02Z",
+          "url": "https://github.com/icetomoyo/KodaX/releases/tag/v0.7.97-alpha.6"
+        },
+        {
+          "tag": "v0.7.97-alpha.5",
+          "date": "2026-10-14T02:17:34Z",
+          "url": "https://github.com/icetomoyo/KodaX/releases/tag/v0.7.97-alpha.5"
+        },
+        {
+          "tag": "v0.7.97-alpha.4",
+          "date": "2026-10-13T09:03:46Z",
+          "url": "https://github.com/icetomoyo/KodaX/releases/tag/v0.7.97-alpha.4"
+        }
+      ]
+    },
+    {
+      "source": "tags",
+      "status": 200,
+      "tags": [
+        {
+          "name": "v0.7.97-alpha.7",
+          "sha": "25fa6399ada6dae0493faa221eb82174eebb9ad6"
+        },
+        {
+          "name": "v0.7.97-alpha.6",
+          "sha": "8b0893d6c29be07257a0d571b44db040d8df9b09"
+        },
+        {
+          "name": "v0.7.97-alpha.5",
+          "sha": "bd4479d59cab3d082f07c2d34681fff198d82fa0"
+        },
+        {
+          "name": "v0.7.97-alpha.4",
+          "sha": "a3e8d754f5341e4f8f574429295100ce93df6994"
+        },
+        {
+          "name": "v0.7.97-alpha.3",
+          "sha": "20625261f5de824fcc1e7a6a9ebffdf4ba483a45"
+        },
+        {
+          "name": "v0.7.97-alpha.2",
+          "sha": "3f10b34a618999a6218d56a7e42ea48616bf88a2"
+        }
+      ]
+    },
+    {
+      "source": "https://registry.npmjs.org/@kodax-ai%2fkodax",
+      "status": 200,
+      "tags": {
+        "hotfix": "0.7.72-hotfix.0",
+        "latest": "0.7.96",
+        "alpha": "0.7.97-alpha.7"
+      },
+      "date": "Sun, 18 Oct 2026 09:26:43 GMT",
+      "age": null,
+      "newest": [
+        "0.7.97-alpha.4",
+        "0.7.97-alpha.5",
+        "0.7.97-alpha.6",
+        "0.7.97-alpha.7"
+      ]
+    },
+    {
+      "source": "https://registry.npmjs.org/@kodax-ai%2fartifacts",
+      "status": 404,
+      "date": "Sun, 18 Oct 2026 09:26:44 GMT",
+      "age": null
+    }
+  ],
+  "dependencyIntegrity": {
+    "version": "0.7.97-alpha.7",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.7.tgz",
+    "integrity": "sha512-whrhfZDI7k6YH5FGwEuscyV2tE8XuFjM/LAkVV2tO9mizHqrAT7IidrqnZC21e5zsVUVtZBsvAj3rYBjdkQO7Q==",
+    "source": "registry"
+  }
+}

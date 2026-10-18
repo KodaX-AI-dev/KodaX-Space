@@ -351,8 +351,14 @@ is not fully closed and no Space release has been made. The independent Artifact
 SDK needs an actual public package/export from upstream. Earlier intermittent
 Windows first-input and local Provider-network failures remain cause-unconfirmed;
 their preserved first evidence must not be replaced by the later passing runs.
-The final Registry recheck at 2026-10-18 05:00:50 UTC still reports SDK alpha.7,
-stable 0.7.96, and HTTP 404 for the independent Artifact package.
+The qualification Registry recheck at 2026-10-18 05:00:50 UTC reports SDK alpha.7,
+stable 0.7.96, and HTTP 404 for the independent Artifact package. A separate
+[publication recheck](../research/kodax-sdk-public-delivery-recheck-2026-10-18.md)
+at 09:26–09:31 UTC confirms the same public versions, verifies the installed
+SDK/native files against the official tarball again, and finds no independent
+Artifact package, main-package subpath or embedded implementation. The other
+thread's installation remains alpha.7. No production or dependency change was
+needed for this recheck; the first-failure closure conditions above remain open.
 
 ## Standards
 
