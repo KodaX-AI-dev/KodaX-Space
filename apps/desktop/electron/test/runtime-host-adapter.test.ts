@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
 import test, { afterEach, beforeEach } from 'node:test';
 
 import type {
@@ -36,6 +37,7 @@ import {
   withDarwinRuntimeDaemonTmpdir,
 } from '../kodax/runtime-host-adapter.js';
 import { kodaxHost } from '../kodax/host.js';
+import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import {
   SessionRuntimeStore,
   setSessionRuntimeStoreForTesting,
@@ -12964,6 +12966,65 @@ test('a submitted batched input absent from user item identities releases its ob
     assert.equal(fake.calls.submitted.length, 1, 'metadata reconciliation never resubmits');
     assert.equal(fake.calls.observationCloses, 1);
   } finally {
+    await adapter.close();
+  }
+});
+
+test('accepted input publishes its image projection before a concurrent idle read can retire it', async (t) => {
+  const { fake, adapter, publish } = createInputObservationFixture();
+  const artifact = path.join(
+    getKodaxRuntimeDir(),
+    'space',
+    'session-attachments',
+    's_admitting_input',
+    'held.png',
+  );
+  let enter!: () => void;
+  let release!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    enter = resolve;
+  });
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  t.mock.method(fs, 'realpath', async (file: string) => {
+    if (file === artifact) {
+      enter();
+      await released;
+      throw Object.assign(new Error('test image is absent'), { code: 'ENOENT' });
+    }
+    return file;
+  });
+  try {
+    const result = await adapter.submitInput({
+      sessionId: 's_admitting_input',
+      afterRunId: 'previous',
+      delivery: 'after_turn',
+      input: { type: 'text', text: 'with image' },
+    });
+    assert.equal(result.accepted, true);
+    publish({
+      items: [
+        {
+          id: 'saved-image-input',
+          type: 'user',
+          inputId: result.inputId!,
+          text: 'with image',
+          attachments: [{ kind: 'image', path: artifact, mediaType: 'image/png' }],
+        },
+      ],
+    });
+    await entered;
+    await adapter.readSessionLiveSnapshot(result.sessionId);
+    assert.equal(fake.calls.observationCloses, 0, 'image projection has not committed yet');
+    release();
+    assert.equal(
+      (await adapter.readSessionProductView(result.sessionId)).items[0]?.id,
+      'saved-image-input',
+    );
+    assert.equal(fake.calls.observationCloses, 1);
+  } finally {
+    release();
     await adapter.close();
   }
 });

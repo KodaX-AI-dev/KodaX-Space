@@ -4317,23 +4317,24 @@ export class RuntimeHostAdapter {
     if (view.session.id !== state.sessionId)
       throw new Error('SDK view belongs to another Session.');
     if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
-    await this.reconcileInputObservationDemands(state, view);
     const previous = this.productViews.get(state.sessionId);
     const items = await projectProductItems(state.sessionId, view.items, previous?.items);
     if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
     if (
-      previous?.runtimeId === state.runtime.identity.runtimeId &&
-      isDeepStrictEqual(previous.items, items)
-    )
-      return;
-    const next = {
-      sessionId: state.sessionId,
-      runtimeId: state.runtime.identity.runtimeId,
-      revision: (previous?.revision ?? 0) + 1,
-      items,
-    };
-    this.productViews.set(state.sessionId, next);
-    this.push('session.productChanged', next);
+      previous?.runtimeId !== state.runtime.identity.runtimeId ||
+      !isDeepStrictEqual(previous.items, items)
+    ) {
+      const next = {
+        sessionId: state.sessionId,
+        runtimeId: state.runtime.identity.runtimeId,
+        revision: (previous?.revision ?? 0) + 1,
+        items,
+      };
+      this.productViews.set(state.sessionId, next);
+      this.push('session.productChanged', next);
+    }
+    // Admission demand protects the asynchronous image projection as well as SDK delivery.
+    await this.reconcileInputObservationDemands(state, view);
   }
 
   private async readObservedSessionLiveSnapshot(
@@ -6760,6 +6761,7 @@ export class RuntimeHostAdapter {
     state: RuntimeSessionObservationState,
     view: ClientSessionView,
   ): Promise<void> {
+    if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
     const pending = this.acceptedInputObservationDemands.get(state.sessionId);
     if (!pending) return;
     const visible = new Set(view.queue.map((input) => input.inputId));
