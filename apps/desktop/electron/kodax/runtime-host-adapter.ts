@@ -4131,9 +4131,12 @@ export class RuntimeHostAdapter {
       });
       if (!changed) return;
       try {
+        const phaseStarted = Date.now();
+        console.warn('[DEBUG-alpha7-input] settings:begin',{sessionId,attempt});
         const updated = await runtime.sessions.updateSettingsVersioned(sessionId, effectivePatch, {
           expectedRevision: current.revision,
         });
+        console.warn('[DEBUG-alpha7-input] settings:end',{sessionId,attempt,elapsedMs:Date.now()-phaseStarted});
         this.recordObservedSettings(sessionId, runtime, updated);
         return;
       } catch (error) {
