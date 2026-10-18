@@ -190,7 +190,11 @@ export async function launchSpace(
       } as Record<string, string>,
     });
   } catch (error) {
-    await cleanupIsolatedSpace(undefined, testDataDir);
+    await cleanupIsolatedSpace(undefined, testDataDir).catch((cleanupError: unknown) => {
+      throw new AggregateError([error, cleanupError], 'Space launch and isolated cleanup failed', {
+        cause: error,
+      });
+    });
     throw error;
   }
 
@@ -287,7 +291,11 @@ export async function launchSpace(
       close: () => cleanupIsolatedSpace(app, testDataDir),
     };
   } catch (error) {
-    await cleanupIsolatedSpace(app, testDataDir);
+    await cleanupIsolatedSpace(app, testDataDir).catch((cleanupError: unknown) => {
+      throw new AggregateError([error, cleanupError], 'Space renderer and isolated cleanup failed', {
+        cause: error,
+      });
+    });
     throw error;
   }
 }
