@@ -62,6 +62,13 @@ test('runtime test credential cleanup rejects production paths and non-runtime a
     cleaned: false,
     reason: 'not_found_or_not_test_profile',
   });
+  assert.deepEqual(
+    await cleanupRuntimeClientCredentialForTestProfile(
+      path.join(testProfile, 'kodax-test-missing'),
+      options,
+    ),
+    { cleaned: false, reason: 'not_found_or_not_test_profile' },
+  );
   assert.equal(deletes, 0);
 });
 

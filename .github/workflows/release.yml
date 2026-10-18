@@ -155,20 +155,15 @@ jobs:
         env:
           SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
         run: |
-          run_acceptance() {
-            npm run e2e:run -- tests/e2e/renderer-boot.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts --retries=0
-          }
-          export -f run_acceptance
+          specs=(tests/e2e/renderer-boot.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts)
           if [[ "$RUNNER_OS" == Linux ]]; then
-            dbus-run-session -- bash -euo pipefail -c '
-              xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c "
-                printf \"%s\\n\" \"kodax-space-ci\" |
-                  gnome-keyring-daemon --unlock --components=secrets >/dev/null
-                run_acceptance
-              "
-            '
+            dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c '
+              printf "%s\n" "kodax-space-ci" |
+                gnome-keyring-daemon --unlock --components=secrets >/dev/null
+              npm run e2e:run -- "$@" --retries=0
+            ' -- "${specs[@]}"
           else
-            run_acceptance
+            npm run e2e:run -- "${specs[@]}" --retries=0
           fi
 
       - name: Upload packaged acceptance failure evidence
