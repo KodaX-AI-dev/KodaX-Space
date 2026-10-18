@@ -2121,7 +2121,7 @@ export class RuntimeHostAdapter {
   private readonly desiredObservations = new Set<string>();
   /** Keep the live observer through authorization and the owner's admission ACK. */
   private readonly pendingRunAdmissionsBySession = new Map<string, number>();
-  private readonly acceptedInputObservationDemands = new Map<string, Set<string>>();
+  private readonly acceptedInputObservationDemands = new Map<string, Map<string, string>>();
   /** Context compactions can outlive an individual Run terminal event. */
   private readonly activeCompactionsBySession = new Map<string, Set<string>>();
   /** Space-issued compact() calls whose command promise has not settled on this connection. */
@@ -4317,14 +4317,7 @@ export class RuntimeHostAdapter {
     if (view.session.id !== state.sessionId)
       throw new Error('SDK view belongs to another Session.');
     if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
-    if (this.acceptedInputObservationDemands.has(state.sessionId)) {
-      for (const item of view.items) {
-        if (item.type === 'user' && item.inputId)
-          this.releaseInputObservationDemand(state.sessionId, item.inputId);
-      }
-      for (const input of view.queue)
-        this.releaseInputObservationDemand(state.sessionId, input.inputId);
-    }
+    await this.reconcileInputObservationDemands(state, view);
     const previous = this.productViews.get(state.sessionId);
     const items = await projectProductItems(state.sessionId, view.items, previous?.items);
     if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
@@ -6763,6 +6756,50 @@ export class RuntimeHostAdapter {
     if (pending.size === 0) this.acceptedInputObservationDemands.delete(sessionId);
   }
 
+  private async reconcileInputObservationDemands(
+    state: RuntimeSessionObservationState,
+    view: ClientSessionView,
+  ): Promise<void> {
+    const pending = this.acceptedInputObservationDemands.get(state.sessionId);
+    if (!pending) return;
+    const visible = new Set(view.queue.map((input) => input.inputId));
+    for (const item of view.items)
+      if (item.type === 'user' && item.inputId) visible.add(item.inputId);
+    for (const [inputId, runtimeId] of pending) {
+      if (runtimeId !== state.runtime.identity.runtimeId || visible.has(inputId)) {
+        this.releaseInputObservationDemand(state.sessionId, inputId);
+        continue;
+      }
+      if (this.activeRuns.has(state.sessionId) || state.reducer.snapshot().activeRun) continue;
+      try {
+        const fact = await state.runtime.runs.getInput(state.sessionId, inputId);
+        if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state)
+          return;
+        // null is not rejection: a lost reply may race admission, or belong to a retired Host.
+        // Batched after_turn inputs and undelivered steer inputs need this identity query.
+        if (
+          fact &&
+          (fact.state === 'dropped' ||
+            fact.state === 'withdrawn' ||
+            (fact.state === 'submitted' &&
+              view.runs.some(
+                (run) =>
+                  run.runId === fact.runId &&
+                  ['completed', 'cancelled', 'failed', 'interrupted', 'unknown'].includes(
+                    run.phase,
+                  ),
+              )))
+        )
+          this.releaseInputObservationDemand(state.sessionId, inputId);
+      } catch (error) {
+        console.warn(
+          '[runtime] input acceptance remains unconfirmed:',
+          sanitizeDiagnosticError(error),
+        );
+      }
+    }
+  }
+
   async submitInput(input: SpaceRuntimeSubmitInput): Promise<SpaceRuntimeSubmitInputResult> {
     const sessionId = input.sessionId;
     this.pendingRunAdmissionsBySession.set(
@@ -6811,16 +6848,11 @@ export class RuntimeHostAdapter {
     const authorization = await this.authorizeProductExecution(request, runtime);
     // An acceptance reply can precede the SDK view notification. Keep this
     // input's observer until its canonical queue/user identity has arrived.
-    const pending = this.acceptedInputObservationDemands.get(input.sessionId) ?? new Set<string>();
-    pending.add(inputId);
+    const pending =
+      this.acceptedInputObservationDemands.get(input.sessionId) ?? new Map<string, string>();
+    pending.set(inputId, runtime.identity.runtimeId);
     this.acceptedInputObservationDemands.set(input.sessionId, pending);
-    let accepted;
-    try {
-      accepted = await runtime.runs.acceptInput({ ...request.input, authorization });
-    } catch (error) {
-      this.releaseInputObservationDemand(input.sessionId, inputId);
-      throw error;
-    }
+    const accepted = await runtime.runs.acceptInput({ ...request.input, authorization });
     if (accepted.state === 'dropped' || accepted.state === 'withdrawn') {
       this.releaseInputObservationDemand(input.sessionId, inputId);
       return {

@@ -1289,6 +1289,9 @@ function createFakeRuntime(runtimeId = 'rt_test') {
       },
     },
     runs: {
+      async getInput() {
+        return null;
+      },
       async acceptInput(input: Parameters<KodaXDaemonRuntime['runs']['acceptInput']>[0]) {
         if (input.delivery !== 'immediate') {
           calls.submitted.push(input);
@@ -10056,7 +10059,10 @@ test('failed after-turn submission retains its captured authorization when the a
     [],
     'transport loss does not prove the input was rejected',
   );
-  assert.equal(fake.calls.observationCloses, 1, 'failed admission releases its local demand');
+  assert.equal(fake.calls.observationCloses, 0, 'lost acknowledgement is not a rejected input');
+  fake.runtime.runs.getInput = async () => null;
+  await adapter.readSessionProductView('s_1');
+  assert.equal(fake.calls.observationCloses, 0, 'a missing record is not a settlement barrier');
   await adapter.close();
 });
 
@@ -12865,8 +12871,7 @@ test('a quiescent snapshot read cannot retire an observation during Run admissio
   }
 });
 
-test('after-turn input retains observation until delayed canonical delivery settles', async () => {
-  const delivery = 'after_turn' as const;
+function createInputObservationFixture() {
   const fake = createFakeRuntime();
   fake.sessions.add('s_admitting_input');
   let view: ClientSessionView = {
@@ -12890,6 +12895,18 @@ test('after-turn input retains observation until delayed canonical delivery sett
     identityStore: testIdentityStore,
     runtimeEventParser: testRuntimeEventParser,
   });
+  return {
+    fake,
+    adapter,
+    publish(patch: Partial<ClientSessionView>) {
+      view = { ...view, ...patch };
+      for (const listener of viewListeners) listener(view);
+    },
+  };
+}
+
+test('after-turn input retains observation until delayed canonical delivery settles', async () => {
+  const { fake, adapter, publish } = createInputObservationFixture();
   const acceptInput = fake.runtime.runs.acceptInput.bind(fake.runtime.runs);
   fake.runtime.runs.acceptInput = async (input) => {
     await adapter.readSessionLiveSnapshot(input.sessionId);
@@ -12901,7 +12918,7 @@ test('after-turn input retains observation until delayed canonical delivery sett
     const result = await adapter.submitInput({
       sessionId: 's_admitting_input',
       afterRunId: 'run_previous',
-      delivery,
+      delivery: 'after_turn',
       input: [{ type: 'text', text: 'one distinct input intent' }],
     });
     assert.equal(result.accepted, true);
@@ -12909,23 +12926,82 @@ test('after-turn input retains observation until delayed canonical delivery sett
     assert.equal(fake.calls.observationCloses, 0, 'acceptance is not a view-delivery barrier');
     await adapter.readSessionLiveSnapshot('s_admitting_input');
     assert.equal(fake.calls.observationCloses, 0, 'an older idle view is still insufficient');
-    view = {
-      ...view,
+    publish({
       queue: [{ inputId: result.inputId!, text: 'one distinct input intent', enqueuedAt: 1 }],
-    };
-    for (const listener of viewListeners) listener(view);
+    });
     const queued = await adapter.readSessionLiveSnapshot('s_admitting_input');
     assert.equal(queued.queuedInputs[0]?.inputId, result.inputId);
     assert.equal(fake.calls.observationCloses, 0);
-    view = {
-      ...view,
+    publish({
       queue: [],
       items: [{ id: 'saved-input', type: 'user', inputId: result.inputId!, text: 'delivered' }],
-    };
-    for (const listener of viewListeners) listener(view);
+    });
     const terminal = await adapter.readSessionProductView('s_admitting_input');
     assert.equal(terminal.items[0]?.inputId, result.inputId);
     assert.equal(fake.calls.observationCloses, 1, 'terminal observation remains reclaimable');
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('a submitted batched input absent from user item identities releases its observation', async () => {
+  const { fake, adapter, publish } = createInputObservationFixture();
+  try {
+    const result = await adapter.submitInput({
+      sessionId: 's_admitting_input',
+      afterRunId: 'previous',
+      delivery: 'after_turn',
+      input: { type: 'text', text: 'merged into an earlier user item' },
+    });
+    fake.runtime.runs.getInput = async (sessionId, inputId) => ({
+      sessionId,
+      inputId,
+      state: 'submitted',
+      runId: 'batched',
+    });
+    publish({ runs: [{ runId: 'batched', provider: 'anthropic', phase: 'completed' }] });
+    await adapter.readSessionProductView(result.sessionId);
+    assert.equal(fake.calls.submitted.length, 1, 'metadata reconciliation never resubmits');
+    assert.equal(fake.calls.observationCloses, 1);
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('an accepted steer dropped before delivery releases its terminal observation', async () => {
+  const { fake, adapter, publish } = createInputObservationFixture();
+  try {
+    const active = await adapter.startManagedRun({
+      sessionId: 's_admitting_input',
+      prompt: 'begin',
+    });
+    fake.runtime.runs.get = async () => ({
+      runId: active.runId,
+      sessionId: active.sessionId,
+      phase: 'running',
+      provider: 'anthropic',
+      startedAt: '2026-10-18T00:00:00Z',
+    });
+    await adapter.submitInput({
+      sessionId: active.sessionId,
+      afterRunId: active.runId,
+      delivery: 'interrupt',
+      input: { type: 'text', text: 'not delivered' },
+    });
+    fake.runtime.runs.getInput = async (sessionId, inputId) => ({
+      sessionId,
+      inputId,
+      state: 'dropped',
+      runId: active.runId,
+    });
+    fake.pending
+      .get(active.runId)!
+      .resolve({ runId: active.runId, sessionId: active.sessionId, phase: 'completed' });
+    await active.result;
+    publish({ runs: [{ runId: active.runId, provider: 'anthropic', phase: 'completed' }] });
+    await adapter.readSessionProductView(active.sessionId);
+    assert.equal(fake.calls.submitted.length, 1, 'a dropped steer is never replayed');
+    assert.equal(fake.calls.observationCloses, 1);
   } finally {
     await adapter.close();
   }
