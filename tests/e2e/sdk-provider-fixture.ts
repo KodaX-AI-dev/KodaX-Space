@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
 import { expect, test } from '@playwright/test';
-import type { SessionProductView } from '@kodax-space/space-ipc-schema';
+import type { IpcError, SessionProductView } from '@kodax-space/space-ipc-schema';
 import { launchSpace, type SpaceInstance } from './fixtures.js';
 import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
@@ -329,7 +329,7 @@ export async function waitSdkIdle(space: SpaceInstance, sessionId: string) {
 /** A read may race a canonical writer; retry reads only, preserving the first conflict. */
 export async function readSdkProductView(space: SpaceInstance, sessionId: string) {
   let view: SessionProductView | undefined;
-  const conflicts: string[] = [];
+  const conflicts: IpcError[] = [];
   try {
     await expect
       .poll(
@@ -338,13 +338,20 @@ export async function readSdkProductView(space: SpaceInstance, sessionId: string
             (id) => window.kodaxSpace!.invoke('session.productSnapshot', { sessionId: id }),
             sessionId,
           );
-          if (result.ok && result.data) {
+          if (result.ok) {
+            if (!result.data) throw new Error('SDK supplied no product view');
             view = result.data;
             return 'ready';
           }
-          const failure = result.ok ? 'SDK supplied no product view' : result.error.message;
-          conflicts.push(failure);
-          return failure;
+          conflicts.push(result.error);
+          if (
+            result.error.code !== 'HANDLER_ERROR' ||
+            !/^\[session\.productSnapshot\] handler threw: Session data changed during the read boundary: [a-f0-9]{64}\.lock$/.test(
+              result.error.message,
+            )
+          )
+            throw new Error(result.error.message);
+          return result.error.message;
         },
         { timeout: 5_000 },
       )
