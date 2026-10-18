@@ -371,6 +371,14 @@ test('real SDK bounded output restores the complete immutable body through its p
       .click();
     await expect(stream).toContainText('SDK_LONG_HEAD', { timeout: 20_000 });
     await expect(stream).toContainText('SDK_LONG_TAIL');
+  } catch (error) {
+    const sessionId = await currentSdkSession(space);
+    const state = await Promise.race([space.page.evaluate(async id => ({
+      live: await window.kodaxSpace!.invoke('session.liveSnapshot', {sessionId:id}),
+      profile: await window.kodaxSpace!.invoke('runtime.profileSnapshot', undefined),
+    }), sessionId), new Promise(resolve => setTimeout(() => resolve({diagnosticTimeout:true}),5000))]).catch(error => ({captureError:String(error)}));
+    await test.info().attach('public-failure-state.json', {body: JSON.stringify({state, requests:provider.requests}), contentType:'application/json'});
+    throw error;
   } finally {
     await provider.close();
     await space.close();
