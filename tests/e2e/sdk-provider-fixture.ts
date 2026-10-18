@@ -331,7 +331,7 @@ export async function readPublicSpaceExit(space: SpaceInstance) {
   // binary for offline recovery rather than requesting Node's GUI consent.
   const useCreatorBinary = process.platform === 'darwin';
   const { stdout } = await promisify(execFile)(
-    useCreatorBinary ? space.app.process().spawnfile : process.execPath,
+    useCreatorBinary ? space.executablePath : process.execPath,
     [
       '--input-type=module',
       '-e',

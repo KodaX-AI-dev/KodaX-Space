@@ -90,6 +90,7 @@ async function cleanupIsolatedSpace(
 
 export interface SpaceInstance {
   readonly app: ElectronApplication;
+  readonly executablePath: string;
   readonly page: Page;
   readonly testDataDir: string;
   /**
@@ -285,6 +286,7 @@ export async function launchSpace(
 
     return {
       app,
+      executablePath: app.process().spawnfile,
       page,
       testDataDir,
       seedProject,
