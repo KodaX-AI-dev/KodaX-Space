@@ -1,0 +1,256 @@
+{
+  "generatedAt": "2026-10-18T02:40:49.486Z",
+  "spaceVersion": "0.1.47-alpha.3",
+  "published": false,
+  "dependency": {
+    "version": "0.7.97-alpha.7",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.7.tgz",
+    "integrity": "sha512-whrhfZDI7k6YH5FGwEuscyV2tE8XuFjM/LAkVV2tO9mizHqrAT7IidrqnZC21e5zsVUVtZBsvAj3rYBjdkQO7Q==",
+    "source": "registry"
+  },
+  "upstream": {
+    "sdkVersion": "0.7.97-alpha.7",
+    "sdkReleaseCommit": "25fa6399ada6dae0493faa221eb82174eebb9ad6",
+    "ciRun": 39046250003,
+    "ciUrl": "https://github.com/icetomoyo/KodaX/actions/runs/39046250003",
+    "releaseRun": 39047826560,
+    "sourceBoundary": "Exact release-tag commit CI; Registry tarball integrity is recorded separately and npm gitHead is absent.",
+    "linux": [
+      {
+        "node": "20",
+        "originalCrashCases": [
+          "✓ a Host crash after input acceptance preserves content, marks the Run interrupted, and redoes no work  8582ms",
+          "✓ a Host crash after tool dispatch keeps the executed tool un-redone and the Run interrupted  9655ms",
+          "✓ a Host crash after the tool result entered the context shows interrupted, not an inferred success  36443ms"
+        ],
+        "summaries": [
+          "✓ src/sdk-client.crash.test.ts (3 tests) 54682ms",
+          "✓ src/runtime-daemon/state.test.ts (62 tests | 1 skipped) 319ms",
+          "✓ src/runtime-daemon/lifecycle.process-identity.test.ts (19 tests) 1191ms",
+          "✓ src/runtime-daemon/process.owner-exit.test.ts (10 tests) 42615ms",
+          "✓ src/sdk-runtime.test.ts (305 tests | 2 skipped) 58036ms",
+          "✓ src/sdk-runtime-daemon-upgrade.test.ts (81 tests) 1337ms"
+        ]
+      },
+      {
+        "node": "22",
+        "originalCrashCases": [
+          "✓ a Host crash after input acceptance preserves content, marks the Run interrupted, and redoes no work  5482ms",
+          "✓ a Host crash after tool dispatch keeps the executed tool un-redone and the Run interrupted  5318ms",
+          "✓ a Host crash after the tool result entered the context shows interrupted, not an inferred success  5473ms"
+        ],
+        "summaries": [
+          "✓ src/sdk-client.crash.test.ts (3 tests) 16274ms",
+          "✓ src/runtime-daemon/lifecycle.process-identity.test.ts (19 tests) 803ms",
+          "✓ src/sdk-runtime-daemon-upgrade.test.ts (81 tests) 1422ms",
+          "✓ src/runtime-daemon/process.owner-exit.test.ts (10 tests) 34819ms"
+        ]
+      }
+    ]
+  },
+  "spaceCi": {
+    "runId": 39090294249,
+    "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39090294249",
+    "sourceCommit": "2bc01b0e04ea3f9cbf85a9a834b35f93f6aa74ed",
+    "status": "in_progress",
+    "retries": 0,
+    "releaseJob": "tag_only; manual branch run cannot publish"
+  },
+  "windows": {
+    "node": "v22.23.1",
+    "packagedE2e": {
+      "passed": 20,
+      "failed": 0,
+      "retries": 0,
+      "durationMinutes": 4.3,
+      "productionSourceUnchangedSince": "abd17d4294a530073478d23d3acb1ef0050722e7"
+    },
+    "boot": {
+      "profile": "fresh isolated profiles with 122 historical unknown child records",
+      "artificialReadyDelayMs": 0,
+      "samples": [
+        {
+          "rendererReadyMs": 3334,
+          "runtimeReadyMs": 4142
+        },
+        {
+          "rendererReadyMs": 3236,
+          "runtimeReadyMs": 4141
+        }
+      ]
+    },
+    "sameShell": {
+      "method": "one persistent NoProfile PowerShell; private npm prefix; actual published installation copy; build fingerprint rewritten while owner alive; npm link repeated; public ensureKodaXClient and two history reads",
+      "savedSessions": 3002,
+      "largeUnrelatedSessions": 50,
+      "samePowerShell": true,
+      "privateNpmLink": true,
+      "probes": [
+        {
+          "label": "first",
+          "readyMs": 1502,
+          "runtimeId": "rt_baa9803aceb9",
+          "pid": 54256,
+          "histories": [1, 1],
+          "stages": [
+            {
+              "elapsedMs": 162,
+              "stage": "checking"
+            },
+            {
+              "elapsedMs": 162,
+              "stage": "starting"
+            },
+            {
+              "elapsedMs": 512,
+              "stage": "waiting"
+            },
+            {
+              "elapsedMs": 1473,
+              "stage": "connecting"
+            },
+            {
+              "elapsedMs": 1489,
+              "stage": "ready"
+            }
+          ]
+        },
+        {
+          "label": "after_rebuild",
+          "readyMs": 5698,
+          "runtimeId": "rt_c36b3181fbdb",
+          "pid": 43844,
+          "histories": [1, 1],
+          "stages": [
+            {
+              "elapsedMs": 318,
+              "stage": "checking"
+            },
+            {
+              "elapsedMs": 462,
+              "stage": "connecting"
+            },
+            {
+              "elapsedMs": 2430,
+              "stage": "upgrading"
+            },
+            {
+              "elapsedMs": 4169,
+              "stage": "waiting"
+            },
+            {
+              "elapsedMs": 4372,
+              "stage": "checking"
+            },
+            {
+              "elapsedMs": 4372,
+              "stage": "starting"
+            },
+            {
+              "elapsedMs": 4710,
+              "stage": "waiting"
+            },
+            {
+              "elapsedMs": 5670,
+              "stage": "connecting"
+            },
+            {
+              "elapsedMs": 5685,
+              "stage": "ready"
+            }
+          ]
+        },
+        {
+          "label": "warm",
+          "readyMs": 610,
+          "runtimeId": "rt_c36b3181fbdb",
+          "pid": 43844,
+          "histories": [1, 1],
+          "stages": [
+            {
+              "elapsedMs": 310,
+              "stage": "checking"
+            },
+            {
+              "elapsedMs": 451,
+              "stage": "connecting"
+            },
+            {
+              "elapsedMs": 602,
+              "stage": "ready"
+            }
+          ]
+        }
+      ],
+      "privateDaemonStopped": true,
+      "includesTuiRender": false
+    },
+    "conptyExperiment": {
+      "status": "not_fully_passed",
+      "reason": "One of two children required forced teardown; node-pty AttachConsole failed. Composer-readiness timings are not acceptance results."
+    }
+  },
+  "fixtureChecks": {
+    "credentialAliasRegression": {
+      "red": {
+        "passed": 3,
+        "failed": 1
+      },
+      "green": {
+        "passed": 4,
+        "failed": 0
+      }
+    },
+    "focusedStrictE2eTypecheck": "pass with allowJs",
+    "targetedLintAndFormatting": "pass",
+    "independentFinalReviews": {
+      "standards": 0,
+      "spec": 0
+    }
+  },
+  "artifacts": {
+    "package": "@kodax-ai/artifacts",
+    "version": "0.7.97-alpha.7",
+    "registryPackageStatus": 404,
+    "registryVersionStatus": 404,
+    "integrated": false,
+    "reason": "Independent package unavailable; root package has no Artifact SDK export or implementation."
+  },
+  "logs": [
+    {
+      "path": ".tmp-alpha7-packaged-final-e2e.log",
+      "bytes": 3597,
+      "sha256": "a73db35a76d298726581f252295a54f1df922e9479b03694540d3c37a11c10aa"
+    },
+    {
+      "path": ".tmp-alpha7-boot-timing-first.log",
+      "bytes": 257,
+      "sha256": "1a3814ea3e0897aa37d1db5c2224be1ec11208ed4b17bd6a49ed4a1f09442104"
+    },
+    {
+      "path": ".tmp-alpha7-boot-timing-second.log",
+      "bytes": 257,
+      "sha256": "74245a9ac444b1f9f9c24821c71f89344e31f0145120c3a7bac21b0e17419b6a"
+    },
+    {
+      "path": ".tmp-alpha7-same-shell.log",
+      "bytes": 2514,
+      "sha256": "5f1007a8b0f993a4c235cec778088843a722c5f9260d83c212706b06d972b6d9"
+    },
+    {
+      "path": ".tmp-alpha7-alias-red.log",
+      "bytes": 1727,
+      "sha256": "7b2f089323347d1d0c2c3320e61181b4054664a35bbb97d63ec8cc82fee08502"
+    },
+    {
+      "path": ".tmp-alpha7-alias-green.log",
+      "bytes": 1094,
+      "sha256": "5be7e487ed8dddbaad13e4b5358552afcb3ab5b49564c700e743a43163fa35ee"
+    },
+    {
+      "path": ".tmp-alpha7-qualification-registry.log",
+      "bytes": 265,
+      "sha256": "20cfd0e40747727b68525d1e955e60f6a4fc4eeb5c583bb9d69264b8faab621d"
+    }
+  ]
+}

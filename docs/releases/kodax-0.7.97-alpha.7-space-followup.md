@@ -101,3 +101,8 @@ by upgrading the package.
 This Windows consumer qualification does not repeat SDK Linux Node 20/22 zombie
 CI, qualify macOS/Linux Space installers, or establish the latency of the user's
 complete rebuild/old-Host replacement path. No Space release is created here.
+
+The [remaining qualification](kodax-0.7.97-alpha.7-qualification.md) continues
+these items with exact SDK Linux CI logs, same-shell rebuild/Host-refresh
+observations, a new four-platform packaged consumer gate and the independently
+verified Artifact-package delivery blocker. Its results are recorded separately.

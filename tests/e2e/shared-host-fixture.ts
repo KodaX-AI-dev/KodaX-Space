@@ -118,6 +118,7 @@ export async function startConflictingHistoryHost(
     },
   );
   let stderr = '';
+  if (!child.stderr) throw new Error('Shared Host fixture requires a stderr pipe');
   child.stderr.on('data', (chunk: Buffer) => {
     stderr = `${stderr}${chunk}`.slice(-4096);
   });

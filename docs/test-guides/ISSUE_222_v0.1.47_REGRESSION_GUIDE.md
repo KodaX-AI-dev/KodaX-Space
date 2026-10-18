@@ -100,3 +100,23 @@ guards. Do not weaken those guards to make recovery appear successful. Active
 work blocks replacement until it completes; permanent incompatibility remains
 visible. Linux zombie/process identity correctness is covered by the SDK release
 CI; Windows packaged tests do not establish Linux installer qualification.
+
+## Additional alpha.7 qualification
+
+The installer workflow's manual branch dispatch now exercises the real packaged
+binary on all four OS/architecture targets, with no Playwright retry. It supplies
+`SPACE_E2E_EXECUTABLE`; Linux also starts an isolated Secret Service and Xvfb.
+Manual branch dispatch does not satisfy the tag-only Release condition.
+
+```powershell
+node --test scripts/test/runtime-test-credential-cleanup.test.mjs
+$env:SPACE_E2E_EXECUTABLE=(Resolve-Path 'out/sdk-alpha7/win-unpacked/KodaX Space.exe').Path
+node scripts/e2e-run.mjs tests/e2e/renderer-boot.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts --retries=0
+Remove-Item Env:SPACE_E2E_EXECUTABLE
+```
+
+Use the [qualification record](../releases/kodax-0.7.97-alpha.7-qualification.md)
+and [machine evidence](../releases/kodax-0.7.97-alpha.7-qualification.json) for
+actual per-platform results and the boundary between a Host-attachment timing
+observation and a complete TUI/rebuild performance claim. Keep any first-run
+failure in that record; do not treat a later pass as its diagnosis.
