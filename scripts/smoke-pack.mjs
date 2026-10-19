@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { resolvePackagedLifecycleHome } from './packaged-lifecycle-home.mjs';
 import { createPackagedShellProbeToolInput } from './packaged-shell-probe.mjs';
+import { verifyArtifactSdkPackage } from './kodax-artifact-package.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -98,6 +99,10 @@ const KODAX_PUBLIC_FACADE_FILES = [
   'sdk-sandbox.js',
   'sdk-session.js',
   'sdk-skills.js',
+  'artifacts/dist/index.js',
+  'artifacts/dist/client.js',
+  'artifacts/dist/runtime.js',
+  'artifacts/dist/kodax.js',
 ];
 const KODAX_NATIVE_TARGETS = [
   ['darwin-arm64', 'darwin', 'arm64', 'kodax-text-transaction.node'],
@@ -2095,6 +2100,11 @@ async function main() {
     ok('packaged Partner library matches the built archive');
     await checkPackagedFeishuCliResources(asarPath);
     await checkAsarContents(asarPath);
+    await verifyArtifactSdkPackage({
+      sdkDirectory: path.join(`${asarPath}.unpacked`, 'node_modules', '@kodax-ai', 'kodax'),
+      probeRoot: path.dirname(asarPath),
+    });
+    ok('packaged Artifact SDK exports, worker and exact PNG evidence execute under Node');
     verifyPackagedUpdater({ asarPath });
     ok('packaged updater dependency loads with its CommonJS autoUpdater export');
     checkPackagedSqliteExecutesFromAsar(asarPath);

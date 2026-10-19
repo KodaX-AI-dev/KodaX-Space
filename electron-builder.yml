@@ -59,6 +59,10 @@ files:
     to: node_modules/@kodax-ai/kodax/dist/builtin
     filter:
       - '**/*.{md,markdown}'
+  - from: node_modules/@kodax-ai/kodax/dist/artifacts/skills
+    to: node_modules/@kodax-ai/kodax/dist/artifacts/skills
+    filter:
+      - '**/*.{md,markdown}'
   - '!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,HISTORY.md,LICENSE,license,*.d.ts.map}'
   - '!**/node_modules/.cache/**'
   # 只排除 100% 测试框架约定目录（jest 的 __tests__/__mocks__，永不属于运行时）。
@@ -197,6 +201,13 @@ extraResources:
 asarUnpack:
   - '**/*.node'
   - '**/node_modules/@kodax-ai/kodax/dist/native/**'
+  # Artifact workers execute under real Node, which cannot read ASAR paths.
+  # Keep their relative assets, package scope and renderer dependency tree physical.
+  - '**/node_modules/@kodax-ai/kodax/package.json'
+  - '**/node_modules/@kodax-ai/kodax/dist/artifacts/**'
+  - '**/node_modules/{jszip,lie,immediate,pako,readable-stream,core-util-is,inherits,isarray,process-nextick-args,safe-buffer,string_decoder,util-deprecate,setimmediate,pngjs,pptxgenjs,https,image-size,queue,pdfjs-dist,docx-renderer,konva,lodash-es,fast-xml-parser,strnum,anynum,playwright-core,echarts,tslib,zrender,mtx-decompressor}/**'
+  - '**/node_modules/@aiden0z/pptx-renderer/**'
+  - '**/node_modules/@silvia-odwyer/photon-node/**'
   - '**/node_modules/@napi-rs/keyring-*/**'
   - '**/node_modules/better-sqlite3/**'
   # Keep better-sqlite3's native-binding resolver chain on the filesystem next to
