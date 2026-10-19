@@ -1,0 +1,129 @@
+{
+  "checkedAt": "2026-10-19T11:00:27.532Z",
+  "spaceVersion": "0.1.47-alpha.3",
+  "spacePublished": false,
+  "sourceCommit": "9091c7cd",
+  "registry": {
+    "version": "0.7.97-alpha.8",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.8.tgz",
+    "integrity": "sha512-ohn09PS/6BrV6DKdq06NtQX516wxp53j6zeo3JhOFC8Vav3xb2UL+PWEQn0wbGVz73BCoKsLTiDqM8H1MVdp8Q==",
+    "installedBytesVerified": true,
+    "gitHead": null
+  },
+  "publishedDelta": {
+    "previousPublishedVersion": "0.7.97-alpha.7",
+    "newPublishedVersion": "0.7.97-alpha.8",
+    "existingDeclarationFiles": 62,
+    "changedExistingDeclarations": [],
+    "changedExistingNativeFiles": [
+      "dist\\native\\win32-x64\\kodax-windows-sandbox.exe",
+      "dist\\native\\win32-x64\\kodax-windows-text-transaction.node",
+      "dist\\native\\win32-x64\\manifest.json"
+    ]
+  },
+  "windowsNativeProtocols": {
+    "text": 5,
+    "shell": 10,
+    "asrt": "0.0.65"
+  },
+  "build": {
+    "file": "out-alpha8-candidate/win-unpacked/resources/app.asar",
+    "sha256": "62208a9e00711688fa2eeb71a5ac4a75e4c2f65da1e364ecb45c2310989f28e2",
+    "bytes": 125309227,
+    "sdkVersion": "0.7.97-alpha.8"
+  },
+  "artifact": {
+    "publicEntries": 4,
+    "toolsRegisteredInIsolatedHost": 9,
+    "providerRequests": 0,
+    "explicitOperations": 2,
+    "completedRuns": 2,
+    "exactPngBytes": true,
+    "realNodeWorker": true,
+    "staleEvidenceRejected": true,
+    "preAbortRejected": true,
+    "rendererStartupImportRejectedByTest": true,
+    "pureTypesWithoutNodeAmbient": true,
+    "personalProfileAutomaticallyEnabled": false,
+    "formats": {
+      "prepare": "ready",
+      "formats": [
+        {
+          "file": "source.pptx",
+          "status": "ready",
+          "width": 1280,
+          "height": 720,
+          "totalPages": 1,
+          "diagnostics": []
+        },
+        {
+          "file": "source.pdf",
+          "status": "ready",
+          "width": 534,
+          "height": 294,
+          "totalPages": 2,
+          "diagnostics": ["pdf-scope"]
+        },
+        {
+          "file": "source.docx",
+          "status": "unverified",
+          "width": 794,
+          "height": 1123,
+          "totalPages": 3,
+          "diagnostics": ["docx-default-settings", "docx-preview-fidelity"]
+        }
+      ],
+      "html": {
+        "status": "ready",
+        "width": 320,
+        "height": 200
+      }
+    },
+    "executionTimeCancelDisconnectVerified": false
+  },
+  "publishedMetadataOnlyAdmissionFix": false,
+  "quarantinedSessionRestored": false,
+  "tests": {
+    "artifact": 3,
+    "packagedRecovery": 13,
+    "packagedLifecycle": 6,
+    "retries": 0,
+    "packagedBoot": {
+      "rendererMs": 3441,
+      "runtimeMs": 24393,
+      "deliberateReadyHoldMs": 20000,
+      "historicalRecordsPreserved": 122
+    },
+    "fullSuite": {
+      "total": 4409,
+      "passed": 4389,
+      "failed": 0,
+      "skipped": 20,
+      "initialStaleVersionFailures": 2,
+      "initialFailuresCorrectedAndFullSuiteRerun": true
+    },
+    "packagedAcceptanceTotal": 20,
+    "noHoldBoot": {
+      "rendererMs": 3330,
+      "runtimeMs": 4236,
+      "deliberateReadyHoldMs": 0,
+      "historicalRecordsPreserved": 122,
+      "scope": "isolated profile, warm native cache, one observation"
+    }
+  },
+  "promotion": {
+    "status": "pending-old-app-exit",
+    "candidateDirectory": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\out-alpha8-candidate",
+    "targetDirectory": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\out"
+  },
+  "review": {
+    "standards": {
+      "hardViolations": 0,
+      "smells": 0
+    },
+    "spec": {
+      "findings": 0
+    },
+    "initialLongCallbackFindingResolved": true
+  }
+}
