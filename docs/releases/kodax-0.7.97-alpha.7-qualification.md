@@ -330,6 +330,30 @@ This gate checks installer construction, packaged dependencies and the actual
 packaged application. It does not exercise a human installer wizard, OS signing
 or notarization prompts, every model, or every end-user machine configuration.
 
+## Old Windows installation ownership conflict (2026-10-19)
+
+The user's `out/win-unpacked/resources/app.asar` is still Space alpha.2 with
+SDK alpha.6, written on October 16. Its October 19 15:30:20 +08:00 diagnostic
+reports `Runtime daemon child exited before becoming healthy (code 1)`;
+the coder bootstrap tail reports `Session storage already has a product Host`.
+The original failing owner's identity/profile was not preserved and is not
+inferred from a later, absent owner lock.
+
+An isolated public-SDK comparison extracted alpha.6 code from that archive.
+With a persistent default-profile Host still connected, alpha.6's coder ensure
+reproduces the same code 1 and storage-owner error. Installed alpha.7 instead
+attaches to the existing default Host in 579 ms, retaining its PID/runtimeId.
+Both isolated owners were shut down successfully afterward. No input, tool or
+Provider request was submitted, and no real user data or owner was changed.
+The declared dependencies match across those SDK versions and were resolved
+from the installed dependency tree for the extracted-code comparison.
+
+This verifies the matching ownership-conflict mechanism, not every daemon
+exit-code-1 cause or the identity of the original owner. It does not establish
+a general startup latency or replace acceptance of the rebuilt Space installer.
+Updating a repository/global CLI cannot update the old app.asar's embedded SDK.
+See the [sanitized comparison evidence](space-alpha2-owner-conflict-2026-10-19.json).
+
 ## Independent Artifact SDK
 
 The public Registry still returns HTTP 404 for `@kodax-ai/artifacts`, including

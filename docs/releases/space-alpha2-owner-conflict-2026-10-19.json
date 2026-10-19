@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-19",
+  "timeZone": "Asia/Shanghai",
+  "scope": "Read-only diagnosis of the old Windows installation and isolated public-SDK owner-attachment comparison",
+  "oldInstallation": {
+    "space": "0.1.47-alpha.2",
+    "sdk": "0.7.97-alpha.6",
+    "archive": "out/win-unpacked/resources/app.asar",
+    "lastWriteDate": "2026-10-16"
+  },
+  "originalEvidence": {
+    "timestamp": "2026-10-19T07:30:20.249Z",
+    "event": "host_initialization_failed",
+    "message": "Runtime daemon child exited before becoming healthy (code 1)",
+    "bootstrapTailLine": 597,
+    "bootstrapError": "Session storage already has a product Host: <profile-root>/sessions",
+    "historicalOwnerIdentityAvailable": false
+  },
+  "comparison": {
+    "old": {
+      "mode": "old",
+      "expectedSdk": "alpha.6",
+      "inputSubmissions": 0,
+      "toolInvocations": 0,
+      "firstReadyMs": 1768,
+      "first": {
+        "runtimeId": "rt_85ba8a33acb4",
+        "profile": "default",
+        "pid": 69088
+      },
+      "failure": {
+        "name": "RuntimeDaemonStartupError",
+        "message": "Runtime daemon child exited before becoming healthy (code 1). See daemon bootstrap log: <isolated-root>\\isolated-old\\.kodax\\runtime\\daemon\\coder\\bootstrap.log"
+      },
+      "storageOwnerConflict": true,
+      "secondAttemptMs": 1895,
+      "activeOwnerPreserved": true,
+      "expectedOutcomeConfirmed": true,
+      "isolatedCleanup": "succeeded"
+    },
+    "current": {
+      "mode": "new",
+      "expectedSdk": "alpha.7",
+      "inputSubmissions": 0,
+      "toolInvocations": 0,
+      "firstReadyMs": 1846,
+      "first": {
+        "runtimeId": "rt_d3b2f797c3e9",
+        "profile": "default",
+        "pid": 50808
+      },
+      "second": {
+        "runtimeId": "rt_d3b2f797c3e9",
+        "profile": "default"
+      },
+      "secondAttemptMs": 579,
+      "activeOwnerPreserved": true,
+      "expectedOutcomeConfirmed": true,
+      "isolatedCleanup": "succeeded"
+    },
+    "oldSdkCodeSource": "Extracted from the old installed app.asar; declared dependencies matched alpha.7 and were resolved from the installed dependency tree",
+    "scenario": "Keep an isolated persistent default-profile owner connected; ensure a coder-profile interactive client on the same Session directory",
+    "node": "v22.23.1",
+    "providerRequests": 0
+  },
+  "limits": [
+    "The isolated owner profile is default; the original failing owner/profile snapshot is unavailable.",
+    "This verifies the matching ownership-conflict mechanism, not every error that can produce a daemon code 1.",
+    "The current SDK comparison is not a rebuilt final Space installer acceptance or a general startup timing guarantee."
+  ],
+  "realUserDataMutated": false,
+  "realUserOwnersStopped": false,
+  "productCodeChanged": false,
+  "released": false
+}
