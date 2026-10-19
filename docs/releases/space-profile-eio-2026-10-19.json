@@ -93,12 +93,119 @@
     "runningHostReplaced": false,
     "published": false
   },
-  "releaseDisposition": "Keep release blocked. Earlier isolated packaged passes do not close the real-profile EIO. Preserve the current app and original Session; defer large build replacement while storage health and backup status remain unresolved.",
+  "releaseDisposition": "Same-volume data quarantine removed the real-profile EIO. Current Host and public product Client observations passed for both normal Sessions. The existing GUI must reconnect; user confirmation remains pending. The SDK source patch is not installed in this app and the storage hardware is not repaired; no release is made.",
   "userProfileMutations": {
     "sessionFilesEdited": 0,
     "inputsSubmitted": 0,
     "toolsInvoked": 0,
     "ownersStopped": 0,
     "diskRepairs": 0
+  },
+  "localRecovery": {
+    "requestedByUser": true,
+    "policy": "Same-volume rename to .bak; do not copy recovery data to another physical disk",
+    "recoveredAt": "2026-10-19T10:23:36.109Z",
+    "quarantinedSession": "20260914_084034_oz884c2d160c23",
+    "originalFilesRenamed": 5,
+    "backupSuffix": ".crc-20261019.bak",
+    "originalBytesOverwritten": 0,
+    "partialImageUnreadableBytes": 12288,
+    "completeReadableRecords": 383,
+    "affectedRecords": 1,
+    "cacheUsedToInventMissingContent": false,
+    "canonicalSessionRecreated": false,
+    "sessionWriteAndTopologyLocksUsed": true,
+    "topologyEpochAdvanced": true,
+    "actorOwnershipAndActivityChecked": true,
+    "affectedNonterminalRuns": 0,
+    "affectedPendingInteractions": 0,
+    "verification": [
+      {
+        "name": "daemon.inspect",
+        "status": "ok",
+        "ms": 2461,
+        "runtimeId": "rt_c153ab7dd794",
+        "ownerPid": 65736,
+        "canStop": true,
+        "blockers": []
+      },
+      {
+        "name": "runs.list",
+        "status": "ok",
+        "ms": 279,
+        "count": 121
+      },
+      {
+        "name": "sessions.list",
+        "status": "ok",
+        "ms": 900,
+        "count": 20,
+        "quarantinedSessionListed": false
+      },
+      {
+        "name": "catalog.extensions",
+        "status": "ok",
+        "ms": 2
+      },
+      {
+        "name": "normal-session-load",
+        "id": "20261013_115415_5ybc4517585d1b",
+        "status": "ok",
+        "ms": 13,
+        "loadedId": "20261013_115415_5ybc4517585d1b"
+      },
+      {
+        "name": "normal-session-load",
+        "id": "20261008_104354_7r848c8cf21187",
+        "status": "ok",
+        "ms": 5,
+        "loadedId": "20261008_104354_7r848c8cf21187"
+      }
+    ],
+    "inputsSubmitted": 0,
+    "toolsInvoked": 0,
+    "liveOwnersStopped": 0,
+    "uiUserVerification": "Awaiting user confirmation of the existing window; public Client initial views passed",
+    "hardwareRepaired": false,
+    "productClientVerification": {
+      "ensureMs": 625,
+      "checks": [
+        {
+          "sessionId": "20261013_115415_5ybc4517585d1b",
+          "status": "ok",
+          "initialViewReceived": true,
+          "ms": 4
+        },
+        {
+          "sessionId": "20261008_104354_7r848c8cf21187",
+          "status": "ok",
+          "initialViewReceived": true,
+          "ms": 2
+        }
+      ],
+      "cleanup": "disconnect passed",
+      "coldStartupPerformanceClaimed": false
+    },
+    "probeNotes": [
+      {
+        "step": "passive product connection after idle",
+        "result": "Host had exited normally; passive connect returned ENOENT, so startup verification uses ensure"
+      },
+      {
+        "step": "first ensure probe cleanup",
+        "result": "Probe used client.close instead of the declared disconnect interface; result was not recorded and is not counted as a product pass"
+      }
+    ],
+    "canonicalInventory": {
+      "count": 3025,
+      "quarantinedSessionListed": false,
+      "quarantinedSessionMetadataFound": false
+    },
+    "externalDirectory": {
+      "path": "D:/KodaX-Recovery/20261019-space-crc",
+      "empty": true,
+      "recoveryFilesWritten": 0,
+      "cleanup": "Rejected by automatic approval policy; not retried"
+    }
   }
 }
