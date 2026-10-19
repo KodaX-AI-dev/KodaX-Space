@@ -398,3 +398,41 @@ The review closed the acceptance/view handoff, input terminal reconciliation and
 asynchronous publication issues. These conclusions concern the patch's contract
 implementation; they do not substitute for pending platform acceptance or explain
 the previously recorded intermittent Windows first failures.
+
+## Real-profile Windows EIO after the preview build (2026-10-19)
+
+The local alpha.3/SDK alpha.7 unpacked preview passed the isolated packaged
+checks, then failed on the user's real profile at 08:47:57 UTC with
+`RuntimeDaemonTransportError`, `internal_error`, `EIO: i/o error, read`.
+The Host was already ready. Passive connection, catalog, limited Session
+listing and Workflow/interaction reads succeeded; `runs.list` and
+`daemon.inspect` failed reproducibly. Those earlier packaged passes do not
+close this incident or establish readiness of the real profile.
+
+The failure is a full-body read of historical VideoWorks Session
+`20260914_084034_oz884c2d160c23`. Independent Node and native Windows reads
+fail after 512 KiB; Windows reports `0x80070017` (CRC). Its 76,170-byte
+metadata line is readable. New `disk` Event 7 records name Disk 0 during
+these reads. Current C: maps to the KINGSTON NVMe on Disk 0, whose general
+health reports `Healthy`; the user confirms whole-disk cloning from the
+previous faulty disk. The replacement SSD's physical failure is **not**
+established: cloned bad-cluster state, media and storage-stack faults still
+need distinguishing, and low-level health/bad-cluster inspection was denied
+to the current process. No repair, destructive scan or Session deletion ran.
+
+The SDK failure propagation is separately fixed in KodaX branch `KodaX`,
+commit `0f0c8293`: Run-list admission reads stable canonical identity
+metadata, rather than whole historical transcripts. Unreadable metadata
+still fails closed, active/unknown Runs and Actor turns remain blockers,
+and explicitly loading the affected Session still reports body EIO. The
+whole-body admission path predates alpha.7 (`5f482f6e`, 2026-08-01).
+The new public-interface regression failed before the fix; 41 focused Windows
+tests, both typechecks, bundle/declaration builds and independent Standards
+and Spec reviews passed. No Linux or new packaged qualification is claimed
+for this patch.
+
+The SDK fix is **not installed in the current Space unpacked preview or its
+running Host**. Keep release blocked and preserve the original Session and
+current build while backup/storage status is unresolved. See the
+[sanitized incident evidence](space-profile-eio-2026-10-19.json). No inputs
+or tools were submitted and no live owner was stopped during diagnosis.

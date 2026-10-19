@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-19",
+  "timeZone": "Asia/Shanghai",
+  "scope": "Read-only diagnosis of the real user profile after the local Windows preview build",
+  "spaceVersion": "0.1.47-alpha.3",
+  "installedSdkVersion": "0.7.97-alpha.7",
+  "packagedAsarSha256": "04e945da885f77c8bda9f2d67d20cef1cb06c59858abcc426d38a7d23d016729",
+  "originalFailure": {
+    "timestamp": "2026-10-19T08:47:57.532Z",
+    "event": "host_initialization_failed",
+    "name": "RuntimeDaemonTransportError",
+    "code": "internal_error",
+    "message": "EIO: i/o error, read",
+    "hostStatus": "ready",
+    "publicReproduction": {
+      "passiveConnect": "passed",
+      "daemonInspect": "failed: EIO",
+      "runsList": "failed: EIO",
+      "sessionsListLimit1": "passed",
+      "catalogExtensions": "passed",
+      "workflowsList": "passed",
+      "pendingPermissions": "passed",
+      "pendingUserInputs": "passed"
+    }
+  },
+  "narrowing": {
+    "chain": "daemon.inspect -> status.preflight -> runs.list -> admission.admitsSession -> storage.peek -> full Session body read",
+    "indexedRunRecordsReadable": 200,
+    "referencedSessions": 59,
+    "unreadableSession": "20260914_084034_oz884c2d160c23",
+    "project": "VideoWorks",
+    "sessionFileBytes": 1306477,
+    "firstFailed64KiBReadOffset": 524288,
+    "metadataLineBytes": 76170,
+    "metadataRead": "passed through public FileSessionStorage.readActorMetadata",
+    "nativeWindowsRead": {
+      "exception": "System.IO.IOException",
+      "message": "Data error (cyclic redundancy check)",
+      "hresult": "0x80070017"
+    },
+    "canonicalMetadataInventory": {
+      "timestamp": "2026-10-19T09:01:34.249Z",
+      "sessions": 3026,
+      "readable": 3026,
+      "errors": 0,
+      "actorCurrentTurnReferences": 1,
+      "elapsedMs": 3418,
+      "limitation": "An Actor current-turn reference is not a verified executing task or a safe-stop decision. No owner was stopped."
+    }
+  },
+  "storageEvidence": {
+    "systemEvent": {
+      "provider": "disk",
+      "id": 7,
+      "device": "Harddisk0/DR0",
+      "message": "The device has a bad block",
+      "recentTimestamp": "2026-10-19T09:05:08.014818Z",
+      "recordId": 91968
+    },
+    "systemBoot": "2026-10-17T15:19:30.500756Z",
+    "currentSystemVolume": "C:",
+    "currentDiskNumber": 0,
+    "currentDiskModel": "NVMe KINGSTON SNV3S2000G",
+    "bus": "NVMe",
+    "reportedGeneralHealth": "Healthy",
+    "reportedOperationalStatus": "Online",
+    "userMigrationMethod": "Whole-disk clone from the previous faulty disk",
+    "lowLevelHealthAndBadClusterInspection": "Unavailable: current process lacks the required access",
+    "conclusion": "Current file I/O failure and newly generated disk events are confirmed. Physical failure of the replacement SSD is not established. Cloned NTFS bad-cluster state, current media problems and storage-stack faults remain to be distinguished. This is not merely an old Event Log entry or a JSON parse error.",
+    "reference": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/chkdsk"
+  },
+  "softwareFix": {
+    "repository": "KodaX",
+    "branch": "KodaX",
+    "commit": "0f0c8293",
+    "behavior": "Use stable canonical Session identity metadata for Run-list admission instead of reading the whole historical transcript",
+    "safety": "Metadata failures still propagate; active and unknown Runs and Actor turns still block exit; explicit Session loading still reports body EIO",
+    "earlierWholeBodyAdmissionCommit": "5f482f6e",
+    "earlierWholeBodyAdmissionDate": "2026-08-01",
+    "tests": {
+      "focusedWindowsTests": 41,
+      "failures": 0,
+      "redBeforeFix": true,
+      "sourceTypecheck": "passed",
+      "testTypecheck": "passed",
+      "bundleBuild": "passed",
+      "declarationBuild": "passed",
+      "standardsReviewFindings": 0,
+      "specReviewFindings": 0
+    },
+    "repairedSessionOrStorage": false,
+    "installedInCurrentSpaceBuild": false,
+    "runningHostReplaced": false,
+    "published": false
+  },
+  "releaseDisposition": "Keep release blocked. Earlier isolated packaged passes do not close the real-profile EIO. Preserve the current app and original Session; defer large build replacement while storage health and backup status remain unresolved.",
+  "userProfileMutations": {
+    "sessionFilesEdited": 0,
+    "inputsSubmitted": 0,
+    "toolsInvoked": 0,
+    "ownersStopped": 0,
+    "diskRepairs": 0
+  }
+}
