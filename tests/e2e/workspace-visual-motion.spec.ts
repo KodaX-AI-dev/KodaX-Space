@@ -263,8 +263,11 @@ async function inspectFocusAndBackground(space: SpaceInstance): Promise<void> {
   ).toBe('paused');
   await space.app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id)?.close(), peerId);
   await window.evaluate((win) => win.focus());
-  await page.waitForTimeout(1250);
-  expect(await light.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
+  await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+  await expect(page.locator('html')).not.toHaveClass(/visual-ambient-paused/);
+  await expect
+    .poll(() => light.evaluate((node) => node.getAnimations({ subtree: true }).length))
+    .toBe(0);
 }
 
 async function inspectScrollAndMenu(page: Page): Promise<void> {

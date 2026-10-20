@@ -323,7 +323,7 @@ function SidebarTab({
       onClick={onClick}
       aria-pressed={active}
       data-testid={testId}
-      className={`flex-1 px-3 py-2 text-[12px] font-medium ${
+      className={`flex-1 px-3 py-2 text-[13px] font-medium ${
         active ? 'text-fg-primary bg-surface-2' : 'text-fg-muted hover:text-fg-secondary'
       }`}
     >
@@ -428,7 +428,7 @@ function Section({
       data-task-dock-section={sectionId}
     >
       <div
-        className="flex min-h-8 w-full items-stretch text-xs uppercase tracking-wider text-fg-muted"
+        className="flex min-h-8 w-full items-stretch text-sm uppercase tracking-wider text-fg-muted"
         data-testid="task-dock-section-header"
       >
         <button
@@ -526,11 +526,11 @@ function RunSection({ focusRequest }: { readonly focusRequest: TaskDockFocusStat
         <div className="flex items-start gap-2">
           <span className={`mt-1 h-2 w-2 rounded-full ${runDotClass(view.severity)}`} aria-hidden />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-medium text-fg-primary" title={view.headline}>
+            <div className="truncate text-[14px] font-medium text-fg-primary" title={view.headline}>
               {view.headline}
             </div>
             {view.detail && (
-              <div className="mt-0.5 line-clamp-2 text-[12px] leading-4 text-fg-muted">
+              <div className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-fg-muted">
                 {view.detail}
               </div>
             )}
@@ -541,7 +541,7 @@ function RunSection({ focusRequest }: { readonly focusRequest: TaskDockFocusStat
             {view.metrics.map((metric) => (
               <span
                 key={metric.key}
-                className="rounded border border-border-default bg-surface-2 px-1.5 py-0.5 text-[11px] text-fg-secondary"
+                className="rounded border border-border-default bg-surface-2 px-1.5 py-0.5 text-[12px] text-fg-secondary"
               >
                 <span className="text-fg-faint">{metric.label}</span>{' '}
                 <span className="font-mono text-fg-primary">{metric.value}</span>
@@ -619,11 +619,11 @@ function PlanSection({
       popoutKind="plan"
     >
       {plan.running?.activeForm && (
-        <div className="text-xs text-fg-muted mb-2 truncate" title={plan.running.activeForm}>
+        <div className="text-sm text-fg-muted mb-2 truncate" title={plan.running.activeForm}>
           {t('right.now')}: {plan.running.activeForm}
         </div>
       )}
-      <ul className="space-y-1 text-xs">
+      <ul className="space-y-1 text-sm">
         {plan.rows.map((row) => (
           <PlanRow key={planRowKey(row)} row={row} onShowAll={showAllPlanItems} />
         ))}
@@ -641,7 +641,7 @@ function PlanRow({ row, onShowAll }: { row: SidebarPlanRow; onShowAll: () => voi
   const { t } = useI18n();
   if (row.kind === 'done-summary') {
     return (
-      <li className="flex items-center gap-2 px-1.5 py-0.5 text-[11px] font-mono text-fg-faint">
+      <li className="flex items-center gap-2 px-1.5 py-0.5 text-[12px] font-mono text-fg-faint">
         <span className="w-3 text-center text-ok" aria-hidden>
           <Check className="inline h-2.5 w-2.5" strokeWidth={3} />
         </span>
@@ -657,7 +657,7 @@ function PlanRow({ row, onShowAll }: { row: SidebarPlanRow; onShowAll: () => voi
         <button
           type="button"
           onClick={onShowAll}
-          className="group flex w-full items-center gap-2 rounded px-1.5 py-0.5 text-left font-mono text-[11px] text-fg-faint hover:bg-hover-bg hover:text-fg-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-ink"
+          className="group flex w-full items-center gap-2 rounded px-1.5 py-0.5 text-left font-mono text-[12px] text-fg-faint hover:bg-hover-bg hover:text-fg-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-ink"
           aria-label={label}
           title={label}
           data-testid="right-sidebar-plan-show-more"
@@ -843,17 +843,17 @@ function AgentSection({
         </div>
       )}
       {status?.budgetApprovalRequired && (
-        <div className="mb-2 text-xs text-warn">{t('right.budgetApprovalNeeded')}</div>
+        <div className="mb-2 text-sm text-warn">{t('right.budgetApprovalNeeded')}</div>
       )}
       {agents.length === 0 ? (
         status?.idleWaiting ? (
-          <div className="text-xs text-fg-muted">
+          <div className="text-sm text-fg-muted">
             {t('right.waitingPending', { count: status.idleWaitingPendingCount ?? 0 })}
           </div>
         ) : fanoutLabel ? (
-          <div className="text-xs text-fg-muted">{fanoutLabel}</div>
+          <div className="text-sm text-fg-muted">{fanoutLabel}</div>
         ) : (
-          <div className="text-xs text-fg-muted">{t('right.noDelegatedAgents')}</div>
+          <div className="text-sm text-fg-muted">{t('right.noDelegatedAgents')}</div>
         )
       ) : (
         <AgentInlineList agents={agents} />
@@ -1083,7 +1083,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
     >
       {view.kind === 'loading' && (
         <div
-          className="flex items-center gap-2 py-1 text-[11px] text-fg-muted"
+          className="flex items-center gap-2 py-1 text-[12px] text-fg-muted"
           role="status"
           aria-live="polite"
           data-testid="external-agent-task-loading"
@@ -1094,7 +1094,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
       )}
       {view.kind === 'empty' && (
         <div
-          className="flex items-center gap-2 py-1.5 text-[11px] text-fg-muted"
+          className="flex items-center gap-2 py-1.5 text-[12px] text-fg-muted"
           role="status"
           data-testid="external-agent-task-empty"
         >
@@ -1114,10 +1114,10 @@ function ExternalAgentTasksSection(): JSX.Element | null {
           <div className="flex items-start gap-2">
             <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warn" aria-hidden />
             <div className="min-w-0">
-              <div className="text-[11px] font-medium text-fg-primary">
+              <div className="text-[12px] font-medium text-fg-primary">
                 {t('right.externalAgentTasksLoadFailed')}
               </div>
-              <div className="mt-0.5 text-[10px] leading-4 text-fg-muted">
+              <div className="mt-0.5 text-[12px] leading-5 text-fg-muted">
                 {t('right.externalAgentTasksLoadFailedHelp')}
                 {view.showTasks && ` ${t('right.externalAgentTasksShowingLastResult')}`}
               </div>
@@ -1126,7 +1126,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
           <button
             type="button"
             onClick={retryTaskList}
-            className="ml-[23px] mt-2 inline-flex min-h-6 items-center gap-1.5 rounded border border-border-strong bg-surface-2 px-2 text-[10px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary"
+            className="ml-[23px] mt-2 inline-flex min-h-6 items-center gap-1.5 rounded border border-border-strong bg-surface-2 px-2 text-[12px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary"
           >
             <RotateCcw size={10} aria-hidden />
             {t('right.externalAgentTasksRetry')}
@@ -1134,7 +1134,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
         </div>
       )}
       {actionError && view.kind !== 'loading' && (
-        <div className="mb-2 rounded bg-warn/10 px-2 py-1.5 text-[10px] text-warn" role="status">
+        <div className="mb-2 rounded bg-warn/10 px-2 py-1.5 text-[12px] text-warn" role="status">
           {t('right.externalAgentTaskActionFailed')}
         </div>
       )}
@@ -1161,18 +1161,18 @@ function ExternalAgentTasksSection(): JSX.Element | null {
                   <Bot size={13} className="mt-0.5 shrink-0 text-info" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="line-clamp-2 text-[11px] font-medium text-fg-primary">
+                      <span className="line-clamp-2 text-sm font-medium text-fg-primary">
                         {task.objective}
                       </span>
-                      <span className="ml-auto shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[9px] uppercase text-fg-secondary">
+                      <span className="ml-auto shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[11px] uppercase text-fg-secondary">
                         {externalTaskStateLabel(task.state, t)}
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate font-mono text-[9px] text-fg-faint">
+                    <div className="mt-0.5 truncate font-mono text-[11px] text-fg-faint">
                       {task.agentId}
                     </div>
                     {task.progress?.message && (
-                      <div className="mt-1 text-[10px] text-fg-secondary">
+                      <div className="mt-1 text-[12px] text-fg-secondary">
                         {task.progress.message}
                       </div>
                     )}
@@ -1189,7 +1189,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
               </button>
 
               {task.cancellation !== 'none' && (
-                <div className="mt-1.5 rounded bg-warn/10 px-2 py-1 text-[10px] text-warn">
+                <div className="mt-1.5 rounded bg-warn/10 px-2 py-1 text-[12px] text-warn">
                   {t('right.externalAgentCancellation', {
                     state: externalCancellationLabel(task.cancellation, t),
                   })}
@@ -1210,7 +1210,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
                       if (event.key === 'Enter') void sendInput(task.taskId);
                     }}
                     placeholder={t('right.externalAgentInputPlaceholder')}
-                    className="min-w-0 flex-1 rounded border border-warn/40 bg-surface px-2 py-1 text-[11px] text-fg-primary outline-none focus:border-warn"
+                    className="min-w-0 flex-1 rounded border border-warn/40 bg-surface px-2 py-1 text-[12px] text-fg-primary outline-none focus:border-warn"
                   />
                   <button
                     type="button"
@@ -1226,7 +1226,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
               )}
 
               {task.state === 'auth-required' && (
-                <div className="mt-2 rounded bg-danger/10 px-2 py-1 text-[10px] text-danger">
+                <div className="mt-2 rounded bg-danger/10 px-2 py-1 text-[12px] text-danger">
                   {t('right.externalAgentAuthRequired')}
                 </div>
               )}
@@ -1237,7 +1237,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
                     type="button"
                     disabled={busy}
                     onClick={() => void cancelTask(task.taskId)}
-                    className="inline-flex min-h-6 items-center gap-1 rounded border border-danger/35 bg-danger/10 px-2 text-[10px] text-danger disabled:opacity-50"
+                    className="inline-flex min-h-6 items-center gap-1 rounded border border-danger/35 bg-danger/10 px-2 text-[12px] text-danger disabled:opacity-50"
                   >
                     <Square size={9} /> {t('right.externalAgentCancel')}
                   </button>
@@ -1247,7 +1247,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
                     type="button"
                     disabled={busy}
                     onClick={() => void reconcileTask(task.taskId)}
-                    className="inline-flex min-h-6 items-center gap-1 rounded border border-warn/35 bg-warn/10 px-2 text-[10px] text-warn disabled:opacity-50"
+                    className="inline-flex min-h-6 items-center gap-1 rounded border border-warn/35 bg-warn/10 px-2 text-[12px] text-warn disabled:opacity-50"
                   >
                     <RotateCcw size={10} className={busy ? 'animate-spin' : ''} />{' '}
                     {t('right.externalAgentReconcile')}
@@ -1256,7 +1256,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
                 <button
                   type="button"
                   onClick={() => void toggleDetails(task.taskId)}
-                  className="ml-auto text-[10px] text-fg-muted hover:text-fg-primary"
+                  className="ml-auto text-[12px] text-fg-muted hover:text-fg-primary"
                 >
                   {expanded
                     ? t('right.externalAgentHideDetails')
@@ -1269,7 +1269,7 @@ function ExternalAgentTasksSection(): JSX.Element | null {
                   className="mt-2 space-y-2 border-t border-border-default/60 pt-2"
                   data-testid="external-agent-task-details"
                 >
-                  <div className="grid grid-cols-2 gap-1 text-[9px] text-fg-faint">
+                  <div className="grid grid-cols-2 gap-1 text-[11px] text-fg-faint">
                     <span>
                       {t('right.externalAgentProtocol')}: {task.protocol}
                     </span>
@@ -1284,22 +1284,22 @@ function ExternalAgentTasksSection(): JSX.Element | null {
                     <span>{new Date(task.updatedAt).toLocaleString()}</span>
                   </div>
                   {task.output && (
-                    <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-words rounded bg-surface-3 p-2 text-[10px] text-fg-secondary">
+                    <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-words rounded bg-surface-3 p-2 text-[12px] text-fg-secondary">
                       {task.output}
                     </pre>
                   )}
                   {(task.error ?? task.cancellationError) && (
-                    <div className="rounded bg-danger/10 p-2 text-[10px] text-danger">
+                    <div className="rounded bg-danger/10 p-2 text-[12px] text-danger">
                       {task.error ?? task.cancellationError}
                     </div>
                   )}
                   {task.artifacts && task.artifacts.length > 0 && (
-                    <div className="text-[10px] text-fg-secondary">
+                    <div className="text-[12px] text-fg-secondary">
                       {t('right.externalAgentArtifacts', { count: task.artifacts.length })}
                     </div>
                   )}
                   {task.usage?.totalTokens !== undefined && (
-                    <div className="text-[10px] text-fg-muted">
+                    <div className="text-[12px] text-fg-muted">
                       {t('right.externalAgentTokens', { count: task.usage.totalTokens })}
                     </div>
                   )}
@@ -1323,13 +1323,13 @@ function ExternalAgentEventTimeline({
 }): JSX.Element {
   const { t } = useI18n();
   if (events.length === 0)
-    return <div className="text-[10px] text-fg-faint">{t('right.externalAgentNoEvents')}</div>;
+    return <div className="text-[12px] text-fg-faint">{t('right.externalAgentNoEvents')}</div>;
   return (
     <ol className="space-y-1" aria-label={t('right.externalAgentEventLog')}>
       {events.map((event) => (
         <li
           key={`${event.taskId}:${event.seq}:${event.type}`}
-          className="flex gap-2 text-[10px] text-fg-muted"
+          className="flex gap-2 text-[12px] text-fg-muted"
         >
           <span className="w-5 shrink-0 font-mono text-fg-faint">#{event.seq}</span>
           <span className="w-16 shrink-0 text-fg-secondary">{event.type}</span>
@@ -1435,7 +1435,7 @@ function AgentMetric({
   readonly value: string | number;
 }): JSX.Element {
   return (
-    <span className="rounded border border-border-default bg-surface-2 px-1.5 py-0.5 text-[11px] text-fg-secondary">
+    <span className="rounded border border-border-default bg-surface-2 px-1.5 py-0.5 text-[12px] text-fg-secondary">
       <span className="text-fg-faint">{label}</span>{' '}
       <span className="font-mono text-fg-primary">{value}</span>
     </span>
@@ -1479,19 +1479,19 @@ function AgentStatusCard({
             <span className="truncate font-medium text-fg-primary" title={agent.title}>
               {agent.title}
             </span>
-            <span className="flex-shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
+            <span className="flex-shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[12px] uppercase tracking-wide text-fg-muted">
               {agent.terminationReason === 'iteration_limit'
                 ? t('agent.iterationLimitReached')
                 : agentStateLabel(agent.state, t)}
             </span>
           </div>
-          <div className="mt-0.5 flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] text-fg-muted">
+          <div className="mt-0.5 flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 text-[12px] text-fg-muted">
             {agent.role && <span>{agent.role}</span>}
             {agent.responsibility && <span className="truncate">/ {agent.responsibility}</span>}
           </div>
           {agent.latest && (
             <div
-              className={`mt-1 text-[12px] leading-4 text-fg-secondary ${
+              className={`mt-1 text-[13px] leading-5 text-fg-secondary ${
                 compact ? 'line-clamp-2' : ''
               }`}
               title={agent.iteration ? t('agent.iterationHint') : agent.latest}
@@ -1499,7 +1499,7 @@ function AgentStatusCard({
               {agent.latest}
             </div>
           )}
-          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-fg-faint">
+          <div className="mt-1 flex flex-wrap gap-1 text-[12px] text-fg-faint">
             {agent.evidenceCount !== undefined && (
               <span>{t('right.notesCount', { count: agent.evidenceCount })}</span>
             )}
@@ -1699,7 +1699,7 @@ function ChangesSection({
         focusRequest={focusRequest}
         defaultOpen={false}
       >
-        <div className="text-xs text-fg-muted">{t('right.openProjectForChanges')}</div>
+        <div className="text-sm text-fg-muted">{t('right.openProjectForChanges')}</div>
       </Section>
     );
   }
@@ -1707,7 +1707,7 @@ function ChangesSection({
   if (!snapshot) {
     return (
       <Section title={t('right.changes')} sectionId="changes" focusRequest={focusRequest}>
-        <div className="text-xs text-fg-muted">{t('right.loadingChanges')}</div>
+        <div className="text-sm text-fg-muted">{t('right.loadingChanges')}</div>
       </Section>
     );
   }
@@ -1720,7 +1720,7 @@ function ChangesSection({
         focusRequest={focusRequest}
         defaultOpen={false}
       >
-        <div className="space-y-2 text-xs text-fg-muted">
+        <div className="space-y-2 text-sm text-fg-muted">
           <div>{t('right.notGitRepo')}</div>
           <div className="leading-relaxed">{t('right.notGitRepoHelp')}</div>
           <button
@@ -1730,7 +1730,7 @@ function ChangesSection({
               window.dispatchEvent(new Event('kodax-space.open-files-workspace'));
               window.dispatchEvent(new Event('kodax-space.focus-artifact'));
             }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[12px] font-medium text-accent-ink hover:bg-accent/15"
+            className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[13px] font-medium text-accent-ink hover:bg-accent/15"
           >
             <Folder className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t('files.openProjectFiles')}
@@ -1748,14 +1748,14 @@ function ChangesSection({
         focusRequest={focusRequest}
       >
         {snapshot.branch && (
-          <div className="text-[11px] text-fg-muted mb-1.5 font-mono">
+          <div className="text-[12px] text-fg-muted mb-1.5 font-mono">
             {t('right.onBranch', { branch: snapshot.branch })}
           </div>
         )}
         {snapshot.files.length === 0 ? (
-          <div className="text-xs text-fg-muted">{t('right.workingTreeClean')}</div>
+          <div className="text-sm text-fg-muted">{t('right.workingTreeClean')}</div>
         ) : (
-          <ul className="text-xs font-mono space-y-0.5">
+          <ul className="text-sm font-mono space-y-0.5">
             <ChangeTreeView
               node={tree}
               depth={0}
@@ -1947,7 +1947,7 @@ function StatusBadge({
   const color = status === 'U' ? 'text-fg-muted' : staged ? 'text-ok' : 'text-warn';
   return (
     <span
-      className={`flex-shrink-0 w-4 text-[11px] font-bold text-center ${color}`}
+      className={`flex-shrink-0 w-4 text-[12px] font-bold text-center ${color}`}
       title={`${changeStatusLabel(status, t)}${staged ? ` (${t('right.status.staged')})` : ''}`}
       aria-hidden
     >
@@ -1993,7 +1993,7 @@ function ArtifactsSummarySection({
       defaultOpen={false}
     >
       {hasArtifactSurface ? (
-        <div className="space-y-2 text-xs text-fg-secondary">
+        <div className="space-y-2 text-sm text-fg-secondary">
           <div>
             {artifactError
               ? t('right.artifactLoadingNeedsAttention')
@@ -2002,13 +2002,13 @@ function ArtifactsSummarySection({
           <button
             type="button"
             onClick={onOpenArtifact}
-            className="rounded-md border border-border-default px-2 py-1 text-[12px] text-fg-secondary hover:bg-hover-bg hover:text-fg-primary"
+            className="rounded-md border border-border-default px-2 py-1 text-[13px] text-fg-secondary hover:bg-hover-bg hover:text-fg-primary"
           >
             {t('right.openArtifactWorkspace')}
           </button>
         </div>
       ) : (
-        <div className="text-xs text-fg-muted">{t('right.generatedArtifactsEmpty')}</div>
+        <div className="text-sm text-fg-muted">{t('right.generatedArtifactsEmpty')}</div>
       )}
     </Section>
   );
@@ -2033,8 +2033,8 @@ function SourcesSection({
       defaultOpen={false}
     >
       {projectPath ? (
-        <div className="text-xs text-fg-secondary space-y-1">
-          <div className="text-[11px] uppercase tracking-wider text-fg-muted">
+        <div className="text-sm text-fg-secondary space-y-1">
+          <div className="text-[12px] uppercase tracking-wider text-fg-muted">
             {t('right.workingFolder')}
           </div>
           <div className="flex items-center gap-1.5">
@@ -2052,7 +2052,7 @@ function SourcesSection({
             type="button"
             onClick={() => void revealPath(projectPath)}
             title={t('right.revealInFileManager')}
-            className="group/wf w-full text-left flex items-start gap-1 text-fg-muted text-[11px] font-mono break-all hover:text-fg-secondary"
+            className="group/wf w-full text-left flex items-start gap-1 text-fg-muted text-[12px] font-mono break-all hover:text-fg-secondary"
           >
             <span className="break-all">{projectPath}</span>
             <FolderOpen
@@ -2063,7 +2063,7 @@ function SourcesSection({
           </button>
         </div>
       ) : (
-        <div className="text-xs text-fg-muted">{t('right.noProjectOpen')}</div>
+        <div className="text-sm text-fg-muted">{t('right.noProjectOpen')}</div>
       )}
     </Section>
   );
@@ -2148,7 +2148,7 @@ function ContextSection({
         focusRequest={focusRequest}
         defaultOpen={false}
       >
-        <div className="text-xs text-fg-muted leading-relaxed">{t('right.contextEmpty')}</div>
+        <div className="text-sm text-fg-muted leading-relaxed">{t('right.contextEmpty')}</div>
       </Section>
     );
   }
@@ -2163,14 +2163,14 @@ function ContextSection({
       >
         {refs.tools.length > 0 && (
           <div className="mb-3">
-            <div className="text-[11px] uppercase tracking-wider text-fg-muted mb-1">
+            <div className="text-[12px] uppercase tracking-wider text-fg-muted mb-1">
               {t('right.toolsUsed')}
             </div>
             <div className="flex flex-wrap gap-1">
               {refs.tools.map((t) => (
                 <span
                   key={t.name}
-                  className="text-[11px] px-1.5 py-0.5 rounded bg-surface-2 text-fg-secondary"
+                  className="text-[12px] px-1.5 py-0.5 rounded bg-surface-2 text-fg-secondary"
                   title={`${t.count}x ${t.name}`}
                 >
                   {t.name}
@@ -2182,11 +2182,11 @@ function ContextSection({
         )}
         {visibleFiles.length > 0 && (
           <div>
-            <div className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-wider text-fg-muted">
+            <div className="mb-1 flex items-center justify-between gap-2 text-[12px] uppercase tracking-wider text-fg-muted">
               <span>{t('right.filesReferenced')}</span>
               <span className="font-mono normal-case tracking-normal">{visibleFiles.length}</span>
             </div>
-            <ul className="max-h-48 space-y-0.5 overflow-y-auto rounded-md border border-border-default/70 bg-surface-3/35 p-1 text-xs font-mono">
+            <ul className="max-h-48 space-y-0.5 overflow-y-auto rounded-md border border-border-default/70 bg-surface-3/35 p-1 text-sm font-mono">
               {visibleFiles.map((f) => (
                 <li key={f}>
                   <button
