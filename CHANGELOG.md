@@ -12,24 +12,25 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 > v0.1.7 内容 (F011/F023/F024/F026/F038) 跟 v0.1.8 一起发。GitHub Releases 顶部仍是 v0.1.5，
 > 0.1.7 这条 section 留作历史记录、git log 引用入口。
 
-## [Unreleased]
+## [0.1.47-alpha.3] - 2026-10-20
 
-### Fixed
+Third alpha of the 0.1.47 line: shared-Host recovery and the remaining migration-gap closures.
 
-- Pin official KodaX `0.7.97-alpha.9` in root/Desktop and the lockfile. Shared Host inspection now uses canonical Session metadata without reading damaged historical bodies, retaining live controller ownership and other clients' exit protection. Add published-package regressions for body EIO, active work and unreadable metadata; keep the existing startup/history and Artifact integration contracts.
+### Changed
 
-- Issue 222: discover the actual Host owning shared Session storage before starting Coder, including a competing owner that wins during startup. Reuse compatible Hosts; replace a verified idle older Host through SDK managed shutdown. New Hosts request the SDK interactive lifecycle; compatible retained Hosts keep their existing lifecycle. Protect active work, report its owner/capability/blockers, and retry until the selected history can recover without refreshing.
-- Keep the attached Host profile through passive reconnect, complete exit and durable exit recovery. Show connection failures while history is waiting instead of presenting an empty conversation.
-- Issue 222 follow-up: automatically use SDK guarded startup after an established Host exits or connection/readiness temporarily times out. Handle typed startup failures and legacy unhealthy diagnostics, stop retrying permanent incompatibility, and fence reconnect results after close. See the [adjacent recovery audit](docs/releases/issue-222-self-healing-audit.md).
+- Pin published Registry KodaX `0.7.97-alpha.9` in root/Desktop and the lockfile, advancing through alpha.7 and alpha.8. alpha.7 brings shared-storage Host discovery with startup cancellation and typed startup failures. alpha.8 keeps the Artifact subpaths and their physical workers inside the main package. alpha.9 repairs Session admission to read canonical identity metadata without touching damaged historical bodies, while initialized Actor controllers supply their existing admission behind the durable owner fence, so live writes preserve other clients' `protected` exit classification. Published-package fault-injection regressions cover body EIO, active work and unreadable metadata. See the [alpha.9](docs/releases/kodax-0.7.97-alpha.9-integration.md), [alpha.8](docs/releases/kodax-0.7.97-alpha.8-integration.md) and [alpha.7](docs/releases/kodax-0.7.97-alpha.7-integration.md) integration records.
+- Issue 222: discover the actual Host owning shared Session storage before starting Coder, including a competing owner that wins during startup. Reuse compatible Hosts; replace a verified idle older Host through SDK managed shutdown. New Hosts request the SDK interactive lifecycle; compatible retained Hosts keep their existing lifecycle. Protect active work, report its owner/capability/blockers, and retry until the selected history can recover without refreshing. Follow-up: automatically use SDK guarded startup after an established Host exits or connection/readiness temporarily times out; handle typed startup failures and stop retrying permanent incompatibility. See the [recovery audit](docs/releases/issue-222-self-healing-audit.md) and [verification](docs/releases/issue-222-recovery-verification.md).
+- Close the shared-Host migration gaps from the [alignment audit](docs/research/kodax-space-sdk-alignment-audit-2026-10-18.md): Workflow launches start through a Host owner with Host-managed run directories; permission requests carry the SDK's full finalized plan (bounded to the daemon frame, never a shortened preview) and stay single-review in batching; MCP panels read server status through the shared Runtime and per-server stop is refused there; memory proposals gain revision-guarded approve/reject with Host curate/pack capabilities; a host-image module reads tool image attachments through paged Host reads with SHA-256 verification; the builtin Skill path registers inside the shared Host through a packaged resource; run projections expose typed terminal facts.
 - Keep the Session observer across queued/interrupt admission and the handoff to the SDK's canonical view. Reconcile batched inputs and dropped steering by exact input identity; an unknown acknowledgement is not rejection. Publish asynchronous image projections before releasing observation demand. Ordinary idle history reads add no input-state RPC, and no input is resubmitted.
 - Release matching local Run admission hints after an SDK-confirmed terminal Stop, even while its old result stream remains open. Preserve protection for unknown Stop results and prevent late old results or Stop replies from clearing a successor Run.
+- Keep the attached Host profile through passive reconnect, complete exit and durable exit recovery. Show connection failures while history is waiting instead of presenting an empty conversation.
 - Issue 221: preserve Session deletion errors and restore local state after failure; show the busy warning only for an SDK `session_running` result.
 
-- Pin published Registry SDK `0.7.97-alpha.7` in both dependency manifests and the lockfile, replacing the local Issue 222 test tarball. Cancel SDK startup when Space closes, including a close while client identity is opening. Regressions cover genuine older-Host upgrade, retained same-installation Host reuse and a streaming Host crash without input resubmission.
+### Documentation
 
-Local Windows verification candidate: Space `0.1.47-alpha.3` with published SDK `0.7.97-alpha.7`. See [integration evidence](docs/releases/kodax-0.7.97-alpha.7-integration.md). Space candidate artifacts are not a GitHub release.
+- Align READMEs, the document index, PRD/HLD/DD, user manual, capability ledger, feature list, version design and the in-app manual with the alpha.3 candidate and the SDK alpha.9 baseline. Record the upstream alpha.7 change inventory, input-authority and Host-domain audits, builtin-skill Host probes and the Artifact publication path audit; preserve the task-companion design exploration as unimplemented material.
 
-- Add published-SDK Electron regressions for a restored checkpoint window followed by repeated input, and pending-tool history EOF/timestamps across reload. Correct stale alpha.6 documentation entry points. See [consumer verification](docs/releases/kodax-0.7.97-alpha.7-space-followup.md).
+See [release readiness](docs/releases/v0.1.47-alpha.3-release-readiness.md) and the [SDK migration record](docs/features/SDK_0.7.97_MIGRATION.md).
 
 ---
 

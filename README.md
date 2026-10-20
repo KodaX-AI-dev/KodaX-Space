@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**This checkout carries Space `0.1.47-alpha.3`, with the published Registry SDK `0.7.97-alpha.7` pinned exactly.** Root, Desktop, IPC schema and UI kit share the Space version; the lockfile verifies the Registry package integrity. See [alpha.7 integration and recovery verification](docs/releases/kodax-0.7.97-alpha.7-integration.md). Space alpha.3 is a local Windows candidate and has not been published; the latest published Space prerelease remains `v0.1.47-alpha.2`.
+**This checkout carries Space `0.1.47-alpha.3`, with the published Registry SDK `0.7.97-alpha.9` pinned exactly.** Root, Desktop, IPC schema and UI kit share the Space version; the lockfile verifies the Registry package integrity. See the [alpha.9 integration](docs/releases/kodax-0.7.97-alpha.9-integration.md) and [release readiness](docs/releases/v0.1.47-alpha.3-release-readiness.md). Space alpha.3 is a release candidate and has not been published; the latest published Space prerelease remains `v0.1.47-alpha.2`.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.
@@ -100,7 +100,7 @@ npm run dev
 
 Existing sandbox, credential and exit boundaries remain in effect. Unsigned macOS builds require a manual DMG update. Partner retains its inline owner, bundled library and explicit external-account acceptance limits.
 
-See [release preparation](docs/releases/v0.1.47-alpha.2-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
+See [release preparation](docs/releases/v0.1.47-alpha.3-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
 
 ## Current Release
 

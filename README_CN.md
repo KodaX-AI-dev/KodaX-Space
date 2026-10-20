@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前源码为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.7`。** 根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本；lockfile 校验 Registry 包完整性，详见[alpha.7 集成与恢复验证](docs/releases/kodax-0.7.97-alpha.7-integration.md)。Space alpha.3 为本地 Windows 候选，尚未发布；最新已发布的 Space 预发布版仍为 `v0.1.47-alpha.2`。
+**当前源码为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.9`。** 根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本；lockfile 校验 Registry 包完整性，详见 [alpha.9 接入记录](docs/releases/kodax-0.7.97-alpha.9-integration.md)与[发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)。Space alpha.3 为发布候选，尚未发布；最新已发布的 Space 预发布版仍为 `v0.1.47-alpha.2`。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。
@@ -100,7 +100,7 @@ npm run dev
 
 Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS 未签名构建仍需手动下载 DMG 更新。Partner 保留自己的 inline owner、现有内置库与外部账号验收边界。
 
-见[本次发布准备](docs/releases/v0.1.47-alpha.2-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
+见[本次发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
 
 ## 当前正式版本
 
