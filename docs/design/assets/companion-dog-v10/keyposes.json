@@ -1,0 +1,170 @@
+[
+  {
+    "file": "keyframes/pose-0.png",
+    "action": "prepare",
+    "pose": "seated-to-standing",
+    "sourceCel": 0
+  },
+  {
+    "file": "keyframes/pose-1.png",
+    "action": "prepare",
+    "pose": "seated-to-standing",
+    "sourceCel": 1
+  },
+  {
+    "file": "keyframes/pose-5.png",
+    "action": "prepare",
+    "pose": "seated-to-standing",
+    "sourceCel": 5
+  },
+  {
+    "file": "keyframes/pose-9.png",
+    "action": "prepare",
+    "pose": "seated-to-standing",
+    "sourceCel": 9
+  },
+  {
+    "file": "keyframes/pose-11.png",
+    "action": "prepare",
+    "pose": "seated-to-standing",
+    "sourceCel": 11
+  },
+  {
+    "file": "keyframes/pose-13.png",
+    "action": "prepare",
+    "pose": "seated-to-standing",
+    "sourceCel": 13
+  },
+  {
+    "file": "keyframes/pose-18.png",
+    "action": "fetch",
+    "pose": "standing",
+    "sourceCel": 18
+  },
+  {
+    "file": "keyframes/pose-21.png",
+    "action": "fetch",
+    "pose": "standing",
+    "sourceCel": 21
+  },
+  {
+    "file": "keyframes/pose-24.png",
+    "action": "fetch",
+    "pose": "standing",
+    "sourceCel": 24
+  },
+  {
+    "file": "keyframes/pose-28.png",
+    "action": "carry",
+    "pose": "standing",
+    "sourceCel": 28
+  },
+  {
+    "file": "keyframes/pose-32.png",
+    "action": "carry",
+    "pose": "standing",
+    "sourceCel": 32
+  },
+  {
+    "file": "keyframes/pose-35.png",
+    "action": "carry",
+    "pose": "standing",
+    "sourceCel": 35
+  },
+  {
+    "file": "keyframes/pose-40.png",
+    "action": "carry",
+    "pose": "standing",
+    "sourceCel": 40
+  },
+  {
+    "file": "keyframes/pose-43.png",
+    "action": "inspect",
+    "pose": "lying",
+    "sourceCel": 43
+  },
+  {
+    "file": "keyframes/pose-48.png",
+    "action": "inspect",
+    "pose": "lying",
+    "sourceCel": 48
+  },
+  {
+    "file": "keyframes/pose-56.png",
+    "action": "inspect",
+    "pose": "lying",
+    "sourceCel": 56
+  },
+  {
+    "file": "keyframes/pose-62.png",
+    "action": "inspect",
+    "pose": "lying",
+    "sourceCel": 62
+  },
+  {
+    "file": "keyframes/pose-62.png",
+    "action": "inspect",
+    "pose": "lying",
+    "sourceCel": 62
+  },
+  {
+    "file": "keyframes/pose-66.png",
+    "action": "respond",
+    "pose": "lying",
+    "sourceCel": 66
+  },
+  {
+    "file": "keyframes/pose-71.png",
+    "action": "respond",
+    "pose": "lying",
+    "sourceCel": 71
+  },
+  {
+    "file": "keyframes/pose-71.png",
+    "action": "respond",
+    "pose": "lying",
+    "sourceCel": 71
+  },
+  {
+    "file": "keyframes/pose-76.png",
+    "action": "respond",
+    "pose": "lying",
+    "sourceCel": 76
+  },
+  {
+    "file": "keyframes/pose-81.png",
+    "action": "respond",
+    "pose": "lying",
+    "sourceCel": 81
+  },
+  {
+    "file": "keyframes/pose-88.png",
+    "action": "settle",
+    "pose": "lying-to-seated",
+    "sourceCel": 88
+  },
+  {
+    "file": "keyframes/pose-92.png",
+    "action": "settle",
+    "pose": "lying-to-seated",
+    "sourceCel": 92
+  },
+  {
+    "file": "keyframes/pose-100.png",
+    "action": "settle",
+    "pose": "lying-to-seated",
+    "sourceCel": 100
+  },
+  {
+    "file": "keyframes/pose-105.png",
+    "action": "settle",
+    "pose": "lying-to-seated",
+    "sourceCel": 105
+  },
+  {
+    "file": "keyframes/pose-0.png",
+    "action": "rest",
+    "pose": "seated",
+    "sourceCel": 0
+  }
+]

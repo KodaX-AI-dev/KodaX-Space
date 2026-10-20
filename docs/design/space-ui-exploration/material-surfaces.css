@@ -1,0 +1,168 @@
+/* Local material study. Production quality preferences remain unchanged. */
+:root {
+  --ks-glass-rgb: 27 31 29;
+  --ks-glass-ink: #f0f1ea;
+  --ks-glass-muted: #b2b9b0;
+  --ks-glass-alpha: 0.72;
+  --ks-glass-blur: 16px;
+  --ks-glass-sat: 1.2;
+  --ks-glass-edge: 255 255 255;
+  --ks-glass-depth: 0.32;
+  --ks-material-ease: cubic-bezier(0.22, 0.8, 0.22, 1);
+}
+:root[data-theme='light'] {
+  --ks-glass-rgb: 251 253 248;
+  --ks-glass-ink: #232e27;
+  --ks-glass-muted: #56645b;
+  --ks-glass-alpha: 0.74;
+  --ks-glass-depth: 0.14;
+}
+.ks-glass {
+  position: relative;
+  isolation: isolate;
+  color: var(--ks-glass-ink);
+  background:
+    linear-gradient(135deg, #ffffff12, transparent 54%),
+    rgb(var(--ks-glass-rgb) / var(--ks-glass-alpha));
+  backdrop-filter: blur(var(--ks-glass-blur)) saturate(var(--ks-glass-sat));
+  -webkit-backdrop-filter: blur(var(--ks-glass-blur)) saturate(var(--ks-glass-sat));
+  border: 1px solid rgb(var(--ks-glass-edge) / 0.12);
+  box-shadow:
+    0 18px 48px rgb(0 0 0 / var(--ks-glass-depth)),
+    inset 0 1px 0 #ffffff0d,
+    inset 0 -1px 0 #00000018;
+}
+.ks-glass::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(130deg, #ffffff9c, #ffffff12 35%, transparent 58%, #ffffff2e);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  z-index: 3;
+}
+.ks-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    280px circle at var(--ks-light-x, 8%) var(--ks-light-y, 0%),
+    #e4f8e526,
+    transparent 80%
+  );
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity 260ms var(--ks-material-ease);
+  z-index: -1;
+}
+.ks-glass:focus-within::after,
+.ks-glass:hover::after {
+  opacity: 1;
+}
+.popover.ks-glass,
+.command-dialog.ks-glass {
+  position: fixed;
+  overflow: hidden;
+}
+.ks-sheen {
+  position: absolute;
+  inset: -20% auto -20% -65%;
+  width: 42%;
+  background: linear-gradient(105deg, transparent 12%, #fff0, #ffffff20, #fff0 83%, transparent);
+  transform: translateX(0) skewX(-18deg);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+}
+.ks-sheen.is-playing {
+  animation: ks-material-sheen 850ms var(--ks-material-ease) both;
+}
+@keyframes ks-material-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(0) skewX(-18deg);
+  }
+  18% {
+    opacity: 0.8;
+  }
+  75% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(420%) skewX(-18deg);
+  }
+}
+/* A: continuous reading surface, with glass reserved for the fixed composer. */
+body.material-workspace .sidebar {
+  background: radial-gradient(ellipse at 0 0, #37664e1a, transparent 55%), var(--chrome);
+}
+body.material-workspace .workspace {
+  background: radial-gradient(ellipse 70% 28% at 40% 110%, #43836638, transparent), var(--canvas);
+}
+body.material-workspace .composer.ks-glass {
+  background: linear-gradient(120deg, #d9ebd610, transparent 55%), rgb(var(--ks-glass-rgb) / 0.76);
+  border-color: #c6ddc42b;
+  border-radius: 14px;
+  overflow: hidden;
+  transition:
+    border-color 260ms,
+    box-shadow 260ms;
+  box-shadow:
+    0 8px 30px #0000001f,
+    inset 0 1px 0 #ffffff0a;
+}
+body.material-workspace .composer.ks-glass:focus-within {
+  border-color: #c8d4ad70;
+  box-shadow:
+    0 10px 34px #00000029,
+    0 0 0 3px #dbbf7210;
+}
+body.material-workspace .composer.ks-glass textarea {
+  color: var(--ks-glass-ink);
+}
+body.material-workspace .send {
+  background: linear-gradient(145deg, #f4d69b, var(--accent));
+  box-shadow:
+    inset 0 1px 0 #fff7,
+    0 2px 9px #d1a15c24;
+}
+:root[data-theme='light'] body.material-workspace .composer.ks-glass {
+  background: linear-gradient(120deg, #fff9, transparent 55%), rgb(var(--ks-glass-rgb) / 0.8);
+  border-color: #70886e42;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ks-glass {
+    --ks-glass-alpha: 1;
+    --ks-glass-blur: 0px;
+  }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .ks-glass {
+    --ks-glass-alpha: 1;
+  }
+}
+:root[data-motion='reduced'] .ks-sheen {
+  display: none;
+}
+:root[data-motion='reduced'] .ks-glass::after {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ks-sheen {
+    display: none;
+  }
+  .ks-glass::after {
+    transition: none;
+  }
+}

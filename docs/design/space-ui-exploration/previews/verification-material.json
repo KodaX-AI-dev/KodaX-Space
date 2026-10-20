@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-16",
+  "method": "Actual in-app browser, approximately 796px viewport, local prototype",
+  "checked": [
+    "Dark and light glass appearance",
+    "Minimal/balanced/full material selectors",
+    "Task selection updates project and status",
+    "Shared selection plate moves to selected row",
+    "Arrow keys and Escape return",
+    "Finite light sequence starts and completes at rest",
+    "Reduced-motion control remains available and updates document mode",
+    "Native command dialog and model popover retain correct positioning",
+    "Glass command dialog has no horizontal or vertical scrollbar artifact",
+    "Graphite retains multi-project navigation and gains local glass composer",
+    "JavaScript syntax, asset links, icons and unique IDs"
+  ],
+  "limitations": [
+    "Illustrative task and configuration data only",
+    "No production files modified",
+    "No Electron GPU, power, high-DPI or frame-rate benchmark",
+    "Pointer light cost has not been profiled"
+  ],
+  "screenshots": [
+    "material-dark-live.jpg",
+    "material-light-live.jpg",
+    "graphite-glass-live.jpg"
+  ]
+}

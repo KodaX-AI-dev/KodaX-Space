@@ -1,0 +1,38 @@
+{
+  "mode": "built-in image_gen",
+  "jobs": [
+    {
+      "name": "stand-gap",
+      "a": "gap-prepare-4.png",
+      "b": "gap-prepare-5.png",
+      "detail": "ONLY extend hind hocks and raise hips slightly from crouched sitting to standing while head and forepaws stay at nearly the SAME place. Head doesn't lift. Front paws remain planted. True gradual weight transfer, rear legs unfold in SIX closely spaced intermediate positions.",
+      "prompt": "Use case: identity-preserve. Draw exactly 8 WHOLE-PUPPY animation inbetweens in a 4-column by 2-row sprite sheet, landscape, genuine alpha transparency. No labels, text, gridlines or background. Two input images are exact consecutive endpoint poses of SAME puppy; fill the missing motion BETWEEN them. Do not redesign either endpoint. Same skull/muzzle/eye size, apricot fur with cream blaze/chest/paws, brown floppy ears, sage collar/brass disk, same linework in every cel. Fixed 3/4 RIGHT camera, identical physical scale, planted foot baseline. Every cell generous clear margin so props don't touch neighbors. ONE very small action, distributed evenly over ALL8 drawings: row1 four stages, row2 remaining four stages. Frame1 = input1 EXACT; frame8 = input2 EXACT. Frames2-7 should each advance only 1/7 of the tiny difference. Do not reach end on frame3 and then repeat! No unrelated gestures, no perspective change, no anatomy melting, no jumps or ghosting. ONLY extend hind hocks and raise hips slightly from crouched sitting to standing while head and forepaws stay at nearly the SAME place. Head doesn't lift. Front paws remain planted. True gradual weight transfer, rear legs unfold in SIX closely spaced intermediate positions.",
+      "refs": [
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-prepare-4.png",
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-prepare-5.png"
+      ]
+    },
+    {
+      "name": "pickup-gap",
+      "a": "gap-working-story-candidate-11.png",
+      "b": "gap-working-story-candidate-12.png",
+      "detail": "ONLY lift head slowly with the green scroll already held in closed mouth, moving nose up a little each frame. Four-leg standing body remains same. No walking. Scroll follows same rigid mouth grip and never changes size/orientation abruptly. Ears and cream forehead remain identical as neck extends gradually.",
+      "prompt": "Use case: identity-preserve. Draw exactly 8 WHOLE-PUPPY animation inbetweens in a 4-column by 2-row sprite sheet, landscape, genuine alpha transparency. No labels, text, gridlines or background. Two input images are exact consecutive endpoint poses of SAME puppy; fill the missing motion BETWEEN them. Do not redesign either endpoint. Same skull/muzzle/eye size, apricot fur with cream blaze/chest/paws, brown floppy ears, sage collar/brass disk, same linework in every cel. Fixed 3/4 RIGHT camera, identical physical scale, planted foot baseline. Every cell generous clear margin so props don't touch neighbors. ONE very small action, distributed evenly over ALL8 drawings: row1 four stages, row2 remaining four stages. Frame1 = input1 EXACT; frame8 = input2 EXACT. Frames2-7 should each advance only 1/7 of the tiny difference. Do not reach end on frame3 and then repeat! No unrelated gestures, no perspective change, no anatomy melting, no jumps or ghosting. ONLY lift head slowly with the green scroll already held in closed mouth, moving nose up a little each frame. Four-leg standing body remains same. No walking. Scroll follows same rigid mouth grip and never changes size/orientation abruptly. Ears and cream forehead remain identical as neck extends gradually.",
+      "refs": [
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-working-story-candidate-11.png",
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-working-story-candidate-12.png"
+      ]
+    },
+    {
+      "name": "rise-gap",
+      "a": "gap-settle-2.png",
+      "b": "gap-settle-4.png",
+      "detail": "ONLY straighten front elbows a little and lift low chest/neck by a small amount while rear remains flat on ground. Nose rises gradually, a little each frame, while scroll stays on ground. This is a restrained half push-up, NOT a full sit. Head MUST NOT grow or rotate to a different face. Both front paws planted at same ground points. Full puppy in every frame.",
+      "prompt": "Use case: identity-preserve. Draw exactly 8 WHOLE-PUPPY animation inbetweens in a 4-column by 2-row sprite sheet, landscape, genuine alpha transparency. No labels, text, gridlines or background. Two input images are exact consecutive endpoint poses of SAME puppy; fill the missing motion BETWEEN them. Do not redesign either endpoint. Same skull/muzzle/eye size, apricot fur with cream blaze/chest/paws, brown floppy ears, sage collar/brass disk, same linework in every cel. Fixed 3/4 RIGHT camera, identical physical scale, planted foot baseline. Every cell generous clear margin so props don't touch neighbors. ONE very small action, distributed evenly over ALL8 drawings: row1 four stages, row2 remaining four stages. Frame1 = input1 EXACT; frame8 = input2 EXACT. Frames2-7 should each advance only 1/7 of the tiny difference. Do not reach end on frame3 and then repeat! No unrelated gestures, no perspective change, no anatomy melting, no jumps or ghosting. ONLY straighten front elbows a little and lift low chest/neck by a small amount while rear remains flat on ground. Nose rises gradually, a little each frame, while scroll stays on ground. This is a restrained half push-up, NOT a full sit. Head MUST NOT grow or rotate to a different face. Both front paws planted at same ground points. Full puppy in every frame.",
+      "refs": [
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-settle-2.png",
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-settle-4.png"
+      ]
+    }
+  ]
+}

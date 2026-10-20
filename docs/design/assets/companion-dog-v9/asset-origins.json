@@ -1,0 +1,61 @@
+{
+  "mode": "built-in image_gen",
+  "origins": [
+    {
+      "asset": "prepare.png",
+      "promptFile": "prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-8f862f54-ff77-458d-a0f6-53f0ff2c8dc4.png"
+    },
+    {
+      "asset": "lower.png",
+      "promptFile": "prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-776049b9-cc6b-4b36-bb6b-45b0bdfd0b8b.png"
+    },
+    {
+      "asset": "respond.png",
+      "promptFile": "prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-4ef895b2-0e20-4c09-912b-a9fbb2b3a4d9.png"
+    },
+    {
+      "asset": "settle.png",
+      "promptFile": "prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-36d2ffa9-70bf-4442-a330-815a19a9a67f.png"
+    },
+    {
+      "asset": "stand-gap.png",
+      "promptFile": "gap-prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-6ea2c503-03b9-42e1-98ff-b9a84e9e861e.png"
+    },
+    {
+      "asset": "pickup-gap.png",
+      "promptFile": "gap-prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-d20ad13b-f1c7-4b46-a70f-d1692609e9df.png"
+    },
+    {
+      "asset": "rise-gap.png",
+      "promptFile": "gap-prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-d9fdde50-6c78-4135-abca-954e3d08810f.png"
+    },
+    {
+      "asset": "gaze-gap.png",
+      "promptFile": "seam-prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-9871501c-84b6-43a2-88e6-052d4a1829f0.png"
+    },
+    {
+      "asset": "inspect-gap.png",
+      "promptFile": "seam-prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-d5e0019f-3716-4390-a46a-01886f069de5.png"
+    },
+    {
+      "asset": "neutral-gap.png",
+      "promptFile": "seam-prompts.json",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-ae2144f4-85b6-441a-9ee7-b545ca900efd.png"
+    },
+    {
+      "asset": "lower-transparent.png",
+      "original": "C:\\Users\\ADMIN\\.codex\\generated_images\\01a14436-3e2f-7f12-b146-7fce71756832\\exec-ddabb14c-ad5d-4222-b45d-04346fbcaba5.png",
+      "prompt": "Use case: background-extraction. Edit the input image ONLY to remove the mottled brown background to genuine alpha transparency, and remove the soft background/drop shadows. Preserve EVERY puppy pixel, every pose, all16 cells exactly in their original positions, outlines, shapes, colors and shading. Do not redraw the puppies or scrolls. No added content, no rearrangement, no checkerboard graphic. This image must become a transparent sprite sheet.",
+      "reference": "lower.png"
+    }
+  ]
+}

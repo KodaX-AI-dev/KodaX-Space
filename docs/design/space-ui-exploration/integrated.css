@@ -1,0 +1,477 @@
+/* One visual language across the integrated workspace and full settings surface. */
+:root[data-quality='full'] {
+  --ks-glass-alpha: 0.57;
+  --ks-glass-blur: 24px;
+  --ks-glass-sat: 1.4;
+}
+.integrated-workspace .app {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 0 0, #598b6452, transparent 45%),
+    radial-gradient(ellipse at 100% 100%, #a77a3a35, transparent 45%), var(--chrome);
+}
+.integrated-workspace .sidebar,
+.integrated-workspace .inspector {
+  background: rgb(var(--ks-glass-rgb) / var(--ks-glass-alpha));
+  backdrop-filter: blur(var(--ks-glass-blur)) saturate(var(--ks-glass-sat));
+  -webkit-backdrop-filter: blur(var(--ks-glass-blur)) saturate(var(--ks-glass-sat));
+}
+.integrated-workspace .workspace {
+  background: radial-gradient(ellipse 75% 30% at 55% 115%, #578d653b, transparent), var(--canvas);
+}
+.integrated-workspace .workspace-header.ks-glass,
+.integrated-workspace .inspector-header.ks-glass,
+.integrated-workspace .review-header.ks-glass,
+.integrated-settings .main-header.ks-glass {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 #ffffff08;
+  flex-shrink: 0;
+}
+.integrated-workspace .workspace-header.ks-glass::before,
+.integrated-workspace .inspector-header.ks-glass::before,
+.integrated-workspace .review-header.ks-glass::before,
+.integrated-settings .main-header.ks-glass::before {
+  display: none;
+}
+.integrated-workspace .surface-switch.ks-glass {
+  border-radius: 9px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.integrated-workspace :is(.nav-heading, .project-filters, .parallel-summary, .sidebar-bottom) {
+  flex-shrink: 0;
+}
+.integrated-workspace .sessions {
+  flex: 1;
+}
+.integrated-workspace .workspace-title {
+  min-width: 0;
+}
+.integrated-workspace .header-actions {
+  flex-shrink: 0;
+  gap: 7px;
+}
+.experience-switch {
+  display: flex;
+  position: relative;
+  isolation: isolate;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #00000012;
+}
+.experience-switch button {
+  width: 45px;
+  height: 28px;
+  font-size: 12px;
+  border-radius: 5px;
+  color: var(--secondary);
+}
+.experience-switch button[aria-pressed='true'] {
+  color: var(--fg);
+}
+.experience-switch-plate {
+  position: absolute;
+  width: 45px;
+  height: 28px;
+  left: 3px;
+  top: 3px;
+  z-index: -1;
+  border-radius: 5px;
+  background: linear-gradient(120deg, #c6d4b72b, #c6d4b712);
+  box-shadow:
+    inset 0 1px 0 #fff1,
+    0 1px 3px #0002;
+  transform: translateX(var(--content-selection-x, 0px));
+  transition: transform 260ms var(--ks-material-ease);
+}
+.integrated-workspace .sessions,
+.integrated-settings .nav {
+  position: relative;
+  isolation: isolate;
+}
+.navigation-plate {
+  position: absolute;
+  left: 10px;
+  width: calc(100% - 20px);
+  top: 0;
+  height: var(--selection-height, 56px);
+  transform: translateY(var(--selection-y, 0px));
+  background: linear-gradient(110deg, #d5d7b528, #9cb6a011);
+  border: 1px solid #c7d5ba30;
+  border-radius: 9px;
+  pointer-events: none;
+  z-index: 0;
+  box-shadow: inset 0 1px 0 #ffffff0b;
+  transition:
+    transform 300ms cubic-bezier(0.2, 0.85, 0.2, 1.02),
+    height 150ms;
+}
+.integrated-workspace .session {
+  position: relative;
+  z-index: 1;
+}
+.integrated-workspace .session[aria-current='page'] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.integrated-workspace .session:hover {
+  background: #c7d5ba09;
+}
+.integrated-workspace .session small {
+  font-size: 12px;
+}
+.experience-arrival {
+  animation: integrated-arrive 300ms var(--ks-material-ease) both;
+}
+@keyframes integrated-arrive {
+  from {
+    opacity: 0.15;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.integrated-workspace .conversation {
+  flex: 1;
+}
+.integrated-workspace .artifact-list {
+  display: none;
+}
+.integrated-workspace[data-content-view='result'] .user-turn,
+.integrated-workspace[data-content-view='result'] .agent-marker,
+.integrated-workspace[data-content-view='result'] .agent-intro,
+.integrated-workspace[data-content-view='result'] .execution,
+.integrated-workspace[data-content-view='result'] .principles {
+  display: none;
+}
+.integrated-workspace[data-content-view='result'] .agent-turn {
+  display: block;
+  margin-top: 0;
+}
+.integrated-workspace[data-content-view='result'] .agent-label {
+  margin-bottom: 18px;
+}
+.integrated-workspace[data-content-view='result'] .outcome {
+  margin-top: 0;
+  border-left: 0;
+  padding-left: 0;
+}
+.integrated-workspace[data-content-view='result'] .outcome::before {
+  display: none;
+}
+.integrated-workspace[data-content-view='result'] .artifact-list {
+  display: grid;
+  margin: 24px 0;
+}
+.artifact-list button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 8px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.artifact-list button:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.artifact-list strong {
+  display: block;
+  font-weight: 550;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.artifact-list small {
+  color: var(--secondary);
+  font-size: 12px;
+  display: block;
+  margin-top: 3px;
+}
+.artifact-list .positive {
+  font-size: 12px;
+}
+body.integrated-workspace .composer.ks-glass {
+  background:
+    linear-gradient(120deg, #d9ebd610, transparent 55%),
+    rgb(var(--ks-glass-rgb) / var(--ks-glass-alpha));
+}
+.integrated-workspace .session-stage.ks-glass {
+  padding: 18px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.integrated-workspace .session-stage.ks-glass p {
+  color: var(--ks-glass-muted);
+}
+.integrated-workspace .review-workspace {
+  position: fixed;
+  left: var(--sidebar);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  display: grid;
+  grid-template-rows: 64px minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--canvas);
+  color: var(--fg);
+}
+.integrated-workspace .review-header {
+  min-width: 0;
+  overflow: hidden;
+  height: 64px;
+}
+.integrated-workspace:not(.embedded):not(.hint-hidden) .review-workspace {
+  top: 32px;
+}
+.integrated-workspace #review-focus {
+  margin-left: auto;
+}
+.integrated-workspace #close-review {
+  margin-left: 0;
+}
+.integrated-workspace .review-layout {
+  min-height: 0;
+  height: auto;
+}
+.integrated-workspace .review-main {
+  min-width: 0;
+  overflow: auto;
+}
+.integrated-workspace.experience-focused .review-workspace {
+  left: 0;
+  border-left: 0;
+}
+.integrated-workspace.experience-focused .sidebar {
+  visibility: hidden;
+}
+.workspace-notice {
+  position: fixed;
+  right: 22px;
+  bottom: 155px;
+  z-index: 35;
+  max-width: min(390px, calc(100vw - 40px));
+  padding: 13px 12px 13px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 12px;
+}
+.workspace-notice > i {
+  color: #bed1ae;
+}
+.workspace-notice strong {
+  font-size: 13px;
+  font-weight: 550;
+}
+.workspace-notice p {
+  color: var(--ks-glass-muted);
+  margin: 3px 0 0;
+}
+.workspace-notice button {
+  color: inherit;
+  font-size: 12px;
+  padding: 5px;
+  border-radius: 5px;
+}
+.workspace-notice #workspace-notice-open {
+  margin-left: auto;
+  color: var(--accent-text);
+}
+.workspace-notice #workspace-notice-close {
+  width: 25px;
+  height: 25px;
+}
+/* Settings uses the same ambient surface and small glass controls, without a modal. */
+.integrated-settings .settings-shell {
+  background:
+    radial-gradient(ellipse at 0 0, #598b643d, transparent 42%),
+    radial-gradient(ellipse at 80% 110%, #ad85402b, transparent 40%), var(--canvas);
+}
+.integrated-settings .sidebar {
+  background: rgb(var(--ks-glass-rgb) / 0.65);
+  backdrop-filter: blur(var(--ks-glass-blur));
+}
+.integrated-settings .main {
+  background: transparent;
+}
+.integrated-settings .search-box.ks-glass {
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 #ffffff08;
+  overflow: hidden;
+}
+.integrated-settings .search-box input {
+  background: transparent;
+}
+.integrated-settings .nav button {
+  position: relative;
+  z-index: 1;
+}
+.integrated-settings .nav button[aria-current='page'] {
+  background: transparent;
+  color: var(--fg);
+}
+.integrated-settings .navigation-plate {
+  left: 0;
+  width: 100%;
+}
+.integrated-settings .main-header.ks-glass {
+  background: rgb(var(--ks-glass-rgb) / 0.6);
+}
+.integrated-settings .theme-option {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.integrated-settings .theme-option[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 7px 20px #00000018;
+}
+.integrated-settings .mini-composer {
+  box-shadow:
+    inset 0 1px 0 #ffffff45,
+    0 3px 8px #0000000d;
+}
+.appearance-options {
+  display: inline-flex;
+  gap: 3px;
+  min-width: 0;
+  background: #0000000b;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.appearance-options button {
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--secondary);
+  white-space: nowrap;
+}
+.appearance-options button[aria-pressed='true'] {
+  background: var(--selected);
+  color: var(--fg);
+  box-shadow: inset 0 1px 0 #ffffff14;
+}
+.background-activity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-top: auto;
+  margin-bottom: 14px;
+  box-shadow: none;
+  overflow: hidden;
+}
+.activity-light {
+  width: 6px;
+  height: 6px;
+  background: #bed1ae;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #9dba9010;
+  flex: none;
+}
+.integrated-settings .sidebar-foot {
+  margin-top: 0;
+}
+:root[data-quality='minimal']
+  :is(.integrated-workspace, .integrated-settings)
+  :is(.ks-glass, .sidebar, .inspector) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgb(var(--ks-glass-rgb));
+  box-shadow: none;
+}
+:root[data-quality='minimal'] :is(.integrated-workspace, .integrated-settings) .ks-glass::before,
+:root[data-quality='minimal'] :is(.integrated-workspace, .integrated-settings) .ks-glass::after,
+:root[data-quality='minimal'] :is(.integrated-workspace, .integrated-settings) .ks-sheen {
+  display: none;
+}
+:root[data-theme='light'] .navigation-plate {
+  background: linear-gradient(110deg, #a8bb943d, #91a78d1c);
+  border-color: #7e956936;
+}
+:root[data-theme='light'] .experience-switch-plate {
+  background: #fff9;
+}
+@media (max-width: 1100px) {
+  .integrated-workspace .workspace-header > .sample-label {
+    display: none;
+  }
+  .integrated-workspace .review-header > .sample-label {
+    display: none;
+  }
+  .integrated-workspace .review-layout {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .integrated-workspace .workspace-header {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .integrated-workspace .workspace-header > .heading-icon {
+    display: none;
+  }
+  .integrated-workspace .header-actions {
+    gap: 2px;
+  }
+  .integrated-workspace #theme-toggle {
+    display: none;
+  }
+  .integrated-workspace .review-layout {
+    grid-template-columns: 125px minmax(0, 1fr);
+  }
+  .integrated-workspace .review-header {
+    gap: 5px;
+    padding: 0 12px;
+  }
+  .integrated-workspace .review-header > .mono {
+    display: none;
+  }
+  .integrated-workspace .review-main {
+    padding: 16px 12px;
+  }
+  .artifact-list .positive {
+    display: none;
+  }
+  .artifact-list button {
+    grid-template-columns: 20px minmax(0, 1fr) 16px;
+  }
+  .appearance-options {
+    flex-wrap: wrap;
+  }
+}
+:root[data-motion='reduced'] :is(.integrated-workspace, .integrated-settings) *,
+:root[data-motion='reduced'] :is(.integrated-workspace, .integrated-settings) *::before,
+:root[data-motion='reduced'] :is(.integrated-workspace, .integrated-settings) *::after {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.integrated-workspace, .integrated-settings) *,
+  :is(.integrated-workspace, .integrated-settings) *::before,
+  :is(.integrated-workspace, .integrated-settings) *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

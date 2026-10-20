@@ -1,0 +1,60 @@
+[
+  {
+    "variant": "graphite",
+    "initial": "dark",
+    "switched": "light",
+    "theme": true,
+    "details": true,
+    "trace": true,
+    "surface": true,
+    "composer": true,
+    "errors": [],
+    "overflow": {
+      "width": 1280,
+      "doc": 1280,
+      "body": 1280
+    },
+    "fileReview": true
+  },
+  {
+    "variant": "paper",
+    "initial": null,
+    "switched": "dark",
+    "theme": true,
+    "details": true,
+    "trace": true,
+    "surface": true,
+    "composer": true,
+    "errors": [],
+    "overflow": {
+      "width": 1280,
+      "doc": 1280,
+      "body": 1280
+    },
+    "fileReview": true
+  },
+  {
+    "variant": "focus",
+    "initial": "dark",
+    "switched": "light",
+    "theme": true,
+    "details": true,
+    "trace": true,
+    "surface": true,
+    "composer": true,
+    "errors": [],
+    "overflow": {
+      "width": 1280,
+      "doc": 1280,
+      "body": 1280
+    },
+    "fileReview": true
+  },
+  {
+    "variant": "index",
+    "directionSwitch": true,
+    "comparisonImages": true,
+    "comparisonToInteractive": true,
+    "errors": []
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-16",
+  "method": "Live in-app browser, local static prototype, actual sidebar viewport about 796px wide",
+  "checks": {
+    "layoutAndAppearanceAreSeparate": true,
+    "lightDarkAndSystemControlsVisible": true,
+    "parentAndChildThemeSync": true,
+    "narrowGraphiteInspectorInitiallyClosed": true,
+    "threeProjectsVisible": true,
+    "crossProjectSessionUpdatesContent": true,
+    "perSessionDraftRestores": true,
+    "settingsIsFullWorkSurface": true,
+    "settingsSearchAcrossCategories": true,
+    "settingsThemeUpdatesWorkspace": true,
+    "settingsReturnRestoresDraft": true,
+    "workflowStopsAtManualApproval": true,
+    "workflowApprovalToResult": true,
+    "resultReviewAndEscapeReturn": true,
+    "commandSearch": true,
+    "reducedMotionControlUpdatesState": true,
+    "hashDeepLinksSwitchActiveView": true
+  },
+  "limits": [
+    "All project states and configurations are illustrative data.",
+    "No production settings, credentials, Agent runtime or files were changed.",
+    "Not a full accessibility or performance audit."
+  ]
+}

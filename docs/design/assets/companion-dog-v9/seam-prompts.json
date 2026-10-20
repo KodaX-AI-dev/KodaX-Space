@@ -1,0 +1,38 @@
+{
+  "mode": "built-in image_gen",
+  "jobs": [
+    {
+      "name": "gaze-gap",
+      "a": "gap-prepare-1.png",
+      "b": "gap-prepare-3.png",
+      "detail": "ONLY lower gaze and incline seated upper chest slightly toward the tiny green scroll. Hips remain seated and front paws stay planted. Each adjacent muzzle position changes by a very small increment, following a smooth downwards arc. NO standing, no extra gesture, no blinking. Keep eyes and forehead blaze exactly same size.",
+      "prompt": "Use case: identity-preserve. Exactly EIGHT chronological FULL-DOG cel-animation inbetweens on a 4-column x2-row transparent sprite sheet. One tiny motion bridging these two precise endpoint images, NOT independent poses. Frame1 exact input1 and frame8 exact input2. SIX real gradual intermediate drawings between; spread progress across ALL8 frames, no instant jump on row2. Identical physical head size, same dog identity/fur pattern/face, apricot puppy, brown floppy ears, cream blaze/muzzle/paws/tip, sage collar/brass disk; identical clean brown linework/soft cel shading. Fixed3/4right camera and paw baseline, whole puppy with generous clear margins in every equal cell, props do not touch adjacent cells. Genuine alpha transparency. No background/text/labels, no anatomy distortion, no sudden scale change, no ghost poses. ONLY lower gaze and incline seated upper chest slightly toward the tiny green scroll. Hips remain seated and front paws stay planted. Each adjacent muzzle position changes by a very small increment, following a smooth downwards arc. NO standing, no extra gesture, no blinking. Keep eyes and forehead blaze exactly same size.",
+      "refs": [
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-prepare-1.png",
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-prepare-3.png"
+      ]
+    },
+    {
+      "name": "inspect-gap",
+      "a": "gap-lower-transparent-15.png",
+      "b": "gap-respond-0.png",
+      "detail": "ONLY gradually turn and lower lying puppy's muzzle toward scroll while its tail slowly lifts from low curve to higher curve. Chest stays low on ground, hindquarters planted, both front paws stay in place. The two refs show same physical dog at same physical scale; don't enlarge the head or chest. Tiny continuous gaze/neck motion, warm attentive expression, scroll remains same size on ground.",
+      "prompt": "Use case: identity-preserve. Exactly EIGHT chronological FULL-DOG cel-animation inbetweens on a 4-column x2-row transparent sprite sheet. One tiny motion bridging these two precise endpoint images, NOT independent poses. Frame1 exact input1 and frame8 exact input2. SIX real gradual intermediate drawings between; spread progress across ALL8 frames, no instant jump on row2. Identical physical head size, same dog identity/fur pattern/face, apricot puppy, brown floppy ears, cream blaze/muzzle/paws/tip, sage collar/brass disk; identical clean brown linework/soft cel shading. Fixed3/4right camera and paw baseline, whole puppy with generous clear margins in every equal cell, props do not touch adjacent cells. Genuine alpha transparency. No background/text/labels, no anatomy distortion, no sudden scale change, no ghost poses. ONLY gradually turn and lower lying puppy's muzzle toward scroll while its tail slowly lifts from low curve to higher curve. Chest stays low on ground, hindquarters planted, both front paws stay in place. The two refs show same physical dog at same physical scale; don't enlarge the head or chest. Tiny continuous gaze/neck motion, warm attentive expression, scroll remains same size on ground.",
+      "refs": [
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-lower-transparent-15.png",
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-respond-0.png"
+      ]
+    },
+    {
+      "name": "neutral-gap",
+      "a": "gap-settle-15.png",
+      "b": "../companion-dog-v3/character-anchor.png",
+      "detail": "ONLY a tiny settling gesture in SEATED pose, slowly turn head/eyes from slightly right toward exact input2 smiling neutral and let the tail relax to exact input2 curve. Body/forepaws stay seated and planted. Final face, muzzle, ear length, forehead blaze and tail MUST match original input2 rather than designing a new puppy. This is just a small final settle, NOT a get-up or sit-down. No scroll, no new objects. Avoid making head/cheeks larger; preserve original physical head scale.",
+      "prompt": "Use case: identity-preserve. Exactly EIGHT chronological FULL-DOG cel-animation inbetweens on a 4-column x2-row transparent sprite sheet. One tiny motion bridging these two precise endpoint images, NOT independent poses. Frame1 exact input1 and frame8 exact input2. SIX real gradual intermediate drawings between; spread progress across ALL8 frames, no instant jump on row2. Identical physical head size, same dog identity/fur pattern/face, apricot puppy, brown floppy ears, cream blaze/muzzle/paws/tip, sage collar/brass disk; identical clean brown linework/soft cel shading. Fixed3/4right camera and paw baseline, whole puppy with generous clear margins in every equal cell, props do not touch adjacent cells. Genuine alpha transparency. No background/text/labels, no anatomy distortion, no sudden scale change, no ghost poses. ONLY a tiny settling gesture in SEATED pose, slowly turn head/eyes from slightly right toward exact input2 smiling neutral and let the tail relax to exact input2 curve. Body/forepaws stay seated and planted. Final face, muzzle, ear length, forehead blaze and tail MUST match original input2 rather than designing a new puppy. This is just a small final settle, NOT a get-up or sit-down. No scroll, no new objects. Avoid making head/cheeks larger; preserve original physical head scale.",
+      "refs": [
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/gap-settle-15.png",
+        "C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/design/assets/companion-dog-v9/../companion-dog-v3/character-anchor.png"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KodaX Space · 新小狗动作设计</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f6f2;
+        --fg: #282923;
+        --muted: #71726b;
+        --line: #dcded4;
+        --accent: #406952;
+        --soft: #e9ece3;
+      }
+      :root.dark {
+        color-scheme: dark;
+        --bg: #191b18;
+        --fg: #e8e7df;
+        --muted: #a2a69a;
+        --line: #343a30;
+        --accent: #a4c9ad;
+        --soft: #252c23;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.7 system-ui,
+          'Microsoft YaHei',
+          sans-serif;
+      }
+      main {
+        max-width: 1120px;
+        margin: auto;
+        padding: 44px 32px 64px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: flex-start;
+      }
+      .eyebrow {
+        color: var(--accent);
+        font-size: 12px;
+        letter-spacing: 0.1em;
+      }
+      h1 {
+        margin: 8px 0 4px;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+      }
+      h2 {
+        font-size: 18px;
+        font-weight: 550;
+        margin: 0 0 18px;
+      }
+      p {
+        color: var(--muted);
+        margin: 0;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      .theme {
+        padding: 8px 16px;
+        border: 1px solid var(--line);
+        background: transparent;
+        border-radius: 8px;
+        white-space: nowrap;
+      }
+      .intro {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 48px;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        padding: 32px 0;
+      }
+      .anchor {
+        width: 248px;
+        height: 248px;
+        object-fit: contain;
+      }
+      .identity h2 {
+        margin-bottom: 10px;
+      }
+      .identity p + p {
+        margin-top: 12px;
+      }
+      .tag {
+        color: var(--accent);
+        font-size: 12px;
+      }
+      .review {
+        padding: 30px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .controls label {
+        color: var(--muted);
+        margin-right: 8px;
+      }
+      .size {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: transparent;
+        padding: 3px 12px;
+      }
+      .size[aria-pressed='true'] {
+        background: var(--soft);
+        border-color: var(--accent);
+      }
+      .dock {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        width: 320px;
+        min-height: 82px;
+        padding: 10px 0;
+      }
+      .dock .dog {
+        flex-shrink: 0;
+      }
+      .dock strong {
+        font-size: 14px;
+        font-weight: 550;
+      }
+      .dock small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .dog {
+        --size: 40px;
+        width: var(--size);
+        height: var(--size);
+        display: block;
+        position: relative;
+      }
+      .dog > span {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        overflow: hidden;
+        background-image: url('assets/companion-dog-v3/key-poses.png');
+        background-repeat: no-repeat;
+      }
+      .state-list {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 20px;
+      }
+      .state {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-align: left;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: transparent;
+        padding: 16px 8px;
+        min-height: 78px;
+      }
+      .state[aria-pressed='true'] {
+        background: var(--soft);
+        box-shadow: inset 3px 0 var(--accent);
+      }
+      .state .dog {
+        --size: 56px;
+        flex-shrink: 0;
+      }
+      .state span:last-child {
+        font-size: 13px;
+      }
+      .state small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .notes {
+        padding-top: 28px;
+        max-width: 800px;
+      }
+      .notes p + p {
+        margin-top: 10px;
+      }
+      .notes strong {
+        color: var(--fg);
+        font-weight: 550;
+      }
+      footer {
+        margin-top: 32px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      @media (max-width: 700px) {
+        main {
+          padding: 24px 20px;
+        }
+        h1 {
+          font-size: 24px;
+        }
+        .intro {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+        .anchor {
+          width: 180px;
+          height: 180px;
+        }
+        .state-list {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .dock {
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <div class="eyebrow">KODAX SPACE · CHARACTER STUDY</div>
+          <h1>一只安静、能表达的小狗</h1>
+          <p>统一造型与九种关键姿态 · 2026-10-17</p>
+        </div>
+        <button class="theme" id="theme" type="button">切换深色</button>
+      </header>
+      <p>
+        <a
+          href="space-ui-exploration/companion-workspace.html?theme=dark"
+          style="color: inherit; text-underline-offset: 4px"
+          >进入完整工作区，观看连续动画 →</a
+        >
+      </p>
+      <section class="intro" aria-label="新角色造型">
+        <img
+          class="anchor"
+          src="assets/companion-dog-v3/character-anchor.png"
+          alt="暖杏色垂耳小狗，奶油色口鼻和胸腹，绿项圈与小铜牌"
+        />
+        <div class="identity">
+          <div class="tag">暖杏色 · 奶油色 · 森林绿</div>
+          <h2>让耳朵、头部和身体一起表达</h2>
+          <p>
+            保留小狗的亲近感，用清楚的轮廓与较少的细节适配小尺寸。思考、工作、等你确认和需要检查，分别设计姿态。
+          </p>
+          <p>
+            这里是<strong>静态关键姿态设计稿</strong>。点击下方姿态可查看真实小尺寸；还没有制作连续动画帧，切换姿态不能视为动画验收。
+          </p>
+        </div>
+      </section>
+      <section class="review" aria-labelledby="review-title">
+        <h2 id="review-title">按实际使用尺寸查看</h2>
+        <div class="controls">
+          <label>图像区域</label
+          ><button class="size" data-size="32" aria-pressed="false">32 px</button
+          ><button class="size" data-size="40" aria-pressed="true">40 px</button
+          ><button class="size" data-size="56" aria-pressed="false">56 px</button>
+        </div>
+        <div class="dock">
+          <span class="dog" id="current-dog" aria-hidden="true"></span>
+          <div>
+            <strong id="current-title">任务伴侣 · 待机</strong
+            ><small id="current-note">我在这里，需要时点开就好。</small>
+          </div>
+        </div>
+        <div class="state-list" id="states" aria-label="关键姿态选择"></div>
+      </section>
+      <section class="notes">
+        <h2>制作下一阶段的标准</h2>
+        <p>
+          <strong>先验证小尺寸可读性。</strong
+          >工作、抬爪等待和休息靠身体就能辨认；思考与需要检查还需要明确的文字状态，不能只靠微小的眉眼。
+        </p>
+        <p>
+          <strong>动画需要独立制作。</strong
+          >从这些关键姿态补齐眨眼、抬头、摇尾与动作过渡的连续帧，校准同一基线、比例和运动轨迹；待机与完成动作要能自然回到原位。直接用几张姿态轮播会跳变。
+        </p>
+        <p>
+          <strong>旧两套可以替换。</strong
+          >本页只评审新素材，正式产品尚未替换。以后围绕这一只角色制作一致的动作集；极简档使用静态姿态，减少动画和后台暂停策略继续有效。
+        </p>
+      </section>
+      <footer>素材由 imagegen 生成 · 这是素材评审页，文字为设计示例，不是真实任务进展。</footer>
+    </main>
+    <script>
+      const poses = [
+        ['待机', '安静陪伴', '我在这里，需要时点开就好。'],
+        ['回应', '抬头看向用户', '收到，我来帮你了解这个任务。'],
+        ['思考', '安静倾听与理解', '正在整理已有信息。'],
+        ['工作', '前倾、专注', 'Atlas Web · 正在验证登录流程。'],
+        ['等你确认', '轻抬一只前爪', '有一项决定需要你处理。'],
+        ['需要检查', '轻微疑问与关注', '任务出现了需要检查的结果。'],
+        ['阶段完成', '克制的小庆祝', '一个阶段已经结束，可以查看结果。'],
+        ['小步移动', '自然的步态姿势', '只在自己的小座位内活动。'],
+        ['休息', '蜷卧、闭眼', '当前没有运行中的任务。'],
+      ];
+      const list = document.querySelector('#states');
+      // Measured opaque subject bounds: generated cells are not a calibrated sprite atlas.
+      const bounds = [
+        [74, 44, 385, 425],
+        [490, 44, 775, 425],
+        [902, 59, 1186, 422],
+        [35, 507, 441, 797],
+        [507, 444, 803, 815],
+        [912, 473, 1213, 820],
+        [75, 829, 377, 1211],
+        [459, 868, 824, 1190],
+        [875, 975, 1221, 1165],
+      ];
+      let currentIndex = 0;
+      let currentSize = 40;
+      function paintDog(node, index, size) {
+        const [left, top, right, bottom] = bounds[index];
+        const x = left - 2;
+        const y = top - 2;
+        const width = right - left + 4;
+        const height = bottom - top + 4;
+        const scale = size / Math.max(width, height);
+        const sprite = document.createElement('span');
+        node.style.setProperty('--size', `${size}px`);
+        sprite.style.width = `${width * scale}px`;
+        sprite.style.height = `${height * scale}px`;
+        sprite.style.backgroundSize = `${1254 * scale}px ${1254 * scale}px`;
+        sprite.style.backgroundPosition = `${-x * scale}px ${-y * scale}px`;
+        node.replaceChildren(sprite);
+      }
+      paintDog(document.querySelector('#current-dog'), 0, currentSize);
+      poses.forEach(([name, hint, note], index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'state';
+        button.setAttribute('aria-pressed', String(index === 0));
+        const dog = document.createElement('span');
+        dog.className = 'dog';
+        paintDog(dog, index, 56);
+        dog.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = name;
+        const small = document.createElement('small');
+        small.textContent = hint;
+        label.append(small);
+        button.append(dog, label);
+        button.addEventListener('click', () => {
+          list
+            .querySelectorAll('button')
+            .forEach((item) => item.setAttribute('aria-pressed', 'false'));
+          button.setAttribute('aria-pressed', 'true');
+          currentIndex = index;
+          paintDog(document.querySelector('#current-dog'), currentIndex, currentSize);
+          document.querySelector('#current-title').textContent = `任务伴侣 · ${name}`;
+          document.querySelector('#current-note').textContent = note;
+        });
+        list.append(button);
+      });
+      document.querySelectorAll('.size').forEach((button) => {
+        button.addEventListener('click', () => {
+          document
+            .querySelectorAll('.size')
+            .forEach((item) => item.setAttribute('aria-pressed', 'false'));
+          button.setAttribute('aria-pressed', 'true');
+          currentSize = Number(button.dataset.size);
+          paintDog(document.querySelector('#current-dog'), currentIndex, currentSize);
+        });
+      });
+      document.querySelector('#theme').addEventListener('click', (event) => {
+        const dark = document.documentElement.classList.toggle('dark');
+        event.currentTarget.textContent = dark ? '切换浅色' : '切换深色';
+      });
+    </script>
+  </body>
+</html>

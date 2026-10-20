@@ -1,0 +1,252 @@
+{
+  "status": "Prototype candidate pending user review; production pet not replaced.",
+  "generation": {
+    "tool": "Built-in image_gen",
+    "mode": "edit reference images",
+    "sources": [
+      {
+        "file": "thinking-waiting-keyposes.png",
+        "original": "C:/Users/ADMIN/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-91ad1ab7-5de5-46a0-9ec9-13fa2cac218b.png",
+        "prompt": "prompts.json#thinking-waiting",
+        "sha256": "d310c9d680031092705c7accc18b22ada976557f0b2da72431d2161f2e242222"
+      },
+      {
+        "file": "complete-keyposes.png",
+        "original": "C:/Users/ADMIN/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-25505ddf-ae11-4c38-a0d1-91bc75026b63.png",
+        "prompt": "prompts.json#complete",
+        "sha256": "a0e026a8709bb422d882b3dacc6fa8d21331981522a412f4cb634a05c69fdd7e"
+      },
+      {
+        "file": "complete-rise-keyposes.png",
+        "original": "C:/Users/ADMIN/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-658c8723-5522-48b8-b475-60b222c9fbf3.png",
+        "prompt": "rise-prompt.json",
+        "sha256": "3693872df9021a0416954017f73d06fe5142ae73c0fe5f1d22c2a0ffc0428d09"
+      }
+    ]
+  },
+  "references": [
+    "../companion-dog-v3/character-anchor.png",
+    "../companion-dog-v3/key-poses.png"
+  ],
+  "retained": {
+    "neutralAndIdle": "Approved v6 source compositor, rendered at 256px; original v3 identity and existing tail/eye cels.",
+    "working": "The accepted v10 25 key poses; no additional old work poses retained."
+  },
+  "interpolation": {
+    "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/tag/20221029",
+    "model": "rife-v4.6",
+    "sha256": "4b970319db2814c82b15fceed8193151560a676a9eb63f20d4877be77b98f44f",
+    "temporalTTA": true,
+    "workingSpatialTTA": true,
+    "alpha": {
+      "default": "Dual black and white matte inference",
+      "complete": "Single green matte inference with offline keying and despill"
+    }
+  },
+  "files": [
+    {
+      "file": "keyframes/blink-closed.png",
+      "sha256": "80b96564d801464f8de1552968ceaf9958b5c501a828dc93d95b0ab050aee8b7"
+    },
+    {
+      "file": "keyframes/blink-half.png",
+      "sha256": "509019d0e8b972c0194fe0d32316a75d081f15293b17e5c6d6f8a1e9aa693915"
+    },
+    {
+      "file": "keyframes/happy-0.png",
+      "sha256": "65991cf73a4acea9371f63a6d958b4f645803bec29ce93f799650b0d7352e87a"
+    },
+    {
+      "file": "keyframes/happy-1.png",
+      "sha256": "a63f40a45fcc6c4844ccd93681606a41849061c3c84a0137457cfcd7bb5ef60a"
+    },
+    {
+      "file": "keyframes/happy-2.png",
+      "sha256": "92dc51450d9d659410eab2636196ad9b9686d1a165cbb41c153e75f57c742e5e"
+    },
+    {
+      "file": "keyframes/happy-3.png",
+      "sha256": "36fc70d8970389fbe4dddc68d1a233ec5803b5e998334546c03a1c428ac15dda"
+    },
+    {
+      "file": "keyframes/happy-4.png",
+      "sha256": "7e5c394ef1180c073096d263e88b0f812fb277efc15fd81ddaef37f024d475da"
+    },
+    {
+      "file": "keyframes/happy-5.png",
+      "sha256": "70297f19abf0b60eb211e3748817dab2692ac6f47c64f3495918100bfdf16c1a"
+    },
+    {
+      "file": "keyframes/happy-6.png",
+      "sha256": "19413ebea7cd69cdb51bde0fa9022937d160bfc5911ab9e618e2514902e7bcb6"
+    },
+    {
+      "file": "keyframes/happy-7.png",
+      "sha256": "5c6a42378e4f158143295b97cfa83a6d23c3b0ca7de7381796c5ec36f9348a32"
+    },
+    {
+      "file": "keyframes/neutral.png",
+      "sha256": "37b4d5b0ad0b9013f42c796955919101e51084a141bd7c41698fa5003a099f18"
+    },
+    {
+      "file": "keyframes/rise-0.png",
+      "sha256": "0de1ba156a4a1aedff78606838736518c7ef81f5532afd8dbbcffa398a38f020"
+    },
+    {
+      "file": "keyframes/rise-1.png",
+      "sha256": "506ff41e5d1452417f130872d372e3e03cb0f20a0788de560955c270d890b1d6"
+    },
+    {
+      "file": "keyframes/rise-2.png",
+      "sha256": "b96384614afe200873354b66c3b1d4cff869859453231df8dd17fbfabcc7d285"
+    },
+    {
+      "file": "keyframes/rise-3.png",
+      "sha256": "fba244a3e36ded22d8b0c38e2a1f0ed5790bc496668d0a88a98eb8316a4a9419"
+    },
+    {
+      "file": "keyframes/tail-a.png",
+      "sha256": "5023d8bffe246364b10ae41bc4cfa5e30c7c0529bdee5d174aa53c15455cd173"
+    },
+    {
+      "file": "keyframes/tail-b.png",
+      "sha256": "108feb4843fd28ff920cb6687de947dcc620b6efa9899f02615754bac47c9cdb"
+    },
+    {
+      "file": "keyframes/tail-c.png",
+      "sha256": "33b96fb740b7ae3fa64e6fba19ba2be4ccfe7dffa29d8e3b6c6a5701548bc667"
+    },
+    {
+      "file": "keyframes/tail-d.png",
+      "sha256": "22ad0fc76fea21cb906448d214c9d45acf80c22a180b22b4d7c758e9e8bece99"
+    },
+    {
+      "file": "keyframes/task-0.png",
+      "sha256": "cfe72c9b04a7dc34b31e21f3cef9322d59f06e8e0e97a6540c85ef2a7aaa4f69"
+    },
+    {
+      "file": "keyframes/task-1.png",
+      "sha256": "9eab058caf886148399c180c46d200cb0c70ccaa4b7ca3b182bbda519bdc2b83"
+    },
+    {
+      "file": "keyframes/task-2.png",
+      "sha256": "84bdedc3e5d795d7264330c6cc96a4a611e5dcc3a117ab543ebf6ebfe92a9b2c"
+    },
+    {
+      "file": "keyframes/task-3.png",
+      "sha256": "c8a991537097800a4e3cd5469921935b651913ce60ac3eb4da35b2aa4a5a3836"
+    },
+    {
+      "file": "keyframes/task-4.png",
+      "sha256": "56fa414983fd2dbae42b23ee41ea68a664daa7fb387050a210a5ff6a97d56388"
+    },
+    {
+      "file": "keyframes/task-5.png",
+      "sha256": "44b3dfb737dd0c7fdc2fddd995ab7f80ac81d611c7c13f204b59437946c2fbbc"
+    },
+    {
+      "file": "keyframes/task-6.png",
+      "sha256": "df5a968d3d226c7d7902ddd8575b8efd2a0b848d1805687adcb5fba7feb1aa4b"
+    },
+    {
+      "file": "keyframes/task-7.png",
+      "sha256": "6e9f54c7176a5595d7b53366eb05b40c38103fba8785b1cab0d8e7446bce3bed"
+    },
+    {
+      "file": "keyframes/work-1.png",
+      "sha256": "a489d5d799001ad8378eafa86a0d0d879834680217490616ef0703b50dea2d89"
+    },
+    {
+      "file": "keyframes/work-100.png",
+      "sha256": "942baf338d668bed66612b6d985a9541f1f916155fbfdf74bb1150d3c322da57"
+    },
+    {
+      "file": "keyframes/work-105.png",
+      "sha256": "e73a866cc16b8ec47b1e2bf3794107f71cb6662cc8cda75bcf940b9a9975ba06"
+    },
+    {
+      "file": "keyframes/work-11.png",
+      "sha256": "dee833b9053f79d8845138b3961d35d1b202b942fd651113522fea9ec93f40ac"
+    },
+    {
+      "file": "keyframes/work-13.png",
+      "sha256": "52c1d7ff91ae909c5d546dc9e8e3e0e42779c43a816d068bd6eeb08b015c78c1"
+    },
+    {
+      "file": "keyframes/work-18.png",
+      "sha256": "b4fc16197931a5bd1c0e90df86d771a88d3dafd58e42f850b8cda4ac571bb91f"
+    },
+    {
+      "file": "keyframes/work-21.png",
+      "sha256": "0a308b085cebe35b32f4d4b30e4441eb71bb3f22bccb6ac3c948e59334039091"
+    },
+    {
+      "file": "keyframes/work-24.png",
+      "sha256": "b1442377ccc073e9aebea237079cbc9b383c324ecc7bd66613f367a3d72086e3"
+    },
+    {
+      "file": "keyframes/work-28.png",
+      "sha256": "895a93346695d5fc5e82c7baea3017a120dfd3452bddad9d22bc031a16ecf874"
+    },
+    {
+      "file": "keyframes/work-32.png",
+      "sha256": "0fef3eb19a5045f83efc8a3c15a047bc55295604d6c0ab5db6bffc292b34a30d"
+    },
+    {
+      "file": "keyframes/work-35.png",
+      "sha256": "a082e18c6f213cbfef7968e2798966b7b7bb612f80301407e32c49d59a05f550"
+    },
+    {
+      "file": "keyframes/work-40.png",
+      "sha256": "24a1d19eafceb3ac810145d31d086f5f79e73f0847da3e8344fb67acb873f538"
+    },
+    {
+      "file": "keyframes/work-43.png",
+      "sha256": "d5900f306590d024deaf9c75fe43522d375b7836de4ccfd50e331a68a669e0a4"
+    },
+    {
+      "file": "keyframes/work-48.png",
+      "sha256": "675b0efbb144c5399857a5e7c09ba5b7a81a300b476ce1d5d3aaf2d9553e5611"
+    },
+    {
+      "file": "keyframes/work-5.png",
+      "sha256": "372ddd78db3bd87bf13cd71426fe2773c4a7493b1374e7133cf6571811c65c8d"
+    },
+    {
+      "file": "keyframes/work-56.png",
+      "sha256": "44c89bf51fdff4383ab94bce84d3c63f0e14f0673836f504255b761362b7dc50"
+    },
+    {
+      "file": "keyframes/work-62.png",
+      "sha256": "c470de628752a49613d3fd24187fef1e784703a344ecea03186bc9c45ddf71ab"
+    },
+    {
+      "file": "keyframes/work-66.png",
+      "sha256": "e09e1abf4d1e86b0eb2f63de7aa1d73598c842853d0dca2bddd31ea34caf1cd5"
+    },
+    {
+      "file": "keyframes/work-71.png",
+      "sha256": "f85c1bbd307782f50d6fb4b92e531bd3df5d564824aba7ae211f8f0cd5185250"
+    },
+    {
+      "file": "keyframes/work-76.png",
+      "sha256": "fa0b05ad863b247573fcb99dec25b6b63e4ae868a59a9917c7245a2b7b691e79"
+    },
+    {
+      "file": "keyframes/work-81.png",
+      "sha256": "19a5c74feba7790e26197bf9b164fd608042c12ea39e91184c0d0fc086b0105a"
+    },
+    {
+      "file": "keyframes/work-88.png",
+      "sha256": "f26217660af2cb0d5cbd51b248d38842a3807e78e26f197131688ec2f76f7cee"
+    },
+    {
+      "file": "keyframes/work-9.png",
+      "sha256": "e301cfe333f6e57b2761b779a9f136c723f0557099143bfd7401b97880ecc9b9"
+    },
+    {
+      "file": "keyframes/work-92.png",
+      "sha256": "e726519101482062c73ee8d83fab271a7c194f817474dace1b1055dc1d58cff3"
+    }
+  ]
+}

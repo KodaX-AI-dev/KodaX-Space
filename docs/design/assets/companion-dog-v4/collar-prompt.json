@@ -1,0 +1,4 @@
+{
+  "tool": "image_gen built-in",
+  "prompt": "Use case: precise-object-edit. Input is the approved animation parts atlas for an apricot puppy. Create one isolated COLLAR component for this same 2D character rig: the sage forest green collar band from row2 col1, complete curved band seen in three-quarter view, dark chocolate contour, subtle cel shading, attached brass ring and small round gold hanging tag. Include a very short ivory fur neck cuff above the band for overlap with the head, but absolutely no head, no body, no legs, no eyes, no dog. Just one collar and tag on genuinely transparent background, large clean centered cutout, identical palette and outline style. No text, labels, cast shadow, background, extra items or checkerboard pixels. Preserve the band shape and tag design from reference."
+}

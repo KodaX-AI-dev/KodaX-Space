@@ -1,0 +1,135 @@
+{
+  "method": "Existing intact key poses plus offline RIFE inference; no new independently drawn in-betweens.",
+  "tool": {
+    "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/tag/20221029",
+    "model": "rife-v4.6",
+    "sha256": "4b970319db2814c82b15fceed8193151560a676a9eb63f20d4877be77b98f44f"
+  },
+  "source": [
+    {
+      "file": "keyframes/pose-0.png",
+      "source": "v9 build export cel-0.png",
+      "sha256": "b55ec73f31eeb5ef2d3beb1828e1d5e3f43d7bfdc50758620ecfd4ac5b7c11c6"
+    },
+    {
+      "file": "keyframes/pose-1.png",
+      "source": "v9 build export cel-1.png",
+      "sha256": "01f397ea4eeea6226fa42028c6b358e81eb8f8d208cbda310fce120f3042b75b"
+    },
+    {
+      "file": "keyframes/pose-5.png",
+      "source": "v9 build export cel-5.png",
+      "sha256": "0c14f21ffa8d05ca1932c8cb49d9d0fc8d84967c0a204d73abb7de2e44b6e947"
+    },
+    {
+      "file": "keyframes/pose-9.png",
+      "source": "v9 build export cel-9.png",
+      "sha256": "efbca856fcdb4aa59db049fb21dd69fdee9a58743d9e44d4123a07ae826748fe"
+    },
+    {
+      "file": "keyframes/pose-11.png",
+      "source": "v9 build export cel-11.png",
+      "sha256": "53b9292806db024d84ae7cb16f6f4b6cae189efbf775cdb90ea84b37dea34ab0"
+    },
+    {
+      "file": "keyframes/pose-13.png",
+      "source": "v9 build export cel-13.png",
+      "sha256": "bb9eadea1c9f025322f4253f8d49fc788922e81e776bcbd470d85af62b68dc97"
+    },
+    {
+      "file": "keyframes/pose-18.png",
+      "source": "v9 build export cel-18.png",
+      "sha256": "9ecdad1a075d997fff81551aaedaf9f3db7c9b01e66273559c91dcdd27550810"
+    },
+    {
+      "file": "keyframes/pose-21.png",
+      "source": "v9 build export cel-21.png",
+      "sha256": "eae6647154d42599715573a42f557b3f7a96dcfe14c17f392faa6fe57099cc23"
+    },
+    {
+      "file": "keyframes/pose-24.png",
+      "source": "v9 build export cel-24.png",
+      "sha256": "5a0e4678c822b9f6fd4320ca48aad5ae6eeb37e65a3d7e8ec9181fc1e16d55d0"
+    },
+    {
+      "file": "keyframes/pose-28.png",
+      "source": "v9 build export cel-28.png",
+      "sha256": "a9e320e763619e9c95a9a67fb501c35f91e1e3803658bf8d8e8477d2aca0a585"
+    },
+    {
+      "file": "keyframes/pose-32.png",
+      "source": "v9 build export cel-32.png",
+      "sha256": "63c8195f3beb8c828479155c25f50fbf1f3b918b52ea6ea883c26513fe8549f1"
+    },
+    {
+      "file": "keyframes/pose-35.png",
+      "source": "v9 build export cel-35.png",
+      "sha256": "92501419de7664d7dba7d89847892f1258421fb65c970b0002de7fef575db687"
+    },
+    {
+      "file": "keyframes/pose-40.png",
+      "source": "v9 build export cel-40.png",
+      "sha256": "c59abd60026fb1b82692b844a0030f028db22d3f36ef8fc07510e2271a4ba043"
+    },
+    {
+      "file": "keyframes/pose-43.png",
+      "source": "v9 build export cel-43.png",
+      "sha256": "03ea9b8f9cf57a98f650367cc858ee65df7d25f68d43aaec8d19be0a2190888b"
+    },
+    {
+      "file": "keyframes/pose-48.png",
+      "source": "v9 build export cel-48.png",
+      "sha256": "91b9cf0dd4a60a7f2874ddf01cc41f608fc617086377b21da225962cbb4ef89d"
+    },
+    {
+      "file": "keyframes/pose-56.png",
+      "source": "v9 build export cel-56.png",
+      "sha256": "daffa28b429ea55b3af1c4a7c76c73057f6a18acb6d5518a582097ff1412871e"
+    },
+    {
+      "file": "keyframes/pose-62.png",
+      "source": "v9 build export cel-62.png",
+      "sha256": "92411c66d1a16f718321140e2e18bc5be10feff2f3d0395fbab61553a680edce"
+    },
+    {
+      "file": "keyframes/pose-66.png",
+      "source": "v9 build export cel-66.png",
+      "sha256": "7f6d9dec7cd6c89d27e0cfda053c1853e323aca8c3b52cf1b6b6706ba10b5eeb"
+    },
+    {
+      "file": "keyframes/pose-71.png",
+      "source": "v9 build export cel-71.png",
+      "sha256": "5e6c90f0ed05abd6bf51f062872ecfa05a5a5ea837169afb416f7a063f4e4ad2"
+    },
+    {
+      "file": "keyframes/pose-76.png",
+      "source": "v9 build export cel-76.png",
+      "sha256": "0d3080a95d83f31676b1440cb7a48f453f15a30786ecf2c1627b38973d11ad55"
+    },
+    {
+      "file": "keyframes/pose-81.png",
+      "source": "v9 build export cel-81.png",
+      "sha256": "8b1d243f48106494bd4ec40b7f24a368f8a2a639a33de3f399e9f330183b9d5c"
+    },
+    {
+      "file": "keyframes/pose-88.png",
+      "source": "v9 build export cel-88.png",
+      "sha256": "d2d9c3ee207d57f5cea1eeabd759ec282b9c12a92f03f23e9e7b03162a815c85"
+    },
+    {
+      "file": "keyframes/pose-92.png",
+      "source": "v9 build export cel-92.png",
+      "sha256": "c066c9e27901cacab33648ca604c03fdb9aa5d79d7e1ee6fd362896848bc3729"
+    },
+    {
+      "file": "keyframes/pose-100.png",
+      "source": "v9 build export cel-100.png",
+      "sha256": "1d0a1b130e35abff32eb602b5055eaae80f6f323f6c88f8bb78d4e9107c9c230"
+    },
+    {
+      "file": "keyframes/pose-105.png",
+      "source": "v9 build export cel-105.png",
+      "sha256": "aeb53722b969b8af7feb7b1d3bd778fb8723cea1d138762bc6c11b192db25f2d"
+    }
+  ]
+}

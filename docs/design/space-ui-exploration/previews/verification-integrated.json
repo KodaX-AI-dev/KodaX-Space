@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-16",
+  "method": "Actual in-app browser interactions, default 1280x720 and responsive 796x956; viewport override reset",
+  "passed": [
+    "Three named projects with per-project running/awaiting/unread summaries",
+    "Independent per-session drafts restore across projects",
+    "Parallel simulation progresses while settings is open",
+    "Completion leaves unread state without switching current task",
+    "Manual approval updates only current task and global counts",
+    "Settings round-trip retains project, draft and content view",
+    "Light/dark theme synchronizes across cached frames",
+    "Minimal/balanced/full quality synchronizes across cached frames",
+    "Reduced motion preference synchronizes across cached frames",
+    "Settings category selection plate and search for glass controls",
+    "Conversation/result view and three artifact files",
+    "Review work surface, focus mode, Escape/back and inert underlying content",
+    "Original A/B/C comparison and return to integrated view",
+    "JavaScript syntax, assets, unique IDs, icon references and formatting"
+  ],
+  "screenshots": [
+    "integrated-workspace-dark.jpg",
+    "integrated-workspace-light.jpg",
+    "integrated-settings-dark.jpg",
+    "integrated-settings-light.jpg"
+  ],
+  "limits": [
+    "All tasks, diffs and configuration values are illustrative; no Agent, account or production configuration is connected",
+    "No production source files changed",
+    "No Electron GPU, power or frame-rate benchmark"
+  ],
+  "automationLogObservation": "Browser automation emitted MutationObserver initialization messages during frame navigation. Temporary application error tracing did not capture an application error; no interaction failure reproduced. Temporary diagnostics were removed."
+}
