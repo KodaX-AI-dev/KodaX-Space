@@ -1,5 +1,6 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { sessionEventChannel } from '@kodax-space/space-ipc-schema';
 import type {
   SessionHistoryItem,
   SessionMeta,
@@ -441,6 +442,42 @@ test('queued interrupt terminal event fails only its public queue id and survive
     ],
   );
   assert.equal(queued[1]?.failureReason, 'run_completed');
+});
+
+test('lost queued authorization preserves the exact after-turn input as failed after completion', () => {
+  const store = useAppStore.getState();
+  const localId = store.appendQueuedUserMessage(SID, {
+    content: 'Keep this original query',
+    queueMode: 'after-turn',
+  });
+  assert.ok(localId);
+  store.markQueuedUserMessageAccepted(SID, localId, 'revoked-input', 'after-turn');
+  store.appendEvent(
+    sessionEventChannel.payload.parse({
+      kind: 'queued_user_prompt_failed',
+      sessionId: SID,
+      queueId: 'revoked-input',
+      queueMode: 'after-turn',
+      content: 'Keep this original query',
+      reason: 'authorization_unavailable',
+    }),
+  );
+  store.appendEvent({ kind: 'session_complete', sessionId: SID });
+  assert.deepEqual(
+    useAppStore
+      .getState()
+      .queuedUserMessagesBySession[
+        SID
+      ]?.map(({ queueId, content, status, failureReason }) => ({ queueId, content, status, failureReason })),
+    [
+      {
+        queueId: 'revoked-input',
+        content: 'Keep this original query',
+        status: 'failed',
+        failureReason: 'authorization_unavailable',
+      },
+    ],
+  );
 });
 
 test('queued interrupt terminal event wins an event-before-ack race by preview content', () => {

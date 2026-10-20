@@ -1097,7 +1097,7 @@ test('session.event payload: queued_user_prompt_started variant', () => {
   );
 });
 
-test('session.event payload: queued_user_prompt_failed variant is bounded and interrupt-only', () => {
+test('session.event payload: queued failure preserves interrupt semantics and admits lost after-turn authority', () => {
   const evt = {
     kind: 'queued_user_prompt_failed' as const,
     sessionId: 's_1',
@@ -1107,6 +1107,14 @@ test('session.event payload: queued_user_prompt_failed variant is bounded and in
     reason: 'run_completed' as const,
   };
   assert.equal(sessionEventChannel.payload.safeParse(evt).success, true);
+  assert.equal(
+    sessionEventChannel.payload.safeParse({
+      ...evt,
+      queueMode: 'after-turn',
+      reason: 'authorization_unavailable',
+    }).success,
+    true,
+  );
   assert.equal(
     sessionEventChannel.payload.safeParse({ ...evt, queueMode: 'after-turn' }).success,
     false,

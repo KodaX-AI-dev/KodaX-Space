@@ -1227,460 +1227,484 @@ const runtimeSessionEventOriginShape = {
 export const sessionEventChannel = {
   name: 'session.event',
   direction: 'push',
-  payload: z.discriminatedUnion('kind', [
-    // ---- 流式输出（v0.1.0-alpha.0 已有）----
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('output_segment_started'),
-      sessionId: z.string().min(1),
-      responseId: z.string().min(1).max(256),
-      providerRequestId: z.string().min(1).max(256),
-      mode: z.enum(['replace', 'append']),
-      sentAt: z.number().int().nonnegative().optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('text_delta'),
-      sessionId: z.string().min(1),
-      text: z.string().max(MAX_TEXT_CHUNK),
-      providerRequestId: z.string().min(1).max(256).optional(),
-      textStartOffset: z.number().int().nonnegative().optional(),
-      /** Optional producer/store timestamp for the first chunk in one assistant text block. */
-      sentAt: z.number().int().nonnegative().optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('thinking_delta'),
-      sessionId: z.string().min(1),
-      text: z.string().max(MAX_TEXT_CHUNK),
-      providerRequestId: z.string().min(1).max(256).optional(),
-      textStartOffset: z.number().int().nonnegative().optional(),
-      /** Optional producer/store timestamp for the first chunk in one assistant thinking block. */
-      sentAt: z.number().int().nonnegative().optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('thinking_end'),
-      sessionId: z.string().min(1),
-      // 全量 thinking trace 在大 reasoning session 可能不小，但比 tool_result 小一档。
-      // 256KB = MAX_TEXT_CHUNK，与单条 text/thinking_delta 同级——KodaX 内部 thinking 是
-      // 流式累积的，到 onThinkingEnd 时长度 ≈ 所有 thinking_delta 拼接。512KB 太大易 DoS。
-      thinking: z.string().max(MAX_TEXT_CHUNK),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('tool_start'),
-      sourceItemId: z.string().min(1).max(256).optional(),
-      interrupted: z.boolean().optional(),
-      sessionId: z.string().min(1),
-      toolId: z.string().min(1),
-      toolName: z.string().min(1),
-      input: toolInputSchema.optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('tool_input_delta'),
-      sessionId: z.string().min(1),
-      toolId: z.string().min(1).optional(),
-      toolName: z.string().min(1),
-      partialJson: z.string().max(MAX_TEXT_CHUNK),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('tool_progress'),
-      sessionId: z.string().min(1),
-      toolId: z.string().min(1),
-      message: z.string().max(MAX_TEXT_CHUNK),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('tool_result'),
-      sourceItemId: z.string().min(1).max(256).optional(),
-      sessionId: z.string().min(1),
-      toolId: z.string().min(1),
-      toolName: z.string().min(1),
-      content: z.string().max(MAX_TOOL_RESULT),
-    }),
-    z.object({
-      kind: z.literal('stream_end'),
-      sessionId: z.string().min(1),
-    }),
-    // ---- session/iteration lifecycle ----
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('session_start'),
-      sessionId: z.string().min(1),
-      provider: z.string().min(1).max(64),
-      turnId: z.string().min(1).max(128).optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('mid_turn_user_prompt'),
-      sessionId: z.string().min(1),
-      queueId: z.string().min(1).max(128).optional(),
-      content: z.string().min(1).max(MAX_PROMPT_BYTES),
-      /** Exact durable user entry reported by KodaX 0.7.81+; absent for legacy deliveries. */
-      entryId: z.string().min(1).max(256).optional(),
-      turnId: z.string().min(1).max(128).optional(),
-      turnUserOrdinal: z.number().int().nonnegative().max(1_000_000).optional(),
-      sentAt: z.number().int().nonnegative().optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('queued_user_prompt_started'),
-      sessionId: z.string().min(1),
-      queueId: z.string().min(1).max(128).optional(),
-      queueMode: sessionSendQueueModeSchema,
-      content: z.string().min(1).max(MAX_PROMPT_BYTES),
-      turnId: z.string().min(1).max(128).optional(),
-      turnUserOrdinal: z.number().int().nonnegative().max(1_000_000).optional(),
-    }),
-    z.object({
-      kind: z.literal('queued_user_prompt_failed'),
-      sessionId: z.string().min(1),
-      queueId: z.string().min(1).max(128),
-      queueMode: z.literal('interrupt'),
-      content: z.string().min(1).max(MAX_PROMPT_BYTES),
-      reason: z.enum(['run_completed', 'run_failed', 'run_cancelled', 'run_interrupted']),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('iteration_start'),
-      contextKind: z.enum(['root', 'child']).optional(),
-      sessionId: z.string().min(1),
-      iter: z.number().int().nonnegative(),
-      maxIter: z.number().int().nonnegative(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('iteration_end'),
-      sessionId: z.string().min(1),
-      iter: z.number().int().nonnegative(),
-      maxIter: z.number().int().nonnegative(),
-      tokenCount: z.number().int().nonnegative(),
-      tokenSource: z.enum(['api', 'estimate']).optional(),
-      scope: z.enum(['parent', 'worker']).optional(),
-      usage: tokenUsageSchema,
-      contextId: z.string().min(1).max(512).optional(),
-      contextKind: z.enum(['root', 'child']).optional(),
-      parentContextId: z.string().min(1).max(512).optional(),
-      agentId: z.string().min(1).max(256).optional(),
-      contextRevision: z.number().int().nonnegative().optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('session_complete'),
-      sessionId: z.string().min(1),
-      turnId: z.string().min(1).max(128).optional(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('session_error'),
-      sessionId: z.string().min(1),
-      turnId: z.string().min(1).max(128).optional(),
-      /** 用户可读文案 (已经过 wrapSdkError 友好化)。renderer 显示这条。*/
-      error: z.string(),
-      /** Credential-safe KodaX Runtime provider failure classification. */
-      failureKind: spaceRuntimeRunFailureKindSchema.optional(),
-      /** KodaX 0.7.96 bounded, credential-safe Runtime failure diagnostics. */
-      failureDetail: spaceRuntimeFailureDetailSchema.optional(),
-      /** OC-11 wrapSdkError 分类 —— renderer 据此决定 retry / open-settings 按钮。
-       *  optional 保持向后兼容：旧 'cancelled' / guardrail 失败等仍可不带 category。*/
-      category: z
-        .enum([
-          'rate_limit',
-          'auth',
-          'quota',
-          'network',
-          'model_unavailable',
-          'bad_request',
-          'server_error',
-          'cancelled',
-          'unknown',
-        ])
-        .optional(),
-      /** 用户该做的下一步动作；renderer 据此渲染按钮。 */
-      action: z
-        .enum(['retry', 'open_provider_settings', 'check_network', 'change_model'])
-        .optional(),
-      retriable: z.boolean().optional(),
-      /** OC-23 限流重试**到点 epoch 毫秒**（绝对时间戳，**非** delta）。
-       *  Main 端仅在 Runtime 提供合法 terminal endedAt 与 retryAfterMs 时，计算
-       *  endedAt + retryAfterMs；renderer 用 setInterval 算剩余秒数显示 "Retry in 30s"。
-       *  绝对时间戳比 delta 更稳：composeMessages 是 selector，每次 events 变都重跑，
-       *  delta 形式会导致每跑一次就把 retryAvailableAt 推后一格 (review HIGH-2)。
-       *  SDK/Space failureDetail 将 retryAfterMs 限制为 24 小时；若缺少稳定 endedAt，
-       *  Main 端省略该字段，避免倒计时漂移或盲重试。*/
-      retryAvailableAt: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
-    }),
-    // ---- Context budget diagnostics（KodaX RuntimeContextBudgetSnapshot）----
-    // 仅包含 token 数量与类别，不携带 prompt / tool input / tool output 原文。
-    z.object({
-      kind: z.literal('context_budget_snapshot'),
-      sessionId: z.string().min(1),
-      contextId: z.string().min(1).max(512).optional(),
-      contextKind: z.enum(['root', 'child']).optional(),
-      parentContextId: z.string().min(1).max(512).optional(),
-      agentId: z.string().min(1).max(256).optional(),
-      /** Root context revision this budget was calculated from. */
-      contextRevision: z.number().int().nonnegative().optional(),
-      provider: z.string().min(1).max(64).optional(),
-      model: z.string().min(1).max(256).optional(),
-      profile: z.enum(['off', 'report_only', 'balanced', 'small_window', 'aggressive']),
-      contextWindow: z.number().int().positive().max(10_000_000),
-      smallWindow: z.boolean(),
-      pressure: z.enum(['low', 'medium', 'high', 'critical']),
-      tokenBreakdown: contextBudgetTokenBreakdownSchema,
-      usedTokens: z.number().int().nonnegative().max(10_000_000),
-      availableTokens: z.number().int().nonnegative().max(10_000_000),
-      usedRatio: z.number().finite().nonnegative().max(100),
-      toolSchemaRatio: z.number().finite().nonnegative().max(100),
-      createdAt: z.string().datetime(),
-    }),
-    // ---- Provider prompt-cache diagnostics（KodaX 0.7.77）----
-    // Hash-only request identity + Provider-reported usage. No prompt/message text crosses IPC.
-    z.object({
-      kind: z.literal('provider_cache_diagnostic'),
-      sessionId: z.string().min(1),
-      contextId: z.string().min(1).max(512).optional(),
-      contextKind: z.enum(['root', 'child']).optional(),
-      parentContextId: z.string().min(1).max(512).optional(),
-      agentId: z.string().min(1).max(256).optional(),
-      requestId: z.string().min(1).max(128),
-      requestedAt: z.string().datetime(),
-      completedAt: z.string().datetime(),
-      transport: z.enum(['stream', 'complete']).optional(),
-      provider: z.string().min(1).max(128),
-      model: z.string().min(1).max(256),
-      wireModel: z.string().min(1).max(256).optional(),
-      reasoningHash: sha256HexSchema.optional(),
-      maxOutputTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      kodaxPromptCacheEnabled: z.boolean().optional(),
-      endpoint: z.string().max(2_048).optional(),
-      endpointPathHash: sha256HexSchema.optional(),
-      attempt: z.number().int().positive().max(10_000),
-      systemPromptHash: sha256HexSchema,
-      toolSchemaHash: sha256HexSchema,
-      messagePrefixHash: sha256HexSchema,
-      messagePrefixCount: z.number().int().nonnegative().max(10_000_000),
-      requestMessagesHash: sha256HexSchema,
-      requestEnvelopeHash: sha256HexSchema,
-      ephemeralSuffixHash: sha256HexSchema.optional(),
-      promptCacheAffinityHash: sha256HexSchema.optional(),
-      messageCount: z.number().int().nonnegative().max(10_000_000),
-      toolCount: z.number().int().nonnegative().max(100_000),
-      inputTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-      outputTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-      cacheReadInputTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-      cacheWriteInputTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-    }),
-    // ---- Context compaction（KodaX onCompact* 系列）----
-    z.object({
-      kind: z.literal('compact_start'),
-      sessionId: z.string().min(1),
-      contextId: z.string().min(1).max(512).optional(),
-      contextKind: z.enum(['root', 'child']).optional(),
-      parentContextId: z.string().min(1).max(512).optional(),
-      agentId: z.string().min(1).max(256).optional(),
-      contextRevision: z.number().int().nonnegative().optional(),
-    }),
-    z.object({
-      kind: z.literal('compact_stats'),
-      sessionId: z.string().min(1),
-      tokensBefore: z.number().int().nonnegative().max(10_000_000),
-      tokensAfter: z.number().int().nonnegative().max(10_000_000),
-      contextId: z.string().min(1).max(512).optional(),
-      contextKind: z.enum(['root', 'child']).optional(),
-      parentContextId: z.string().min(1).max(512).optional(),
-      agentId: z.string().min(1).max(256).optional(),
-      contextRevision: z.number().int().nonnegative().optional(),
-      source: z.enum(['manual', 'automatic_threshold', 'physical_capacity']).optional(),
-      committed: z.boolean().optional(),
-      // SDK performance.now() measurements retain fractional milliseconds.
-      elapsedMs: z.number().finite().nonnegative().max(86_400_000).optional(),
-      strategy: z.enum(['full_prefix', 'map_reduce']).optional(),
-      effectiveTriggerTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      protectedBudgetTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      fixedInputTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      eligibleTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      rawTailTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      summaryTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      queryLedgerTokens: z.number().int().nonnegative().max(10_000_000).optional(),
-      /** KodaX 0.7.96-beta.4: physical summary calls (count only; no per-request detail). */
-      summaryRequestCount: z.number().int().positive().max(1_000).optional(),
-      /** Durable history commit duration; excludes summary generation. */
-      commitMs: z.number().finite().nonnegative().max(86_400_000).optional(),
-      beforeRevision: z.number().int().nonnegative().optional(),
-      afterRevision: z.number().int().nonnegative().optional(),
-      reason: z.string().max(2_000).optional(),
-    }),
-    z.object({
-      kind: z.literal('compact_end'),
-      sessionId: z.string().min(1),
-      contextId: z.string().min(1).max(512).optional(),
-      contextKind: z.enum(['root', 'child']).optional(),
-      parentContextId: z.string().min(1).max(512).optional(),
-      agentId: z.string().min(1).max(256).optional(),
-      contextRevision: z.number().int().nonnegative().optional(),
-    }),
-    // ---- Provider retry / recovery ----
-    z.object({
-      kind: z.literal('retry_after'),
-      sessionId: z.string().min(1),
-      payload: retryAfterSchema,
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('provider_recovery'),
-      sessionId: z.string().min(1),
-      turnId: z.string().min(1).max(256).optional(),
-      stage: z.string().max(64),
-      errorClass: z.string().max(64),
-      attempt: z.number().int().nonnegative().max(100),
-      maxAttempts: z.number().int().positive().max(100),
-      delayMs: z.number().int().nonnegative().max(3_600_000),
-      recoveryAction: z.string().max(64),
-      ladderStep: z.number().int().nonnegative().max(10),
-      fallbackUsed: z.boolean(),
-    }),
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      kind: z.literal('reasoning_resolved'),
-      sessionId: z.string().min(1),
-      turnId: z.string().min(1).max(256).optional(),
-      resolution: z.object({
-        provider: z.string().min(1).max(256),
-        model: z.string().max(512),
-        requestedEffort: z.string().min(1).max(64),
-        sentEffort: z.string().min(1).max(64).optional(),
-        verified: z.literal(false),
-        fallbacks: z
-          .array(
-            z.object({
-              effort: z.string().max(64).optional(),
-              reason: z.enum([
-                'profile',
-                'unsupported-effort',
-                'unsupported-parameter',
-                'cached-rejection',
-              ]),
-            }),
-          )
-          .max(100),
+  payload: z
+    .discriminatedUnion('kind', [
+      // ---- 流式输出（v0.1.0-alpha.0 已有）----
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('output_segment_started'),
+        sessionId: z.string().min(1),
+        responseId: z.string().min(1).max(256),
+        providerRequestId: z.string().min(1).max(256),
+        mode: z.enum(['replace', 'append']),
+        sentAt: z.number().int().nonnegative().optional(),
       }),
-    }),
-    // ---- Repointel (repo intelligence) trace ----
-    z.object({
-      kind: z.literal('repointel_trace'),
-      sessionId: z.string().min(1),
-      event: repointelTraceSchema,
-    }),
-    // ---- Plan / Todo (Scout-seeded todo list) ----
-    z.object({
-      kind: z.literal('todo_update'),
-      sessionId: z.string().min(1),
-      items: z.array(todoItemSchema).max(200),
-    }),
-    // ---- SDK sidecar / todo hygiene observability ----
-    z.object({
-      ...runtimeSessionEventOriginShape,
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('sidecar_message'),
-      sessionId: z.string().min(1),
-      sentAt: z.number().int().nonnegative().optional(),
-      message: spaceRuntimeSidecarMessagePayloadSchema,
-    }),
-    // ---- Raw/audit compatibility: fork/rewind branch_summary / compaction lineage ----
-    // Ordinary main chat uses KodaX conversation projection and does not render these rows. This
-    // event remains for audit/details consumers and legacy history fallbacks only.
-    z.object({
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('lineage_notice'),
-      sessionId: z.string().min(1),
-      noticeKind: z.enum(['branch_summary', 'compaction']),
-      text: z.string().max(MAX_TEXT_CHUNK),
-      /** Stable live placeholder identity. A later persisted projection upgrades this row in place. */
-      provisionalId: z.string().min(1).max(512).optional(),
-      /** Renderer identity chosen by the projection that first made this row visible. */
-      displayId: z.string().min(1).max(512).optional(),
-      sentAt: z.number().int().nonnegative().optional(),
-      contextId: z.string().min(1).max(512).optional(),
-      contextRevision: z.number().int().nonnegative().optional(),
-      afterRevision: z.number().int().nonnegative().optional(),
-      source: z.enum(['manual', 'automatic_threshold', 'physical_capacity']).optional(),
-      tokensBefore: z.number().int().nonnegative().max(10_000_000).optional(),
-      tokensAfter: z.number().int().nonnegative().max(10_000_000).optional(),
-    }),
-    z.object({
-      kind: z.literal('history_truncation'),
-      sessionId: z.string().min(1),
-      scope: z.enum(['history', 'turn']),
-      omittedItems: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-    }),
-    // v0.1.x: workflow 结果/摘要提示条。历史回放由 session.history 的 workflow_notice item
-    // 转成这个 SessionEvent；live workflow.event 也会注入同一事件流，避免 renderer 侧 wall-clock
-    // notice 被排到整段 assistant 回复之后。key/sentAt 仅 live 去重/展示使用。
-    z.object({
-      ...transcriptHistoryIdentityShape,
-      kind: z.literal('workflow_notice'),
-      sessionId: z.string().min(1),
-      text: z.string().max(MAX_TEXT_CHUNK),
-      key: z.string().min(1).max(512).optional(),
-      sentAt: z.number().int().nonnegative().optional(),
-    }),
-    z.object({
-      kind: z.literal('todo_drift_warning'),
-      sessionId: z.string().min(1),
-      warning: todoDriftWarningSchema,
-    }),
-    z.object({
-      kind: z.literal('effective_config'),
-      sessionId: z.string().min(1),
-      config: z.object({
-        agentMode: agentModeSchema,
-        agentProfile: agentProfileSummarySchema.optional(),
-        toolScope: z.array(z.string().min(1).max(128)).max(512),
-        verification: verificationSummarySchema.optional(),
-        verifier: z
-          .object({
-            provider: z.string().min(1).max(64).optional(),
-            model: z.string().min(1).max(128).optional(),
-          })
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('text_delta'),
+        sessionId: z.string().min(1),
+        text: z.string().max(MAX_TEXT_CHUNK),
+        providerRequestId: z.string().min(1).max(256).optional(),
+        textStartOffset: z.number().int().nonnegative().optional(),
+        /** Optional producer/store timestamp for the first chunk in one assistant text block. */
+        sentAt: z.number().int().nonnegative().optional(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('thinking_delta'),
+        sessionId: z.string().min(1),
+        text: z.string().max(MAX_TEXT_CHUNK),
+        providerRequestId: z.string().min(1).max(256).optional(),
+        textStartOffset: z.number().int().nonnegative().optional(),
+        /** Optional producer/store timestamp for the first chunk in one assistant thinking block. */
+        sentAt: z.number().int().nonnegative().optional(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('thinking_end'),
+        sessionId: z.string().min(1),
+        // 全量 thinking trace 在大 reasoning session 可能不小，但比 tool_result 小一档。
+        // 256KB = MAX_TEXT_CHUNK，与单条 text/thinking_delta 同级——KodaX 内部 thinking 是
+        // 流式累积的，到 onThinkingEnd 时长度 ≈ 所有 thinking_delta 拼接。512KB 太大易 DoS。
+        thinking: z.string().max(MAX_TEXT_CHUNK),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('tool_start'),
+        sourceItemId: z.string().min(1).max(256).optional(),
+        interrupted: z.boolean().optional(),
+        sessionId: z.string().min(1),
+        toolId: z.string().min(1),
+        toolName: z.string().min(1),
+        input: toolInputSchema.optional(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('tool_input_delta'),
+        sessionId: z.string().min(1),
+        toolId: z.string().min(1).optional(),
+        toolName: z.string().min(1),
+        partialJson: z.string().max(MAX_TEXT_CHUNK),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('tool_progress'),
+        sessionId: z.string().min(1),
+        toolId: z.string().min(1),
+        message: z.string().max(MAX_TEXT_CHUNK),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('tool_result'),
+        sourceItemId: z.string().min(1).max(256).optional(),
+        sessionId: z.string().min(1),
+        toolId: z.string().min(1),
+        toolName: z.string().min(1),
+        content: z.string().max(MAX_TOOL_RESULT),
+      }),
+      z.object({
+        kind: z.literal('stream_end'),
+        sessionId: z.string().min(1),
+      }),
+      // ---- session/iteration lifecycle ----
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('session_start'),
+        sessionId: z.string().min(1),
+        provider: z.string().min(1).max(64),
+        turnId: z.string().min(1).max(128).optional(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('mid_turn_user_prompt'),
+        sessionId: z.string().min(1),
+        queueId: z.string().min(1).max(128).optional(),
+        content: z.string().min(1).max(MAX_PROMPT_BYTES),
+        /** Exact durable user entry reported by KodaX 0.7.81+; absent for legacy deliveries. */
+        entryId: z.string().min(1).max(256).optional(),
+        turnId: z.string().min(1).max(128).optional(),
+        turnUserOrdinal: z.number().int().nonnegative().max(1_000_000).optional(),
+        sentAt: z.number().int().nonnegative().optional(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('queued_user_prompt_started'),
+        sessionId: z.string().min(1),
+        queueId: z.string().min(1).max(128).optional(),
+        queueMode: sessionSendQueueModeSchema,
+        content: z.string().min(1).max(MAX_PROMPT_BYTES),
+        turnId: z.string().min(1).max(128).optional(),
+        turnUserOrdinal: z.number().int().nonnegative().max(1_000_000).optional(),
+      }),
+      z.object({
+        kind: z.literal('queued_user_prompt_failed'),
+        sessionId: z.string().min(1),
+        queueId: z.string().min(1).max(128),
+        queueMode: sessionSendQueueModeSchema,
+        content: z.string().min(1).max(MAX_PROMPT_BYTES),
+        reason: z.enum([
+          'run_completed',
+          'run_failed',
+          'run_cancelled',
+          'run_interrupted',
+          'authorization_unavailable',
+        ]),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('iteration_start'),
+        contextKind: z.enum(['root', 'child']).optional(),
+        sessionId: z.string().min(1),
+        iter: z.number().int().nonnegative(),
+        maxIter: z.number().int().nonnegative(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('iteration_end'),
+        sessionId: z.string().min(1),
+        iter: z.number().int().nonnegative(),
+        maxIter: z.number().int().nonnegative(),
+        tokenCount: z.number().int().nonnegative(),
+        tokenSource: z.enum(['api', 'estimate']).optional(),
+        scope: z.enum(['parent', 'worker']).optional(),
+        usage: tokenUsageSchema,
+        contextId: z.string().min(1).max(512).optional(),
+        contextKind: z.enum(['root', 'child']).optional(),
+        parentContextId: z.string().min(1).max(512).optional(),
+        agentId: z.string().min(1).max(256).optional(),
+        contextRevision: z.number().int().nonnegative().optional(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('session_complete'),
+        sessionId: z.string().min(1),
+        turnId: z.string().min(1).max(128).optional(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('session_error'),
+        sessionId: z.string().min(1),
+        turnId: z.string().min(1).max(128).optional(),
+        /** 用户可读文案 (已经过 wrapSdkError 友好化)。renderer 显示这条。*/
+        error: z.string(),
+        /** Credential-safe KodaX Runtime provider failure classification. */
+        failureKind: spaceRuntimeRunFailureKindSchema.optional(),
+        /** KodaX 0.7.96 bounded, credential-safe Runtime failure diagnostics. */
+        failureDetail: spaceRuntimeFailureDetailSchema.optional(),
+        /** OC-11 wrapSdkError 分类 —— renderer 据此决定 retry / open-settings 按钮。
+         *  optional 保持向后兼容：旧 'cancelled' / guardrail 失败等仍可不带 category。*/
+        category: z
+          .enum([
+            'rate_limit',
+            'auth',
+            'quota',
+            'network',
+            'model_unavailable',
+            'bad_request',
+            'server_error',
+            'cancelled',
+            'unknown',
+          ])
+          .optional(),
+        /** 用户该做的下一步动作；renderer 据此渲染按钮。 */
+        action: z
+          .enum(['retry', 'open_provider_settings', 'check_network', 'change_model'])
+          .optional(),
+        retriable: z.boolean().optional(),
+        /** OC-23 限流重试**到点 epoch 毫秒**（绝对时间戳，**非** delta）。
+         *  Main 端仅在 Runtime 提供合法 terminal endedAt 与 retryAfterMs 时，计算
+         *  endedAt + retryAfterMs；renderer 用 setInterval 算剩余秒数显示 "Retry in 30s"。
+         *  绝对时间戳比 delta 更稳：composeMessages 是 selector，每次 events 变都重跑，
+         *  delta 形式会导致每跑一次就把 retryAvailableAt 推后一格 (review HIGH-2)。
+         *  SDK/Space failureDetail 将 retryAfterMs 限制为 24 小时；若缺少稳定 endedAt，
+         *  Main 端省略该字段，避免倒计时漂移或盲重试。*/
+        retryAvailableAt: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+      }),
+      // ---- Context budget diagnostics（KodaX RuntimeContextBudgetSnapshot）----
+      // 仅包含 token 数量与类别，不携带 prompt / tool input / tool output 原文。
+      z.object({
+        kind: z.literal('context_budget_snapshot'),
+        sessionId: z.string().min(1),
+        contextId: z.string().min(1).max(512).optional(),
+        contextKind: z.enum(['root', 'child']).optional(),
+        parentContextId: z.string().min(1).max(512).optional(),
+        agentId: z.string().min(1).max(256).optional(),
+        /** Root context revision this budget was calculated from. */
+        contextRevision: z.number().int().nonnegative().optional(),
+        provider: z.string().min(1).max(64).optional(),
+        model: z.string().min(1).max(256).optional(),
+        profile: z.enum(['off', 'report_only', 'balanced', 'small_window', 'aggressive']),
+        contextWindow: z.number().int().positive().max(10_000_000),
+        smallWindow: z.boolean(),
+        pressure: z.enum(['low', 'medium', 'high', 'critical']),
+        tokenBreakdown: contextBudgetTokenBreakdownSchema,
+        usedTokens: z.number().int().nonnegative().max(10_000_000),
+        availableTokens: z.number().int().nonnegative().max(10_000_000),
+        usedRatio: z.number().finite().nonnegative().max(100),
+        toolSchemaRatio: z.number().finite().nonnegative().max(100),
+        createdAt: z.string().datetime(),
+      }),
+      // ---- Provider prompt-cache diagnostics（KodaX 0.7.77）----
+      // Hash-only request identity + Provider-reported usage. No prompt/message text crosses IPC.
+      z.object({
+        kind: z.literal('provider_cache_diagnostic'),
+        sessionId: z.string().min(1),
+        contextId: z.string().min(1).max(512).optional(),
+        contextKind: z.enum(['root', 'child']).optional(),
+        parentContextId: z.string().min(1).max(512).optional(),
+        agentId: z.string().min(1).max(256).optional(),
+        requestId: z.string().min(1).max(128),
+        requestedAt: z.string().datetime(),
+        completedAt: z.string().datetime(),
+        transport: z.enum(['stream', 'complete']).optional(),
+        provider: z.string().min(1).max(128),
+        model: z.string().min(1).max(256),
+        wireModel: z.string().min(1).max(256).optional(),
+        reasoningHash: sha256HexSchema.optional(),
+        maxOutputTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        kodaxPromptCacheEnabled: z.boolean().optional(),
+        endpoint: z.string().max(2_048).optional(),
+        endpointPathHash: sha256HexSchema.optional(),
+        attempt: z.number().int().positive().max(10_000),
+        systemPromptHash: sha256HexSchema,
+        toolSchemaHash: sha256HexSchema,
+        messagePrefixHash: sha256HexSchema,
+        messagePrefixCount: z.number().int().nonnegative().max(10_000_000),
+        requestMessagesHash: sha256HexSchema,
+        requestEnvelopeHash: sha256HexSchema,
+        ephemeralSuffixHash: sha256HexSchema.optional(),
+        promptCacheAffinityHash: sha256HexSchema.optional(),
+        messageCount: z.number().int().nonnegative().max(10_000_000),
+        toolCount: z.number().int().nonnegative().max(100_000),
+        inputTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+        outputTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+        cacheReadInputTokens: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(Number.MAX_SAFE_INTEGER)
+          .optional(),
+        cacheWriteInputTokens: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(Number.MAX_SAFE_INTEGER)
           .optional(),
       }),
-    }),
-    // ---- Managed Task / Subagent status (Tasks popout) ----
-    z.object({
-      kind: z.literal('managed_task_status'),
-      sessionId: z.string().min(1),
-      status: managedTaskStatusSchema,
-    }),
-    // ---- FEATURE_008 legacy work_budget / harness_profile ----
-    //
-    // alpha.0 已经 wire 到 TopBar 上的两个事件。alpha.1 重构后 main 端可以
-    // 从 managed_task_status (budgetUsage/globalWorkBudget/harnessProfile) 派生，
-    // 但 schema 保留两个独立事件 — renderer 现有代码继续工作，不破坏向后兼容。
-    z.object({
-      kind: z.literal('work_budget'),
-      sessionId: z.string().min(1),
-      used: z.number().int().nonnegative().max(1_000_000),
-      cap: z.number().int().positive().max(1_000_000),
-    }),
-    z.object({
-      kind: z.literal('harness_profile'),
-      sessionId: z.string().min(1),
-      profile: z.enum(['H0_DIRECT', 'H1_EXECUTE_EVAL', 'H2_PLAN_EXECUTE_EVAL']),
-      round: z.number().int().positive().max(100).optional(),
-    }),
-  ]),
+      // ---- Context compaction（KodaX onCompact* 系列）----
+      z.object({
+        kind: z.literal('compact_start'),
+        sessionId: z.string().min(1),
+        contextId: z.string().min(1).max(512).optional(),
+        contextKind: z.enum(['root', 'child']).optional(),
+        parentContextId: z.string().min(1).max(512).optional(),
+        agentId: z.string().min(1).max(256).optional(),
+        contextRevision: z.number().int().nonnegative().optional(),
+      }),
+      z.object({
+        kind: z.literal('compact_stats'),
+        sessionId: z.string().min(1),
+        tokensBefore: z.number().int().nonnegative().max(10_000_000),
+        tokensAfter: z.number().int().nonnegative().max(10_000_000),
+        contextId: z.string().min(1).max(512).optional(),
+        contextKind: z.enum(['root', 'child']).optional(),
+        parentContextId: z.string().min(1).max(512).optional(),
+        agentId: z.string().min(1).max(256).optional(),
+        contextRevision: z.number().int().nonnegative().optional(),
+        source: z.enum(['manual', 'automatic_threshold', 'physical_capacity']).optional(),
+        committed: z.boolean().optional(),
+        // SDK performance.now() measurements retain fractional milliseconds.
+        elapsedMs: z.number().finite().nonnegative().max(86_400_000).optional(),
+        strategy: z.enum(['full_prefix', 'map_reduce']).optional(),
+        effectiveTriggerTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        protectedBudgetTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        fixedInputTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        eligibleTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        rawTailTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        summaryTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        queryLedgerTokens: z.number().int().nonnegative().max(10_000_000).optional(),
+        /** KodaX 0.7.96-beta.4: physical summary calls (count only; no per-request detail). */
+        summaryRequestCount: z.number().int().positive().max(1_000).optional(),
+        /** Durable history commit duration; excludes summary generation. */
+        commitMs: z.number().finite().nonnegative().max(86_400_000).optional(),
+        beforeRevision: z.number().int().nonnegative().optional(),
+        afterRevision: z.number().int().nonnegative().optional(),
+        reason: z.string().max(2_000).optional(),
+      }),
+      z.object({
+        kind: z.literal('compact_end'),
+        sessionId: z.string().min(1),
+        contextId: z.string().min(1).max(512).optional(),
+        contextKind: z.enum(['root', 'child']).optional(),
+        parentContextId: z.string().min(1).max(512).optional(),
+        agentId: z.string().min(1).max(256).optional(),
+        contextRevision: z.number().int().nonnegative().optional(),
+      }),
+      // ---- Provider retry / recovery ----
+      z.object({
+        kind: z.literal('retry_after'),
+        sessionId: z.string().min(1),
+        payload: retryAfterSchema,
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('provider_recovery'),
+        sessionId: z.string().min(1),
+        turnId: z.string().min(1).max(256).optional(),
+        stage: z.string().max(64),
+        errorClass: z.string().max(64),
+        attempt: z.number().int().nonnegative().max(100),
+        maxAttempts: z.number().int().positive().max(100),
+        delayMs: z.number().int().nonnegative().max(3_600_000),
+        recoveryAction: z.string().max(64),
+        ladderStep: z.number().int().nonnegative().max(10),
+        fallbackUsed: z.boolean(),
+      }),
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        kind: z.literal('reasoning_resolved'),
+        sessionId: z.string().min(1),
+        turnId: z.string().min(1).max(256).optional(),
+        resolution: z.object({
+          provider: z.string().min(1).max(256),
+          model: z.string().max(512),
+          requestedEffort: z.string().min(1).max(64),
+          sentEffort: z.string().min(1).max(64).optional(),
+          verified: z.literal(false),
+          fallbacks: z
+            .array(
+              z.object({
+                effort: z.string().max(64).optional(),
+                reason: z.enum([
+                  'profile',
+                  'unsupported-effort',
+                  'unsupported-parameter',
+                  'cached-rejection',
+                ]),
+              }),
+            )
+            .max(100),
+        }),
+      }),
+      // ---- Repointel (repo intelligence) trace ----
+      z.object({
+        kind: z.literal('repointel_trace'),
+        sessionId: z.string().min(1),
+        event: repointelTraceSchema,
+      }),
+      // ---- Plan / Todo (Scout-seeded todo list) ----
+      z.object({
+        kind: z.literal('todo_update'),
+        sessionId: z.string().min(1),
+        items: z.array(todoItemSchema).max(200),
+      }),
+      // ---- SDK sidecar / todo hygiene observability ----
+      z.object({
+        ...runtimeSessionEventOriginShape,
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('sidecar_message'),
+        sessionId: z.string().min(1),
+        sentAt: z.number().int().nonnegative().optional(),
+        message: spaceRuntimeSidecarMessagePayloadSchema,
+      }),
+      // ---- Raw/audit compatibility: fork/rewind branch_summary / compaction lineage ----
+      // Ordinary main chat uses KodaX conversation projection and does not render these rows. This
+      // event remains for audit/details consumers and legacy history fallbacks only.
+      z.object({
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('lineage_notice'),
+        sessionId: z.string().min(1),
+        noticeKind: z.enum(['branch_summary', 'compaction']),
+        text: z.string().max(MAX_TEXT_CHUNK),
+        /** Stable live placeholder identity. A later persisted projection upgrades this row in place. */
+        provisionalId: z.string().min(1).max(512).optional(),
+        /** Renderer identity chosen by the projection that first made this row visible. */
+        displayId: z.string().min(1).max(512).optional(),
+        sentAt: z.number().int().nonnegative().optional(),
+        contextId: z.string().min(1).max(512).optional(),
+        contextRevision: z.number().int().nonnegative().optional(),
+        afterRevision: z.number().int().nonnegative().optional(),
+        source: z.enum(['manual', 'automatic_threshold', 'physical_capacity']).optional(),
+        tokensBefore: z.number().int().nonnegative().max(10_000_000).optional(),
+        tokensAfter: z.number().int().nonnegative().max(10_000_000).optional(),
+      }),
+      z.object({
+        kind: z.literal('history_truncation'),
+        sessionId: z.string().min(1),
+        scope: z.enum(['history', 'turn']),
+        omittedItems: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+      }),
+      // v0.1.x: workflow 结果/摘要提示条。历史回放由 session.history 的 workflow_notice item
+      // 转成这个 SessionEvent；live workflow.event 也会注入同一事件流，避免 renderer 侧 wall-clock
+      // notice 被排到整段 assistant 回复之后。key/sentAt 仅 live 去重/展示使用。
+      z.object({
+        ...transcriptHistoryIdentityShape,
+        kind: z.literal('workflow_notice'),
+        sessionId: z.string().min(1),
+        text: z.string().max(MAX_TEXT_CHUNK),
+        key: z.string().min(1).max(512).optional(),
+        sentAt: z.number().int().nonnegative().optional(),
+      }),
+      z.object({
+        kind: z.literal('todo_drift_warning'),
+        sessionId: z.string().min(1),
+        warning: todoDriftWarningSchema,
+      }),
+      z.object({
+        kind: z.literal('effective_config'),
+        sessionId: z.string().min(1),
+        config: z.object({
+          agentMode: agentModeSchema,
+          agentProfile: agentProfileSummarySchema.optional(),
+          toolScope: z.array(z.string().min(1).max(128)).max(512),
+          verification: verificationSummarySchema.optional(),
+          verifier: z
+            .object({
+              provider: z.string().min(1).max(64).optional(),
+              model: z.string().min(1).max(128).optional(),
+            })
+            .optional(),
+        }),
+      }),
+      // ---- Managed Task / Subagent status (Tasks popout) ----
+      z.object({
+        kind: z.literal('managed_task_status'),
+        sessionId: z.string().min(1),
+        status: managedTaskStatusSchema,
+      }),
+      // ---- FEATURE_008 legacy work_budget / harness_profile ----
+      //
+      // alpha.0 已经 wire 到 TopBar 上的两个事件。alpha.1 重构后 main 端可以
+      // 从 managed_task_status (budgetUsage/globalWorkBudget/harnessProfile) 派生，
+      // 但 schema 保留两个独立事件 — renderer 现有代码继续工作，不破坏向后兼容。
+      z.object({
+        kind: z.literal('work_budget'),
+        sessionId: z.string().min(1),
+        used: z.number().int().nonnegative().max(1_000_000),
+        cap: z.number().int().positive().max(1_000_000),
+      }),
+      z.object({
+        kind: z.literal('harness_profile'),
+        sessionId: z.string().min(1),
+        profile: z.enum(['H0_DIRECT', 'H1_EXECUTE_EVAL', 'H2_PLAN_EXECUTE_EVAL']),
+        round: z.number().int().positive().max(100).optional(),
+      }),
+    ])
+    .refine(
+      (event) =>
+        event.kind !== 'queued_user_prompt_failed' ||
+        event.queueMode !== 'after-turn' ||
+        event.reason === 'authorization_unavailable',
+      { path: ['queueMode'], message: 'After-turn failure requires unavailable authorization' },
+    ),
 } as const;
 
 export type SessionMeta = z.infer<typeof sessionMetaSchema>;

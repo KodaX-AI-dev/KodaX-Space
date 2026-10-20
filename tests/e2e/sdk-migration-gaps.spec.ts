@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { connectKodaXClient } from '@kodax-ai/kodax/client';
+import { createArtifactSdk } from '@kodax-ai/kodax/artifacts';
+import { createKodaXArtifactPort } from '@kodax-ai/kodax/artifacts/client';
 import { saveGeneratedWorkflow } from '@kodax-ai/kodax/coding';
 import path from 'node:path';
 import {
@@ -98,6 +100,28 @@ test('Workflow execution and Memory management share the actual Host with anothe
       window.kodaxSpace!.invoke('mcp.servers', undefined),
     );
     expect(mcp.ok && mcp.data.canStop).toBe(false);
+    const catalog = await peer.catalog.extensions();
+    expect(
+      catalog.diagnostics.tools.filter((tool) => tool.name.startsWith('artifact_')),
+    ).toHaveLength(9);
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+      'base64',
+    );
+    await writeFile(path.join(projectRoot, 'migration-artifact.png'), png);
+    const requestsBeforeArtifact = provider.requests.length;
+    const artifact = createArtifactSdk(createKodaXArtifactPort(peer, sessionId));
+    const rendered = await artifact.render({ path: 'migration-artifact.png' });
+    expect(rendered.status).toBe('ready');
+    if (rendered.status !== 'ready') throw new Error(JSON.stringify(rendered));
+    const evidence = await artifact.readEvidence({
+      source: rendered.evidence.source,
+      raster: rendered.evidence.evidence[0],
+    });
+    expect(evidence.status).toBe('ready');
+    if (evidence.status !== 'ready') throw new Error(JSON.stringify(evidence));
+    expect(Buffer.from(evidence.image.dataBase64, 'base64')).toEqual(png);
+    expect(provider.requests.length).toBe(requestsBeforeArtifact);
   } finally {
     await peer?.disconnect();
     await provider.close();
@@ -133,10 +157,21 @@ test('Host builtins and complete finalized plans reach the real approval UI', as
       sessionId,
     );
     expect(mode.ok).toBe(true);
+    const currentRequestId = () =>
+      space.page.evaluate(async (id) => {
+        const snapshot = await window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId: id });
+        if (!snapshot.ok) throw new Error(snapshot.error.message);
+        const request = snapshot.data.interactions.find(
+          (item) => item.kind === 'permission',
+        )?.request;
+        if (!request) throw new Error('Host did not supply the pending plan request');
+        return request.reqId;
+      }, sessionId);
     await sendSdkPrompt(space, 'SDK_PLAN');
     const plan = space.page.getByTestId('permission-finalized-plan');
     await expect(plan).toBeVisible({ timeout: 20_000 });
     expect(await plan.locator('pre').textContent()).toBe(FINALIZED_E2E_PLAN);
+    let requestId = await currentRequestId();
     await space.page
       .getByRole('dialog')
       .getByRole('button', { name: 'Allow once (Enter)', exact: true })
@@ -144,6 +179,52 @@ test('Host builtins and complete finalized plans reach the real approval UI', as
     await expect(plan).toHaveCount(0);
     await waitSdkIdle(space, sessionId);
     await expect(space.page.getByTestId('conversation-stream')).toContainText('SDK_REPLY:SDK_PLAN');
+    const lateAnswer = () =>
+      space.page.evaluate(async (reqId) => {
+        return window.kodaxSpace!.invoke('permission.answer', {
+          reqId,
+          decision: 'allow_once',
+        });
+      }, requestId);
+    const firstLateAnswer = await lateAnswer();
+    expect(firstLateAnswer, JSON.stringify(firstLateAnswer)).toMatchObject({
+      ok: true,
+      data: { accepted: false },
+    });
+    for (const decision of ['deny', 'stop'] as const) {
+      await space.page.evaluate(
+        (id) =>
+          window.kodaxSpace!.invoke('session.setPermissionMode', {
+            sessionId: id,
+            mode: 'plan',
+          }),
+        sessionId,
+      );
+      await sendSdkPrompt(space, 'SDK_PLAN');
+      await expect(plan).toBeVisible({ timeout: 20_000 });
+      expect(await plan.locator('pre').textContent()).toBe(FINALIZED_E2E_PLAN);
+      requestId = await currentRequestId();
+      if (decision === 'deny')
+        await space.page
+          .getByRole('dialog')
+          .getByRole('button', { name: 'Deny (Esc)', exact: true })
+          .click();
+      else
+        expect(
+          await space.page.evaluate(async (id) => {
+            const live = await window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId: id });
+            if (!live.ok || !live.data.activeRun) throw new Error('No active plan Run to stop');
+            return window.kodaxSpace!.invoke('session.cancel', {
+              sessionId: id,
+              runId: live.data.activeRun.runId,
+              requestId: crypto.randomUUID(),
+            });
+          }, sessionId),
+        ).toMatchObject({ ok: true });
+      await expect(plan).toHaveCount(0);
+      await waitSdkIdle(space, sessionId);
+      expect(await lateAnswer()).toMatchObject({ ok: true, data: { accepted: false } });
+    }
     expect(provider.errors).toEqual([]);
   } finally {
     await provider.close();

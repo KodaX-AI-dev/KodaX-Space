@@ -12,6 +12,13 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 > v0.1.7 内容 (F011/F023/F024/F026/F038) 跟 v0.1.8 一起发。GitHub Releases 顶部仍是 v0.1.5，
 > 0.1.7 这条 section 留作历史记录、git log 引用入口。
 
+## [Unreleased]
+
+### Fixed
+
+- Restore queued input credential leases independently after Main reconstruction, including a queued input whose captured provider allowlist differs from the active Run. Preserve the original input identity and authorization without resubmitting it.
+- Enable the published Artifact tools through a separate trusted Host extension, resolving Space's installed SDK and a real Node worker. Optional extension failures remain diagnosable without disabling builtin Skills or historical conversations. Include the migration-gap suite in packaged release acceptance; see the [qualification record](docs/releases/space-sdk-migration-closeout-2026-10-20.md).
+
 ## [0.1.47-alpha.3] - 2026-10-20
 
 Third alpha of the 0.1.47 line: shared-Host recovery and the remaining migration-gap closures.

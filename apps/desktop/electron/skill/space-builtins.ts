@@ -31,17 +31,23 @@ export async function ensureSpaceBuiltinSkillsOnHost(
   const entry = path.join(path.dirname(registeredRoot), 'space-builtins.mjs');
   const registration = (async () => {
     await fs.access(entry);
+    // Keep optional Artifact loading separate: a missing Node worker must not
+    // disable builtin Skills, input admission or history. Host diagnostics own
+    // any Artifact extension load error.
+    const entries = [entry, path.join(path.dirname(entry), 'space-artifacts.mjs')];
     const sdk = await import('@kodax-ai/kodax/repl');
     const snapshot = sdk.readExtensionsIntegration(configHome);
-    if (
-      !snapshot.document.paths.some(
-        (value) => comparablePath(path.resolve(configHome, value)) === comparablePath(entry),
-      )
-    ) {
+    const missing = entries.filter(
+      (candidate) =>
+        !snapshot.document.paths.some(
+          (value) => comparablePath(path.resolve(configHome, value)) === comparablePath(candidate),
+        ),
+    );
+    if (missing.length) {
       sdk.writeIntegrationDocument({
         domain: 'extensions',
         configHome,
-        document: { version: 1, paths: [...snapshot.document.paths, entry] },
+        document: { version: 1, paths: [...snapshot.document.paths, ...missing] },
         validate: sdk.parseExtensionsIntegrationDocument,
         expectedRevision: snapshot.source === 'user' ? snapshot.revision : null,
       });
@@ -57,14 +63,17 @@ export async function ensureSpaceBuiltinSkillsOnHost(
       await new Promise<void>((resolve) => setTimeout(resolve, 50));
     }
     throw new Error('The shared Host did not activate the Space builtin Skill extension.');
-  })();
-  hostRegistrations.set(host, registration);
-  try {
-    await registration;
-  } catch (error) {
+  })().catch((error: unknown) => {
     hostRegistrations.delete(host);
-    throw error;
-  }
+    // These installer-owned additions are optional execution capabilities.
+    // Keep the SDK's current catalog usable; a later request retries activation.
+    console.warn(
+      '[space-builtins] Host extension registration unavailable:',
+      error instanceof Error ? error.message : String(error),
+    );
+  });
+  hostRegistrations.set(host, registration);
+  await registration;
 }
 
 export function resolveSpaceBuiltinSkillsPath(context: SpaceBuiltinPathContext): string {

@@ -1,6 +1,6 @@
 # Space 接入 KodaX 0.7.97-alpha.9
 
-> 2026-10-18 完整性复核：下方验收证明共享 Coder 主链已迁移，不能覆盖整个 Space 的所有业务入口。当前遗留项、生产调用链与新增反例统一见 [SDK 对齐与迁移完整性审计](../research/kodax-space-sdk-alignment-audit-2026-10-18.md)；本轮只校正状态，尚未实施其中的产品修复。
+> 2026-10-20 后续：10-18 审计保留其历史结论；A–H 的产品接入随后已在 `c83ca0f5` 落地。本轮补队列独立授权恢复、Artifact 生产注册与真实发布 SDK 验收，见[迁移收口记录](../releases/space-sdk-migration-closeout-2026-10-20.md)。不能用较早的 alpha.9 主链资格结果代替本轮接入的验证。
 
 当前源码为未发布的 Space `0.1.47-alpha.3`，精确安装 Registry SDK `0.7.97-alpha.9`。根目录、Desktop、lockfile、物理安装及 Registry 原生文件校验已对齐，没有开发链接。当前验收见 [alpha.9 接入](../releases/kodax-0.7.97-alpha.9-integration.md)，alpha.8/alpha.7 记录保留原验证范围。下方早期记录保留历史时点，不代表当前依赖或发布状态。
 

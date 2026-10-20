@@ -1,5 +1,7 @@
 # KodaX 最新 SDK 与 Space 统一契约迁移是否完整对齐？
 
+> 后续状态（2026-10-20）：本审计记录 alpha.7 时点的缺口。A–H 产品修复已在 `c83ca0f5` 落地，Artifact 四公开入口已由主包 alpha.8/9 正式交付。本轮的队列授权、生产启用与重新验收见[迁移收口记录](../releases/space-sdk-migration-closeout-2026-10-20.md)；下文的“未实施/未交付”不代表当前状态。
+
 结论：**alpha.7 已正确安装，普通共享 Coder 的输入、授权、输出、历史、统计和退出主链已迁移；不能据此认定整个 Space 已完成统一契约迁移。** 本轮沿生产入口确认了 Workflow、命令/Review、Space 自带 Skill、计划审批、Memory、MCP，以及工具图片/终态事实消费的遗留边界。alpha.7 的新增启动与历史修复大多已正确继承，这些遗漏主要来自此前迁移范围未收完。[发布及安装证据](kodax-space-contract-alignment-evidence-2026-10-18.json)、[上游完整目录](kodax-alpha7-upstream-change-inventory-2026-10-18.md)、[输入与授权审计](kodax-unified-contract-input-authority-audit-2026-10-18.md)、[Host 领域审计](kodax-unified-contract-host-domains-audit-2026-10-18.md)
 
 ## 1. 版本与核验边界

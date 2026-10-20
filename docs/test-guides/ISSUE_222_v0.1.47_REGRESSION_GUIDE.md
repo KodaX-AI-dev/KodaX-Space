@@ -1,5 +1,31 @@
 # Issue 222 — Shared Host recovery and historical conversation availability
 
+## Migration recovery follow-up (2026-10-20)
+
+Run `runtime-sdk-migration.test.ts`: hold an active Run, accept a queued input
+with a different captured credential allowlist, reconstruct Main, and release
+the active Run. The original queued input must complete with exactly one
+canonical user item, without another submit or regenerated authority.
+Repeat with that queued lease explicitly revoked through the SDK. The unrelated
+active Run must complete; the queued input becomes withdrawn and preserves its
+original text/ID as a failed message. It must never appear as an executed user
+item. A raced delivery/withdrawal conflict must not become replay or a false
+claim of successful withdrawal.
+
+Run `space-builtins.test.ts`: deliberately fail the optional Artifact extension.
+The actual Host must report the failure while retaining builtin Skills and
+readable Session history. Missing Node must never become a generic history error.
+Remove the isolated builtin extension resource, call registration concurrently,
+then repair it. Calls must remain usable and the next registration must retry
+successfully instead of caching the failure.
+
+Run `sdk-migration-gaps.spec.ts` against source and the packaged executable:
+verify full plan review, shared Workflow/Memory, tool-image reload and prompt
+command execution. The production Host must expose nine Artifact tools and
+return the original PNG bytes without another provider call. The package must
+use real Node and physical unpacked workers; ordinary startup must not download
+a browser. See the [current qualification](../releases/space-sdk-migration-closeout-2026-10-20.md).
+
 ## Published alpha.9 metadata admission follow-up
 
 Current dependency: official npm `0.7.97-alpha.9`. Run

@@ -318,6 +318,14 @@ Issue 221 fixes deletion error classification only; it does not close this issue
 
 ### Resolution / Verification
 
+Follow-up on 2026-10-20: after the shared-Host migration landed, a published-SDK
+counterexample exposed a queued input with a different credential lease from
+the active Run. Main reconstruction now restores that input's captured lease
+by its original identity; it does not resubmit or regenerate authority. Optional
+Artifact registration uses a separate trusted extension so its missing runtime
+cannot disable builtin Skills or history. New/current-source qualification is
+tracked in the [migration closeout](releases/space-sdk-migration-closeout-2026-10-20.md).
+
 The current follow-up integrates published Registry SDK `0.7.97-alpha.7` in Space
 `0.1.47-alpha.3`. SDK alpha.7 addresses the Linux zombie-owner/startup identity
 race and bounds recovery discovery. Space now requests `daemonLifecycle:

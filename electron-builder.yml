@@ -98,6 +98,8 @@ electronLanguages:
 extraResources:
   - from: resources/space-builtins.mjs
     to: space-builtins.mjs
+  - from: resources/space-artifacts.mjs
+    to: space-artifacts.mjs
   - from: dist-electron/bundled-extensions/kodax.partner-library.space-extension
     to: bundled-extensions/kodax.partner-library.space-extension
   # Feishu's official CLI is a host-managed component, never plugin code. The

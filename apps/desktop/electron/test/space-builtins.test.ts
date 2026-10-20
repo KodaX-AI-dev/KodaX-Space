@@ -94,8 +94,114 @@ test('Host registration preserves existing extensions and is idempotent per atta
   assert.deepEqual(sdk.readExtensionsIntegration(temporaryRoot).document.paths, [
     'user-extension.mjs',
     path.join(temporaryRoot, 'space-builtins.mjs'),
+    path.join(temporaryRoot, 'space-artifacts.mjs'),
   ]);
   assert.equal(reads, 1);
+});
+
+test('optional Artifact registration preserves user paths without gating builtin activation', async () => {
+  await registerSpaceBuiltinSkills(builtinRoot);
+  const builtinEntry = path.join(temporaryRoot, 'space-builtins.mjs');
+  const artifactEntry = path.join(temporaryRoot, 'space-artifacts.mjs');
+  fs.writeFileSync(
+    builtinEntry,
+    'export default api => api.registerSkillPath("./builtin-skills");',
+  );
+  fs.writeFileSync(artifactEntry, 'export default () => { throw new Error("Node unavailable"); };');
+  const sdk = await import('@kodax-ai/kodax/repl');
+  await ensureSpaceBuiltinSkillsOnHost(
+    {
+      catalog: { extensions: async () => ({ extensions: [{ path: builtinEntry }] }) },
+    },
+    temporaryRoot,
+  );
+  assert.deepEqual(sdk.readExtensionsIntegration(temporaryRoot).document.paths, [
+    builtinEntry,
+    artifactEntry,
+  ]);
+});
+
+test('missing optional builtin extension does not reject admission and retries after repair', async () => {
+  await registerSpaceBuiltinSkills(builtinRoot);
+  const entry = path.join(temporaryRoot, 'space-builtins.mjs');
+  let reads = 0;
+  const host = {
+    catalog: {
+      extensions: async () => {
+        reads++;
+        return { extensions: [{ path: entry }] };
+      },
+    },
+  };
+  await Promise.all([
+    ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot),
+    ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot),
+  ]);
+  assert.equal(reads, 0);
+  fs.writeFileSync(entry, 'export default api => api.registerSkillPath("./builtin-skills");');
+  await ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot);
+  assert.equal(reads, 1);
+});
+
+test('an Artifact extension failure leaves actual Host Skills and Session history readable', async () => {
+  await registerSpaceBuiltinSkills(builtinRoot);
+  fs.writeFileSync(
+    path.join(temporaryRoot, 'space-builtins.mjs'),
+    'export default api => api.registerSkillPath("./builtin-skills");',
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, 'space-artifacts.mjs'),
+    'export default () => { throw new Error("Artifact Node unavailable"); };',
+  );
+  const { ensureKodaXRuntime, waitForRuntimeDaemonShutdown } =
+    await import('@kodax-ai/kodax/runtime');
+  const runtime = await ensureKodaXRuntime({ homeDir: temporaryRoot, defaultProvider: 'openai' });
+  const owner = (await runtime.daemon.inspect()).owner;
+  const { connectKodaXClient } = await import('@kodax-ai/kodax/client');
+  let client: Awaited<ReturnType<typeof connectKodaXClient>> | undefined;
+  try {
+    await ensureSpaceBuiltinSkillsOnHost(runtime, path.join(temporaryRoot, '.kodax'));
+    client = await connectKodaXClient({ homeDir: temporaryRoot });
+    const catalog = await client.catalog.extensions();
+    assert.ok(
+      catalog.diagnostics?.failures.some((failure) =>
+        failure.message.includes('Artifact Node unavailable'),
+      ),
+    );
+    assert.ok((await client.catalog.skills()).some((skill) => skill.name === 'space-test-skill'));
+    const session = await client.sessions.create({ projectPath: temporaryRoot });
+    await client.sessions.updateSettings(session.id, { permissionMode: 'full-access' });
+    fs.writeFileSync(path.join(temporaryRoot, 'readable.txt'), 'History remains available.');
+    const run = await client.runs.startTool({
+      sessionId: session.id,
+      inputId: 'read-after-optional-extension-failure',
+      rawInput: 'Read readable.txt',
+      name: 'read',
+      input: { path: 'readable.txt' },
+    });
+    assert.equal((await client.runs.await(run.runId)).phase, 'completed');
+    assert.ok(
+      (await client.sessions.readHistory(session.id)).items.some((item) =>
+        item.text.includes('History remains available.'),
+      ),
+    );
+  } finally {
+    await client?.disconnect();
+    try {
+      await runtime.daemon.shutdown();
+    } finally {
+      await runtime.close();
+    }
+    assert.equal(
+      (
+        await waitForRuntimeDaemonShutdown({
+          configHome: path.join(temporaryRoot, '.kodax'),
+          owner,
+        })
+      ).status,
+      'succeeded',
+    );
+  }
 });
 
 test('repository builtin snapshot contains the formal Feishu expert skill and design skills', async () => {

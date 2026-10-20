@@ -5130,6 +5130,29 @@ export class RuntimeHostAdapter {
     state: RuntimeSessionObservationState,
   ): Promise<void> {
     const { registerSpaceHostTools } = await import('./runtime/space-host-tools.js');
+    // Accepted queued inputs do not have Runs yet. Their captured credential
+    // allowlist may differ from every Run in the observation snapshot.
+    for (const input of state.reducer.snapshot().queuedInputs) {
+      try {
+        const captured = await this.readCapturedInputAuthorization(
+          runtime,
+          state.sessionId,
+          input.inputId,
+        );
+        if (this.runtime !== runtime || this.observations.get(state.sessionId) !== state) return;
+        if (captured) await this.restoreProductAuthorization(runtime, state.sessionId, captured);
+      } catch (error) {
+        if (this.runtime !== runtime || this.observations.get(state.sessionId) !== state) return;
+        // Revoked/expired authority stays rejected. It must not prevent another
+        // accepted input or the unrelated active Run from restoring its lease.
+        console.warn(
+          `[runtime] queued input binding recovery failed for ${input.inputId}:`,
+          sanitizeDiagnosticError(error),
+        );
+        if (runtimeEventRecord(error)?.code === 'credential_unavailable')
+          await this.withdrawUnauthorizedQueuedInput(runtime, state, input.inputId);
+      }
+    }
     for (const run of snapshot.runs) {
       if (run.productInput) {
         const captured = await this.readCapturedInputAuthorization(
@@ -5210,6 +5233,32 @@ export class RuntimeHostAdapter {
           // Stable-client ownership rejects leases registered by other clients.
         }
       }
+    }
+  }
+
+  private async withdrawUnauthorizedQueuedInput(
+    runtime: KodaXDaemonRuntime,
+    state: RuntimeSessionObservationState,
+    inputId: string,
+  ): Promise<void> {
+    try {
+      const input = await runtime.runs.withdrawInput(state.sessionId, inputId);
+      if (this.runtime !== runtime || this.observations.get(state.sessionId) !== state) return;
+      this.push('session.event', {
+        kind: 'queued_user_prompt_failed',
+        sessionId: state.sessionId,
+        queueId: inputId,
+        queueMode: input.delivery === 'after_turn' ? 'after-turn' : 'interrupt',
+        content: input.text,
+        reason: 'authorization_unavailable',
+      });
+    } catch (error) {
+      // A raced delivery/withdrawal remains SDK-owned. Never re-admit the input
+      // or prevent the other accepted inputs from recovering their bindings.
+      console.warn(
+        `[runtime] queued input withdrawal failed for ${inputId}:`,
+        sanitizeDiagnosticError(error),
+      );
     }
   }
 
