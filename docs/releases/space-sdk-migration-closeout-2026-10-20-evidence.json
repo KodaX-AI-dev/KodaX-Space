@@ -204,5 +204,56 @@
     "No browser download at startup; browser-backed Artifact formats require explicit SDK preparation or a trusted installed browser.",
     "Scoped coverage does not establish whole-repository coverage.",
     "Local candidate only; no tag, publish, push or personal installation."
-  ]
+  ],
+  "postQualificationIntegration": {
+    "recordedAtUtc": "2026-10-20T10:19:51.772Z",
+    "sourceCommit": "5b7abc07b2ca0bb959478e4c35d8603eb8586fa9",
+    "uiCommit": "57f4286b46ec3e4b4e24ab486ef714e82875b89a",
+    "preservedUiFiles": 31,
+    "checks": {
+      "typecheck": {
+        "exitCode": 0
+      },
+      "lint": {
+        "exitCode": 0
+      },
+      "build": {
+        "exitCode": 0
+      },
+      "focusedRecovery": {
+        "passed": 357,
+        "failed": 0,
+        "skipped": 0
+      },
+      "sourceMigrationE2e": {
+        "passed": 4,
+        "failed": 0,
+        "retries": 0
+      }
+    },
+    "packagedArtifactsRebuilt": false,
+    "scope": "Combined source was checked separately. The full-suite and packaged candidate above remain qualified at sourceCommit 32b2a420, excluding later UI changes.",
+    "logs": [
+      {
+        "file": ".tmp-migration-ui-typecheck.log",
+        "sha256": "09102b0ebf73d35baaea8927908fae220cf96e1881b2b9755f4522822935c982"
+      },
+      {
+        "file": ".tmp-migration-ui-lint.log",
+        "sha256": "b586a34100def5bd37ff6a8514f6bddc688db1088b3bd8bf66a5b81b6a9f2abb"
+      },
+      {
+        "file": ".tmp-migration-ui-build.log",
+        "sha256": "a1d28e9684451af6ff513eaa937fbb5f8c24a2140485b2b4d69f2c3ac324c531"
+      },
+      {
+        "file": ".tmp-migration-ui-recovery.log",
+        "sha256": "6abcb28777ca909caf485a2181c24b2afd852b9f545eb61d7035527ca6011ebf"
+      },
+      {
+        "file": ".tmp-migration-ui-source.log",
+        "sha256": "bac4307814c2b6230fb2f90084669f91ea0694da276a2db93347319ed73c50f2"
+      }
+    ]
+  }
 }

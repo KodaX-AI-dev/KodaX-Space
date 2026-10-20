@@ -87,8 +87,23 @@ installation was performed.
 
 No changes are made to the adjacent SDK source, personal Session data or the
 concurrent UI thread's files. This worktree's package qualifies this source,
-not the UI thread's uncommitted work. Linux/macOS consumer acceptance remains
+not the UI thread's later changes. Linux/macOS consumer acceptance remains
 with the existing cross-platform CI/release gates.
+
+## Later UI integration
+
+The UI thread committed `57f4286b` during qualification. The integration guard
+stopped the original fast-forward attempt when it detected the changed Main
+baseline. A separate merge at `5b7abc07` combined that commit with this work in
+the isolated worktree, with no overlapping paths. All 31 UI-owned files remain
+identical to the UI commit.
+
+Against that combined source, typecheck, lint, production build, focused recovery
+357/357 and migration E2E 4/4 passed (no E2E retries). These additional results
+are recorded separately in the JSON. The full-suite and packaged results above
+still qualify `32b2a420`; the candidate executables were not rebuilt with the
+later UI commit. UI inclusion in a release package requires its own packaging
+qualification.
 
 ## Standards
 
