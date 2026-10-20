@@ -225,20 +225,23 @@ function SettingsModalContent({
             <button
               type="button"
               onClick={onClose}
-              className="settings-back mb-5 inline-flex items-center gap-2 rounded-md text-xs text-fg-secondary hover:text-fg-primary"
+              className="settings-back mb-6 flex w-full items-center gap-2 rounded-lg text-sm text-fg-secondary hover:bg-hover-bg hover:text-fg-primary"
             >
-              <ArrowLeft size={14} aria-hidden />
+              <ArrowLeft size={16} aria-hidden />
               {t('settings.backToWorkspace')}
+              <kbd className="ml-auto text-xs text-fg-muted" aria-hidden>
+                Esc
+              </kbd>
             </button>
             <div className="mb-1 flex items-center gap-2">
               <div className="settings-mark flex h-8 w-8 items-center justify-center rounded-lg text-accent-ink">
                 <Settings2 className="h-4 w-4" strokeWidth={1.8} aria-hidden />
               </div>
               <div className="min-w-0">
-                <h2 id="settings-modal-title" className="text-base font-semibold leading-tight">
+                <h2 id="settings-modal-title" className="text-xl font-semibold leading-tight">
                   {t('common.settings')}
                 </h2>
-                <p className="truncate text-[11px] text-fg-muted">{t('settings.subtitle')}</p>
+                <p className="mt-1 truncate text-xs text-fg-muted">{t('settings.subtitle')}</p>
               </div>
             </div>
           </div>
@@ -277,10 +280,10 @@ function SettingsModalContent({
           <header className="workspace-header flex min-h-[72px] shrink-0 items-center gap-3 border-b border-border-default px-6 py-4">
             <activeTab.Icon className="h-5 w-5 text-fg-secondary" strokeWidth={1.8} aria-hidden />
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold tracking-tight leading-tight">
+              <h1 className="text-2xl font-semibold tracking-tight leading-tight">
                 {t(activeTab.labelKey)}
               </h1>
-              <div className="truncate text-xs text-fg-muted">{t(activeTab.descriptionKey)}</div>
+              <div className="mt-1 text-sm text-fg-muted">{t(activeTab.descriptionKey)}</div>
             </div>
             <button
               type="button"
@@ -447,7 +450,7 @@ function SettingsNavButton({
     >
       <tab.Icon className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden />
       <span className="min-w-0">
-        <span className="block text-sm font-medium leading-tight">{t(label)}</span>
+        <span className="block text-[15px] font-medium leading-tight">{t(label)}</span>
         <span className="mt-0.5 block text-[11px] leading-4 text-fg-muted">{t(description)}</span>
       </span>
     </button>
@@ -3229,8 +3232,8 @@ function SettingsSection({
           <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
         </div>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-fg-primary">{title}</h3>
-          <p className="mt-0.5 text-xs leading-5 text-fg-muted">{description}</p>
+          <h3 className="text-base font-semibold text-fg-primary">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-fg-muted">{description}</p>
         </div>
       </div>
       {children}

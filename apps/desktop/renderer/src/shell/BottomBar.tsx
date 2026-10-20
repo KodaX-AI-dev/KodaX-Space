@@ -2621,7 +2621,10 @@ export function BottomBar(): JSX.Element {
               : 'border-border-default focus-within:border-accent/50',
           ].join(' ')}
         >
-          <div data-testid="composer-context-toolbar" className="flex items-center gap-1.5">
+          <div
+            data-testid="composer-context-toolbar"
+            className="composer-context-toolbar flex items-center gap-1.5"
+          >
             <ChipBar />
             {currentSurface === 'partner' && <PartnerConnectorChips />}
             {currentSurface === 'partner' && <PartnerExpertChip running={isStreaming} />}
@@ -2830,7 +2833,7 @@ export function BottomBar(): JSX.Element {
                   type="button"
                   data-testid="composer-attach-menu-trigger"
                   onClick={() => setAttachOpen((v) => !v)}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-fg-muted hover:bg-hover-bg hover:text-fg-primary"
                   title={t('bottom.attachCommands')}
                   aria-label={t('bottom.openAttachMenu')}
                 >

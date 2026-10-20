@@ -158,7 +158,7 @@ export function CommandToolbar({ active, onToggle }: CommandToolbarProps): JSX.E
           {activeLabel && <span className="text-xs">{activeLabel}</span>}
         </button>
         {open && (
-          <div className="absolute right-0 top-full mt-1 w-56 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-[13px] z-50">
+          <div className="workspace-menu absolute right-0 top-full mt-1 w-56 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-[13px] z-50">
             {POPOUTS.map((p) => {
               const label = t(p.labelKey);
               return (

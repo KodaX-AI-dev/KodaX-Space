@@ -15,7 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
-import { ShieldCheck } from 'lucide-react';
+import { ChevronDown, ShieldCheck } from 'lucide-react';
 import type { PermissionMode } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
 import { useSurfaceStore } from '../store/surface.js';
@@ -123,6 +123,11 @@ export function ModeSelector(): JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (!isSurfaceInteractive(rootRef.current)) return;
+      if (e.key === 'Escape' && open) {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
       if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         setOpen((v) => !v);
@@ -263,8 +268,9 @@ export function ModeSelector(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className={[
-          'text-xs px-2 py-0.5 rounded bg-surface-2 border border-border-default text-fg-secondary hover:bg-hover-bg flex items-center gap-1',
+          'composer-control text-sm px-2 py-0.5 rounded bg-surface-2 border border-border-default text-fg-secondary hover:bg-hover-bg flex items-center gap-1',
           currentSurface === 'partner' ? 'partner-permission-selector' : '',
         ].join(' ')}
         title={
@@ -290,14 +296,14 @@ export function ModeSelector(): JSX.Element {
         )}
         {currentSurface !== 'partner' && (
           <span className="text-fg-muted" aria-hidden>
-            +
+            <ChevronDown className="h-3 w-3" />
           </span>
         )}
       </button>
 
       {open && (
         <div
-          className="absolute left-0 bottom-full mb-1 w-64 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50"
+          className="workspace-menu absolute left-0 bottom-full mb-1 w-64 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50"
           onMouseLeave={() => setOpen(false)}
         >
           <div className="px-3 py-1 flex justify-between items-center text-fg-muted text-[11px] uppercase tracking-wider">

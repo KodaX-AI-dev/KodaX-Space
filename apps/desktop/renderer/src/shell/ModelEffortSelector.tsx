@@ -109,6 +109,11 @@ export function ModelEffortSelector(): JSX.Element {
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
       if (!isSurfaceInteractive(rootRef.current)) return;
+      if (e.key === 'Escape' && open) {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
       if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'i') {
         e.preventDefault();
         setOpen((v) => !v);
@@ -116,7 +121,7 @@ export function ModelEffortSelector(): JSX.Element {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [open]);
 
   // 当前 active provider/model/effort（用 session > pending > defaults）
   const activeProviderId =
@@ -352,8 +357,9 @@ export function ModelEffortSelector(): JSX.Element {
         type="button"
         data-testid="model-effort-selector"
         onClick={openPicker}
+        aria-expanded={open}
         className={[
-          'h-7 max-w-[240px] min-w-0 px-2 rounded-md border border-border-default',
+          'composer-control composer-model-control h-7 max-w-[240px] min-w-0 px-2 rounded-md border border-border-default',
           'bg-surface-2 text-fg-secondary hover:bg-hover-bg hover:text-fg-primary',
           'flex items-center gap-1.5 transition-colors',
           currentSurface === 'partner' ? 'partner-model-selector' : '',
@@ -384,7 +390,7 @@ export function ModelEffortSelector(): JSX.Element {
 
       {open && (
         <div
-          className="absolute right-0 bottom-full mb-2 w-[460px] bg-surface-4 border border-border-default rounded-lg shadow-xl text-xs z-50"
+          className="workspace-menu absolute right-0 bottom-full mb-2 w-[460px] max-w-[calc(100vw-32px)] bg-surface-4 border border-border-default rounded-lg shadow-xl text-xs z-50"
           onMouseLeave={() => setOpen(false)}
         >
           {/* 2 列：Provider | Model */}

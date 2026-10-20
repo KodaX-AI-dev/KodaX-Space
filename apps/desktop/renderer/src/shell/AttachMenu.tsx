@@ -253,7 +253,7 @@ export function AttachMenu({
 
   return (
     <div
-      className="absolute left-0 bottom-full mb-1 w-60 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50"
+      className="workspace-menu absolute left-0 bottom-full mb-1 w-60 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50"
       onMouseLeave={onClose}
     >
       <AttachRow Icon={Paperclip} label={t('attach.addFiles')} onClick={() => addFiles()} />
@@ -302,7 +302,7 @@ function SubMenuFrame({
 }): JSX.Element {
   const { t } = useI18n();
   return (
-    <div className="absolute left-0 bottom-full mb-1 w-72 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 z-50 max-h-80 overflow-y-auto">
+    <div className="workspace-menu absolute left-0 bottom-full mb-1 w-72 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 z-50 max-h-80 overflow-y-auto">
       <div className="px-3 py-1 text-[11px] uppercase tracking-wider text-fg-muted flex items-center gap-2 sticky top-0 bg-surface-2">
         <button
           type="button"

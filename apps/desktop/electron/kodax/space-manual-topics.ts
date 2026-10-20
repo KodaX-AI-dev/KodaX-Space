@@ -288,6 +288,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'Space 的主界面：左侧项目/会话，顶部环境与活动，中央对话，右侧 Task Dock，底部 composer。',
     body: text(
       '左侧栏：项目列表、最近会话、归档项目、会话切换与项目管理。导航模式和 Files 模式底部都保留 Settings 入口。',
+      '进入 Settings 后，设置分类替代项目/文件导航，原工作区在后台保持挂载。返回工作区、关闭设置或按 Escape 后恢复原导航模式、宽度、文件搜索和草稿，后台运行不会因进入设置而停止。',
       '后台 Session 等待权限或 ask_user 时，左侧栏显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 与 guardrail 授权以对话流内的聚焦提问卡呈现，全部待答卡并存可答，composer 上方的召回停靠条显示计数并可定位闪光到队首卡。切换 Session 不会丢失耐久队列中的请求。',
       '顶部：Environment Hub 显示当前项目/git/来源/运行摘要；activity 按钮打开 Preview、Diff、Terminal、Agents、MCP、Memory、Workflow 等 popout；Settings 打开配置。',
       '中央：Transcript 显示用户消息、模型回复、工具调用、权限状态、Artifact 卡片和运行事件。',
@@ -432,8 +433,9 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     title: 'Settings',
     summary: 'Settings 分 Preferences、Providers、Runtime、Extensions、License、Diagnostics 六类。',
     body: text(
+      'Settings 是完整工作面，分类栏接替原项目/文件栏；返回后恢复原工作面和导航状态。打开设置不停止并行运行，也不重置工作区输入草稿。可用返回工作区、关闭按钮或 Escape 退出，嵌套确认与编辑器仍优先消费 Escape。',
+      '',
       'Preferences：显示语言、默认 workspace、Smart Popout Director、原生完成通知、workflow policy、Terminal Shell 和主窗口关闭行为。',
-      'Settings 是完整工作页面，返回工作区、关闭按钮或 Escape 可回到原会话，左栏仍可查看项目与并行会话状态。打开设置不停止运行，也不重置工作区输入草稿。嵌套编辑器或确认框优先处理 Escape。',
       'Preferences 的 Appearance 提供浅色、深色、跟随系统主题，以及极简、均衡、全特效三档视觉质量，与标题栏和 View 菜单共用偏好。极简无模糊；均衡使用静态环境光和局部玻璃；全特效增加通透层次与缓慢环境光，后台、流式输出和密集交互时降载，并尊重系统减少动态效果设置。',
       'Providers：内置/custom provider、key 保存与测试、默认 provider、custom provider 管理。',
       'Runtime：KodaX 核心配置概览、compaction 设置、MCP 全局/项目 integrations 配置与 reload、MCP/A2A/Extension health、Skills 用户/项目目录、安装 skill 文件夹/zip/archive。',

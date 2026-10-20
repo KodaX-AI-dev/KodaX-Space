@@ -22,7 +22,7 @@
 //   - popout 业务实现 → 留 popouts/ 子目录
 //   - Permission modal / Settings workspace → Shell 统一托管其挂载点
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -461,6 +461,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const [rightSidebarWidthSettling, setRightSidebarWidthSettling] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsNavigationMountedRef = useRef(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('preferences');
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatusT | null>(null);
   const popoutBoundsRef = useRef<HTMLDivElement | null>(null);
@@ -644,7 +645,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     return () => window.removeEventListener('keydown', onKey);
   }, [currentSurface, settingsOpen]);
 
-  const preferredLeftSidebarVisible = leftSidebarOpen && (!fullscreenRead || settingsOpen);
+  const preferredLeftSidebarVisible = leftSidebarOpen && !fullscreenRead;
   const preferredRightSidebarVisible = rightSidebarOpen && !fullscreenRead;
   const surfaceMinCenterWidth =
     currentSurface === 'partner' ? PARTNER_MIN_CENTER_PX : CODER_MIN_CENTER_PX;
@@ -717,9 +718,8 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
       viewportWidth,
     ) < surfaceMinCenterWidth;
   const rightSidebarVisibleBeforeLeft = preferredRightSidebarVisible && !responsiveHideRightSidebar;
-  const responsiveHideLeftSidebar = settingsOpen
-    ? viewportWidth - leftWidth - RESIZE_HANDLE_WIDTH_PX < CODER_MIN_CENTER_PX
-    : currentSurface === 'partner'
+  const responsiveHideLeftSidebar =
+    currentSurface === 'partner'
       ? preferredLeftSidebarVisible && !partnerPreliminaryLayout?.leftSidebarVisible
       : preferredLeftSidebarVisible &&
         rightSidebarWidthMode !== 'max' &&
@@ -948,10 +948,14 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     [openRightSidebarAtBalancedWidth, openRightSidebarAtDefaultWidth, openRightSidebarAtMaxWidth],
   );
 
-  const openSettingsAt = useCallback((tab: SettingsTab): void => {
-    setSettingsInitialTab(tab);
-    setSettingsOpen(true);
-  }, []);
+  const openSettingsAt = useCallback(
+    (tab: SettingsTab): void => {
+      if (!settingsOpen) settingsNavigationMountedRef.current = leftSidebarVisible;
+      setSettingsInitialTab(tab);
+      setSettingsOpen(true);
+    },
+    [leftSidebarVisible, settingsOpen],
+  );
   const openPreferencesSettings = useCallback((): void => {
     openSettingsAt('preferences');
   }, [openSettingsAt]);
@@ -1427,6 +1431,8 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     <div
       ref={shellRootRef}
       data-space-shell-ready
+      data-workspace-mode={settingsOpen ? 'settings' : 'conversation'}
+      style={{ '--settings-navigation-width': `${leftWidth}px` } as CSSProperties}
       className={`space-shell h-screen flex flex-col bg-surface text-fg-primary overflow-hidden relative isolate ${platformClass} ${
         rightSidebarWidthSettling ? 'right-sidebar-width-settling' : ''
       }`}
@@ -1502,8 +1508,13 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
       {/* F060: 面板区。Liquid Glass —— 立体感来自光影材质（光向描边 + 光标 specular + 分层柔影），
           不靠运动；模态/命令面板放在面板区之外保持 position:fixed 正常。 */}
       <div className="workspace-layout relative z-10 flex flex-1 min-h-0">
-        {leftSidebarVisible && (
-          <>
+        {(settingsOpen ? settingsNavigationMountedRef.current : leftSidebarVisible) && (
+          <div
+            className="workspace-project-navigation contents"
+            style={settingsOpen ? { display: 'none' } : undefined}
+            inert={settingsOpen || undefined}
+            aria-hidden={settingsOpen || undefined}
+          >
             {leftSidebarMode === 'files' ? (
               <FilesPanel
                 width={leftWidth}
@@ -1536,7 +1547,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
                 setLeftSidebarWidth(clampSidebarWidthPx(px));
               }}
             />
-          </>
+          </div>
         )}
 
         <div className="workspace-host flex min-h-0 min-w-0 flex-1">

@@ -962,7 +962,11 @@ export function ConversationStreamV2(): JSX.Element {
   const transcriptFontSize = useAppStore((s) => s.transcriptFontSize);
   // 字号映射 — TranscriptViewMenu 的 sm / base / lg → Tailwind class
   const fontClass =
-    transcriptFontSize === 'sm' ? 'text-xs' : transcriptFontSize === 'lg' ? 'text-base' : 'text-sm';
+    transcriptFontSize === 'sm'
+      ? 'text-sm'
+      : transcriptFontSize === 'lg'
+        ? 'text-[17px]'
+        : 'text-[15px]';
 
   // transcriptView 决定折叠策略（之前这个状态存了但渲染层从没读 → 4 个视图点了没反应）：
   //   normal   = 紧凑：thinking 折进工具组，cluster 默认折叠

@@ -17,11 +17,20 @@ test('settings is a work surface that preserves the composer and all appearance 
     const { page } = space;
     const composer = page.locator('[data-testid="coder-workspace"] textarea');
     await expect(composer).toBeEnabled({ timeout: 15_000 });
+    const navigation = page.getByTestId('left-sidebar');
+    const navigationBounds = await navigation.boundingBox();
+    expect(navigationBounds).not.toBeNull();
     await composer.fill('Keep this draft while changing appearance');
     await page.getByTestId('settings-button').click();
     const settings = page.getByRole('region', { name: 'Settings', exact: true });
     await expect(settings).toBeVisible();
-    await expect(page.getByTestId('left-sidebar')).toBeVisible();
+    await expect(navigation).toBeAttached();
+    await expect(navigation).not.toBeVisible();
+    const settingsNavigation = settings.locator('.settings-navigation');
+    await expect(settingsNavigation).toBeVisible();
+    const settingsBounds = await settingsNavigation.boundingBox();
+    expect(settingsBounds?.x).toBe(0);
+    expect(settingsBounds?.width).toBe(navigationBounds?.width);
     await expect(composer).toBeAttached();
     await expect(composer).not.toBeVisible();
     await expect(settings.getByRole('tab')).toHaveCount(6);
@@ -63,6 +72,8 @@ test('settings is a work surface that preserves the composer and all appearance 
     await settings.getByRole('button', { name: 'Close settings' }).click();
     await expect(composer).toBeVisible();
     await expect(composer).toHaveValue('Keep this draft while changing appearance');
+    await expect(navigation).toBeVisible();
+    expect((await navigation.boundingBox())?.width).toBe(navigationBounds?.width);
     await page.getByRole('button', { name: 'Results', exact: true }).click();
     const results = page.getByTestId('popout-artifact');
     await expect(results).toBeVisible();
@@ -109,6 +120,7 @@ test('two projects keep real SDK runs active while settings and review surfaces 
     const settings = page.getByTestId('settings-workspace');
     await expect(settings).toBeVisible();
     await expect(page.getByTestId('left-sidebar')).toContainText('Atlas Web');
+    await expect(page.getByTestId('left-sidebar')).not.toBeVisible();
     const firstLive = await page.evaluate(
       (sessionId) => window.kodaxSpace.invoke('session.liveSnapshot', { sessionId }),
       firstId,
@@ -127,7 +139,7 @@ test('two projects keep real SDK runs active while settings and review surfaces 
     });
     provider.release('HOLD_CANCEL');
     await waitSdkIdle(space, firstId);
-    await expect(secondRow.locator('.sidebar-status-spinner')).toBeVisible();
+    await expect(secondRow.locator('.sidebar-status-spinner')).toBeAttached();
     await settings.getByRole('button', { name: 'Back to workspace', exact: true }).click();
     await expect(page.getByTestId('conversation-stream')).toContainText('SDK_PARTIAL');
     await page.screenshot({
@@ -150,9 +162,10 @@ test('two projects keep real SDK runs active while settings and review surfaces 
     await expect(page.getByTestId('left-sidebar')).toHaveCount(0);
     await page.keyboard.press('Control+,');
     await expect(settings).toBeVisible();
-    await expect(page.getByTestId('left-sidebar')).toBeVisible();
+    await expect(page.getByTestId('left-sidebar')).toHaveCount(0);
+    await expect(settings.locator('.settings-navigation')).toBeVisible();
     await page.keyboard.press('Control+Backslash');
-    await expect(page.getByTestId('left-sidebar')).toBeVisible();
+    await expect(page.getByTestId('left-sidebar')).toHaveCount(0);
     await settings.getByRole('button', { name: 'Back to workspace', exact: true }).click();
     await expect(page.getByTestId('left-sidebar')).toHaveCount(0);
     await page
@@ -167,6 +180,69 @@ test('two projects keep real SDK runs active while settings and review surfaces 
     expect(provider.errors).toEqual([]);
   } finally {
     await provider.close();
+    await space.close();
+  }
+});
+
+test('settings restores file navigation and its search state', async () => {
+  const space = await launchSpace(`settings-navigation-restore-${Date.now()}`);
+  try {
+    const { page } = space;
+    await page.evaluate(() => localStorage.setItem('kodax-space.leftSidebarWidth', '400'));
+    await page.reload();
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.getByRole('button', { name: 'Files', exact: true }).click();
+    const files = page.getByTestId('files-panel');
+    await expect(files).toBeVisible();
+    await files.getByTestId('files-search-input').fill('keep-this-search');
+    await files.getByTestId('settings-button').click();
+    await expect(files).toBeAttached();
+    await expect(files).not.toBeVisible();
+    await expect(page.getByTestId('settings-workspace')).toBeVisible();
+    const settingsNavigation = page.locator('.settings-navigation');
+    expect((await settingsNavigation.boundingBox())?.width).toBe(400);
+    await page.setViewportSize({ width: 640, height: 800 });
+    await expect(files).toBeAttached();
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.keyboard.press('Escape');
+    await expect(files).toBeVisible();
+    await expect(files.getByTestId('files-search-input')).toHaveValue('keep-this-search');
+    await files.getByRole('button', { name: 'Back to sidebar', exact: true }).click();
+  } finally {
+    await space.close();
+  }
+});
+
+test('settings hides navigation portals and restores the selected Partner workspace', async () => {
+  const space = await launchSpace(`settings-portal-restore-${Date.now()}`);
+  try {
+    const { page } = space;
+    const navigation = page.getByTestId('left-sidebar');
+    await navigation.locator('[class~="group/projectrow"]').first().click({ button: 'right' });
+    const projectMenu = page.getByRole('menu');
+    await expect(projectMenu).toBeVisible();
+    await page.keyboard.press('Control+,');
+    await expect(page.getByTestId('settings-workspace')).toBeVisible();
+    await expect(projectMenu).not.toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('settings-workspace')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await navigation.getByRole('button', { name: 'Partner', exact: true }).click();
+    await expect(navigation.getByRole('button', { name: 'Partner', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await navigation.getByTestId('settings-button').click();
+    await expect(navigation).not.toBeVisible();
+    const settings = page.getByTestId('settings-workspace');
+    await expect(settings.locator('.settings-navigation')).toBeVisible();
+    await settings.getByRole('button', { name: 'Back to workspace', exact: true }).click();
+    await expect(navigation).toBeVisible();
+    await expect(navigation.getByRole('button', { name: 'Partner', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  } finally {
     await space.close();
   }
 });

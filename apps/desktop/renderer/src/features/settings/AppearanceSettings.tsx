@@ -1,4 +1,4 @@
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { useAppStore } from '../../store/appStore.js';
 import { setSpaceTheme } from '../../space-control/semanticActions.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
@@ -25,7 +25,7 @@ function ThemeChoices(): JSX.Element {
   const theme = useAppStore((state) => state.theme);
   return (
     <fieldset>
-      <legend className="mb-3 text-xs font-medium text-fg-secondary">{t('menu.view.theme')}</legend>
+      <legend className="mb-3 text-sm font-medium text-fg-secondary">{t('menu.view.theme')}</legend>
       <div className="appearance-choices">
         {THEMES.map(({ id, Icon }) => (
           <button
@@ -40,9 +40,10 @@ function ThemeChoices(): JSX.Element {
               <span />
               <span />
             </span>
-            <span className="inline-flex items-center gap-2">
+            <span className="appearance-choice-label flex w-full items-center gap-2">
               <Icon size={14} aria-hidden />
               {t(`theme.${id}`)}
+              {theme === id && <Check size={15} className="ml-auto text-accent-ink" aria-hidden />}
             </span>
           </button>
         ))}
@@ -57,7 +58,7 @@ function QualityChoices(): JSX.Element {
   const setQuality = useAppStore((state) => state.setVisualQuality);
   return (
     <fieldset>
-      <legend className="mb-3 text-xs font-medium text-fg-secondary">
+      <legend className="mb-3 text-sm font-medium text-fg-secondary">
         {t('menu.view.visualQuality')}
       </legend>
       <div className="appearance-choices">
@@ -74,7 +75,12 @@ function QualityChoices(): JSX.Element {
             <span className={`quality-material quality-material--${id}`} aria-hidden>
               <span />
             </span>
-            <span>{t(`visualQuality.${id}`)}</span>
+            <span className="appearance-choice-label flex w-full items-center gap-2">
+              {t(`visualQuality.${id}`)}
+              {quality === id && (
+                <Check size={15} className="ml-auto text-accent-ink" aria-hidden />
+              )}
+            </span>
             <small id={`appearance-${id}-hint`}>{t(`visualQuality.${id}Hint`)}</small>
           </button>
         ))}

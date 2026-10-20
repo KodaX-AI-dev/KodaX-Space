@@ -12,14 +12,14 @@ export function SidebarFooter({ onOpenSettings }: SidebarFooterProps): JSX.Eleme
   return (
     <div
       data-testid="left-sidebar-footer"
-      className="flex flex-shrink-0 items-center justify-between gap-2 border-t border-border-default px-3 py-2 text-[11px] text-fg-muted"
+      className="flex flex-shrink-0 items-center justify-between gap-2 border-t border-border-default px-4 py-3 text-xs text-fg-muted"
     >
       <span className="min-w-0 truncate">KodaX Space</span>
       <button
         type="button"
         onClick={onOpenSettings}
         data-testid="settings-button"
-        className="ix-pop inline-flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-fg-secondary hover:bg-hover-bg hover:text-fg-primary"
+        className="ix-pop inline-flex min-h-8 shrink-0 items-center gap-2 rounded-lg px-2 py-1 text-sm text-fg-secondary hover:bg-hover-bg hover:text-fg-primary"
         aria-label={t('common.settings')}
         title={t('common.settings')}
       >

@@ -3,6 +3,7 @@
 
 import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   ChevronUp,
@@ -10,8 +11,10 @@ import {
   FileText,
   GitFork,
   ImageOff,
+  Info,
   Maximize2,
   Undo2,
+  Wrench,
 } from 'lucide-react';
 import { isSessionAttachmentPreviewUrl } from '@kodax-space/space-ipc-schema';
 import type { ConversationMessage } from '../composeMessages.js';
@@ -164,7 +167,7 @@ function MessageFooter({
     'inline-block max-w-0 overflow-hidden whitespace-nowrap leading-none opacity-0 transition-[max-width,opacity] duration-150 group-hover/footer:max-w-[7.5rem] group-hover/footer:opacity-100 group-hover/action:max-w-[7.5rem] group-hover/action:opacity-100 group-focus-visible/action:max-w-[7.5rem] group-focus-visible/action:opacity-100';
 
   return (
-    <div className="group/footer mt-1 flex min-h-4 items-center gap-2 text-[11px] leading-none">
+    <div className="conversation-message-footer group/footer mt-2 flex min-h-5 items-center gap-3 text-xs leading-none">
       <button
         type="button"
         onClick={() => void copyToClipboard()}
@@ -479,16 +482,14 @@ export function UserBubble({
   attachments?: readonly UserImageAttachment[];
   sentAt?: number;
 }): JSX.Element {
-  // Claude Desktop 风格 ——「对话即文档」单列布局：user pill **左对齐**与 assistant
-  // 同列，浅蓝窄底色、收宽到 max-w-[80%]、width 跟内容走 (inline-block) 不撑满。
-  // 这样比之前 80% 右对齐蓝 bubble 视觉更克制，整体读起来像一段文档流。
+  // Keep the document column and attachment behavior; emphasis comes from the surface, not blue text.
   const visibleContent = attachments.length > 0 && content.trim() === '(image)' ? '' : content;
   return (
     <div className="group flex flex-col items-start" data-testid="user-message-bubble">
       <div
         className={[
-          'inline-block min-w-0 max-w-[min(80%,100%)] overflow-hidden rounded-2xl px-3 py-1.5 text-[13px] whitespace-pre-wrap break-words [overflow-wrap:anywhere] border',
-          'bg-info/15 border-info/40 text-info',
+          'conversation-user-content inline-block min-w-0 max-w-[min(85%,100%)] overflow-hidden rounded-2xl px-4 py-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] border',
+          'bg-surface-2 border-border-default/70 text-fg-primary',
         ].join(' ')}
       >
         {visibleContent.length > 0 && <CollapsibleUserMessageContent content={visibleContent} />}
@@ -632,7 +633,7 @@ export function AssistantBubble({
   // 「对话即文档」—— assistant 不包 bubble，直接 markdown 进入文档流。
   // thinking 改成一行折叠摘要 (▸ Thinking (~N tokens))，跟外层 ToolCluster header 视觉一致。
   return (
-    <div className="group">
+    <div className="conversation-assistant group">
       {thinking !== undefined && (
         <button
           type="button"
@@ -685,24 +686,10 @@ export function AssistantBubble({
 
 // ---- Tool Call Card ----
 
-// Card body 颜色按**状态**而非工具种类决定 —— 用户反馈：bash done 还显示浅红色
-// 与 DONE 浅绿标签矛盾。红色全局语义=错误，不应当作 bash 的常态色。
-// 状态主导后 done=emerald / running=amber，跟 DONE 徽章语义一致。
+// Keep tool bodies neutral. The status badge carries completion color; active work adds a quiet border.
 const TOOL_STATUS_COLOR: Record<'running' | 'done', string> = {
-  running: 'border-warn/40 bg-warn/15',
-  done: 'border-ok/40 bg-ok/15',
-};
-
-// 工具种类色相留在 tool name 文字上 —— 用户仍能一眼分清工具类型，但不再霸占 body。
-// 注意：bash 不用 red (语义=错误)，改 rose 表达"powerful + 注意"。
-const TOOL_NAME_COLOR: Record<string, string> = {
-  read: 'text-info',
-  write: 'text-warn',
-  edit: 'text-warn',
-  multi_edit: 'text-warn',
-  bash: 'text-danger',
-  grep: 'text-ok',
-  glob: 'text-ok',
+  running: 'border-warn/30 bg-surface-2/45',
+  done: 'border-border-default/70 bg-surface-2/45',
 };
 
 // v0.1.9 fix: 文件修改类工具默认展开 — 用户期望对话流里直接看到 diff 摘要 (path + ±N),
@@ -761,7 +748,6 @@ export function ToolCallCard({
   const colorClass =
     TOOL_STATUS_COLOR[status === 'interrupted' ? 'running' : status] ??
     'border-border-strong bg-surface-2/50';
-  const toolNameColor = TOOL_NAME_COLOR[toolName] ?? 'text-fg-secondary';
   const argSummary = summarizeInput(input);
 
   // P4c: result 走行级折叠（diff middle-collapse / 极端守门）
@@ -774,7 +760,7 @@ export function ToolCallCard({
     <div
       ref={cardRef}
       data-testid="tool-call-card"
-      className={`tool-card-anim rounded border ${colorClass} text-xs font-mono`}
+      className={`conversation-tool-card tool-card-anim rounded-xl border ${colorClass} text-sm`}
     >
       {attachments?.length ? <UserImageAttachments attachments={attachments} /> : null}
       {/* 2026-06-18: header 拆成「折叠 toggle」+「文件路径打开」两个**并列** button（不再把可点
@@ -784,7 +770,8 @@ export function ToolCallCard({
       {(() => {
         const pathArg = pathArgOf(input);
         return (
-          <div className="w-full px-3 py-2 flex items-center gap-2">
+          <div className="conversation-tool-header w-full px-3 py-3 flex items-center gap-2">
+            <Wrench className="h-4 w-4 shrink-0 text-fg-muted" strokeWidth={1.7} aria-hidden />
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
@@ -794,15 +781,19 @@ export function ToolCallCard({
               }`}
             >
               <Caret open={expanded} className="text-fg-muted" />
-              <span className={`font-semibold ${toolNameColor}`}>{toolName}</span>
-              {!pathArg && <span className="text-fg-muted truncate flex-1">{argSummary}</span>}
+              <span className="font-medium text-fg-primary">{toolName}</span>
+              {!pathArg && (
+                <span className="font-mono text-[13px] text-fg-muted truncate flex-1">
+                  {argSummary}
+                </span>
+              )}
             </button>
             {pathArg && (
               <button
                 type="button"
                 onClick={() => void openFileSmart(pathArg)}
                 title={t('markdown.openInlinePath', { path: pathArg })}
-                className="min-w-0 flex-1 text-left text-info/80 hover:text-info underline decoration-info/40 underline-offset-2 cursor-pointer"
+                className="min-w-0 flex-1 font-mono text-[13px] text-left text-info/80 hover:text-info underline decoration-info/40 underline-offset-2 cursor-pointer"
               >
                 <FileNameText name={pathArg} />
               </button>
@@ -815,7 +806,7 @@ export function ToolCallCard({
       <Collapse open={expanded} lazyMount>
         <div
           data-testid="tool-call-card-details"
-          className="border-t border-border-default px-3 py-2 space-y-2"
+          className="border-t border-border-default/60 px-4 py-3 space-y-3 font-mono text-[13px]"
         >
           {/* OC-21 (v0.1.8): tool input 渲染走 toolRegistry 查表分发。任意 toolName 都进
               ToolEditInputView，registry 找不到 / 返 null 就回退到 raw-JSON collapse 视图。
@@ -1021,10 +1012,9 @@ export function SystemNotice({
 }: Extract<ConversationMessage, { kind: 'system_notice' }>): JSX.Element {
   const { t } = useI18n();
   const isWorkflow = variant === 'workflow';
+  const NoticeIcon = variant === 'error' ? AlertTriangle : Info;
   const color =
-    variant === 'error'
-      ? 'text-danger border-danger/40 bg-danger/5'
-      : 'text-warn border-warn/40 bg-warn/5';
+    variant === 'error' ? 'border-danger/25 text-danger' : 'border-warn/25 text-fg-secondary';
 
   const actionDef = action ? ACTION_BUTTONS[action] : undefined;
   const secondsLeft = useRetryCountdown(retryAvailableAt);
@@ -1051,14 +1041,13 @@ export function SystemNotice({
   if (isWorkflow) {
     return (
       <div
-        className={['notice-in text-[11px] font-mono border-y', color, 'px-3 py-2 text-left'].join(
-          ' ',
-        )}
+        className={`conversation-notice notice-in flex items-start gap-3 rounded-xl border px-4 py-3 text-left ${color}`}
         data-testid="system-notice"
         data-notice-variant={variant}
       >
-        <div className="min-w-0 whitespace-pre-wrap break-words">{displayText}</div>
-        <div className="font-sans">
+        <NoticeIcon className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="whitespace-pre-wrap break-words">{displayText}</div>
           <MessageFooter text={displayText} sentAt={sentAt} />
         </div>
       </div>
@@ -1068,14 +1057,15 @@ export function SystemNotice({
   return (
     <div
       className={[
-        'notice-in text-[11px] font-mono border-y',
+        'conversation-notice notice-in rounded-xl border',
         color,
-        'py-1 text-center flex items-center justify-center gap-2 flex-wrap',
+        'px-4 py-3 text-left flex items-start gap-3 flex-wrap',
       ].join(' ')}
       data-testid="system-notice"
       data-notice-variant={variant}
     >
-      <span>{displayText}</span>
+      <NoticeIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{displayText}</span>
       {terminal?.effectOutcome === 'unknown' && (
         <span>{t('message.runtimeFailure.effects.unknown')}</span>
       )}

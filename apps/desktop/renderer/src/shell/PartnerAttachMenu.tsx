@@ -123,7 +123,7 @@ export function PartnerAttachMenu({
   return (
     <div
       data-testid="partner-attach-menu"
-      className="absolute bottom-full left-0 z-50 mb-1 w-60 rounded-lg border border-border-default bg-surface-4 py-1 text-xs shadow-xl"
+      className="workspace-menu absolute bottom-full left-0 z-50 mb-1 w-60 rounded-lg border border-border-default bg-surface-4 py-1 text-xs shadow-xl"
       onMouseLeave={onClose}
     >
       <PartnerAttachRow
@@ -310,7 +310,7 @@ function PartnerFlyout({
           onBack();
           requestAnimationFrame(() => document.getElementById(ownerId)?.focus());
         }}
-        className={`max-h-80 overflow-y-auto rounded-lg border border-border-default bg-surface-4 py-1 shadow-xl ${matchRootSize ? 'w-60' : 'w-72'}`}
+        className={`workspace-menu max-h-80 overflow-y-auto rounded-lg border border-border-default bg-surface-4 py-1 shadow-xl ${matchRootSize ? 'w-60' : 'w-72'}`}
       >
         {!hideHeader && (
           <header className="sticky top-0 z-10 border-b border-border-default bg-surface-4 px-3 py-2 text-xs font-medium text-fg-secondary">

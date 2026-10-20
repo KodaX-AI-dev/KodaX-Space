@@ -11,6 +11,7 @@ import { useAppStore } from '../store/appStore.js';
 import { pushToast } from '../store/toastStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { requestInsert } from './inputBridge.js';
+import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 
 type PrimaryFileAction = 'artifact' | 'diff';
 
@@ -53,6 +54,7 @@ export function FileActionMenu({
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     function onKey(e: KeyboardEvent): void {
+      if (!isSurfaceInteractive(ref.current)) return;
       if (e.key !== 'Escape') return;
       e.preventDefault();
       onClose();
@@ -118,7 +120,7 @@ export function FileActionMenu({
       <div
         id={id}
         ref={ref}
-        className="fixed z-[100] min-w-[220px] rounded-lg border border-border-default bg-surface-4 py-1 text-xs shadow-xl"
+        className="workspace-menu fixed z-[100] min-w-[220px] rounded-lg border border-border-default bg-surface-4 py-1 text-xs shadow-xl"
         style={{ left, top }}
         role="menu"
         onKeyDown={onMenuKeyDown}
