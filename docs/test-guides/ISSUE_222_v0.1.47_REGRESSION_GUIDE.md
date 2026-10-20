@@ -1,5 +1,20 @@
 # Issue 222 — Shared Host recovery and historical conversation availability
 
+## Published alpha.9 metadata admission follow-up
+
+Current dependency: official npm `0.7.97-alpha.9`. Run
+`node --test --test-force-exit scripts/test/kodax-session-admission.test.mjs`
+to check completed and unknown-active historical Runs whose Session bodies
+return EIO. Listing/preflight must not read those bodies, active Run/Actor work
+must retain exit blockers, explicit Session load must still report EIO, and
+unreadable metadata must remain a conservative failure. The fixture uses only
+isolated temporary data. Do not reintroduce quarantined CRC files to reproduce it.
+
+Repeat the packaged output, restored-history, shared-Host recovery and unified
+contract suites below. These cover exact input identities/no replay, selected
+history recovery after a real Host crash, active-owner protection, complete
+exit and `protected` peer receipts. See the [alpha.9 consumer qualification](../releases/kodax-0.7.97-alpha.9-integration.md).
+
 All automated fixtures create a unique temporary profile. Never reproduce this
 against the personal `~/.kodax` directory or remove an ownership lock by hand.
 

@@ -1,6 +1,10 @@
-# Space 接入 KodaX 0.7.97-alpha.8
+# Space 接入 KodaX 0.7.97-alpha.9
 
-当前源码为未发布的 Space `0.1.47-alpha.3`，精确安装 Registry SDK `0.7.97-alpha.8`。根目录、Desktop、lockfile、物理安装及 Registry 原生文件校验已对齐，没有开发链接。当前验收见 [alpha.8 接入](../releases/kodax-0.7.97-alpha.8-integration.md)，alpha.7 主链及[消费端复核](../releases/kodax-0.7.97-alpha.7-space-followup.md)保留原验证范围。下方 alpha.6 及 2026-10-14 的 alpha.3–5 记录保留历史时点，不代表当前依赖或发布状态。
+当前源码为未发布的 Space `0.1.47-alpha.3`，精确安装 Registry SDK `0.7.97-alpha.9`。根目录、Desktop、lockfile、物理安装及 Registry 原生文件校验已对齐，没有开发链接。当前验收见 [alpha.9 接入](../releases/kodax-0.7.97-alpha.9-integration.md)，alpha.8/alpha.7 记录保留原验证范围。下方早期记录保留历史时点，不代表当前依赖或发布状态。
+
+### 2026-10-20 Registry alpha.9 接入
+
+共享 Host Run 检查使用 canonical 元数据读取；已初始化且持有 durable owner fence 的 Actor 控制器复用既有准入，避免活动写入和 Run 完成后的保存引发冲突。Space 沿用公开 preflight、退出回执和错误投影，不增加等待、业务重试或绕过所有权。正文 EIO 不再阻塞无关检查；元数据不可读、活动或未知工作仍保守阻断，受损会话显式打开仍报读取错误。Artifact 四入口继续随主包交付，无需第二个包，可信扩展启用边界不变。以前的 CRC 隔离文件不回填。
 
 ### 2026-10-19 Registry alpha.8 接入
 

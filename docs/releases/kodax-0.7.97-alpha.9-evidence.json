@@ -1,0 +1,104 @@
+{
+  "checkedAt": "2026-10-20T00:27:13.068Z",
+  "spaceVersion": "0.1.47-alpha.3",
+  "spacePublished": false,
+  "sourceCommit": "5cfb8a99913968f0653089c0c78f3f8be5ccc935",
+  "platform": "win32",
+  "node": "v22.23.1",
+  "registry": {
+    "version": "0.7.97-alpha.9",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.9.tgz",
+    "integrity": "sha512-cw/Eh2idVD381auW3JZVNMThO0OHICLnH0H7uQTUBL62PhjX0WpkOYtxstMIPhpNQXQemAaquil/Xthlr23ipA==",
+    "source": "registry",
+    "installedBytesVerified": true
+  },
+  "publishedDelta": {
+    "previousVersion": "0.7.97-alpha.8",
+    "sdkDeclarationFiles": 84,
+    "changedDeclarations": [],
+    "exportsUnchanged": true,
+    "dependenciesUnchanged": true,
+    "windowsNativeChanged": [
+      "kodax-windows-sandbox.exe",
+      "kodax-windows-text-transaction.node",
+      "manifest.json"
+    ]
+  },
+  "build": {
+    "file": "out/win-unpacked/resources/app.asar",
+    "sdkVersion": "0.7.97-alpha.9",
+    "sha256": "13d415561bfee3ba63f0faa49d56a36e05c08da8135cc2e0d996a2b79f3a0f45",
+    "bytes": 125309719
+  },
+  "backup": {
+    "file": "out/win-unpacked.pre-alpha9-20261020/resources/app.asar",
+    "sdkVersion": "0.7.97-alpha.7"
+  },
+  "packagedSdkJavaScript": {
+    "count": 100,
+    "mismatches": []
+  },
+  "publishedMetadataOnlyAdmissionFix": true,
+  "liveAdmissionRequiresOwnerFence": true,
+  "quarantinedSessionRestored": false,
+  "artifact": {
+    "mainPackageExports": 4,
+    "realNodeWorker": true,
+    "exactPngRoundTrip": true,
+    "personalProfileAutomaticallyEnabled": false
+  },
+  "tests": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "buildSmoke": "passed",
+    "releaseDependencyGate": "passed",
+    "consumerBodyEio": {
+      "alpha8": {
+        "passed": 0,
+        "failed": 2,
+        "expectedError": "EIO"
+      },
+      "alpha9": {
+        "passed": 2,
+        "failed": 0
+      },
+      "fullBodyReadsDuringInspection": 0,
+      "unreadableMetadataRejected": true,
+      "activeRunsAndActorsProtected": true
+    },
+    "fullSuite": {
+      "total": 4411,
+      "passed": 4391,
+      "failed": 0,
+      "skipped": 20
+    },
+    "packagedRecovery": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "retries": 0
+    },
+    "packagedLifecycle": {
+      "passed": 6,
+      "failed": 0
+    },
+    "packagedBoot": {
+      "rendererMs": 5089,
+      "runtimeMs": 25888,
+      "deliberateReadyHoldMs": 20000,
+      "historicalRecordsPreserved": 122
+    },
+    "bootWithoutInjectedHold": {
+      "rendererMs": 3339,
+      "runtimeMs": 4246,
+      "deliberateReadyHoldMs": 0,
+      "historicalRecordsPreserved": 122
+    }
+  },
+  "limits": [
+    "Local Windows consumer qualification; not new Linux/macOS evidence.",
+    "No physical disk repair or reconstruction of unreadable transcript bytes.",
+    "No extra business wait, retry, history scan or owner bypass.",
+    "No Space publication, push or tag."
+  ]
+}

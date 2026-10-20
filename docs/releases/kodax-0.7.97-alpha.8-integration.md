@@ -3,6 +3,10 @@
 Date: 2026-10-19. Space remains `0.1.47-alpha.3` on `main`, unpublished.
 This update consumes the actual Registry package, not the adjacent SDK checkout.
 
+Update 2026-10-20: the [alpha.9 integration](kodax-0.7.97-alpha.9-integration.md)
+supersedes the current dependency, EIO publication limit and pending build-path
+promotion described below. This alpha.8 record retains its original evidence.
+
 ## Dependency and delivered changes
 
 Root/Desktop manifests, both workspace lock entries and the installed package pin
