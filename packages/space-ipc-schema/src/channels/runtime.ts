@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import { agentIterationProgressSchema } from './agent.js';
-import { autoModeDecisionDiagnosticsSchema } from './permission.js';
+import { autoModeDecisionDiagnosticsSchema, permissionPlanSchema } from './permission.js';
 
 const MAX_ID = 128;
 const MAX_REASON = 512;
@@ -292,6 +292,26 @@ export const spaceRuntimeFailureDetailSchema = z
   // Strip additive diagnostic fields instead of rejecting the complete safe fact.
   .strip();
 
+const runtimeTerminalFactSchema = z.object({
+  revision: z.number().int().nonnegative(),
+  kind: z.enum(['completed', 'failed', 'cancelled', 'interrupted']),
+  code: z.enum([
+    'completed',
+    'run_failed',
+    'blocked',
+    'cancelled',
+    'interrupted',
+    'runtime_restarted',
+    'daemon_crashed',
+    'credential_unavailable',
+    'host_not_dispatched',
+    'host_outcome_unknown',
+    'actor_settlement_not_persisted',
+  ]),
+  effectOutcome: z.enum(['none', 'known', 'unknown']),
+  failureKind: spaceRuntimeRunFailureKindSchema.optional(),
+});
+
 export const spaceRuntimeRunProjectionSchema = z
   .object({
     runId: idSchema,
@@ -309,6 +329,7 @@ export const spaceRuntimeRunProjectionSchema = z
     completedAt: timestampSchema.optional(),
     queuePosition: z.number().int().positive().max(MAX_QUEUE_ITEMS).optional(),
     terminalReason: z.string().min(1).max(MAX_REASON).optional(),
+    terminal: runtimeTerminalFactSchema.optional(),
     failureKind: spaceRuntimeRunFailureKindSchema.optional(),
     failureDetail: spaceRuntimeFailureDetailSchema.optional(),
     action: z.enum(['retry', 'open_provider_settings', 'check_network', 'change_model']).optional(),
@@ -460,6 +481,7 @@ const runtimePermissionRequestSchema = z.object({
   sessionId: idSchema,
   risk: z.enum(['low', 'medium', 'high', 'danger']),
   reason: z.string().max(512),
+  plan: permissionPlanSchema.optional(),
   toolCall: runtimeInteractionToolCallSchema,
   autoModeDiagnostics: autoModeDecisionDiagnosticsSchema.optional(),
   suggestedPattern: z.string().min(1).max(512).optional(),

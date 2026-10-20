@@ -93,15 +93,8 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
   registerChannel('workflow.stop', (input) =>
     runWithCoderAdmission(options, async () => {
       if (runtimeHostAdapter.isRuntimeSelected()) {
-        try {
-          if (await runtimeHostAdapter.getWorkflow(input.runId)) {
-            return { ok: await runtimeHostAdapter.controlWorkflow('stop', input.runId) };
-          }
-        } catch (error) {
-          console.warn(
-            '[workflow.stop] Coder daemon control unavailable:',
-            error instanceof Error ? error.message : error,
-          );
+        if (await runtimeHostAdapter.getWorkflow(input.runId)) {
+          return { ok: await runtimeHostAdapter.controlWorkflow('stop', input.runId) };
         }
       }
       return { ok: await workflowController.stop(input.runId, input.reason) };
@@ -111,15 +104,8 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
   registerChannel('workflow.pause', (input) =>
     runWithCoderAdmission(options, async () => {
       if (runtimeHostAdapter.isRuntimeSelected()) {
-        try {
-          if (await runtimeHostAdapter.getWorkflow(input.runId)) {
-            return { ok: await runtimeHostAdapter.controlWorkflow('pause', input.runId) };
-          }
-        } catch (error) {
-          console.warn(
-            '[workflow.pause] Coder daemon control unavailable:',
-            error instanceof Error ? error.message : error,
-          );
+        if (await runtimeHostAdapter.getWorkflow(input.runId)) {
+          return { ok: await runtimeHostAdapter.controlWorkflow('pause', input.runId) };
         }
       }
       return { ok: await workflowController.pause(input.runId) };
@@ -129,15 +115,8 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
   registerChannel('workflow.resume', async (input) => {
     return runWithCoderAdmission(options, async () => {
       if (runtimeHostAdapter.isRuntimeSelected()) {
-        try {
-          if (await runtimeHostAdapter.getWorkflow(input.runId)) {
-            return { ok: await runtimeHostAdapter.controlWorkflow('resume', input.runId) };
-          }
-        } catch (error) {
-          console.warn(
-            '[workflow.resume] Coder daemon control unavailable:',
-            error instanceof Error ? error.message : error,
-          );
+        if (await runtimeHostAdapter.getWorkflow(input.runId)) {
+          return { ok: await runtimeHostAdapter.controlWorkflow('resume', input.runId) };
         }
       }
       return { ok: await workflowController.resume(input.runId) };
@@ -154,7 +133,9 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
 
   registerChannel('workflow.rerun', async (input) => {
     return runWithCoderAdmission(options, async () => {
-      const run = workflowController.get(input.runId);
+      const run = runtimeHostAdapter.isRuntimeSelected()
+        ? await runtimeHostAdapter.getWorkflow(input.runId)
+        : workflowController.get(input.runId);
       if (!run) return { error: 'workflow run not found' };
       let session = kodaxHost.get(input.sessionId);
       if (!session && (await kodaxHost.tryResume(input.sessionId))) {
@@ -234,7 +215,9 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
 
   // Save a generated workflow run into the trusted workflow library for this session's project.
   registerChannel('workflow.save', async (input) => {
-    const run = workflowController.get(input.runId);
+    const run = runtimeHostAdapter.isRuntimeSelected()
+      ? await runtimeHostAdapter.getWorkflow(input.runId)
+      : workflowController.get(input.runId);
     if (!run) return { error: 'workflow run not found' };
     let session = kodaxHost.get(input.sessionId);
     if (!session && (await kodaxHost.tryResume(input.sessionId))) {

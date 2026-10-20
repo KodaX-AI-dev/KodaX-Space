@@ -2529,6 +2529,18 @@ const startupPromise = app
     registerWorkflowChannels({
       beginCoderAdmission: () => coderRuntimeModeSwitchCoordinator.beginCoderAdmission(),
     });
+    workflowController.setHostOwner({
+      enabled: () => runtimeHostAdapter.isRuntimeSelected(),
+      start: async (input) => {
+        if (
+          !input.sessionId ||
+          (await kodaxHost.commitRuntimeMutation(input.sessionId, () => true)) !== 'ok'
+        )
+          return { error: 'Session execution settings could not be persisted.' };
+        return runtimeHostAdapter.startWorkflow(input);
+      },
+      runDirectory: (runId) => runtimeHostAdapter.workflowRunDirectory(runId),
+    });
     void startupShutdownCoordinator.trackStartupTask(
       workflowController
         .init()

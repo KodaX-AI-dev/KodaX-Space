@@ -14,11 +14,46 @@ import {
 type RuntimeProfileSession = SpaceRuntimeProfileProjectionT['sessions'][number];
 
 function projectedFailureAction(run: SpaceRuntimeRunProjectionT) {
+  if (run.terminal?.effectOutcome === 'unknown') return {};
   return {
     ...(run.action !== undefined ? { action: run.action } : {}),
     ...(run.retriable !== undefined ? { retriable: run.retriable } : {}),
     ...(run.retryAvailableAt !== undefined ? { retryAvailableAt: run.retryAvailableAt } : {}),
   };
+}
+
+function terminalEffectNotices(
+  messages: readonly ConversationMessage[],
+  run: SpaceRuntimeRunProjectionT,
+): readonly ConversationMessage[] {
+  if (!run.terminal) return messages;
+  const existing = messages.find(
+    (message) => message.kind === 'system_notice' && message.runtimeRunId === run.runId,
+  );
+  const attach = (message: Extract<ConversationMessage, { kind: 'system_notice' }>) => {
+    if (run.terminal?.effectOutcome !== 'unknown') return { ...message, terminal: run.terminal };
+    const {
+      action: _action,
+      retriable: _retriable,
+      retryAvailableAt: _retryAt,
+      ...notice
+    } = message;
+    return { ...notice, terminal: run.terminal };
+  };
+  if (existing?.kind === 'system_notice')
+    return messages.map((message) => (message === existing ? attach(existing) : message));
+  if (run.terminal.effectOutcome !== 'unknown') return messages;
+  return [
+    ...messages,
+    {
+      kind: 'system_notice',
+      id: `runtime_terminal_${run.runId}`,
+      variant: 'error',
+      text: run.terminalReason ?? '',
+      runtimeRunId: run.runId,
+      terminal: run.terminal,
+    },
+  ];
 }
 
 function currentDiagnosticRun(
@@ -54,7 +89,9 @@ export function appendRuntimeFailureNotices(
   profileSession: RuntimeProfileSession | undefined,
 ): readonly ConversationMessage[] {
   const run = currentDiagnosticRun(live, profileSession);
-  if (run?.failureDetail === undefined) return messages;
+  if (!run) return messages;
+  messages = terminalEffectNotices(messages, run);
+  if (run.failureDetail === undefined) return messages;
   const failureDetail = run.failureDetail;
   const failureAction = projectedFailureAction(run);
   const existingIndex = messages.findIndex(
@@ -76,6 +113,7 @@ export function appendRuntimeFailureNotices(
             text: failureDetail.safeMessage,
             failureKind: failureDetail.failureKind,
             failureDetail,
+            ...(run.terminal ? { terminal: run.terminal } : {}),
             ...failureAction,
           }
         : message,
@@ -91,6 +129,7 @@ export function appendRuntimeFailureNotices(
       failureKind: failureDetail.failureKind,
       failureDetail,
       runtimeRunId: run.runId,
+      ...(run.terminal ? { terminal: run.terminal } : {}),
       ...failureAction,
     },
   ];
@@ -103,7 +142,9 @@ export function decorateProductFailureNotices(
   profileSession: RuntimeProfileSession | undefined,
 ): readonly ConversationMessage[] {
   const run = currentDiagnosticRun(live, profileSession);
-  if (!run?.failureDetail) return messages;
+  if (!run) return messages;
+  messages = terminalEffectNotices(messages, run);
+  if (!run.failureDetail) return messages;
   if (
     !messages.some(
       (message) =>
@@ -123,6 +164,7 @@ export function decorateProductFailureNotices(
           ...message,
           failureKind: run.failureDetail!.failureKind,
           failureDetail: run.failureDetail,
+          ...(run.terminal ? { terminal: run.terminal } : {}),
           ...projectedFailureAction(run),
         }
       : message,

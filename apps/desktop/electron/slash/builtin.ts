@@ -2232,7 +2232,9 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       if (invocation.kind === 'save') {
         if (!invocation.runId || !invocation.name)
           return { ok: false, message: 'Usage: /workflow save <runId> <name>' };
-        const run = findWorkflowRun(ctx.sessionId, invocation.runId);
+        const run = runtimeHostAdapter.isRuntimeSelected()
+          ? await runtimeHostAdapter.getWorkflow(invocation.runId)
+          : findWorkflowRun(ctx.sessionId, invocation.runId);
         if (!run) return { ok: false, message: `workflow run not found: ${invocation.runId}` };
         const result = await workflowController.saveGeneratedWorkflowFromRun(
           run.runId,
@@ -2325,7 +2327,9 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
         if (!invocation.runId)
           return { ok: false, message: 'Usage: /workflow rerun <runId|savedName> [args]' };
         const library = await workflowController.listLibrary(session.projectRoot);
-        const run = findWorkflowRun(ctx.sessionId, invocation.runId);
+        const run = runtimeHostAdapter.isRuntimeSelected()
+          ? await runtimeHostAdapter.getWorkflow(invocation.runId)
+          : findWorkflowRun(ctx.sessionId, invocation.runId);
         const saved = findSavedWorkflow(library.saved, invocation.runId);
         if (run && saved)
           return {

@@ -47,7 +47,18 @@ export interface MemorySessionContext {
   readonly surface?: 'code' | 'partner';
 }
 
+type GovernanceController = Pick<
+  MemoryController,
+  'listInbox' | 'showProposal' | 'approveProposal' | 'rejectProposal' | 'listRefs' | 'readRef'
+> &
+  Partial<Pick<MemoryController, 'runCurator' | 'buildMemoryPack'>> & {
+    readonly hostOwned?: boolean;
+  };
+
 export interface MemoryGovernanceServiceDeps {
+  readonly resolveHostController?: (
+    session: MemorySessionContext,
+  ) => Promise<GovernanceController | undefined>;
   readonly loadSdk?: () => Promise<AgentSdkModule>;
   readonly resolveSession: (sessionId: string) => Promise<MemorySessionContext | null>;
   readonly resolvePaths?: (
@@ -59,7 +70,10 @@ export interface MemoryGovernanceServiceDeps {
   };
 }
 
-function truncateText(value: string, max: number): { readonly value: string; readonly truncated: boolean } {
+function truncateText(
+  value: string,
+  max: number,
+): { readonly value: string; readonly truncated: boolean } {
   if (value.length <= max) return { value, truncated: false };
   return { value: `${value.slice(0, Math.max(0, max - 14))}\n... truncated`, truncated: true };
 }
@@ -73,11 +87,7 @@ function limitStrings(values: readonly string[], maxItems: number, maxChars: num
   return values.slice(0, maxItems).map((value) => truncateText(value, maxChars).value);
 }
 
-function withOptional<K extends string, V>(
-  target: object,
-  key: K,
-  value: V | undefined,
-): void {
+function withOptional<K extends string, V>(target: object, key: K, value: V | undefined): void {
   if (value !== undefined) {
     (target as Record<string, unknown>)[key] = value;
   }
@@ -106,7 +116,9 @@ function normalizeRef(ref: MemoryItemRef): MemoryItemRefT {
   return out;
 }
 
-function normalizeFingerprintMap(input: Readonly<Record<string, string>> | undefined): Record<string, string> | undefined {
+function normalizeFingerprintMap(
+  input: Readonly<Record<string, string>> | undefined,
+): Record<string, string> | undefined {
   if (input === undefined) return undefined;
   return Object.fromEntries(
     Object.entries(input).map(([key, value]) => [
@@ -134,9 +146,13 @@ function normalizePreview(preview: MemoryApplyPreview): MemoryApplyPreviewT {
   return out;
 }
 
-function normalizeProposal(proposal: MemoryActionProposal): MemoryActionProposalT {
+function normalizeProposal(
+  proposal: MemoryActionProposal,
+  revision: string,
+): MemoryActionProposalT {
   return {
     id: truncateText(proposal.id, 512).value,
+    revision,
     action: proposal.action,
     targetRefs: proposal.targetRefs.slice(0, REF_MAX).map(normalizeRef),
     sourceRefs: proposal.sourceRefs.slice(0, REF_MAX).map(normalizeRef),
@@ -269,7 +285,9 @@ function normalizePack(pack: MemoryPack): MemoryPackT {
 }
 
 function isGovernanceInventoryRef(ref: MemoryItemRef): boolean {
-  return ref.kind === 'memdir' || ref.kind === 'learning_proposal' || ref.kind === 'reasoning_report';
+  return (
+    ref.kind === 'memdir' || ref.kind === 'learning_proposal' || ref.kind === 'reasoning_report'
+  );
 }
 
 function filterFromInput(input: ChannelInput<'memory.list'>): MemoryRefFilter {
@@ -284,12 +302,14 @@ function filterFromInput(input: ChannelInput<'memory.list'>): MemoryRefFilter {
 }
 
 export class MemoryGovernanceService {
+  private readonly resolveHostController: MemoryGovernanceServiceDeps['resolveHostController'];
   private readonly loadSdk: () => Promise<AgentSdkModule>;
   private readonly resolveSession: (sessionId: string) => Promise<MemorySessionContext | null>;
   private readonly resolvePaths: NonNullable<MemoryGovernanceServiceDeps['resolvePaths']>;
 
   constructor(deps: MemoryGovernanceServiceDeps) {
     this.loadSdk = deps.loadSdk ?? loadAgentSdk;
+    this.resolveHostController = deps.resolveHostController;
     this.resolveSession = deps.resolveSession;
     this.resolvePaths =
       deps.resolvePaths ??
@@ -299,12 +319,14 @@ export class MemoryGovernanceService {
       }));
   }
 
-  private async controller(sessionId: string): Promise<MemoryController> {
+  private async controller(sessionId: string): Promise<GovernanceController> {
     const session = await this.resolveSession(sessionId);
     if (!session) throw new Error(`session not found: ${sessionId}`);
     if (session.surface === 'partner') {
       throw new Error('Memory Governance is available from the Coder surface only');
     }
+    const host = await this.resolveHostController?.(session);
+    if (host) return { ...host, hostOwned: true };
     const sdk = await this.loadSdk();
     const paths = this.resolvePaths(sdk, session);
     return sdk.createMemoryControlPlane({
@@ -322,28 +344,49 @@ export class MemoryGovernanceService {
       controller.listInbox(),
       controller.listRefs(filterFromInput(input)),
     ]);
+    const sdk = await loadAgentSdk();
     return {
-      inbox: inbox.map(normalizeProposal),
+      inbox: inbox.map((proposal) =>
+        normalizeProposal(proposal, sdk.memoryProposalRevision(proposal)),
+      ),
       refs: refs.filter(isGovernanceInventoryRef).map(normalizeRef),
       warnings: [],
+      capabilities: { curate: !!controller.runCurator, pack: !!controller.buildMemoryPack },
     };
   }
 
-  async proposal(input: ChannelInput<'memory.proposal'>): Promise<ChannelOutput<'memory.proposal'>> {
+  async proposal(
+    input: ChannelInput<'memory.proposal'>,
+  ): Promise<ChannelOutput<'memory.proposal'>> {
     const controller = await this.controller(input.sessionId);
     const proposal = await controller.showProposal(input.proposalId);
-    return { proposal: proposal ? normalizeProposal(proposal) : null };
+    const sdk = await loadAgentSdk();
+    return {
+      proposal: proposal ? normalizeProposal(proposal, sdk.memoryProposalRevision(proposal)) : null,
+    };
   }
 
   async approve(input: ChannelInput<'memory.approve'>): Promise<ChannelOutput<'memory.approve'>> {
     const controller = await this.controller(input.sessionId);
-    const result = await controller.approveProposal(input.proposalId, input.expectedFingerprints);
+    if (controller.hostOwned && !input.expectedRevision)
+      throw new Error('A reviewed proposal revision is required.');
+    const result = await controller.approveProposal(
+      input.proposalId,
+      input.expectedFingerprints,
+      input.expectedRevision,
+    );
     return { result: normalizeApplyResult(result) };
   }
 
   async reject(input: ChannelInput<'memory.reject'>): Promise<ChannelOutput<'memory.reject'>> {
     const controller = await this.controller(input.sessionId);
-    const result = await controller.rejectProposal(input.proposalId, input.reason);
+    if (controller.hostOwned && !input.expectedRevision)
+      throw new Error('A reviewed proposal revision is required.');
+    const result = await controller.rejectProposal(
+      input.proposalId,
+      input.reason,
+      input.expectedRevision,
+    );
     return { result: normalizeRejectResult(result) };
   }
 
@@ -355,6 +398,8 @@ export class MemoryGovernanceService {
 
   async curate(input: ChannelInput<'memory.curate'>): Promise<ChannelOutput<'memory.curate'>> {
     const controller = await this.controller(input.sessionId);
+    if (!controller.runCurator)
+      throw new Error('The shared Host does not expose manual Memory curation.');
     const report = await controller.runCurator({
       ...(input.includePrivate !== undefined ? { includePrivate: input.includePrivate } : {}),
       ...(input.includeSensitive !== undefined ? { includeSensitive: input.includeSensitive } : {}),
@@ -364,6 +409,8 @@ export class MemoryGovernanceService {
 
   async pack(input: ChannelInput<'memory.pack'>): Promise<ChannelOutput<'memory.pack'>> {
     const controller = await this.controller(input.sessionId);
+    if (!controller.buildMemoryPack)
+      throw new Error('The shared Host does not expose Memory pack previews.');
     const pack = await controller.buildMemoryPack({
       task: input.task,
       ...(input.maxHints !== undefined ? { maxHints: input.maxHints } : {}),
@@ -377,6 +424,11 @@ export class MemoryGovernanceService {
 }
 
 export const memoryGovernanceService = new MemoryGovernanceService({
+  resolveHostController: async (session) => {
+    const { runtimeHostAdapter } = await import('../kodax/runtime-host-adapter.js');
+    if (!runtimeHostAdapter.isRuntimeSelected()) return undefined;
+    return (await runtimeHostAdapter.memoryForProject(session.projectRoot)).controller;
+  },
   resolveSession: async (sessionId) => {
     let session = kodaxHost.get(sessionId);
     if (!session && (await kodaxHost.tryResume(sessionId))) {

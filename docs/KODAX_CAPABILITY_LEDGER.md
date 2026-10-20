@@ -2,6 +2,8 @@
 
 > 2026-10-20：当前依赖为官方 alpha.9；EIO 元数据准入及持有 owner fence 的活动控制器准入修复已随 npm 发布接入。Artifact 四入口与资源继续保留，启用边界不变。验收见 [alpha.9 接入](releases/kodax-0.7.97-alpha.9-integration.md)。
 
+> 2026-10-18：当前 alpha.7 主链验收与全产品迁移完整性分开记录。最新逐入口复核及遗留项见 [SDK 对齐与迁移完整性审计](research/kodax-space-sdk-alignment-audit-2026-10-18.md)；下方历史支持条目不能替代该审计的当前实现边界。
+
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
 > Last reviewed: 2026-10-20

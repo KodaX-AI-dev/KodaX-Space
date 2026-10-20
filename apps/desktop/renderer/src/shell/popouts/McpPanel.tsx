@@ -73,6 +73,7 @@ export function McpPanel(): JSX.Element {
     ReadonlyArray<{ path: string; error: string }>
   >([]);
   const [loading, setLoading] = useState(false);
+  const [canStop, setCanStop] = useState(false);
   const [topErr, setTopErr] = useState<string | null>(null);
   // 操作中的 serverId (start/stop 期间禁按钮)
   const [busyServer, setBusyServer] = useState<string | null>(null);
@@ -110,6 +111,7 @@ export function McpPanel(): JSX.Element {
         setStatusList([]);
       } else {
         setStatusList(statusR.data.servers);
+        setCanStop(statusR.data.canStop ?? true);
       }
       if (discoverR && discoverR.ok) {
         setMeta(discoverR.data.servers);
@@ -455,16 +457,18 @@ export function McpPanel(): JSX.Element {
                       {isBusy ? t('mcp.installing') : t('mcp.start')}
                     </button>
                   )}
-                  {status && (status.status === 'ready' || status.status === 'connecting') && (
-                    <button
-                      type="button"
-                      onClick={() => void stopServer(row.serverId)}
-                      disabled={isBusy}
-                      className="px-2 py-0.5 text-[11px] rounded bg-surface-3/60 text-fg-primary hover:bg-hover-bg disabled:opacity-50"
-                    >
-                      {isBusy ? t('mcp.installing') : t('mcp.stop')}
-                    </button>
-                  )}
+                  {canStop &&
+                    status &&
+                    (status.status === 'ready' || status.status === 'connecting') && (
+                      <button
+                        type="button"
+                        onClick={() => void stopServer(row.serverId)}
+                        disabled={isBusy}
+                        className="px-2 py-0.5 text-[11px] rounded bg-surface-3/60 text-fg-primary hover:bg-hover-bg disabled:opacity-50"
+                      >
+                        {isBusy ? t('mcp.installing') : t('mcp.stop')}
+                      </button>
+                    )}
                   {status && tools > 0 && (
                     <button
                       type="button"

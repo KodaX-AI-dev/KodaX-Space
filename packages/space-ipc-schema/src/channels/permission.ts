@@ -41,6 +41,10 @@ const permissionToolCallSchema = z.object({
 const riskLevelSchema = z.enum(['low', 'medium', 'high', 'danger']);
 const decisionSchema = z.enum(['deny', 'allow_once', 'allow_always']);
 
+// Preserve every plan that can fit the SDK's bounded 8 MiB daemon frame.
+// An approval must never substitute a shortened tool-input preview.
+export const permissionPlanSchema = z.string().max(8 * 1024 * 1024);
+
 // Structured Auto[LLM] diagnostics shared by the legacy inline askUser lane and
 // the Runtime permission projection. These fields describe how a decision was
 // produced; they never grant authority and never contain classifier prompt or
@@ -167,6 +171,7 @@ export const permissionRequestChannel = {
     sessionId: z.string().min(1),
     risk: riskLevelSchema,
     reason: z.string().max(512),
+    plan: permissionPlanSchema.optional(),
     autoModeDiagnostics: autoModeDecisionDiagnosticsSchema.optional(),
     toolCall: permissionToolCallSchema,
     /** 已生成的 pattern 候选，给 "Always allow" 选项预填，renderer 决定要不要带 pattern。*/

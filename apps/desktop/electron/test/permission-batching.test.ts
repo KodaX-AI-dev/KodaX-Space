@@ -5,11 +5,7 @@ import assert from 'node:assert/strict';
 import type { PermissionRequestPayload, PermissionRisk } from '@kodax-space/space-ipc-schema';
 import { selectPermissionBatch } from '../../renderer/src/features/permission/permissionBatching.js';
 
-function makeReq(
-  reqId: string,
-  sessionId: string,
-  risk: PermissionRisk,
-): PermissionRequestPayload {
+function makeReq(reqId: string, sessionId: string, risk: PermissionRisk): PermissionRequestPayload {
   return {
     reqId,
     sessionId,
@@ -47,11 +43,15 @@ test('head is danger → always single, never batched', () => {
   }
 });
 
+test('a plan approval remains individually reviewable at the head and after a tool request', () => {
+  const plan = { ...makeReq('plan', 'sess-A', 'high'), plan: 'Full finalized plan' };
+  const tool = makeReq('tool', 'sess-A', 'medium');
+  assert.equal(selectPermissionBatch([plan, tool]).mode, 'single');
+  assert.equal(selectPermissionBatch([tool, plan]).mode, 'single');
+});
+
 test('two same-session non-danger → batch of 2', () => {
-  const items = [
-    makeReq('r1', 'sess-A', 'low'),
-    makeReq('r2', 'sess-A', 'medium'),
-  ];
+  const items = [makeReq('r1', 'sess-A', 'low'), makeReq('r2', 'sess-A', 'medium')];
   const result = selectPermissionBatch(items);
   assert.equal(result.mode, 'batch');
   if (result.mode === 'batch') {
@@ -123,10 +123,7 @@ test('first two same-session, third danger same-session → batch of first 2', (
 });
 
 test('only one non-danger of session-A followed by session-B → single mode (not enough to batch)', () => {
-  const items = [
-    makeReq('r1', 'sess-A', 'low'),
-    makeReq('r2', 'sess-B', 'low'),
-  ];
+  const items = [makeReq('r1', 'sess-A', 'low'), makeReq('r2', 'sess-B', 'low')];
   const result = selectPermissionBatch(items);
   assert.equal(result.mode, 'single');
   if (result.mode === 'single') {
@@ -135,10 +132,7 @@ test('only one non-danger of session-A followed by session-B → single mode (no
 });
 
 test('high risk batches fine — only danger blocks batching', () => {
-  const items = [
-    makeReq('r1', 'sess-A', 'high'),
-    makeReq('r2', 'sess-A', 'high'),
-  ];
+  const items = [makeReq('r1', 'sess-A', 'high'), makeReq('r2', 'sess-A', 'high')];
   const result = selectPermissionBatch(items);
   assert.equal(result.mode, 'batch');
 });

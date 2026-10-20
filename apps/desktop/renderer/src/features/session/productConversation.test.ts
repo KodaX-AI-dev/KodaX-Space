@@ -99,6 +99,35 @@ test('an accepted input outside the bounded SDK window cannot reappear as an opt
   );
 });
 
+test('Host tool images remain attached to their exact displayed execution', () => {
+  const attachments = [
+    {
+      id: 'image',
+      kind: 'image' as const,
+      status: 'available' as const,
+      mediaType: 'image/png' as const,
+      previewUrl:
+        'app://space/session-attachment/abcdefghijklmnopqrstuvwxyz012345?variant=original',
+      thumbnailUrl:
+        'app://space/session-attachment/abcdefghijklmnopqrstuvwxyz012345?variant=thumbnail',
+    },
+  ];
+  const projected = projectProductConversation([
+    {
+      id: 'tool',
+      type: 'tool',
+      text: 'result',
+      tool: { callId: 'call', name: 'read', status: 'success' },
+      imageAttachments: attachments,
+    },
+  ]);
+  assert.equal(projected.messages[0]?.kind, 'tool_call');
+  assert.deepEqual(
+    projected.messages[0]?.kind === 'tool_call' && projected.messages[0].attachments,
+    attachments,
+  );
+});
+
 test('Space command and workflow notices remain visible without changing SDK output order', () => {
   const projected = projectProductConversation(
     [

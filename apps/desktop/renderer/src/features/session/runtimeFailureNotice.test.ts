@@ -96,6 +96,72 @@ test('active unknown run exposes structured settlement diagnostics without fabri
   ]);
 });
 
+test('unknown terminal effects remain visible even when no Provider failure exists', () => {
+  const terminal = {
+    revision: 3,
+    kind: 'interrupted',
+    code: 'daemon_crashed',
+    effectOutcome: 'unknown',
+  } as const;
+  const profileSession = {
+    sessionId: 'session_unknown_effect',
+    surface: 'code',
+    createdAt: 1,
+    lastActivityAt: 2,
+    queuedRuns: [],
+    lastTerminalRun: {
+      runId: 'run_unknown_effect',
+      sessionId: 'session_unknown_effect',
+      phase: 'interrupted',
+      terminal,
+    },
+  } satisfies SpaceRuntimeProfileProjectionT['sessions'][number];
+  const notices = decorateProductFailureNotices([], undefined, profileSession);
+  assert.equal(notices.length, 1);
+  const notice = notices[0];
+  assert.equal(notice?.kind, 'system_notice');
+  if (notice?.kind !== 'system_notice') throw new Error('Expected terminal diagnostic');
+  assert.deepEqual('terminal' in notice && notice.terminal, terminal);
+  assert.equal(notice.action, undefined, 'unknown effects must not suggest a blind retry');
+});
+
+test('unknown effects remove a stale retry action while retaining the SDK error item', () => {
+  const terminal = {
+    revision: 3,
+    kind: 'interrupted',
+    code: 'daemon_crashed',
+    effectOutcome: 'unknown',
+  } as const;
+  const message: ConversationMessage = {
+    kind: 'system_notice',
+    id: 'sdk-error',
+    variant: 'error',
+    text: 'Original SDK error',
+    runtimeRunId: 'run_unknown_effect',
+    action: 'retry',
+    failureDetail,
+  };
+  const profileSession = {
+    sessionId: 'session_unknown_effect',
+    surface: 'code',
+    createdAt: 1,
+    lastActivityAt: 2,
+    queuedRuns: [],
+    lastTerminalRun: {
+      runId: 'run_unknown_effect',
+      sessionId: 'session_unknown_effect',
+      phase: 'interrupted',
+      terminal,
+      failureDetail,
+    },
+  } satisfies SpaceRuntimeProfileProjectionT['sessions'][number];
+  const notices = decorateProductFailureNotices([message], undefined, profileSession);
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0]?.id, 'sdk-error');
+  if (notices[0]?.kind !== 'system_notice') throw new Error('Expected SDK error');
+  assert.equal(notices[0].action, undefined);
+});
+
 test('cold-start profile terminal failure exposes its structured diagnostics', () => {
   const profileSession: SpaceRuntimeProfileProjectionT['sessions'][number] = {
     sessionId: 'session_runtime_failure',

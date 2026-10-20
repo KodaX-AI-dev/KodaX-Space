@@ -183,7 +183,7 @@ function readGlobalServersFromSdk(
   return out;
 }
 
-function projectSdkServerEntry(
+export function projectSdkServerEntry(
   name: string,
   cfg: Record<string, unknown>,
   source: 'global' | 'project',

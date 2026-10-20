@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 // Slash command IPC handler — FEATURE_031.
 //
 // 启动时 main.ts 调 registerSlashChannels()，注册表的填充 (registerSlash) 由
@@ -39,21 +40,44 @@ async function ensureSessionAvailableForSlash(sessionId: string): Promise<void> 
 
 export async function executeSlashCommand(input: SlashExecInput): Promise<SlashExecOutput> {
   const handler = getSlashHandler(input.name);
-  if (!handler) {
-    return {
-      ok: false,
-      message: `unknown command: /${input.name}`,
-      unknownCommand: true,
-    };
-  }
-  await ensureSessionAvailableForSlash(input.sessionId);
+  if (handler || input.expectedSurface === 'code')
+    await ensureSessionAvailableForSlash(input.sessionId);
   const session = kodaxHost.get(input.sessionId);
-  if (session) {
+  if (session)
     assertSessionSendScope(session, {
       expectedProjectRoot: input.expectedProjectRoot,
       expectedSurface: input.expectedSurface,
     });
+  if (
+    session?.surface === 'code' &&
+    runtimeHostAdapter.isRuntimeSelected() &&
+    (!handler || input.name === 'review')
+  ) {
+    const command =
+      input.name === 'review'
+        ? undefined
+        : await runtimeHostAdapter.resolveRuntimeCommandInfo(input.name, session.projectRoot);
+    if (input.name === 'review' || command?.promptCommand || command?.source === 'prompt') {
+      if ((await kodaxHost.commitRuntimeMutation(session.sessionId, () => true)) !== 'ok')
+        return { ok: false, message: 'Session execution settings could not be persisted.' };
+      const result = await runtimeHostAdapter.executeProductCommand({
+        sessionId: session.sessionId,
+        projectRoot: session.projectRoot,
+        name: input.name === 'review' ? 'review' : command!.name,
+        args: input.args,
+        inputId: input.operationId ?? `space-command-${randomUUID()}`,
+      });
+      return result.kind === 'started'
+        ? { ok: true, echo: false }
+        : {
+            ok: result.success,
+            ...(result.message ? { message: result.message.slice(0, 2048) } : {}),
+            echo: false,
+          };
+    }
   }
+  if (!handler)
+    return { ok: false, message: `unknown command: /${input.name}`, unknownCommand: true };
   return handler.handler({
     sessionId: input.sessionId,
     args: input.args,

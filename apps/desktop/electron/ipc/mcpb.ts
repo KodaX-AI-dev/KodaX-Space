@@ -27,8 +27,18 @@ import {
   isInsideExtractBase,
   type InternalMcpbEntry,
 } from '../mcpb/registry.js';
+import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 import { reloadMcpManager } from '../mcp/manager.js';
 import { invalidateSpaceSdkExtensionRuntimes } from '../kodax/sdk-extensions.js';
+
+async function refreshMcpOwner(): Promise<void> {
+  if (runtimeHostAdapter.isRuntimeSelected()) {
+    await runtimeHostAdapter.reloadRuntimeMcp();
+    return;
+  }
+  await reloadMcpManager();
+  await invalidateSpaceSdkExtensionRuntimes();
+}
 
 async function pushChanged(): Promise<void> {
   const reg = await readRegistry();
@@ -90,18 +100,7 @@ async function installFromPath(filePath: string): Promise<InternalMcpbEntry> {
       sync.kind === 'error' ? sync.message : 'an existing MCP server was not overwritten';
     throw new Error(`Failed to register MCP server in ~/.kodax/integrations/mcp.json: ${reason}`);
   } else if (sync.kind === 'registered') {
-    await reloadMcpManager().catch((err) => {
-      console.warn(
-        '[mcpb] MCP manager reload after install failed:',
-        err instanceof Error ? err.message : err,
-      );
-    });
-    await invalidateSpaceSdkExtensionRuntimes().catch((err) => {
-      console.warn(
-        '[mcpb] SDK extension runtime invalidation after install failed:',
-        err instanceof Error ? err.message : err,
-      );
-    });
+    await refreshMcpOwner();
   }
   if (displacedInstallDir) {
     await safeRmInstallDir(displacedInstallDir, 'displaced (upgrade)');
@@ -259,18 +258,7 @@ export function registerMcpbChannels(): void {
     if (res.entry) {
       const removedMcp = await removeEntryFromKodaxMcp(res.entry);
       if (removedMcp.kind === 'removed') {
-        await reloadMcpManager().catch((err) => {
-          console.warn(
-            '[mcpb] MCP manager reload after uninstall failed:',
-            err instanceof Error ? err.message : err,
-          );
-        });
-        await invalidateSpaceSdkExtensionRuntimes().catch((err) => {
-          console.warn(
-            '[mcpb] SDK extension runtime invalidation after uninstall failed:',
-            err instanceof Error ? err.message : err,
-          );
-        });
+        await refreshMcpOwner();
       } else if (removedMcp.kind === 'skipped-changed') {
         console.warn(
           '[mcpb] leaving ~/.kodax/integrations/mcp.json server because it no longer matches the installed bundle',

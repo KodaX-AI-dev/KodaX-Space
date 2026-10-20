@@ -3,6 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import type { ClientWorkflowStartInput } from '@kodax-ai/kodax/client';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,6 +18,43 @@ import type {
   WorkflowLifecycleLike,
 } from '../kodax/workflow-controller.js';
 import { workflowEventChannel, workflowProcessSnapshotSchema } from '@kodax-space/space-ipc-schema';
+
+test('explicit Coder workflow starts and generated requests have one Host execution owner', async () => {
+  const controller = new WorkflowController();
+  const inputs: ClientWorkflowStartInput[] = [];
+  controller.setHostOwner({
+    enabled: () => true,
+    start: async (input) => {
+      inputs.push(input);
+      return { runId: 'host-run' };
+    },
+    runDirectory: async () => {
+      throw new Error('not needed');
+    },
+  });
+  const session = {
+    sessionId: 'session',
+    projectRoot: 'C:/project',
+    surface: 'code' as const,
+    provider: 'mock',
+    reasoningMode: 'high',
+    agentMode: 'ama',
+  };
+  assert.deepEqual(await controller.start({ target: 'review', source: 'builtin', session }), {
+    runId: 'host-run',
+  });
+  assert.deepEqual(await controller.createGeneratedWorkflow('review this project', session), {
+    runId: 'host-run',
+  });
+  assert.deepEqual(
+    inputs.map((input) => input.source),
+    [
+      { kind: 'name', name: 'review' },
+      { kind: 'request', request: 'review this project' },
+    ],
+  );
+  assert.equal(inputs[0]?.sessionId, 'session');
+});
 
 // ---- fake run manager（可手动 emit 进程事件 + 持有 snapshot）----
 interface FakeSnap {
@@ -1303,7 +1341,11 @@ test('workflow launch forwards user effort intent for SDK negotiation', async ()
     const ctrl = new WorkflowController(() => {}, file);
     const manager = fakeManager();
     await ctrl.init(manager);
-    for (const [reasoningMode, effort] of [['auto', 'auto'], ['off', 'none'], ['deep', 'max']]) {
+    for (const [reasoningMode, effort] of [
+      ['auto', 'auto'],
+      ['off', 'none'],
+      ['deep', 'max'],
+    ]) {
       await ctrl.createGeneratedWorkflow('do a thing', { ...LAUNCH_SESSION, reasoningMode });
       const options = manager.started.at(-1)?.options as Record<string, unknown>;
       assert.equal(options.effort, effort);

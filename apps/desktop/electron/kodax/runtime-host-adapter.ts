@@ -59,9 +59,13 @@ import type {
   ClientSessionView,
   ClientHistoryPage,
   ClientHistorySearchResult,
+  ClientWorkflowStartInput,
+  ClientCommandResult,
 } from '@kodax-ai/kodax/client';
-import type { SessionProductView } from '@kodax-space/space-ipc-schema';
+import type { SessionProductView, SessionProductItem } from '@kodax-space/space-ipc-schema';
 import { projectProductItems } from './runtime/product-view.js';
+import { ensureSpaceBuiltinSkillsOnHost } from '../skill/space-builtins.js';
+import type { HostItemReader } from './runtime/host-image.js';
 import { workflowPolicyStore } from './workflow-policy.js';
 export type {
   RuntimeExitSettlement,
@@ -4262,7 +4266,13 @@ export class RuntimeHostAdapter {
   async readProductHistory(
     sessionId: string,
     cursor?: string,
-  ): Promise<{ outcome: 'ready'; page: ClientHistoryPage | null } | { outcome: 'data_changed' }> {
+  ): Promise<
+    | {
+        outcome: 'ready';
+        page: (Omit<ClientHistoryPage, 'items'> & { items: SessionProductItem[] }) | null;
+      }
+    | { outcome: 'data_changed' }
+  > {
     const runtime = await this.requireRuntime();
     await this.assertPersistedCoderOwnershipIfChanged(sessionId);
     try {
@@ -4273,7 +4283,20 @@ export class RuntimeHostAdapter {
       if (cursor === undefined) await this.readSessionProductView(sessionId);
       if (this.runtime !== runtime)
         throw new Error('Runtime changed while reading Session history.');
-      return { outcome: 'ready', page };
+      return {
+        outcome: 'ready',
+        page: page
+          ? {
+              ...page,
+              items: await projectProductItems(
+                sessionId,
+                page.items,
+                [],
+                this.productImageReader(runtime, sessionId, 'history'),
+              ),
+            }
+          : null,
+      };
     } catch (error) {
       if (this.runtime !== runtime)
         throw new Error('Runtime changed while reading Session history.');
@@ -4318,7 +4341,12 @@ export class RuntimeHostAdapter {
       throw new Error('SDK view belongs to another Session.');
     if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
     const previous = this.productViews.get(state.sessionId);
-    const items = await projectProductItems(state.sessionId, view.items, previous?.items);
+    const items = await projectProductItems(
+      state.sessionId,
+      view.items,
+      previous?.runtimeId === state.runtime.identity.runtimeId ? previous.items : [],
+      this.productImageReader(state.runtime, state.sessionId, 'view'),
+    );
     if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
     if (
       previous?.runtimeId !== state.runtime.identity.runtimeId ||
@@ -4335,6 +4363,25 @@ export class RuntimeHostAdapter {
     }
     // Admission demand protects the asynchronous image projection as well as SDK delivery.
     await this.reconcileInputObservationDemands(state, view);
+  }
+
+  private productImageReader(
+    runtime: KodaXDaemonRuntime,
+    sessionId: string,
+    source: 'view' | 'history',
+  ): HostItemReader {
+    return async (itemId, options) => {
+      if (this.runtime !== runtime || this.state !== 'ready')
+        throw new Error('Image belongs to a previous Host.');
+      await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+      const result =
+        source === 'history'
+          ? await runtime.sessions.readHistoryEntry(sessionId, itemId, options)
+          : await runtime.sessions.readViewItem(sessionId, itemId, options);
+      if (this.runtime !== runtime || this.state !== 'ready')
+        throw new Error('Host changed while reading an image.');
+      return result;
+    };
   }
 
   private async readObservedSessionLiveSnapshot(
@@ -6074,6 +6121,7 @@ export class RuntimeHostAdapter {
     const runtime = await this.requireRuntime();
     const sessionId = request.input.sessionId;
     if (!sessionId) throw new Error('Space execution requires an identified Coder Session.');
+    await ensureSpaceBuiltinSkillsOnHost(runtime, this.profileRoot);
     await this.ensureObserved(sessionId);
     if (request.kind === 'agent_spawn' && request.input.agent.kind === 'external') return undefined;
     const inputId = 'inputId' in request.input ? request.input.inputId : undefined;
@@ -6939,10 +6987,105 @@ export class RuntimeHostAdapter {
     return runtime.permissions.revokeGrant(grantId, expectedRevision);
   }
 
+  async resolveRuntimeCommandInfo(name: string, projectRoot: string) {
+    const runtime = await this.requireRuntime();
+    const command = await runtime.catalog.resolveCommand({ name, projectRoot });
+    if (!command) return null;
+    const prepared = await runtime.invocations.prepareCommand({ name: command.name, projectRoot });
+    return { ...command, promptCommand: prepared.kind === 'prepared' };
+  }
+
+  async executeProductCommand(input: {
+    sessionId: string;
+    projectRoot: string;
+    name: string;
+    args: readonly string[];
+    inputId: string;
+  }): Promise<ClientCommandResult> {
+    await this.ensureSession({
+      sessionId: input.sessionId,
+      projectRoot: input.projectRoot,
+      surface: 'code',
+      ephemeral: false,
+    });
+    const runtime = await this.requireRuntime();
+    await this.ensureObserved(input.sessionId);
+    const command = {
+      sessionId: input.sessionId,
+      name: input.name,
+      args: input.args,
+      inputId: input.inputId,
+    };
+    const request = {
+      kind: input.name === 'review' ? ('review' as const) : ('command' as const),
+      input: command,
+    };
+    const authorization = await this.authorizeProductExecution(request, runtime);
+    const result =
+      input.name === 'review'
+        ? await runtime.invocations.startReview({ ...command, authorization })
+        : await runtime.invocations.executeCommand({ ...command, authorization });
+    if (result.kind === 'started') {
+      this.productRunAuthorizations.set(result.runId, authorization);
+      this.spaceOwnedRunIds.add(result.runId);
+      this.activeRuns.set(input.sessionId, result.runId);
+      void this.awaitRunResultAcrossReconnects(
+        runtime,
+        input.sessionId,
+        result.runId,
+        runtime.runs.await(result.runId),
+      )
+        .finally(() => {
+          if (this.activeRuns.get(input.sessionId) === result.runId)
+            this.activeRuns.delete(input.sessionId);
+          this.retireObservationIfQuiescent(input.sessionId);
+        })
+        .catch((error: unknown) =>
+          console.warn(
+            '[runtime] command result observation failed:',
+            sanitizeDiagnosticError(error),
+          ),
+        );
+    }
+    return result;
+  }
+
+  async startWorkflow(
+    input: ClientWorkflowStartInput,
+  ): Promise<{ runId: string } | { error: string }> {
+    if (!input.sessionId) throw new Error('A Coder Session is required for workflow execution.');
+    await this.ensureSession({
+      sessionId: input.sessionId,
+      projectRoot: input.projectRoot,
+      surface: 'code',
+      ephemeral: false,
+    });
+    const runtime = await this.requireRuntime();
+    const authorization = await this.authorizeProductExecution(
+      { kind: 'workflow', input },
+      runtime,
+    );
+    const result = await runtime.workflows.start({
+      ...input,
+      settingsDefaults: 'product',
+      authorization,
+    });
+    return result.kind === 'started' ? { runId: result.runId } : { error: result.reason };
+  }
+
+  async workflowRunDirectory(runId: string): Promise<string> {
+    const runtime = await this.requireRuntime();
+    const run = (await runtime.workflows.list({ runId, limit: 1 })).find(
+      (candidate) => candidate.runId === runId,
+    );
+    if (!run) throw new Error('Workflow is not owned by the current Host.');
+    return run.runDir;
+  }
+
   async listWorkflows(input?: { readonly sessionId?: string }): Promise<WorkflowRunT[]> {
     const runtime = await this.requireRuntime();
     const snapshots = await runtime.workflows.list({ limit: 500 });
-    return snapshots
+    return (await Promise.all(snapshots.map((run) => runtime.workflows.get(run.runId))))
       .map(projectRuntimeWorkflow)
       .filter((item): item is WorkflowRunT => item !== undefined)
       .filter((item) => input?.sessionId === undefined || item.sessionId === input.sessionId)
@@ -7055,6 +7198,18 @@ export class RuntimeHostAdapter {
     return runtime.catalog.deleteCustomProvider(name);
   }
 
+  async memoryForProject(projectRoot: string) {
+    return (await this.requireRuntime()).memory.forProject(projectRoot);
+  }
+
+  async listRuntimeMcpConfig() {
+    return (await this.requireRuntime()).mcp.listServers();
+  }
+
+  async listRuntimeMcpStatus() {
+    return (await this.requireRuntime()).mcp.status();
+  }
+
   async reloadRuntimeMcp() {
     const runtime = await this.requireRuntime();
     return runtime.mcp.reloadServers();
@@ -7071,6 +7226,7 @@ export class RuntimeHostAdapter {
 
   async listRuntimeSkills(projectRoot: string) {
     const runtime = await this.requireRuntime();
+    await ensureSpaceBuiltinSkillsOnHost(runtime, this.profileRoot);
     return runtime.catalog.skills({ projectRoot });
   }
 

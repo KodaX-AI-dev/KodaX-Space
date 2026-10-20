@@ -79,6 +79,7 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
       id: item.id,
       toolId: item.id,
       toolName: item.tool.name,
+      ...(item.imageAttachments ? { attachments: item.imageAttachments } : {}),
       input: toolInput(item.tool.inputText),
       result:
         item.tool.resultRecorded || ['success', 'error', 'cancelled'].includes(item.tool.status)

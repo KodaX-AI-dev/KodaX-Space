@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-18T11:55:16.151Z",
+  "results": [
+    {
+      "url": "https://registry.npmjs.org/@kodax-ai%2fartifacts",
+      "status": 404,
+      "date": "Sun, 18 Oct 2026 11:55:16 GMT",
+      "error": "Not found"
+    },
+    {
+      "url": "https://registry.npmjs.org/@kodax-ai/artifacts/0.7.97-alpha.7",
+      "status": 404,
+      "date": "Sun, 18 Oct 2026 11:55:13 GMT"
+    },
+    {
+      "url": "https://registry.npmjs.org/@kodax-ai%2fkodax",
+      "status": 200,
+      "date": "Sun, 18 Oct 2026 11:55:14 GMT",
+      "tags": {
+        "hotfix": "0.7.72-hotfix.0",
+        "latest": "0.7.96",
+        "alpha": "0.7.97-alpha.7"
+      },
+      "published": "2026-10-18T00:15:48.759Z"
+    },
+    {
+      "url": "https://registry.npmjs.org/@kodax-ai%2fartifact",
+      "status": 404,
+      "date": "Sun, 18 Oct 2026 11:55:14 GMT",
+      "error": "Not found"
+    }
+  ]
+}

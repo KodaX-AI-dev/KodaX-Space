@@ -148,6 +148,17 @@ const queued = {
   },
 } as const;
 
+test('Runtime Run projection retains terminal identity and unknown effects after a daemon crash', () => {
+  const terminal = {
+    revision: 3,
+    kind: 'interrupted',
+    code: 'daemon_crashed',
+    effectOutcome: 'unknown',
+  } as const;
+  const projected = projectRuntimeRun({ ...running, phase: 'interrupted', terminal });
+  assert.deepEqual('terminal' in projected && projected.terminal, terminal);
+});
+
 test('Runtime Run projection preserves credential-safe provider failure details', () => {
   const projected = projectRuntimeRun({
     ...running,
@@ -1139,6 +1150,32 @@ test('permission projection uses sanitized description, assessed risk, and setti
     assert.equal(interaction.request.toolCall.executionCwd, 'C:\\fallback-project');
     assert.equal(interaction.request.toolCall.input?.command, 'python -c "print(1)"');
   }
+});
+
+test('plan approval retains the full Host plan and exact request identity without a preview', () => {
+  const plan = '# Final plan\n' + 'Review this step before approval.\n'.repeat(300) + 'END OF PLAN';
+  const projected = projectRuntimeSessionSnapshot(
+    {
+      ...observation,
+      pendingPermissions: [
+        {
+          id: 'plan-approval',
+          sessionId: 's_code',
+          runId: 'run_active',
+          toolName: 'exit_plan_mode',
+          plan,
+          createdAt: '2026-10-20T01:00:00.000Z',
+        },
+      ],
+    } as RuntimeSessionObservationSnapshot,
+    [],
+  );
+  const interaction = projected.interactions[0];
+  assert.equal(interaction?.kind, 'permission');
+  if (interaction?.kind !== 'permission') throw new Error('Expected plan approval');
+  assert.equal(interaction.request.reqId, 'plan-approval');
+  assert.equal('plan' in interaction.request && interaction.request.plan, plan);
+  assert.equal(interaction.request.allowAlwaysScope, undefined);
 });
 
 test('permission projection never offers a persistent grant for dangerous commands', () => {

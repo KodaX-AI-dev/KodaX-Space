@@ -1,3 +1,4 @@
+import type { ClientWorkflowStartInput } from '@kodax-ai/kodax/client';
 // WorkflowController (F060) — Space main 侧的工作流进程事件管线。
 //
 // 对标 KodaX SDK FEATURE_229(0.7.50):工作流进度是可订阅的一等进程。本控制器:
@@ -1078,6 +1079,43 @@ interface OriginsFile {
 const defaultPush: PushFn = (payload) => pushToRenderer('workflow.event', payload);
 
 export class WorkflowController {
+  private hostOwner:
+    | {
+        enabled(): boolean;
+        start(input: ClientWorkflowStartInput): Promise<WorkflowStartResult>;
+        runDirectory(runId: string): Promise<string>;
+      }
+    | undefined;
+
+  setHostOwner(owner: NonNullable<WorkflowController['hostOwner']>): void {
+    this.hostOwner = owner;
+  }
+
+  private startOnHost(
+    session: LaunchSession,
+    source: ClientWorkflowStartInput['source'],
+    args?: unknown,
+    metadata?: ClientWorkflowStartInput['metadata'],
+  ): Promise<WorkflowStartResult> {
+    if (!this.hostOwner) throw new Error('Host workflow owner is unavailable.');
+    return this.hostOwner.start({
+      sessionId: session.sessionId,
+      projectRoot: session.projectRoot,
+      source,
+      args,
+      provider: session.provider,
+      ...(session.model ? { model: session.model } : {}),
+      metadata: {
+        ...metadata,
+        hostMetadata: {
+          sessionId: session.sessionId,
+          surface: session.surface,
+          projectRoot: session.projectRoot,
+        },
+      },
+    });
+  }
+
   private manager: WorkflowRunManagerLike | null = null;
   /** F062 run 生命周期控制器(stop/pause/resume/rename/delete/prune)。 */
   private lifecycle: WorkflowLifecycleLike | null = null;
@@ -1395,6 +1433,24 @@ export class WorkflowController {
   async start(input: LaunchInput): Promise<{ runId: string } | { error: string }> {
     const partnerBlocked = this.assertCoderSurface(input.session);
     if (partnerBlocked) return partnerBlocked;
+    if (this.hostOwner?.enabled()) {
+      if (input.agentTarget)
+        return {
+          error: 'The shared Host does not expose a workflow-wide external Agent target override.',
+        };
+      if (input.source === 'builtin')
+        return this.startOnHost(input.session, { kind: 'name', name: input.target }, input.args);
+      const sdk = await loadCodingSdk();
+      if (!sdk?.loadSavedWorkflowCapsule)
+        return { error: 'saved workflow capsule loading unavailable' };
+      const capsule = asWorkflowCapsule(await sdk.loadSavedWorkflowCapsule(input.target));
+      return this.startOnHost(
+        input.session,
+        { kind: 'inline', manifest: capsule.manifest, source: capsule.source },
+        input.args,
+        { savedWorkflowName: capsule.manifest.name },
+      );
+    }
     const sdk = await loadCodingSdk();
     const manager = this.manager;
     if (!sdk || !manager) return { error: 'workflow runtime unavailable' };
@@ -1489,6 +1545,13 @@ export class WorkflowController {
   ): Promise<WorkflowStartResult> {
     const partnerBlocked = this.assertCoderSurface(session);
     if (partnerBlocked) return partnerBlocked;
+    if (this.hostOwner?.enabled())
+      return this.startOnHost(
+        session,
+        { kind: 'request', request },
+        { request },
+        { source: 'command', goal: request },
+      );
     const sdk = await loadCodingSdk();
     const generateWorkflow = sdk?.generateWorkflowFromOptions;
     if (!generateWorkflow) return { error: 'workflow generation unavailable' };
@@ -1527,7 +1590,9 @@ export class WorkflowController {
     if (partnerBlocked) return partnerBlocked;
     const sdk = await loadCodingSdk();
     if (!sdk?.loadGeneratedWorkflowFromRun) return { error: 'workflow rerun unavailable' };
-    const runDir = generatedRunDir(this.runBaseDir, runId);
+    const runDir = this.hostOwner?.enabled()
+      ? await this.hostOwner.runDirectory(runId)
+      : generatedRunDir(this.runBaseDir, runId);
     if (runDir === null) return { error: 'invalid runId' };
     let loaded: LoadedGeneratedWorkflowLite;
     try {
@@ -1538,6 +1603,15 @@ export class WorkflowController {
       }
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
+    }
+    if (this.hostOwner?.enabled()) {
+      const capsule = asWorkflowCapsule(loaded.capsule);
+      return this.startOnHost(
+        session,
+        { kind: 'inline', manifest: capsule.manifest, source: capsule.source },
+        args,
+        { source: 'command', sourceRunId: runId },
+      );
     }
     const scriptSnapshot = scriptSnapshotFromCapsule(loaded.capsule);
     return this.startWorkflowModule({
@@ -1561,7 +1635,9 @@ export class WorkflowController {
   ): Promise<WorkflowSavedResult> {
     const sdk = await loadCodingSdk();
     if (!sdk?.saveGeneratedWorkflowFromRun) return { error: 'workflow save unavailable' };
-    const runDir = generatedRunDir(this.runBaseDir, runId);
+    const runDir = this.hostOwner?.enabled()
+      ? await this.hostOwner.runDirectory(runId)
+      : generatedRunDir(this.runBaseDir, runId);
     if (runDir === null) return { error: 'invalid runId' };
     try {
       const ref = await sdk.saveGeneratedWorkflowFromRun({
@@ -1630,6 +1706,11 @@ export class WorkflowController {
     if (input.replace && !input.saved) {
       return { error: 'revise --replace requires a saved workflow name target' };
     }
+    if (this.hostOwner?.enabled())
+      return {
+        error:
+          'The shared Host does not expose non-executing workflow revision and persistence yet.',
+      };
     const sdk = await loadCodingSdk();
     const generateWorkflow = sdk?.generateWorkflowFromOptions;
     if (!generateWorkflow) return { error: 'workflow revision unavailable' };
@@ -2222,7 +2303,6 @@ async function loadCodingSdk(): Promise<CodingSdkSubset | null> {
     return null;
   }
 }
-
 
 /** saved 工作流搜索目录:个人 ~/.kodax/workflows + 项目 <root>/.kodax/workflows。*/
 function savedWorkflowDirs(projectRoot?: string): { personal: string; project?: string } {

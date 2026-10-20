@@ -15,6 +15,11 @@ import type {
 import { launchSpace, type SpaceInstance } from './fixtures.js';
 import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
+export const FINALIZED_E2E_PLAN =
+  'Complete approved plan\n' +
+  'Preserve ownership and verify results.\n'.repeat(300) +
+  'END_OF_FINALIZED_PLAN';
+
 interface WireMessage {
   role: string;
   content?: unknown;
@@ -29,6 +34,7 @@ async function attachSdkEvidence(name: string, value: unknown): Promise<void> {
 
 export async function createLocalSdkProvider() {
   const requests: string[] = [];
+  let preparedCommandRequests = 0;
   const pending = new Map<string, ServerResponse>();
   const errors: string[] = [];
   let projectRoot = '';
@@ -66,6 +72,7 @@ export async function createLocalSdkProvider() {
       parsed.messages.findLast((message) => message.role === 'user')?.content ?? '',
     );
     requests.push(prompt);
+    if (JSON.stringify(parsed.messages).includes('HOST_COMMAND_BODY')) preparedCommandRequests++;
     if (request.headers.authorization !== 'Bearer space-e2e-fixture')
       throw new Error('Main credential was not authorized');
     if (prompt === 'FAIL_PRODUCT') {
@@ -119,6 +126,27 @@ export async function createLocalSdkProvider() {
         })}\n\n`,
       );
       pending.set(prompt, response);
+      return;
+    }
+    if (
+      (prompt === 'SDK_PLAN' || prompt === 'SDK_TOOL_IMAGE') &&
+      parsed.messages.at(-1)?.role !== 'tool'
+    ) {
+      reply(response, '', [
+        {
+          index: 0,
+          id: 'migration-tool',
+          type: 'function',
+          function: {
+            name: prompt === 'SDK_PLAN' ? 'exit_plan_mode' : 'read',
+            arguments: JSON.stringify(
+              prompt === 'SDK_PLAN'
+                ? { plan: FINALIZED_E2E_PLAN }
+                : { path: path.join(projectRoot, 'evidence.png') },
+            ),
+          },
+        },
+      ]);
       return;
     }
     if (prompt === 'SDK_ARTIFACT' && parsed.messages.at(-1)?.role !== 'tool') {
@@ -185,6 +213,9 @@ export async function createLocalSdkProvider() {
   return {
     url: `http://127.0.0.1:${address.port}/v1`,
     requests,
+    get preparedCommandRequests() {
+      return preparedCommandRequests;
+    },
     errors,
     setProject: (value: string) => {
       projectRoot = value;

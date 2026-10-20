@@ -114,6 +114,7 @@ export const mcpServersChannel = {
   input: mcpManagerScopeInputSchema.optional(),
   output: z.object({
     servers: z.array(mcpServerStatusSchema).max(128),
+    canStop: z.boolean().optional(),
   }),
 } as const;
 

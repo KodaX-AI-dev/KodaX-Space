@@ -261,6 +261,19 @@ export function projectRuntimeRun(
       ? { terminalReason: terminalReason.slice(0, MAX_REASON) }
       : {}),
     ...(run.terminal?.failureKind !== undefined ? { failureKind: run.terminal.failureKind } : {}),
+    ...(run.terminal
+      ? {
+          terminal: {
+            revision: run.terminal.revision,
+            kind: run.terminal.kind,
+            code: run.terminal.code,
+            effectOutcome: run.terminal.effectOutcome,
+            ...(run.terminal.failureKind !== undefined
+              ? { failureKind: run.terminal.failureKind }
+              : {}),
+          },
+        }
+      : {}),
     ...(failureDetail !== undefined
       ? {
           failureKind: failureDetail.failureKind,
@@ -534,6 +547,7 @@ function permissionInteraction(
       sessionId: request.sessionId,
       risk: assessment.dangerous ? 'danger' : (request.risk ?? assessment.risk),
       reason,
+      ...(request.plan !== undefined ? { plan: request.plan } : {}),
       ...(autoModeDiagnostics ? { autoModeDiagnostics } : {}),
       toolCall: {
         toolId: request.toolCallId ?? request.id,
@@ -542,7 +556,7 @@ function permissionInteraction(
         ...(executionCwd ? { executionCwd } : {}),
         ...(safeInput ? { input: safeInput } : {}),
       },
-      ...(!assessment.dangerous && persistentGrantLabel
+      ...(!assessment.dangerous && request.plan === undefined && persistentGrantLabel
         ? {
             allowAlwaysScope: {
               kind: 'runtime_persistent' as const,

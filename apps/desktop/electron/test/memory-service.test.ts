@@ -84,6 +84,71 @@ test('list exposes pending memory proposals through the 0.7.62 controller', asyn
   assert.equal(listed.refs[0]?.kind, 'learning_proposal');
 });
 
+test('Coder memory uses the Host controller and forwards the reviewed revision unchanged', async () => {
+  const harness = await makeHarness();
+  await seed(harness, 'host-proposal');
+  const controller = harness.sdk.createMemoryControlPlane({
+    cwd: harness.projectRoot,
+    memoryRoot: harness.memoryRoot,
+    learningStorePath: harness.storePath,
+    discoverSkills: false,
+  });
+  const expectedRevision = harness.sdk.memoryProposalRevision(
+    (await controller.showProposal('memory:host-proposal'))!,
+  );
+  const service = new MemoryGovernanceService({
+    resolveSession: async (sessionId) => ({
+      sessionId,
+      projectRoot: harness.projectRoot,
+      surface: 'code',
+    }),
+    loadSdk: async () => {
+      throw new Error('must not create a second Memory owner');
+    },
+    resolveHostController: async (session) => {
+      assert.equal(session.projectRoot, harness.projectRoot);
+      return {
+        ...controller,
+        showProposal: async (id) => {
+          const proposal = await controller.showProposal(id);
+          return proposal ? { ...proposal, revision: 'reviewed-revision' } : undefined;
+        },
+        approveProposal: async (_id, _fingerprints, revision) => {
+          assert.equal(revision, expectedRevision);
+          return {
+            proposalId: 'host-proposal',
+            applied: false,
+            changedRefs: [],
+            changedPaths: [],
+            skippedReason: 'conflict',
+            warnings: [],
+          };
+        },
+      };
+    },
+  });
+  const shown = await service.proposal({
+    sessionId: 's_memory',
+    proposalId: 'memory:host-proposal',
+  });
+  assert.equal(shown.proposal?.revision, expectedRevision);
+  const result = await service.approve({
+    sessionId: 's_memory',
+    proposalId: 'memory:host-proposal',
+    expectedFingerprints: {},
+    expectedRevision: shown.proposal!.revision,
+  });
+  assert.equal(result.result.skippedReason, 'conflict');
+  await assert.rejects(
+    service.approve({
+      sessionId: 's_memory',
+      proposalId: 'memory:host-proposal',
+      expectedFingerprints: {},
+    }),
+    /revision/i,
+  );
+});
+
 test('approve returns applied=false when fingerprints are missing', async () => {
   const harness = await makeHarness();
   await seed(harness, 'mem-fingerprint-1');

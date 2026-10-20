@@ -1209,6 +1209,7 @@ export function BottomBar(): JSX.Element {
         'slash.exec',
         {
           sessionId,
+          operationId: crypto.randomUUID(),
           name,
           args,
           ...(currentProjectPath ? { expectedProjectRoot: currentProjectPath } : {}),

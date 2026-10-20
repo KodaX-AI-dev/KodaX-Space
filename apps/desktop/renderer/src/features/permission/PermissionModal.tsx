@@ -241,7 +241,7 @@ export function PermissionModal(): JSX.Element | null {
             {t(RISK_LABEL_KEY[head.risk])}
           </span>
           <h2 id="permission-modal-title" className="text-sm font-semibold text-fg-primary">
-            {t('permission.title')}
+            {t(head.plan !== undefined ? 'permission.planTitle' : 'permission.title')}
           </h2>
           {sessionQueue.length > 1 && (
             <span className="ml-auto text-[11px] font-mono text-fg-muted">
@@ -254,6 +254,14 @@ export function PermissionModal(): JSX.Element | null {
           <div className="text-xs text-fg-muted leading-relaxed">{truncate(head.reason, 256)}</div>
 
           <AutoModeDiagnosticsPanel diagnostics={head.autoModeDiagnostics} />
+
+          {head.plan !== undefined && (
+            <section aria-label={t('permission.planTitle')} data-testid="permission-finalized-plan">
+              <pre className="text-sm whitespace-pre-wrap break-words leading-relaxed text-fg-primary">
+                {head.plan}
+              </pre>
+            </section>
+          )}
 
           <div className="space-y-1">
             <div className="text-[11px] font-mono uppercase text-fg-muted">

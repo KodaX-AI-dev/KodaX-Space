@@ -723,6 +723,7 @@ const FILE_MUTATION_TOOLS_DEFAULT_EXPANDED: ReadonlySet<string> = new Set([
 
 export function ToolCallCard({
   toolName,
+  attachments,
   input,
   result,
   progress,
@@ -775,6 +776,7 @@ export function ToolCallCard({
       data-testid="tool-call-card"
       className={`tool-card-anim rounded border ${colorClass} text-xs font-mono`}
     >
+      {attachments?.length ? <UserImageAttachments attachments={attachments} /> : null}
       {/* 2026-06-18: header 拆成「折叠 toggle」+「文件路径打开」两个**并列** button（不再把可点
           span 嵌进 button —— 嵌套 interactive 在部分浏览器键盘不可达）。input 含文件路径字段时
           右侧渲染裸路径可点击按钮（argSummary 带 "path: " 前缀+空格，不能直接判路径）；否则
@@ -946,16 +948,19 @@ type SystemNoticeMessage = Extract<ConversationMessage, { kind: 'system_notice' 
 type RuntimeFailureRow = { readonly label: MessageKey; readonly value: string };
 type RuntimeFailureDetailsProps = Pick<
   SystemNoticeMessage,
-  'failureDetail' | 'failureKind' | 'runtimeRunId'
+  'failureDetail' | 'failureKind' | 'runtimeRunId' | 'terminal'
 >;
 
 function runtimeFailureRows(message: RuntimeFailureDetailsProps): RuntimeFailureRow[] {
-  const { failureDetail, failureKind, runtimeRunId } = message;
+  const { failureDetail, failureKind, runtimeRunId, terminal } = message;
   const rows: RuntimeFailureRow[] = [];
   const add = (label: MessageKey, value: string | number | undefined): void => {
     if (value !== undefined && value !== '') rows.push({ label, value: String(value) });
   };
   add('message.runtimeFailure.runId', runtimeRunId);
+  add('message.runtimeFailure.terminalKind', terminal?.kind);
+  add('message.runtimeFailure.terminalCode', terminal?.code);
+  add('message.runtimeFailure.terminalRevision', terminal?.revision);
   add('message.runtimeFailure.kind', failureDetail?.failureKind ?? failureKind);
   add('message.runtimeFailure.stage', failureDetail?.stage);
   add('message.runtimeFailure.code', failureDetail?.providerErrorCode);
@@ -984,6 +989,9 @@ function RuntimeFailureDetails(message: RuntimeFailureDetailsProps): JSX.Element
       <summary className="cursor-pointer select-none text-center text-fg-muted">
         {t('message.runtimeFailure.details')}
       </summary>
+      {message.terminal && (
+        <p>{t(`message.runtimeFailure.effects.${message.terminal.effectOutcome}`)}</p>
+      )}
       <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 rounded border border-current/20 px-2 py-1.5">
         {rows.map((row) => (
           <Fragment key={row.label}>
@@ -1009,6 +1017,7 @@ export function SystemNotice({
   failureKind,
   failureDetail,
   runtimeRunId,
+  terminal,
 }: Extract<ConversationMessage, { kind: 'system_notice' }>): JSX.Element {
   const { t } = useI18n();
   const isWorkflow = variant === 'workflow';
@@ -1067,6 +1076,9 @@ export function SystemNotice({
       data-notice-variant={variant}
     >
       <span>{displayText}</span>
+      {terminal?.effectOutcome === 'unknown' && (
+        <span>{t('message.runtimeFailure.effects.unknown')}</span>
+      )}
       {actionDef && (
         <button
           type="button"
@@ -1084,6 +1096,7 @@ export function SystemNotice({
         {...(failureKind !== undefined ? { failureKind } : {})}
         {...(failureDetail !== undefined ? { failureDetail } : {})}
         {...(runtimeRunId !== undefined ? { runtimeRunId } : {})}
+        {...(terminal !== undefined ? { terminal } : {})}
       />
     </div>
   );

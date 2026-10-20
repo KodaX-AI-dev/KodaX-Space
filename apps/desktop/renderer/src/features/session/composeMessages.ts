@@ -22,6 +22,7 @@ import type {
   SessionEvent,
   SpaceRuntimeFailureDetailT,
   SpaceRuntimeRunFailureKindT,
+  SpaceRuntimeRunProjectionT,
 } from '@kodax-space/space-ipc-schema';
 import type {
   LocalNoticeMessage,
@@ -77,6 +78,7 @@ export type ConversationMessage =
       id: string;
       toolId: string;
       toolName: string;
+      attachments?: UserMessage['attachments'];
       input?: Record<string, unknown>;
       result?: string;
       progress?: string;
@@ -104,6 +106,7 @@ export type ConversationMessage =
       /** Credential-safe Runtime classification and exact Run provenance for error details. */
       failureKind?: SpaceRuntimeRunFailureKindT;
       failureDetail?: SpaceRuntimeFailureDetailT;
+      terminal?: SpaceRuntimeRunProjectionT['terminal'];
       runtimeRunId?: string;
       /** OC-23 倒计时：retry 按钮在此 epoch ms 之前 disabled + 显示 "Retry in Ns"。
        *  Main 端仅在 Runtime terminal endedAt 与 retryAfterMs 都合法时计算绝对时间，

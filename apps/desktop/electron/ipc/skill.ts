@@ -11,14 +11,12 @@ import { kodaxHost } from '../kodax/host.js';
 import {
   getSkillRegistry,
   invalidateSkillCache,
-  mergeSkillMetas,
   toSkillMeta,
   type SkillMeta,
 } from '../skill/registry.js';
 import { createSkillDynamicContextExecutor } from '../skill/dynamic-context-executor.js';
 import { installSkillFromPath } from '../skill/install.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
-import { isSpaceBuiltinSkillPath } from '../skill/space-builtins.js';
 
 /**
  * 安全 env：**完全不转发** process.env 给 SDK VariableResolver。
@@ -66,38 +64,16 @@ export function registerSkillChannels(): void {
       invalidateSkillCache(input.projectRoot);
     }
     if (runtimeHostAdapter.isRuntimeSelected()) {
-      try {
-        const runtimeSkills = keepValidSkillMetas(
-          (await runtimeHostAdapter.listRuntimeSkills(input.projectRoot)).map((skill) => ({
-            name: skill.name,
-            description: skill.description.slice(0, 512),
-            ...(skill.argumentHint ? { argumentHint: skill.argumentHint.slice(0, 128) } : {}),
-            source: skill.source,
-            path: skill.path,
-          })),
-        );
-        try {
-          const registry = await getSkillRegistry(input.projectRoot);
-          const spaceBuiltinSkills = keepValidSkillMetas(
-            registry
-              .listUserInvocable()
-              .filter((skill) => isSpaceBuiltinSkillPath(skill.path))
-              .map(toSkillMeta),
-          );
-          return { skills: mergeSkillMetas(spaceBuiltinSkills, runtimeSkills) };
-        } catch (error) {
-          console.warn(
-            '[skill.discover] Space builtin catalog unavailable; using Coder daemon catalog:',
-            error instanceof Error ? error.message : error,
-          );
-          return { skills: runtimeSkills.slice(0, 256) };
-        }
-      } catch (error) {
-        console.warn(
-          '[skill.discover] Coder daemon catalog unavailable; using Space host provider:',
-          error instanceof Error ? error.message : error,
-        );
-      }
+      const runtimeSkills = keepValidSkillMetas(
+        (await runtimeHostAdapter.listRuntimeSkills(input.projectRoot)).map((skill) => ({
+          name: skill.name,
+          description: skill.description.slice(0, 512),
+          ...(skill.argumentHint ? { argumentHint: skill.argumentHint.slice(0, 128) } : {}),
+          source: skill.source,
+          path: skill.path,
+        })),
+      );
+      return { skills: runtimeSkills.slice(0, 256) };
     }
     const registry = await getSkillRegistry(input.projectRoot);
     // Per-item validate + drop the invalid (instead of letting one bad skill fail

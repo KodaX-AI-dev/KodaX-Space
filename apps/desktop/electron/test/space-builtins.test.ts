@@ -7,6 +7,7 @@ import {
   _resetSpaceBuiltinSkillsForTests,
   isSpaceBuiltinSkillPath,
   registerSpaceBuiltinSkills,
+  ensureSpaceBuiltinSkillsOnHost,
   resolveSpaceBuiltinSkillsPath,
 } from '../skill/space-builtins.js';
 import { toSkillMeta } from '../skill/registry.js';
@@ -63,6 +64,38 @@ test('registerSpaceBuiltinSkills is idempotent and makes the installer-owned pat
   assert.ok(sdk.listPluginSkillPaths().includes(path.resolve(builtinRoot)));
   assert.equal(isSpaceBuiltinSkillPath(path.join(builtinRoot, 'space-test-skill')), true);
   assert.equal(isSpaceBuiltinSkillPath(`${builtinRoot}-sibling/space-test-skill`), false);
+});
+
+test('Host registration preserves existing extensions and is idempotent per attachment', async () => {
+  await registerSpaceBuiltinSkills(builtinRoot);
+  fs.writeFileSync(
+    path.join(temporaryRoot, 'space-builtins.mjs'),
+    'export default function(api) { api.registerSkillPath("./builtin-skills"); }',
+  );
+  const sdk = await import('@kodax-ai/kodax/repl');
+  sdk.writeIntegrationDocument({
+    domain: 'extensions',
+    configHome: temporaryRoot,
+    document: { version: 1, paths: ['user-extension.mjs'] },
+    validate: sdk.parseExtensionsIntegrationDocument,
+    expectedRevision: null,
+  });
+  let reads = 0;
+  const host = {
+    catalog: {
+      extensions: async () => {
+        reads++;
+        return { extensions: [{ path: path.join(temporaryRoot, 'space-builtins.mjs') }] };
+      },
+    },
+  };
+  await ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot);
+  await ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot);
+  assert.deepEqual(sdk.readExtensionsIntegration(temporaryRoot).document.paths, [
+    'user-extension.mjs',
+    path.join(temporaryRoot, 'space-builtins.mjs'),
+  ]);
+  assert.equal(reads, 1);
 });
 
 test('repository builtin snapshot contains the formal Feishu expert skill and design skills', async () => {

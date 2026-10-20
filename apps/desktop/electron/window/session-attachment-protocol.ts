@@ -7,10 +7,12 @@ import { APP_PROTOCOL_HOST, APP_PROTOCOL_ORIGIN } from './app-protocol-policy.js
 const ROUTE_PREFIX = '/session-attachment/';
 const MAX_PREVIEW_CAPABILITIES = 32_768;
 
-interface PreviewCapability {
-  readonly sessionId: string;
-  readonly artifactPath: string;
-}
+type PreviewCapability =
+  | {
+      readonly sessionId: string;
+      readonly artifactPath: string;
+    }
+  | { readonly sessionId: string; readonly read: () => Promise<Uint8Array> };
 
 const previewCapabilities = new Map<string, PreviewCapability>();
 
@@ -34,6 +36,25 @@ function issueToken(capability: PreviewCapability): string {
     previewCapabilities.delete(oldest);
   }
   return token;
+}
+
+/** A lazy Host capability avoids reading binary bodies while restoring the transcript. */
+export function issueHostImageAttachment(
+  sessionId: string,
+  itemId: string,
+  ordinal: number,
+  read: () => Promise<Uint8Array>,
+): SessionImageAttachment {
+  const token = issueToken({ sessionId, read });
+  const root = `${APP_PROTOCOL_ORIGIN}${ROUTE_PREFIX}${token}`;
+  return {
+    id: stableAttachmentId(sessionId, itemId, ordinal),
+    kind: 'image',
+    status: 'available',
+    mediaType: 'image/png',
+    thumbnailUrl: `${root}?variant=thumbnail`,
+    previewUrl: `${root}?variant=original`,
+  };
 }
 
 function errorCode(error: unknown): string | undefined {
@@ -140,6 +161,14 @@ export async function handleSessionAttachmentProtocolRequest(
   const capability = previewCapabilities.get(token);
   if (capability === undefined) return failure(404, 'not-found');
   try {
+    if ('read' in capability) {
+      const bytes = await capability.read();
+      if (previewCapabilities.get(token) !== capability) return failure(404, 'not-found');
+      return new Response(method === 'HEAD' ? null : new Uint8Array(bytes), {
+        status: 200,
+        headers: responseHeaders('image/png', bytes.length),
+      });
+    }
     const resolved = await resolveSessionAttachmentPreviewFile(
       capability.sessionId,
       capability.artifactPath,

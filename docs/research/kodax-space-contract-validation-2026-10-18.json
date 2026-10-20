@@ -1,0 +1,45 @@
+{
+  "recordedAt": "2026-10-18T09:41:48.322Z",
+  "scope": "15 existing focused test files; no full-suite, installer, paid-Provider or coverage claim",
+  "total": 422,
+  "runs": [
+    {
+      "log": ".tmp-sdk-alignment-audit-tests.log",
+      "logModifiedAt": "2026-10-18T09:30:10.665Z",
+      "tests": 308,
+      "passed": 308,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 23488,
+      "summary": [
+        "ℹ tests 308",
+        "ℹ suites 0",
+        "ℹ pass 308",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 23488.8196"
+      ]
+    },
+    {
+      "log": ".tmp-sdk-alignment-contract-tests.log",
+      "logModifiedAt": "2026-10-18T09:32:10.620Z",
+      "tests": 114,
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 14390,
+      "summary": [
+        "ℹ tests 114",
+        "ℹ suites 0",
+        "ℹ pass 114",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 14390.2518"
+      ]
+    }
+  ]
+}

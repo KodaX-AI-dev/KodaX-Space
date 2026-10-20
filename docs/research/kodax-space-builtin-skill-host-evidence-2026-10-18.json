@@ -1,0 +1,451 @@
+{
+  "checkedAt": "2026-10-18T09:40:50.603Z",
+  "homeDir": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\space-sdk-skill-audit-Mf9WXl",
+  "registeredNames": [
+    "call-prep",
+    "copywriting",
+    "customer-research",
+    "draft-response",
+    "feishu-office-suite",
+    "frontend-slides",
+    "huashu-design",
+    "interview-prep",
+    "knowledge-synthesis",
+    "onboarding",
+    "partner-business-communication",
+    "partner-data-analysis",
+    "partner-deep-research",
+    "partner-meeting-minutes",
+    "partner-product-management",
+    "partner-project-management",
+    "process-doc",
+    "status-report"
+  ],
+  "localNames": [
+    "paper-theater",
+    "code-review",
+    "code-to-video",
+    "diagnosing-bugs",
+    "domain-modeling",
+    "feature-manager",
+    "find-skills",
+    "frontend-slides",
+    "grill-me",
+    "grilling",
+    "handoff",
+    "huashu-design",
+    "implement",
+    "issue-manager",
+    "research",
+    "resolving-merge-conflicts",
+    "smart-release",
+    "tdd",
+    "to-spec",
+    "to-tickets",
+    "which-skill",
+    "writing-great-skills",
+    "call-prep",
+    "copywriting",
+    "customer-research",
+    "draft-response",
+    "feishu-office-suite",
+    "interview-prep",
+    "knowledge-synthesis",
+    "onboarding",
+    "partner-business-communication",
+    "partner-data-analysis",
+    "partner-deep-research",
+    "partner-meeting-minutes",
+    "partner-product-management",
+    "partner-project-management",
+    "process-doc",
+    "status-report",
+    "git-workflow",
+    "skill-creator",
+    "visual-review"
+  ],
+  "localSkills": [
+    {
+      "name": "paper-theater",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.kodax\\skills\\paper-theater"
+    },
+    {
+      "name": "code-review",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-review"
+    },
+    {
+      "name": "code-to-video",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-to-video"
+    },
+    {
+      "name": "diagnosing-bugs",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\diagnosing-bugs"
+    },
+    {
+      "name": "domain-modeling",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\domain-modeling"
+    },
+    {
+      "name": "feature-manager",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\feature-manager"
+    },
+    {
+      "name": "find-skills",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\find-skills"
+    },
+    {
+      "name": "frontend-slides",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\frontend-slides"
+    },
+    {
+      "name": "grill-me",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grill-me"
+    },
+    {
+      "name": "grilling",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grilling"
+    },
+    {
+      "name": "handoff",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\handoff"
+    },
+    {
+      "name": "huashu-design",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\huashu-design"
+    },
+    {
+      "name": "implement",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\implement"
+    },
+    {
+      "name": "issue-manager",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\issue-manager"
+    },
+    {
+      "name": "research",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\research"
+    },
+    {
+      "name": "resolving-merge-conflicts",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\resolving-merge-conflicts"
+    },
+    {
+      "name": "smart-release",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\smart-release"
+    },
+    {
+      "name": "tdd",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\tdd"
+    },
+    {
+      "name": "to-spec",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-spec"
+    },
+    {
+      "name": "to-tickets",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-tickets"
+    },
+    {
+      "name": "which-skill",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\which-skill"
+    },
+    {
+      "name": "writing-great-skills",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\writing-great-skills"
+    },
+    {
+      "name": "call-prep",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\call-prep"
+    },
+    {
+      "name": "copywriting",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\copywriting"
+    },
+    {
+      "name": "customer-research",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\customer-research"
+    },
+    {
+      "name": "draft-response",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\draft-response"
+    },
+    {
+      "name": "feishu-office-suite",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\feishu-office-suite"
+    },
+    {
+      "name": "interview-prep",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\interview-prep"
+    },
+    {
+      "name": "knowledge-synthesis",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\knowledge-synthesis"
+    },
+    {
+      "name": "onboarding",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\onboarding"
+    },
+    {
+      "name": "partner-business-communication",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-business-communication"
+    },
+    {
+      "name": "partner-data-analysis",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-data-analysis"
+    },
+    {
+      "name": "partner-deep-research",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-deep-research"
+    },
+    {
+      "name": "partner-meeting-minutes",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-meeting-minutes"
+    },
+    {
+      "name": "partner-product-management",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-product-management"
+    },
+    {
+      "name": "partner-project-management",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-project-management"
+    },
+    {
+      "name": "process-doc",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\process-doc"
+    },
+    {
+      "name": "status-report",
+      "source": "plugin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\status-report"
+    },
+    {
+      "name": "git-workflow",
+      "source": "builtin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\git-workflow"
+    },
+    {
+      "name": "skill-creator",
+      "source": "builtin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\skill-creator"
+    },
+    {
+      "name": "visual-review",
+      "source": "builtin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review"
+    }
+  ],
+  "hostSkills": [
+    {
+      "name": "paper-theater",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.kodax\\skills\\paper-theater"
+    },
+    {
+      "name": "code-review",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-review"
+    },
+    {
+      "name": "code-to-video",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-to-video"
+    },
+    {
+      "name": "diagnosing-bugs",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\diagnosing-bugs"
+    },
+    {
+      "name": "domain-modeling",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\domain-modeling"
+    },
+    {
+      "name": "feature-manager",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\feature-manager"
+    },
+    {
+      "name": "find-skills",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\find-skills"
+    },
+    {
+      "name": "frontend-slides",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\frontend-slides"
+    },
+    {
+      "name": "grill-me",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grill-me"
+    },
+    {
+      "name": "grilling",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grilling"
+    },
+    {
+      "name": "handoff",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\handoff"
+    },
+    {
+      "name": "huashu-design",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\huashu-design"
+    },
+    {
+      "name": "implement",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\implement"
+    },
+    {
+      "name": "issue-manager",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\issue-manager"
+    },
+    {
+      "name": "research",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\research"
+    },
+    {
+      "name": "resolving-merge-conflicts",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\resolving-merge-conflicts"
+    },
+    {
+      "name": "smart-release",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\smart-release"
+    },
+    {
+      "name": "tdd",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\tdd"
+    },
+    {
+      "name": "to-spec",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-spec"
+    },
+    {
+      "name": "to-tickets",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-tickets"
+    },
+    {
+      "name": "which-skill",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\which-skill"
+    },
+    {
+      "name": "writing-great-skills",
+      "source": "user",
+      "path": "C:\\Users\\ADMIN\\.agents\\skills\\writing-great-skills"
+    },
+    {
+      "name": "git-workflow",
+      "source": "builtin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\git-workflow"
+    },
+    {
+      "name": "skill-creator",
+      "source": "builtin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\skill-creator"
+    },
+    {
+      "name": "visual-review",
+      "source": "builtin",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review"
+    }
+  ],
+  "hostNames": [
+    "paper-theater",
+    "code-review",
+    "code-to-video",
+    "diagnosing-bugs",
+    "domain-modeling",
+    "feature-manager",
+    "find-skills",
+    "frontend-slides",
+    "grill-me",
+    "grilling",
+    "handoff",
+    "huashu-design",
+    "implement",
+    "issue-manager",
+    "research",
+    "resolving-merge-conflicts",
+    "smart-release",
+    "tdd",
+    "to-spec",
+    "to-tickets",
+    "which-skill",
+    "writing-great-skills",
+    "git-workflow",
+    "skill-creator",
+    "visual-review"
+  ],
+  "missingFromHost": [
+    "call-prep",
+    "copywriting",
+    "customer-research",
+    "draft-response",
+    "feishu-office-suite",
+    "interview-prep",
+    "knowledge-synthesis",
+    "onboarding",
+    "partner-business-communication",
+    "partner-data-analysis",
+    "partner-deep-research",
+    "partner-meeting-minutes",
+    "partner-product-management",
+    "partner-project-management",
+    "process-doc",
+    "status-report"
+  ],
+  "cleanup": {
+    "status": "clean",
+    "cleanup": "succeeded",
+    "host": "succeeded"
+  }
+}

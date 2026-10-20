@@ -35,6 +35,7 @@ const TAB_LABEL_KEYS: Record<Tab, MessageKey> = {
 };
 
 interface MemoryListState {
+  readonly capabilities?: { readonly curate: boolean; readonly pack: boolean };
   readonly inbox: readonly MemoryActionProposalT[];
   readonly refs: readonly MemoryItemRefT[];
   readonly warnings: readonly string[];
@@ -43,7 +44,10 @@ interface MemoryListState {
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 function ipcError(
-  result: { readonly ok: false; readonly error?: { readonly message?: string; readonly code?: string } },
+  result: {
+    readonly ok: false;
+    readonly error?: { readonly message?: string; readonly code?: string };
+  },
   t: Translate,
 ): string {
   return `${result.error?.code ?? 'ERR'}: ${result.error?.message ?? t('common.unknownError')}`;
@@ -153,7 +157,10 @@ export function MemoryPanel(): JSX.Element {
     setBusy(`ref:${ref.id}`);
     setError(null);
     try {
-      const result = await window.kodaxSpace.invoke('memory.readRef', { sessionId: currentSessionId, ref });
+      const result = await window.kodaxSpace.invoke('memory.readRef', {
+        sessionId: currentSessionId,
+        ref,
+      });
       if (!result.ok) {
         setError(ipcError(result, t));
         setSnapshot(null);
@@ -171,23 +178,12 @@ export function MemoryPanel(): JSX.Element {
     setError(null);
     setNotice(null);
     try {
-      const fresh = await window.kodaxSpace.invoke('memory.proposal', {
-        sessionId: currentSessionId,
-        proposalId: selectedProposalId,
-      });
-      if (!fresh.ok) {
-        setError(ipcError(fresh, t));
-        return;
-      }
-      if (!fresh.data.proposal) {
-        setNotice(t('memory.proposalNoLongerPending'));
-        await refresh({ quiet: true });
-        return;
-      }
+      if (!proposal || proposal.id !== selectedProposalId) return;
       const result = await window.kodaxSpace.invoke('memory.approve', {
         sessionId: currentSessionId,
-        proposalId: fresh.data.proposal.id,
-        expectedFingerprints: fresh.data.proposal.expectedFingerprints,
+        proposalId: proposal.id,
+        expectedFingerprints: proposal.expectedFingerprints,
+        expectedRevision: proposal.revision,
       });
       if (!result.ok) {
         setError(ipcError(result, t));
@@ -195,7 +191,7 @@ export function MemoryPanel(): JSX.Element {
       }
       if (!result.data.result.applied) {
         setNotice(result.data.result.skippedReason ?? t('memory.approvalBlocked'));
-        setProposal(fresh.data.proposal);
+        await loadProposal(selectedProposalId);
         return;
       }
       pushToast(t('memory.applied'), 'success');
@@ -217,6 +213,7 @@ export function MemoryPanel(): JSX.Element {
       const result = await window.kodaxSpace.invoke('memory.reject', {
         sessionId: currentSessionId,
         proposalId: selectedProposalId,
+        expectedRevision: proposal?.revision,
         ...(rejectReason.trim() ? { reason: rejectReason.trim() } : {}),
       });
       if (!result.ok) {
@@ -243,7 +240,9 @@ export function MemoryPanel(): JSX.Element {
     setError(null);
     setNotice(null);
     try {
-      const result = await window.kodaxSpace.invoke('memory.curate', { sessionId: currentSessionId });
+      const result = await window.kodaxSpace.invoke('memory.curate', {
+        sessionId: currentSessionId,
+      });
       if (!result.ok) {
         setError(ipcError(result, t));
         return;
@@ -300,9 +299,7 @@ export function MemoryPanel(): JSX.Element {
         <div>
           <Brain className="mx-auto mb-3 h-6 w-6 text-fg-faint" strokeWidth={1.75} aria-hidden />
           <div className="font-medium text-fg-secondary">{t('memory.coderGovernance')}</div>
-          <div className="mt-1 max-w-xs">
-            {t('memory.partnerSeparateSwitch')}
-          </div>
+          <div className="mt-1 max-w-xs">{t('memory.partnerSeparateSwitch')}</div>
         </div>
       </div>
     );
@@ -327,7 +324,8 @@ export function MemoryPanel(): JSX.Element {
         <div className="min-w-0 flex-1">
           <div className="font-medium text-fg-primary">{t('memory.coderGovernance')}</div>
           <div className="text-[11px] text-fg-muted truncate">
-            {t('memory.partnerSeparate')}{currentProjectPath ? ` · ${currentProjectPath}` : ''}
+            {t('memory.partnerSeparate')}
+            {currentProjectPath ? ` · ${currentProjectPath}` : ''}
           </div>
         </div>
         <button
@@ -410,18 +408,24 @@ export function MemoryPanel(): JSX.Element {
             onSelect={(ref) => void loadRef(ref)}
           />
         )}
-        {tab === 'governance' && (
-          <GovernanceView report={report} busy={busy} onRun={() => void runCurator()} />
-        )}
-        {tab === 'hints' && (
-          <HintsView
-            task={task}
-            pack={pack}
-            busy={busy}
-            onTaskChange={setTask}
-            onBuild={() => void buildPack()}
-          />
-        )}
+        {tab === 'governance' &&
+          (data.capabilities?.curate === false ? (
+            <p className="p-4 text-fg-muted">{t('memory.hostCapabilityUnavailable')}</p>
+          ) : (
+            <GovernanceView report={report} busy={busy} onRun={() => void runCurator()} />
+          ))}
+        {tab === 'hints' &&
+          (data.capabilities?.pack === false ? (
+            <p className="p-4 text-fg-muted">{t('memory.hostCapabilityUnavailable')}</p>
+          ) : (
+            <HintsView
+              task={task}
+              pack={pack}
+              busy={busy}
+              onTaskChange={setTask}
+              onBuild={() => void buildPack()}
+            />
+          ))}
       </div>
     </div>
   );
@@ -453,7 +457,10 @@ function InboxView({
     <div className="h-full min-h-0 grid grid-cols-[minmax(220px,310px)_1fr]">
       <div className="border-r border-border-default overflow-y-auto">
         {inbox.length === 0 ? (
-          <EmptyState icon={<ShieldCheck className="h-5 w-5" />} title={t('memory.noPendingProposals')} />
+          <EmptyState
+            icon={<ShieldCheck className="h-5 w-5" />}
+            title={t('memory.noPendingProposals')}
+          />
         ) : (
           inbox.map((item) => (
             <button
@@ -468,7 +475,9 @@ function InboxView({
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg-secondary">
                   {item.id}
                 </span>
-                <span className={`rounded border px-1.5 py-0.5 text-[10px] ${riskClass(item.risk)}`}>
+                <span
+                  className={`rounded border px-1.5 py-0.5 text-[10px] ${riskClass(item.risk)}`}
+                >
                   {item.risk}
                 </span>
               </div>
@@ -653,7 +662,9 @@ function RefsView({
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg-secondary">
                   {ref.id}
                 </span>
-                <span className={`text-[10px] ${lifecycleClass(ref.lifecycle)}`}>{ref.lifecycle}</span>
+                <span className={`text-[10px] ${lifecycleClass(ref.lifecycle)}`}>
+                  {ref.lifecycle}
+                </span>
               </div>
               <div className="mt-1 truncate text-fg-primary">{ref.title ?? ref.kind}</div>
               <div className="mt-1 text-[11px] text-fg-muted">
@@ -726,9 +737,7 @@ function GovernanceView({
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-fg-primary">{t('memory.curatorReport')}</div>
-          <div className="text-fg-muted">
-            {t('memory.governanceDescription')}
-          </div>
+          <div className="text-fg-muted">{t('memory.governanceDescription')}</div>
         </div>
         <button
           type="button"
@@ -748,7 +757,10 @@ function GovernanceView({
         <Section title={`${report.reportId} · ${report.generatedAt}`}>
           <div className="space-y-2">
             {report.findings.map((finding, idx) => (
-              <div key={`${finding.kind}:${idx}`} className="border-b border-border-default pb-2 last:border-b-0">
+              <div
+                key={`${finding.kind}:${idx}`}
+                className="border-b border-border-default pb-2 last:border-b-0"
+              >
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-fg-primary">{finding.kind}</span>
                   <span className="text-fg-muted">{finding.severity}</span>
@@ -794,7 +806,11 @@ function HintsView({
     <div className="h-full overflow-y-auto p-3 space-y-3">
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-2 top-2 h-3.5 w-3.5 text-fg-muted" strokeWidth={1.75} aria-hidden />
+          <Search
+            className="pointer-events-none absolute left-2 top-2 h-3.5 w-3.5 text-fg-muted"
+            strokeWidth={1.75}
+            aria-hidden
+          />
           <input
             value={task}
             onChange={(event) => onTaskChange(event.target.value)}
@@ -856,14 +872,19 @@ function RefList({ refs }: { refs: readonly MemoryItemRefT[] }): JSX.Element {
   return (
     <div className="space-y-2">
       {refs.map((ref) => (
-        <div key={`${ref.kind}:${ref.id}`} className="rounded border border-border-default bg-surface-2 px-2 py-1.5">
+        <div
+          key={`${ref.kind}:${ref.id}`}
+          className="rounded border border-border-default bg-surface-2 px-2 py-1.5"
+        >
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg-secondary">
               {ref.id}
             </span>
             <span className={`text-[10px] ${lifecycleClass(ref.lifecycle)}`}>{ref.lifecycle}</span>
           </div>
-          <div className="mt-1 truncate text-fg-muted">{ref.title ?? `${ref.kind}/${ref.scope}`}</div>
+          <div className="mt-1 truncate text-fg-muted">
+            {ref.title ?? `${ref.kind}/${ref.scope}`}
+          </div>
         </div>
       ))}
     </div>
@@ -873,7 +894,9 @@ function RefList({ refs }: { refs: readonly MemoryItemRefT[] }): JSX.Element {
 function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
   return (
     <section>
-      <h3 className="mb-1 text-[11px] font-medium uppercase tracking-normal text-fg-muted">{title}</h3>
+      <h3 className="mb-1 text-[11px] font-medium uppercase tracking-normal text-fg-muted">
+        {title}
+      </h3>
       {children}
     </section>
   );

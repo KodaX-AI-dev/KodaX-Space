@@ -27,9 +27,13 @@ const slashCommandTokenSchema = z.union([
 ]);
 
 const slashCommandMetaSchema = z.object({
-  name: z.string().regex(/^[a-z][a-z0-9-]*$/, {
-    message: 'command name must be kebab-case',
-  }).min(1).max(64),
+  name: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]*$/, {
+      message: 'command name must be kebab-case',
+    })
+    .min(1)
+    .max(64),
   aliases: z.array(slashCommandTokenSchema).max(8).optional(),
   description: z.string().max(512),
   /** 参数提示文字，如 '<plan|accept-edits|auto>'。可空表示无参。*/
@@ -68,6 +72,7 @@ export const slashExecChannel = {
   input: z.object({
     sessionId: z.string().min(1),
     name: slashCommandTokenSchema,
+    operationId: z.string().min(1).max(128).optional(),
     args: z.array(z.string().max(2048)).max(20),
     /** Optional renderer-side guardrail; main rejects if the session scope drifted. */
     expectedProjectRoot: z.string().min(1).max(4096).optional(),

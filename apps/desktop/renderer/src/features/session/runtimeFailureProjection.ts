@@ -31,6 +31,11 @@ export function runtimeFailureProjectionMatches(
   return (
     previous.failureKind === next.failureKind &&
     previous.runtimeRunId === next.runtimeRunId &&
+    previous.terminal?.revision === next.terminal?.revision &&
+    previous.terminal?.kind === next.terminal?.kind &&
+    previous.terminal?.code === next.terminal?.code &&
+    previous.terminal?.effectOutcome === next.terminal?.effectOutcome &&
+    previous.terminal?.failureKind === next.terminal?.failureKind &&
     failureDetailsMatch(previous.failureDetail, next.failureDetail)
   );
 }

@@ -98,7 +98,6 @@ import { clearSlashGoalForSession } from '../slash/builtin.js';
 import { ensureProviderKeyInjected } from './provider.js';
 import { buildAttachmentPathOverlay } from '../kodax/attachment-path-overlay.js';
 import { issueSessionImageAttachment } from '../window/session-attachment-protocol.js';
-import { projectProductItems } from '../kodax/runtime/product-view.js';
 import { sessionHistoryChannel } from '@kodax-space/space-ipc-schema';
 import type {
   AgentsFileMeta,
@@ -1685,7 +1684,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
           sessionId: input.sessionId,
           requestId: input.requestId,
           items: [],
-          productItems: await projectProductItems(input.sessionId, page.items),
+          productItems: page.items,
           productOversized: [...page.oversized],
           conversation: {
             status: page.status,

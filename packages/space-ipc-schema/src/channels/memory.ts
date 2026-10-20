@@ -102,6 +102,7 @@ export type MemoryApplyPreviewT = z.infer<typeof memoryApplyPreviewSchema>;
 
 export const memoryActionProposalSchema = z.object({
   id: z.string().min(1).max(ID),
+  revision: z.string().min(1).max(ID).optional(),
   action: memoryProposalActionSchema,
   targetRefs: z.array(memoryItemRefSchema).max(MAX_REFS),
   sourceRefs: z.array(memoryItemRefSchema).max(MAX_REFS),
@@ -223,6 +224,7 @@ export const memoryListChannel = {
     sessionId: z.string().min(1).max(128),
   }),
   output: z.object({
+    capabilities: z.object({ curate: z.boolean(), pack: z.boolean() }).optional(),
     inbox: z.array(memoryActionProposalSchema).max(MAX_PROPOSALS),
     refs: z.array(memoryItemRefSchema).max(MAX_REFS),
     warnings: z.array(z.string().max(MSG)).max(128),
@@ -248,6 +250,7 @@ export const memoryApproveChannel = {
     sessionId: z.string().min(1).max(128),
     proposalId: z.string().min(1).max(ID),
     expectedFingerprints: fingerprintMapSchema,
+    expectedRevision: z.string().min(1).max(ID).optional(),
   }),
   output: z.object({
     result: memoryApplyResultSchema,
@@ -260,6 +263,7 @@ export const memoryRejectChannel = {
   input: z.object({
     sessionId: z.string().min(1).max(128),
     proposalId: z.string().min(1).max(ID),
+    expectedRevision: z.string().min(1).max(ID).optional(),
     reason: z.string().max(2048).optional(),
   }),
   output: z.object({

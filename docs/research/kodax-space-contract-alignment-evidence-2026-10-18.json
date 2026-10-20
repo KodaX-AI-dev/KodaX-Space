@@ -1,0 +1,84 @@
+{
+  "checkedAt": "2026-10-18T09:34:38.060Z",
+  "sourceCommit": "8514865a72ab87d7baa5f21d0b3b8cb3ac8d2145",
+  "dependency": {
+    "root": "0.7.97-alpha.7",
+    "desktop": "0.7.97-alpha.7",
+    "installed": "0.7.97-alpha.7",
+    "locked": "0.7.97-alpha.7",
+    "lockedIntegrityMatchesRegistry": true,
+    "artifactExports": []
+  },
+  "registry": [
+    {
+      "name": "@kodax-ai/kodax",
+      "status": 200,
+      "tags": {
+        "hotfix": "0.7.72-hotfix.0",
+        "latest": "0.7.96",
+        "alpha": "0.7.97-alpha.7"
+      },
+      "installedVersionPublishedAt": "2026-10-18T00:15:48.759Z",
+      "installedVersionIntegrity": "sha512-whrhfZDI7k6YH5FGwEuscyV2tE8XuFjM/LAkVV2tO9mizHqrAT7IidrqnZC21e5zsVUVtZBsvAj3rYBjdkQO7Q=="
+    },
+    {
+      "name": "@kodax-ai/artifacts",
+      "status": 404,
+      "error": "Not found"
+    }
+  ],
+  "probes": {
+    "toolImages": {
+      "suppliedAttachmentCount": 1,
+      "suppliedImageCount": 1,
+      "displayMessage": {
+        "kind": "tool_call",
+        "id": "tool-image-proof",
+        "toolId": "tool-image-proof",
+        "toolName": "read",
+        "result": "image read",
+        "status": "done"
+      },
+      "imagePreserved": false,
+      "attachmentReadAccepted": false
+    },
+    "planApproval": {
+      "suppliedPlan": "Inspect the current files, modify the requested file, then verify the result.",
+      "projected": {
+        "source": "coder-runtime",
+        "kind": "permission",
+        "runId": "run-fixture",
+        "createdAt": 1792281600000,
+        "state": "pending",
+        "request": {
+          "reqId": "plan-fixture",
+          "sessionId": "session-fixture",
+          "risk": "high",
+          "reason": "未知工具 exit_plan_mode，按高风险处理",
+          "toolCall": {
+            "toolId": "plan-fixture",
+            "toolName": "exit_plan_mode",
+            "operation": "unknown"
+          }
+        }
+      },
+      "fullPlanPreserved": false
+    },
+    "terminalEffects": {
+      "suppliedTerminal": {
+        "revision": 1,
+        "kind": "interrupted",
+        "code": "daemon_crashed",
+        "effectOutcome": "unknown"
+      },
+      "projected": {
+        "runId": "run-fixture",
+        "sessionId": "session-fixture",
+        "phase": "interrupted",
+        "startedAt": 1792281600000,
+        "terminalReason": "Runtime run interrupted"
+      },
+      "effectOutcomePreserved": false
+    }
+  }
+}

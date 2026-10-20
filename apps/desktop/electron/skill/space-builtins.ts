@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 
 type SdkSkillsModule = typeof import('@kodax-ai/kodax/skills');
 
@@ -11,6 +12,60 @@ export interface SpaceBuiltinPathContext {
 
 let registeredRoot: string | null = null;
 let unregisterCurrentRoot: (() => void) | null = null;
+const hostRegistrations = new WeakMap<object, Promise<void>>();
+
+interface SkillHost {
+  readonly catalog: {
+    extensions(): Promise<{ readonly extensions: readonly { readonly path: string }[] }>;
+  };
+}
+
+/** Install through the public split-config CAS writer, then verify Host activation. */
+export async function ensureSpaceBuiltinSkillsOnHost(
+  host: SkillHost,
+  configHome = getKodaxRuntimeDir(),
+): Promise<void> {
+  if (!registeredRoot) return;
+  const existing = hostRegistrations.get(host);
+  if (existing) return existing;
+  const entry = path.join(path.dirname(registeredRoot), 'space-builtins.mjs');
+  const registration = (async () => {
+    await fs.access(entry);
+    const sdk = await import('@kodax-ai/kodax/repl');
+    const snapshot = sdk.readExtensionsIntegration(configHome);
+    if (
+      !snapshot.document.paths.some(
+        (value) => comparablePath(path.resolve(configHome, value)) === comparablePath(entry),
+      )
+    ) {
+      sdk.writeIntegrationDocument({
+        domain: 'extensions',
+        configHome,
+        document: { version: 1, paths: [...snapshot.document.paths, entry] },
+        validate: sdk.parseExtensionsIntegrationDocument,
+        expectedRevision: snapshot.source === 'user' ? snapshot.revision : null,
+      });
+    }
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      if (
+        (await host.catalog.extensions()).extensions.some(
+          (extension) => comparablePath(extension.path) === comparablePath(entry),
+        )
+      )
+        return;
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error('The shared Host did not activate the Space builtin Skill extension.');
+  })();
+  hostRegistrations.set(host, registration);
+  try {
+    await registration;
+  } catch (error) {
+    hostRegistrations.delete(host);
+    throw error;
+  }
+}
 
 export function resolveSpaceBuiltinSkillsPath(context: SpaceBuiltinPathContext): string {
   return context.isPackaged

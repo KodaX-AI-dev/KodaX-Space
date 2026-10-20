@@ -9,7 +9,7 @@
 //   mcp.reload      用户改 config 后调, dispose 现有 Manager + 重建
 
 import { registerChannel } from './register.js';
-import { discoverMcpServers } from '../mcp/config-reader.js';
+import { discoverMcpServers, projectSdkServerEntry } from '../mcp/config-reader.js';
 import { getMcpManager, reloadMcpManager } from '../mcp/manager.js';
 import { invalidateSpaceSdkExtensionRuntimes } from '../kodax/sdk-extensions.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
@@ -41,106 +41,126 @@ function managerOptions(input?: {
   return input?.projectRoot ? { projectRoot: input.projectRoot } : undefined;
 }
 
+export async function readMcpServers(input?: { readonly projectRoot?: string }) {
+  const servers = runtimeHostAdapter.isRuntimeSelected()
+    ? await runtimeHostAdapter.listRuntimeMcpStatus()
+    : (await getMcpManager(managerOptions(input))).listServers();
+  return {
+    servers: servers.slice(0, 128).map(projectStatus),
+    canStop: !runtimeHostAdapter.isRuntimeSelected(),
+  };
+}
+
+export async function stopMcpServer(input: {
+  readonly serverId: string;
+  readonly projectRoot?: string;
+}) {
+  if (runtimeHostAdapter.isRuntimeSelected())
+    throw new Error(
+      'The shared Host does not expose per-server stop. Disable the server configuration instead.',
+    );
+  return {
+    status: projectStatus(
+      await (await getMcpManager(managerOptions(input))).stopServer(input.serverId),
+    ),
+  };
+}
+
+export async function readMcpTools(input: {
+  readonly serverId: string;
+  readonly projectRoot?: string;
+  readonly forceRefresh?: boolean;
+}) {
+  const list = runtimeHostAdapter.isRuntimeSelected()
+    ? await runtimeHostAdapter.listRuntimeMcpTools(input.serverId, input.forceRefresh)
+    : await (
+        await getMcpManager(managerOptions(input))
+      ).listTools(input.serverId, { forceRefresh: input.forceRefresh });
+  return {
+    tools: list.tools
+      .slice(0, 1024)
+      .map((tool) => ({
+        id: tool.id,
+        name: tool.name,
+        ...(tool.summary !== undefined ? { description: tool.summary } : {}),
+      })),
+    ...(list.cachedAt !== undefined ? { cachedAt: list.cachedAt } : {}),
+  };
+}
+
 export function registerMcpChannels(options: CoderAdmissionOptions = {}): void {
-  registerChannel('mcp.discover', async (input) => {
-    return discoverMcpServers({ projectRoot: input.projectRoot });
-  });
-
-  registerChannel('mcp.servers', async (input) => {
-    const manager = await getMcpManager(managerOptions(input));
-    const list = manager.listServers();
-    // schema cap is 128
-    const projected = list.slice(0, 128).map(projectStatus);
-    return { servers: projected };
-  });
-
-  registerChannel('mcp.start', async (input) => {
-    const manager = await getMcpManager(managerOptions(input));
-    const status = await manager.startServer(input.serverId);
-    return { status: projectStatus(status) };
-  });
-
-  registerChannel('mcp.stop', async (input) => {
-    const manager = await getMcpManager(managerOptions(input));
-    const status = await manager.stopServer(input.serverId);
-    return { status: projectStatus(status) };
-  });
-
-  registerChannel('mcp.logs', async (input) => {
-    const manager = await getMcpManager(managerOptions(input));
-    const logs = manager.getServerLogs(input.serverId);
-    return {
-      serverId: logs.serverId,
-      connect: logs.connect,
-      status: logs.status as McpRuntimeStatusT,
-      ...(logs.lastError !== undefined ? { lastError: logs.lastError } : {}),
-      ...(logs.cachedAt !== undefined ? { cachedAt: logs.cachedAt } : {}),
-    };
-  });
-
-  registerChannel('mcp.tools', (input) =>
+  registerChannel('mcp.discover', (input) =>
     runWithCoderAdmission(options, async () => {
-      if (runtimeHostAdapter.isRuntimeSelected()) {
-        try {
-          const list = await runtimeHostAdapter.listRuntimeMcpTools(
-            input.serverId,
-            input.forceRefresh,
-          );
-          return {
-            tools: list.tools.slice(0, 1024).map((tool) => ({
-              id: tool.id,
-              name: tool.name,
-              ...(tool.summary !== undefined ? { description: tool.summary } : {}),
-            })),
-            ...(list.cachedAt !== undefined ? { cachedAt: list.cachedAt } : {}),
-          };
-        } catch (error) {
-          console.warn(
-            '[mcp.tools] Coder daemon catalog unavailable; using Space host provider:',
-            error instanceof Error ? error.message : error,
-          );
-        }
-      }
-      const manager = await getMcpManager(managerOptions(input));
-      const list = await manager.listTools(input.serverId, {
-        forceRefresh: input.forceRefresh,
-      });
-      // SDK 给出全 capability descriptor; 投影到 IPC schema (id/name/description), cap 1024
-      const tools = list.tools.slice(0, 1024).map((t) => ({
-        id: t.id,
-        name: t.name,
-        ...(t.summary !== undefined ? { description: t.summary } : {}),
-      }));
+      if (!runtimeHostAdapter.isRuntimeSelected())
+        return discoverMcpServers({ projectRoot: input.projectRoot });
+      const config = await runtimeHostAdapter.listRuntimeMcpConfig();
       return {
-        tools,
-        ...(list.cachedAt !== undefined ? { cachedAt: list.cachedAt } : {}),
+        servers: Object.entries(config)
+          .slice(0, 128)
+          .flatMap(([name, value]) => {
+            const server = projectSdkServerEntry(
+              name,
+              value as unknown as Record<string, unknown>,
+              'global',
+            );
+            return server ? [server] : [];
+          }),
+        errors: [],
       };
     }),
   );
-
+  registerChannel('mcp.servers', (input) =>
+    runWithCoderAdmission(options, () => readMcpServers(input)),
+  );
+  registerChannel('mcp.stop', (input) =>
+    runWithCoderAdmission(options, () => stopMcpServer(input)),
+  );
+  registerChannel('mcp.tools', (input) =>
+    runWithCoderAdmission(options, () => readMcpTools(input)),
+  );
+  registerChannel('mcp.start', (input) =>
+    runWithCoderAdmission(options, async () => {
+      if (!runtimeHostAdapter.isRuntimeSelected())
+        return {
+          status: projectStatus(
+            await (await getMcpManager(managerOptions(input))).startServer(input.serverId),
+          ),
+        };
+      await runtimeHostAdapter.listRuntimeMcpTools(input.serverId, true);
+      const status = (await runtimeHostAdapter.listRuntimeMcpStatus()).find(
+        (server) => server.serverId === input.serverId,
+      );
+      if (!status) throw new Error('MCP server is not registered with the shared Host.');
+      return { status: projectStatus(status) };
+    }),
+  );
+  registerChannel('mcp.logs', (input) =>
+    runWithCoderAdmission(options, async () => {
+      const logs = runtimeHostAdapter.isRuntimeSelected()
+        ? (await runtimeHostAdapter.listRuntimeMcpStatus()).find(
+            (server) => server.serverId === input.serverId,
+          )
+        : (await getMcpManager(managerOptions(input))).getServerLogs(input.serverId);
+      if (!logs) throw new Error('MCP server is not registered with the shared Host.');
+      return {
+        serverId: logs.serverId,
+        connect: logs.connect,
+        status: logs.status as McpRuntimeStatusT,
+        ...(logs.lastError !== undefined ? { lastError: logs.lastError } : {}),
+        ...(logs.cachedAt !== undefined ? { cachedAt: logs.cachedAt } : {}),
+      };
+    }),
+  );
   registerChannel('mcp.reload', (input) =>
     runWithCoderAdmission(options, async () => {
+      if (runtimeHostAdapter.isRuntimeSelected())
+        return {
+          ok: true,
+          serverCount: Math.min((await runtimeHostAdapter.reloadRuntimeMcp()).servers.length, 128),
+        };
       const manager = await reloadMcpManager(managerOptions(input));
-      const localServerCount = Math.min(manager.listServers().length, 128);
-      await invalidateSpaceSdkExtensionRuntimes().catch((err) => {
-        console.warn(
-          '[mcp] SDK extension runtime invalidation after reload failed:',
-          err instanceof Error ? err.message : err,
-        );
-      });
-      if (runtimeHostAdapter.isRuntimeSelected()) {
-        try {
-          const runtime = await runtimeHostAdapter.reloadRuntimeMcp();
-          return { ok: true, serverCount: Math.min(runtime.servers.length, 128) };
-        } catch (error) {
-          console.warn(
-            '[mcp.reload] Coder daemon reload unavailable; Space manager retained its valid reload:',
-            error instanceof Error ? error.message : error,
-          );
-          return { ok: false, serverCount: localServerCount };
-        }
-      }
-      return { ok: true, serverCount: localServerCount };
+      await invalidateSpaceSdkExtensionRuntimes();
+      return { ok: true, serverCount: Math.min(manager.listServers().length, 128) };
     }),
   );
 }

@@ -12,7 +12,11 @@ import type { PermissionRequestPayload } from '@kodax-space/space-ipc-schema';
 
 export type PermissionBatchSelection =
   | { readonly mode: 'single'; readonly head: PermissionRequestPayload | null }
-  | { readonly mode: 'batch'; readonly items: readonly PermissionRequestPayload[]; readonly sessionId: string };
+  | {
+      readonly mode: 'batch';
+      readonly items: readonly PermissionRequestPayload[];
+      readonly sessionId: string;
+    };
 
 /**
  * Walk queue head while items share `sessionId` and `risk !== 'danger'`.
@@ -33,11 +37,18 @@ export function selectPermissionBatch(
   const head = queue[0]!;
   // Auto[LLM] prompts carry decision provenance that must remain visible and
   // individually reviewable. Do not hide it inside the compact batch card.
-  if (head.risk === 'danger' || head.autoModeDiagnostics) return { mode: 'single', head };
+  if (head.risk === 'danger' || head.autoModeDiagnostics || head.plan !== undefined)
+    return { mode: 'single', head };
   const batch: PermissionRequestPayload[] = [head];
   for (let i = 1; i < queue.length; i++) {
     const next = queue[i]!;
-    if (next.sessionId !== head.sessionId || next.risk === 'danger' || next.autoModeDiagnostics) break;
+    if (
+      next.sessionId !== head.sessionId ||
+      next.risk === 'danger' ||
+      next.autoModeDiagnostics ||
+      next.plan !== undefined
+    )
+      break;
     batch.push(next);
   }
   if (batch.length < 2) return { mode: 'single', head };
