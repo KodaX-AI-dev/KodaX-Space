@@ -156,10 +156,59 @@
   padding-bottom: 3px;
 }
 .space-shell .composer-surface:focus-within {
-  border-color: rgb(var(--accent) / 0.55);
+  border-color: rgb(var(--accent-ink) / 0.8);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.08),
     0 0 0 3px rgb(var(--accent) / 0.045);
+}
+/* The editor and its toolbar share one focus boundary. Keep keyboard focus on
+   individual toolbar controls, without a second rectangular ring inside it. */
+.space-shell .composer-surface textarea:focus-visible {
+  outline: none;
+}
+/* Clip only this decorative layer; menus, context controls and pets stay outside
+   its clipping/stacking context. No measurements or per-frame React updates. */
+.composer-focus-light {
+  position: absolute;
+  inset: 0;
+  margin: 0 !important;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.composer-focus-light::before,
+.composer-focus-light::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.composer-focus-light::before {
+  width: 32%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(163 188 151),
+    rgb(var(--fg-primary)),
+    rgb(var(--accent)),
+    transparent
+  );
+  box-shadow: 0 0 12px rgb(var(--accent) / 0.35);
+}
+.composer-focus-light::after {
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 12%,
+    rgb(163 188 151 / 0.1) 40%,
+    rgb(var(--accent) / 0.12) 52%,
+    transparent 80%
+  );
 }
 .space-shell .aurora-b1 {
   background: radial-gradient(
@@ -515,18 +564,140 @@ html.q-minimal .space-shell .composer-surface {
 }
 @media (prefers-reduced-motion: no-preference) {
   html:not(.q-minimal) .settings-workspace {
-    animation: workspace-arrive var(--motion-normal) var(--ease-expo) both;
+    animation: workspace-arrive var(--motion-normal) var(--ease-expo);
+  }
+  html:not(.q-minimal) .workspace-menu {
+    transform-origin: top left;
+    animation: workspace-menu-arrive 220ms var(--ease-expo);
+  }
+  html:not(.q-minimal) .workspace-menu.bottom-full {
+    transform-origin: bottom left;
+    --menu-arrival-y: 8px;
+  }
+  html:not(.q-minimal) .workspace-menu.right-0 {
+    transform-origin: top right;
+  }
+  html:not(.q-minimal) .workspace-menu.bottom-full.right-0 {
+    transform-origin: bottom right;
+  }
+  html:not(.q-minimal) .settings-scroll > [role='tabpanel']:not([hidden]) > div {
+    animation: workspace-content-arrive var(--motion-slow) var(--ease-expo);
+  }
+  html:not(.q-minimal) .settings-nav-button[aria-selected='true']::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 25%;
+    bottom: 25%;
+    width: 2px;
+    border-radius: 2px;
+    background: rgb(var(--accent-ink));
+    animation: workspace-selection-arrive var(--motion-slow) var(--ease-expo);
+  }
+  html:not(.q-minimal) .composer-surface:has(textarea:focus) .composer-focus-light::before {
+    animation: workspace-focus-rail 620ms ease-out;
+  }
+  html.q-full .composer-surface:has(textarea:focus) .composer-focus-light::before {
+    animation-duration: 1000ms;
+  }
+  html.q-full .composer-surface:has(textarea:focus) .composer-focus-light::after {
+    animation: workspace-focus-glaze 1000ms ease-out;
+  }
+  html.q-full.visual-ambient-paused
+    .composer-surface:has(textarea:focus)
+    .composer-focus-light::before,
+  html.q-full.visual-ambient-paused
+    .composer-surface:has(textarea:focus)
+    .composer-focus-light::after {
+    animation-play-state: paused;
+  }
+  html:not(.q-minimal)
+    .quality-choice:is(:hover, :focus-visible)
+    .quality-material:not(.quality-material--minimal)
+    span {
+    animation: workspace-material-arrive 650ms var(--ease-expo);
+  }
+}
+@keyframes workspace-focus-rail {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(320%);
+  }
+}
+@keyframes workspace-focus-glaze {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(270%);
+  }
+}
+@keyframes workspace-menu-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(var(--menu-arrival-y, -6px)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes workspace-content-arrive {
+  from {
+    opacity: 0.35;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes workspace-selection-arrive {
+  from {
+    opacity: 0;
+    transform: scaleY(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes workspace-material-arrive {
+  from {
+    opacity: 0.5;
+    transform: translateX(-10px) skewX(-3deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 @keyframes workspace-arrive {
   from {
-    opacity: 0;
-    transform: translateY(4px);
+    opacity: 0.5;
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
+}
+/* The global button sheen already owns ::before. Selection uses ::after. */
+.settings-nav-button {
+  position: relative;
 }
 html.q-minimal .space-shell .surface-selection,
 html.q-minimal .space-shell .workspace-view-selection {
@@ -534,6 +705,7 @@ html.q-minimal .space-shell .workspace-view-selection {
   box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
+  .workspace-menu,
   .space-shell *,
   .space-shell *::before,
   .space-shell *::after {

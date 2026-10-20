@@ -50,7 +50,8 @@ export function SidebarContextMenu({
   );
 
   useLayoutEffect(() => {
-    const height = ref.current?.getBoundingClientRect().height;
+    // Anchor against the final layout size, independent of the arrival scale.
+    const height = ref.current?.offsetHeight;
     if (height !== undefined && height > 0 && Math.abs(height - measuredHeight) > 0.5) {
       setMeasuredHeight(height);
     }

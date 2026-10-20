@@ -12,7 +12,7 @@ import type {
   IpcResult,
   SessionProductView,
 } from '@kodax-space/space-ipc-schema';
-import { launchSpace, type SpaceInstance } from './fixtures.js';
+import { launchSpace, type LaunchSpaceOptions, type SpaceInstance } from './fixtures.js';
 import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
 export const FINALIZED_E2E_PLAN =
@@ -243,10 +243,12 @@ export async function launchRealSdkSpace(
   testId: string,
   baseUrl: string,
   prepareProfile?: (root: string) => Promise<void>,
+  recordVideo?: LaunchSpaceOptions['recordVideo'],
 ) {
   const space = await launchSpace(testId, {
     env: { KODAX_FORCE_MOCK: '0', SPACE_TEST_COMPLETE_EXIT_TRIGGER: '1' },
     prepareProfile,
+    recordVideo,
   });
   try {
     const projectRoot = path.join(space.testDataDir, 'project');

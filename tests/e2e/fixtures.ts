@@ -103,6 +103,8 @@ export interface SpaceInstance {
 }
 
 export interface LaunchSpaceOptions {
+  /** Opt-in recording of the actual Electron renderer for visual acceptance. */
+  readonly recordVideo?: { dir: string; size: { width: number; height: number } };
   /** Seed a real isolated storage owner before the desktop starts. */
   readonly prepareProfile?: (testDataDir: string) => Promise<void>;
   /** Run the same isolated acceptance fixture against a built desktop executable. */
@@ -172,6 +174,7 @@ export async function launchSpace(
     await opts?.prepareProfile?.(testDataDir);
     app = await _electron.launch({
       ...(executablePath ? { executablePath } : {}),
+      ...(opts?.recordVideo ? { recordVideo: opts.recordVideo } : {}),
       args: executablePath ? [] : [ELECTRON_MAIN],
       env: {
         ...baseEnv,

@@ -437,6 +437,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'Preferences：显示语言、默认 workspace、Smart Popout Director、原生完成通知、workflow policy、Terminal Shell 和主窗口关闭行为。',
       'Preferences 的 Appearance 提供浅色、深色、跟随系统主题，以及极简、均衡、全特效三档视觉质量，与标题栏和 View 菜单共用偏好。极简无模糊；均衡使用静态环境光和局部玻璃；全特效增加通透层次与缓慢环境光，后台、流式输出和密集交互时降载，并尊重系统减少动态效果设置。',
+      '当前源码提供输入框聚焦、菜单展开和设置分类切换的短暂反馈。均衡档输入区上沿掠光一次，全特效增加局部玻璃光泽，输入文字不会反复触发。全特效聚焦光泽与环境光共用后台、流式输出和密集交互暂停规则；菜单与设置入场结束后停止动画。极简档和系统减少动态效果关闭新增动效。',
       'Providers：内置/custom provider、key 保存与测试、默认 provider、custom provider 管理。',
       'Runtime：KodaX 核心配置概览、compaction 设置、MCP 全局/项目 integrations 配置与 reload、MCP/A2A/Extension health、Skills 用户/项目目录、安装 skill 文件夹/zip/archive。',
       'License：查看社区/授权/过期/降级状态，导入 .kodax-license，导出授权请求，刷新状态。',

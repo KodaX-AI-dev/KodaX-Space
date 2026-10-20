@@ -2983,6 +2983,7 @@ export function BottomBar(): JSX.Element {
               )}
             </div>
           </div>
+          <span className="composer-focus-light" aria-hidden="true" />
         </div>
       </div>
     </div>

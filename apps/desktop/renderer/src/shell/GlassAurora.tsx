@@ -18,6 +18,7 @@ import { isLocalDocumentActive, shouldPauseAurora } from './auroraActivity.js';
 const INTERACTION_PAUSE_MS = 180;
 const INTERACTION_CLASS = 'visual-interaction-active';
 const STREAMING_CLASS = 'visual-streaming-active';
+const PAUSED_CLASS = 'visual-ambient-paused';
 
 export function GlassAurora(): JSX.Element | null {
   const quality = useAppStore((s) => s.visualQuality);
@@ -43,6 +44,7 @@ export function GlassAurora(): JSX.Element | null {
       layer?.classList.remove('is-paused');
       document.documentElement.classList.remove(INTERACTION_CLASS);
       document.documentElement.classList.remove(STREAMING_CLASS);
+      document.documentElement.classList.remove(PAUSED_CLASS);
       return undefined;
     }
 
@@ -58,6 +60,7 @@ export function GlassAurora(): JSX.Element | null {
         streaming,
       );
       layer?.classList.toggle('is-paused', paused);
+      document.documentElement.classList.toggle(PAUSED_CLASS, paused);
       document.documentElement.classList.toggle(INTERACTION_CLASS, interactionActive);
       document.documentElement.classList.toggle(STREAMING_CLASS, streaming);
     };
@@ -102,6 +105,7 @@ export function GlassAurora(): JSX.Element | null {
       layer?.classList.remove('is-paused');
       document.documentElement.classList.remove(INTERACTION_CLASS);
       document.documentElement.classList.remove(STREAMING_CLASS);
+      document.documentElement.classList.remove(PAUSED_CLASS);
     };
   }, [quality, streaming]);
 
