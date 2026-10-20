@@ -16,6 +16,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Fixed
 
+- Pin official KodaX `0.7.97-alpha.9` in root/Desktop and the lockfile. Shared Host inspection now uses canonical Session metadata without reading damaged historical bodies, retaining live controller ownership and other clients' exit protection. Add published-package regressions for body EIO, active work and unreadable metadata; keep the existing startup/history and Artifact integration contracts.
+
 - Issue 222: discover the actual Host owning shared Session storage before starting Coder, including a competing owner that wins during startup. Reuse compatible Hosts; replace a verified idle older Host through SDK managed shutdown. New Hosts request the SDK interactive lifecycle; compatible retained Hosts keep their existing lifecycle. Protect active work, report its owner/capability/blockers, and retry until the selected history can recover without refreshing.
 - Keep the attached Host profile through passive reconnect, complete exit and durable exit recovery. Show connection failures while history is waiting instead of presenting an empty conversation.
 - Issue 222 follow-up: automatically use SDK guarded startup after an established Host exits or connection/readiness temporarily times out. Handle typed startup failures and legacy unhealthy diagnostics, stop retrying permanent incompatibility, and fence reconnect results after close. See the [adjacent recovery audit](docs/releases/issue-222-self-healing-audit.md).

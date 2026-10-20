@@ -6,6 +6,8 @@
 
 > 本文对应已发布预发布版 Space `v0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`。稳定版下载仍是 Space v0.1.46 / KodaX 0.7.96。旧版截图用于界面定位，以实际界面为准；本次变化与已验证范围见[发布准备记录](releases/v0.1.47-alpha.2-release-readiness.md)。
 
+> 当前源码及本地候选（未发布）：Space `0.1.47-alpha.3` 接入官方 SDK `0.7.97-alpha.9`。历史正文出现 EIO、但会话身份元数据可读时，无关会话的 Run 列表和退出检查不再被该正文阻塞；活动或未知任务、其他客户端仍受退出保护。打开受损会话本身仍会显示读取错误，元数据不可读时检查仍保守失败。这是软件隔离，不会修复磁盘或补回丢失的历史。验收及构建路径见 [alpha.9 接入记录](releases/kodax-0.7.97-alpha.9-integration.md)。
+
 共享 Coder 当前聊天与历史浏览分开；新建但未发送的会话不会留下新空记录；侧栏按真实消息时间排序。当前版本恢复 SDK 提供的用户图片、长正文、工具与 Artifact 记录，结果检查使用工具证据和 visual-review，旧的 /verifier-log 已移除。Windows 首次迁移如需 Sandbox Setup，应在 Settings → Runtime 显式执行；普通启动和工具调用不会隐式提权。旧会话文件与凭据不会因本轮文档或版本同步被删除。
 
 ## 1. 先用一句话理解 KodaX Space
