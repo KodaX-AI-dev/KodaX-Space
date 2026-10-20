@@ -217,7 +217,7 @@ Last Updated: 2026-10-16
 | 219 | Medium   | Resolved; Registry alpha.6 verified                                                                          | Old completed Sessions fall back to creation time in sidebar recency                                                                                                                                       | Runtime activity overlay introduced 2026-08-03                            | 2026-09-28 |
 | 220 | Medium   | Resolved; SDK alpha.6 published and verified                                                                 | Unsubmitted REPL Sessions appear as blank tasks                                                                                                                                                            | SDK v0.7.97-alpha.1 Host migration (3301a452 / 0914f589)                  | 2026-10-14 |
 | 221 | Medium   | Resolved in source                                                                                           | Session deletion failures are misreported as another running KodaX process                                                                                                                                 | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
-| 222 | High     | Resolved in source; Registry alpha.7 integrated                                                                                                        | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
+| 222 | High     | Resolved; Registry alpha.9 Windows verified                                                                                                            | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -257,6 +257,7 @@ Regression guide: [Issue 218](test-guides/ISSUE_218_v0.1.46-rc.6_REGRESSION_GUID
 
 - Priority: High
 - Status: Resolved in source; isolated Windows packaged recovery verified
+- Fixed: v0.1.47-alpha.3 / Registry SDK 0.7.97-alpha.9; Windows qualification updated 2026-10-20
 - Introduced: Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6; first affected version unknown
 - Created: 2026-10-16
 
@@ -324,9 +325,13 @@ the active Run. Main reconstruction now restores that input's captured lease
 by its original identity; it does not resubmit or regenerate authority. Optional
 Artifact registration uses a separate trusted extension so its missing runtime
 cannot disable builtin Skills or history. New/current-source qualification is
-tracked in the [migration closeout](releases/space-sdk-migration-closeout-2026-10-20.md).
+tracked in the [migration closeout](releases/space-sdk-migration-closeout-2026-10-20.md):
+Registry SDK `0.7.97-alpha.9`, 4,412 full-suite passes / 20 skips / zero failures,
+and 24/24 packaged E2E passes with no retries. The published SDK source and
+concurrent UI work are unchanged; the candidate package and its hashes identify
+the exact qualified source.
 
-The current follow-up integrates published Registry SDK `0.7.97-alpha.7` in Space
+The earlier alpha.7 qualification integrated published Registry SDK `0.7.97-alpha.7` in Space
 `0.1.47-alpha.3`. SDK alpha.7 addresses the Linux zombie-owner/startup identity
 race and bounds recovery discovery. Space now requests `daemonLifecycle:
 interactive` for newly started Hosts rather than imposing idle-exit capability
@@ -334,10 +339,10 @@ on every existing Host; same-installation persistent Hosts can therefore serve
 history without replacement. Installed SDK capability support is still checked,
 and all other Host capability/build/ownership checks remain enforced. Closing
 Space cancels SDK startup and prevents a late Host start after identity opens.
-Final full Space tests passed 4,373 with 20 skips and zero failures; packaged
+At that qualification, full Space tests passed 4,373 with 20 skips and zero failures; packaged
 recovery passed 4/4 and lifecycle passed 6/6. Added executable adapter-line
 coverage is 9/9. Registry/native, boot, typecheck, lint and production build gates
-passed. See [current integration evidence](releases/kodax-0.7.97-alpha.7-integration.md).
+passed. See [alpha.7 integration evidence](releases/kodax-0.7.97-alpha.7-integration.md).
 
 The following paragraphs preserve candidate 4's earlier investigation and tests;
 its orphan-policy requirement has been superseded by the lifecycle policy above.

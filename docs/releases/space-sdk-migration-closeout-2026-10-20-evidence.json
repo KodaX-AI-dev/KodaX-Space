@@ -1,0 +1,208 @@
+{
+  "recordedAtUtc": "2026-10-20T10:15:37.265Z",
+  "spaceVersion": "0.1.47-alpha.3",
+  "sourceCommit": "32b2a4209a84ee1c02e0aba5de3a471862fd0979",
+  "sourceTree": "a1db52ab6f5d977b1bacd46afab2e69718b42bd2",
+  "baseCommit": "21fd8431",
+  "sdk": {
+    "version": "0.7.97-alpha.9",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.9.tgz",
+    "integrity": "sha512-cw/Eh2idVD381auW3JZVNMThO0OHICLnH0H7uQTUBL62PhjX0WpkOYtxstMIPhpNQXQemAaquil/Xthlr23ipA=="
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v22.23.1",
+    "electron": "42.5.0"
+  },
+  "checks": {
+    "fullTests": {
+      "command": "npm test",
+      "suites": [
+        {
+          "name": "release",
+          "tests": 110,
+          "passed": 103,
+          "skipped": 7,
+          "failed": 0
+        },
+        {
+          "name": "desktop",
+          "tests": 3953,
+          "passed": 3940,
+          "skipped": 13,
+          "failed": 0
+        },
+        {
+          "name": "ipc-schema",
+          "tests": 369,
+          "passed": 369,
+          "skipped": 0,
+          "failed": 0
+        }
+      ],
+      "total": 4432,
+      "passed": 4412,
+      "skipped": 20,
+      "failed": 0
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "command": "npm run lint",
+      "exitCode": 0
+    },
+    "build": {
+      "command": "npm run build:smoke",
+      "exitCode": 0
+    },
+    "sourceMigrationE2e": {
+      "passed": 4,
+      "failed": 0,
+      "retries": 0
+    },
+    "packagedE2e": {
+      "passed": 24,
+      "failed": 0,
+      "retries": 0,
+      "specs": [
+        "renderer-boot",
+        "sdk-migration-gaps",
+        "sdk-product-output",
+        "sdk-restored-history",
+        "sdk-unified-contract",
+        "shared-host-history-recovery"
+      ],
+      "isolation": "Separate Windows desktop, isolated profiles and local fixture Provider; packaged app with its own native modules"
+    },
+    "packaging": {
+      "command": "node scripts/pack.mjs --win",
+      "exitCode": 0,
+      "checks": [
+        "Registry dependency gate",
+        "locked SDK/native resources",
+        "Artifact PNG round trip",
+        "native SQLite load",
+        "Runtime/constructed-handler workers",
+        "boot with deliberate startup hold and 122 saved child records",
+        "complete exit (six tests also present in packagedE2e)"
+      ]
+    },
+    "scopedCoverage": {
+      "resources/space-artifacts.mjs": {
+        "lines": 97.33,
+        "branches": 66.67,
+        "functions": 100
+      },
+      "apps/desktop/electron/skill/space-builtins.ts": {
+        "lines": 99.32,
+        "branches": 82.98,
+        "functions": 100
+      }
+    },
+    "review": {
+      "standardsFindings": 0,
+      "specFindings": 0
+    }
+  },
+  "artifacts": [
+    {
+      "file": "out/KodaX-Space-Setup-0.1.47-alpha.3.exe",
+      "bytes": 205684979,
+      "sha256": "a3b36c19e3dbe26864da18a43973247395c13ce2d069a39416db256bc7cb186f"
+    },
+    {
+      "file": "out/KodaX-Space-Portable-0.1.47-alpha.3.exe",
+      "bytes": 205475066,
+      "sha256": "9ce7b2506442b84e10a9202c1da3442a5841bc3146311a750ab555f45d9c54ac"
+    },
+    {
+      "file": "out/win-unpacked/resources/app.asar",
+      "bytes": 125345153,
+      "sha256": "2cc8a5b10ce7d6de35eeee3e6582b5bd88f7b8dc3f8d7571ba2b97d68d2c3508"
+    }
+  ],
+  "sourceBuildMatchesPackage": {
+    "verifiedFiles": 559,
+    "manifestSha256": "0d1c13db6553843526df8b6b122a45c862bbbcf725fce0e7770288cce3820d53",
+    "keyFiles": [
+      {
+        "source": "dist-electron/main.js",
+        "entry": "dist-electron/main.js",
+        "sha256": "6293beb9ccac6bbf09e3cb275c67db36d6610433b3da8223a6c6534d08452618"
+      },
+      {
+        "source": "dist-electron/preload.js",
+        "entry": "dist-electron/preload.js",
+        "sha256": "2428c4abd36a4f246110d6bdb8003fe07741c8b0aa2cba52b466e031f6d1189f"
+      },
+      {
+        "source": "apps\\desktop\\dist\\index.html",
+        "entry": "apps/desktop/dist/index.html",
+        "sha256": "6362af52234120dbb7a137f6218c017aa6565b6928ca0de236bbc00ae1d5706a"
+      },
+      {
+        "source": "resources/space-artifacts.mjs",
+        "packaged": "out/win-unpacked/resources/space-artifacts.mjs",
+        "sha256": "43aa35697676721c31a7cb29193be4255f40789baf0f3c949b008bd7b92df75c"
+      },
+      {
+        "source": "resources/space-builtins.mjs",
+        "packaged": "out/win-unpacked/resources/space-builtins.mjs",
+        "sha256": "8c4a8bd89867f715872bbeae5025efaf82f98f14dd5ee10119388184e00277e2"
+      }
+    ]
+  },
+  "logs": [
+    {
+      "file": ".tmp-migration-full-tests-qualified.log",
+      "sha256": "0c1d40e47dd445468aaa74c37526073fc370de4ae0c6be6a396736894337ef41"
+    },
+    {
+      "file": ".tmp-migration-packaged-qualified.log",
+      "sha256": "ce3b63da7e2f9f1b734d44e766b8c025d1d459df733517d828b6b1ff0740d69c"
+    },
+    {
+      "file": ".tmp-migration-source-qualified.log",
+      "sha256": "45930bf2fdd4d79d92282c56675f9624741bc77dc2037aa4d4a90551a8001b1b"
+    },
+    {
+      "file": ".tmp-migration-typecheck-final3.log",
+      "sha256": "09102b0ebf73d35baaea8927908fae220cf96e1881b2b9755f4522822935c982"
+    },
+    {
+      "file": ".tmp-migration-lint-final3.log",
+      "sha256": "b586a34100def5bd37ff6a8514f6bddc688db1088b3bd8bf66a5b81b6a9f2abb"
+    },
+    {
+      "file": ".tmp-migration-build-final3.log",
+      "sha256": "2f21f74104f5828a3e87933186a6547c0e893dbe3349329d2b568efcd121c462"
+    },
+    {
+      "file": ".tmp-migration-pack.log",
+      "sha256": "4706a430bc9ab3267efafb2396179baea583f5169d8f9f50c426f6d1626cd9e3"
+    },
+    {
+      "file": ".tmp-migration-recovery-final.log",
+      "sha256": "857468c5261f39cbd7fa1bc61d60eb764ad9262f85d188f1977178e1778ee8c1"
+    },
+    {
+      "file": ".tmp-artifact-coverage-final.log",
+      "sha256": "7acc4ef7020c6fa4043e1ff6ab7e3c94dea3dc773e8a7508adcb06260f178858"
+    },
+    {
+      "file": ".tmp-builtins-coverage-final.log",
+      "sha256": "79681c1294e304335e7248c5268ec020fc49bc9bcb9b96982871007396c977c6"
+    }
+  ],
+  "boundaries": [
+    "No adjacent SDK source, personal Session data or concurrent UI edits changed.",
+    "This package qualifies sourceCommit; later uncommitted UI changes are excluded.",
+    "Windows x64 acceptance only; Linux/macOS remain cross-platform CI gates.",
+    "No browser download at startup; browser-backed Artifact formats require explicit SDK preparation or a trusted installed browser.",
+    "Scoped coverage does not establish whole-repository coverage.",
+    "Local candidate only; no tag, publish, push or personal installation."
+  ]
+}
