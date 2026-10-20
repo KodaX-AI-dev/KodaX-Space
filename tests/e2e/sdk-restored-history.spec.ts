@@ -193,6 +193,7 @@ test('published SDK unfinished tool tail pages to the original query with saved 
       expect(view.items.map((item) => item.id)).toHaveLength(3);
       expect(view.items.find((item) => item.type === 'tool')?.timestamp).toBe(Date.parse(SAVED_AT));
       await space.page.reload();
+      await space.page.waitForLoadState('domcontentloaded');
       await space.page
         .getByTestId('sidebar-session-row')
         .filter({ hasText: 'SDK_PENDING_TOOL_HISTORY' })

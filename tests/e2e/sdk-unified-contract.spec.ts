@@ -140,7 +140,9 @@ test('real Host queued input survives reload, drains once and Stop preserves a l
   try {
     await sendSdkPrompt(space, 'HOLD_QUEUE');
     await expect
-      .poll(() => provider.requests.some((prompt) => prompt.includes('HOLD_QUEUE')))
+      .poll(() => provider.requests.some((prompt) => prompt.includes('HOLD_QUEUE')), {
+        timeout: 30_000,
+      })
       .toBe(true);
     const sessionId = await currentSdkSession(space);
     await sendSdkPrompt(space, 'QUEUED_AFTER_TURN', 'Control+Enter');

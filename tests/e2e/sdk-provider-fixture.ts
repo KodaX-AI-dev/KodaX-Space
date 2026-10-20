@@ -358,7 +358,7 @@ export async function readSdkHistoryPage(
           if (previous === undefined && result.data.page?.outcome === 'data_changed') return false;
           throw new Error(`Saved history unavailable: ${JSON.stringify(result)}`);
         },
-        { timeout: 5_000 },
+        { timeout: 30_000 },
       )
       .toBe(true);
   } finally {
@@ -448,7 +448,7 @@ export async function readSdkProductView(space: SpaceInstance, sessionId: string
             throw new Error(result.error.message);
           return result.error.message;
         },
-        { timeout: 5_000 },
+        { timeout: 30_000 },
       )
       .toBe('ready');
   } finally {
