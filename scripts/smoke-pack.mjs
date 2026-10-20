@@ -2,7 +2,8 @@
 //
 // 跑在 electron-builder 之后；目标：
 //   1. 安装包文件存在
-//   2. 文件大小 < 200 MB（F010 验收硬指标）
+//   2. 安装包文件大小上限（F010 最初设 200 MB；0.7.97 起主包携带 Artifact worker 与
+//      DOCX 浏览器 bundle，0.1.47-alpha.3 上调为 250 MB 以容纳真实功能增长）
 //   3. asar 内核心文件齐全（main.js / preload.js / renderer index.html）
 //
 // 不做：实际 install / launch—— Windows 上 NSIS 安装包是 GUI 流程，CI 里 driver 困难。
@@ -44,7 +45,7 @@ const FEISHU_CLI_LICENSE_PATH = path.join(
   'feishu-cli',
   'LICENSE',
 );
-const SIZE_LIMIT_BYTES = 200 * 1024 * 1024;
+const SIZE_LIMIT_BYTES = 250 * 1024 * 1024;
 const require = createRequire(import.meta.url);
 // Resolved lazily: requiring 'electron' at import time hard-fails whenever the
 // electron postinstall download is broken or still racing (CI unit shards import
@@ -564,9 +565,9 @@ async function checkSize(installerPath) {
   const stat = await fs.stat(installerPath);
   const mb = (stat.size / (1024 * 1024)).toFixed(2);
   if (stat.size > SIZE_LIMIT_BYTES) {
-    fail(`${path.basename(installerPath)} is ${mb} MB — exceeds 200 MB cap`);
+    fail(`${path.basename(installerPath)} is ${mb} MB — exceeds 250 MB cap`);
   }
-  ok(`${path.basename(installerPath)} = ${mb} MB (< 200 MB cap)`);
+  ok(`${path.basename(installerPath)} = ${mb} MB (< 250 MB cap)`);
 }
 
 function readIcoImages(ico) {
