@@ -40,7 +40,7 @@ export function SurfaceTabs(): JSX.Element {
               if (!disabled) setSpaceSurface(surface);
             }}
             aria-pressed={active}
-            className={`flex-1 text-xs py-1.5 rounded ${
+            className={`flex-1 text-sm py-1.5 rounded-md ${
               disabled
                 ? 'text-fg-muted opacity-40 cursor-not-allowed'
                 : active

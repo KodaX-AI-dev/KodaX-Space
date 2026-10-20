@@ -73,6 +73,18 @@ test('conversation file paths reuse the complete file action menu', async () => 
     await expect(menu.getByRole('menuitem', { name: 'Copy relative path' })).toBeVisible();
     await expect(menu.getByRole('menuitem', { name: 'Reveal in file manager' })).toBeVisible();
 
+    // Context menus also clamp when their anchor is near the window edge.
+    await space.page.keyboard.press('Escape');
+    await filePath.dispatchEvent('contextmenu', {
+      clientX: 1275,
+      clientY: 795,
+      bubbles: true,
+    });
+    const menuBounds = await menu.boundingBox();
+    expect(menuBounds).not.toBeNull();
+    expect((menuBounds?.y ?? 0) + (menuBounds?.height ?? 0)).toBeLessThanOrEqual(792);
+    expect((menuBounds?.x ?? 0) + (menuBounds?.width ?? 0)).toBeLessThanOrEqual(1272);
+
     await space.page.keyboard.press('Escape');
     await filePath.focus();
     await space.page.keyboard.press('Shift+F10');

@@ -43,9 +43,11 @@ const consoleErrors: string[] = [];
 const pageErrors: string[] = [];
 
 async function dismissOverlays(page: Page): Promise<void> {
+  // Anchor selectors do not all use a dialog/menu role; Escape still dismisses them.
+  await page.keyboard.press('Escape');
   for (let i = 0; i < 4; i++) {
     const overlayVisible = await page
-      .locator('[role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"]:visible')
+      .locator(':is([role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"]):visible')
       .first()
       .isVisible()
       .catch(() => false);
@@ -154,7 +156,7 @@ async function seedRichSession(space: SpaceInstance): Promise<string> {
   const { page } = space;
   const textarea = page.locator('textarea').first();
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
-  await textarea.fill('UI sweep seed');
+  await textarea.fill('请检查 README 和工作区配置，汇总需要调整的界面细节。');
   await textarea.press('Enter');
   await expect(page.getByTestId('user-message-bubble').first()).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(400);
@@ -166,8 +168,12 @@ async function seedRichSession(space: SpaceInstance): Promise<string> {
   if (!sessionId) throw new Error('seed session missing');
 
   const events: SessionEvent[] = [
-    { kind: 'thinking_delta', sessionId, text: 'Sweep thinking. '.repeat(40) },
-    { kind: 'text_delta', sessionId, text: 'Sweep answer paragraph. '.repeat(30) },
+    { kind: 'thinking_delta', sessionId, text: '检查项目结构、交互入口和显示状态。'.repeat(20) },
+    {
+      kind: 'text_delta',
+      sessionId,
+      text: '### 工作区检查结果\n\n项目的运行状态和会话数据均已保留。本次调整集中在阅读层级和交互组件。\n\n- **导航**：项目、会话和辅助信息采用不同的字号与间距。\n- **设置**：设置分类接替项目导航，返回后恢复文件搜索和原工作面。\n- **组件**：菜单、工具记录和输入控件统一，状态信息按需突出。\n\n上下文占用与 token 统计沿用原有实现；长正文和工具记录使用实色表面，避免滚动时采样背景。',
+    },
   ];
   for (let i = 0; i < 3; i++) {
     events.push(
@@ -244,6 +250,53 @@ test('UI button sweep keeps the shell reliable across every region', async () =>
     await cluster.getByRole('button').first().click();
     await expect(page.getByTestId('tool-call-card').first()).toBeVisible({ timeout: 8_000 });
     await sweepRegion(page, 'conversation-receipts', page.getByTestId('conversation-stream'));
+
+    // Capture the actual client in Chinese, using the same fixture and public controls.
+    await page.setViewportSize({ width: 1920, height: 1032 });
+    await page.keyboard.press('Control+,');
+    const settings = page.getByTestId('settings-workspace');
+    await settings.getByRole('button', { name: 'Dark', exact: true }).click();
+    await settings.getByRole('button', { name: 'Balanced', exact: true }).click();
+    await settings.getByRole('button', { name: '简体中文', exact: true }).click();
+    await expect(page.getByText('显示语言已更新', { exact: true })).not.toBeVisible({
+      timeout: 6000,
+    });
+    await page.keyboard.press('Escape');
+    if (await page.getByTestId('session-token-breakdown').isVisible()) {
+      await page.getByTestId('session-token-indicator').click();
+    }
+    if (!(await page.getByTestId('left-sidebar').isVisible())) {
+      await page.getByLabel('显示左侧栏', { exact: true }).first().click();
+    }
+    for (const thinking of await page.getByTestId('process-receipt-thinking').all()) {
+      const toggle = thinking.getByRole('button').first();
+      if ((await toggle.getAttribute('aria-expanded')) === 'true') await toggle.click();
+    }
+    if ((await cluster.getByRole('button').first().getAttribute('aria-expanded')) === 'false') {
+      await cluster.getByRole('button').first().click();
+    }
+    await page.getByTestId('conversation-scroll-container').evaluate((node) => {
+      node.scrollTop = 0;
+    });
+    await page.mouse.move(800, 90);
+    await page.screenshot({
+      animations: 'disabled',
+      path: test.info().outputPath('components-zh-dark.png'),
+    });
+    await page.getByTestId('model-effort-selector').click();
+    await page.screenshot({
+      animations: 'disabled',
+      path: test.info().outputPath('model-menu-zh-dark.png'),
+    });
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+,');
+    await settings.getByRole('button', { name: '浅色', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await page.mouse.move(800, 90);
+    await page.screenshot({
+      animations: 'disabled',
+      path: test.info().outputPath('components-zh-light.png'),
+    });
 
     // Reliability bar: no renderer exceptions and no console errors anywhere.
     const reactErrors = consoleErrors.filter((e) => /React error #\d{3}/i.test(e));

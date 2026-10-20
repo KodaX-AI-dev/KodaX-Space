@@ -4,6 +4,28 @@ import os from 'node:os';
 import { promises as fs } from 'node:fs';
 import { launchSpace } from './fixtures.js';
 
+test('Escape dismisses composer selectors without changing their selection', async () => {
+  const space = await launchSpace(`composer-selectors-escape-${Date.now()}`);
+  try {
+    const { page } = space;
+    const controls = [
+      page.getByTitle(/^Mode:/),
+      page.getByTitle(/^Agent:/),
+      page.getByTestId('model-effort-selector'),
+    ];
+    for (const control of controls) {
+      const selection = await control.textContent();
+      await control.click();
+      await expect(control).toHaveAttribute('aria-expanded', 'true');
+      await page.keyboard.press('Escape');
+      await expect(control).toHaveAttribute('aria-expanded', 'false');
+      await expect(control).toHaveText(selection ?? '');
+    }
+  } finally {
+    await space.close();
+  }
+});
+
 test('unknown reasoning controls preserve selection and show last sent effort separately', async () => {
   const testId = `reasoning-picker-${Date.now()}`;
   const space = await launchSpace(testId, { env: { OPENAI_API_KEY: 'e2e-placeholder' } });
@@ -13,7 +35,8 @@ test('unknown reasoning controls preserve selection and show last sent effort se
     await space.app.evaluate(({ ipcMain }) => {
       ipcMain.removeHandler('provider.modelContextWindow');
       ipcMain.handle('provider.modelContextWindow', () => ({
-        ok: true, data: { contextWindow: 200000, source: 'fallback', compactionTriggerPercent: 75 },
+        ok: true,
+        data: { contextWindow: 200000, source: 'fallback', compactionTriggerPercent: 75 },
       }));
     });
     await space.seedProject(projectDir);
@@ -42,16 +65,24 @@ test('unknown reasoning controls preserve selection and show last sent effort se
     });
     await space.app.evaluate(({ BrowserWindow }, current) => {
       BrowserWindow.getAllWindows()[0]?.webContents.send('session.event', {
-        kind: 'reasoning_resolved', sessionId: current.sessionId,
-        resolution: { provider: current.provider, model: current.model ?? 'gpt-5.4',
-          requestedEffort: 'none', sentEffort: 'minimal', verified: false,
-          fallbacks: [{ effort: 'none', reason: 'cached-rejection' }] },
+        kind: 'reasoning_resolved',
+        sessionId: current.sessionId,
+        resolution: {
+          provider: current.provider,
+          model: current.model ?? 'gpt-5.4',
+          requestedEffort: 'none',
+          sentEffort: 'minimal',
+          verified: false,
+          fallbacks: [{ effort: 'none', reason: 'cached-rejection' }],
+        },
       });
     }, session);
     await space.page.keyboard.press('Control+i');
     await expect(selector).toContainText('Off');
     const observation = space.page.getByTestId('reasoning-resolution');
-    await expect(observation).toContainText('Last request sent: Minimal. Effective strength unconfirmed.');
+    await expect(observation).toContainText(
+      'Last request sent: Minimal. Effective strength unconfirmed.',
+    );
     await expect(observation).toContainText('Skipped a previously rejected setting');
     await space.page.screenshot({ path: test.info().outputPath('reasoning-picker.png') });
     await space.page.getByRole('button', { name: 'Max', exact: true }).click();

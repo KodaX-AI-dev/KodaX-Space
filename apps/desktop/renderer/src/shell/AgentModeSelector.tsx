@@ -15,6 +15,7 @@
 // 默认全 ama；用户主动选 sa 才走 fallback。
 
 import { useEffect, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 import type { AgentMode } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../store/appStore.js';
@@ -103,6 +104,11 @@ export function AgentModeSelector(): JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (!isSurfaceInteractive(rootRef.current)) return;
+      if (e.key === 'Escape' && open) {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
       if (e.altKey && !e.ctrlKey && !e.shiftKey && (e.key === 'm' || e.key === 'M')) {
         e.preventDefault();
         void pick(nextAgentMode(current));
@@ -111,7 +117,7 @@ export function AgentModeSelector(): JSX.Element {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, busy]);
+  }, [current, busy, open]);
 
   // 无 session 时选中的模式就是即将创建会话的模式，无需再标注“(next)”。
   const labelText = LABELS[current];
@@ -121,18 +127,19 @@ export function AgentModeSelector(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="text-xs px-2 py-0.5 rounded bg-surface-2 border border-border-default text-fg-secondary hover:bg-hover-bg flex items-center gap-1"
+        aria-expanded={open}
+        className="composer-control text-sm px-2 py-0.5 rounded bg-surface-2 border border-border-default text-fg-secondary hover:bg-hover-bg flex items-center gap-1"
         title={t('agentMode.buttonTitle', { name: t(FULL_NAME_KEYS[current]) })}
       >
         <span>{labelText}</span>
         <span className="text-fg-muted" aria-hidden>
-          +
+          <ChevronDown className="h-3 w-3" />
         </span>
       </button>
 
       {open && (
         <div
-          className="absolute left-0 bottom-full mb-1 w-72 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50"
+          className="workspace-menu absolute left-0 bottom-full mb-1 w-72 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50"
           onMouseLeave={() => setOpen(false)}
         >
           <div className="px-3 py-1 text-fg-muted text-[11px] uppercase tracking-wider">

@@ -9,6 +9,7 @@ test('language switch updates settings, sidebar, and command palette copy', asyn
   const space = await launchSpace(TEST_ID);
   try {
     const { page } = space;
+    await page.setViewportSize({ width: 1920, height: 1032 });
     await page.waitForTimeout(2000);
     await expect(page.getByLabel('Runtime diagnostics')).toContainText('Community');
     await expect(page.getByText('Total tokens', { exact: true })).toBeVisible();
@@ -24,7 +25,6 @@ test('language switch updates settings, sidebar, and command palette copy', asyn
     await expect(page.getByRole('tab', { name: '许可证' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '工作流宿主' })).toBeVisible();
     await expect(page.getByTestId('settings-button')).toContainText('设置');
-    await expect(page.getByText('项目', { exact: true }).first()).toBeVisible();
     const settings = page.getByTestId('settings-workspace');
     await expect(settings.getByRole('tab')).toHaveCount(6);
     await expect(settings.getByRole('heading', { name: '外观', exact: true })).toBeVisible();
@@ -33,6 +33,9 @@ test('language switch updates settings, sidebar, and command palette copy', asyn
     }
     await settings.getByRole('button', { name: '深色', exact: true }).click();
     await settings.getByRole('button', { name: '均衡', exact: true }).click();
+    await expect(page.getByText('显示语言已更新', { exact: true })).not.toBeVisible({
+      timeout: 6000,
+    });
     await page.mouse.move(800, 90);
     await page.screenshot({
       animations: 'disabled',
@@ -44,10 +47,17 @@ test('language switch updates settings, sidebar, and command palette copy', asyn
       animations: 'disabled',
       path: testInfo.outputPath('settings-zh-light.png'),
     });
+    await page.keyboard.press('Escape');
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath('workspace-zh-light.png'),
+    });
+    await page.getByTestId('settings-button').click();
     await settings.getByRole('button', { name: '深色', exact: true }).click();
 
     await page.keyboard.press('Escape');
     await expect(page.locator('#settings-modal-title')).toHaveCount(0);
+    await expect(page.getByText('项目', { exact: true }).first()).toBeVisible();
     await expect(page.getByLabel('运行时诊断')).toContainText('社区版');
     await expect(page.getByText('Token 总数', { exact: true })).toBeVisible();
     await expect(page.locator('button[aria-label^="主题"]').first()).toBeVisible();

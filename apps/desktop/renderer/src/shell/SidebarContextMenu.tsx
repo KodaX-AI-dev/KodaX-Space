@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Portal } from '../components/Portal.js';
 import { clampSidebarContextMenuPosition } from './sidebarContextMenuModel.js';
+import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 
 export interface SidebarContextMenuItem {
   readonly id: string;
@@ -64,6 +65,7 @@ export function SidebarContextMenu({
     }
 
     function onKeyDown(event: KeyboardEvent): void {
+      if (!isSurfaceInteractive(menu)) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
@@ -96,7 +98,7 @@ export function SidebarContextMenu({
     <Portal>
       <div
         ref={ref}
-        className="fixed z-[100] overflow-hidden rounded-xl border border-border-default/80 bg-surface-4 p-1.5 text-[13px] leading-5 text-fg-primary shadow-2xl"
+        className="workspace-menu fixed z-[100] overflow-hidden rounded-xl border border-border-default/80 bg-surface-4 p-1.5 text-[13px] leading-5 text-fg-primary shadow-2xl"
         style={{ left: position.left, top: position.top, width }}
         role="menu"
         aria-label={ariaLabel}

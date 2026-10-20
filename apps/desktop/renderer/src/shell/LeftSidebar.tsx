@@ -188,7 +188,7 @@ export function LeftSidebar({
           type="button"
           onClick={handleNewSession}
           disabled={!currentProjectPath}
-          className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-hover-bg text-fg-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          className="sidebar-nav-action w-full text-left text-sm px-2 py-1.5 rounded-lg hover:bg-hover-bg text-fg-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           title={!currentProjectPath ? t('sidebar.openFolderFirst') : t('sidebar.newSession')}
         >
           <Plus className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} aria-hidden />
@@ -198,7 +198,7 @@ export function LeftSidebar({
           type="button"
           onClick={handleOpenFiles}
           disabled={!currentProjectPath}
-          className={`w-full text-left text-xs px-2 py-1.5 rounded hover:bg-hover-bg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
+          className={`sidebar-nav-action w-full text-left text-sm px-2 py-1.5 rounded-lg hover:bg-hover-bg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
             filesActive ? 'bg-surface-3 text-fg-primary' : 'text-fg-primary'
           }`}
           title={!currentProjectPath ? t('sidebar.openFolderFirst') : t('files.openProjectFiles')}
@@ -213,7 +213,7 @@ export function LeftSidebar({
             data-testid="partner-plugins-nav"
             onClick={onOpenPlugins}
             aria-pressed={pluginsActive}
-            className={`w-full text-left text-xs px-2 py-1.5 rounded hover:bg-hover-bg flex items-center gap-2 text-fg-primary ${pluginsActive ? 'bg-surface-3' : ''}`}
+            className={`sidebar-nav-action w-full text-left text-sm px-2 py-1.5 rounded-lg hover:bg-hover-bg flex items-center gap-2 text-fg-primary ${pluginsActive ? 'bg-surface-3' : ''}`}
           >
             <Blocks className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} aria-hidden />
             {t('extensions.plugins')}
@@ -1129,7 +1129,7 @@ function SessionRow({
           <span className="min-w-0 truncate">
             {session.title?.trim() || t('sidebar.session.untitled')}
           </span>
-          <span className="flex min-w-0 items-center justify-end gap-1.5 text-[11px] text-fg-muted">
+          <span className="sidebar-session-meta flex min-w-0 items-center justify-end gap-1.5 text-xs text-fg-muted">
             {deleting ? (
               <span
                 className="sidebar-status-spinner sidebar-status-spinner--mini"
@@ -1332,7 +1332,7 @@ function RunningPeersPanel(): JSX.Element | null {
           >
             <Monitor size={12} aria-hidden className="flex-shrink-0 text-fg-faint" />
             <span className="truncate flex-1">{cwdName}</span>
-            <span className="text-[9px] text-fg-muted font-mono flex-shrink-0">{ageLabel}</span>
+            <span className="text-[11px] text-fg-muted font-mono flex-shrink-0">{ageLabel}</span>
           </button>
         );
       })}
@@ -1368,12 +1368,12 @@ function RecentsHeader(): JSX.Element {
       ? `${filterStatusLabel ? `${filterStatusLabel} · ` : ''}${filterSortLabel}`
       : null;
   return (
-    <div className="px-3 pt-3 pb-1 text-[11px] uppercase tracking-wider text-fg-muted flex justify-between items-center flex-shrink-0 relative">
+    <div className="px-4 pt-4 pb-2 text-xs text-fg-muted flex justify-between items-center flex-shrink-0 relative">
       {/* F043 v0.1.9: 改为"Projects" — 实际形态就是项目折叠树，原 Recents 概念被
           ProjectTree 取代；点 ⇅ 仍调过滤菜单（session 级 active/archived/sort 等）。 */}
       <span>{t('sidebar.projects')}</span>
       <div className="flex items-center gap-2">
-        {summary && <span className="normal-case text-fg-muted text-[9px]">{summary}</span>}
+        {summary && <span className="normal-case text-fg-muted text-[11px]">{summary}</span>}
         <button
           ref={buttonRef}
           type="button"
@@ -1416,7 +1416,7 @@ function FutureFeaturesDisclosure(): JSX.Element {
           aria-hidden
         />
         <span className="min-w-0 truncate">{t('sidebar.moreFeatures')}</span>
-        <span className="ml-auto shrink-0 rounded border border-border-default px-1.5 py-0.5 text-[9px] leading-none text-fg-muted">
+        <span className="ml-auto shrink-0 rounded border border-border-default px-1.5 py-0.5 text-[11px] leading-none text-fg-muted">
           {t('sidebar.comingSoon')}
         </span>
       </button>
