@@ -4,6 +4,7 @@
 
 import { app, type App } from 'electron';
 import { createRequire } from 'node:module';
+import desktopPackage from '../../package.json';
 import { registerChannel } from './register.js';
 import type { SpaceCapability, SpaceVersionOutput } from '@kodax-space/space-ipc-schema';
 import { isRepoIntelEntitled } from '../kodax/repo-intel-gate.js';
@@ -19,11 +20,8 @@ export { sandboxCommandCapability } from '../kodax/sandbox-capability-row.js';
 
 function readSpaceVersion(electronApp: App): string {
   // app.getVersion() 读 packaged 应用的 package.json；dev 模式下可能不是 0.1.0-alpha.0
-  // 而是 Electron CLI 默认值（"33.x"）。dev 下用环境变量兜底，保证自检 UI 不混淆。
-  if (!electronApp.isPackaged && process.env.npm_package_version) {
-    return process.env.npm_package_version;
-  }
-  return electronApp.getVersion();
+  // 而是 Electron CLI 的默认值。dev 使用构建时导入的应用 manifest。
+  return electronApp.isPackaged ? electronApp.getVersion() : desktopPackage.version;
 }
 
 function readKodaxSdkVersion(): string {
@@ -38,30 +36,13 @@ function readKodaxSdkVersion(): string {
   }
 }
 
-function readKodaxDependencySpec(): string {
-  const fromEnv =
-    process.env.npm_package_dependencies__kodax_ai_kodax ??
-    process.env.npm_package_dependencies_kodax_ai_kodax;
-  if (fromEnv) return fromEnv;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const meta = typeof require !== 'undefined' ? null : (import.meta as any);
-    const req = meta ? createRequire(meta.url) : require;
-    const pkg = req('../../package.json') as { dependencies?: Record<string, unknown> };
-    const spec = pkg.dependencies?.['@kodax-ai/kodax'];
-    return typeof spec === 'string' && spec.length > 0 ? spec : 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
-
 function runtimeHostCapability(snapshot: RuntimeHostSnapshot): SpaceCapability {
   const ready = snapshot.state === 'ready';
   const legacy = snapshot.state === 'legacy';
   const failed = snapshot.state === 'failed';
   const identity = snapshot.identity;
   const detail = ready
-    ? `KodaX Runtime ${identity?.version ?? 'unknown'} ${identity?.mode ?? 'embedded'}/${identity?.isolation ?? 'inline'} owns Coder sessions, exclusive Actor trees, durably bounded managed Runs, Auto[LLM] v4 permission classification, resilient integration loading, structured sandbox observations, Workflow observation/control, Learning Center operations, catalog discovery, MCP tool discovery/reload, and configured External Agent Actor/Turns. Space retains Partner inline execution and the host-provider boundaries for MCP processes/logs, Workflow library/start/admin, Reference Agent execution, and product artifacts.`
+    ? `KodaX Runtime ${identity?.version ?? 'unknown'} (${identity?.mode ?? 'embedded'}/${identity?.isolation ?? 'inline'}) owns Coder Product inputs, current views, canonical history, execution statistics and client lifecycle. Space hosts Partner inline execution and explicitly registered desktop tools.`
     : legacy
       ? 'The internal legacy rollback host is selected before run start. No Runtime-managed run is active.'
       : failed
@@ -73,6 +54,7 @@ function runtimeHostCapability(snapshot: RuntimeHostSnapshot): SpaceCapability {
     id: 'runtime.hostAdapter',
     label: 'Runtime Host Adapter',
     status: ready ? 'supported' : snapshot.state === 'closed' || failed ? 'blocked' : 'partial',
+    state: snapshot.state,
     detail,
     since: '0.1.31',
   };
@@ -86,18 +68,20 @@ export function experimentalMemoryCapability(
       id: 'memory.agent.experimental',
       label: 'KodaX Memory Agent',
       status: 'partial',
+      state: capability.status,
       detail:
         `The required KodaX experimental-memory contract is available with policy ${capability.policyVersion}. ` +
-        'KodaX managed runs own silent scoped recall and governed outcome/review persistence over F228; Space v0.1.42 preserves compatibility diagnostics while the full F117 Episodes, Activity, correction, and purge UX remains planned.',
+        'Runtime manages scoped recall and governed outcome persistence. Desktop memory management remains partially implemented; the policy identifier is not the SDK package version.',
       since: '0.1.31',
     };
   }
   return {
     id: 'memory.agent.experimental',
     label: 'KodaX Memory Agent',
-    status: 'planned',
+    status: 'partial',
+    state: capability.status,
     detail:
-      'The required /experimental-memory contract has not been probed yet. Existing F228 Memory Governance remains available, and startup will fail closed if the exported contract cannot be verified.',
+      'The required memory contract has not been probed yet. Existing memory governance remains available; a missing required SDK contract blocks startup.',
   };
 }
 
@@ -126,7 +110,7 @@ function buildCapabilityLedger(
       label: 'Repointel local status',
       status: entitled ? 'supported' : 'blocked',
       detail: entitled
-        ? 'Space exposes KodaX 0.7.57 built-in repo-intelligence inspection for project, git root, trace source, worker/cache health, and best-effort warm support.'
+        ? 'Space exposes SDK repo-intelligence inspection for project, git root, trace source, worker/cache health, and best-effort warm support.'
         : 'Repo-intelligence is a licensed capability. /repointel status still inspects project/git/entitlement, but warm and repo-aware assistance require an active license.',
     },
     {
@@ -149,7 +133,7 @@ function buildCapabilityLedger(
       label: 'Reasoning effort v2',
       status: 'supported',
       detail:
-        'Space maps its five existing effort choices to KodaX 0.7.57 canonical effort values at SDK boundaries and reads the new KodaX config effort default with legacy reasoning fallback.',
+        'Space maps the selected reasoning effort to SDK canonical values and reads the effective model/provider configuration.',
     },
     {
       id: 'handoff.receive',
@@ -163,7 +147,7 @@ function buildCapabilityLedger(
       label: 'Composer image artifacts',
       status: 'supported',
       detail:
-        'Space sends PNG/JPEG/WEBP image artifacts through KodaX inputArtifacts, preserves KodaX 0.7.56 source provenance for clipboard and drag-drop inputs, supports native clipboard-image fallback, and preflights image artifacts against the selected provider/model before send.',
+        'Space submits PNG/JPEG/WEBP images with SDK input, preserves clipboard and drag-drop provenance, and validates images against the selected provider/model before send.',
       since: '0.1.24',
     },
     {
@@ -171,7 +155,7 @@ function buildCapabilityLedger(
       label: 'SDK media helpers',
       status: 'partial',
       detail:
-        'Space now uses KodaX 0.7.56 media helpers for native clipboard normalization, sandboxed image artifact construction, and provider/model validation. GIF direct-path handling, structured file artifacts, and video follow-ups remain planned.',
+        'Space uses SDK media helpers for clipboard normalization, image artifact construction and provider/model validation. This does not declare support for every SDK media format or desktop attachment workflow.',
       since: '0.1.24',
     },
     {
@@ -179,7 +163,7 @@ function buildCapabilityLedger(
       label: 'Reference External Agent executor',
       status: 'supported',
       detail:
-        'KodaX 0.7.72 Runtime-configured External Agents use the daemon Actor/Turn control plane for Coder discovery, preflight, tasks, events, input, interruption, and reconciliation. Space Reference Agents remain a host-provider path with durable Task Dock behavior; MCP Tasks and governed HTTP remain gated until their adapters ship.',
+        'Runtime-configured External Agents use the daemon Actor/Turn control plane for Coder. Space Reference Agents retain their host-provider execution path; MCP Tasks and governed HTTP remain gated.',
       since: '0.1.30',
     },
   ];
@@ -195,15 +179,16 @@ export function registerVersionChannel(): void {
     // matches the runtime gate + chip lock (community build → 'blocked'). Fail-closed
     // (see repo-intel-gate.ts).
     const entitled = await isRepoIntelEntitled();
+    const spaceVersion = readSpaceVersion(app);
     return {
-      spaceVersion: readSpaceVersion(app),
+      spaceVersion,
       nodeVersion: process.versions.node,
       electronVersion: process.versions.electron,
       chromeVersion: process.versions.chrome,
       platform,
       kodaxSdkVersion: readKodaxSdkVersion(),
-      kodaxDependencySpec: readKodaxDependencySpec(),
-      capabilityContract: 'space-0.1.46-alpha.9',
+      kodaxDependencySpec: desktopPackage.dependencies['@kodax-ai/kodax'],
+      capabilityContract: `space-${spaceVersion}`,
       capabilities: buildCapabilityLedger(entitled, runtimeHostAdapter.snapshot()),
     };
   });

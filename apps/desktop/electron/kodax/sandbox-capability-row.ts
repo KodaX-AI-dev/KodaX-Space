@@ -8,10 +8,11 @@ export function sandboxCommandCapability(capability: SandboxSdkCapability): Spac
         id: 'sandbox.command',
         label: 'KodaX command sandbox',
         status: 'partial',
+        state: capability.readiness,
         detail:
           `KodaX sandbox doctor confirms command containment v${capability.version} is ready through ` +
           `${capability.backend} with ASRT ${capability.asrtVersion}. This command-level primitive ` +
-          'does not complete Space F138 native-resource hardening.',
+          'does not complete desktop native-resource hardening.',
         since: '0.1.34',
       };
     }
@@ -20,6 +21,7 @@ export function sandboxCommandCapability(capability: SandboxSdkCapability): Spac
         id: 'sandbox.command',
         label: 'KodaX command sandbox',
         status: 'blocked',
+        state: capability.readiness,
         detail:
           `The fail-closed KodaX sandbox facade is present, but doctor reports setup is required ` +
           `(${capability.diagnosticCount} bounded diagnostic(s)). Ordinary calls never trigger setup; ` +
@@ -31,6 +33,7 @@ export function sandboxCommandCapability(capability: SandboxSdkCapability): Spac
       id: 'sandbox.command',
       label: 'KodaX command sandbox',
       status: capability.readiness === 'checking' ? 'partial' : 'blocked',
+      state: capability.readiness,
       detail:
         capability.readiness === 'checking'
           ? `The fail-closed KodaX sandbox facade v${capability.version} is present; readiness is still being checked. Space does not claim OS containment from API shape alone.`
@@ -41,7 +44,8 @@ export function sandboxCommandCapability(capability: SandboxSdkCapability): Spac
   return {
     id: 'sandbox.command',
     label: 'KodaX command sandbox',
-    status: 'planned',
+    status: 'partial',
+    state: capability.status,
     detail:
       'The KodaX sandbox facade has not been probed yet. Space does not claim OS containment until the fail-closed public contract is available.',
   };

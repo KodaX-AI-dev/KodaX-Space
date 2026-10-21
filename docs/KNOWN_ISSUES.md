@@ -1,8 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-10-16
+Last Updated: 2026-10-21
 
-> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96; the current unpublished candidate is Space 0.1.47-alpha.3 with exact Registry SDK 0.7.97-alpha.7. Start from the [documentation hub](README.md) and [alpha.2 readiness](releases/v0.1.47-alpha.2-release-readiness.md) for current behavior, qualification and remaining investigations.
+> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96; the current unpublished candidate is Space 0.1.47-alpha.3 with exact Registry SDK 0.7.97-alpha.9. Start from the [documentation hub](README.md) and [alpha.2 readiness](releases/v0.1.47-alpha.2-release-readiness.md) for current behavior, qualification and remaining investigations.
 
 ## Issue Index
 
@@ -218,6 +218,7 @@ Last Updated: 2026-10-16
 | 220 | Medium   | Resolved; SDK alpha.6 published and verified                                                                 | Unsubmitted REPL Sessions appear as blank tasks                                                                                                                                                            | SDK v0.7.97-alpha.1 Host migration (3301a452 / 0914f589)                  | 2026-10-14 |
 | 221 | Medium   | Resolved in source                                                                                           | Session deletion failures are misreported as another running KodaX process                                                                                                                                 | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 | 222 | High     | Resolved; Registry alpha.9 Windows verified                                                                                                            | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
+| 223 | Medium | Resolved in source; local Windows package verified | Titlebar diagnostics retain startup state and obsolete version/dependency information | Observed v0.1.47-alpha.3; first affected version unknown | 2026-10-21 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -252,6 +253,43 @@ claim this symptom resolved by the above fixes.
 Regression guide: [Issue 218](test-guides/ISSUE_218_v0.1.46-rc.6_REGRESSION_GUIDE.md).
 
 ## Issue Details
+
+### 223: Titlebar diagnostics retain startup state and obsolete version/dependency information
+
+- Priority: Medium
+- Status: Resolved in source; local Windows package verified
+- Introduced: Observed v0.1.47-alpha.3; first affected version unknown
+- Created: 2026-10-21
+- Context: User opens the top-right enterprise/community version badge in the local Windows unpacked build.
+
+#### Original Problem
+
+The installed SDK is 0.7.97-alpha.9, but its declared dependency is shown as `unknown` and the diagnostic stamp remains `space-0.1.46-alpha.9`. The open panel can still show Runtime `initializing / partial` after the public `space.version` channel reports `supported`. Long capability descriptions include old release and internal feature references, and remain English in the Chinese UI.
+
+Expected: show metadata from the actual build, update lifecycle facts after connection changes and on reopening, and present current localized explanations without changing actual entitlement or capability gates. Preserve access to technical diagnostics and all existing capability rows.
+
+#### Reproduction and Cause
+
+`runtime-diagnostics.spec.ts` reproduces the dependency mismatch in the actual old unpacked executable. A delayed real Runtime startup then proves the public IPC status becomes supported while the visible row remains partial. The bundled module-relative package lookup has the wrong base, the diagnostic stamp is hardcoded, and the initial version snapshot is only refreshed after explicit capability operations. Evidence: `artifacts/f147-diagnostics-2026-10-21/metadata-red.log` and `refresh-red.log`.
+
+#### Planned Regression Boundary
+
+Use the existing public IPC and actual Electron UI seams. Check declared/installed versions separately, real delayed Runtime readiness, localized summaries, accurate partial/blocked states, technical details, Escape/reopen behavior and short-window reachability. Reading diagnostics must not run sandbox setup, start tasks or alter licensing.
+
+#### Resolution
+
+- Fixed: v0.1.47-alpha.3 local development build, unpublished
+- Resolution Date: 2026-10-21
+- Build metadata imports the current application manifest; installed SDK and actual Runtime facts remain separate. The diagnostic stamp no longer hardcodes an old release.
+- Connection transitions, opening and explicit refresh reread diagnostics. Existing license ownership is preserved, with stale asynchronous responses ignored.
+- Current localized capability summaries replace obsolete release/feature references. Read-only state codes distinguish waiting from planned functionality; technical details retain real policies, backend versions and errors. No execution or entitlement gates were relaxed.
+- Original `out/win-unpacked` updated and checked against final main/renderer bytes. Targeted packaged UI 12/12, packaged SDK 6/6, full units 4,412 passed with 20 conditional skips; type/lint/build and manual increment 10/10 passed. Seven diagnostic images inspected, with stable-frame and visible-field follow-up checks. No claim of full-suite E2E, actual enterprise activation or cross-platform verification.
+
+#### Files Changed and Tests Added
+
+- Main version IPC, sandbox capability projection, bounded IPC diagnostic schema, renderer App refresh, Shell license owner, localized RuntimeDiagnostics component and i18n.
+- `tests/e2e/runtime-diagnostics.spec.ts`: four public IPC/Electron scenarios covering metadata, live readiness, localization/details, and theme/window access.
+- User/manual topics, version design, [diagnostic audit](design/runtime-diagnostics-2026-10-21.md) and [regression guide](test-guides/ISSUE_223_v0.1.47_REGRESSION_GUIDE.md).
 
 ## Issue 222: A conflicting shared Session Host blocks all Coder history with no actionable recovery flow
 
@@ -15821,14 +15859,14 @@ misclassified as missing before the durable mutation is attempted.
 
 ## Summary
 
-- Total: 209
+- Total: 210
 - Open: 1
 - Ready: 2
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 195
+- Resolved (including source-only fixes): 196
 - High: 109
-- Medium: 88
+- Medium: 89
 - Low: 12
 - Next ready to resolve: 222

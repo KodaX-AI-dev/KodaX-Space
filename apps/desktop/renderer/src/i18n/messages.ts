@@ -883,6 +883,71 @@ export const messages = {
       'Auto mode guardrail will activate on the NEXT send. Current run continues with non-guardrail permission flow.',
     'mode.nextSuffix': '{label} (next)',
     'shell.runtimeDiagnostics': 'Runtime diagnostics',
+    'diagnostics.subtitle': 'Current build, connection and capability limits',
+    'diagnostics.refresh': 'Refresh diagnostics',
+    'diagnostics.details': 'Technical details',
+    'diagnostics.dependency': 'Declared SDK dependency',
+    'diagnostics.ledger': 'Diagnostic revision',
+    'diagnostics.available': 'Available',
+    'diagnostics.partial': 'Partially supported',
+    'diagnostics.blocked': 'Unavailable',
+    'diagnostics.planned': 'Not yet available',
+    'diagnostics.starting': 'Starting',
+    'diagnostics.waiting': 'Awaiting check',
+    'diagnostics.legacy': 'Compatibility mode',
+    'diagnostics.runtime': 'Runtime Host Adapter',
+    'diagnostics.memory': 'Memory capabilities',
+    'diagnostics.sandbox': 'Command sandbox',
+    'diagnostics.trace': 'Repository trace',
+    'diagnostics.repo': 'Repository inspection',
+    'diagnostics.quickAsk': 'Quick Ask',
+    'diagnostics.sideQuery': 'Side queries',
+    'diagnostics.reasoning': 'Reasoning effort',
+    'diagnostics.handoff': 'Handoff inbox',
+    'diagnostics.images': 'Image input',
+    'diagnostics.media': 'Media helpers',
+    'diagnostics.external': 'External agents',
+    'diagnostics.runtime.ready':
+      'Coder is connected. The SDK manages input, execution, history and statistics.',
+    'diagnostics.runtime.starting':
+      'Runtime is initializing. Coder waits until the connection is ready.',
+    'diagnostics.runtime.waiting':
+      'Runtime has not initialized yet. This is a connection state, not a planned feature.',
+    'diagnostics.runtime.legacy':
+      'The internal rollback host is selected; no shared Runtime run is active.',
+    'diagnostics.runtime.failed':
+      'Runtime is unavailable. Coder is blocked; Partner retains its separate execution path. See technical details for the reported reason.',
+    'diagnostics.runtime.closed': 'Runtime is closed and cannot accept new Coder runs.',
+    'diagnostics.memory.available':
+      'The SDK memory contract is verified. Runtime manages recall and governed persistence; desktop memory management is only partially available.',
+    'diagnostics.memory.waiting':
+      'The memory contract check has not completed. Existing memory governance remains available.',
+    'diagnostics.sandbox.ready':
+      'Command containment passed the readiness check. This does not imply complete desktop native-resource isolation.',
+    'diagnostics.sandbox.setup':
+      'Explicit setup is required. Open Runtime settings and review the setup confirmation; viewing diagnostics never starts setup.',
+    'diagnostics.sandbox.waiting':
+      'Sandbox readiness has not been confirmed. API availability alone does not prove containment.',
+    'diagnostics.sandbox.unavailable':
+      'No usable sandbox backend was confirmed. Commands requiring containment do not execute.',
+    'diagnostics.licensed':
+      'An active license is required. Current execution remains restricted by the entitlement gate.',
+    'diagnostics.trace.detail':
+      'Inspect SDK repository trace events in the context chip and trace view.',
+    'diagnostics.repo.detail': 'Inspect project, Git root, trace source, worker and cache health.',
+    'diagnostics.quickAsk.detail':
+      'Ask in a temporary plan-mode session and promote its history into Coder when needed.',
+    'diagnostics.sideQuery.detail':
+      'The SDK provides side queries; Quick Ask currently keeps its temporary-session workflow.',
+    'diagnostics.reasoning.detail':
+      'Reasoning choices follow the effective SDK model and provider configuration.',
+    'diagnostics.handoff.detail': 'Review incoming handoffs and accept or dismiss them explicitly.',
+    'diagnostics.images.detail':
+      'Submit PNG, JPEG or WEBP images with source provenance and model compatibility checks.',
+    'diagnostics.media.detail':
+      'Clipboard and image helpers are integrated. This does not promise every media format or attachment workflow.',
+    'diagnostics.external.detail':
+      'Configured agents use the Runtime control plane; Reference Agents retain their desktop execution path. Other adapters remain gated.',
     'shell.exitFocusModeTitle': 'Exit focus mode (Ctrl+\\)',
     'shell.exitFocusMode': 'Focus',
     'runtime.startup.checking': 'Checking connection…',
@@ -3907,6 +3972,56 @@ export const messages = {
       '自动模式守卫会在下一次发送时启用。当前运行会继续使用现有的非守卫权限流程。',
     'mode.nextSuffix': '{label}（下次）',
     'shell.runtimeDiagnostics': '运行时诊断',
+    'diagnostics.subtitle': '当前构建、连接状态与能力边界',
+    'diagnostics.refresh': '刷新诊断',
+    'diagnostics.details': '技术详情',
+    'diagnostics.dependency': 'SDK 声明依赖',
+    'diagnostics.ledger': '诊断信息版本',
+    'diagnostics.available': '可用',
+    'diagnostics.partial': '部分支持',
+    'diagnostics.blocked': '不可用',
+    'diagnostics.planned': '尚未提供',
+    'diagnostics.starting': '启动中',
+    'diagnostics.waiting': '等待检查',
+    'diagnostics.legacy': '兼容模式',
+    'diagnostics.runtime': 'Coder 运行时',
+    'diagnostics.memory': '记忆能力',
+    'diagnostics.sandbox': '命令沙箱',
+    'diagnostics.trace': '仓库追踪',
+    'diagnostics.repo': '仓库状态检查',
+    'diagnostics.quickAsk': '快速提问',
+    'diagnostics.sideQuery': '旁路查询',
+    'diagnostics.reasoning': '推理强度',
+    'diagnostics.handoff': '任务交接收件箱',
+    'diagnostics.images': '图片输入',
+    'diagnostics.media': '媒体辅助',
+    'diagnostics.external': '外部 Agent',
+    'diagnostics.runtime.ready': 'Coder 已连接。SDK 负责输入、执行、历史记录和统计。',
+    'diagnostics.runtime.starting': '运行时正在初始化，Coder 将等待连接就绪。',
+    'diagnostics.runtime.waiting': '运行时尚未初始化。这是当前连接状态，不代表功能仍在规划中。',
+    'diagnostics.runtime.legacy': '当前选择了内部兼容回退路径，没有共享 Runtime 运行。',
+    'diagnostics.runtime.failed':
+      '运行时不可用，Coder 已阻止执行；Partner 保留独立执行路径。具体原因见技术详情。',
+    'diagnostics.runtime.closed': '运行时已关闭，暂不接受新的 Coder 任务。',
+    'diagnostics.memory.available':
+      'SDK 记忆契约已验证。运行时管理召回与受治理的持久化；桌面记忆管理仍为部分支持。',
+    'diagnostics.memory.waiting': '记忆契约检查尚未完成，现有记忆治理仍可使用。',
+    'diagnostics.sandbox.ready': '命令级隔离已通过可用性检查；这不代表整个桌面原生资源已完全隔离。',
+    'diagnostics.sandbox.setup':
+      '需要显式设置。请在运行时设置中查看并确认操作；查看诊断不会启动设置。',
+    'diagnostics.sandbox.waiting': '沙箱可用性尚未确认，不能仅凭接口存在就宣称隔离已生效。',
+    'diagnostics.sandbox.unavailable': '未确认可用的沙箱后端，需要隔离的命令不会执行。',
+    'diagnostics.licensed': '需要有效许可证；当前执行仍受实际授权限制。',
+    'diagnostics.trace.detail': '在上下文控件和追踪视图中查看 SDK 仓库追踪事件。',
+    'diagnostics.repo.detail': '检查项目、Git 根目录、追踪来源、工作进程与缓存状态。',
+    'diagnostics.quickAsk.detail': '使用临时计划模式会话提问，需要时可将历史转入 Coder。',
+    'diagnostics.sideQuery.detail': 'SDK 提供旁路查询；快速提问当前仍保留临时会话流程。',
+    'diagnostics.reasoning.detail': '推理选项遵循 SDK 当前生效的模型与服务商配置。',
+    'diagnostics.handoff.detail': '查看收到的任务交接，并显式接受或忽略。',
+    'diagnostics.images.detail': '发送 PNG、JPEG 或 WEBP 图片，保留来源并检查模型兼容性。',
+    'diagnostics.media.detail': '已接入剪贴板和图片辅助；不承诺支持所有媒体格式或附件流程。',
+    'diagnostics.external.detail':
+      '已配置的 Agent 使用 Runtime 控制面，Reference Agent 保留桌面执行路径；其他适配器仍受能力门限制。',
     'shell.exitFocusModeTitle': '退出专注模式（Ctrl+\\）',
     'shell.exitFocusMode': '专注',
     'runtime.startup.checking': '正在检查连接…',

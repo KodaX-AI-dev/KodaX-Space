@@ -144,6 +144,15 @@ export default function App(): JSX.Element {
     const bridge = window.kodaxSpace;
     if (!bridge) return;
     let disposed = false;
+    let versionRequest = 0;
+    const refreshSpaceVersion = (): void => {
+      const request = ++versionRequest;
+      void bridge.invoke('space.version', undefined).then((result) => {
+        if (disposed || request !== versionRequest) return;
+        if (result.ok) setVersion(result.data);
+        else console.error('[space.version] refresh failed', result.error.code);
+      });
+    };
     const liveSnapshotRequests = new Set<string>();
     const liveSnapshotActiveIntents = new Map<string, { allowEqualHydration: boolean }>();
     const liveSnapshotReruns = new Map<string, LiveSnapshotRequestOptions>();
@@ -662,6 +671,13 @@ export default function App(): JSX.Element {
         const previous = useAppStore.getState().runtimeConnection;
         setCoderRuntimeConnection(connection);
         const accepted = useAppStore.getState().runtimeConnection;
+        if (
+          accepted.state !== previous.state ||
+          accepted.stale !== previous.stale ||
+          accepted.runtimeId !== previous.runtimeId
+        ) {
+          refreshSpaceVersion();
+        }
         if (accepted !== previous && shouldReconcileRuntimeConnection(previous, accepted)) {
           runtimeProfileBootstrapped = false;
           const currentSessionId = useAppStore.getState().currentSessionId;
@@ -714,11 +730,6 @@ export default function App(): JSX.Element {
 
     // Startup self-check plus explicit refreshes after mutable capability operations such as
     // user-confirmed sandbox setup. Reading space.version itself remains side-effect free.
-    const refreshSpaceVersion = (): void => {
-      void bridge.invoke('space.version', undefined).then((result) => {
-        if (!disposed && result.ok) setVersion(result.data);
-      });
-    };
     window.addEventListener(SPACE_VERSION_REFRESH_EVENT, refreshSpaceVersion);
     refreshSpaceVersion();
 

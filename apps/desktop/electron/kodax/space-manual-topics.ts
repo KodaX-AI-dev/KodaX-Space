@@ -289,6 +289,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     body: text(
       '左侧栏：项目列表、最近会话、归档项目、会话切换与项目管理。导航模式和 Files 模式底部都保留 Settings 入口。',
       '进入 Settings 后，设置分类替代项目/文件导航，原工作区在后台保持挂载。返回工作区、关闭设置或按 Escape 后恢复原导航模式、宽度、文件搜索和草稿，后台运行不会因进入设置而停止。',
+      '右上角版本与企业版/社区版徽标打开运行时诊断，显示当前构建、已加载 SDK、许可证与能力边界。打开、连接变化和手动刷新均重读状态；中文/英文跟随界面语言。技术详情保留声明依赖、诊断信息版本、平台与原始诊断，Memory policy 是策略标识而非 SDK 包版本。查看诊断不会执行沙箱设置或启动任务。',
       '后台 Session 等待权限或 ask_user 时，左侧栏显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 与 guardrail 授权以对话流内的聚焦提问卡呈现，全部待答卡并存可答，composer 上方的召回停靠条显示计数并可定位闪光到队首卡。切换 Session 不会丢失耐久队列中的请求。',
       '顶部：Environment Hub 显示当前项目/git/来源/运行摘要；activity 按钮打开 Preview、Diff、Terminal、Agents、MCP、Memory、Workflow 等 popout；Settings 打开配置。',
       '中央：Transcript 显示用户消息、模型回复、工具调用、权限状态、Artifact 卡片和运行事件。',

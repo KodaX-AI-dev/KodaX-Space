@@ -39,7 +39,6 @@ import {
 import type {
   LanguageModeT,
   LicenseStatusT,
-  SpaceCapabilityStatus,
   SpaceVersionOutput,
   SpaceExtensionT,
 } from '@kodax-space/space-ipc-schema';
@@ -67,6 +66,7 @@ import { RightSidebar } from './RightSidebar.js';
 import { EnvironmentHub } from './EnvironmentHub.js';
 import { PinnedTaskSummary } from './PinnedTaskSummary.js';
 import { RuntimeStartupStatus } from './RuntimeStartupStatus.js';
+import { RuntimeDiagnostics } from './RuntimeDiagnostics.js';
 import { HelpOverlayController } from './HelpOverlay.js';
 import { CommandPaletteController } from './CommandPalette.js';
 import { ToastContainer } from './ToastContainer.js';
@@ -106,7 +106,6 @@ import {
   type ExtensionViewSelection,
   type ExtensionViewContext,
 } from '../features/extensions/extensionViewPolicy.js';
-import { AdminAuditPanel } from '../features/partner/AdminAuditPanel.js';
 import {
   consumePartnerDetailOpenRequest,
   partnerDetailRequestForContext,
@@ -123,6 +122,7 @@ import {
 } from '../space-control/SpaceControlBroker.js';
 import { setSpaceLanguage, setSpaceTheme } from '../space-control/semanticActions.js';
 import { useI18n } from '../i18n/I18nProvider.js';
+import { SPACE_VERSION_REFRESH_EVENT } from '../lib/versionEvents.js';
 import type { MessageKey } from '../i18n/messages.js';
 import { isPopoutKind, SHELL_POPOUT_EVENT, type ShellPopoutRequest } from './popoutControl.js';
 import {
@@ -464,6 +464,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const settingsNavigationMountedRef = useRef(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('preferences');
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatusT | null>(null);
+  const licenseRefreshRequestRef = useRef(0);
   const popoutBoundsRef = useRef<HTMLDivElement | null>(null);
   const rightSidebarWidthSettlingTimerRef = useRef<number | null>(null);
   const rightSidebarWidthPersistTimerRef = useRef<Record<'code' | 'partner', number | null>>({
@@ -612,7 +613,9 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
 
   const refreshLicenseStatus = useCallback((): void => {
     if (!window.kodaxSpace) return;
+    const request = ++licenseRefreshRequestRef.current;
     void window.kodaxSpace.invoke('license.getStatus', {}).then((result) => {
+      if (request !== licenseRefreshRequestRef.current) return;
       if (result.ok) {
         setLicenseStatus(result.data);
         // Mirror into the store so entitlement-gated surfaces (e.g. the Repointel
@@ -627,7 +630,11 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   useEffect(() => {
     refreshLicenseStatus();
     window.addEventListener('kodax-space.license-changed', refreshLicenseStatus);
-    return () => window.removeEventListener('kodax-space.license-changed', refreshLicenseStatus);
+    window.addEventListener(SPACE_VERSION_REFRESH_EVENT, refreshLicenseStatus);
+    return () => {
+      window.removeEventListener('kodax-space.license-changed', refreshLicenseStatus);
+      window.removeEventListener(SPACE_VERSION_REFRESH_EVENT, refreshLicenseStatus);
+    };
   }, [refreshLicenseStatus]);
 
   // P4a: Ctrl+\ toggles focus mode in Coder. Partner avoids this global shortcut
@@ -1499,7 +1506,9 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
         {diagnosticsOpen && (
           <RuntimeDiagnostics
             version={version}
-            licenseStatus={licenseStatus}
+            licenseText={
+              licenseStatus ? licenseDiagnosticsText(licenseStatus, t) : t('shell.loading')
+            }
             onClose={closeDiagnostics}
           />
         )}
@@ -2340,25 +2349,6 @@ function AppMenuDropdown({ items, onClose }: AppMenuDropdownProps): JSX.Element 
   );
 }
 
-interface RuntimeDiagnosticsProps {
-  readonly version: SpaceVersionOutput | null;
-  readonly licenseStatus: LicenseStatusT | null;
-  readonly onClose: () => void;
-}
-
-function statusClass(status: SpaceCapabilityStatus): string {
-  switch (status) {
-    case 'supported':
-      return 'border-ok/40 bg-ok/10 text-ok';
-    case 'partial':
-      return 'border-warn/40 bg-warn/10 text-warn';
-    case 'blocked':
-      return 'border-danger/40 bg-danger/10 text-danger';
-    case 'planned':
-      return 'border-border-default bg-surface-3 text-fg-muted';
-  }
-}
-
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 const LICENSE_EDITION_KEY: Record<LicenseStatusT['edition'], MessageKey> = {
@@ -2404,93 +2394,4 @@ function shortDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toISOString().slice(0, 10);
-}
-
-function RuntimeDiagnostics({
-  version,
-  licenseStatus,
-  onClose,
-}: RuntimeDiagnosticsProps): JSX.Element {
-  const { t } = useI18n();
-  const currentSurface = useSurfaceStore((state) => state.currentSurface);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <div className="app-no-drag absolute right-3 top-8 z-50 w-[min(420px,calc(100vw-24px))] rounded-lg border border-border-default bg-surface/95 p-3 text-xs text-fg-secondary shadow-2xl backdrop-blur-xl">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[11px] uppercase text-fg-faint">{t('shell.runtime')}</div>
-          <div className="mt-0.5 font-mono text-fg-primary">
-            Space v{version?.spaceVersion ?? '?.?.?'} / KodaX SDK{' '}
-            {version?.kodaxSdkVersion ?? 'unknown'}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md px-1.5 py-0.5 text-[11px] text-fg-muted hover:bg-hover-bg hover:text-fg-primary"
-          aria-label={t('shell.closeDiagnostics')}
-          title={t('common.close')}
-        >
-          Esc
-        </button>
-      </div>
-
-      <div className="mb-2 grid grid-cols-[96px_1fr] gap-x-2 gap-y-1 font-mono text-[11px]">
-        <span className="text-fg-faint">{t('shell.license')}</span>
-        <span>{licenseStatus ? licenseDiagnosticsText(licenseStatus, t) : t('shell.loading')}</span>
-        <span className="text-fg-faint">{t('shell.contract')}</span>
-        <span>{version?.capabilityContract ?? t('shell.loading')}</span>
-        <span className="text-fg-faint">{t('shell.dependency')}</span>
-        <span>{version?.kodaxDependencySpec ?? 'unknown'}</span>
-        <span className="text-fg-faint">{t('shell.platform')}</span>
-        <span>
-          {version
-            ? `${version.platform} / electron ${version.electronVersion} / chromium ${version.chromeVersion}`
-            : t('shell.loading')}
-        </span>
-      </div>
-
-      <div className="max-h-60 space-y-1 overflow-auto pr-1">
-        {(version?.capabilities ?? []).map((capability) => (
-          <div
-            key={capability.id}
-            className="rounded-md border border-border-default bg-surface-2 px-2 py-1.5"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="min-w-0 truncate font-medium text-fg-primary">
-                {capability.label}
-              </span>
-              <span
-                className={`flex-shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] ${statusClass(
-                  capability.status,
-                )}`}
-              >
-                {capability.status}
-              </span>
-            </div>
-            <div className="mt-1 text-[11px] leading-4 text-fg-muted">{capability.detail}</div>
-          </div>
-        ))}
-        {!version && (
-          <div className="rounded-md border border-border-default bg-surface-2 px-2 py-2 text-fg-muted">
-            {t('shell.loadingDiagnostics')}
-          </div>
-        )}
-      </div>
-      {currentSurface === 'partner' && (
-        <div className="mt-2 max-h-48 overflow-auto rounded-md border border-border-default bg-surface-2">
-          <AdminAuditPanel />
-        </div>
-      )}
-    </div>
-  );
 }
