@@ -185,6 +185,8 @@ async function captureDensity(page: Page, name: string): Promise<void> {
     const selectors = {
       project: '.group\\/projectrow > button.flex-1',
       session: '[data-testid="sidebar-session-row"] > span:first-child',
+      inactiveSession:
+        '[data-testid="sidebar-session-row"]:not([aria-current="page"]) > span:first-child',
       metadata: '.sidebar-session-meta',
       section: '[data-testid="task-dock-section-header"] button > span',
       task: '[data-task-dock-section="plan"] li > span:last-child',
@@ -198,6 +200,9 @@ async function captureDensity(page: Page, name: string): Promise<void> {
           key,
           {
             fontSize: style.fontSize,
+            fontFamily: style.fontFamily,
+            fontWeight: style.fontWeight,
+            color: style.color,
             lineHeight: style.lineHeight,
             height: node.getBoundingClientRect().height,
             rowHeight: node.parentElement?.getBoundingClientRect().height,
@@ -209,8 +214,42 @@ async function captureDensity(page: Page, name: string): Promise<void> {
   const evidence = process.env.SPACE_VISUAL_AUDIT_DIR ?? test.info().outputDir;
   await mkdir(evidence, { recursive: true });
   await writeFile(path.join(evidence, `${name}.json`), JSON.stringify(metrics, null, 2));
+  await writeFile(
+    path.join(evidence, `${name}.fonts.json`),
+    JSON.stringify(await sidebarFonts(page)),
+  );
   await page.screenshot({ path: path.join(evidence, `${name}.png`) });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     page.viewportSize()?.width ?? 0,
   );
+}
+
+async function sidebarFonts(page: Page): Promise<unknown> {
+  const client = await page.context().newCDPSession(page);
+  try {
+    await page.evaluate(() => {
+      const sample = document.createElement('span');
+      sample.id = 'system-ui-font-probe';
+      sample.textContent = '查询当前版本号 KodaX';
+      sample.style.cssText =
+        'position:fixed;left:-10000px;font:14px ui-sans-serif,system-ui,sans-serif';
+      document.body.append(sample);
+    });
+    await client.send('DOM.enable');
+    await client.send('CSS.enable');
+    const { root } = await client.send('DOM.getDocument');
+    const fonts = [];
+    for (const selector of [
+      '.group\\/projectrow > button.flex-1',
+      '[data-testid="sidebar-session-row"] > span:first-child',
+      '#system-ui-font-probe',
+    ]) {
+      const { nodeId } = await client.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+      fonts.push({ selector, ...(await client.send('CSS.getPlatformFontsForNode', { nodeId })) });
+    }
+    return fonts;
+  } finally {
+    await page.locator('#system-ui-font-probe').evaluate((node) => node.remove());
+    await client.detach();
+  }
 }

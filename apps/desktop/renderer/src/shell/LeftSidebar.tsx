@@ -1081,7 +1081,7 @@ function SessionRow({
   if (isRenaming) {
     return (
       <div
-        className="grid min-h-[1.625rem] grid-cols-[minmax(0,1fr)] items-center rounded px-2 py-1 text-xs bg-surface-3 text-fg-primary"
+        className="group/sessionrow grid min-h-[1.625rem] grid-cols-[minmax(0,1fr)] items-center rounded px-2 py-1 text-xs bg-surface-3 text-fg-primary"
         style={{ paddingLeft: padLeft }}
       >
         <RenameInput

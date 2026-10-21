@@ -98,3 +98,17 @@
 `conversation-receipts-scroll.spec.ts` 的 active streamed 场景在 1080→1600px 后向上滚动，偶尔额外移动一行。完整套件中为 24.375px，独立重复为 2 次失败 / 1 次通过。仅恢复 14px 字号仍可复现。随后从固定基点 `21fd84316e72b4d145ba98113008306f86c64964` 提取全部 20 个受改动 renderer 模块的旧源码，使用同一依赖和原 Tailwind 配置构建独立 renderer；原有用例同样 2 次失败 / 1 次通过，偏移为原字号的一行 22.75px。
 
 此对照证明问题在本轮前已存在；它没有证明底层根因或性能跨设备一致。已捕获的几何表现是离屏内容重新布局时总高度减少，而一次滚动未完全补偿可见段落位置。当前未修改滚动机制、关闭离屏渲染或移除失败测试。源码/探针/日志分别在本机 `artifacts/f147-refinement/baseline-sources.json`、`scroll-probe.spec.ts`、`scroll-repeat.log` 和 `scroll-baseline-corrected.log`。早期未生效的字号覆盖及缺少 Tailwind 扫描的基线尝试不作为有效对照证据。跨设备主观流畅度和该已有问题的修复仍需单独验收。
+
+## 2026-10-21 实际字体与字号按钮
+
+本轮依据 [实际字体设计与审查](../design/space-ui-typography-2026-10-21.md)，在同一 `out/win-unpacked/KodaX Space.exe` 上验收；不收紧原有行距。
+
+1. 展开三个项目并分别检查普通/选中会话：主文字 15px、时间 13px，普通标题保持清晰；项目 38px、会话 36px 的行高下限与既有分组间距保持。长标题截断、展开更多、重命名输入与右侧任务换行不得重叠或裁字。
+2. 用 CDP 平台字体接口记录实际中文字符的渲染字体，不能仅凭 CSS 字体栈声明下结论。本机旧包为 Noto Sans SC；参考系统字体栈探针为 Microsoft YaHei UI。该探针不是运行中的 ZCode，不代替其他平台/DPI 的验收。
+3. 在已有正文打开对话视图并依次选择小/中/大字号，正文与菜单预览应分别为 14/15/17px；空白新对话仍可看到预览、当前选择和“仅调整消息正文”的说明。400px 高窗口中可滚动菜单并键盘聚焦到缩放按钮。
+4. 在本机 HTTP fixture 驱动的已发布 SDK 会话中，三档选择各自在刷新并重新打开同一会话后保留。保留整窗缩放、四种对话视图及热键的原有含义。
+5. 逐张查看深色/浅色、1920px/1280px、任务计划/Agent/Git 变更实图；实际设置往返、草稿、双项目运行、质量档位与 reduced-motion 回归仍适用。截图为隔离 profile 的固定内容；真实 SDK 执行另有测试，不将显示事件当作真实并行执行。
+
+自动接缝：`transcript-font-size.spec.ts`、`workspace-sidebar-density.spec.ts`、`integrated-workspace.spec.ts`、`workspace-visual-motion.spec.ts`。本机日志、原图与字体证据目录为 `artifacts/f147-type-2026-10-21/`。
+
+最终记录：原 `out/win-unpacked` 已更新，ASAR 入口 JS/CSS 与最终构建逐字节一致。指定该 exe 的上述四份 E2E 共 12/12 通过；原目录包装/启动 smoke 与真实 SDK 完整退出接缝 6/6 通过。全量单测 4,412 通过、20 条条件跳过；类型、lint、构建通过。19 张产品原图已逐张查看，中文会话实际使用 Microsoft YaHei UI，项目/会话行高保持 38/36px；完整表格、原尺寸 ZCode 对照说明和两轴独立评审结果见本轮设计文档。不将本轮字体验收扩展为已有长对话滚动问题或跨设备性能已修复。

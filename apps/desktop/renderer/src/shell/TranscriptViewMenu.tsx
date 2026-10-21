@@ -18,6 +18,7 @@ import { useAppStore } from '../store/appStore.js';
 import { useZoomStore, ZOOM_STEP } from '../store/zoomStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import type { MessageKey } from '../i18n/messages.js';
+import { TRANSCRIPT_FONT_CLASSES } from './transcriptTypography.js';
 
 const VIEW_OPTIONS = [
   { key: 'normal' as const, labelKey: 'transcript.view.normal' as MessageKey },
@@ -30,19 +31,16 @@ const FONT_OPTIONS = [
   {
     key: 'sm' as const,
     label: 'Aa',
-    cls: 'text-[11px]',
     titleKey: 'transcript.font.small' as MessageKey,
   },
   {
     key: 'base' as const,
     label: 'Aa',
-    cls: 'text-xs',
     titleKey: 'transcript.font.medium' as MessageKey,
   },
   {
     key: 'lg' as const,
     label: 'Aa',
-    cls: 'text-sm',
     titleKey: 'transcript.font.large' as MessageKey,
   },
 ];
@@ -51,6 +49,50 @@ function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
   return tag === 'input' || tag === 'textarea' || target.isContentEditable;
+}
+
+interface TranscriptFontControlsProps {
+  readonly fontSize: keyof typeof TRANSCRIPT_FONT_CLASSES;
+  readonly onSelect: (size: keyof typeof TRANSCRIPT_FONT_CLASSES) => void;
+}
+
+function TranscriptFontControls({ fontSize, onSelect }: TranscriptFontControlsProps): JSX.Element {
+  const { t } = useI18n();
+  return (
+    <div
+      role="group"
+      aria-label={t('transcript.font.label')}
+      className="border-t border-border-default mt-1 px-3 pt-2 pb-1"
+    >
+      <div className="mb-1.5 text-xs text-fg-secondary">{t('transcript.font.label')}</div>
+      <div className="flex items-center gap-2">
+        {FONT_OPTIONS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => onSelect(f.key)}
+            className={`px-2 py-0.5 rounded border ${
+              fontSize === f.key
+                ? 'border-ok text-fg-primary'
+                : 'border-border-strong text-fg-muted hover:text-fg-primary'
+            }`}
+            title={t('transcript.fontTitle', { size: t(f.titleKey) })}
+            aria-label={t('transcript.fontTitle', { size: t(f.titleKey) })}
+            aria-pressed={fontSize === f.key}
+          >
+            <span className={TRANSCRIPT_FONT_CLASSES[f.key]}>{f.label}</span>
+          </button>
+        ))}
+      </div>
+      <p
+        data-testid="transcript-font-preview"
+        className={`mt-2 rounded bg-surface-2 px-2 py-1.5 text-fg-primary ${TRANSCRIPT_FONT_CLASSES[fontSize]}`}
+      >
+        {t('transcript.font.preview')}
+      </p>
+      <p className="mt-1.5 text-xs leading-5 text-fg-muted">{t('transcript.font.scope')}</p>
+    </div>
+  );
 }
 
 export function TranscriptViewMenu(): JSX.Element {
@@ -107,7 +149,7 @@ export function TranscriptViewMenu(): JSX.Element {
         <ScrollText className="w-4 h-4" strokeWidth={1.75} aria-hidden />
       </button>
       {open && (
-        <div className="workspace-menu absolute right-0 top-full mt-1 w-56 bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50">
+        <div className="workspace-menu absolute right-0 top-full mt-1 w-56 max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain bg-surface-4 border border-border-default rounded-lg shadow-xl py-1 text-xs z-50">
           <div className="px-3 py-1 flex justify-between items-center text-fg-muted text-[11px] uppercase tracking-wider">
             <span>{t('transcript.title')}</span>
             <span className="font-mono text-fg-muted flex items-center gap-1">
@@ -137,23 +179,7 @@ export function TranscriptViewMenu(): JSX.Element {
             </button>
           ))}
           {/* 字号选择 */}
-          <div className="border-t border-border-default mt-1 pt-1 px-3 py-1 flex items-center gap-2">
-            {FONT_OPTIONS.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFont(f.key)}
-                className={`px-2 py-0.5 rounded border ${
-                  fontSize === f.key
-                    ? 'border-ok text-fg-primary'
-                    : 'border-border-strong text-fg-muted hover:text-fg-primary'
-                }`}
-                title={t('transcript.fontTitle', { size: t(f.titleKey) })}
-              >
-                <span className={f.cls}>{f.label}</span>
-              </button>
-            ))}
-          </div>
+          <TranscriptFontControls fontSize={fontSize} onSelect={setFont} />
           {/* 整窗缩放 — 浏览器式 −/百分比/+。点百分比复位 100%。系数全局持久；
               与 Ctrl+滚轮 / Ctrl+± / Ctrl+0 同源（zoomStore）。注意：这跟上面只缩放
               transcript 的字号 [Aa] 是两回事——这里是整个 app 缩放。 */}

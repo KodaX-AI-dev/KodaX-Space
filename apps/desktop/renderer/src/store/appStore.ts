@@ -1126,6 +1126,7 @@ const LS_KEY_MASCOT_ENABLED = 'kodax-space.mascotEnabled';
 const LS_KEY_SMART_POPOUT = 'kodax-space.smartPopoutEnabled';
 const LS_KEY_NATIVE_COMPLETION_NOTIFICATIONS = 'kodax-space.nativeCompletionNotificationsEnabled';
 const LS_KEY_SESSION_TOKEN_USAGE = 'kodax-space.sessionTokenUsage.v1';
+const LS_KEY_TRANSCRIPT_FONT_SIZE = 'kodax-space.transcriptFontSize';
 const LS_KEY_ERROR_SEEN_RUN_IDS = 'kodax-space.errorSeenRunIds.v1';
 const MAX_PERSISTED_ERROR_SEEN_SESSIONS = 512;
 const PENDING_MODEL_MAX_LEN = 256;
@@ -1134,6 +1135,11 @@ const MASCOT_MODE_VALUES = ['legacy', 'sprite', 'off'] as const;
 // 持久化 pending* 模式时校验合法 enum 值，避免 LS 被改成非法值后崩 (typescript 编译期没法知道)
 const PERMISSION_MODE_VALUES = ['plan', 'accept-edits', 'auto', 'full-access'] as const;
 const AGENT_MODE_VALUES = ['ama', 'sa'] as const;
+
+function readPersistedTranscriptFontSize(): AppState['transcriptFontSize'] {
+  const value = lsGet(LS_KEY_TRANSCRIPT_FONT_SIZE);
+  return value === 'sm' || value === 'lg' ? value : 'base';
+}
 
 function readPersistedPermissionMode(): SessionMeta['permissionMode'] | null {
   const v = lsGet(LS_KEY_PENDING_PERMISSION);
@@ -6387,7 +6393,7 @@ export const useAppStore = create<AppState>((setState) => {
       'dark',
     visualQuality: typeof window !== 'undefined' ? readVisualQuality() : 'balanced',
     transcriptView: 'normal',
-    transcriptFontSize: 'base',
+    transcriptFontSize: readPersistedTranscriptFontSize(),
     // 默认关：右侧栏存在意义=KodaX 计划列表，没 plan 时空着没价值；plan 来时由 Shell
     // 的 useEffect (planLength transition) 自动开。'1' 才视作"用户主动开过"。
     // Task Dock starts closed; Shell opens it for explicit focus requests and task-relevant events.
@@ -9512,7 +9518,10 @@ export const useAppStore = create<AppState>((setState) => {
       set({ visualQuality: q });
     },
     setTranscriptView: (v) => set({ transcriptView: v }),
-    setTranscriptFontSize: (s) => set({ transcriptFontSize: s }),
+    setTranscriptFontSize: (s) => {
+      lsSet(LS_KEY_TRANSCRIPT_FONT_SIZE, s);
+      set({ transcriptFontSize: s });
+    },
 
     toggleSessionFlag: (sessionId, flag) =>
       set((state) => {

@@ -1099,7 +1099,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '全局缩放：Ctrl+wheel、Ctrl+=/Ctrl+- 增减，Ctrl+0 重置。右下角会短暂显示当前 zoom factor。',
       '',
-      'Transcript 另有视图菜单，可切 Normal/Thinking/Verbose/Summary 和 small/base/large 文本大小；Ctrl+Shift+O 可打开/切换。',
+      'Ctrl+Shift+O 打开对话视图菜单，可切 Normal/Thinking/Verbose/Summary。“对话字号”提供小、中、大三档，只调整消息正文；实时预览在新对话空页也可查看，选择在刷新或重启后保留。',
+      '调整侧栏及整个界面的大小时，使用同一菜单下方的“缩放”或全局缩放快捷键。',
     ),
     aliases: [
       '缩放',

@@ -55,6 +55,7 @@ import {
   selectorTurnIndexesByMessageId,
 } from '../features/session/turnIndex.js';
 import { patchComposedStreamTail } from './conversationStreamIncremental.js';
+import { TRANSCRIPT_FONT_CLASSES } from './transcriptTypography.js';
 import {
   FOCUS_ARTIFACT_EVENT,
   snapshotFromCreateArtifactTool,
@@ -960,13 +961,7 @@ export function ConversationStreamV2(): JSX.Element {
     return s.sessions.find((x) => x.sessionId === sid)?.msgCount ?? 0;
   });
   const transcriptFontSize = useAppStore((s) => s.transcriptFontSize);
-  // 字号映射 — TranscriptViewMenu 的 sm / base / lg → Tailwind class
-  const fontClass =
-    transcriptFontSize === 'sm'
-      ? 'text-sm'
-      : transcriptFontSize === 'lg'
-        ? 'text-[17px]'
-        : 'text-[15px]';
+  const fontClass = TRANSCRIPT_FONT_CLASSES[transcriptFontSize];
 
   // transcriptView 决定折叠策略（之前这个状态存了但渲染层从没读 → 4 个视图点了没反应）：
   //   normal   = 紧凑：thinking 折进工具组，cluster 默认折叠

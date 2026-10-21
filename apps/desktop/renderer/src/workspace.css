@@ -18,6 +18,8 @@
   box-shadow: none;
 }
 .workspace-navigation {
+  --ui-label-size: 15px;
+  --ui-caption-size: 13px;
   border-right: 1px solid rgb(var(--border-default));
   font-size: var(--ui-label-size);
 }
@@ -51,6 +53,7 @@
   min-height: 38px;
   font-size: var(--ui-label-size);
   font-weight: 500;
+  line-height: 1.5;
 }
 .workspace-navigation .group\/sessionrow {
   min-height: 36px;
@@ -60,9 +63,19 @@
   margin: 2px 0;
   border: 1px solid transparent;
   border-radius: 9px;
+  color: rgb(var(--fg-primary) / 0.9);
+}
+.workspace-navigation .group\/sessionrow:hover {
+  color: rgb(var(--fg-primary));
+}
+.workspace-navigation .group\/projectrow input,
+.workspace-navigation .group\/sessionrow input {
+  font-size: inherit;
+  line-height: inherit;
 }
 .sidebar-nav-action {
   min-height: 36px;
+  line-height: 1.5;
 }
 .sidebar-session-meta {
   min-width: 20px;
