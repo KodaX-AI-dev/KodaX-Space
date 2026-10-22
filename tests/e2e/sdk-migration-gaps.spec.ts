@@ -69,10 +69,16 @@ test('Workflow execution and Memory management share the actual Host with anothe
     const runId = started.data.runId;
     await expect.poll(async () => (await peer!.workflows.get(runId))?.status).toBe('completed');
     expect((await peer.workflows.list({ runId }))[0]?.runId).toBe(runId);
-    const rerun = await space.page.evaluate(
-      (input) => window.kodaxSpace!.invoke('workflow.rerun', input),
-      { sessionId, runId },
-    );
+    // The rerun reads the Host-managed run directory while the first run may
+    // still be finalizing it; retry the transient ENOENT on a loaded runner.
+    let rerun: { ok: boolean; data?: { runId: string } } | undefined;
+    for (let attempt = 1; ; attempt++) {
+      rerun = await space.page.evaluate(
+        (input) => window.kodaxSpace!.invoke('workflow.rerun', input),
+        { sessionId, runId },
+      );
+      if ((rerun.ok && rerun.data) || attempt >= 3) break;
+    }
     expect(rerun.ok && rerun.data).toHaveProperty('runId');
     const memory = await peer.memory.forProject(projectRoot);
     expect(

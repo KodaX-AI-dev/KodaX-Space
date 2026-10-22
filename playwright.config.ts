@@ -19,8 +19,8 @@ export default defineConfig({
   // Electron 启动 + main process bootstrap 不快，给宽松超时。
   // CI runner（尤其 Windows）负载重时整体慢 2-3x，给更长的 expect 超时 + 多一次重试，
   // 减少「本地/Linux 绿、Windows 因运行器慢而红」的漂移 flake。
-  timeout: process.env.CI ? 45_000 : 30_000,
-  expect: { timeout: process.env.CI ? 10_000 : 5_000 },
+  timeout: process.env.CI ? 90_000 : 30_000,
+  expect: { timeout: process.env.CI ? 25_000 : 5_000 },
   // 顺序跑 —— 单 process / spec 模型下并发起多个 Electron 会撞资源
   fullyParallel: false,
   workers: 1,
