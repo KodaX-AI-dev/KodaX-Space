@@ -5,7 +5,7 @@
 
 import { _electron, type ElectronApplication, type Page } from '@playwright/test';
 import path from 'node:path';
-import { promises as fs } from 'node:fs';
+import { existsSync, promises as fs, realpathSync } from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
@@ -18,6 +18,22 @@ const REPO_ROOT = path.resolve(__dirname, '../..');
 const ELECTRON_MAIN = path.join(REPO_ROOT, 'dist-electron', 'main.js');
 const ELECTRON_CLOSE_TIMEOUT_MS = 10_000;
 const DAEMON_POST_CLOSE_RETRY_DELAYS_MS = [0, 100, 300] as const;
+
+// Windows CI images export TEMP as the 8.3 alias (C:\Users\RUNNER~1\...), and
+// the isolated-desktop launcher does not carry the driver's env normalization
+// across its PowerShell boundary. Path-derived identifiers (SDK workflow run
+// directories, the test data roots themselves) mangle on the tilde form, so
+// normalize this process's temp env once before anything computes a path.
+// Only fs.realpathSync.native resolves 8.3 aliases; the JS realpath returns
+// the short form unchanged.
+if (process.platform === 'win32') {
+  for (const key of ['TMP', 'TEMP']) {
+    const value = process.env[key];
+    if (value && value.includes('~') && existsSync(value)) {
+      process.env[key] = realpathSync.native(value);
+    }
+  }
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,18 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { runNodeOnIsolatedDesktop } from './e2e-isolated-desktop.mjs';
-
-// Some CI images set TEMP to the 8.3 short form (C:\Users\RUNNER~1\...).
-// Path-derived identifiers (SDK workflow run directories, session slugs) are
-// built from these paths and mangle on the tilde form; real user
-// environments carry the long form, so normalize before spawning anything.
-for (const key of ['TMP', 'TEMP']) {
-  const value = process.env[key];
-  if (value && value.includes('~') && existsSync(value)) {
-    process.env[key] = realpathSync(value);
-  }
-}
 
 const require = createRequire(import.meta.url);
 const native = spawnSync(process.execPath, ['scripts/ensure-sqlite-native.mjs', 'electron'], {
