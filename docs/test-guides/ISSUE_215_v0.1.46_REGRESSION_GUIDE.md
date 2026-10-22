@@ -29,8 +29,8 @@ Node/Bun/真实 Electron ASAR 解码探针；细节见
 
 Windows x64 Setup/Portable 已生成（各约 158.5/158.3 MiB），精确 Registry 完整性、
 ASAR 依赖/解码/Runtime、应用启动与连续两次完整退出/历史恢复均通过。日志保存在
-工作区 `.tmp-rc5-full-test-final.log`、`.tmp-rc5-typecheck.log`、`.tmp-rc5-build.log`、
-`.tmp-rc5-pack-smoke-final.log`、`.tmp-rc5-boot.log`、`.tmp-rc5-exit.log`。
+工作区 `artifacts/diagnostics/20261020/.tmp-rc5-full-test-final.log`、`artifacts/diagnostics/20261020/.tmp-rc5-typecheck.log`、`artifacts/diagnostics/20261020/.tmp-rc5-build.log`、
+`artifacts/diagnostics/20261020/.tmp-rc5-pack-smoke-final.log`、`artifacts/diagnostics/20261020/.tmp-rc5-boot.log`、`artifacts/diagnostics/20261020/.tmp-rc5-exit.log`。
 未发布新的 Space 版本，未做 macOS/Linux 运行验收或真实客户资料测试。
 
 ```powershell

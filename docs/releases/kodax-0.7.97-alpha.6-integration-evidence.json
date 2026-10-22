@@ -23,7 +23,7 @@
   },
   "checks": {
     "full": {
-      "path": ".tmp-alpha6-full-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-full-final.log",
       "sha256": "5c0f874cf367ea3470dd9ce342201790d4f957233b9ce030f95b524ab3e5395d",
       "suites": [
         {
@@ -54,19 +54,19 @@
       "skipped": 20
     },
     "affected": {
-      "path": ".tmp-alpha6-affected-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-affected-final.log",
       "sha256": "484ee3f7d273979a3ebaf316b2da514e2cb6ea16b01f46500f24e5a8b64590d4",
       "passed": 321,
       "failed": 0
     },
     "sourceElectron": {
-      "path": ".tmp-alpha6-e2e-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-e2e-final.log",
       "sha256": "bdb2bf290c1c1f236b0f18a28776fb6e35dbbd82292ae7f984557a6e18ee2c3f",
       "passed": 18,
       "failed": 0
     },
     "finalPack": {
-      "path": ".tmp-alpha6-pack-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-pack-final.log",
       "sha256": "3d679a8ef83a4df093799af9023f128f8cf594cb6300cd00ab85422c63d78878",
       "passed": 6,
       "failed": 0,
@@ -76,38 +76,38 @@
       "historicalChildrenPreserved": 122
     },
     "packagedEmptyAndRecency": {
-      "path": ".tmp-alpha6-pack-empty.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-pack-empty.log",
       "sha256": "8cac77e426e5406bb98389a6a96bd13cf01261b74e2d837499064f3d6c951fe3",
       "passed": 2,
       "failed": 0
     },
     "typecheck": {
-      "path": ".tmp-alpha6-typecheck-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-typecheck-final.log",
       "sha256": "5f32b88c294cc9f0dfa57f48b5bf788be0b0b1695f0e12bdec201ab95707f918",
       "status": "passed"
     },
     "lint": {
-      "path": ".tmp-alpha6-lint-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-lint-final.log",
       "sha256": "b8288ba36120788165f2acdf23ccb18afc63c020302612d060597e44e5d04009",
       "status": "passed"
     },
     "build": {
-      "path": ".tmp-alpha6-build-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-build-final.log",
       "sha256": "728dbfdc125ba85088f552c2ab5756dfe8faf6e65cdb13e29b7e19270a89afda",
       "status": "passed"
     },
     "finalRendererBuild": {
-      "path": ".tmp-alpha6-renderer-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-renderer-final.log",
       "sha256": "70b8c7606335f10a55380287c3f1f379c414780947cdf111cf70df6e6507682e",
       "status": "passed"
     },
     "finalMainBuild": {
-      "path": ".tmp-alpha6-main-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-main-final.log",
       "sha256": "d7f43ce050a8ef9cf6f1bcf81a451243ac79cc7ffa418259a495ae119376c0c6",
       "status": "passed"
     },
     "outputCoverage": {
-      "path": ".tmp-alpha6-output-coverage.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-output-coverage.log",
       "sha256": "bca645063915e846d6ed314d29c6ebc74c8b22270337217cc4a08298cf208f3b",
       "passed": 17,
       "scope": "four SDK output projection modules, not repository-wide",
@@ -115,7 +115,7 @@
       "branches": 88.61
     },
     "activityCoverage": {
-      "path": ".tmp-alpha6-activity-coverage.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha6-activity-coverage.log",
       "sha256": "c9c4119270d9db1d7fe286a0371b27f505bb04ef38fc28cb1c2f690d4cceda88",
       "passed": 7,
       "scope": "runtimeSessionSettings module, not repository-wide",
@@ -133,44 +133,44 @@
     {
       "name": "draft admission",
       "red": {
-        "path": ".tmp-alpha6-draft-red.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-draft-red.log",
         "sha256": "6e68bacbf65d40abcad01d7762102bcd52bba825b9ed563531383ea1d2fefed0"
       },
       "green": {
-        "path": ".tmp-alpha6-draft-green.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-draft-green.log",
         "sha256": "9f7bd51b393ad45eae6aee640fd4db0106fdabe046ae564d2a200423f0d84a16"
       }
     },
     {
       "name": "SDK message ordering",
       "red": {
-        "path": ".tmp-alpha6-message-time-red.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-message-time-red.log",
         "sha256": "2df6850c425e4c9af87d335596fbc5625b344ff24ddeaae5cf710ab145bea1e8"
       },
       "green": {
-        "path": ".tmp-alpha6-time-final.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-time-final.log",
         "sha256": "9dbea51156f3dddff495e4d3bdbe8765041b82fc2f866b433583d08d67b4a488"
       }
     },
     {
       "name": "resume/profile and first canonical input",
       "red": {
-        "path": ".tmp-alpha6-review-red.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-review-red.log",
         "sha256": "c68934dcc7ce2929d3764ebd3868ea33570338ae5cc82ec3d0c2b12c509e5ef7"
       },
       "green": {
-        "path": ".tmp-alpha6-review-green.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-review-green.log",
         "sha256": "3136d17f0d15f664d4548afdc20dc44e238dae01aa73feb85dc381ba558afafe"
       }
     },
     {
       "name": "obsolete list-first E2E identity assumption",
       "initial": {
-        "path": ".tmp-alpha6-e2e.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-e2e.log",
         "sha256": "bd18550bc4fe2872c7dc7aedf40a428496a061c4992d4925cb487724b8e66a51"
       },
       "final": {
-        "path": ".tmp-alpha6-e2e-final.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-e2e-final.log",
         "sha256": "bdb2bf290c1c1f236b0f18a28776fb6e35dbbd82292ae7f984557a6e18ee2c3f"
       },
       "initialPassed": 17,
@@ -179,11 +179,11 @@
     {
       "name": "manual version assertion",
       "initial": {
-        "path": ".tmp-alpha6-full-tests.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-full-tests.log",
         "sha256": "6c703c271f7662e658f9d23cddbfcdb9a47fbe569074cecd6f490a04e842ac47"
       },
       "final": {
-        "path": ".tmp-alpha6-full-final.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-full-final.log",
         "sha256": "5c0f874cf367ea3470dd9ce342201790d4f957233b9ce030f95b524ab3e5395d"
       },
       "initialFailed": 1
@@ -191,11 +191,11 @@
     {
       "name": "candidate rebuilt after DOM fixture identity changed",
       "initial": {
-        "path": ".tmp-alpha6-pack.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-pack.log",
         "sha256": "b2406f7997781ef1f1bda227477e89fd351c7abdddb4b74a773ca2a0048c58cc"
       },
       "final": {
-        "path": ".tmp-alpha6-pack-final.log",
+        "path": "artifacts/diagnostics/20261020/.tmp-alpha6-pack-final.log",
         "sha256": "3d679a8ef83a4df093799af9023f128f8cf594cb6300cd00ab85422c63d78878"
       }
     }

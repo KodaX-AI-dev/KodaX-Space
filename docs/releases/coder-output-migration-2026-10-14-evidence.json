@@ -14,42 +14,42 @@
       "passed": 3879,
       "skipped": 13,
       "failed": 0,
-      "log": ".tmp-product-desktop-final.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-desktop-final.log",
       "logSha256": "e170d92519d56d6e4ea3728cd0e5b1b93c38367e58bbc2d854b507806291caf0"
     },
     {
       "name": "Affected Main/renderer regressions after snapshot fix",
       "passed": 286,
       "failed": 0,
-      "log": ".tmp-product-candidate-unit.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-candidate-unit.log",
       "logSha256": "e7bdc85409f7f4991b1ab7816ee247c4b9bcfefe782bad94712011809031d138"
     },
     {
       "name": "Affected paging/body regressions",
       "passed": 73,
       "failed": 0,
-      "log": ".tmp-product-final-paging-body.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-final-paging-body.log",
       "logSha256": "031d886711cf4040aa97c902f7deba8a0b3f00abe67be221a6629f92126495a2"
     },
     {
       "name": "Product IPC schema regressions",
       "passed": 2,
       "failed": 0,
-      "log": ".tmp-product-final-schema.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-final-schema.log",
       "logSha256": "575e1a3bdc2f61bf9ad937bba760548b8acf0d1d16cb2a5dce1d6d9e50bbc6a3"
     },
     {
       "name": "Electron E2E with patched SDK (13 real Host + 3 compatibility)",
       "passed": 16,
       "failed": 0,
-      "log": ".tmp-product-local-sdk-acceptance.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-local-sdk-acceptance.log",
       "logSha256": "b10099652fcd62f5c419a5c2a7680a28df8992a58473967746ca2e6327f345cc"
     },
     {
       "name": "Repeated E2E after snapshot ordering fix; not additional unique tests",
       "passed": 4,
       "failed": 0,
-      "log": ".tmp-product-final-race-e2e.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-final-race-e2e.log",
       "logSha256": "6ebf7d0eef2fa79567a27e2308e36aedb373a94fa14e2570b6b5e7ccc8280b34"
     },
     {
@@ -57,25 +57,25 @@
       "passed": 17,
       "linePercent": 95.79,
       "branchPercent": 88.61,
-      "log": ".tmp-product-candidate-coverage.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-candidate-coverage.log",
       "logSha256": "65546dd6fb75d1d5ee796e4a323c9cc0eae26f05cd7cbd97990ea5c61cf4ad02"
     },
     {
       "name": "Space typecheck",
       "status": "passed",
-      "log": ".tmp-product-candidate-typecheck.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-candidate-typecheck.log",
       "logSha256": "5f32b88c294cc9f0dfa57f48b5bf788be0b0b1695f0e12bdec201ab95707f918"
     },
     {
       "name": "Space lint",
       "status": "passed",
-      "log": ".tmp-product-candidate-lint.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-candidate-lint.log",
       "logSha256": "b8288ba36120788165f2acdf23ccb18afc63c020302612d060597e44e5d04009"
     },
     {
       "name": "Space build:smoke",
       "status": "passed",
-      "log": ".tmp-product-candidate-build.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-product-candidate-build.log",
       "logSha256": "ad593b7e792ace46c2f0e50c1341314a955dbc68c93923e49999a665482187a3"
     }
   ],

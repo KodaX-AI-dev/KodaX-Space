@@ -808,7 +808,7 @@
       "priorCounterexamples": 3,
       "script": "docs/research/kodax-0.7.97-alpha.2-lifecycle-probe.mjs",
       "evidence": "docs/research/kodax-0.7.97-alpha.2-lifecycle-evidence.json",
-      "log": ".tmp-kodax-alpha2-lifecycle.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-lifecycle.log"
     },
     "statistics": {
       "status": "passed",
@@ -816,13 +816,13 @@
       "independentRuns": 2,
       "script": "docs/research/kodax-0.7.97-alpha.2-statistics-probe.mjs",
       "evidence": "docs/research/kodax-0.7.97-alpha.2-statistics-evidence.json",
-      "log": ".tmp-kodax-alpha2-statistics.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-statistics.log"
     },
     "mainBridgeAndHistory": {
       "status": "passed",
       "script": "docs/research/kodax-0.7.97-alpha.2-main-bridge-probe.mjs",
       "evidence": "docs/research/kodax-0.7.97-alpha.2-main-bridge-evidence.json",
-      "log": ".tmp-kodax-alpha2-main-bridge.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-main-bridge.log",
       "wireCalls": 4,
       "credentialCalls": 4,
       "hostToolCalls": 1,
@@ -837,13 +837,13 @@
       "status": "passed",
       "tests": 2,
       "script": "scratch/kodax-alpha2-daemon.test.mjs",
-      "log": ".tmp-kodax-alpha2-daemon.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-daemon.log"
     },
     "strictPublicConsumerTypes": {
       "status": "passed",
       "command": "npx tsc -p scratch/kodax-alpha2-types/tsconfig.json",
       "options": "strict, skipLibCheck=false, types=[]",
-      "log": ".tmp-kodax-alpha2-consumer-types.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-consumer-types.log"
     },
     "spaceTypecheck": {
       "status": "failed",
@@ -864,7 +864,7 @@
         "apps/desktop/electron/test/runtime-host-adapter.test.ts": 37
       },
       "baselineComparison": "96 diagnostics in the same 11 files as alpha.1; old consumer APIs remain",
-      "log": ".tmp-kodax-alpha2-space-typecheck.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-space-typecheck.log"
     },
     "releaseAndCompatibilityBoundaryTests": {
       "status": "failed",
@@ -872,7 +872,7 @@
       "passed": 21,
       "failed": 1,
       "failure": "scripts/test/kodax-fresh-session.test.mjs:40 assumes old snapshot.cursor.seq; cursor is absent in unified snapshot",
-      "log": ".tmp-kodax-alpha2-boundaries.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-boundaries.log"
     },
     "limits": [
       "No full SDK 977-test or full Space test suite rerun.",

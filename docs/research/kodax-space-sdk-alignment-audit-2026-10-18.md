@@ -118,7 +118,7 @@ RuntimeTerminalFact 有 revision/kind/code/effectOutcome；projectRuntimeRun 只
 
 ## 6. 本轮验证与后续验收顺序
 
-本轮执行了 **15 个文件、422 项现有关联回归，422 通过、0 失败、0 跳过**。第一组 308 项包含 RuntimeHostAdapter、view/item 读取、退出、授权 store、正文投影和 IPC；第二组 114 项包含真实已发布 SDK 的稳定输入/授权/统计/PNG/生命周期回归、Stop、队列、历史分页和统计 store。它们证明主链现有断言成立，不覆盖上面所有遗漏。[落盘结果摘要](kodax-space-contract-validation-2026-10-18.json)、[第一组日志](../../.tmp-sdk-alignment-audit-tests.log)、[第二组日志](../../.tmp-sdk-alignment-contract-tests.log)
+本轮执行了 **15 个文件、422 项现有关联回归，422 通过、0 失败、0 跳过**。第一组 308 项包含 RuntimeHostAdapter、view/item 读取、退出、授权 store、正文投影和 IPC；第二组 114 项包含真实已发布 SDK 的稳定输入/授权/统计/PNG/生命周期回归、Stop、队列、历史分页和统计 store。它们证明主链现有断言成立，不覆盖上面所有遗漏。[落盘结果摘要](kodax-space-contract-validation-2026-10-18.json)、[第一组日志](../../artifacts/diagnostics/20261020/.tmp-sdk-alignment-audit-tests.log)、[第二组日志](../../artifacts/diagnostics/20261020/.tmp-sdk-alignment-contract-tests.log)
 
 另执行了两个独立 probe：一组直接调用生产投影函数证明工具图片、审批计划、effectOutcome 信息丢失；一组启动真实 Registry Host 对照 Space 自带 Skill 的可见性。后者未调用 Provider，最终 SDK cleanup 和精确 Host 退出均为 succeeded。[投影 probe 源码](kodax-space-contract-alignment-probe-2026-10-18.mjs)、[投影证据](kodax-space-contract-alignment-evidence-2026-10-18.json)、[Skill Host probe 源码](kodax-space-builtin-skill-host-probe-2026-10-18.mjs)、[Skill Host 证据](kodax-space-builtin-skill-host-evidence-2026-10-18.json)
 

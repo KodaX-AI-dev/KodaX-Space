@@ -54,7 +54,7 @@
       "name": "Runtime adapter and persisted Session listing regression",
       "passed": 258,
       "failed": 0,
-      "log": ".tmp-session-draft-space-final-tests.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-session-draft-space-final-tests.log",
       "logSha256": "71f5244c8ac33102476804c09414038a0cfeef89e2934affe0ab4ea7ea38167a"
     },
     {
@@ -64,7 +64,7 @@
       "legacyHistoryCompatibilityTests": 1,
       "passed": 14,
       "failed": 0,
-      "log": ".tmp-session-draft-e2e-all-final.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-session-draft-e2e-all-final.log",
       "logSha256": "49f4e5188e33e3936636f813d096c237d1c8cbee68e36882c58014cd924a0a28"
     },
     {
@@ -99,21 +99,21 @@
       "repo": "Space",
       "name": "Main and renderer typecheck",
       "exitCode": 0,
-      "log": ".tmp-session-draft-space-final-types.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-session-draft-space-final-types.log",
       "logSha256": "5f32b88c294cc9f0dfa57f48b5bf788be0b0b1695f0e12bdec201ab95707f918"
     },
     {
       "repo": "Space",
       "name": "Lint",
       "exitCode": 0,
-      "log": ".tmp-session-draft-final-lint.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-session-draft-final-lint.log",
       "logSha256": "b8288ba36120788165f2acdf23ccb18afc63c020302612d060597e44e5d04009"
     },
     {
       "repo": "Space",
       "name": "Production packages/renderer/main build",
       "exitCode": 0,
-      "log": ".tmp-session-draft-space-final-build.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-session-draft-space-final-build.log",
       "logSha256": "54efd7d98cbb780cee2037e4ef3eca0232dd0607445259c19cf14eb572dab2c2"
     }
   ],

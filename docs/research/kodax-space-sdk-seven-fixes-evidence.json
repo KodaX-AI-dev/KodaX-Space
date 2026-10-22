@@ -76,7 +76,7 @@
     "sdkBuild": {
       "status": "passed",
       "commands": ["npm run build:packages", "npm run build:bundle", "npm run build:dts"],
-      "log": ".tmp-kodax-seven-fixes-build.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-seven-fixes-build.log"
     },
     "types": {
       "status": "passed",
@@ -85,7 +85,7 @@
         "npx tsc -p tests/fixtures/product-client-types/tsconfig.json"
       ],
       "consumer": "strict, skipLibCheck=false, types=[]",
-      "log": ".tmp-kodax-seven-fixes-types.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-seven-fixes-types.log"
     },
     "keyRegressionsInitial": {
       "status": "failed",
@@ -95,27 +95,27 @@
       "failed": 1,
       "command": "npx vitest run src/sdk-client.host-authorization.test.ts src/sdk-client.exit.test.ts src/sdk-client.statistics.test.ts src/sdk-client.derive.test.ts src/execution-facts.test.ts src/runtime-daemon/client-lifecycle.test.ts packages/coding/src/agent-runtime/__contract-tests__/cap-024-tool-dispatch.contract.test.ts packages/llm/src/provider-request-observation.test.ts packages/coding/src/agent-runtime/actor-runtime.test.ts packages/coding/src/child-executor.test.ts",
       "failure": "exit interrupt fence test finally rm returned Windows ENOTEMPTY on the isolated temporary .kodax directory",
-      "log": ".tmp-kodax-seven-fixes-tests.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-seven-fixes-tests.log"
     },
     "keyRegressionsRetry": {
       "status": "passed",
       "files": 1,
       "tests": 3,
       "command": "npx vitest run src/sdk-client.exit.test.ts",
-      "log": ".tmp-kodax-seven-fixes-exit-rerun.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-seven-fixes-exit-rerun.log"
     },
     "builtDaemon": {
       "status": "passed",
       "tests": 2,
       "command": "node --test --test-timeout=120000 tests/bundled-product-exit.test.mjs",
-      "log": ".tmp-kodax-seven-fixes-daemon.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-seven-fixes-daemon.log"
     },
     "lifecycleProbe": {
       "status": "passed",
       "counterexamplesClosed": 3,
       "script": "docs/research/kodax-space-sdk-seven-fixes-lifecycle-probes.mjs",
       "evidence": "docs/research/kodax-space-sdk-seven-fixes-lifecycle-evidence.json",
-      "log": ".tmp-kodax-seven-fixes-lifecycle-probe.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-seven-fixes-lifecycle-probe.log"
     },
     "statisticsProbe": {
       "status": "passed",
@@ -123,7 +123,7 @@
       "independentRuns": 2,
       "script": "docs/research/kodax-space-sdk-seven-fixes-statistics-probes.mjs",
       "evidence": "docs/research/kodax-space-sdk-seven-fixes-statistics-probe-evidence.json",
-      "log": ".tmp-kodax-seven-fixes-statistics-probe.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-kodax-seven-fixes-statistics-probe.log"
     },
     "independentReviews": {
       "standards": {

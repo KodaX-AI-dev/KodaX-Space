@@ -191,7 +191,7 @@
         "providerRequests": 0,
         "cause": "unresolved",
         "log": {
-          "file": ".tmp-alpha7-job-117580933530.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117580933530.log",
           "sha256": "499cdb0fdc196e38801c7d15d8d4e744f406512a844e608978127c36a8056e30"
         },
         "inFlightEvidence": "one health-poll warning; full write duration not recorded in that run"
@@ -205,7 +205,7 @@
       "retries": 0,
       "explainsOriginalFailure": false,
       "log": {
-        "file": ".tmp-alpha7-job-117580469225.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117580469225.log",
         "sha256": "2e3b109a1b91825d8faa72cf5d8a24c0840f1d8dadf4f5f9c83ec4f2b20a53be"
       }
     },
@@ -230,11 +230,11 @@
       ],
       "logs": [
         {
-          "file": ".tmp-alpha7-job-117574682066.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117574682066.log",
           "sha256": "d6e9ece7a7b5e76c39693ef8b9329c2d21eea97c7e0e08e19e89621c79052052"
         },
         {
-          "file": ".tmp-alpha7-job-117574682275.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117574682275.log",
           "sha256": "3549f6e1df9de5be66656366d4ac25ecc53eb7c85c80f74b5f0cc16b3f7d012b"
         }
       ]
@@ -247,7 +247,7 @@
         "artifactId": 12123679034,
         "message": "Playwright app.process() accessed after dispatcher released",
         "log": {
-          "file": ".tmp-alpha7-job-117580474152.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117580474152.log",
           "sha256": "3c3f715c1a8e85ed5b274d880656d9924fc94a421382c1d26e5afcefe3ff9263"
         }
       },
@@ -256,7 +256,7 @@
       "passed": 2,
       "retries": 0,
       "log": {
-        "file": ".tmp-alpha7-job-117581911472.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117581911472.log",
         "sha256": "7be6caef4723d7bc7dab5e60e45f918ca1f4db62b48e452bec9ad84c3bb7d39b"
       }
     },
@@ -274,7 +274,7 @@
           "HOLD_CANCEL"
         ],
         "log": {
-          "file": ".tmp-alpha7-job-117582620244.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117582620244.log",
           "sha256": "d0743a6837a2e49446475980b4a995fa0a2f43dbe350b5da495ab5c493dd6aa4"
         }
       },
@@ -284,7 +284,7 @@
         "passed": 10,
         "failed": 1,
         "log": {
-          "file": ".tmp-alpha7-job-117582620146.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117582620146.log",
           "sha256": "552d0f25a4f69879d35826c505136b994842cecfd866b528ae7b562798d13541"
         }
       },
@@ -302,7 +302,7 @@
       "failure": "AFTER_STOP: no new immediate admission; optimistic input disappears",
       "retries": 0,
       "log": {
-        "file": ".tmp-alpha7-job-117583014842.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117583014842.log",
         "sha256": "7548f95a7277a70f7549625c664b509c15c5f73a52c5984b23ba6dfb601ea765"
       }
     },
@@ -329,7 +329,7 @@
           "retries": 0,
           "durationMinutes": 3.7,
           "log": {
-            "file": ".tmp-alpha7-job-117586096452.log",
+            "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117586096452.log",
             "sha256": "c8db4032af869f437bceb8c2dde943837f98fb81a5a10c6d8d6714509ca8627a"
           }
         },
@@ -341,7 +341,7 @@
           "retries": 0,
           "durationMinutes": 5.4,
           "log": {
-            "file": ".tmp-alpha7-job-117586096435.log",
+            "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117586096435.log",
             "sha256": "aac58f80283f36e16a04d33e20f977d13af1464a9232608c1e0e0cc3f71b783e"
           }
         },
@@ -353,7 +353,7 @@
           "retries": 0,
           "durationMinutes": 5.6,
           "log": {
-            "file": ".tmp-alpha7-job-117586096446.log",
+            "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117586096446.log",
             "sha256": "69221a05f289e55f68ec31a6a940080dcaafac3d2fcc787b295ec80a9595ec0c"
           }
         },
@@ -369,7 +369,7 @@
           "originalStopTestsExecuted": false,
           "artifactId": 12124834146,
           "log": {
-            "file": ".tmp-alpha7-job-117586096340.log",
+            "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117586096340.log",
             "sha256": "8479141ec1bbfdaa8ade72df2a9cfde96802058b5c074121655abe50bc98943b"
           }
         }
@@ -399,7 +399,7 @@
       },
       "releaseJob": "skipped",
       "log": {
-        "file": ".tmp-alpha7-job-117588499774.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117588499774.log",
         "sha256": "49ac62cde6af512ff339047fdabf5e5d68921807b811d6fb615c98a76dd06810"
       },
       "artifactId": 12126120714
@@ -564,11 +564,11 @@
       ],
       "logs": [
         {
-          "file": ".tmp-alpha7-final-boot-first.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-final-boot-first.log",
           "sha256": "2d44b137272d05b949ceda913a0f83dcdde7e73ec8d72aaa3c250da44bd35cb2"
         },
         {
-          "file": ".tmp-alpha7-final-boot-second.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-final-boot-second.log",
           "sha256": "54b0ca4e71a9932fc82abd6876396e89137a0d0ff04f2b9ffbdb01b9c47a6872"
         }
       ],
@@ -582,7 +582,7 @@
       "retries": 0,
       "duration": "4.4m",
       "log": {
-        "file": ".tmp-alpha7-input-f29-packaged-e2e.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-input-f29-packaged-e2e.log",
         "sha256": "c624d789718be5d3021e19cea0995127519e30b43e689b0309da17dd55f7c5f2"
       }
     },
@@ -594,7 +594,7 @@
       "retries": 0,
       "duration": "4.3m",
       "log": {
-        "file": ".tmp-alpha7-final886-packaged-e2e.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-final886-packaged-e2e.log",
         "sha256": "8ece24cc596e46f188021e7a3bcbf688aa441ae7b9e14abe29edd3baf7e7b1db"
       },
       "diagnosesEarlierFailure": false
@@ -609,15 +609,15 @@
       "bothOriginalStopCasesPassed": true,
       "firstFailure": "SDK_TOOLS: Provider network error",
       "log": {
-        "file": ".tmp-alpha7-stop-packaged-local.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-packaged-local.log",
         "sha256": "0a992c5acdfa484a07546370e2a5877c50e575f7c208ac21c9fcfa0bc802b93c"
       },
       "errorContext": {
-        "file": ".tmp-alpha7-stop-local-failure/error-context.md",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-local-failure/error-context.md",
         "sha256": "6f17c6fe2c24f2c725b16e7264aa942a594fda42d56806e0ab11454ae55c9f7d"
       },
       "trace": {
-        "file": ".tmp-alpha7-stop-local-failure/trace.zip",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-local-failure/trace.zip",
         "sha256": "b99ddba756f997dc6362d3c23a18a2df47dd08f169e729e9f17e689acad4dab2"
       },
       "separateDiagnostic": {
@@ -625,7 +625,7 @@
         "retries": 0,
         "durationSeconds": 8.5,
         "log": {
-          "file": ".tmp-alpha7-local-tools-diagnostic.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-local-tools-diagnostic.log",
           "sha256": "e19f60ce91f8e462708a327caeb3cc3a552b20c5ff227c6724f2aab93b91b1aa"
         },
         "diagnosesFirstFailure": false
@@ -641,7 +641,7 @@
         "productionCommit": "290c5fcb",
         "sdkModified": false,
         "log": {
-          "file": ".tmp-alpha7-tools-first-failure-diagnostic.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-tools-first-failure-diagnostic.log",
           "sha256": "00c68a600b49c9697bc4a4b05850d4896de55d1bfd94e956acb9d855c79a0d91"
         },
         "diagnosesOriginalFailure": false
@@ -655,7 +655,7 @@
         "universalLatencyGuarantee": false,
         "diagnosesEarlierIntermittentInput": false,
         "log": {
-          "file": ".tmp-alpha7-stop-boot.log",
+          "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-boot.log",
           "sha256": "8df3e3b468d79b3f634901695e784e204f39f9d1e833ac88017b641592d51ac9"
         }
       }
@@ -710,92 +710,92 @@
   },
   "logs": [
     {
-      "path": ".tmp-alpha7-packaged-final-e2e.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-packaged-final-e2e.log",
       "bytes": 3597,
       "sha256": "a73db35a76d298726581f252295a54f1df922e9479b03694540d3c37a11c10aa"
     },
     {
-      "path": ".tmp-alpha7-boot-timing-first.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-boot-timing-first.log",
       "bytes": 257,
       "sha256": "1a3814ea3e0897aa37d1db5c2224be1ec11208ed4b17bd6a49ed4a1f09442104"
     },
     {
-      "path": ".tmp-alpha7-boot-timing-second.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-boot-timing-second.log",
       "bytes": 257,
       "sha256": "74245a9ac444b1f9f9c24821c71f89344e31f0145120c3a7bac21b0e17419b6a"
     },
     {
-      "path": ".tmp-alpha7-same-shell.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-same-shell.log",
       "bytes": 2514,
       "sha256": "5f1007a8b0f993a4c235cec778088843a722c5f9260d83c212706b06d972b6d9"
     },
     {
-      "path": ".tmp-alpha7-alias-red.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-alias-red.log",
       "bytes": 1727,
       "sha256": "7b2f089323347d1d0c2c3320e61181b4054664a35bbb97d63ec8cc82fee08502"
     },
     {
-      "path": ".tmp-alpha7-alias-green.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-alias-green.log",
       "bytes": 1094,
       "sha256": "5be7e487ed8dddbaad13e4b5358552afcb3ab5b49564c700e743a43163fa35ee"
     },
     {
-      "path": ".tmp-alpha7-qualification-registry.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-qualification-registry.log",
       "bytes": 265,
       "sha256": "20cfd0e40747727b68525d1e955e60f6a4fc4eeb5c583bb9d69264b8faab621d"
     },
     {
-      "path": ".tmp-alpha7-cleanup-coverage.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-cleanup-coverage.log",
       "bytes": 1900,
       "sha256": "c5e777db8efd54fd02dafdca7bba9a82910fd80ce2660a363624fdb80663d75e"
     },
     {
-      "path": ".tmp-alpha7-packaged-fixture-final.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-packaged-fixture-final.log",
       "bytes": 818,
       "sha256": "27503ceb5442e4137491bfe3830a63b460759355c8b2046cb878120fd8b1614c"
     },
     {
-      "path": ".tmp-alpha7-job-117565417153.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117565417153.log",
       "bytes": 2045151,
       "sha256": "dd4668024ce6b9b1a0564de71c5728da0a93038cbb4046f15b803ae235707bd8"
     },
     {
-      "path": ".tmp-alpha7-job-117568752787.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117568752787.log",
       "bytes": 2038701,
       "sha256": "d3afd73154e37b6d02894ac34037235e010618d652fd5c22804917ffb265d7d9"
     },
     {
-      "path": ".tmp-alpha7-job-117565417222.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117565417222.log",
       "bytes": 2092410,
       "sha256": "6dde287012f9c9fd954d8348d28fc6a2d6a21a5c640a9b0d1c19e670b1839f82"
     },
     {
-      "path": ".tmp-alpha7-job-117573642523.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117573642523.log",
       "bytes": 19636,
       "sha256": "602fce576a19835a375906ae2369149afe230d8c562aec498ac70a7c161487ad"
     },
     {
-      "path": ".tmp-alpha7-macos-cleanup-red.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-macos-cleanup-red.log",
       "bytes": 2446,
       "sha256": "830219dcaef8a4fb85f6614f70fa9a0e697c0e7ea7e7c7b653de8a60b813fc43"
     },
     {
-      "path": ".tmp-alpha7-macos-cleanup-green.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-macos-cleanup-green.log",
       "bytes": 2315,
       "sha256": "6d54a0035f5f9a1540c7cbb07d9b3a14fdad8a22645728f9628d18b47cf593b0"
     },
     {
-      "path": ".tmp-alpha7-job-117574190933.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117574190933.log",
       "bytes": 19875,
       "sha256": "da35d93ff2f95dfd5eb5a02539a41ed288eec2e1a431a28b5d6fb5d0d91bcea7"
     },
     {
-      "path": ".tmp-alpha7-job-117572967833.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-job-117572967833.log",
       "bytes": 123783,
       "sha256": "5677602368a975686ddb69dacc93c4f593190363c493ed0b76e7ce4ca4772ca5"
     },
     {
-      "path": ".tmp-alpha7-credential-e2e-types.log",
+      "path": "artifacts/diagnostics/20261020/.tmp-alpha7-credential-e2e-types.log",
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
@@ -827,7 +827,7 @@
       "branchCoverage": 76.42,
       "functionCoverage": 78.54,
       "log": {
-        "file": ".tmp-alpha7-older-run-coverage.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-older-run-coverage.log",
         "sha256": "1f27858b4b7b90aebb1da5f882320aeb3c4043af77e70ef56e178db4f5e0566f"
       }
     },
@@ -836,17 +836,17 @@
       "inputMetadataRpc": 0,
       "observerCloses": 20,
       "log": {
-        "file": ".tmp-alpha7-input-cold-green.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-input-cold-green.log",
         "sha256": "514f94d015eb84d8ccca87863f81d27a8a3bf803a74f7c30decb86812bcea5f5"
       }
     },
     "redEvidence": [
       {
-        "file": ".tmp-alpha7-input-terminal-red.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-input-terminal-red.log",
         "sha256": "138b4f484085004dfde18c27ce80366b8d94c6ff1075764f8f6f3871ac49a7dc"
       },
       {
-        "file": ".tmp-alpha7-input-image-red.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-input-image-red.log",
         "sha256": "2f360514c2367304eb2d03bc042ec83107bdb03422ebf02b51939e8981629df3"
       }
     ],
@@ -875,11 +875,11 @@
     "contract": "only confirmed terminal Stop clears matching old local admission hints; preserve unknown state and successor identities; never replay input",
     "redEvidence": [
       {
-        "file": ".tmp-alpha7-stop-pending-red.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-pending-red.log",
         "sha256": "721ae3e0bb6fab35a1dfeb5336bd16db478a12f456b8ee4ba886c6ccf7d39b33"
       },
       {
-        "file": ".tmp-alpha7-stop-cache-red.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-cache-red.log",
         "sha256": "f3eb449c31356c4458bb07a83297398c3b06bfda6841a2748ac36b52f4b847b6"
       }
     ],
@@ -887,7 +887,7 @@
       "passed": 314,
       "failed": 0,
       "log": {
-        "file": ".tmp-alpha7-stop-all-green.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-all-green.log",
         "sha256": "2380955c77a2047f9a8f327f73eb5bc1d8c0bfe787cc7cead26f0d76a8bc4700"
       }
     },
@@ -900,16 +900,16 @@
       "adapterFunctions": 78.59,
       "scope": "two changed production files using adapter/queue/Stop test subset; not whole-project coverage",
       "log": {
-        "file": ".tmp-alpha7-stop-coverage.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-coverage.log",
         "sha256": "47f25f31b8a4936c1f80ac91d86e767355b1108db804ad1c8c04713437343fab"
       }
     },
     "typecheck": {
-      "file": ".tmp-alpha7-stop-types.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-types.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "eslint": {
-      "file": ".tmp-alpha7-stop-lint.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-stop-lint.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "reviews": {
@@ -930,7 +930,7 @@
     "otherErrorsAndNullFailImmediately": true,
     "boundaryTests": 5,
     "log": {
-      "file": ".tmp-alpha7-read-helper-green.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-read-helper-green.log",
       "sha256": "0689bc9e8ce7f2270a8cf1db6cb4da69870f6a4696bd5987c3df15c1d53320d1"
     }
   },
@@ -945,19 +945,19 @@
     "runtimeUnavailableOrProtocolErrorNeverRetried": true,
     "boundaryTests": 11,
     "red": {
-      "file": ".tmp-alpha7-history-reader-red.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-history-reader-red.log",
       "sha256": "0c7b33148dfc4d5fd90d645902ec0615ad5131aab5a92d091b9b6b3d8ea5a11c"
     },
     "green": {
-      "file": ".tmp-alpha7-history-reader-green.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-history-reader-green.log",
       "sha256": "067b3227cc8efb1d420197d00458e910a2be8b1ed34f41910ac058c1127add8c"
     },
     "strictTypes": {
-      "file": ".tmp-alpha7-history-reader-types.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-history-reader-types.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "eslint": {
-      "file": ".tmp-alpha7-history-reader-lint.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-history-reader-lint.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "localPackagedHistory": {
@@ -965,7 +965,7 @@
       "passed": 2,
       "retries": 0,
       "log": {
-        "file": ".tmp-alpha7-history-reader-packaged.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-alpha7-history-reader-packaged.log",
         "sha256": "04d4d4b7558fbede6b03ee797de4b83e963d83c73a4baff3c02c5a49c945355c"
       }
     },
@@ -981,20 +981,20 @@
     "issue": "attach(body) under list reporter did not persist successful-test evidence in upload directory",
     "behavior": "three existing evidence types write unique UUID files inside test outputPath and attach paths",
     "red": {
-      "file": ".tmp-alpha7-evidence-file-red.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-evidence-file-red.log",
       "sha256": "723a8e3088604b03ab78d7a3f4fbc01ff987201a5acd66fccd3edca304d7b6f7"
     },
     "green": {
-      "file": ".tmp-alpha7-evidence-file-green.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-evidence-file-green.log",
       "sha256": "64918fc55b4f4274c93f1b6796e2ae192d568df14a177886ade1e6fb0e90b4a5"
     },
     "tests": 11,
     "strictTypes": {
-      "file": ".tmp-alpha7-evidence-file-types.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-evidence-file-types.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "eslint": {
-      "file": ".tmp-alpha7-evidence-file-lint.log",
+      "file": "artifacts/diagnostics/20261020/.tmp-alpha7-evidence-file-lint.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "reviews": {

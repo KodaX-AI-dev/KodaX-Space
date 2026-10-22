@@ -19,9 +19,9 @@
   },
   "checks": {
     "tdd": {
-      "runtimeImageRed": ".tmp-sdk-alpha5/image-attachment-red.log",
-      "statisticsRed": ".tmp-sdk-alpha5/statistics-red.log",
-      "green": ".tmp-sdk-alpha5/contract-green.log",
+      "runtimeImageRed": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/image-attachment-red.log",
+      "statisticsRed": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/statistics-red.log",
+      "green": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/contract-green.log",
       "passed": 5
     },
     "unit": {
@@ -59,36 +59,36 @@
     },
     "typecheck": {
       "passed": true,
-      "log": ".tmp-sdk-alpha5/typecheck.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/typecheck.log"
     },
     "lint": {
       "passed": true,
-      "log": ".tmp-sdk-alpha5/lint.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/lint.log"
     },
     "e2eStrictTypecheck": {
       "passed": true,
-      "log": ".tmp-sdk-alpha5/typecheck-e2e.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/typecheck-e2e.log"
     },
     "buildSmoke": {
       "passed": true,
-      "log": ".tmp-sdk-alpha5/build-smoke.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/build-smoke.log"
     },
     "package": {
       "passed": true,
-      "log": ".tmp-sdk-alpha5/build-pack.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/build-pack.log"
     },
     "packageSmoke": {
       "passed": true,
-      "log": ".tmp-sdk-alpha5/build-pack.log"
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/build-pack.log"
     },
     "bootSmoke": {
       "passed": true,
-      "log": ".tmp-sdk-alpha5/build-pack.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/build-pack.log",
       "result": "[boot-smoke] PASS | renderer ready in 6039ms | KodaX 0.7.97-alpha.5 Runtime ready in 28746ms after deterministic hold; 122 historical child records preserved"
     },
     "playwright": {
       "source": {
-        "file": ".tmp-sdk-alpha5/e2e-source.json",
+        "file": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/e2e-source.json",
         "startTime": "2026-10-14T04:03:22.940Z",
         "duration": 83103.297,
         "expected": 6,
@@ -97,7 +97,7 @@
         "flaky": 0
       },
       "live": {
-        "file": ".tmp-sdk-alpha5/visual-live-space-glm.json",
+        "file": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/visual-live-space-glm.json",
         "startTime": "2026-10-14T04:05:06.679Z",
         "duration": 307621.733,
         "expected": 3,
@@ -106,7 +106,7 @@
         "flaky": 0
       },
       "packaged": {
-        "file": ".tmp-sdk-alpha5/build-pack.log",
+        "file": "artifacts/diagnostics/20261020/.tmp-sdk-alpha5/build-pack.log",
         "source": "pack script built-in complete-exit Playwright list reporter",
         "expected": 6,
         "skipped": 0,

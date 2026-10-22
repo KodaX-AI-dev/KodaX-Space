@@ -4,7 +4,7 @@
   "total": 422,
   "runs": [
     {
-      "log": ".tmp-sdk-alignment-audit-tests.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alignment-audit-tests.log",
       "logModifiedAt": "2026-10-18T09:30:10.665Z",
       "tests": 308,
       "passed": 308,
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "log": ".tmp-sdk-alignment-contract-tests.log",
+      "log": "artifacts/diagnostics/20261020/.tmp-sdk-alignment-contract-tests.log",
       "logModifiedAt": "2026-10-18T09:32:10.620Z",
       "tests": 114,
       "passed": 114,

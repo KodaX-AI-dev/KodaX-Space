@@ -35,7 +35,7 @@ Spec 共 3 项，最严重为 F1；Standards 共 0 项，最严重项无。需�
 
 **触发与影响**：两个不同身份的客户端 A/B 连接同一个 Host，B 已创建 Session 且保持连接、当前没有执行任务。A 提交 `requestExit({shutdownHost:true})` 后立即 disconnect。新的异步 exit driver 不具有连接调用者豁免语义，直接调用既有 `management.stop()`；既有 management 只在逻辑连接数大于 1 时阻止退出，隐含假设“唯一连接就是退出调用者”。A 断开后剩下的 1 个连接实际是 B，Host 被关闭，B 后续业务调用报 transport closed。A 的回执却返回 host.succeeded，掩盖了误停其他客户端。**这是新增 lifecycle 对旧 stop 语义的错误使用，不是在范围外挑既有 management 实现。** 来源：新增 `K:src/runtime-daemon/client-lifecycle.ts:104-113,144-148`；既有 `K:src/runtime-daemon/management.ts:311-323`。
 
-**实测证据**：主审计用真实 built SDK/detached Host 首轮复现。A 退出并立即断连，800ms 后其离线 receipt 显示 cleanup=succeeded/host=succeeded；B 再创建 Session 失败，错误为 `Runtime daemon transport closed.`。来源：`S:scratch/kodax-exit-peer-probe.mjs:18-34`；`S:.tmp-kodax-seams-exit-peer-probe.log:6-11`。
+**实测证据**：主审计用真实 built SDK/detached Host 首轮复现。A 退出并立即断连，800ms 后其离线 receipt 显示 cleanup=succeeded/host=succeeded；B 再创建 Session 失败，错误为 `Runtime daemon transport closed.`。来源：`S:scratch/kodax-exit-peer-probe.mjs:18-34`；`S:artifacts/diagnostics/20261020/.tmp-kodax-seams-exit-peer-probe.log:6-11`。
 
 **最小建议**：给完整客户端退出增加按 principal/连接身份的保护检查，只能豁免退出请求所属客户端仍存在的连接；当调用者已经 disconnect，任何剩余其他客户端都应返回 protected。该检查必须与 stop admission/draining 共享原子边界，避免检查后新客户端 attach。保留普通 `host.shutdown` 的既有语义，补“两客户端 + A requestExit 后立即 disconnect”的真实 Host 回归。
 
@@ -45,7 +45,7 @@ Spec 共 3 项，最严重为 F1；Standards 共 0 项，最严重项无。需�
 
 **触发与影响**：A 已 requestExit(shutdownHost:false)，cleanup.state=succeeded，随后断连。同一 instanceId/instanceSecret 通过公开 `/runtime` 重连，对 B 的仍活动 Run 调用 `runs.submitInput({delivery:'after_turn'})`。新增 ownedAdmission 名单没有 `run.input.submit`，该 dispatch case 也不调用 lifecycle.assertAdmission；它仍附 A 的 origin，最终创建新 continuation Run。A 的“退出已完成”回执不变，但新 Run 正常完成，客户端 exit admission 已被绕过。不能用“产品入口已拒绝”替代 Host principal 级退出边界。来源：新增名单 `K:src/runtime-daemon/server.ts:729-733`；绕过入口 `K:src/runtime-daemon/server.ts:1930-2003`；Runtime 承接 `K:src/sdk-runtime.ts:12421-12478`；仅有 Product execution 时的最终 admission 检查 `K:src/sdk-runtime.ts:11630`。
 
-**实测证据**：本代理从 Space 目录导入真实 dist；B 的 Provider 请求只进入本地 HTTP fixture。A 的退出 cleanup=succeeded 后，同一身份 Runtime reconnect 的 continuation 返回 accepted=true，释放 fixture 后新 Run phase=completed。来源：`S:scratch/kodax-exited-client-continuation-probe.mjs:48-65`；`S:.tmp-kodax-seams-continuation-probe.log:4-14`。没有真实模型请求或用户数据。
+**实测证据**：本代理从 Space 目录导入真实 dist；B 的 Provider 请求只进入本地 HTTP fixture。A 的退出 cleanup=succeeded 后，同一身份 Runtime reconnect 的 continuation 返回 accepted=true，释放 fixture 后新 Run phase=completed。来源：`S:scratch/kodax-exited-client-continuation-probe.mjs:48-65`；`S:artifacts/diagnostics/20261020/.tmp-kodax-seams-continuation-probe.log:4-14`。没有真实模型请求或用户数据。
 
 **最小建议**：将 `run.input.submit` 纳入同一客户端 admission fence，并在可能经过异步准备的 continuation 真正登记前重新校验 principal；interrupt 也不得允许已经退出的身份注入新意图。补同身份 Runtime reconnect 的 after_turn/interrupt 回归，并确认已登记、被取消的旧 continuation 仍可读取结果。
 
@@ -55,7 +55,7 @@ Spec 共 3 项，最严重为 F1；Standards 共 0 项，最严重项无。需�
 
 **触发与影响**：同一客户端有一个可响应 abort 的 busy Run，同时另一 Session 的显式 compaction 进入不响应 signal 的 custom Provider。退出清理先 abort compaction，然后无界等待所有 compaction `control.settled`；直到这一步结束，才会撤队列和启动 Run/Actor cleanup。不合作的一个 Provider 因此使可正常取消的其他工作继续执行，回执长期 pending 且没有保存已捕获的 operationIds/目标列表。这里只应让“不合作 compaction 自身的终态”保持 unknown，不应阻塞其他确定取消。来源：新增 `K:src/sdk-runtime.ts:5476-5490`；control settled 由 compaction 结束才 resolve（`K:src/sdk-runtime.ts:9101-9105,9205-9208`）；Provider wrapper 仅传递 signal 后直接 await（`K:packages/llm/src/provider-credential-context.ts:194-207,216,255-257`；`K:packages/llm/src/provider-request-observation.ts:104-105`）。
 
-**实测证据**：主审计以源码 SDK/真实 socket Host、两个离线 custom Provider fixture 行为复现。退出 1.5 秒后 receipt.cleanup=pending、runIds/operationIds 为空，正确监听 abort 的 own Run 仍 running；手动释放不合作 compaction 后，Run 才被取消，回执才带 operationId/runId 并变 succeeded。来源：`S:scratch/kodax-compaction-exit-probe.mjs:21-27,48-63`；`S:.tmp-kodax-seams-compaction-exit-probe.log:18-24,36-59,67-77`。
+**实测证据**：主审计以源码 SDK/真实 socket Host、两个离线 custom Provider fixture 行为复现。退出 1.5 秒后 receipt.cleanup=pending、runIds/operationIds 为空，正确监听 abort 的 own Run 仍 running；手动释放不合作 compaction 后，Run 才被取消，回执才带 operationId/runId 并变 succeeded。来源：`S:scratch/kodax-compaction-exit-probe.mjs:21-27,48-63`；`S:artifacts/diagnostics/20261020/.tmp-kodax-seams-compaction-exit-probe.log:18-24,36-59,67-77`。
 
 **最小建议**：先同时触发本客户端所有已知工作取消，再独立有限等待各类 settlement；及时持久化 operationIds/runIds/Actor targets。未确认 compaction 保持 unknown 和 issues，并允许后续按同 requestId 重试，不能用该单一 promise 堵住其他取消。补“不响应 abort 的 compaction + 可响应 abort 的 own Run/Actor”的回归。
 

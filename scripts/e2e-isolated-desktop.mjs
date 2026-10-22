@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,7 +8,10 @@ const quotePowerShell = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
 /** Run real Windows GUI tests without switching or changing the user's desktop. */
 export async function runNodeOnIsolatedDesktop(script, args, options = {}) {
-  const log = path.resolve(options.log ?? `.tmp-space-e2e-${process.pid}-${Date.now()}.log`);
+  const log = path.resolve(
+    options.log ?? `artifacts/diagnostics/e2e/space-e2e-${process.pid}-${Date.now()}.log`,
+  );
+  mkdirSync(path.dirname(log), { recursive: true });
   const command =
     `& ${quotePowerShell(launcher)} -NodeScript ${quotePowerShell(script)} ` +
     `-ScriptArguments @(${args.map(quotePowerShell).join(',')}) -LogPath ${quotePowerShell(log)} -OwnerPid ${process.pid}`;

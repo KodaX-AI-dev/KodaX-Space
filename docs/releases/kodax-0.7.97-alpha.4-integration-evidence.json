@@ -231,7 +231,7 @@
     }
   },
   "rawLocalEvidence": {
-    "directory": ".tmp-sdk-alpha4",
+    "directory": "artifacts/diagnostics/20261020/.tmp-sdk-alpha4",
     "sha256": {
       "full-tests.log": "a82392644a0c110f05f1fd895d0cb5e72e9fd3b3bc96879ebbb2b753c42e8fdd",
       "typecheck-final.log": "5f32b88c294cc9f0dfa57f48b5bf788be0b0b1695f0e12bdec201ab95707f918",
