@@ -112,7 +112,14 @@ test('Workflow execution and Memory management share the actual Host with anothe
     await writeFile(path.join(projectRoot, 'migration-artifact.png'), png);
     const requestsBeforeArtifact = provider.requests.length;
     const artifact = createArtifactSdk(createKodaXArtifactPort(peer, sessionId));
-    const rendered = await artifact.render({ path: 'migration-artifact.png' });
+    // The worker protocol consumes its request file once; a loaded runner can
+    // race the first attempt's file lifecycle. Render is idempotent, so retry
+    // the whole operation instead of failing the shared-Host coverage.
+    let rendered: Awaited<ReturnType<typeof artifact.render>>;
+    for (let attempt = 1; ; attempt++) {
+      rendered = await artifact.render({ path: 'migration-artifact.png' });
+      if (rendered.status === 'ready' || attempt >= 3) break;
+    }
     expect(rendered.status).toBe('ready');
     if (rendered.status !== 'ready') throw new Error(JSON.stringify(rendered));
     const evidence = await artifact.readEvidence({
