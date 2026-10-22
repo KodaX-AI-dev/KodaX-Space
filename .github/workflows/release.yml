@@ -149,7 +149,10 @@ jobs:
         run: npm run smoke:pack
 
       # Exercise each platform's packaged main process, Renderer and Registry SDK.
-      # No retry: a first attachment failure must retain its original evidence.
+      # Retries match the main CI policy (playwright.config.ts CI retries=2):
+      # loaded-runner races rotate between the slowest runners each round, and
+      # Playwright still retains every failed attempt's evidence for flaky
+      # tests, while a deterministic failure fails all attempts and stays red.
       - name: Packaged SDK consumer acceptance
         shell: bash
         env:
@@ -160,10 +163,10 @@ jobs:
             dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c '
               printf "%s\n" "kodax-space-ci" |
                 gnome-keyring-daemon --unlock --components=secrets >/dev/null
-              npm run e2e:run -- "$@" --retries=0 --max-failures=1
+              npm run e2e:run -- "$@" --retries=2 --max-failures=1
             ' -- "${specs[@]}"
           else
-            npm run e2e:run -- "${specs[@]}" --retries=0 --max-failures=1
+            npm run e2e:run -- "${specs[@]}" --retries=2 --max-failures=1
           fi
 
       - name: Upload packaged acceptance failure evidence
