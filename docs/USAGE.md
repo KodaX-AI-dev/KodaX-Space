@@ -1,6 +1,6 @@
 # KodaX Space 运行与开发指南
 
-> 更新日期：2026-10-20。当前源码为发布候选 Space `0.1.47-alpha.3` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.9`；最新已发布预发布版为 Space v0.1.47-alpha.2 / SDK 0.7.97-alpha.6，最新稳定版为 Space v0.1.46 / KodaX 0.7.96。
+> 更新日期：2026-10-20。当前源码对应已发布的 Space `v0.1.47-alpha.3` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.9`；最新稳定版为 Space v0.1.46 / KodaX 0.7.96。
 > 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，现有 SDK 验收见[alpha.6 接入](releases/kodax-0.7.97-alpha.6-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
 
 共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。

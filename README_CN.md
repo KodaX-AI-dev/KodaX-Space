@@ -32,7 +32,7 @@
 
 ### 下载安装包
 
-稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，当前为 `v0.1.46`。已发布的最新预发布版为 [`v0.1.47-alpha.2`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.2)。预发布版不替代默认稳定下载。
+稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，当前为 `v0.1.46`。已发布的最新预发布版为 [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3)。预发布版不替代默认稳定下载。
 
 | 平台    | 安装包                                            |
 | ------- | ------------------------------------------------- |
@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前源码为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.9`。** 根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本；lockfile 校验 Registry 包完整性，详见 [alpha.9 接入记录](docs/releases/kodax-0.7.97-alpha.9-integration.md)与[发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)。Space alpha.3 为发布候选，尚未发布；最新已发布的 Space 预发布版仍为 `v0.1.47-alpha.2`。
+**当前源码为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.9`。** 根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本；lockfile 校验 Registry 包完整性，详见 [alpha.9 接入记录](docs/releases/kodax-0.7.97-alpha.9-integration.md)与[发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)。当前源码即已发布的 `v0.1.47-alpha.3` 预发布版，安装包见其 GitHub Release。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。
@@ -104,7 +104,7 @@ Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS 未�
 
 ## 当前正式版本
 
-最新稳定版为 [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46)（2026-10-06），精确依赖稳定 KodaX `0.7.96`。已发布的最新预发布版为 [`v0.1.47-alpha.2`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.2)，使用 SDK `0.7.97-alpha.6`。
+最新稳定版为 [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46)（2026-10-06），精确依赖稳定 KodaX `0.7.96`。已发布的最新预发布版为 [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3)，使用 SDK `0.7.97-alpha.9`。
 
 先前 Partner beta.3 的 Release 已撤回，tag 和原验收记录保留为历史；后续稳定版与本候选继续包含现有 Partner 集成。完整版本变化见 [CHANGELOG](CHANGELOG.md)。
 

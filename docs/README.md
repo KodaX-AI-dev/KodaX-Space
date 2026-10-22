@@ -1,12 +1,12 @@
 # KodaX Space 文档中心
 
-> 更新日期：2026-10-18。当前源码为未发布的 Space `0.1.47-alpha.3` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.9`；上一已发布预发布版为 Space `v0.1.47-alpha.2` / SDK alpha.6。最新稳定版为 [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96。
+> 更新日期：2026-10-18。当前源码对应已发布的 Space `v0.1.47-alpha.3` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.9`（上一已发布预发布版为 Space `v0.1.47-alpha.2` / SDK alpha.6）。最新稳定版为 [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96。
 
 本轮候选统一 SDK 聊天输出、图片与长正文恢复、未发送草稿、真实消息时间排序和启动进度，移除实时 Verifier 与旧 journal/replay 路径，并接入 Gemini 工具 schema 修复。当前聊天与历史浏览独立；首个有效输入才持久化普通 Coder 草稿；旧记录只经完整历史确认后隐藏，不删除。
 
 Space 产品用法由只读 Host Tool `space_manual` 提供，SDK/CLI 机制仍由内建 `kodax_manual` 提供；组合主题保留当前 SDK 原始正文与来源。Partner/Embedded 使用各自 inline owner 的手册配置。
 
-当前未发布 Space alpha.3 的版本与打包事实以[alpha.7 SDK 接入](releases/kodax-0.7.97-alpha.7-integration.md)、历史已发布基线的[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。SDK 与 Host 能力分别校验；不按 SemVer 猜测支持，不改写历史 release/research 证据。Partner、真实外部服务和跨平台人工验收仍按各自边界记录。
+当前 Space alpha.3 的版本与打包事实以[alpha.7 SDK 接入](releases/kodax-0.7.97-alpha.7-integration.md)、历史已发布基线的[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。SDK 与 Host 能力分别校验；不按 SemVer 猜测支持，不改写历史 release/research 证据。Partner、真实外部服务和跨平台人工验收仍按各自边界记录。
 
 ## 我想要……
 
