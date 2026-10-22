@@ -12,11 +12,14 @@
 // a QA checklist by itself; it is the source the agent reads when explaining what
 // the product can do and how a user should operate it.
 
+import desktopPackage from '../../package.json';
+
 import type { KodaXManualSource, KodaXManualTopicInput } from '@kodax-ai/kodax/coding';
 
 export const SPACE_PRODUCT_NAME = 'KodaX Space';
 
 const text = (...lines: string[]) => lines.join('\n');
+const CURRENT_RUNTIME = `v${desktopPackage.version} 精确锁定 KodaX ${desktopPackage.dependencies['@kodax-ai/kodax']}。`;
 
 type SdkCodingModule = typeof import('@kodax-ai/kodax/coding');
 type SdkManualModule = Pick<
@@ -81,11 +84,11 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '核心能力：多 provider/model 切换，本地项目会话，Coder 与 Partner 工作区，权限确认，计划/Diff/任务/终端/预览/MCP/Memory/Workflow popout，图片与文件输入，Artifact/Outputs 产物，repo-intelligence，以及可保存/复跑的 workflow。',
       '',
-      'v0.1.45 继续让 Coder 使用 profile-scoped shared daemon：会话、运行、共享设置和交互由 KodaX Runtime 持有并可被多个受信任客户端观察。完整退出使用 KodaX SDK 的 runtimeExitSettlement v2：SDK 在 stop 前持久化精确 owner，Windows 以 durable outcome、进程创建身份和预执行 Job containment 证明完整关闭，并只恢复安全可证的 ACL 残留；同一 boot 内暂时无法证明的 unconfirmed-owner 由 SDK 后台自动重试，应用退出会取消等待。Space 恢复启动会先完成这个结算，再做 owner reconciliation 或启动 daemon，因此不会用新 owner 覆盖旧退出事实；既有 stale inline owner reconciliation 继续由 SDK 原子处理。macOS/Linux 的正常退出继续可用；卡死 Runtime 在同一次系统启动内保持可见阻断且不会按缓存 PID/PGID 发信号，重启系统后由持久 boot identity 自动证明旧进程树消失并恢复精确 owner。Run 的实时边界还要求 managedRunDurability v1；Space 不通过 KodaX 版本号推断生命周期支持。Partner 继续由 Space embedded-inline 持有。',
+      'Coder 默认使用 profile-scoped shared daemon；会话、运行、共享设置和交互由 KodaX Runtime 持有。完整退出使用 SDK Product lifecycle：lifecycle.requestExit 提交请求，lifecycle.readExit 读取同一回执，启动恢复通过 readKodaXClientExits 读取持久回执。只清理本客户端工作，保护其他在线客户端；工作清理与 Host 退出证明分开，unknown 保留恢复身份。Space 不按缓存 PID/PGID 强杀进程，也不为退出启动 replacement daemon；stale inline owner reconciliation 由 SDK 判定。Partner 继续由 Space embedded-inline 持有。',
       '',
       'v0.1.44 把未读结果与待处理权限/AskUser 按唯一 Session 计数投影到 Windows 任务栏/托盘、macOS Dock 和受支持 Linux launcher。已准入的 Windows 完整退出可在托盘后台继续，同一进度可重开查看；普通成功退出保持安静，失败恢复窗口。Task Dock、Repointel 与历史页头使用当前 live/canonical 事实，历史 Session 的 External tasks 能区分正常空态与可重试错误。v0.1.45 再把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡：全部待答卡并存可答，composer 上方有带计数与定位闪光的召回停靠条，队首卡支持 1-9/Enter/Esc 键盘操作。',
       '',
-      'Coder 面向软件研发；Partner 已启用，面向 workspace-first 知识工作，提供 Sources、Knowledge Base、Outputs、checkpoint 写入和本地 policy/audit。KodaX 0.7.67 Reference External Agent 也已接入管理、Workflow 和 Task Dock。',
+      'Coder 面向软件研发；Partner 已启用，面向 workspace-first 知识工作，提供 Sources、Knowledge Base、Outputs、checkpoint 写入和本地 policy/audit。本地 Reference External Agent 可通过设置管理，并在 Workflow 和 Task Dock 使用。',
     ),
     aliases: ['Space', 'KodaX Space', 'KodaX-Space', '桌面端', '客户端', '桌面客户端', '工作台'],
     nextTopics: [
@@ -126,11 +129,14 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     id: 'runtime-host',
     title: 'Runtime Host, customer mode switching, and release behavior',
     summary:
-      'Coder 默认使用共享 daemon；v0.1.45 可在 Settings 中安全切换 Embedded 兼容模式，Partner 始终保持 embedded inline。',
+      'Coder 默认使用共享 daemon；Settings 可安全切换 Embedded 兼容模式，Partner 保持 embedded inline。',
     body: text(
-      '当前 alpha.6 接入要求 SDK 与 Host 均提供 sessionDrafts v1，普通 Coder 新会话显式作为草稿，首次有效输入被接受后持久化。聊天按 SDK 当前 view 整份替换，历史使用独立窗口；SDK lastMessageAt 决定会话最近消息时间，启动恢复或改设置不会把旧对话提升为新对话。',
-      'Runtime Host 是 Electron main 内部的 owner 适配边界。日常默认选择 Daemon；v0.1.45 在 Settings -> Runtime -> Coder runtime mode 提供客户可见的 Daemon / Embedded 双选开关。Daemon 是推荐模式，Embedded 是 daemon 无法可靠启动、连接或协商能力时的兼容回退。',
+      '当前接入要求 SDK 与 Host 均提供 sessionDrafts v1，普通 Coder 新会话显式作为草稿，首次有效输入被接受后持久化。聊天按 SDK 当前 view 整份替换，历史使用独立窗口；SDK lastMessageAt 决定会话最近消息时间，启动恢复或改设置不会把旧对话提升为新对话。',
+      'Runtime Host 是 Electron main 内部的 owner 适配边界。日常默认选择 Daemon；在 Settings -> Runtime -> Coder runtime mode 提供客户可见的 Daemon / Embedded 双选开关。Daemon 是推荐模式，Embedded 是 daemon 无法可靠启动、连接或协商能力时的兼容回退。',
       '',
+      CURRENT_RUNTIME +
+        '当前构建通过公开 Product 输入、历史、统计和 lifecycle 契约接入共享 Host；SDK alpha.4 移除实时 Sidecar Verifier 与 /verifier-log，主 Agent 在当前 Run 内用工具及渲染证据检查结果，visual-review 提供检查方法；旧 verifier 消息仅作为历史记录读取。SDK alpha.5 修复实时工具图片附件，公开 attachment 读取提供 PNG 字节、尺寸和哈希校验；证据可读取不代表视觉审查通过。守护进程 preflight 在已知 mutation 忙碌时返回 conflict，Space 保留当前会话投影并拒绝把忙碌视为可停止。启动进度沿用 Runtime connection 投影显示本地阶段，SDK ready 不等于 Space 会话已就绪。SDK alpha.9 共享 Host 通过 canonical 元数据检查会话准入，历史正文 EIO 不再阻塞无关 Run/退出检查；活动控制器只有持有 owner fence 时才能复用准入，其他客户端仍受退出保护，受损会话显式打开仍报告读取错误。Artifact SDK 已随主包发布，提供四个 artifacts 子路径；共享 Host 需通过可信扩展注册九个工具并提供真实 Node，安装依赖不会自动启用。浏览器准备是显式操作，DOCX 的 Word/WPS 保真仍未验证。可信 Main 捕获凭据与 Host Tool leases、Provider allowlist 及 Workflow maxAgents/tokenBudget，SDK 管理实际执行、队列、Skill/command/review 准备与子任务权限。队列接收只确认 inputId，不虚构未来 Run；steer 和重连复用原输入授权。退出只清理本客户端工作，保护其他在线客户端；未知清理保留回执和恢复身份，接受不等于精确退出。仍要求 sandboxRuntime v11、runtimeAutoModeGuardrail v6、sharedSessionSettings v2、providerCredentialBroker v2 与 effectiveConfig v1。Space 为手动 compact 绑定并回收 operation-scoped keychain lease；Run 的 allowlist 只包含已知 Provider 身份，fallback、classifier、Stall Sidecar、Agent 与 Workflow 后代仅在实际 wire call 时按 Provider 精确读取凭据，缺失即失败。配置状态读取 daemon effective value/source，不从 Electron 环境猜测。v11 的 Windows native host 使用 wire protocol 10 与 setup generation 11、逐命令私有 Temp、64 端口 broker 范围与真实 target-start doctor 证明；完整 native bundle 会解包到 app.asar.unpacked，并按 manifest SHA-256 在发布 smoke 中校验。',
+      '以下为历史发布与迁移记录。旧退出 API、journal/replay 与旧会话创建流程不代表当前行为；请优先采用以上当前 Product 契约及 background-runtime、sessions 主题。',
       'v0.1.45 中，Coder daemon 记录稳定 runId、有序事件、transcript 和共享设置，并承接 compact、fork、rewind、队列、权限/AskUser、Workflow 观察与控制、Learning Center、目录/MCP 发现和配置 External Agent 的 Actor/Turn。多个受信任客户端可观察同一 Coder 会话。F141 只增加启动 owner 的安全选择，不改变这些 daemon-native 与 Space host-provider 边界。',
       '',
       'v0.1.44 正式发布使用经过审计并带完整性锁定的 npm Registry KodaX 0.7.93 正式包。完整退出继续要求 SDK runtimeExitSettlement v1；已连接 Runtime 要求 sandboxRuntime v4、crashOutcomeModel v2、daemonOrphanExit v1、daemonShutdownVerification v1、managedRunDurability v1、actorSettlementConvergence v2、sessionEventJournal v1、runtimeEventCoalescing v1、Skill learning-loop v1、integration config resilience v1、Auto LLM guardrail v4、interruptInput v1、actorControlPlane v1、contextCompaction v3、transcriptPaging v1、transcriptSearch v1、runBoundHostTools v2 和精确授权能力协商。sandboxRuntime v4 让 SDK 安全回收不再拥有精确 coordinator lock 的过期同进程排队票据，并用已记录的释放事实收敛 effect owner；它不会越过精确 active lock 或结果未知的进程树。crashOutcomeModel v2 确保 canonical Session 提交先于 managed terminal。Space 不删除锁、不切到 native shell 绕过 effect fence，也不把 Stop unknown 强制改成 idle。',
@@ -138,7 +144,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'v0.1.45 正式发布精确锁定 KodaX 0.7.95，并要求 conversationHistory v2、runtimeExitSettlement v2 与 sandboxRuntime v5。Space 只消费 SDK 返回的 canonical conversation 顺序与稳定身份，在 SDK 启动门和已连接 Runtime 两层验证能力；它不按时间戳重排、不按正文猜测去重，也不把历史候选交给 UI 自行解释。同一 Windows boot 的临时 unconfirmed-owner 会自动重试，应用退出会取消恢复等待；恢复未获安全证明时只阻断 sandbox 或竞争 owner，不阻塞无关工作。',
       '推理选择保留用户意图，由 SDK 负责档位协商与拒绝缓存。兼容 Provider 未声明能力时，可尝试关闭、自动和 minimal/low/medium/high/xhigh/max；能力未知不等于明确不支持。自动优先默认档，无声明时从 max 开始；关闭被拒绝时尝试最低可用思考档。选择器单独显示上次发送档位及回退原因；成功响应或没有可见 Thinking 都不能证明强度是否生效。',
       '当前共享 Coder 使用 SDK Product view 的有序替换、独立历史分页和搜索；Space 不从 delta 或 journal/replay 重建普通聊天正文。普通新会话要求 sessionDrafts v1，首个有效输入保存后才持久化；列表使用 lastMessageAt，旧空记录仅确认后隐藏，不删除。SDK 的 relationship_scan.depth 使用 integer/minimum/maximum 修复 Gemini 数字枚举兼容性，无需改模型或 Key。',
-      'v0.1.47-alpha.3 精确锁定 KodaX 0.7.97-alpha.9，并通过公开 Product 输入、历史、统计和 lifecycle 契约接入共享 Host；alpha.4 移除实时 Sidecar Verifier 与 /verifier-log，主 Agent 在当前 Run 内用工具及渲染证据检查结果，visual-review 提供检查方法；旧 verifier 消息仅作为历史记录读取。alpha.5 修复实时工具图片附件，公开 attachment 读取提供 PNG 字节、尺寸和哈希校验；证据可读取不代表视觉审查通过。守护进程 preflight 在已知 mutation 忙碌时返回 conflict，Space 保留当前会话投影并拒绝把忙碌视为可停止。启动进度沿用 Runtime connection 投影显示本地阶段，SDK ready 不等于 Space 会话已就绪。alpha.9 共享 Host 通过 canonical 元数据检查会话准入，历史正文 EIO 不再阻塞无关 Run/退出检查；活动控制器只有持有 owner fence 时才能复用准入，其他客户端仍受退出保护，受损会话显式打开仍报告读取错误。Artifact SDK 已随主包发布，提供四个 artifacts 子路径；共享 Host 需通过可信扩展注册九个工具并提供真实 Node，安装依赖不会自动启用。浏览器准备是显式操作，DOCX 的 Word/WPS 保真仍未验证。可信 Main 捕获凭据与 Host Tool leases、Provider allowlist 及 Workflow maxAgents/tokenBudget，SDK 管理实际执行、队列、Skill/command/review 准备与子任务权限。队列接收只确认 inputId，不虚构未来 Run；steer 和重连复用原输入授权。退出只清理本客户端工作，保护其他在线客户端；未知清理保留回执和恢复身份，接受不等于精确退出。仍要求 sandboxRuntime v11、runtimeAutoModeGuardrail v6、sharedSessionSettings v2、providerCredentialBroker v2 与 effectiveConfig v1。Space 为手动 compact 绑定并回收 operation-scoped keychain lease；Run 的 allowlist 只包含已知 Provider 身份，fallback、classifier、Stall Sidecar、Agent 与 Workflow 后代仅在实际 wire call 时按 Provider 精确读取凭据，缺失即失败。配置状态读取 daemon effective value/source，不从 Electron 环境猜测。v11 的 Windows native host 使用 wire protocol 10 与 setup generation 11、逐命令私有 Temp、64 端口 broker 范围与真实 target-start doctor 证明；完整 native bundle 会解包到 app.asar.unpacked，并按 manifest SHA-256 在发布 smoke 中校验。v0.1.46-rc.4 起 macOS 后台 Git 调用先经 SDK 共享预检：仅当解析到 /usr/bin/git 时运行 xcode-select -p（退出码 2 阻断，探针不确定时保留原 Git 尝试），未装开发者工具的机器不再反复弹出安装窗口；Windows/Linux 行为不变。v0.1.46-rc.5 起 macOS 构建未签名（FEATURE_027 签名计划已移除），Squirrel.Mac 替换前强制校验签名导致更新最后一步异步静默失败，因此 darwin 不启用自动更新（banner 永不出现），用户从 GitHub Releases 手动下载 DMG；Windows 的 NSIS 更新改为静默安装（/S 复用原安装目录，--force-run 自动重启），Linux 保持 AppImage 直换与 deb 的 pkexec 提权。v0.1.46-rc.6 起已有 Windows Runtime 身份的 secret 解密失败时走限定自愈：候选须与 SDK journal v1 中同一 instanceId 的唯一 SHA-256 指纹匹配，重加密后先备份原 vault 字节再原子替换；候选不符、多指纹、证据缺失或损坏一律失败关闭，绝不生成替代 secret。NSIS 卸载不再删除 AppData（凭据与加密密钥生命周期分离的已确认丢失路径）。历史分页遇到不可恢复的 Runtime incompatible 状态立即显示错误原因并停止轮询，恢复就绪后仍自动重读。v0.1.46 是 0.1.46 线的首个正式发布，精确锁定已发布的 KodaX `0.7.96` 正式包；正式包是 rc.14 同源的全新构建（19 个同路径文件变更、21 个生成 chunk 与 Windows native 字节更新，manifest hash 随之更新），Runtime 行为与公开契约与 rc.14 一致，无新增能力门。v0.1.47-alpha.1 开启 0.1.47 线：精确接入已发布的 KodaX `0.7.97-alpha.3` 统一公共契约——稳定 Product 输入与 Main 授权捕获、Host 持有的 Workflow 政策、canonical 历史/当前视图、执行统计与可恢复客户端退出；journal/replay 与旧完整退出 API 移除，既有的 Main 连接与 Partner 执行边界保留。',
+      'v0.1.46-rc.4 起 macOS 后台 Git 调用先经 SDK 共享预检：仅当解析到 /usr/bin/git 时运行 xcode-select -p（退出码 2 阻断，探针不确定时保留原 Git 尝试），未装开发者工具的机器不再反复弹出安装窗口；Windows/Linux 行为不变。v0.1.46-rc.5 起 macOS 构建未签名（FEATURE_027 签名计划已移除），Squirrel.Mac 替换前强制校验签名导致更新最后一步异步静默失败，因此 darwin 不启用自动更新（banner 永不出现），用户从 GitHub Releases 手动下载 DMG；Windows 的 NSIS 更新改为静默安装（/S 复用原安装目录，--force-run 自动重启），Linux 保持 AppImage 直换与 deb 的 pkexec 提权。v0.1.46-rc.6 起已有 Windows Runtime 身份的 secret 解密失败时走限定自愈：候选须与 SDK journal v1 中同一 instanceId 的唯一 SHA-256 指纹匹配，重加密后先备份原 vault 字节再原子替换；候选不符、多指纹、证据缺失或损坏一律失败关闭，绝不生成替代 secret。NSIS 卸载不再删除 AppData（凭据与加密密钥生命周期分离的已确认丢失路径）。历史分页遇到不可恢复的 Runtime incompatible 状态立即显示错误原因并停止轮询，恢复就绪后仍自动重读。v0.1.46 是 0.1.46 线的首个正式发布，精确锁定已发布的 KodaX `0.7.96` 正式包；正式包是 rc.14 同源的全新构建（19 个同路径文件变更、21 个生成 chunk 与 Windows native 字节更新，manifest hash 随之更新），Runtime 行为与公开契约与 rc.14 一致，无新增能力门。v0.1.47-alpha.1 开启 0.1.47 线：精确接入已发布的 KodaX `0.7.97-alpha.3` 统一公共契约——稳定 Product 输入与 Main 授权捕获、Host 持有的 Workflow 政策、canonical 历史/当前视图、执行统计与可恢复客户端退出；journal/replay 与旧完整退出 API 移除，既有的 Main 连接与 Partner 执行边界保留。',
       'v0.1.46-beta.2 修复新会话的首次发送体验（Issue 211/214）：真实 Coder 会话改为请求 Runtime 分配并持久化 Session，再用返回的 daemon 生成 ID 构造 Space 宿主会话——适配器只提供项目身份、space-desktop surface 与既有 tag，不传 sessionId；Partner、嵌入式 Coder 与 mock 路径保留本地 ID 分配，恢复/fork/既有会话准入不变。rc.4 把新会话事件日志初始化为序列零，不再扫描无关 Run 日志，消除启动停顿与并发历史读超时。准入前的严格历史超时现在返回类型化的 session_history_unavailable 拒绝：composer 恢复原草稿，原样重试复用同一 Session 并换新 operation ID，只产生一条可见提问；Quick Ask 同样恢复并允许再次尝试。发送中的 spinner 保留真实已用时间，本地准备阶段不再记作模型工作。',
       'v0.1.46-alpha.11 接入 SDK rc.1 的 Session Stop：一次停止取消 owner 固定边界内的既有队列，之后的新任务不被旧请求取消。结果未知时保留重试入口及原 Session/Run/requestId，刷新界面后仍可重试；v0.1.46-beta.1 的 rc.3 由 SDK 原子拒绝绑定已结束 Run 的首次请求，并允许已接受请求原样重试，无需新增重放接口。rc.3 daemon 已对齐 sessionCancellation v1 durableFrontier 与 toolInvocation v1，Space 在启动时验证这两项能力；空闲会话中的受管扩展命令与 !command 通过正常 Run 执行。Shell 清理尚未确认时，SDK 保留原 Run 和队列边界，Space 保留原请求重试入口，不把停止已接受视作进程已退出。纯配置型扩展命令属于扩展宿主配置，目前不在 Space 执行；它不是本次升级必须新增的 SDK 能力。/repair-identity <source-entry> <target-entry> <revision> <run> <input> <event> <confirmation-ref> 仅提交用户核实过的身份映射和投递凭据；SDK 验证并审计，版本冲突不自动重试，成功后重载历史。',
       '恢复与支持链路使用 0.7.89 的权威 session.status 和只读 session.diagnostics：终态会话不会因旧的 Run 列表推断而继续被当作活跃 Run；用户导出诊断包时，当前 Coder 会话会附带 phase/stage、Run-owned 子任务数、Stop 结果和结构化生命周期错误，但不会读取或导出 Prompt、对话正文或工具载荷。Agent progress 持久化采用有界合并；若 canonical replacement 结果仍无法确认，Runtime 会在 fail-closed fence 内协调精确同 owner Actor 事实。异主 owner、无 owner 或持续存储故障仍保持 unknown，Space 不会根据已出现回答文本伪造完成。',
@@ -295,7 +301,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '中央：Transcript 显示用户消息、模型回复、工具调用、权限状态、Artifact 卡片和运行事件。',
       '右侧：Task Dock 默认是 Overview；有 Artifact 时可切换 Artifact 标签。Overview 里有 Run、Plan、Agents、Workflow、Changes、Sources、Artifacts、Context 等分区。',
       '底部：composer 输入任务，选择模型、权限模式、agent mode、reasoning effort，附加文件/图片/agent/skill/slash command；右下角把主 Agent 的上下文窗口与整个 Session 的累计 Token 用量分成两个独立入口。',
-      '浮层：Command Palette、Quick Ask、Help、Settings、权限请求、workflow 确认、Artifact standalone window。ask_user 与 guardrail 提问卡不是浮层：它们渲染在对话流尾部，对话历史保持可滚动，队首卡支持 1-9 快选、Enter 提交/允许、Esc 取消/阻止。',
+      '浮层：Command Palette、Quick Ask、Help、权限请求与 workflow 确认。Settings 是替代项目导航的完整工作面；Artifact 可打开独立窗口。ask_user 与 guardrail 提问卡不是浮层：它们渲染在对话流尾部，对话历史保持可滚动，队首卡支持 1-9 快选、Enter 提交/允许、Esc 取消/阻止。',
     ),
     aliases: ['界面', 'UI', '布局', '主界面', '面板位置', '入口在哪', 'surface'],
     nextTopics: [
@@ -317,7 +323,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '- Issue 218 源码修复刷新后排队消息及回答重复、运行中历史缺少已完成工具的问题，并恢复输出时间；两次有意发送的相同消息仍保留两份。需使用包含修复的重建版本。切换会话后排队消息偶现消失仍在调查，尚未确认解决。',
       '- 当前共享 Coder 直接显示 SDK 提供的有序当前 view；SDK 保存 canonical 输入、助手消息与工具结果，并提供恢复后的正文和用户图片。Space 不自行重建中断正文，也不写回正式历史；历史浏览与当前聊天分开，重复文字保留各自输入身份。',
       '- SDK 根据来源身份与压缩边界证据只读恢复旧历史，并自动重建旧页面缓存；无法证明的压缩边界显示部分可恢复历史与提示，保留原始记录，不阻塞继续发送消息。Space 不按文字或时间猜测去重，也不改写会话文件。',
-      '- KodaX 0.7.89 的 managedRunDurability v1 要求已接受的首条输入、每个完成回合和每条队列输入在发布相应生命周期事件前先持久化；actorSettlementConvergence v2 只把 canonical replacement 结果未知视为提交歧义。Space 将确认的 runId 绑定到对应 optimistic query，后续 history 重验和 streaming turnId 不会把它归到旧 query。durable run.input.delivered 若失败，Runtime 会保留 queued input、返回错误并只记录不含用户正文的有界 runtime.warning；Space 恢复草稿，不能把 warning 或旧气泡当作已交付。',
+      '- 当前共享 Coder 通过 SDK Product 输入提交与 view 读取确认消息。排队接收只确认 inputId，不预先分配未来 runId；后续 delivery 与有序 view 绑定实际轮次。steer、重连和重试保留原输入身份及授权；Space 保留 queued input 的可见状态，未确认交付时不靠正文或旧气泡猜测成功。拒绝或确认未送达时显示可恢复状态；诊断不含用户正文。',
       '- 输入 / 打开 slash command 和 skill 补全；输入 @ 打开项目路径补全；上下键在补全和历史消息中导航。',
       '- 粘贴或拖入 PNG/JPEG/WEBP 图片会生成图片 chip；当前 base64/IPC 路径的临时源文件处理上限为 12 MiB，Space 调用 KodaX 将最大边压到 2000 px，并要求最终文件不超过 6 MiB；单轮上限 8 张。',
       '- 拖入或通过 + 菜单添加文件/文件夹：项目内优先插入 @relative/path，项目外插入 file:// 链接；可见消息保留链接，但发送给模型的是经 Electron 校验的原生绝对路径；草稿最多 32 个文件引用。',
@@ -528,7 +534,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'Terminal：真实 PTY 多标签终端，继承项目 cwd，并剥离常见敏感环境变量。',
       'Agents：显示 AGENTS.md/markdown agents 相关信息。',
       'MCP：查看 server 状态、工具、诊断、.mcpb 扩展安装/卸载。',
-      'Memory：Coder memory governance，包括 inbox、refs、governance、hints。',
+      'Memory：Coder memory governance，包括 inbox、refs、governance、hints；手动治理和提示预览取决于 Host 能力。',
+      'Task Dock 的 Learned Skills 展示 Runtime 学习记录、不可变修订、来源、canary 和诊断。能力协商通过时显示；可用动作随记录状态和策略提供 review、trust、reject、disable、rollback，并支持确认通知。只读记录不会获得写操作；SPACE_DISABLE_LEARNING_MUTATIONS=1 会禁用管理写操作。',
       'Workflow：查看 runs、saved workflows，pause/resume/stop/rerun/rename/delete/save。',
       '',
       'Smart Popout Director 会在首次出现 plan、diff、task 信号时自动打开相应面板，可在 Preferences 关闭。',
@@ -615,7 +622,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'Workflow manager 可查看 active/completed runs 与 saved workflows；支持 pause/resume/stop/rerun、rename/delete、把已完成 run 保存成 workflow、运行 saved workflow。启动 saved workflow 前会做 preflight，并在应用内确认。',
       '',
-      'v0.1.45 中，Coder Workflow 的列表、详情、事件以及 pause/resume/stop 由 daemon 投影/控制；Workflow library、start/rerun、save、rename/delete 和 prune 仍由 Space Workflow Controller 管理。Partner 全部保留 Space 路径。',
+      'v0.1.45 中，Coder Workflow 的列表、详情、事件以及 pause/resume/stop 由 daemon 投影/控制；Workflow library、start/rerun、save、rename/delete 和 prune 仍由 Space Workflow Controller 管理。Partner 的 /workflow 仅提供 list / runs / show / help 检查；创建、运行和管理需切到 Coder。',
       '',
       'Workflow 面向 Coder session。若当前 Runtime 有可调度的 External Agent，Launcher 可为没有显式 target 的子任务选择默认 Agent，并在启动前按配置修订重新 preflight。危险工具调用仍受 permission mode 和 ask_user 约束。',
     ),
@@ -626,7 +633,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     id: 'external-agents',
     title: 'External Agents',
     summary:
-      '0.1.30 接入 KodaX 0.7.67 Reference Agent：Space 管理持久任务面，Workflow/Worker 路由并在 Task Dock 干预。',
+      '管理本地 Reference Agent 与 Runtime 外部 Agent；支持实时预检、持久任务和 Task Dock 干预。',
     body: text(
       'Settings -> Runtime -> External Agents 可创建、编辑、启停、删除和实时预检 Reference Agent 注册。Reference 是本地合规适配器，不访问网络、不直接写 Workspace。',
       '',
@@ -654,20 +661,20 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'memory-governance',
     title: 'Memory governance',
-    summary: 'Memory 面板管理 Coder 记忆治理；KodaX 0.7.68 还提供静默、受治理的 Memory Agent。',
+    summary: 'Memory 面板管理 Coder 记忆治理；Memory Agent 提供静默、受治理的记忆召回。',
     body: text(
       'Memory popout 是 Coder-only 的记忆治理界面。需要当前有活跃 Coder session。',
       '',
       'Inbox：查看待批准 memory proposals，按 fingerprint guard 审核 approve/reject，并可给拒绝理由。',
       'Refs：检查已批准记忆引用。',
-      'Governance：运行 curator/report，发现过期、冲突或可合并信息。',
-      'Hints：为当前任务构建 memory pack/hints，帮助模型在后续 turn 使用稳定上下文。',
+      'Governance：Host 支持手动 curator 时可生成只读治理报告，发现过期、冲突或可合并信息；不支持时显示不可用原因。',
+      'Hints：Host 支持 pack 预览时可为当前任务构建 hints；不支持时显示不可用原因。',
       '',
-      'KodaX 0.7.68 的 FEATURE_260 Memory Agent 不创建第二套记忆库。它在 managed run 中复用同一 F228 治理面：被动 recall 是零等待、默认静默的低权威提示；模型需要更多历史经验时最多按一个 need 调用只读 memory_recall，scope/identity 不由模型指定。',
+      'Memory Agent 不创建第二套记忆库。它在 managed run 中复用同一记忆治理面：被动 recall 是零等待、默认静默的低权威提示；模型需要更多历史经验时最多按一个 need 调用只读 memory_recall，scope/identity 不由模型指定。',
       '',
-      '任务结束后，SDK 可写入有界 Outcome Digest，并通过 proposal/preview/fingerprint/apply 进入现有治理流程。Space 0.1.45 会在启动时验证 /experimental-memory 契约并记录不含正文的生命周期诊断；完整 Episodes、Activity、correction、forget/purge 桌面体验仍属于后续 F117，不应从版本号推断为已交付。',
+      '任务结束后，SDK 可写入有界 Outcome Digest，并通过 proposal/preview/fingerprint/apply 进入现有治理流程。Space 会在启动时验证 /experimental-memory 契约并记录不含正文的生命周期诊断；完整 Episodes、Activity、correction、forget/purge 桌面体验尚未提供，不应从 SDK 契约存在推断界面已交付。',
       '',
-      'v0.1.47-alpha.2 依赖声明是精确 0.7.97-alpha.6；Memory Agent 的公开 policy 版本以 SDK 的 /experimental-memory 导出为准。若必需的 export 或 policy shape 缺失，应用启动会 fail-fast，而不是按包版本号或固定 feature 编号伪造能力。现有 Inbox、Refs、Governance 和 Hints 仍由 F228 治理。',
+      'Memory Agent 的公开 policy 版本以已加载 SDK 的 /experimental-memory 导出为准；policy 标识与 SDK 包版本分开显示。若必需的 export 或 policy shape 缺失，应用启动会 fail-fast，而不是按包版本号或固定 feature 编号伪造能力。现有 Inbox、Refs、Governance 和 Hints 使用同一记忆治理契约；手动 curator 和 pack 预览仅在 Host 提供对应能力时可用。',
       '',
       'Partner 的 Knowledge Base 是单独的产品面，不等同于 Coder memory governance；Partner 当前已启用。',
     ),
@@ -1005,7 +1012,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     id: 'partner',
     title: 'Partner surface status',
     summary:
-      'Partner provides workspace-first delivery and, in the 0.1.46-beta.5 candidate, a bundled expert library with explicitly authorized service connectors.',
+      'Partner provides workspace-first delivery, a bundled expert library, and explicitly authorized service connectors.',
     body: text(
       'Space 有 Coder 与 Partner 两个 surface 概念。Coder 是当前可用的主要工作区。',
       '',
@@ -1013,7 +1020,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'PARTNER_ENABLED is true. The Partner tab is available, and Partner sessions can be restored like other surface-scoped sessions.',
       '',
-      '0.1.46-beta.5 候选随 Space 分发 Partner 插件库；首次启动安装并启用内置库，无需另找 .space-extension。该增量不属于稳定版 v0.1.45，发布状态以对应 Release 和验收记录为准。进入 Partner，从首页任务入口或 Plugins（插件）选择专家，描述目标并添加资料；专家的方法继续使用 Space 已配置的模型。',
+      '当前构建随 Space 分发 Partner 插件库；首次启动安装并启用内置库，无需另找 .space-extension。发布状态以对应 Release 和验收记录为准。进入 Partner，从首页任务入口或 Plugins（插件）选择专家，描述目标并添加资料；专家的方法继续使用 Space 已配置的模型。',
       '专家绑定随当前 Partner 会话保存，恢复后继续使用，也可切换或移除；专家停用或方法不可用时按界面提示处理。Coder 直接复用这些专家、会话绑定和连接器入口属于后续集成。',
       '外部连接器需要用户连接自己的账号，并为当前会话选择允许使用的账号与资料范围；安装插件不会自动登录、授权全部资料或授予写入权限。每个服务支持的读取、创建或修改操作以详情和实际可用能力为准。远端创建需要明确任务意图和对应权限，修改已有资源遵循该操作的审核流程；连接成功、创建回执与内容回读验证是不同状态。目录中的服务尚未全部通过真实账号验收。',
       '在插件管理中停用或卸载 Partner 库后，重启不会重新启用或自动装回。已有同 ID 的手动安装包及其启停状态会保留；本次首次随包注册不覆盖旧包，也未实现随 Space 自动替换已有插件版本的策略。',
@@ -1122,9 +1129,9 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     summary: '常用快捷键覆盖发送、补全、Quick Ask、命令面板、权限模式、reasoning、面板和缩放。',
     body: text(
       '发送与 composer：Enter 发送，Shift+Enter 换行，Ctrl/Cmd+Enter after-turn 排队，Esc 停止/关闭当前 popover；/ 打开 slash 补全，@ 打开路径补全。',
-      '全局：Ctrl/Cmd+K Quick Ask；Ctrl/Cmd+Shift+P 命令面板；? Help；Ctrl+Shift+O Transcript view menu。',
-      '模式：Shift+Tab 循环 permission mode；Ctrl+M 打开 permission mode picker；Ctrl+Shift+E 打开/循环 reasoning effort，Ctrl+T 是保留的旧式循环快捷键。',
-      '面板：Ctrl+Shift+V Preview；Ctrl+Shift+D Diff；Ctrl+` Terminal（若平台/菜单映射可用）。',
+      '全局：Ctrl/Cmd+K Quick Ask；Ctrl/Cmd+Shift+P 命令面板；Ctrl/Cmd+, Settings；? Help；Ctrl+Shift+O Transcript view menu。',
+      '模式：Shift+Tab 循环 permission mode；Ctrl+M 打开 permission mode picker；Ctrl+I 打开模型与推理选择器；Ctrl+Shift+E 循环 reasoning effort，Ctrl+T 是保留的旧式循环快捷键。',
+      '面板：Ctrl+Shift+V Preview；Ctrl+Shift+D Diff；Ctrl+反引号 Terminal。工作面可交互且焦点不在输入框、文本框或可编辑区域时生效；也可从顶部活动视图菜单打开。',
       '缩放：Ctrl+wheel、Ctrl+=、Ctrl+-、Ctrl+0。',
       'Mac 文本编辑使用 Cmd+C/V/X/Z/Shift+Z；Windows/Linux 使用 Ctrl 对应组合。',
     ),
@@ -1140,17 +1147,17 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '常见问题：',
       '- No provider/key：到 Settings -> Providers 配 key，或确认环境变量。',
       '- AI 读不到文件：确认已打开项目目录，路径引用是否在 workspace 内。',
-      '- Partner 不可点：v0.1.30+ 正常应启用；检查版本、当前 surface 和本地状态，并查看 DevTools/logs。',
-      '- External Agent 不可选：确认使用 v0.1.44、Reference 注册已启用且实时 preflight 通过；Runtime 配置的 A2A 还要求 Coder daemon 能力协商成功，MCP Tasks/受治理 HTTP 当前不会出现。历史 Session 没有任务应显示空态；真实读取错误可点击“重试”。',
-      '- Coder daemon 异常：先记录 Space/KodaX 版本、runId、连接状态和日志。v0.1.44 可在 Settings -> Runtime -> Coder runtime mode 选择 Embedded 后点击“切换并重启”；必须先结束 Space 任务，且 daemon 的其他客户端、active/queued work、Workflow、Agent Turn 和 pending interaction 都会安全阻止切换。KODAX_SPACE_RUNTIME_HOST 只作为旧配置的一次迁移种子，不应覆盖 version 3 的用户偏好。若启动遇到 inline owner，不要删除 `~/.kodax`；让 SDK 原子 reconciliation 判定 stale/active/unverifiable。',
+      '- Partner 不可点：当前构建已启用；检查版本、当前 surface 和本地状态，并查看 DevTools/logs。',
+      '- External Agent 不可选：确认 Reference 注册已启用且实时 preflight 通过；Runtime 配置的 A2A 还要求 Coder daemon 能力协商成功，MCP Tasks/受治理 HTTP 当前不会出现。历史 Session 没有任务应显示空态；真实读取错误可点击“重试”。',
+      '- Coder daemon 异常：先记录 Space/KodaX 版本、runId、连接状态和日志。可在 Settings -> Runtime -> Coder runtime mode 选择 Embedded 后点击“切换并重启”；必须先结束 Space 任务，且 daemon 的其他客户端、active/queued work、Workflow、Agent Turn 和 pending interaction 都会安全阻止切换。KODAX_SPACE_RUNTIME_HOST 只作为旧配置的一次迁移种子，不应覆盖 version 3 的用户偏好。若启动遇到 inline owner，不要删除 `~/.kodax`；让 SDK 原子 reconciliation 判定 stale/active/unverifiable。',
       '- 集成配置异常：只检查报错点名的 ~/.kodax/integrations/*.json，不要删除整个 integrations 目录。无效更新会继续使用 last-known-good；修复文件后 Settings -> Runtime 通常会在数秒内自动恢复 healthy。这里也可预览并执行 SDK 的旧配置迁移；迁移不会覆盖已有目标，也不会默认删除旧字段。',
-      '- 关闭按钮行为不符合预期：检查 Settings -> Preferences -> Close button behavior。最小化到托盘后应显示 KodaX Space 托盘图标；Windows、macOS 与 Linux 的真正退出都应安全停止 Runtime。若停止失败，Space 应自动恢复可见窗口；没有托盘/窗口却持续驻留 Space 自动拉起的 daemon 属于故障。',
-      '- 完整退出长时间进行中：Windows 可从托盘重开查看同一条 settlement 已用时；普通成功退出不发系统通知，失败会恢复窗口。',
+      '- 关闭按钮行为不符合预期：检查 Settings -> Preferences -> Close button behavior。最小化到托盘后应显示 KodaX Space 托盘图标；真正退出先清理当前 Space 的工作；其他在线客户端仍在使用时，共享 Runtime 可以保留。若停止失败，Space 应自动恢复可见窗口；没有托盘/窗口却持续驻留 Space 自动拉起的 daemon 属于故障。',
+      '- 完整退出长时间进行中：Windows 可从托盘重开查看同一条退出事务的已用时；普通成功退出不发系统通知，失败会恢复窗口。',
       '- Windows ACL recovery 阻断：v0.1.46-alpha.11 起会自动重试同一 boot 的临时 unconfirmed-owner；等待或重新打开 Space 即可继续观察。若精确 owner 仍活跃，先让对应工作正常结束；持续无法收敛时打开诊断目录并提交脱敏日志。不要删除 effect/exit lock、手工修改 ACL、触发 Setup 或 UAC。',
       '- 原生数字角标不清除：打开对应 Session 清除未读结果；permission/AskUser 必须实际解决或取消。同一 Session 只计一次，部分 Linux 桌面不支持数字角标。',
       '- Terminal 找不到命令：检查 Settings -> Preferences -> Terminal Shell，以及所选 shell 登录环境的 PATH；Space PTY 与 Coder 命令工具应使用同一脱敏执行环境。',
       '- 普通查询闪 cmd/console 窗口：KodaX 0.7.77 保留非交互子进程隐藏。若仍出现，它不是 Terminal 面板；请记录 Space/KodaX 版本、触发操作与进程名，按回归问题报告。',
-      '- 排队气泡不消失：确认是否已出现相同 inputId 对应的真实用户 transcript 边界；若安全窗口关闭或 durable delivery 事件持久化失败应恢复草稿，后者仍保持 Runtime queued 且只发出不含正文的 warning；终态未送达应显示红色失败气泡，而不是永久排队。记录 sessionId、runId、inputId 和 session log。',
+      '- 排队气泡不消失：通过同一 inputId 的 Product 输入结果和有序 view 核对实际交付；接受排队不代表未来 Run 已开始。unknown 保留恢复入口，确认未送达时显示失败/草稿恢复状态，不按正文猜测交付，也不手工重放 journal。记录 sessionId、runId、inputId 和 session log。',
       '- 子 Agent 状态异常：普通 progress 不应唤醒模型侧 wait_agent，子正文/thinking/tools 不应进入 root transcript；检查 Agents/Workflow 活动面，并记录 actorPath、turnId 和 Runtime 日志。',
       '- 压缩恢复异常：检查 compaction entry、first-kept pointer 与压缩后附件是否仍在同一 active lineage；最新版会兼容旧的无后缀 checkpoint，但不会凭空恢复升级前已经丢失的字节。',
       '- 上下文数字看起来不一致：上下文百分比按自动压缩阈值而不是模型最大上下文计算；会话 Token 还累计子 Agent 和历史 Provider 调用。新 Session 要完成一次模型请求后才有精确构成。',

@@ -22,6 +22,7 @@ const GROUPS: readonly ShortcutGroup[] = [
     items: [
       { keys: ['Enter'], labelKey: 'help.sendMessage' },
       { keys: ['Shift', 'Enter'], labelKey: 'help.insertNewline' },
+      { keys: ['Mod', 'Enter'], labelKey: 'help.queueAfterTurn' },
       { keys: ['↑'], labelKey: 'help.previousPrompt' },
       { keys: ['↓'], labelKey: 'help.nextPrompt' },
       { keys: ['/'], labelKey: 'help.openSlashPicker' },
@@ -32,6 +33,7 @@ const GROUPS: readonly ShortcutGroup[] = [
     items: [
       { keys: ['Shift', 'Tab'], labelKey: 'help.cyclePermissionMode' },
       { keys: ['Ctrl', 'M'], labelKey: 'help.openPermissionModePicker' },
+      { keys: ['Ctrl', 'I'], labelKey: 'help.openModelPicker' },
       { keys: ['Ctrl', 'Shift', 'E'], labelKey: 'help.cycleReasoningDepth' },
       { keys: ['Alt', 'M'], labelKey: 'help.toggleAgentMode' },
     ],
@@ -42,13 +44,14 @@ const GROUPS: readonly ShortcutGroup[] = [
       { keys: ['Esc'], labelKey: 'help.cancelCloseOverlay' },
       { keys: ['/clear'], labelKey: 'help.clearCurrentConversation' },
       { keys: ['/new'], labelKey: 'help.startNewSession' },
-      { keys: ['/fork'], labelKey: 'help.forkFromSessionMenu' },
+      { keys: ['/fork'], labelKey: 'help.forkSession' },
     ],
   },
   {
     titleKey: 'help.group.ui',
     items: [
       { keys: ['Mod', 'K'], labelKey: 'help.quickAsk' },
+      { keys: ['Mod', ','], labelKey: 'help.openSettings' },
       { keys: ['Mod', 'Shift', 'P'], labelKey: 'help.commandPalette' },
       { keys: ['Ctrl', 'Shift', 'T'], labelKey: 'help.cycleTheme' },
       { keys: ['Mod', 'F'], labelKey: 'help.findTranscript' },
@@ -140,7 +143,7 @@ export function HelpOverlayController(): JSX.Element | null {
                   // GROUPS 是 module-level const，label 字符串足够稳定唯一作 key —
                   // 比 array index 更经得起未来 GROUPS 重排时的 React 重用 (review LOW)
                   <li key={it.labelKey} className="flex items-center justify-between gap-2">
-                    <span className="text-fg-secondary truncate">{t(it.labelKey)}</span>
+                    <span className="min-w-0 text-fg-secondary">{t(it.labelKey)}</span>
                     <span className="flex items-center gap-1 flex-shrink-0">
                       {it.keys.map((k) => (
                         <kbd

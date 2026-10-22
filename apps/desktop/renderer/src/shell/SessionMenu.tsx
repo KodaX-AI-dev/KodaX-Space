@@ -410,7 +410,7 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
         label={t('menu.session.moveToGroup')}
         shortcut=""
         disabled
-        hint="v0.1.x"
+        hint={t('menu.session.moveToGroupUnavailable')}
       />
       <MenuRow
         Icon={sessionFlags?.archived ? ArchiveRestore : Archive}

@@ -44,12 +44,12 @@ flowchart TD
 | 入口          | 适合任务                                                       | 当前边界                                                                 |
 | ------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | **Coder**     | 阅读代码、改文件、运行命令、排查问题、评审 Diff、长任务        | 主要软件研发工作面                                                       |
-| **Partner**   | 研究、文档、需求、数据分析、演示、知识库、workspace-first 交付 | 已启用；浏览器、通用 Connector 写操作和远程自动化尚未交付                |
+| **Partner**   | 研究、文档、需求、数据分析、演示、知识库、workspace-first 交付 | 已启用；连接组件按账号授权与服务能力提供读写，通用浏览器与远程自动化未提供                |
 | **Quick Ask** | 临时解释、快速确认、短问题                                     | 当前使用临时 Plan session；可提升到 Coder，不是真正无 session side query |
 
 ## 3. 安装与首次启动
 
-从 [GitHub Releases](https://github.com/icetomoyo/KodaX-Space/releases/latest) 获取安装包。
+从 [GitHub Releases](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest) 获取安装包。
 
 | 系统    | 推荐包                                 | 说明                            |
 | ------- | -------------------------------------- | ------------------------------- |
@@ -480,7 +480,7 @@ v0.1.46-alpha.9 起使用 KodaX 0.7.96-beta.4：手动与自动压缩共用同�
 
 v0.1.46-alpha.10 起使用 KodaX 0.7.96-beta.6：内置 deepseek 别名改走 DeepSeek 官方 Anthropic 兼容端点（api.deepseek.com/anthropic），默认模型为 `deepseek-flash`（DeepSeek-V4.1-Flash，1M 上下文、384000 最大输出、原生图片输入）；纯文本的 `deepseek-v4-pro` 仍可在 /model 中选择，视觉实验模型 `deepseek-v4-flash-vision-exp` 从目录移除（其图片能力并入 deepseek-flash）。恢复的会话历史重放到严格端点不再报 400：被打断的孤儿工具调用会以显式中断标记补答，而不是悄悄丢弃。Windows 沙箱 setup generation 升到 11，profile 与 SSH 依赖的 ACL 排除对齐 Codex 语义；公开能力版本不变。
 
-v0.1.46-alpha.11 起使用 KodaX 0.7.96-rc.1 并把权限 authority 门禁升到 v6：Runtime 与直接 SDK 的文本写权限对齐，Auto 档经审查允许的工作区外写入会真实生效，Full Access 直写，被拒路径保持隔离，会话内切换权限模式立即生效。停止正在运行的会话时，一次停止只会取消该 owner 既有队列边界内的任务，之后发出的新任务不会被误停；结果未知时会保留原样重试入口（沿用原 Session/Run 标识），该行为自 rc.3 起保留至当前 alpha.6：SDK 会原子拒绝绑定已结束 Run 的首次停止请求，已接受的旧请求仍可原样重试，无需新增重放接口。rc.2 daemon 缺能力时曾只停止指定 Run；rc.3 已通过发布包会话队列取消验证，Space 现在要求对应能力并移除该降级。daemon 结构化错误位于 error.data 时，Space 也会正确识别过期首次请求。打包版真实执行、停止、重试与历史显示验收已通过，图片颜色识别仍有不一致样本。转录可靠性修复（FEATURE_275）：同一 Run 内 settle 一条输入不再误删同 Run 的其他输入，已绘制内容不会因为分页/淘汰竞争而消失；`/repair-identity` 只提交用户核实过的身份映射并经 SDK 审计。SDK 报 `identity_repair_invalid` 时保留可读历史；`local_execution` 失败显示结构化错误，不再误导用户去配置 Provider 或自动重试。
+v0.1.46-alpha.11 起使用 KodaX 0.7.96-rc.1 并把权限 authority 门禁升到 v6：Runtime 与直接 SDK 的文本写权限对齐，Auto 档经审查允许的工作区外写入会真实生效，Full Access 直写，被拒路径保持隔离，会话内切换权限模式立即生效。停止正在运行的会话时，一次停止只会取消该 owner 既有队列边界内的任务，之后发出的新任务不会被误停；结果未知时会保留原样重试入口（沿用原 Session/Run 标识），该行为自 rc.3 起保留至当前构建：SDK 会原子拒绝绑定已结束 Run 的首次停止请求，已接受的旧请求仍可原样重试，无需新增重放接口。rc.2 daemon 缺能力时曾只停止指定 Run；rc.3 已通过发布包会话队列取消验证，Space 现在要求对应能力并移除该降级。daemon 结构化错误位于 error.data 时，Space 也会正确识别过期首次请求。打包版真实执行、停止、重试与历史显示验收已通过，图片颜色识别仍有不一致样本。转录可靠性修复（FEATURE_275）：同一 Run 内 settle 一条输入不再误删同 Run 的其他输入，已绘制内容不会因为分页/淘汰竞争而消失；`/repair-identity` 只提交用户核实过的身份映射并经 SDK 审计。SDK 报 `identity_repair_invalid` 时保留可读历史；`local_execution` 失败显示结构化错误，不再误导用户去配置 Provider 或自动重试。
 
 底部“上下文窗口”显示压缩影响的当前主 Agent 活动输入；“会话 Token 用量”是已经发生的根/子 Agent Provider 调用累计值，不会因 Compact 回退。两者的完整区别见[上下文窗口与会话 Token 用量](#52-上下文窗口与会话-token-用量)。
 
@@ -579,15 +579,15 @@ Memory 是 Coder-only 治理界面：
 
 Partner Knowledge Base 与 Coder Memory 是两套不同职责，不能互相替代。
 
-KodaX 0.7.68 新增 FEATURE_260 Memory Agent。它不会创建第二套记忆库，而是在普通 managed run 内复用 F228：已准备好的相关记忆可作为零等待、低权威、默认静默的提示；模型确有需要时可调用只读 `memory_recall({ need })`，但不能自行指定 tenant/user/project 等 scope。任务结束后可形成有界 Outcome Digest，并继续通过 proposal、preview、fingerprint 和 apply 进入现有治理流程。
+Memory Agent 不会创建第二套记忆库，而是在普通 managed run 内复用既有记忆治理：已准备好的相关记忆可作为零等待、低权威、默认静默的提示；模型确有需要时可调用只读 `memory_recall({ need })`，但不能自行指定 tenant/user/project 等 scope。任务结束后可形成有界 Outcome Digest，并继续通过 proposal、preview、fingerprint 和 apply 进入现有治理流程。
 
-Space 0.1.33 保留并验证真实 `/experimental-memory` 导出和 policy，在版本/诊断中如实报告，并记录不含记忆正文的生命周期元数据。普通 recall 不生成“记忆思考”消息；完整 Episodes、Activity、纠正、forget/purge 界面仍属于 F117 计划。现有 Inbox、Refs、Governance、Hints 继续由 F228 提供。
+Space 在启动时验证已加载 SDK 的 `/experimental-memory` 导出和 policy，在版本/诊断中如实报告，并记录不含记忆正文的生命周期元数据。普通 recall 不生成“记忆思考”消息；完整 Episodes、Activity、纠正、forget/purge 界面尚未提供。Inbox、Refs 使用既有治理契约；Governance 手动报告和 Hints 预览仅在 Host 提供对应能力时可用，界面会显示不可用原因。policy 是策略标识，不是 SDK 包版本。
 
 ### MCP 与 `.mcpb`
 
-MCP 面板展示 server 状态、命令/URL、start/stop、工具、日志/诊断和扩展卸载。`v0.1.33` 的 Coder 工具目录与 reload 会同步 Runtime；server 进程、状态和日志仍由 Space MCP Manager 负责，不会启动第二套桌面 manager。只安装可信来源的扩展。
+MCP 面板展示 server 状态、命令/URL、start/stop、工具、日志/诊断和扩展卸载。Coder 工具目录与 reload 会同步 Runtime；server 进程、状态和日志仍由 Space MCP Manager 负责，不会启动第二套桌面 manager。只安装可信来源的扩展。
 
-KodaX 0.7.95 继续把集成配置从核心 `config.json` 分离，并为独立配置增加
+当前 SDK 将集成配置从核心 `config.json` 分离，并为独立配置增加
 last-known-good 恢复、revisioned reload、watcher 状态和有界诊断：
 
 | 范围              | 规范路径                                 | 格式与 Space 行为                                                                                             |
@@ -672,6 +672,7 @@ Settings → Runtime → External Agents 同时展示 Space Reference Agent 与 
 | `Mod+,`                   | Settings               |
 | `Shift+Tab`               | 循环权限模式           |
 | `Ctrl+M`                  | 权限模式选择器         |
+| `Ctrl+I`                  | 模型与推理选择器       |
 | `Ctrl+Shift+E`            | Reasoning Effort       |
 | `Alt+M`                   | Agent Mode             |
 | `Mod+F`                   | Transcript 搜索        |
@@ -679,10 +680,12 @@ Settings → Runtime → External Agents 同时展示 Space Reference Agent 与 
 | `Ctrl+\`                  | Coder 专注模式         |
 | `Ctrl+Shift+V`            | Preview                |
 | `Ctrl+Shift+D`            | Diff                   |
-| Ctrl + 反引号（`）        | Terminal（按平台映射） |
+| Ctrl + 反引号（`）        | Terminal               |
 | `Ctrl+Shift+T`            | 循环主题               |
 | `Ctrl+滚轮`、`Ctrl+=/-/0` | 全局缩放               |
 | `?`                       | 帮助                   |
+
+Preview、Diff 和 Terminal 的快捷键在工作面可交互且焦点不在输入框、文本框或可编辑区域时生效；也可从顶部“活动视图”菜单打开，Diff 还可从变更列表打开。
 
 ## 18. 数据、安全与隐私
 
@@ -731,14 +734,14 @@ flowchart TD
 | 旧 MCP/Extension 配置未生效 | Settings → Runtime 查看 SDK 迁移计划并点击“迁移集成配置”；也可用 CLI dry-run/`--apply` 迁移                 |
 | 集成配置校验失败            | 只修复错误点名的 `integrations/*.json`；不要删除整个目录，修复后 reload 或安全重启 Runtime owner            |
 | Daemon 模式无法使用         | 可在无活动工作时从 Settings → Runtime 切到 Embedded；若安全门拒绝，先处理任务/其他客户端                    |
-| 关闭按钮行为不符合预期      | Settings → Preferences → Close button behavior；真正退出应停止 daemon，失败时 Space 会自动重开              |
+| 关闭按钮行为不符合预期      | Settings → Preferences → Close button behavior；退出仅清理本客户端工作；共享 daemon 可为其他客户端保留，失败时 Space 会恢复界面              |
 | 完整退出长时间进行中        | Windows 可从托盘重开查看同一条已用时；普通成功退出不弹通知，失败会恢复窗口并显示诊断                        |
 | 启动被 Windows ACL 阻断     | 先按阻断页重启；仍失败时打开诊断目录并提交脱敏日志，不要删锁、手工改 ACL、触发 Setup 或 UAC                 |
 | 原生数字角标没有清除        | 打开对应 Session；未读结果会清除，权限/AskUser 必须实际解决或取消；部分 Linux 桌面不支持数字角标            |
-| macOS/Linux 留下 daemon     | 先用 `kodax daemon stop --profile coder --timeout-ms 10000 --json`；旧版按上文核验 PID 后发 `SIGTERM`       |
+| macOS/Linux 留下 daemon     | 先用 `kodax daemon stop --profile coder --timeout-ms 10000 --json`；无法确认时保留恢复票据，按完整退出指引处理；不要按缓存 PID/PGID 强杀       |
 | Terminal 找不到命令         | Settings → Preferences → Terminal Shell；确认所选 shell 的登录环境包含该命令                                |
-| Partner 没有浏览器/邮件发送 | 当前未交付，不是配置错误                                                                                    |
-| External Agent 不可选       | Reference 注册需 enabled 且 preflight 通过；真实网络适配器尚未交付                                          |
+| Partner 没有浏览器/邮件发送 | 通用浏览器未提供；服务操作需在连接组件中核对支持能力与账号授权                                                                                    |
+| External Agent 不可选       | Reference 注册需 enabled 且 preflight 通过；A2A 还需显式配置及 daemon 能力协商                                          |
 | External Agent 任务区报错   | 无历史任务应显示空态；真正读取失败可点“重试”，主 Run 结果不因此变成失败                                     |
 | Quick Ask 不能打开          | 先打开项目；使用 `Mod+K`，不要与命令面板混淆                                                                |
 | 语言切换后仍有英文          | 模型输出、工具日志、文件内容和第三方数据不会被强制翻译                                                      |
@@ -746,16 +749,16 @@ flowchart TD
 
 ## 20. 当前限制与诚实边界
 
-- 当前 `v0.1.45` 默认让 Coder 连接 profile-scoped shared daemon；Partner、其工具、权限、知识与交付仍由 Space embedded inline owner 管理，不会迁入 Coder daemon。
-- Runtime Learning Center 的兼容契约已接入，但完整 F118 管理界面尚未交付；Memory Agent 的 0.7.68 起始运行契约和 0.7.77 governed intervention 仍由 Runtime 持有，完整 F117 桌面管理体验尚未交付。
+- 当前构建默认让 Coder 连接 profile-scoped shared daemon；Partner、其工具、权限、知识与交付仍由 Space embedded inline owner 管理，不会迁入 Coder daemon。
+- 右侧 Task Dock 已提供 Learned Skills 管理：查看不可变修订、来源、canary 和诊断；根据记录状态提供 review、trust、reject、disable、rollback 与通知确认。该区域需 Runtime 能力协商通过；旧记录或策略禁写时只读，`SPACE_DISABLE_LEARNING_MUTATIONS=1` 禁用管理写操作。这不等于完整 Memory Episodes/Activity/纠正/清除界面已交付。
 - `daemonOrphanExit:1` 只证明当前 daemon host 启用了 orphan idle-exit，不证明异步 host cleanup 失败后一定重试成功；正式包 macOS/Linux process-level 验收和上游 cleanup retry/verification 缺口继续由 Issue 133 跟踪。
-- KodaX 0.7.95 sandbox v5、已打包 helper 与 F143 显式 setup/readiness UI 提供命令 containment；Runtime Shell 在 sandbox 不可用时使用普通权限策略，且不会重放可能已启动的命令。普通权限执行仍取得同一 filesystem-effect fence。它仍不等于 F138 规划的文档 staging、凭据、native-resource 和跨平台完整 OS 隔离。
-- Partner 浏览器、通用 Connector、远程任务、桌面电脑控制和自动化尚未交付。
+- 当前 sandboxRuntime v11、已打包 helper 与显式 setup/readiness UI 提供受支持命令的隔离；Runtime Shell 在 sandbox 不可用时使用普通权限策略，且不会重放可能已启动的命令。普通权限执行仍取得同一 filesystem-effect fence。其边界未覆盖全部文档 staging、凭据与 native-resource 访问，不能视为整个应用的跨平台 OS 隔离。
+- Partner 已提供插件专家库和需单独授权的连接组件。每项服务的读写能力以组件详情和实际授权为准，目录中的服务尚未全部通过真实账号验收；通用浏览器、远程任务、桌面电脑控制和自动化尚未提供。
 - External Agent 的本地 Reference Executor 可用；Coder daemon 的 A2A 取决于显式配置与能力协商，MCP Tasks/governed HTTP 尚未作为通用能力开放。
 - Quick Ask 不是完全无 session side query。
 - React artifact 不是可交互 LiveCanvas。
 - Office/PDF writer 是基础可靠输出，不是品牌模板级设计系统。
-- 安装包签名、release channel 与诊断导出仍在后续版本计划中。
+- Settings → Diagnostics 已提供脱敏诊断导出及诊断目录入口。诊断包包含运行状态、会话生命周期元数据和有界日志，不主动导出 Prompt、对话正文或工具载荷；导出后仍应检查日志中可能由第三方写入的内容。Windows/Linux 的受支持安装方式可通过更新提示下载并安装；当前未签名的 macOS 构建禁用自动更新，需从 Releases 手动下载。源码与 win-unpacked 构建不等于已发布版本。
 - KodaX 0.7.77 保留 Runtime Worker 可达的非交互 Windows 子进程隐藏；显式 editor、terminal 与 PTY 交互保持不变。若普通 Coder query 仍闪出 `cmd.exe`/console 窗口，请记录 Space/KodaX 版本、触发操作与进程名并作为回归报告。
 
 - Kimi Code 订阅默认使用直连 `k3-256k`（256K context），K3 推理默认档为 `high`；模型选择器仍保留 `k3`（1M）、`kimi-for-coding`（K2.7 Code）和 `kimi-for-coding-highspeed`。Space 从 SDK provider catalog 读取这些模型，不在本地改写 wire model。

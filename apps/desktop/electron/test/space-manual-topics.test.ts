@@ -26,6 +26,29 @@ const sdkManual = buildSpaceManual({
 const SPACE_MANUAL_BASE_TOPICS = sdkManual.baseTopics;
 const SPACE_MANUAL_TOPICS = sdkManual.topics;
 
+test('Space product guidance uses current lifecycle, settings and management capabilities', () => {
+  const read = (topic: string): string =>
+    resolveKodaXManual(
+      { topic },
+      {
+        productName: SPACE_PRODUCT_NAME,
+        baseTopics: SPACE_MANUAL_BASE_TOPICS,
+        extraTopics: SPACE_MANUAL_TOPICS,
+      },
+    ).content.split('## Inherited KodaX SDK mechanism')[0];
+
+  assert.match(read('overview'), /Product lifecycle/);
+  assert.doesNotMatch(read('overview'), /完整退出使用.*runtimeExitSettlement/);
+  assert.ok(read('runtime-host').includes(`v${manifest.version} 精确锁定 KodaX ${sdkVersion}`));
+  assert.doesNotMatch(read('ui-map'), /浮层：[^。\n]*Settings/);
+  assert.match(read('popouts'), /Learned Skills.*review.*trust.*rollback/);
+  assert.doesNotMatch(read('memory-governance'), /依赖声明是精确 0\.7\.97-alpha\.6/);
+  assert.match(read('troubleshooting'), /其他在线客户端/);
+  assert.match(read('keyboard-shortcuts'), /Ctrl\+Shift\+V Preview.*Ctrl\+Shift\+D Diff/);
+  assert.match(read('keyboard-shortcuts'), /焦点不在输入框、文本框或可编辑区域/);
+  assert.doesNotMatch(read('troubleshooting'), /durable delivery 事件/);
+});
+
 test('Space kodax_manual preserves the installed SDK mechanism manual', () => {
   assert.deepEqual(SPACE_MANUAL_BASE_TOPICS, [...KODAX_UNDERLYING_CAPABILITY_TOPICS]);
 
@@ -299,7 +322,7 @@ test('Space kodax_manual describes the v0.1.45 inline ask-user conversation card
 
   assert.match(
     topics.get('overview')?.body ?? '',
-    /v0\.1\.45 再把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡/,
+    /ask_user 与 guardrail 授权.*对话流内的聚焦提问卡/,
   );
 
   const permissions = topics.get('permissions')?.body ?? '';

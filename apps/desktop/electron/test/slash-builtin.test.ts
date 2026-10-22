@@ -77,6 +77,16 @@ async function runCmd(name: string, sessionId: string, args: string[] = []) {
   return handler!.handler({ sessionId, args });
 }
 
+test('/help describes the supported turn selector and token-only cost report', async () => {
+  const fork = await runCmd('help', 'help-only', ['fork']);
+  const rewind = await runCmd('help', 'help-only', ['rewind']);
+  const cost = await runCmd('help', 'help-only', ['cost']);
+  assert.match(fork.message ?? '', /\/fork \[turn\]/);
+  assert.match(rewind.message ?? '', /\/rewind \[turn\]/);
+  assert.doesNotMatch(`${fork.message}\n${rewind.message}`, /entry-id|label/);
+  assert.match(cost.message ?? '', /token usage \(no monetary estimate\)/);
+});
+
 function effectiveRuntimeConfig(
   values: Readonly<Record<string, unknown>>,
   source: 'runtime_override' | 'environment' | 'persisted' | 'unset' = 'persisted',

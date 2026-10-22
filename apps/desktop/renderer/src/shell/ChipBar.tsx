@@ -217,7 +217,7 @@ function ProjectChip({
   );
 }
 
-/** Branch chip — alpha.1 占位；v0.1.x 接 git。 */
+/** Static context chip; current branch facts are available in EnvironmentHub. */
 function BranchChip(): JSX.Element {
   const { t } = useI18n();
   return (
@@ -226,7 +226,7 @@ function BranchChip(): JSX.Element {
       title={t('chip.branchDetection')}
     >
       <GitBranch className="w-3 h-3 text-fg-muted" strokeWidth={2} aria-hidden />
-      <span className="truncate max-w-[120px]">main</span>
+      <span className="truncate max-w-[120px]">{t('chip.branchPlaceholder')}</span>
     </span>
   );
 }

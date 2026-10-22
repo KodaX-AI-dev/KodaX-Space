@@ -1347,7 +1347,7 @@ export function BottomBar(): JSX.Element {
         `  cache writes: ${cacheWriteTokens?.toLocaleString() ?? 'not reported'}`,
         `  output tokens: ${outputTokens.toLocaleString()}`,
         `  total: ${totalTokens.toLocaleString()}`,
-        '  (cost estimate requires per-model pricing - v0.1.7+)',
+        `  ${t('bottom.costUnavailable')}`,
       ];
       appendUserMessage(sessionId, lines.join('\n'));
       return;

@@ -2440,7 +2440,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
 
   {
     name: 'cost',
-    description: 'Show estimated token usage / cost for current session',
+    description: 'Show recorded session token usage (no monetary estimate)',
     source: 'builtin',
     handler: async (ctx) => {
       const s = kodaxHost.get(ctx.sessionId);
@@ -2563,7 +2563,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
           return {
             ok: true,
             message:
-              '[repointel] trace is read-only in Space v0.1.22; use /repointel trace to show recent session trace events.',
+              '[repointel] trace is read-only in Space; use /repointel trace to show recent session trace events.',
             echo: true,
           };
         }
@@ -3050,8 +3050,8 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
 
   {
     name: 'fork',
-    description: 'Fork the current branch into a new session',
-    argsHint: '[entry-id|label]',
+    description: 'Fork a loaded turn into a new session (latest by default)',
+    argsHint: '[turn]',
     source: 'builtin',
     handler: async (ctx) => {
       if (!kodaxHost.get(ctx.sessionId)) {
@@ -3064,7 +3064,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
   {
     name: 'rewind',
     description: 'Rewind the current session to a previous turn',
-    argsHint: '[entry-id|label]',
+    argsHint: '[turn]',
     source: 'builtin',
     handler: async (ctx) => {
       if (!kodaxHost.get(ctx.sessionId)) {
