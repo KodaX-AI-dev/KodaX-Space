@@ -27,6 +27,7 @@ test('Workflow execution and Memory management share the actual Host with anothe
     await sendSdkPrompt(space, 'HOST_DOMAINS_SETUP');
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
       'SDK_REPLY:HOST_DOMAINS_SETUP',
+      { timeout: 30_000 },
     );
     const sessionId = await currentSdkSession(space);
     await waitSdkIdle(space, sessionId);

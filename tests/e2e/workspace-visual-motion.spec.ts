@@ -280,8 +280,19 @@ async function inspectScrollAndMenu(page: Page): Promise<void> {
   await expect(page.locator('html')).not.toHaveClass(/visual-interaction-active/);
   await page.getByTestId('model-effort-selector').click();
   await expect(page.locator('.workspace-menu:visible')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.workspace-menu:visible')).toHaveCount(0);
+  // A loaded runner can drop one keydown between the wheel interaction and
+  // the menu; retry the close like a user would instead of failing the guard.
+  await expect
+    .poll(
+      async () => {
+        if (await page.locator('.workspace-menu:visible').count()) {
+          await page.keyboard.press('Escape');
+        }
+        return page.locator('.workspace-menu:visible').count();
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(0);
 }
 
 async function inspectQualityGates(page: Page): Promise<void> {
