@@ -34,6 +34,13 @@ if (process.platform === 'win32') {
     }
   }
 }
+// macOS CI exports TMPDIR through the /var -> /private/var alias. The SDK
+// derives workflow run directories from project paths through more than one
+// canonicalization, and the symlink form makes those derivations disagree on
+// the run directory, so hand every consumer the physical path from the start.
+if (process.platform === 'darwin') {
+  process.env.TMPDIR = realpathSync.native(os.tmpdir());
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -180,9 +187,6 @@ export async function launchSpace(
   // 启动期立刻报 "bad option" 失败。这里显式剥掉。
   const baseEnv = { ...process.env } as Record<string, string | undefined>;
   delete baseEnv.ELECTRON_RUN_AS_NODE;
-  // macOS aliases /var to /private/var. Runtime exit recovery requires a
-  // canonical profile root, so give isolated test profiles the physical temp path.
-  if (process.platform === 'darwin') baseEnv.TMPDIR = await fs.realpath(os.tmpdir());
 
   let app: ElectronApplication;
   const executablePath = opts?.executablePath ?? process.env.SPACE_E2E_EXECUTABLE;
