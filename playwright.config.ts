@@ -10,7 +10,7 @@
 //   npm run e2e:headed   —— 显示窗口（debug 用）
 //
 // ci.yml runs the source suite in shards. release.yml runs the SDK acceptance
-// subset against each platform's packaged executable with retries disabled.
+// subset against each platform's packaged executable with the same retry policy.
 
 import { defineConfig } from '@playwright/test';
 
@@ -25,7 +25,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 2 : 0,
-  reporter: [['list']],
+  reporter: process.env.CI
+    ? [['list'], ['json', { outputFile: 'test-results/playwright.json' }]]
+    : [['list']],
   use: {
     // 默认抓 trace 到本地，方便排查
     trace: 'retain-on-failure',

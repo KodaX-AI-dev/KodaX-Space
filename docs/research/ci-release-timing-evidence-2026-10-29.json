@@ -1,0 +1,4929 @@
+{
+  "observed_on": "2026-10-29",
+  "repository": "KodaX-AI-dev/KodaX-Space",
+  "source": "GitHub REST API actions/runs (latest 60) and actions/runs/{id}/jobs?filter=all&per_page=100",
+  "runs": [
+    {
+      "id": 39883661430,
+      "name": "ci",
+      "event": "push",
+      "head_sha": "e3ba5893347e20b09d37f6ea95265daa375bacc3",
+      "head_branch": "main",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "created_at": "2026-10-23T01:22:53Z",
+      "run_started_at": "2026-10-23T01:22:53Z",
+      "updated_at": "2026-10-23T02:05:06Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39883661430"
+    },
+    {
+      "id": 39781120109,
+      "name": "release",
+      "event": "push",
+      "head_sha": "b2875f64704cf78ca93615f70c25df0c06ec0919",
+      "head_branch": "v0.1.47-alpha.3",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "created_at": "2026-10-22T12:46:25Z",
+      "run_started_at": "2026-10-22T12:46:25Z",
+      "updated_at": "2026-10-22T13:26:48Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39781120109"
+    },
+    {
+      "id": 39774700869,
+      "name": "build",
+      "event": "push",
+      "head_sha": "b2875f64704cf78ca93615f70c25df0c06ec0919",
+      "head_branch": "main",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "created_at": "2026-10-22T11:59:02Z",
+      "run_started_at": "2026-10-22T11:59:02Z",
+      "updated_at": "2026-10-22T12:19:39Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700869"
+    },
+    {
+      "id": 39774700865,
+      "name": "ci",
+      "event": "push",
+      "head_sha": "b2875f64704cf78ca93615f70c25df0c06ec0919",
+      "head_branch": "main",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "created_at": "2026-10-22T11:59:02Z",
+      "run_started_at": "2026-10-22T11:59:02Z",
+      "updated_at": "2026-10-22T12:42:57Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700865"
+    },
+    {
+      "id": 39767275771,
+      "name": "release",
+      "event": "push",
+      "head_sha": "f86eaca2c8fbf8e2a4d833cd5a660cdf6228643c",
+      "head_branch": "v0.1.47-alpha.3",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "created_at": "2026-10-22T11:00:05Z",
+      "run_started_at": "2026-10-22T11:00:05Z",
+      "updated_at": "2026-10-22T11:44:20Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39767275771"
+    },
+    {
+      "id": 39760699943,
+      "name": "build",
+      "event": "push",
+      "head_sha": "f86eaca2c8fbf8e2a4d833cd5a660cdf6228643c",
+      "head_branch": "main",
+      "run_attempt": 2,
+      "conclusion": "success",
+      "created_at": "2026-10-22T10:07:23Z",
+      "run_started_at": "2026-10-22T10:34:25Z",
+      "updated_at": "2026-10-22T10:54:51Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39760699943"
+    },
+    {
+      "id": 39753897157,
+      "name": "release",
+      "event": "push",
+      "head_sha": "a0d8188c18f98401f7bcaf4af79fa02bdbfae279",
+      "head_branch": "v0.1.47-alpha.3",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "created_at": "2026-10-22T09:14:37Z",
+      "run_started_at": "2026-10-22T09:14:37Z",
+      "updated_at": "2026-10-22T09:50:07Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39753897157"
+    },
+    {
+      "id": 39396597463,
+      "name": "release",
+      "event": "push",
+      "head_sha": "21fd84316e72b4d145ba98113008306f86c64964",
+      "head_branch": "v0.1.47-alpha.3",
+      "run_attempt": 1,
+      "conclusion": "cancelled",
+      "created_at": "2026-10-20T08:52:53Z",
+      "run_started_at": "2026-10-20T08:52:53Z",
+      "updated_at": "2026-10-20T08:55:58Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39396597463"
+    },
+    {
+      "id": 39386771994,
+      "name": "release",
+      "event": "push",
+      "head_sha": "c1f80dd44ae7421062382ec125775807d2cdeca0",
+      "head_branch": "v0.1.47-alpha.3",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "created_at": "2026-10-20T07:28:48Z",
+      "run_started_at": "2026-10-20T07:28:48Z",
+      "updated_at": "2026-10-20T08:00:45Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39386771994"
+    },
+    {
+      "id": 39377074746,
+      "name": "release",
+      "event": "push",
+      "head_sha": "82dc22213d7f7def879765d4801c418eea7ba851",
+      "head_branch": "v0.1.47-alpha.3",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "created_at": "2026-10-20T05:50:49Z",
+      "run_started_at": "2026-10-20T05:50:49Z",
+      "updated_at": "2026-10-20T06:21:50Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39377074746"
+    },
+    {
+      "id": 38769060483,
+      "name": "release",
+      "event": "push",
+      "head_sha": "ec1545694911db10aa30fc1ec99a0b6975775a97",
+      "head_branch": "v0.1.47-alpha.2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "created_at": "2026-10-15T16:26:50Z",
+      "run_started_at": "2026-10-15T16:26:50Z",
+      "updated_at": "2026-10-15T17:05:43Z",
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/38769060483"
+    }
+  ],
+  "jobs": [
+    {
+      "run_id": 39883661430,
+      "id": 120186690446,
+      "name": "ubuntu-latest / E2E shard 1/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-23T01:22:57Z",
+      "completed_at": "2026-10-23T01:46:26Z",
+      "duration_seconds": 1409,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39883661430/job/120186690446",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:58Z",
+          "completed_at": "2026-10-23T01:22:59Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:59Z",
+          "completed_at": "2026-10-23T01:23:05Z",
+          "duration_seconds": 6
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:05Z",
+          "completed_at": "2026-10-23T01:23:14Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:14Z",
+          "completed_at": "2026-10-23T01:23:42Z",
+          "duration_seconds": 28
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:42Z",
+          "completed_at": "2026-10-23T01:23:59Z",
+          "duration_seconds": 17
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:59Z",
+          "completed_at": "2026-10-23T01:24:12Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:24:12Z",
+          "completed_at": "2026-10-23T01:24:57Z",
+          "duration_seconds": 45
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:24:57Z",
+          "completed_at": "2026-10-23T01:24:57Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:24:57Z",
+          "completed_at": "2026-10-23T01:34:00Z",
+          "duration_seconds": 543
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:34:00Z",
+          "completed_at": "2026-10-23T01:34:57Z",
+          "duration_seconds": 57
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:34:57Z",
+          "completed_at": "2026-10-23T01:34:57Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:34:57Z",
+          "completed_at": "2026-10-23T01:46:22Z",
+          "duration_seconds": 685
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:46:22Z",
+          "completed_at": "2026-10-23T01:46:22Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:46:22Z",
+          "completed_at": "2026-10-23T01:46:22Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:46:22Z",
+          "completed_at": "2026-10-23T01:46:22Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:46:22Z",
+          "completed_at": "2026-10-23T01:46:22Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39883661430,
+      "id": 120186690754,
+      "name": "windows-latest / E2E shard 1/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-23T01:22:57Z",
+      "completed_at": "2026-10-23T02:05:06Z",
+      "duration_seconds": 2529,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39883661430/job/120186690754",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:58Z",
+          "completed_at": "2026-10-23T01:22:59Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:59Z",
+          "completed_at": "2026-10-23T01:23:14Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:14Z",
+          "completed_at": "2026-10-23T01:23:41Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:41Z",
+          "completed_at": "2026-10-23T01:24:21Z",
+          "duration_seconds": 40
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:24:21Z",
+          "completed_at": "2026-10-23T01:24:21Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:24:21Z",
+          "completed_at": "2026-10-23T01:24:36Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:24:36Z",
+          "completed_at": "2026-10-23T01:25:25Z",
+          "duration_seconds": 49
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:25:25Z",
+          "completed_at": "2026-10-23T01:25:26Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:25:26Z",
+          "completed_at": "2026-10-23T01:44:51Z",
+          "duration_seconds": 1165
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:44:51Z",
+          "completed_at": "2026-10-23T01:46:04Z",
+          "duration_seconds": 73
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:46:04Z",
+          "completed_at": "2026-10-23T02:05:01Z",
+          "duration_seconds": 1137
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T02:05:01Z",
+          "completed_at": "2026-10-23T02:05:01Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T02:05:01Z",
+          "completed_at": "2026-10-23T02:05:01Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T02:05:01Z",
+          "completed_at": "2026-10-23T02:05:01Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T02:05:01Z",
+          "completed_at": "2026-10-23T02:05:03Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T02:05:03Z",
+          "completed_at": "2026-10-23T02:05:03Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39883661430,
+      "id": 120186690757,
+      "name": "windows-latest / E2E shard 2/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-23T01:22:57Z",
+      "completed_at": "2026-10-23T01:35:59Z",
+      "duration_seconds": 782,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39883661430/job/120186690757",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:57Z",
+          "completed_at": "2026-10-23T01:22:58Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:58Z",
+          "completed_at": "2026-10-23T01:23:07Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:07Z",
+          "completed_at": "2026-10-23T01:23:25Z",
+          "duration_seconds": 18
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:25Z",
+          "completed_at": "2026-10-23T01:23:50Z",
+          "duration_seconds": 25
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:23:50Z",
+          "completed_at": "2026-10-23T01:23:50Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:23:50Z",
+          "completed_at": "2026-10-23T01:23:50Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:23:50Z",
+          "completed_at": "2026-10-23T01:23:50Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:50Z",
+          "completed_at": "2026-10-23T01:23:51Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:23:51Z",
+          "completed_at": "2026-10-23T01:23:51Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:51Z",
+          "completed_at": "2026-10-23T01:24:46Z",
+          "duration_seconds": 55
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:24:46Z",
+          "completed_at": "2026-10-23T01:35:56Z",
+          "duration_seconds": 670
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:35:56Z",
+          "completed_at": "2026-10-23T01:35:56Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:35:56Z",
+          "completed_at": "2026-10-23T01:35:56Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:35:56Z",
+          "completed_at": "2026-10-23T01:35:56Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:35:56Z",
+          "completed_at": "2026-10-23T01:35:58Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:35:58Z",
+          "completed_at": "2026-10-23T01:35:58Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39883661430,
+      "id": 120186690856,
+      "name": "ubuntu-latest / E2E shard 2/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-23T01:22:57Z",
+      "completed_at": "2026-10-23T01:33:20Z",
+      "duration_seconds": 623,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39883661430/job/120186690856",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:57Z",
+          "completed_at": "2026-10-23T01:22:58Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:22:58Z",
+          "completed_at": "2026-10-23T01:23:05Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:05Z",
+          "completed_at": "2026-10-23T01:23:12Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:12Z",
+          "completed_at": "2026-10-23T01:23:35Z",
+          "duration_seconds": 23
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:23:35Z",
+          "completed_at": "2026-10-23T01:24:11Z",
+          "duration_seconds": 36
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:24:11Z",
+          "completed_at": "2026-10-23T01:24:11Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:24:11Z",
+          "completed_at": "2026-10-23T01:24:11Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:24:11Z",
+          "completed_at": "2026-10-23T01:24:11Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:24:11Z",
+          "completed_at": "2026-10-23T01:24:11Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:24:11Z",
+          "completed_at": "2026-10-23T01:24:59Z",
+          "duration_seconds": 48
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:24:59Z",
+          "completed_at": "2026-10-23T01:24:59Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:24:59Z",
+          "completed_at": "2026-10-23T01:33:17Z",
+          "duration_seconds": 498
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-23T01:33:17Z",
+          "completed_at": "2026-10-23T01:33:17Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:33:17Z",
+          "completed_at": "2026-10-23T01:33:17Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:33:17Z",
+          "completed_at": "2026-10-23T01:33:18Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-23T01:33:18Z",
+          "completed_at": "2026-10-23T01:33:18Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39774700865,
+      "id": 119810606845,
+      "name": "windows-latest / E2E shard 1/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:59:08Z",
+      "completed_at": "2026-10-22T12:42:56Z",
+      "duration_seconds": 2628,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700865/job/119810606845",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:09Z",
+          "completed_at": "2026-10-22T11:59:10Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:10Z",
+          "completed_at": "2026-10-22T11:59:22Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:22Z",
+          "completed_at": "2026-10-22T12:00:01Z",
+          "duration_seconds": 39
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:01Z",
+          "completed_at": "2026-10-22T12:00:38Z",
+          "duration_seconds": 37
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:38Z",
+          "completed_at": "2026-10-22T12:00:38Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:38Z",
+          "completed_at": "2026-10-22T12:00:51Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:51Z",
+          "completed_at": "2026-10-22T12:01:36Z",
+          "duration_seconds": 45
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:36Z",
+          "completed_at": "2026-10-22T12:01:37Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:37Z",
+          "completed_at": "2026-10-22T12:19:05Z",
+          "duration_seconds": 1048
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:19:05Z",
+          "completed_at": "2026-10-22T12:20:25Z",
+          "duration_seconds": 80
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:20:25Z",
+          "completed_at": "2026-10-22T12:42:51Z",
+          "duration_seconds": 1346
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:42:51Z",
+          "completed_at": "2026-10-22T12:42:51Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:42:51Z",
+          "completed_at": "2026-10-22T12:42:51Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:42:51Z",
+          "completed_at": "2026-10-22T12:42:52Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:42:52Z",
+          "completed_at": "2026-10-22T12:42:54Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:42:54Z",
+          "completed_at": "2026-10-22T12:42:54Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39774700865,
+      "id": 119810607046,
+      "name": "windows-latest / E2E shard 2/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:59:06Z",
+      "completed_at": "2026-10-22T12:16:22Z",
+      "duration_seconds": 1036,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700865/job/119810607046",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:07Z",
+          "completed_at": "2026-10-22T11:59:08Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:08Z",
+          "completed_at": "2026-10-22T11:59:20Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:20Z",
+          "completed_at": "2026-10-22T11:59:49Z",
+          "duration_seconds": 29
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:49Z",
+          "completed_at": "2026-10-22T12:00:26Z",
+          "duration_seconds": 37
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:26Z",
+          "completed_at": "2026-10-22T12:00:26Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:26Z",
+          "completed_at": "2026-10-22T12:00:26Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:26Z",
+          "completed_at": "2026-10-22T12:00:26Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:26Z",
+          "completed_at": "2026-10-22T12:00:27Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:27Z",
+          "completed_at": "2026-10-22T12:00:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:27Z",
+          "completed_at": "2026-10-22T12:01:44Z",
+          "duration_seconds": 77
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:44Z",
+          "completed_at": "2026-10-22T12:16:17Z",
+          "duration_seconds": 873
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:16:17Z",
+          "completed_at": "2026-10-22T12:16:17Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:16:17Z",
+          "completed_at": "2026-10-22T12:16:17Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:17Z",
+          "completed_at": "2026-10-22T12:16:17Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:17Z",
+          "completed_at": "2026-10-22T12:16:20Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:20Z",
+          "completed_at": "2026-10-22T12:16:20Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39774700865,
+      "id": 119810607095,
+      "name": "ubuntu-latest / E2E shard 2/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:59:06Z",
+      "completed_at": "2026-10-22T12:10:20Z",
+      "duration_seconds": 674,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700865/job/119810607095",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:07Z",
+          "completed_at": "2026-10-22T11:59:07Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:07Z",
+          "completed_at": "2026-10-22T11:59:13Z",
+          "duration_seconds": 6
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:13Z",
+          "completed_at": "2026-10-22T11:59:20Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:20Z",
+          "completed_at": "2026-10-22T11:59:46Z",
+          "duration_seconds": 26
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:46Z",
+          "completed_at": "2026-10-22T12:00:02Z",
+          "duration_seconds": 16
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:02Z",
+          "completed_at": "2026-10-22T12:00:02Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:02Z",
+          "completed_at": "2026-10-22T12:00:02Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:02Z",
+          "completed_at": "2026-10-22T12:00:02Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:02Z",
+          "completed_at": "2026-10-22T12:00:02Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:02Z",
+          "completed_at": "2026-10-22T12:01:05Z",
+          "duration_seconds": 63
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:01:05Z",
+          "completed_at": "2026-10-22T12:01:05Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:05Z",
+          "completed_at": "2026-10-22T12:10:18Z",
+          "duration_seconds": 553
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:10:18Z",
+          "completed_at": "2026-10-22T12:10:18Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:10:18Z",
+          "completed_at": "2026-10-22T12:10:18Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:10:18Z",
+          "completed_at": "2026-10-22T12:10:18Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:10:18Z",
+          "completed_at": "2026-10-22T12:10:18Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39774700865,
+      "id": 119810607270,
+      "name": "ubuntu-latest / E2E shard 1/2",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:59:07Z",
+      "completed_at": "2026-10-22T12:25:50Z",
+      "duration_seconds": 1603,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700865/job/119810607270",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:08Z",
+          "completed_at": "2026-10-22T11:59:09Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:09Z",
+          "completed_at": "2026-10-22T11:59:16Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:16Z",
+          "completed_at": "2026-10-22T11:59:27Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:27Z",
+          "completed_at": "2026-10-22T11:59:52Z",
+          "duration_seconds": 25
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:52Z",
+          "completed_at": "2026-10-22T12:03:33Z",
+          "duration_seconds": 221
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:03:33Z",
+          "completed_at": "2026-10-22T12:03:45Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:03:45Z",
+          "completed_at": "2026-10-22T12:04:28Z",
+          "duration_seconds": 43
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:04:28Z",
+          "completed_at": "2026-10-22T12:04:28Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:04:28Z",
+          "completed_at": "2026-10-22T12:13:13Z",
+          "duration_seconds": 525
+        },
+        {
+          "name": "Build for e2e",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:13:13Z",
+          "completed_at": "2026-10-22T12:14:06Z",
+          "duration_seconds": 53
+        },
+        {
+          "name": "Run e2e (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:14:06Z",
+          "completed_at": "2026-10-22T12:14:06Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run e2e (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:14:06Z",
+          "completed_at": "2026-10-22T12:25:46Z",
+          "duration_seconds": 700
+        },
+        {
+          "name": "Upload Playwright artifacts on failure",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:25:46Z",
+          "completed_at": "2026-10-22T12:25:46Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:25:46Z",
+          "completed_at": "2026-10-22T12:25:46Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:25:46Z",
+          "completed_at": "2026-10-22T12:25:46Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:25:46Z",
+          "completed_at": "2026-10-22T12:25:47Z",
+          "duration_seconds": 1
+        }
+      ]
+    },
+    {
+      "run_id": 39774700869,
+      "id": 119810606915,
+      "name": "Smoke build (windows-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:59:06Z",
+      "completed_at": "2026-10-22T12:19:38Z",
+      "duration_seconds": 1232,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700869/job/119810606915",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:07Z",
+          "completed_at": "2026-10-22T11:59:08Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:08Z",
+          "completed_at": "2026-10-22T11:59:21Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:21Z",
+          "completed_at": "2026-10-22T11:59:43Z",
+          "duration_seconds": 22
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:43Z",
+          "completed_at": "2026-10-22T12:00:23Z",
+          "duration_seconds": 40
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:23Z",
+          "completed_at": "2026-10-22T12:00:23Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:23Z",
+          "completed_at": "2026-10-22T12:00:38Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:38Z",
+          "completed_at": "2026-10-22T12:01:27Z",
+          "duration_seconds": 49
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:27Z",
+          "completed_at": "2026-10-22T12:01:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:27Z",
+          "completed_at": "2026-10-22T12:18:14Z",
+          "duration_seconds": 1007
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:18:14Z",
+          "completed_at": "2026-10-22T12:19:31Z",
+          "duration_seconds": 77
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:19:31Z",
+          "completed_at": "2026-10-22T12:19:31Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:19:31Z",
+          "completed_at": "2026-10-22T12:19:32Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:19:32Z",
+          "completed_at": "2026-10-22T12:19:32Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:19:32Z",
+          "completed_at": "2026-10-22T12:19:33Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:19:33Z",
+          "completed_at": "2026-10-22T12:19:35Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:19:35Z",
+          "completed_at": "2026-10-22T12:19:36Z",
+          "duration_seconds": 1
+        }
+      ]
+    },
+    {
+      "run_id": 39774700869,
+      "id": 119810607275,
+      "name": "Smoke build (macos-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:59:07Z",
+      "completed_at": "2026-10-22T12:16:51Z",
+      "duration_seconds": 1064,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700869/job/119810607275",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:08Z",
+          "completed_at": "2026-10-22T11:59:09Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:09Z",
+          "completed_at": "2026-10-22T11:59:17Z",
+          "duration_seconds": 8
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:17Z",
+          "completed_at": "2026-10-22T11:59:39Z",
+          "duration_seconds": 22
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:39Z",
+          "completed_at": "2026-10-22T12:00:12Z",
+          "duration_seconds": 33
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:00:12Z",
+          "completed_at": "2026-10-22T12:00:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:12Z",
+          "completed_at": "2026-10-22T12:00:27Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:00:27Z",
+          "completed_at": "2026-10-22T12:01:25Z",
+          "duration_seconds": 58
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:01:25Z",
+          "completed_at": "2026-10-22T12:01:25Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:25Z",
+          "completed_at": "2026-10-22T12:14:55Z",
+          "duration_seconds": 810
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:14:55Z",
+          "completed_at": "2026-10-22T12:16:39Z",
+          "duration_seconds": 104
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:39Z",
+          "completed_at": "2026-10-22T12:16:40Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:40Z",
+          "completed_at": "2026-10-22T12:16:40Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:40Z",
+          "completed_at": "2026-10-22T12:16:40Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:40Z",
+          "completed_at": "2026-10-22T12:16:41Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:41Z",
+          "completed_at": "2026-10-22T12:16:42Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:16:42Z",
+          "completed_at": "2026-10-22T12:16:48Z",
+          "duration_seconds": 6
+        }
+      ]
+    },
+    {
+      "run_id": 39774700869,
+      "id": 119810607365,
+      "name": "Smoke build (ubuntu-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:59:07Z",
+      "completed_at": "2026-10-22T12:11:41Z",
+      "duration_seconds": 754,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39774700869/job/119810607365",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:08Z",
+          "completed_at": "2026-10-22T11:59:08Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:09Z",
+          "completed_at": "2026-10-22T11:59:19Z",
+          "duration_seconds": 10
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:19Z",
+          "completed_at": "2026-10-22T11:59:29Z",
+          "duration_seconds": 10
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:29Z",
+          "completed_at": "2026-10-22T11:59:58Z",
+          "duration_seconds": 29
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:59:58Z",
+          "completed_at": "2026-10-22T12:01:01Z",
+          "duration_seconds": 63
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:01Z",
+          "completed_at": "2026-10-22T12:01:13Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:13Z",
+          "completed_at": "2026-10-22T12:01:56Z",
+          "duration_seconds": 43
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:01:56Z",
+          "completed_at": "2026-10-22T12:01:56Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:01:56Z",
+          "completed_at": "2026-10-22T12:10:47Z",
+          "duration_seconds": 531
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:10:47Z",
+          "completed_at": "2026-10-22T12:11:35Z",
+          "duration_seconds": 48
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:11:35Z",
+          "completed_at": "2026-10-22T12:11:36Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:11:36Z",
+          "completed_at": "2026-10-22T12:11:36Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:11:36Z",
+          "completed_at": "2026-10-22T12:11:36Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:11:36Z",
+          "completed_at": "2026-10-22T12:11:36Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:11:36Z",
+          "completed_at": "2026-10-22T12:11:36Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:11:36Z",
+          "completed_at": "2026-10-22T12:11:36Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39781120109,
+      "id": 119832327566,
+      "name": "Build installer (macos-15-intel)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T12:46:31Z",
+      "completed_at": "2026-10-22T13:25:04Z",
+      "duration_seconds": 2313,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39781120109/job/119832327566",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:33Z",
+          "completed_at": "2026-10-22T12:46:36Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:36Z",
+          "completed_at": "2026-10-22T12:46:50Z",
+          "duration_seconds": 14
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:50Z",
+          "completed_at": "2026-10-22T12:47:06Z",
+          "duration_seconds": 16
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:06Z",
+          "completed_at": "2026-10-22T12:48:12Z",
+          "duration_seconds": 66
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:48:12Z",
+          "completed_at": "2026-10-22T12:48:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:48:12Z",
+          "completed_at": "2026-10-22T12:48:34Z",
+          "duration_seconds": 22
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:48:34Z",
+          "completed_at": "2026-10-22T12:49:57Z",
+          "duration_seconds": 83
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:49:57Z",
+          "completed_at": "2026-10-22T12:50:45Z",
+          "duration_seconds": 48
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:50:45Z",
+          "completed_at": "2026-10-22T12:50:45Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:50:45Z",
+          "completed_at": "2026-10-22T13:10:41Z",
+          "duration_seconds": 1196
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:10:41Z",
+          "completed_at": "2026-10-22T13:10:41Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:10:41Z",
+          "completed_at": "2026-10-22T13:16:30Z",
+          "duration_seconds": 349
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:16:30Z",
+          "completed_at": "2026-10-22T13:16:30Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:16:30Z",
+          "completed_at": "2026-10-22T13:16:49Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:16:49Z",
+          "completed_at": "2026-10-22T13:24:20Z",
+          "duration_seconds": 451
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:24:20Z",
+          "completed_at": "2026-10-22T13:24:20Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:24:20Z",
+          "completed_at": "2026-10-22T13:24:46Z",
+          "duration_seconds": 26
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:24:47Z",
+          "completed_at": "2026-10-22T13:24:58Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:24:58Z",
+          "completed_at": "2026-10-22T13:24:59Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:24:59Z",
+          "completed_at": "2026-10-22T13:25:00Z",
+          "duration_seconds": 1
+        }
+      ]
+    },
+    {
+      "run_id": 39781120109,
+      "id": 119832328277,
+      "name": "Build installer (windows-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T12:46:29Z",
+      "completed_at": "2026-10-22T13:23:54Z",
+      "duration_seconds": 2245,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39781120109/job/119832328277",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:30Z",
+          "completed_at": "2026-10-22T12:46:31Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:31Z",
+          "completed_at": "2026-10-22T12:46:44Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:44Z",
+          "completed_at": "2026-10-22T12:47:11Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:11Z",
+          "completed_at": "2026-10-22T12:47:45Z",
+          "duration_seconds": 34
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:47:45Z",
+          "completed_at": "2026-10-22T12:47:45Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:45Z",
+          "completed_at": "2026-10-22T12:47:57Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:57Z",
+          "completed_at": "2026-10-22T12:48:35Z",
+          "duration_seconds": 38
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:48:35Z",
+          "completed_at": "2026-10-22T12:49:08Z",
+          "duration_seconds": 33
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:49:08Z",
+          "completed_at": "2026-10-22T12:49:09Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:49:09Z",
+          "completed_at": "2026-10-22T13:04:53Z",
+          "duration_seconds": 944
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:04:53Z",
+          "completed_at": "2026-10-22T13:04:57Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:04:57Z",
+          "completed_at": "2026-10-22T13:11:53Z",
+          "duration_seconds": 416
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:11:53Z",
+          "completed_at": "2026-10-22T13:12:06Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:12:06Z",
+          "completed_at": "2026-10-22T13:12:37Z",
+          "duration_seconds": 31
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:12:37Z",
+          "completed_at": "2026-10-22T13:23:27Z",
+          "duration_seconds": 650
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:23:27Z",
+          "completed_at": "2026-10-22T13:23:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:23:27Z",
+          "completed_at": "2026-10-22T13:23:50Z",
+          "duration_seconds": 23
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:23:50Z",
+          "completed_at": "2026-10-22T13:23:50Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:23:50Z",
+          "completed_at": "2026-10-22T13:23:53Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:23:53Z",
+          "completed_at": "2026-10-22T13:23:53Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39781120109,
+      "id": 119832328376,
+      "name": "Build installer (macos-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T12:46:30Z",
+      "completed_at": "2026-10-22T13:14:25Z",
+      "duration_seconds": 1675,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39781120109/job/119832328376",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:30Z",
+          "completed_at": "2026-10-22T12:46:31Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:31Z",
+          "completed_at": "2026-10-22T12:46:39Z",
+          "duration_seconds": 8
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:39Z",
+          "completed_at": "2026-10-22T12:46:52Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:52Z",
+          "completed_at": "2026-10-22T12:47:16Z",
+          "duration_seconds": 24
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:47:16Z",
+          "completed_at": "2026-10-22T12:47:16Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:16Z",
+          "completed_at": "2026-10-22T12:47:28Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:28Z",
+          "completed_at": "2026-10-22T12:48:24Z",
+          "duration_seconds": 56
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:48:24Z",
+          "completed_at": "2026-10-22T12:48:53Z",
+          "duration_seconds": 29
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:48:53Z",
+          "completed_at": "2026-10-22T12:48:53Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:48:53Z",
+          "completed_at": "2026-10-22T13:01:37Z",
+          "duration_seconds": 764
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:01:37Z",
+          "completed_at": "2026-10-22T13:01:37Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:01:37Z",
+          "completed_at": "2026-10-22T13:06:44Z",
+          "duration_seconds": 307
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:06:44Z",
+          "completed_at": "2026-10-22T13:06:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:06:44Z",
+          "completed_at": "2026-10-22T13:06:54Z",
+          "duration_seconds": 10
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:06:54Z",
+          "completed_at": "2026-10-22T13:13:57Z",
+          "duration_seconds": 423
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:13:57Z",
+          "completed_at": "2026-10-22T13:13:57Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:13:57Z",
+          "completed_at": "2026-10-22T13:14:18Z",
+          "duration_seconds": 21
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:14:18Z",
+          "completed_at": "2026-10-22T13:14:18Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:14:18Z",
+          "completed_at": "2026-10-22T13:14:19Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:14:19Z",
+          "completed_at": "2026-10-22T13:14:21Z",
+          "duration_seconds": 2
+        }
+      ]
+    },
+    {
+      "run_id": 39781120109,
+      "id": 119832329187,
+      "name": "Build installer (ubuntu-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T12:46:29Z",
+      "completed_at": "2026-10-22T13:08:19Z",
+      "duration_seconds": 1310,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39781120109/job/119832329187",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:30Z",
+          "completed_at": "2026-10-22T12:46:31Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:31Z",
+          "completed_at": "2026-10-22T12:46:36Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:36Z",
+          "completed_at": "2026-10-22T12:46:44Z",
+          "duration_seconds": 8
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:46:44Z",
+          "completed_at": "2026-10-22T12:47:11Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:11Z",
+          "completed_at": "2026-10-22T12:47:28Z",
+          "duration_seconds": 17
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:28Z",
+          "completed_at": "2026-10-22T12:47:40Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:47:40Z",
+          "completed_at": "2026-10-22T12:48:24Z",
+          "duration_seconds": 44
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:48:24Z",
+          "completed_at": "2026-10-22T12:48:51Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:48:51Z",
+          "completed_at": "2026-10-22T12:48:51Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:48:51Z",
+          "completed_at": "2026-10-22T12:57:31Z",
+          "duration_seconds": 520
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T12:57:31Z",
+          "completed_at": "2026-10-22T12:57:31Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T12:57:31Z",
+          "completed_at": "2026-10-22T13:03:10Z",
+          "duration_seconds": 339
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:03:10Z",
+          "completed_at": "2026-10-22T13:03:10Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:03:10Z",
+          "completed_at": "2026-10-22T13:03:15Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:03:15Z",
+          "completed_at": "2026-10-22T13:08:03Z",
+          "duration_seconds": 288
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T13:08:03Z",
+          "completed_at": "2026-10-22T13:08:03Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:08:03Z",
+          "completed_at": "2026-10-22T13:08:17Z",
+          "duration_seconds": 14
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:08:17Z",
+          "completed_at": "2026-10-22T13:08:17Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:08:17Z",
+          "completed_at": "2026-10-22T13:08:17Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:08:17Z",
+          "completed_at": "2026-10-22T13:08:17Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39781120109,
+      "id": 119851478335,
+      "name": "Create GitHub Release",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T13:25:07Z",
+      "completed_at": "2026-10-22T13:26:47Z",
+      "duration_seconds": 100,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39781120109/job/119851478335",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:25:08Z",
+          "completed_at": "2026-10-22T13:25:10Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:25:10Z",
+          "completed_at": "2026-10-22T13:25:17Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:25:17Z",
+          "completed_at": "2026-10-22T13:25:26Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Install release tooling",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:25:26Z",
+          "completed_at": "2026-10-22T13:25:39Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Download all artifacts",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:25:39Z",
+          "completed_at": "2026-10-22T13:26:08Z",
+          "duration_seconds": 29
+        },
+        {
+          "name": "Stage release files",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:26:08Z",
+          "completed_at": "2026-10-22T13:26:22Z",
+          "duration_seconds": 14
+        },
+        {
+          "name": "Generate release notes from changelog",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:26:22Z",
+          "completed_at": "2026-10-22T13:26:27Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Create Release",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:26:27Z",
+          "completed_at": "2026-10-22T13:26:45Z",
+          "duration_seconds": 18
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:26:45Z",
+          "completed_at": "2026-10-22T13:26:45Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:26:45Z",
+          "completed_at": "2026-10-22T13:26:45Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T13:26:45Z",
+          "completed_at": "2026-10-22T13:26:45Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39767275771,
+      "id": 119785753840,
+      "name": "Build installer (ubuntu-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:00:09Z",
+      "completed_at": "2026-10-22T11:23:23Z",
+      "duration_seconds": 1394,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39767275771/job/119785753840",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:10Z",
+          "completed_at": "2026-10-22T11:00:11Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:11Z",
+          "completed_at": "2026-10-22T11:00:20Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:20Z",
+          "completed_at": "2026-10-22T11:00:31Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:31Z",
+          "completed_at": "2026-10-22T11:00:50Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:50Z",
+          "completed_at": "2026-10-22T11:04:32Z",
+          "duration_seconds": 222
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:04:32Z",
+          "completed_at": "2026-10-22T11:04:41Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:04:41Z",
+          "completed_at": "2026-10-22T11:05:15Z",
+          "duration_seconds": 34
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:05:15Z",
+          "completed_at": "2026-10-22T11:05:36Z",
+          "duration_seconds": 21
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:05:36Z",
+          "completed_at": "2026-10-22T11:05:36Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:05:36Z",
+          "completed_at": "2026-10-22T11:13:20Z",
+          "duration_seconds": 464
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:13:20Z",
+          "completed_at": "2026-10-22T11:13:20Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:13:20Z",
+          "completed_at": "2026-10-22T11:18:41Z",
+          "duration_seconds": 321
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:18:41Z",
+          "completed_at": "2026-10-22T11:18:41Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:18:41Z",
+          "completed_at": "2026-10-22T11:18:45Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:18:45Z",
+          "completed_at": "2026-10-22T11:23:07Z",
+          "duration_seconds": 262
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:23:07Z",
+          "completed_at": "2026-10-22T11:23:07Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:23:07Z",
+          "completed_at": "2026-10-22T11:23:19Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:23:19Z",
+          "completed_at": "2026-10-22T11:23:19Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:23:19Z",
+          "completed_at": "2026-10-22T11:23:20Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:23:20Z",
+          "completed_at": "2026-10-22T11:23:20Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39767275771,
+      "id": 119785753993,
+      "name": "Build installer (windows-latest)",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "started_at": "2026-10-22T11:00:09Z",
+      "completed_at": "2026-10-22T11:29:59Z",
+      "duration_seconds": 1790,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39767275771/job/119785753993",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:10Z",
+          "completed_at": "2026-10-22T11:00:12Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:12Z",
+          "completed_at": "2026-10-22T11:00:24Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:24Z",
+          "completed_at": "2026-10-22T11:00:46Z",
+          "duration_seconds": 22
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:46Z",
+          "completed_at": "2026-10-22T11:01:26Z",
+          "duration_seconds": 40
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:01:26Z",
+          "completed_at": "2026-10-22T11:01:26Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:01:26Z",
+          "completed_at": "2026-10-22T11:01:41Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:01:41Z",
+          "completed_at": "2026-10-22T11:02:28Z",
+          "duration_seconds": 47
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:02:28Z",
+          "completed_at": "2026-10-22T11:03:03Z",
+          "duration_seconds": 35
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:03:03Z",
+          "completed_at": "2026-10-22T11:03:04Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:03:04Z",
+          "completed_at": "2026-10-22T11:20:15Z",
+          "duration_seconds": 1031
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:20:15Z",
+          "completed_at": "2026-10-22T11:20:19Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:20:19Z",
+          "completed_at": "2026-10-22T11:28:10Z",
+          "duration_seconds": 471
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:28:10Z",
+          "completed_at": "2026-10-22T11:28:26Z",
+          "duration_seconds": 16
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:28:26Z",
+          "completed_at": "2026-10-22T11:29:05Z",
+          "duration_seconds": 39
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-10-22T11:29:05Z",
+          "completed_at": "2026-10-22T11:29:53Z",
+          "duration_seconds": 48
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:29:53Z",
+          "completed_at": "2026-10-22T11:29:55Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:29:55Z",
+          "completed_at": "2026-10-22T11:29:55Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:29:55Z",
+          "completed_at": "2026-10-22T11:29:55Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:29:55Z",
+          "completed_at": "2026-10-22T11:29:57Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:29:57Z",
+          "completed_at": "2026-10-22T11:29:57Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39767275771,
+      "id": 119785754026,
+      "name": "Build installer (macos-15-intel)",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "started_at": "2026-10-22T11:00:10Z",
+      "completed_at": "2026-10-22T11:44:20Z",
+      "duration_seconds": 2650,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39767275771/job/119785754026",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:12Z",
+          "completed_at": "2026-10-22T11:00:15Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:15Z",
+          "completed_at": "2026-10-22T11:00:31Z",
+          "duration_seconds": 16
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:31Z",
+          "completed_at": "2026-10-22T11:01:11Z",
+          "duration_seconds": 40
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:01:11Z",
+          "completed_at": "2026-10-22T11:02:46Z",
+          "duration_seconds": 95
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:02:46Z",
+          "completed_at": "2026-10-22T11:02:46Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:02:46Z",
+          "completed_at": "2026-10-22T11:03:16Z",
+          "duration_seconds": 30
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:03:16Z",
+          "completed_at": "2026-10-22T11:05:10Z",
+          "duration_seconds": 114
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:05:10Z",
+          "completed_at": "2026-10-22T11:06:12Z",
+          "duration_seconds": 62
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:06:12Z",
+          "completed_at": "2026-10-22T11:06:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:06:12Z",
+          "completed_at": "2026-10-22T11:29:14Z",
+          "duration_seconds": 1382
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:29:14Z",
+          "completed_at": "2026-10-22T11:29:14Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:29:14Z",
+          "completed_at": "2026-10-22T11:39:40Z",
+          "duration_seconds": 626
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:39:40Z",
+          "completed_at": "2026-10-22T11:39:40Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:39:40Z",
+          "completed_at": "2026-10-22T11:40:04Z",
+          "duration_seconds": 24
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-10-22T11:40:04Z",
+          "completed_at": "2026-10-22T11:44:11Z",
+          "duration_seconds": 247
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:44:11Z",
+          "completed_at": "2026-10-22T11:44:14Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:44:14Z",
+          "completed_at": "2026-10-22T11:44:14Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:44:14Z",
+          "completed_at": "2026-10-22T11:44:14Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:44:14Z",
+          "completed_at": "2026-10-22T11:44:15Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:44:15Z",
+          "completed_at": "2026-10-22T11:44:16Z",
+          "duration_seconds": 1
+        }
+      ]
+    },
+    {
+      "run_id": 39767275771,
+      "id": 119785754331,
+      "name": "Build installer (macos-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T11:00:09Z",
+      "completed_at": "2026-10-22T11:27:24Z",
+      "duration_seconds": 1635,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39767275771/job/119785754331",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:09Z",
+          "completed_at": "2026-10-22T11:00:10Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:10Z",
+          "completed_at": "2026-10-22T11:00:21Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:21Z",
+          "completed_at": "2026-10-22T11:00:32Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:00:32Z",
+          "completed_at": "2026-10-22T11:01:00Z",
+          "duration_seconds": 28
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:01:00Z",
+          "completed_at": "2026-10-22T11:01:00Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:01:00Z",
+          "completed_at": "2026-10-22T11:01:15Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:01:15Z",
+          "completed_at": "2026-10-22T11:02:04Z",
+          "duration_seconds": 49
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:02:04Z",
+          "completed_at": "2026-10-22T11:02:34Z",
+          "duration_seconds": 30
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:02:34Z",
+          "completed_at": "2026-10-22T11:02:34Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:02:34Z",
+          "completed_at": "2026-10-22T11:15:12Z",
+          "duration_seconds": 758
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:15:12Z",
+          "completed_at": "2026-10-22T11:15:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:15:12Z",
+          "completed_at": "2026-10-22T11:19:54Z",
+          "duration_seconds": 282
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:19:55Z",
+          "completed_at": "2026-10-22T11:19:55Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:19:55Z",
+          "completed_at": "2026-10-22T11:20:04Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:20:04Z",
+          "completed_at": "2026-10-22T11:27:02Z",
+          "duration_seconds": 418
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T11:27:02Z",
+          "completed_at": "2026-10-22T11:27:02Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:27:02Z",
+          "completed_at": "2026-10-22T11:27:19Z",
+          "duration_seconds": 17
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:27:19Z",
+          "completed_at": "2026-10-22T11:27:19Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:27:19Z",
+          "completed_at": "2026-10-22T11:27:20Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T11:27:20Z",
+          "completed_at": "2026-10-22T11:27:23Z",
+          "duration_seconds": 3
+        }
+      ]
+    },
+    {
+      "run_id": 39767275771,
+      "id": 119804385654,
+      "name": "Create GitHub Release",
+      "run_attempt": 1,
+      "conclusion": "skipped",
+      "started_at": "2026-10-22T11:44:20Z",
+      "completed_at": "2026-10-22T11:44:20Z",
+      "duration_seconds": 0,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39767275771/job/119804385654",
+      "steps": []
+    },
+    {
+      "run_id": 39753897157,
+      "id": 119740941422,
+      "name": "Build installer (windows-latest)",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "started_at": "2026-10-22T09:14:42Z",
+      "completed_at": "2026-10-22T09:44:51Z",
+      "duration_seconds": 1809,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39753897157/job/119740941422",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:43Z",
+          "completed_at": "2026-10-22T09:14:45Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:45Z",
+          "completed_at": "2026-10-22T09:14:57Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:57Z",
+          "completed_at": "2026-10-22T09:15:16Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:16Z",
+          "completed_at": "2026-10-22T09:15:55Z",
+          "duration_seconds": 39
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:15:55Z",
+          "completed_at": "2026-10-22T09:15:55Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:55Z",
+          "completed_at": "2026-10-22T09:16:10Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:16:10Z",
+          "completed_at": "2026-10-22T09:16:58Z",
+          "duration_seconds": 48
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:16:58Z",
+          "completed_at": "2026-10-22T09:17:31Z",
+          "duration_seconds": 33
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:17:31Z",
+          "completed_at": "2026-10-22T09:17:32Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:17:32Z",
+          "completed_at": "2026-10-22T09:34:19Z",
+          "duration_seconds": 1007
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:34:19Z",
+          "completed_at": "2026-10-22T09:34:23Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:34:23Z",
+          "completed_at": "2026-10-22T09:43:04Z",
+          "duration_seconds": 521
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:43:04Z",
+          "completed_at": "2026-10-22T09:43:19Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:43:19Z",
+          "completed_at": "2026-10-22T09:43:54Z",
+          "duration_seconds": 35
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-10-22T09:43:54Z",
+          "completed_at": "2026-10-22T09:44:46Z",
+          "duration_seconds": 52
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:44:46Z",
+          "completed_at": "2026-10-22T09:44:48Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:44:48Z",
+          "completed_at": "2026-10-22T09:44:48Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:44:48Z",
+          "completed_at": "2026-10-22T09:44:48Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:44:48Z",
+          "completed_at": "2026-10-22T09:44:50Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:44:50Z",
+          "completed_at": "2026-10-22T09:44:50Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39753897157,
+      "id": 119740941730,
+      "name": "Build installer (macos-latest)",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "started_at": "2026-10-22T09:14:41Z",
+      "completed_at": "2026-10-22T09:41:15Z",
+      "duration_seconds": 1594,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39753897157/job/119740941730",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:42Z",
+          "completed_at": "2026-10-22T09:14:43Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:43Z",
+          "completed_at": "2026-10-22T09:14:56Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:56Z",
+          "completed_at": "2026-10-22T09:15:10Z",
+          "duration_seconds": 14
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:10Z",
+          "completed_at": "2026-10-22T09:15:33Z",
+          "duration_seconds": 23
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:15:33Z",
+          "completed_at": "2026-10-22T09:15:33Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:33Z",
+          "completed_at": "2026-10-22T09:15:44Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:44Z",
+          "completed_at": "2026-10-22T09:16:32Z",
+          "duration_seconds": 48
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:16:32Z",
+          "completed_at": "2026-10-22T09:17:02Z",
+          "duration_seconds": 30
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:17:02Z",
+          "completed_at": "2026-10-22T09:17:02Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:17:02Z",
+          "completed_at": "2026-10-22T09:33:44Z",
+          "duration_seconds": 1002
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:33:44Z",
+          "completed_at": "2026-10-22T09:33:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:33:44Z",
+          "completed_at": "2026-10-22T09:38:02Z",
+          "duration_seconds": 258
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:38:02Z",
+          "completed_at": "2026-10-22T09:38:02Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:38:02Z",
+          "completed_at": "2026-10-22T09:38:09Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-10-22T09:38:09Z",
+          "completed_at": "2026-10-22T09:41:07Z",
+          "duration_seconds": 178
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:41:07Z",
+          "completed_at": "2026-10-22T09:41:09Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:41:09Z",
+          "completed_at": "2026-10-22T09:41:09Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:41:09Z",
+          "completed_at": "2026-10-22T09:41:09Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:41:09Z",
+          "completed_at": "2026-10-22T09:41:09Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:41:09Z",
+          "completed_at": "2026-10-22T09:41:13Z",
+          "duration_seconds": 4
+        }
+      ]
+    },
+    {
+      "run_id": 39753897157,
+      "id": 119740941748,
+      "name": "Build installer (macos-15-intel)",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "started_at": "2026-10-22T09:14:44Z",
+      "completed_at": "2026-10-22T09:50:05Z",
+      "duration_seconds": 2121,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39753897157/job/119740941748",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:44Z",
+          "completed_at": "2026-10-22T09:14:46Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:46Z",
+          "completed_at": "2026-10-22T09:15:00Z",
+          "duration_seconds": 14
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:00Z",
+          "completed_at": "2026-10-22T09:15:19Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:19Z",
+          "completed_at": "2026-10-22T09:16:39Z",
+          "duration_seconds": 80
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:16:39Z",
+          "completed_at": "2026-10-22T09:16:39Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:16:39Z",
+          "completed_at": "2026-10-22T09:17:08Z",
+          "duration_seconds": 29
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:17:08Z",
+          "completed_at": "2026-10-22T09:18:43Z",
+          "duration_seconds": 95
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:18:43Z",
+          "completed_at": "2026-10-22T09:19:40Z",
+          "duration_seconds": 57
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:19:40Z",
+          "completed_at": "2026-10-22T09:19:40Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:19:40Z",
+          "completed_at": "2026-10-22T09:42:18Z",
+          "duration_seconds": 1358
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:42:18Z",
+          "completed_at": "2026-10-22T09:42:18Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:42:18Z",
+          "completed_at": "2026-10-22T09:48:57Z",
+          "duration_seconds": 399
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:48:57Z",
+          "completed_at": "2026-10-22T09:48:57Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:48:57Z",
+          "completed_at": "2026-10-22T09:49:18Z",
+          "duration_seconds": 21
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-10-22T09:49:18Z",
+          "completed_at": "2026-10-22T09:49:55Z",
+          "duration_seconds": 37
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:49:55Z",
+          "completed_at": "2026-10-22T09:49:58Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:49:58Z",
+          "completed_at": "2026-10-22T09:49:58Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:49:58Z",
+          "completed_at": "2026-10-22T09:49:58Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:49:58Z",
+          "completed_at": "2026-10-22T09:49:59Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:49:59Z",
+          "completed_at": "2026-10-22T09:50:00Z",
+          "duration_seconds": 1
+        }
+      ]
+    },
+    {
+      "run_id": 39753897157,
+      "id": 119740941949,
+      "name": "Build installer (ubuntu-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T09:14:41Z",
+      "completed_at": "2026-10-22T09:31:43Z",
+      "duration_seconds": 1022,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39753897157/job/119740941949",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:42Z",
+          "completed_at": "2026-10-22T09:14:43Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:43Z",
+          "completed_at": "2026-10-22T09:14:50Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:14:50Z",
+          "completed_at": "2026-10-22T09:15:02Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:02Z",
+          "completed_at": "2026-10-22T09:15:18Z",
+          "duration_seconds": 16
+        },
+        {
+          "name": "Install Linux runtime test dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:18Z",
+          "completed_at": "2026-10-22T09:15:56Z",
+          "duration_seconds": 38
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:15:56Z",
+          "completed_at": "2026-10-22T09:16:03Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:16:03Z",
+          "completed_at": "2026-10-22T09:16:32Z",
+          "duration_seconds": 29
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:16:32Z",
+          "completed_at": "2026-10-22T09:16:50Z",
+          "duration_seconds": 18
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:16:50Z",
+          "completed_at": "2026-10-22T09:16:50Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:16:50Z",
+          "completed_at": "2026-10-22T09:22:53Z",
+          "duration_seconds": 363
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:22:53Z",
+          "completed_at": "2026-10-22T09:22:53Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:22:53Z",
+          "completed_at": "2026-10-22T09:27:30Z",
+          "duration_seconds": 277
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:27:30Z",
+          "completed_at": "2026-10-22T09:27:30Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:27:30Z",
+          "completed_at": "2026-10-22T09:27:34Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Packaged SDK consumer acceptance",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:27:34Z",
+          "completed_at": "2026-10-22T09:31:30Z",
+          "duration_seconds": 236
+        },
+        {
+          "name": "Upload packaged acceptance failure evidence",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T09:31:30Z",
+          "completed_at": "2026-10-22T09:31:30Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:31:30Z",
+          "completed_at": "2026-10-22T09:31:40Z",
+          "duration_seconds": 10
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:31:40Z",
+          "completed_at": "2026-10-22T09:31:40Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:31:40Z",
+          "completed_at": "2026-10-22T09:31:40Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T09:31:40Z",
+          "completed_at": "2026-10-22T09:31:40Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39753897157,
+      "id": 119756356358,
+      "name": "Create GitHub Release",
+      "run_attempt": 1,
+      "conclusion": "skipped",
+      "started_at": "2026-10-22T09:50:06Z",
+      "completed_at": "2026-10-22T09:50:06Z",
+      "duration_seconds": 0,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39753897157/job/119756356358",
+      "steps": []
+    },
+    {
+      "run_id": 39760699943,
+      "id": 119763842483,
+      "name": "Smoke build (macos-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T10:07:27Z",
+      "completed_at": "2026-10-22T10:19:17Z",
+      "duration_seconds": 710,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39760699943/job/119763842483",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:27Z",
+          "completed_at": "2026-10-22T10:07:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:27Z",
+          "completed_at": "2026-10-22T10:07:41Z",
+          "duration_seconds": 14
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:41Z",
+          "completed_at": "2026-10-22T10:07:50Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:50Z",
+          "completed_at": "2026-10-22T10:08:13Z",
+          "duration_seconds": 23
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:08:13Z",
+          "completed_at": "2026-10-22T10:08:13Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:13Z",
+          "completed_at": "2026-10-22T10:08:22Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:22Z",
+          "completed_at": "2026-10-22T10:08:55Z",
+          "duration_seconds": 33
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:08:55Z",
+          "completed_at": "2026-10-22T10:08:55Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:55Z",
+          "completed_at": "2026-10-22T10:18:08Z",
+          "duration_seconds": 553
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:08Z",
+          "completed_at": "2026-10-22T10:19:11Z",
+          "duration_seconds": 63
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:11Z",
+          "completed_at": "2026-10-22T10:19:11Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:11Z",
+          "completed_at": "2026-10-22T10:19:12Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:12Z",
+          "completed_at": "2026-10-22T10:19:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:12Z",
+          "completed_at": "2026-10-22T10:19:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:12Z",
+          "completed_at": "2026-10-22T10:19:13Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:13Z",
+          "completed_at": "2026-10-22T10:19:15Z",
+          "duration_seconds": 2
+        }
+      ]
+    },
+    {
+      "run_id": 39760699943,
+      "id": 119763842602,
+      "name": "Smoke build (windows-latest)",
+      "run_attempt": 1,
+      "conclusion": "failure",
+      "started_at": "2026-10-22T10:07:27Z",
+      "completed_at": "2026-10-22T10:27:49Z",
+      "duration_seconds": 1222,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39760699943/job/119763842602",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:28Z",
+          "completed_at": "2026-10-22T10:07:29Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:29Z",
+          "completed_at": "2026-10-22T10:07:50Z",
+          "duration_seconds": 21
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:50Z",
+          "completed_at": "2026-10-22T10:08:13Z",
+          "duration_seconds": 23
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:13Z",
+          "completed_at": "2026-10-22T10:08:53Z",
+          "duration_seconds": 40
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:08:53Z",
+          "completed_at": "2026-10-22T10:08:53Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:53Z",
+          "completed_at": "2026-10-22T10:09:08Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:09:08Z",
+          "completed_at": "2026-10-22T10:09:57Z",
+          "duration_seconds": 49
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:09:57Z",
+          "completed_at": "2026-10-22T10:09:58Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "failure",
+          "started_at": "2026-10-22T10:09:58Z",
+          "completed_at": "2026-10-22T10:27:44Z",
+          "duration_seconds": 1066
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:27:44Z",
+          "completed_at": "2026-10-22T10:27:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:27:44Z",
+          "completed_at": "2026-10-22T10:27:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:27:44Z",
+          "completed_at": "2026-10-22T10:27:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:27:44Z",
+          "completed_at": "2026-10-22T10:27:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:27:44Z",
+          "completed_at": "2026-10-22T10:27:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:27:44Z",
+          "completed_at": "2026-10-22T10:27:46Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:27:46Z",
+          "completed_at": "2026-10-22T10:27:46Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39760699943,
+      "id": 119763842764,
+      "name": "Smoke build (ubuntu-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-22T10:07:26Z",
+      "completed_at": "2026-10-22T10:18:30Z",
+      "duration_seconds": 664,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39760699943/job/119763842764",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:27Z",
+          "completed_at": "2026-10-22T10:07:28Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:28Z",
+          "completed_at": "2026-10-22T10:07:33Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:33Z",
+          "completed_at": "2026-10-22T10:07:39Z",
+          "duration_seconds": 6
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:39Z",
+          "completed_at": "2026-10-22T10:08:06Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:06Z",
+          "completed_at": "2026-10-22T10:08:16Z",
+          "duration_seconds": 10
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:16Z",
+          "completed_at": "2026-10-22T10:08:27Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:27Z",
+          "completed_at": "2026-10-22T10:09:09Z",
+          "duration_seconds": 42
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:09:09Z",
+          "completed_at": "2026-10-22T10:09:09Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:09:09Z",
+          "completed_at": "2026-10-22T10:17:38Z",
+          "duration_seconds": 509
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:17:38Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 49
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39760699943,
+      "id": 119775186559,
+      "name": "Smoke build (windows-latest)",
+      "run_attempt": 2,
+      "conclusion": "success",
+      "started_at": "2026-10-22T10:34:29Z",
+      "completed_at": "2026-10-22T10:54:49Z",
+      "duration_seconds": 1220,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39760699943/job/119775186559",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:34:30Z",
+          "completed_at": "2026-10-22T10:34:31Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:34:31Z",
+          "completed_at": "2026-10-22T10:34:42Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:34:42Z",
+          "completed_at": "2026-10-22T10:35:02Z",
+          "duration_seconds": 20
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:35:02Z",
+          "completed_at": "2026-10-22T10:35:42Z",
+          "duration_seconds": 40
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:35:42Z",
+          "completed_at": "2026-10-22T10:35:42Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:35:42Z",
+          "completed_at": "2026-10-22T10:35:57Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:35:57Z",
+          "completed_at": "2026-10-22T10:36:50Z",
+          "duration_seconds": 53
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:36:50Z",
+          "completed_at": "2026-10-22T10:36:51Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:36:51Z",
+          "completed_at": "2026-10-22T10:53:34Z",
+          "duration_seconds": 1003
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:53:34Z",
+          "completed_at": "2026-10-22T10:54:42Z",
+          "duration_seconds": 68
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:54:42Z",
+          "completed_at": "2026-10-22T10:54:42Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:54:42Z",
+          "completed_at": "2026-10-22T10:54:43Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:54:43Z",
+          "completed_at": "2026-10-22T10:54:44Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:54:44Z",
+          "completed_at": "2026-10-22T10:54:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:54:44Z",
+          "completed_at": "2026-10-22T10:54:47Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:54:47Z",
+          "completed_at": "2026-10-22T10:54:47Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 39760699943,
+      "id": 119775189131,
+      "name": "Smoke build (macos-latest)",
+      "run_attempt": 2,
+      "conclusion": "success",
+      "started_at": "2026-10-22T10:07:27Z",
+      "completed_at": "2026-10-22T10:19:17Z",
+      "duration_seconds": 710,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39760699943/job/119775189131",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:27Z",
+          "completed_at": "2026-10-22T10:07:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:27Z",
+          "completed_at": "2026-10-22T10:07:41Z",
+          "duration_seconds": 14
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:41Z",
+          "completed_at": "2026-10-22T10:07:50Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:50Z",
+          "completed_at": "2026-10-22T10:08:13Z",
+          "duration_seconds": 23
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:08:13Z",
+          "completed_at": "2026-10-22T10:08:13Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:13Z",
+          "completed_at": "2026-10-22T10:08:22Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:22Z",
+          "completed_at": "2026-10-22T10:08:55Z",
+          "duration_seconds": 33
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:08:55Z",
+          "completed_at": "2026-10-22T10:08:55Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:55Z",
+          "completed_at": "2026-10-22T10:18:08Z",
+          "duration_seconds": 553
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:08Z",
+          "completed_at": "2026-10-22T10:19:11Z",
+          "duration_seconds": 63
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:11Z",
+          "completed_at": "2026-10-22T10:19:11Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:11Z",
+          "completed_at": "2026-10-22T10:19:12Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:12Z",
+          "completed_at": "2026-10-22T10:19:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:12Z",
+          "completed_at": "2026-10-22T10:19:12Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:12Z",
+          "completed_at": "2026-10-22T10:19:13Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:19:13Z",
+          "completed_at": "2026-10-22T10:19:15Z",
+          "duration_seconds": 2
+        }
+      ]
+    },
+    {
+      "run_id": 39760699943,
+      "id": 119775228419,
+      "name": "Smoke build (ubuntu-latest)",
+      "run_attempt": 2,
+      "conclusion": "success",
+      "started_at": "2026-10-22T10:07:26Z",
+      "completed_at": "2026-10-22T10:18:30Z",
+      "duration_seconds": 664,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/39760699943/job/119775228419",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:27Z",
+          "completed_at": "2026-10-22T10:07:28Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:28Z",
+          "completed_at": "2026-10-22T10:07:33Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:33Z",
+          "completed_at": "2026-10-22T10:07:39Z",
+          "duration_seconds": 6
+        },
+        {
+          "name": "Install",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:07:39Z",
+          "completed_at": "2026-10-22T10:08:06Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:06Z",
+          "completed_at": "2026-10-22T10:08:16Z",
+          "duration_seconds": 10
+        },
+        {
+          "name": "Build packages (needed for typecheck cross-package + tests)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:16Z",
+          "completed_at": "2026-10-22T10:08:27Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:08:27Z",
+          "completed_at": "2026-10-22T10:09:09Z",
+          "duration_seconds": 42
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-22T10:09:09Z",
+          "completed_at": "2026-10-22T10:09:09Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests (schema validation, envelope, registry)",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:09:09Z",
+          "completed_at": "2026-10-22T10:17:38Z",
+          "duration_seconds": 509
+        },
+        {
+          "name": "Build renderer + main",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:17:38Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 49
+        },
+        {
+          "name": "Verify outputs",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify icon generation script",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Verify packaging hooks",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-22T10:18:27Z",
+          "completed_at": "2026-10-22T10:18:27Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 38769060483,
+      "id": 116539790934,
+      "name": "Build installer (macos-15-intel)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-15T16:26:55Z",
+      "completed_at": "2026-10-15T17:02:38Z",
+      "duration_seconds": 2143,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/38769060483/job/116539790934",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:26:58Z",
+          "completed_at": "2026-10-15T16:27:00Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:01Z",
+          "completed_at": "2026-10-15T16:27:09Z",
+          "duration_seconds": 8
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:09Z",
+          "completed_at": "2026-10-15T16:27:28Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:28Z",
+          "completed_at": "2026-10-15T16:28:58Z",
+          "duration_seconds": 90
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:28:58Z",
+          "completed_at": "2026-10-15T16:28:58Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:28:58Z",
+          "completed_at": "2026-10-15T16:29:31Z",
+          "duration_seconds": 33
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:29:31Z",
+          "completed_at": "2026-10-15T16:31:24Z",
+          "duration_seconds": 113
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:31:24Z",
+          "completed_at": "2026-10-15T16:32:23Z",
+          "duration_seconds": 59
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:32:23Z",
+          "completed_at": "2026-10-15T16:32:23Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:32:23Z",
+          "completed_at": "2026-10-15T16:55:47Z",
+          "duration_seconds": 1404
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:55:47Z",
+          "completed_at": "2026-10-15T16:55:47Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:55:47Z",
+          "completed_at": "2026-10-15T17:00:50Z",
+          "duration_seconds": 303
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T17:00:50Z",
+          "completed_at": "2026-10-15T17:00:50Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:00:50Z",
+          "completed_at": "2026-10-15T17:01:06Z",
+          "duration_seconds": 16
+        },
+        {
+          "name": "Install xvfb for renderer boot smoke (Linux only)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T17:01:06Z",
+          "completed_at": "2026-10-15T17:01:06Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Renderer boot smoke (last gate before release)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T17:01:06Z",
+          "completed_at": "2026-10-15T17:01:06Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:01:06Z",
+          "completed_at": "2026-10-15T17:01:35Z",
+          "duration_seconds": 29
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:01:35Z",
+          "completed_at": "2026-10-15T17:02:32Z",
+          "duration_seconds": 57
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:02:32Z",
+          "completed_at": "2026-10-15T17:02:33Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:02:33Z",
+          "completed_at": "2026-10-15T17:02:34Z",
+          "duration_seconds": 1
+        }
+      ]
+    },
+    {
+      "run_id": 38769060483,
+      "id": 116539791514,
+      "name": "Build installer (windows-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-15T16:26:53Z",
+      "completed_at": "2026-10-15T16:56:26Z",
+      "duration_seconds": 1773,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/38769060483/job/116539791514",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:26:54Z",
+          "completed_at": "2026-10-15T16:26:56Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:26:56Z",
+          "completed_at": "2026-10-15T16:27:07Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:07Z",
+          "completed_at": "2026-10-15T16:27:32Z",
+          "duration_seconds": 25
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:32Z",
+          "completed_at": "2026-10-15T16:28:09Z",
+          "duration_seconds": 37
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:28:09Z",
+          "completed_at": "2026-10-15T16:28:09Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:28:09Z",
+          "completed_at": "2026-10-15T16:28:24Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:28:24Z",
+          "completed_at": "2026-10-15T16:29:11Z",
+          "duration_seconds": 47
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:29:11Z",
+          "completed_at": "2026-10-15T16:29:44Z",
+          "duration_seconds": 33
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:29:44Z",
+          "completed_at": "2026-10-15T16:29:45Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:29:45Z",
+          "completed_at": "2026-10-15T16:46:20Z",
+          "duration_seconds": 995
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:46:20Z",
+          "completed_at": "2026-10-15T16:46:25Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:46:25Z",
+          "completed_at": "2026-10-15T16:55:08Z",
+          "duration_seconds": 523
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:55:08Z",
+          "completed_at": "2026-10-15T16:55:20Z",
+          "duration_seconds": 12
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:55:20Z",
+          "completed_at": "2026-10-15T16:55:58Z",
+          "duration_seconds": 38
+        },
+        {
+          "name": "Install xvfb for renderer boot smoke (Linux only)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:55:58Z",
+          "completed_at": "2026-10-15T16:55:58Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Renderer boot smoke (last gate before release)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:55:58Z",
+          "completed_at": "2026-10-15T16:55:58Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:55:58Z",
+          "completed_at": "2026-10-15T16:56:22Z",
+          "duration_seconds": 24
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:56:22Z",
+          "completed_at": "2026-10-15T16:56:22Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:56:22Z",
+          "completed_at": "2026-10-15T16:56:25Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:56:25Z",
+          "completed_at": "2026-10-15T16:56:25Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 38769060483,
+      "id": 116539791579,
+      "name": "Build installer (macos-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-15T16:27:00Z",
+      "completed_at": "2026-10-15T16:48:32Z",
+      "duration_seconds": 1292,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/38769060483/job/116539791579",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:01Z",
+          "completed_at": "2026-10-15T16:27:02Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:02Z",
+          "completed_at": "2026-10-15T16:27:07Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:07Z",
+          "completed_at": "2026-10-15T16:27:24Z",
+          "duration_seconds": 17
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:24Z",
+          "completed_at": "2026-10-15T16:27:50Z",
+          "duration_seconds": 26
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:27:50Z",
+          "completed_at": "2026-10-15T16:27:50Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:50Z",
+          "completed_at": "2026-10-15T16:28:06Z",
+          "duration_seconds": 16
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:28:06Z",
+          "completed_at": "2026-10-15T16:29:00Z",
+          "duration_seconds": 54
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:29:00Z",
+          "completed_at": "2026-10-15T16:29:27Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:29:27Z",
+          "completed_at": "2026-10-15T16:29:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:29:27Z",
+          "completed_at": "2026-10-15T16:42:44Z",
+          "duration_seconds": 797
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:42:44Z",
+          "completed_at": "2026-10-15T16:42:44Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:44Z",
+          "completed_at": "2026-10-15T16:47:54Z",
+          "duration_seconds": 310
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:47:54Z",
+          "completed_at": "2026-10-15T16:47:54Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:47:54Z",
+          "completed_at": "2026-10-15T16:48:04Z",
+          "duration_seconds": 10
+        },
+        {
+          "name": "Install xvfb for renderer boot smoke (Linux only)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:48:04Z",
+          "completed_at": "2026-10-15T16:48:04Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Renderer boot smoke (last gate before release)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:48:04Z",
+          "completed_at": "2026-10-15T16:48:04Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:48:04Z",
+          "completed_at": "2026-10-15T16:48:21Z",
+          "duration_seconds": 17
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:48:21Z",
+          "completed_at": "2026-10-15T16:48:22Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:48:22Z",
+          "completed_at": "2026-10-15T16:48:23Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:48:23Z",
+          "completed_at": "2026-10-15T16:48:28Z",
+          "duration_seconds": 5
+        }
+      ]
+    },
+    {
+      "run_id": 38769060483,
+      "id": 116539791809,
+      "name": "Build installer (ubuntu-latest)",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-15T16:26:54Z",
+      "completed_at": "2026-10-15T16:42:44Z",
+      "duration_seconds": 950,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/38769060483/job/116539791809",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:26:54Z",
+          "completed_at": "2026-10-15T16:26:55Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:26:55Z",
+          "completed_at": "2026-10-15T16:26:58Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:26:58Z",
+          "completed_at": "2026-10-15T16:27:05Z",
+          "duration_seconds": 7
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:05Z",
+          "completed_at": "2026-10-15T16:27:30Z",
+          "duration_seconds": 25
+        },
+        {
+          "name": "Install Unicode PDF font (Linux)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:30Z",
+          "completed_at": "2026-10-15T16:27:39Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Build workspace packages",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:39Z",
+          "completed_at": "2026-10-15T16:27:52Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Typecheck (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:27:52Z",
+          "completed_at": "2026-10-15T16:28:37Z",
+          "duration_seconds": 45
+        },
+        {
+          "name": "Lint (gate before pack)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:28:37Z",
+          "completed_at": "2026-10-15T16:29:04Z",
+          "duration_seconds": 27
+        },
+        {
+          "name": "Configure npm script-shell (Windows)",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:29:04Z",
+          "completed_at": "2026-10-15T16:29:04Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Unit tests",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:29:04Z",
+          "completed_at": "2026-10-15T16:37:18Z",
+          "duration_seconds": 494
+        },
+        {
+          "name": "Prepare Windows sandbox for packaged Shell gate",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:37:18Z",
+          "completed_at": "2026-10-15T16:37:18Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:37:18Z",
+          "completed_at": "2026-10-15T16:42:15Z",
+          "duration_seconds": 297
+        },
+        {
+          "name": "Create Windows zip fallback downloads",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T16:42:15Z",
+          "completed_at": "2026-10-15T16:42:15Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Smoke check installer",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:15Z",
+          "completed_at": "2026-10-15T16:42:18Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Install xvfb for renderer boot smoke (Linux only)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:18Z",
+          "completed_at": "2026-10-15T16:42:19Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Renderer boot smoke (last gate before release)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:19Z",
+          "completed_at": "2026-10-15T16:42:30Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Upload installer artifacts (workflow_dispatch path)",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:30Z",
+          "completed_at": "2026-10-15T16:42:41Z",
+          "duration_seconds": 11
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:42Z",
+          "completed_at": "2026-10-15T16:42:42Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:42Z",
+          "completed_at": "2026-10-15T16:42:42Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T16:42:42Z",
+          "completed_at": "2026-10-15T16:42:42Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "run_id": 38769060483,
+      "id": 116556857092,
+      "name": "Create GitHub Release",
+      "run_attempt": 1,
+      "conclusion": "success",
+      "started_at": "2026-10-15T17:02:42Z",
+      "completed_at": "2026-10-15T17:05:42Z",
+      "duration_seconds": 180,
+      "html_url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/38769060483/job/116556857092",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:02:43Z",
+          "completed_at": "2026-10-15T17:02:44Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:02:44Z",
+          "completed_at": "2026-10-15T17:02:48Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:02:48Z",
+          "completed_at": "2026-10-15T17:02:57Z",
+          "duration_seconds": 9
+        },
+        {
+          "name": "Install release tooling",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:02:57Z",
+          "completed_at": "2026-10-15T17:03:10Z",
+          "duration_seconds": 13
+        },
+        {
+          "name": "Download all artifacts",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:03:10Z",
+          "completed_at": "2026-10-15T17:05:11Z",
+          "duration_seconds": 121
+        },
+        {
+          "name": "Stage release files",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:05:11Z",
+          "completed_at": "2026-10-15T17:05:15Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Generate release notes from changelog",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:05:15Z",
+          "completed_at": "2026-10-15T17:05:20Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Create Release",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:05:20Z",
+          "completed_at": "2026-10-15T17:05:39Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Post Setup Node from .nvmrc",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:05:39Z",
+          "completed_at": "2026-10-15T17:05:39Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:05:39Z",
+          "completed_at": "2026-10-15T17:05:40Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-10-15T17:05:40Z",
+          "completed_at": "2026-10-15T17:05:40Z",
+          "duration_seconds": 0
+        }
+      ]
+    }
+  ]
+}
