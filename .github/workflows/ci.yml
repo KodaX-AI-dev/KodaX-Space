@@ -2,8 +2,8 @@
 #
 # Separate from release.yml because:
 #   - release.yml is triggered by tag push and produces installers (heavy)
-#   - ci.yml just validates code quality (typecheck + unit tests + e2e) and
-#     should run on every commit / PR for fast feedback
+#   - ci.yml runs source E2E; build.yml owns source quality checks.
+#     They run concurrently for the same commit.
 #
 # Platform matrix:
 #   - windows-latest — most users' deployment platform; Electron + Playwright
@@ -31,11 +31,31 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_tests: ${{ steps.changes.outputs.run_tests }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - id: changes
+        run: node scripts/ci-changes.mjs
+
   test:
+    needs: changes
+    if: needs.changes.outputs.run_tests == 'true'
     name: ${{ matrix.os }} / E2E shard ${{ matrix.shard }}
     runs-on: ${{ matrix.os }}
     # Bound hung tests or lingering handles to a failed run with logs.
@@ -79,36 +99,26 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb fonts-wqy-zenhei gnome-keyring libsecret-1-0
 
-      - name: Build workspace packages
-        if: matrix.shard_index == 1
-        run: npm run build:packages
-
-      - name: Typecheck
-        if: matrix.shard_index == 1
-        run: npm run typecheck
-
       - name: Configure npm script-shell (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: npm config set script-shell bash
-
-      - name: Unit tests
-        if: matrix.shard_index == 1
-        shell: bash
-        env:
-          SKIP_PTY_TESTS: '1'
-        run: npm test
 
       # E2E specs require renderer + main bundles to be built first
       - name: Build for e2e
         shell: bash
         run: npm run build:smoke
 
+      - name: Prepare Windows native artifacts
+        if: runner.os == 'Windows'
+        run: node scripts/test/warm-kodax-native-artifacts.mjs
+        env:
+          KODAX_HOME: ${{ runner.temp }}/kodax-space-e2e-warmup/.kodax
+
       - name: Run e2e (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        # e2e:run restores better-sqlite3 from the unit-test Node ABI to the
-        # Electron ABI before launching Playwright.
+        # e2e:run verifies the Electron ABI before launching Playwright.
         run: npm run e2e:run -- --shard=${{ matrix.shard }}
 
       - name: Run e2e (Linux)
@@ -123,14 +133,29 @@ jobs:
             "
           '
 
-      # Upload trace + screenshots on failure (already gitignored locally)
-      - name: Upload Playwright artifacts on failure
-        if: failure()
+      - name: Summarize E2E attempts
+        if: always()
+        run: node scripts/ci-report.mjs
+
+      # Successful retries are evidence too: retain the JSON report and traces.
+      - name: Upload Playwright evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results-${{ matrix.os }}-shard-${{ matrix.shard_index }}
+          name: playwright-results-${{ matrix.os }}-shard-${{ matrix.shard_index }}-${{ github.run_attempt }}
           path: |
             test-results/
             playwright-report/
           retention-days: 14
           if-no-files-found: ignore
+
+  gate:
+    name: CI gate
+    needs: [changes, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/ci-changes.mjs gate
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
