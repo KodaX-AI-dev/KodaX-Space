@@ -5,7 +5,8 @@
 #   2. push tag v* (e.g. v0.1.0-alpha.0)：自动 build + 创建 GitHub Release，artifact 上传到 Release
 #
 # 矩阵：windows-latest + macOS x64 + macOS arm64 + ubuntu-latest
-# 跑时长预期：每个 OS ~10-15 分钟（含 npm ci + electron-builder + asar）
+# Source checks run concurrently in ci/build; publication requires the same SHA.
+# Build artifacts survive acceptance failures, so failed acceptance can be rerun.
 #
 # v0.1.3.1 修复（2026-06-02）：默认 prerelease=false。之前 `prerelease: true` hardcode
 # 让 GitHub 主页不显示 Latest release + electron-updater (releaseType: release) 找不到
@@ -30,12 +31,40 @@ on:
       - 'v*'
 
 permissions:
-  contents: write # need to create Release + upload assets
+  contents: read
+  actions: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
+  source:
+    name: Qualify source SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    permissions:
+      contents: read
+      actions: write # Dispatch missing full checks; never automatically rerun failures.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - name: Require complete CI and build for this commit
+        run: node scripts/ci-source-gate.mjs qualify
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-checks
+          path: source-checks.json
+          overwrite: true
+          if-no-files-found: error
+
   build:
     name: Build installer (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -48,21 +77,17 @@ jobs:
           # node-gyp 12.2+ recognizes the VS 2026 (v18) toolchain shipped by
           # windows-latest.
           - os: windows-latest
-            artifact_glob: 'out/*.exe'
             build_script: build:win
-            executable: 'out/win-unpacked/KodaX Space.exe'
+            unpacked: win-unpacked
           - os: macos-15-intel
-            artifact_glob: 'out/*.dmg'
             build_script: build:mac:x64
-            executable: 'out/mac/KodaX Space.app/Contents/MacOS/KodaX Space'
+            unpacked: mac
           - os: macos-latest
-            artifact_glob: 'out/*.dmg'
             build_script: build:mac:arm64
-            executable: 'out/mac-arm64/KodaX Space.app/Contents/MacOS/KodaX Space'
+            unpacked: mac-arm64
           - os: ubuntu-latest
-            artifact_glob: 'out/*.AppImage out/*.deb'
             build_script: build:linux
-            executable: 'out/linux-unpacked/kodax-space'
+            unpacked: linux-unpacked
     steps:
       - uses: actions/checkout@v4
 
@@ -79,15 +104,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei xvfb gnome-keyring libsecret-1-0
 
-      - name: Build workspace packages
-        run: npm run build:packages
-
-      - name: Typecheck (gate before pack)
-        run: npm run typecheck
-
-      - name: Lint (gate before pack)
-        run: npm run lint
-
       - name: Configure npm script-shell (Windows)
         if: runner.os == 'Windows'
         # npm 默认在 Windows 用 cmd.exe 跑 script —— cmd 不展开 `electron/test/*.test.ts`
@@ -95,15 +111,6 @@ jobs:
         # 改成 bash，让 Git Bash 展 glob（macOS/Linux 默认就是 bash）。
         shell: bash
         run: npm config set script-shell bash
-
-      - name: Unit tests
-        shell: bash
-        # SKIP_PTY_TESTS=1: F011 PTY 单测 spawn 真 shell，CI headless 环境（特别是 macOS）
-        # spawn /bin/zsh 时 PTY 行为不稳，本地 dev 机器跑得通；CI 上跳过这 8 个测试，
-        # 不阻塞 release pipeline。逻辑正确性靠本地 dev 验证 + 出包 smoke + 用户实际运行。
-        env:
-          SKIP_PTY_TESTS: '1'
-        run: npm test
 
       - name: Prepare Windows sandbox for packaged Shell gate
         if: runner.os == 'Windows'
@@ -143,10 +150,95 @@ jobs:
           }
           Get-ChildItem -LiteralPath out -Filter '*.zip' | Format-Table -AutoSize
 
-      - name: Smoke check installer
+      # pack.mjs already performed dependency/boot/exit smokes. Preserve executable
+      # permissions and macOS symlinks in a tarball, not loose uploaded files.
+      - name: Archive and fingerprint candidate
+        shell: bash
+        run: |
+          tar -czf out/app.tgz -C out "${{ matrix.unpacked }}"
+          node scripts/release-candidate.mjs record out "${{ matrix.os }}"
+
+      - name: Upload executable candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-${{ matrix.os }}
+          path: |
+            out/app.tgz
+            out/candidate.json
+          compression-level: 0
+          retention-days: 14
+          overwrite: true
+          if-no-files-found: error
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: |
+            out/*.exe
+            out/*.dmg
+            out/*.AppImage
+            out/*.deb
+            out/*.zip
+            out/*.blockmap
+            out/latest*.yml
+            out/candidate.json
+          compression-level: 0
+          retention-days: 30
+          overwrite: true
+          if-no-files-found: error
+
+      - name: Preserve packaging smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaging-smoke-${{ matrix.os }}-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  acceptance:
+    name: Packaged acceptance (${{ matrix.os }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            executable: 'out/win-unpacked/KodaX Space.exe'
+          - os: macos-15-intel
+            executable: 'out/mac/KodaX Space.app/Contents/MacOS/KodaX Space'
+          - os: macos-latest
+            executable: 'out/mac-arm64/KodaX Space.app/Contents/MacOS/KodaX Space'
+          - os: ubuntu-latest
+            executable: 'out/linux-unpacked/kodax-space'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Linux runtime test dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei xvfb gnome-keyring libsecret-1-0
+      - uses: actions/download-artifact@v4
+        with:
+          name: candidate-${{ matrix.os }}
+          path: out
+      - name: Verify and unpack exact candidate
+        shell: bash
+        run: |
+          node scripts/release-candidate.mjs verify out "${{ matrix.os }}"
+          tar -xzf out/app.tgz -C out
+
+      - name: Prepare Windows native artifacts
+        if: runner.os == 'Windows'
+        run: node scripts/test/warm-kodax-native-artifacts.mjs
         env:
-          KODAX_HOME: ${{ runner.os == 'Windows' && format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || '' }}
-        run: npm run smoke:pack
+          KODAX_HOME: ${{ runner.temp }}/kodax-space-acceptance-warmup/.kodax
 
       # Exercise each platform's packaged main process, Renderer and Registry SDK.
       # Retries match the main CI policy (playwright.config.ts CI retries=2):
@@ -169,38 +261,37 @@ jobs:
             npm run e2e:run -- "${specs[@]}" --retries=2 --max-failures=1
           fi
 
-      - name: Upload packaged acceptance failure evidence
-        if: failure()
+      - name: Record accepted candidate
         uses: actions/upload-artifact@v4
         with:
-          name: packaged-sdk-failure-${{ matrix.os }}
+          name: accepted-${{ matrix.os }}
+          path: out/candidate.json
+          overwrite: true
+          if-no-files-found: error
+
+      - name: Summarize packaged E2E attempts
+        if: always()
+        run: node scripts/ci-report.mjs
+
+      - name: Upload packaged acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-sdk-results-${{ matrix.os }}-${{ github.run_attempt }}
           path: |
             test-results/
             playwright-report/
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Upload installer artifacts (workflow_dispatch path)
-        uses: actions/upload-artifact@v4
-        with:
-          name: installer-${{ matrix.os }}
-          path: |
-            out/*.exe
-            out/*.dmg
-            out/*.AppImage
-            out/*.deb
-            out/*.zip
-            out/*.blockmap
-            out/latest*.yml
-          retention-days: 30
-
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [source, build, acceptance]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
 
@@ -213,10 +304,30 @@ jobs:
       - name: Install release tooling
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Download all artifacts
+      - name: Download installers
         uses: actions/download-artifact@v4
         with:
+          pattern: installer-*
           path: ./artifacts
+
+      - name: Download acceptance receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: accepted-*
+          path: ./artifacts
+
+      - name: Download source evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: source-checks
+          path: ./source-evidence
+
+      - name: Recheck source and accepted installer checksums
+        run: |
+          node scripts/ci-source-gate.mjs verify source-evidence/source-checks.json
+          node scripts/release-candidate.mjs publish artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Stage release files
         run: |
