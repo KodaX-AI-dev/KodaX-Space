@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Allow choosing the Host work mode before the first Coder input, block sending until the setting is confirmed, and implement `/work-mode` through the same Host setting boundary. Document mode semantics and original-result reads; add Script, MCP-original, Skill lifecycle and long-report regressions. Partner Agent/profile composition remains an SDK follow-up.
+
 - Upgrade the exact Registry SDK to 0.7.97-alpha.11. Add Host-owned Agent/Coding/experimental Script work modes, Host streaming token estimates, explicit saved tool-original reads, structured task reports and non-interactive question outcomes; retain the earlier history, manual-update and recovery fixes.
 
 - 普通 SDK 信息改用中性通知；旧版子任务报告折叠展示并还原传输转义，保留可读 Markdown 详情，避免把任务报告误画成黄色告警。

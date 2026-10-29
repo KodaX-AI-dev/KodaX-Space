@@ -413,7 +413,19 @@ PowerShell 的 `-Path` 支持 `[...]` 通配符。最新版 KodaX 会把这类�
 - 若 Runtime 无法持久化 durable `run.input.delivered` 事件，该 input 仍保持 queued，发送调用返回错误并由 Space 恢复草稿；Runtime 只记录不含用户输入正文的有界 `runtime.warning`，不能把这次失败当作已送达。
 - 停止任务会清理不应继续的后续提示；不要把 queue 气泡是否消失当作唯一交付依据，排障时同时记录 `sessionId`、`runId` 和 `inputId`。
 
-## 9. Provider、Model、Effort 与 Agent Mode
+## 9. Provider、Model、Effort 与工作模式
+
+### Agent、Coding 与实验性 Script
+
+Coder 输入框底部的“工作模式”控制本会话向模型提供的工作工具：Coding 是默认模式，保留编程分析能力；Agent 移除编程专用分析工具，适合通用任务；Script（实验性）允许模型通过隔离的 JavaScript 单元串联支持的工具。Script 的每个工具调用仍受现有权限约束，实验性不代表效果或效率保证。
+
+新会话发送第一条消息前即可选择模式。选择会创建一个尚未发送的 Host 草稿并保存设置，保存期间不能发送任务；选择成功后，第一条输入使用该模式。只有任务安全空闲时才能切换。其他客户端同时修改设置时会提示冲突，请核对当前值后重新选择；旧 Host 不支持时会提示升级。已有持久会话的选择可在重启后恢复，尚未发送的草稿不会伪装成已保存对话。
+
+也可输入 `/work-mode` 查询，或 `/work-mode agent`、`/work-mode coding`、`/work-mode script` 切换。命令与下拉框使用同一 Host 设置，不会让模型代为切换。工作模式、Provider/Model、权限模式和 AMA 各自独立：选择 Agent 不等于禁止写文件，具体执行仍由权限模式决定。Partner 当前使用专门的受限 profile，不提供此切换器；与 SDK Agent 预设的组合接入仍待 SDK 支持。
+
+### 工具原文与任务报告
+
+工具卡显示的结果可能只是预览。有“读取完整原文”按钮时，可从 Host 分页读取该工具项保存的完整结果；原文文件丢失或读取失败会明确报错，预览不会被当成全文。子任务报告以中性、可展开的 Markdown 展示，各自保留完成、失败、取消或未知状态；子任务失败不等于整个会话的 Provider 失败。
 
 Settings 有六个主标签：Preferences、Providers、Runtime、Extensions、License、Diagnostics。
 

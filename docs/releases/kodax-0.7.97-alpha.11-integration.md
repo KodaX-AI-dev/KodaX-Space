@@ -1,5 +1,7 @@
 # Registry alpha.11 Space integration
 
+> Follow-up implementation and new package qualification are tracked separately in the [completion record](kodax-0.7.97-alpha.11-completion.md). The package hashes and results below remain evidence for the original integration build.
+
 > 2026-10-30 follow-up audit: this report records the original integration and its bounded tests, not complete feature closure. The [coverage audit](kodax-0.7.97-alpha.11-coverage-audit.md) identifies unresolved first-input mode selection, advertised `/work-mode` execution, Partner profile composition and user-documentation gaps. The original package below has not been rebuilt for those findings.
 
 2026-10-29. User-authorized scope: install exact Registry SDK alpha.11, adapt all six migration areas, regress the earlier conversation's fixes and rebuild Windows artifacts. Space remains 0.1.47-alpha.3, unpublished.

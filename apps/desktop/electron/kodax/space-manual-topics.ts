@@ -736,8 +736,12 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'agent-modes',
     title: 'Agent modes and agents',
-    summary: 'Space 统一使用 AMA；Agent picker 可插入项目/用户 markdown agents。',
+    summary: 'Coder 可选 Agent/Coding/实验性 Script 工作模式；AMA 与权限模式独立。',
     body: text(
+      'Coder 工作模式由当前 Host Session 保存：Coding 默认保留编程分析工具，Agent 移除编程专用分析工具，Script（实验性）允许模型在隔离 JavaScript 单元中串联支持的工具，每次调用仍受权限约束。它与 Provider/Model、权限模式和 AMA 独立。Partner 当前保留专门的受限 profile，不提供此切换器，尚未组合 SDK Agent 预设。',
+      '新会话首条消息前可在底部选择工作模式；Space 创建未发送的 Host 草稿并保存选择，保存期间阻止发送。运行安全空闲时可切换，跨客户端设置冲突须核对后重新选择，旧 Host 不支持时提示升级。持久会话选择随重启恢复，未发送草稿不是已保存对话。/work-mode 查询，/work-mode agent|coding|script 切换；命令直接操作 Host，不发送给模型。',
+      '工具卡的“读取完整原文”按具体工具项从 Host 分页读取保存结果，丢失或失败明确报错，不用裁剪预览冒充全文。子任务报告以中性折叠 Markdown 展示，保留各自状态，未知不当成功，子任务失败不当主 Run 的 Provider 错误。',
+      '',
       'Space 统一使用 AMA 自适应多智能体模式，不再提供 SA 选择或 Alt+M 切换；旧 SA 默认值和会话设置在后续执行时收敛为 AMA。/agent-mode sa 会说明退役并提示使用 AMA。Workflow 只在显式 Workflow 强信号、/workflow、命名模式或 SDK 请求下开放；普通复杂任务、并行或审查不会自动触发。历史执行事实不会被改写。',
       '',
       'Agent picker 会读取用户目录和项目目录下的 markdown agents，选择后向 composer 插入 @agent-name。AGENTS.md 和 markdown agents 主要用于给模型补充角色、规则和项目约定。',

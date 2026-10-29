@@ -549,6 +549,10 @@ export function BottomBar(): JSX.Element {
   );
   const [prompt, setPrompt, promptRef] = useTrackedState('');
   const [busy, setBusy] = useState(false);
+  const [workModeBusy, setWorkModeBusy, workModeBusyRef] = useTrackedState(false);
+  const creatingSessionRef = useRef<{ scope: string; promise: Promise<string | null> } | undefined>(
+    undefined,
+  );
   const [busySlashName, setBusySlashName] = useState<string | null>(null);
   const [isAttaching, setIsAttaching] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -731,6 +735,19 @@ export function BottomBar(): JSX.Element {
   }, [insertAtCaret]);
 
   async function ensureSession(): Promise<string | null> {
+    const scope = `${currentSurface}:${currentProjectPath}:${useAppStore.getState().currentSessionId}`;
+    if (creatingSessionRef.current?.scope === scope) return creatingSessionRef.current.promise;
+    const promise = createComposerSession();
+    creatingSessionRef.current = { scope, promise };
+    try {
+      return await promise;
+    } finally {
+      if (creatingSessionRef.current?.promise === promise) creatingSessionRef.current = undefined;
+    }
+  }
+
+  async function createComposerSession(): Promise<string | null> {
+    let currentSessionId = useAppStore.getState().currentSessionId;
     if (currentSessionId) {
       const activeSession = useAppStore
         .getState()
@@ -746,6 +763,7 @@ export function BottomBar(): JSX.Element {
         return currentSessionId;
       }
       setCurrentSession(null);
+      currentSessionId = null;
     }
     if (!window.kodaxSpace) return null;
     if (!currentProjectPath) {
@@ -818,6 +836,7 @@ export function BottomBar(): JSX.Element {
       const latest = useAppStore.getState();
       const latestSurface = useSurfaceStore.getState().currentSurface;
       const shouldActivate =
+        latest.currentSessionId === currentSessionId &&
         shouldActivateSessionForCurrentScope(stub, {
           currentProjectPath: latest.currentProjectPath,
           currentSurface: latestSurface,
@@ -858,7 +877,7 @@ export function BottomBar(): JSX.Element {
         })
         .catch(() => {});
       // A changed Partner draft must not send with an earlier expert or clear the new draft.
-      if (currentSurface === 'partner' && expertDraft && !shouldActivate) return null;
+      if (!shouldActivate) return null;
       return stub.sessionId;
     };
 
@@ -2024,7 +2043,7 @@ export function BottomBar(): JSX.Element {
     promptOverride?: string,
   ): Promise<void> {
     if (!window.kodaxSpace) return;
-    if (busy || attachmentGateRef.current!.isPending()) return;
+    if (busy || workModeBusyRef.current || attachmentGateRef.current!.isPending()) return;
     if (partnerExpertBusy) {
       setErr(t('extensions.expertSaving'));
       return;
@@ -2546,6 +2565,7 @@ export function BottomBar(): JSX.Element {
   // Send is enabled for text, inline images, or pending file references.
   const canSend =
     !busy &&
+    !workModeBusy &&
     !partnerExpertBusy &&
     !isAttaching &&
     runControls.canSendDuringActivity &&
@@ -2878,7 +2898,13 @@ export function BottomBar(): JSX.Element {
               </div>
               {currentSurface !== 'partner' && <AgentPicker insertAtCaret={insertAtCaret} />}
               <ModeSelector />
-              {currentSurface !== 'partner' && <AgentModeSelector />}
+              {currentSurface !== 'partner' && (
+                <AgentModeSelector
+                  ensureSession={ensureSession}
+                  disabled={busy || isAttaching || workModeBusy}
+                  onBusyChange={setWorkModeBusy}
+                />
+              )}
             </div>
             <div
               className={[

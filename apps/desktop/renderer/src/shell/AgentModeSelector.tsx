@@ -1,19 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChannelInput, ChannelOutput } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { useAppStore } from '../store/appStore.js';
+import { useSurfaceStore } from '../store/surface.js';
 import { pushToast } from '../store/toastStore.js';
 import { useIsStreaming } from './ActivitySpinner.js';
 
 /** Work mode is a shared Host setting, independent of AMA and permissions. */
-export function AgentModeSelector(): JSX.Element {
+interface WorkModeControlProps {
+  readonly ensureSession: () => Promise<string | null>;
+  readonly disabled: boolean;
+  readonly onBusyChange: (busy: boolean) => void;
+}
+
+export function AgentModeSelector(props: WorkModeControlProps): JSX.Element {
   const sessionId = useAppStore((s) => s.currentSessionId);
   const runtimeId = useAppStore((s) => s.runtimeConnection.runtimeId);
+  const project = useAppStore((s) => s.currentProjectPath);
   const provider = useAppStore(
     (s) => s.sessions.find((session) => session.sessionId === sessionId)?.provider,
   );
   if (provider === 'mock') return <span className="text-fg-secondary">AMA</span>;
-  return <WorkModeSelector key={sessionId + ':' + runtimeId} sessionId={sessionId} />;
+  return (
+    <WorkModeSelector
+      key={project + ':' + sessionId + ':' + runtimeId}
+      sessionId={sessionId}
+      {...props}
+    />
+  );
 }
 
 function useWorkModeState(sessionId: string | null) {
@@ -50,43 +64,79 @@ function useWorkModeState(sessionId: string | null) {
   return { state, setState, setRefresh, connection };
 }
 
-function useWorkModeControl(sessionId: string | null) {
+function useWorkModeControl(sessionId: string | null, props: WorkModeControlProps) {
   const { state, setState, setRefresh, connection } = useWorkModeState(sessionId);
   const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
   async function change(workMode: ChannelInput<'session.setWorkMode'>['workMode']): Promise<void> {
-    if (!sessionId || !state || busy) return;
+    if (pending.current || props.disabled || !window.kodaxSpace) return;
+    const origin = useAppStore.getState();
+    pending.current = true;
     setBusy(true);
+    props.onBusyChange(true);
     try {
+      const target = sessionId ?? (await props.ensureSession());
+      if (!target) return;
+      const stillSelected = () => {
+        const latest = useAppStore.getState();
+        return (
+          latest.currentSessionId === target &&
+          latest.currentProjectPath === origin.currentProjectPath &&
+          latest.runtimeConnection.runtimeId === origin.runtimeConnection.runtimeId &&
+          useSurfaceStore.getState().currentSurface === 'code'
+        );
+      };
+      if (!stillSelected()) return;
+      const current =
+        state ??
+        (await window.kodaxSpace.invoke('session.workMode', { sessionId: target }).then((reply) => {
+          if (!reply.ok) throw new Error(reply.error.message);
+          return reply.data;
+        }));
+      if (!stillSelected() || !current) return;
       const result = await window.kodaxSpace!.invoke('session.setWorkMode', {
-        sessionId,
+        sessionId: target,
         workMode,
-        expectedRevision: state.revision,
+        expectedRevision: current.revision,
       });
       if (!result.ok) {
         pushToast(result.error.message, 'warning');
         setRefresh((value) => value + 1);
-      } else setState(result.data);
+      } else if (stillSelected()) setState(result.data);
     } catch (error) {
       pushToast(String(error), 'warning');
       setRefresh((value) => value + 1);
     } finally {
+      pending.current = false;
       setBusy(false);
+      props.onBusyChange(false);
     }
   }
   return { state, connection, busy, change };
 }
 
-function WorkModeSelector({ sessionId }: { sessionId: string | null }): JSX.Element {
+function WorkModeSelector({
+  sessionId,
+  ...props
+}: WorkModeControlProps & { sessionId: string | null }): JSX.Element {
   const { t } = useI18n();
   const active = useIsStreaming();
-  const { state, connection, busy, change } = useWorkModeControl(sessionId);
+  const project = useAppStore((s) => s.currentProjectPath);
+  const { state, connection, busy, change } = useWorkModeControl(sessionId, props);
   return (
     <select
       data-testid="work-mode-selector"
       aria-label={t('workMode.label')}
       className="composer-control text-sm px-2 py-0.5 rounded bg-surface-2 border border-border-default text-fg-secondary"
       value={state?.workMode ?? ''}
-      disabled={!state?.supported || active || busy || connection !== 'ready'}
+      disabled={
+        !project ||
+        (!!sessionId && !state?.supported) ||
+        active ||
+        busy ||
+        props.disabled ||
+        connection !== 'ready'
+      }
       title={
         !state?.supported && state
           ? t('workMode.upgrade')

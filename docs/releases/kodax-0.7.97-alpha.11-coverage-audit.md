@@ -1,5 +1,7 @@
 # KodaX alpha.11 全量增量接入复核
 
+> 后续处理见 [Space 补齐与回归记录](kodax-0.7.97-alpha.11-completion.md)。本文保留发现缺口时的证据；后续记录分别说明已修复项、专项验证及仍待 SDK 配合的 Partner 组合，不重写本次审计结论。
+
 2026-10-30。范围：已安装 Registry `@kodax-ai/kodax@0.7.97-alpha.11` 相对 alpha.10 的完整 CHANGELOG、随包 SDK_MIGRATION / CLIENT_CONTRACT / SPACE_SDK_SEAMS / embedder-guide，以及 Space 的实际消费链和上一轮 Windows 安装包 `out/sdk-alpha11`。不是要求为 SDK 的每个底层 API 新增桌面入口。
 
 **结论：不能判定全部匹配完成。** 上一轮六条接入及 28 项打包测试通过，只证明那些测试覆盖的边界。新增复核发现首条输入前无法选工作模式、命令目录与执行不一致、Partner 未采用 SDK Agent preset、用户文档缺失。原报告的“0 remaining findings”保留为当时评审记录，不能当成本次完整覆盖结论。

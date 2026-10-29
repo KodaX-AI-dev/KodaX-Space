@@ -1606,6 +1606,32 @@ function goalHelp(): string {
 
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
   {
+    name: 'work-mode',
+    description: 'Read or select Agent, Coding or experimental Script for this idle Coder session',
+    argsHint: '[agent|coding|script]',
+    source: 'builtin',
+    handler: async ({ sessionId, args }) => {
+      const session = kodaxHost.get(sessionId);
+      if (session?.surface !== 'code' || !runtimeHostAdapter.isRuntimeSelected())
+        return { ok: false, message: 'Work modes require a Coder Host session.' };
+      const mode = args[0];
+      if (args.length > 1 || (mode !== undefined && !['agent', 'coding', 'script'].includes(mode)))
+        return { ok: false, message: 'Usage: /work-mode [agent|coding|script]' };
+      const current = await runtimeHostAdapter.readWorkMode(sessionId);
+      if (!current.supported)
+        return { ok: false, message: 'This Host requires an upgrade to support work modes.' };
+      const selected =
+        mode === 'agent' || mode === 'coding' || mode === 'script'
+          ? await runtimeHostAdapter.updateWorkMode({
+              sessionId,
+              workMode: mode,
+              expectedRevision: current.revision,
+            })
+          : current;
+      return { ok: true, echo: true, message: `Work mode: ${selected.workMode}` };
+    },
+  },
+  {
     name: 'mode',
     description: 'Show or switch permission mode',
     argsHint: '[plan|accept-edits|auto|full-access]',

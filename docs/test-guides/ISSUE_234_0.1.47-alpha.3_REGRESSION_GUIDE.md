@@ -15,6 +15,10 @@
 
 ## alpha.11 升级补充
 
+后续遗漏补齐：新建 Coder 会话，首条输入前选择 Agent 或 Script，保存期间不能发送；输入 `/work-mode` 须看到查询回显，`/work-mode agent` 同步下拉框且不访问模型。切换项目/会话时迟到的创建或保存不得改写新会话；旧 Host 与版本冲突保留原设置并明确提示。
+
+新增 `sdk-work-mode.spec.ts` 和 `sdk-alpha11-lifecycle.spec.ts` 覆盖真实 Script 拒绝/Stop/重启、MCP 原文生成与重启后读取、模型自动调用 Skill 的策略/hook/模型偏好/重发现，以及多份长报告顺序与完整 UI 正文。步骤与新包实际结果见 [补齐记录](../releases/kodax-0.7.97-alpha.11-completion.md)。
+
 7. 会话空闲时工作模式默认 Coding，可改 Agent 或实验性 Script；刷新后重新选中会话仍保留 Host 状态。模型、权限、AMA 不随切换改变。运行中不可切换；另一客户端改写后的过期 revision 必须冲突，不能自动覆盖；旧 Host 不支持时禁用并提示升级。
 8. 思考和工具参数流只在 Host 提供 estimatedTokenCount 时显示 `~… tokens`。无估算、无 view、错误 runId 或无工具 callId 时不得按字符数补数。折叠思考摘要仅标识状态；账单 usage 与历史文本分页偏移不变。
 9. 展开有保存原文的工具项，点“读取完整原始结果”，大于 65536 UTF-16 单元的中文/emoji 原文应完整分页读取。刷新后仍可读；原文文件缺失应明确失败，不能拿截断预览冒充。Renderer 不访问 outputPath。
