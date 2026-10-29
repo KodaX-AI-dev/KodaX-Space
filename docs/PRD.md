@@ -1,6 +1,6 @@
 # KodaX Space 产品需求文档（PRD）
 
-> 更新日期：2026-10-18。当前源码对应已发布的 Space `v0.1.47-alpha.3` 预发布版，精确依赖 npm Registry `@kodax-ai/kodax@0.7.97-alpha.9`；最新稳定版为 v0.1.46 / KodaX 0.7.96。
+> 更新日期：2026-10-28。当前工作区保留 Space `0.1.47-alpha.3` 版本号，精确依赖已发布的 Registry SDK `0.7.97-alpha.10`，本轮集成尚未发布，见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。已发布的 Space alpha.3 安装器仍使用 SDK alpha.9；最新稳定版为 v0.1.46 / KodaX 0.7.96。
 > 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，当前 SDK 与 Issue 222 恢复验收见[alpha.7 接入](releases/kodax-0.7.97-alpha.7-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
 
 共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
@@ -268,7 +268,7 @@ Repointel 的核心调用契约（`status / warm / preturn / context-pack / impa
 - 多 session 抽屉：每个 session 一行卡片（标题 / provider / 当前模式 / 最后活动）
 - 主交互区：
   - 对话流（含 tool call 折叠卡片）
-  - 任务状态 + 当前 Agent 模式（AMA / SA）徽标
+  - 任务状态 + AMA 模式徽标；Space 隐藏已退役的 SA 入口，旧配置在后续执行前归一为 AMA
   - 当前 reasoning effort（由 KodaX reasoning profile 提供，UI 按模型声明展示）
 - 工具调用面板（右抽屉）：
   - bash：完整命令 + 输出 + 退出码
@@ -390,7 +390,7 @@ Repointel 的核心调用契约（`status / warm / preturn / context-pack / impa
 - 主题（明 / 暗 / 跟随系统）
 - 多窗口（不同窗口 = 不同 session）
 - macOS Stage Manager / Mission Control 友好
-- 自动更新（Squirrel for Mac, NSIS / Squirrel for Win）
+- 设置内手动检查软件更新，确认下载与重启安装；正式版只接收正式版本，运行任务及其他客户端占用时阻止安装。未签名 macOS 构建手动下载安装包。
 - 桌面通知（长任务完成、需要审批时）
 - 内置终端多 tab（对标 Codex Desktop）
 - 文件富预览：PDF / docx / xlsx / pptx 只读渲染（对标 Codex Desktop）
@@ -698,7 +698,7 @@ Worker/独立子进程、私有 staging、超时取消、禁宏/链接更新和�
 
 | KodaX 内核 PRD 概念             | KodaX Space 中的体现                                                      |
 | ------------------------------- | ------------------------------------------------------------------------- |
-| Single-Agent First              | Coder 面板默认显示 H0/SA；不渲染多角色图                                  |
+| Agent mode                      | Space 统一 AMA；SA 不再作为可选模式，不渲染内部多角色图                   |
 | Harness On Demand（H0/H1/H2）   | Task Dock 显示真实 Harness/Agent 状态，仅在升级时显示 Round               |
 | Evidence Before Confidence      | 任务完成展示 contract / handoff / verdict 摘要卡片（可折叠）              |
 | Work-First UX                   | 用计划、Agent 与 Runtime 状态表达进度；不把内部 work units 伪装成轮数上限 |

@@ -109,7 +109,9 @@ export function invalidateSkillCache(projectRoot?: string): void {
  * `userInvocable` and model-only `disableModelInvocation` flags do not affect
  * the popover; SDK model discovery enforces the latter separately.
  */
-export function toSkillMeta(m: SkillMetadata): {
+export function toSkillMeta(
+  m: Pick<SkillMetadata, 'name' | 'description' | 'argumentHint' | 'source' | 'path'>,
+): {
   name: string;
   description: string;
   argumentHint?: string;

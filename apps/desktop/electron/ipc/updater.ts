@@ -1,20 +1,4 @@
-// 自动更新 handler — F022 (v0.1.3)
-//
-// 包装 electron-updater 的 autoUpdater：
-//   - 启动时若 app.isPackaged → 立即 checkForUpdates()
-//   - darwin 禁用（见 isUpdaterSupportedPlatform：未签名构建 Squirrel.Mac 装不上）
-//   - 把 'update-available' / 'download-progress' / 'update-downloaded' / 'error'
-//     桥接到 push channel 'updater.status'
-//   - 提供 'updater.check'（手动触发）和 'updater.install'（quitAndInstall）
-//
-// 为什么不直接在 main.ts inline：
-//   - electron-updater 在 dev (app.isPackaged=false) 下 require 失败 / 抛 unsigned 错
-//     —— 用 dynamic import + try/catch 把整个 updater 模块隔离掉，避免拖垮主流程
-//   - autoUpdater 是 stateful，手动 check + ready 后 install 都需要拿到同一个实例
-//
-// 错误 sanitize：
-//   electron-updater 的错误信息常常包含本地 cache 路径（%APPDATA%、~/.../Caches/...）
-//   和 GitHub feed URL。我们截到 280 字符 + 替换掉绝对路径段，再 push 到 renderer。
+// Manual updater: startup is offline; check, download and install require user gestures.
 
 import { app } from 'electron';
 import { registerChannel } from './register.js';
@@ -31,7 +15,7 @@ let initStarted = false;
  * 已于 2026-06-05 移除）。electron-updater 在 mac 上走 Squirrel.Mac，替换 /Applications
  * 里的应用前强制校验代码签名——下载、checksum 都能过（UI 会弹"已就绪"），但最后替换
  * 必然失败，且失败是异步静默的：按钮永远停在"安装中..."，也不报错。未恢复签名前，
- * darwin 直接不启用 updater（state 恒为 idle，banner 永不出现），用户走 Releases 页
+ * darwin 直接不启用 updater，设置中引导用户走 Releases 页
  * 手动下载 DMG。
  */
 function isUpdaterSupportedPlatform(): boolean {
@@ -39,8 +23,7 @@ function isUpdaterSupportedPlatform(): boolean {
 }
 /**
  * v0.1.4 review LOW-5：cache the Promise，不是 resolved value。
- * 之前 ensureAutoUpdater 同时被两个 caller 触发时（startup initAutoUpdater + 用户点
- * "Check for updates"），都会看到 autoUpdaterInstance === null → 各自 import + 注册
+ * ensureAutoUpdater 同时被多个用户请求触发时，可能同时看到 null → 各自 import + 注册
  * listener 一遍，每个 SDK 事件双重触发 pushState。改成 promise cache 后第二个 caller
  * 直接 await 第一个 in-flight 的初始化。
  */
@@ -53,6 +36,22 @@ let ensureUpdaterPromise: Promise<typeof import('electron-updater').autoUpdater 
  * return {accepted:false}。
  */
 let installing = false;
+let downloadVersion: string | undefined;
+let checkingPromise: Promise<unknown> | null = null;
+
+function releaseChannel(version: string): string | null {
+  return /^\d+\.\d+\.\d+-([0-9A-Za-z-]+)/.exec(version)?.[1] ?? null;
+}
+
+function isAllowedUpdate(version: string): boolean {
+  if (
+    version.length > 64 ||
+    !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)
+  )
+    return false;
+  const channel = releaseChannel(version);
+  return channel === null || channel === releaseChannel(app.getVersion());
+}
 
 export function getUpdaterStateForDiagnostics(): UpdaterStateT {
   return { ...currentState };
@@ -97,33 +96,46 @@ async function ensureAutoUpdater(): Promise<typeof import('electron-updater').au
       // Native import() exposes this CommonJS getter on default, not as a
       // synthetic named export. Preserve lazy loading for packaged apps only.
       autoUpdaterInstance = (mod.default ?? mod).autoUpdater;
-      // 默认行为：下载 ready 后不立即重启，等用户点 install
-      autoUpdaterInstance.autoDownload = true;
+      // Both transfer and installation require a separate confirmed request.
+      autoUpdaterInstance.autoDownload = false;
       autoUpdaterInstance.autoInstallOnAppQuit = false;
+      const channel = releaseChannel(app.getVersion());
+      autoUpdaterInstance.allowPrerelease = channel !== null;
+      autoUpdaterInstance.channel = channel ?? 'latest';
+      autoUpdaterInstance.allowDowngrade = false;
       autoUpdaterInstance.logger = null; // electron-updater 默认接 electron-log，未装时会报警
 
       autoUpdaterInstance.on('checking-for-update', () => {
         pushState({ state: 'checking' });
       });
       autoUpdaterInstance.on('update-available', (info) => {
-        pushState({ state: 'available', version: String(info.version ?? '') || 'unknown' });
+        const version = String(info.version ?? '');
+        if (!isAllowedUpdate(version)) {
+          pushState({
+            state: 'error',
+            message:
+              'The update feed returned a version outside this installation’s release channel.',
+          });
+          return;
+        }
+        pushState({ state: 'available', version });
       });
       autoUpdaterInstance.on('update-not-available', () => {
         pushState({ state: 'idle' });
       });
       autoUpdaterInstance.on('download-progress', (progress) => {
+        if (!downloadVersion || currentState.state !== 'downloading') return;
         const percent =
-          typeof progress.percent === 'number' ? Math.max(0, Math.min(100, progress.percent)) : 0;
-        const version =
-          currentState.state === 'available' ||
-          currentState.state === 'downloading' ||
-          currentState.state === 'ready'
-            ? currentState.version
-            : 'unknown';
+          typeof progress.percent === 'number' && Number.isFinite(progress.percent)
+            ? Math.max(0, Math.min(100, progress.percent))
+            : 0;
+        const version = downloadVersion;
         pushState({ state: 'downloading', version, percent });
       });
       autoUpdaterInstance.on('update-downloaded', (info) => {
-        pushState({ state: 'ready', version: String(info.version ?? '') || 'unknown' });
+        const version = String(info.version ?? '');
+        if (version !== downloadVersion || !isAllowedUpdate(version)) return;
+        pushState({ state: 'ready', version });
       });
       autoUpdaterInstance.on('error', (err) => {
         const message = sanitizeErrorMessage(err instanceof Error ? err.message : String(err));
@@ -141,28 +153,22 @@ async function ensureAutoUpdater(): Promise<typeof import('electron-updater').au
 }
 
 /**
- * main.ts 在 app.whenReady 之后调一次。dev 模式（!app.isPackaged）
- * 直接跳过 —— electron-updater 在未签名 dev 包里会立刻 error 出来。
+ * main.ts 在 app.whenReady 之后调一次；只初始化本地状态，不检查或下载。
  */
 export async function initAutoUpdater(): Promise<void> {
   if (initStarted) return;
   initStarted = true;
-  if (!app.isPackaged || !isUpdaterSupportedPlatform()) {
-    // dev / darwin：保持 idle，UI 呈现 "no updates" 状态，banner 永不弹出
-    pushState({ state: 'idle' });
-    return;
-  }
-  const inst = await ensureAutoUpdater();
-  if (!inst) return;
-  try {
-    await inst.checkForUpdates();
-  } catch (err) {
-    const message = sanitizeErrorMessage(err instanceof Error ? err.message : String(err));
-    pushState({ state: 'error', message });
-  }
+  // Bootstrap only initializes local state. Checking and downloading require IPC gestures.
+  pushState({ state: 'idle' });
 }
 
-export function registerUpdaterChannels(): void {
+export function registerUpdaterChannels(options?: {
+  readonly requestInstall: (install: () => void) => Promise<boolean>;
+}): void {
+  registerChannel('updater.getState', async () => ({
+    enabled: app.isPackaged && isUpdaterSupportedPlatform(),
+    state: getUpdaterStateForDiagnostics(),
+  }));
   registerChannel('updater.check', async () => {
     if (!app.isPackaged || !isUpdaterSupportedPlatform()) {
       return { enabled: false, state: { state: 'idle' } };
@@ -171,20 +177,62 @@ export function registerUpdaterChannels(): void {
     if (!inst) {
       return { enabled: true, state: currentState };
     }
-    try {
-      await inst.checkForUpdates();
-    } catch (err) {
-      const message = sanitizeErrorMessage(err instanceof Error ? err.message : String(err));
-      pushState({ state: 'error', message });
+    if (currentState.state === 'downloading' || installing)
+      return { enabled: true, state: currentState };
+    if (!checkingPromise) {
+      downloadVersion = undefined;
+      checkingPromise = Promise.resolve()
+        .then(() => inst.checkForUpdates())
+        .catch((err: unknown) => {
+          pushState({
+            state: 'error',
+            message: sanitizeErrorMessage(err instanceof Error ? err.message : String(err)),
+          });
+        })
+        .finally(() => {
+          checkingPromise = null;
+        });
     }
+    await checkingPromise;
     return { enabled: true, state: currentState };
   });
 
-  registerChannel('updater.install', async () => {
-    if (!app.isPackaged || !autoUpdaterInstance) {
+  registerChannel('updater.download', async ({ version }) => {
+    if (
+      !app.isPackaged ||
+      !autoUpdaterInstance ||
+      installing ||
+      currentState.state !== 'available' ||
+      currentState.version !== version ||
+      !isAllowedUpdate(version)
+    )
+      return { accepted: false };
+    downloadVersion = version;
+    pushState({ state: 'downloading', version, percent: 0 });
+    const inst = autoUpdaterInstance;
+    void Promise.resolve()
+      .then(() => inst.downloadUpdate())
+      .catch((error: unknown) => {
+        if (downloadVersion !== version) return;
+        downloadVersion = undefined;
+        pushState({
+          state: 'error',
+          message: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
+        });
+      });
+    return { accepted: true };
+  });
+
+  registerChannel('updater.install', async ({ version }) => {
+    if (!app.isPackaged || !autoUpdaterInstance || !options) {
       return { accepted: false };
     }
-    if (currentState.state !== 'ready') {
+    if (
+      currentState.state !== 'ready' ||
+      currentState.version !== version ||
+      downloadVersion !== version ||
+      !isAllowedUpdate(version)
+    ) {
       return { accepted: false };
     }
     // v0.1.4 review LOW-4: 在 setTimeout 排 quitAndInstall 之前**立刻**翻 installing=true。
@@ -198,14 +246,35 @@ export function registerUpdaterChannels(): void {
     // 安装目录，不弹 Setup 向导）+ 装完自动起新版。之前 isSilent=false 会让 oneClick:false
     // 的 assisted 安装包在**每次自动更新时都弹完整安装向导**，用户要点一遍 Next。
     setTimeout(() => {
-      try {
+      const install = (): void => {
+        if (
+          currentState.state !== 'ready' ||
+          currentState.version !== version ||
+          downloadVersion !== version
+        )
+          throw new Error('The confirmed update is no longer ready.');
         autoUpdaterInstance?.quitAndInstall(true, true);
-      } catch (err) {
-        const message = sanitizeErrorMessage(err instanceof Error ? err.message : String(err));
-        // 失败重置 installing 让用户可以再试（quitAndInstall 偶尔抛是 known electron-updater 行为）
-        installing = false;
-        pushState({ state: 'error', message });
-      }
+        if (getUpdaterStateForDiagnostics().state === 'error')
+          throw new Error('The update installer could not be started.');
+      };
+      void options
+        .requestInstall(install)
+        .then((accepted) => {
+          if (accepted) return;
+          installing = false;
+          pushState({
+            state: 'error',
+            message:
+              'Installation was canceled or blocked. Finish active work and close other clients, then try again.',
+          });
+        })
+        .catch((error: unknown) => {
+          installing = false;
+          pushState({
+            state: 'error',
+            message: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
+          });
+        });
     }, 100);
     return { accepted: true };
   });

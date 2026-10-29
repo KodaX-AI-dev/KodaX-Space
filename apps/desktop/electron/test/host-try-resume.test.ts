@@ -455,7 +455,7 @@ test('tryResume restores runtime modes from the session sidecar before KodaX def
   assert.ok(resumed);
   assert.equal(resumed.permissionMode, 'auto');
   assert.equal(resumed.reasoningMode, 'quick');
-  assert.equal(resumed.agentMode, 'sa');
+  assert.equal(resumed.agentMode, 'ama');
 });
 
 test('tryResume bails out when persisted session lacks gitRoot', async () => {

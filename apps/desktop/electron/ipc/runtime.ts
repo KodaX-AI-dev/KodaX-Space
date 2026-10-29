@@ -41,6 +41,9 @@ export function registerRuntimeStatisticsChannels(): void {
       ? runtimeHostAdapter.readSessionProductView(sessionId)
       : null,
   );
+  registerChannel('session.workMode', ({ sessionId }) =>
+    runtimeHostAdapter.readWorkMode(sessionId),
+  );
   registerChannel('session.productItem', (input) => runtimeHostAdapter.readProductItem(input));
   registerChannel('session.productSearch', async ({ sessionId, query }) => {
     const result = await runtimeHostAdapter.searchProductHistory(sessionId, query);

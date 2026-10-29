@@ -17,7 +17,7 @@ argument-hint: "<process name or description>"
 
 平台资料使用方式见本文件的 Space 适配。
 
-Document a business process as a complete standard operating procedure (SOP).
+按本次请求整理业务流程；需要完整 SOP 时再展开责任、异常和指标，简短交接不强制完整模板。
 
 ## Usage
 

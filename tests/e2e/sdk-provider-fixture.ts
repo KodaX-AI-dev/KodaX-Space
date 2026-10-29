@@ -34,6 +34,7 @@ async function attachSdkEvidence(name: string, value: unknown): Promise<void> {
 
 export async function createLocalSdkProvider() {
   const requests: string[] = [];
+  const questionResults: unknown[] = [];
   let preparedCommandRequests = 0;
   const pending = new Map<string, ServerResponse>();
   const errors: string[] = [];
@@ -92,6 +93,33 @@ export async function createLocalSdkProvider() {
       reply(response, `SDK_LONG_HEAD\n\n${'x'.repeat(100_000)}\n\nSDK_LONG_TAIL`);
       return;
     }
+    if (prompt === 'SDK_QUESTION') {
+      const tool = parsed.messages.findLast((message) => message.role === 'tool');
+      if (tool) {
+        questionResults.push(JSON.parse(String(tool.content)));
+        reply(response, 'SDK_REPLY:SDK_QUESTION');
+      } else {
+        reply(response, '', [
+          {
+            index: 0,
+            id: 'e2e-question',
+            type: 'function',
+            function: {
+              name: 'ask_user_question',
+              arguments: JSON.stringify({
+                question: 'Choose a direction before continuing',
+                default: 'first',
+                options: [
+                  { label: 'First', value: 'first' },
+                  { label: 'Second', value: 'second' },
+                ],
+              }),
+            },
+          },
+        ]);
+      }
+      return;
+    }
     if (parsed.tools?.some((tool) => tool.function?.name === 'emit_sidecar_verdict')) {
       reply(response, '', [
         {
@@ -112,6 +140,37 @@ export async function createLocalSdkProvider() {
     if (prompt === 'HOLD_QUEUE' || prompt === 'HOLD_CANCEL') {
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       response.flushHeaders();
+      pending.set(prompt, response);
+      return;
+    }
+    if (prompt === 'STREAM_THINKING_ESTIMATE' || prompt === 'STREAM_TOOL_ESTIMATE') {
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      const delta =
+        prompt === 'STREAM_THINKING_ESTIMATE'
+          ? { reasoning_content: 'Thinking about a concrete implementation. '.repeat(40) }
+          : {
+              tool_calls: [
+                {
+                  index: 0,
+                  id: 'estimated-call',
+                  type: 'function',
+                  function: {
+                    name: 'read',
+                    arguments: '{"path":"' + 'argument-progress'.repeat(40),
+                  },
+                },
+              ],
+            };
+      response.write(
+        'data: ' +
+          JSON.stringify({
+            id: 'estimate-request',
+            object: 'chat.completion.chunk',
+            model: 'space-e2e-model',
+            choices: [{ index: 0, delta, finish_reason: null }],
+          }) +
+          '\n\n',
+      );
       pending.set(prompt, response);
       return;
     }
@@ -211,6 +270,7 @@ export async function createLocalSdkProvider() {
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Local Provider did not bind');
   return {
+    questionResults,
     url: `http://127.0.0.1:${address.port}/v1`,
     requests,
     get preparedCommandRequests() {

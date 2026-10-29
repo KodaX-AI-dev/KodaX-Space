@@ -1,8 +1,10 @@
 # KodaX Space 详细设计
 
+Issues 230/232（2026-10-28，源码未发布）：Linux 与 Windows 共用自绘窗口操作按钮。更新设置通过只读 `updater.getState` 获取本地状态；`updater.check` 才联网，`updater.download` 与 `updater.install` 各携带用户确认的版本。Main 关闭自动下载/退出安装，独立校验稳定及预发布通道。安装回调在现有完全退出链路确认 Runtime 停止、本地清理及诊断刷新完成后执行；任务、对等客户端、超时或恢复不能绕过该屏障。详见 [排查与验证记录](research/kylin-window-sandbox-and-manual-updates-2026-10-28.md)。
+
 F147（2026-10-16，源码未发布）：Shell 内设置工作面复用全部六分类面板，保留面板 tab ID 与语义控制接口；后台 workspace 保持挂载并隐藏/inert，Portal 详情通过 `FloatingSurfaceHost.suspended` 暂停可见性、焦点与键盘捕获而保留子组件。外观直接共用原 appStore 主题/质量键；正文连续实色、局部 chrome 玻璃。功能映射与回归边界见 [实施清单](design/space-ui-integration.md)。
 
-更新日期：2026-10-18。当前候选为尚未发布的 Space `0.1.47-alpha.3`，精确依赖 npm Registry 已发布的 KodaX `0.7.97-alpha.7`。
+更新日期：2026-10-28。当前工作区保留 Space `0.1.47-alpha.3` 版本号，精确依赖 npm Registry 已发布的 KodaX `0.7.97-alpha.10`；本轮集成尚未发布，见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。已发布的 Space alpha.3 安装器仍使用 SDK alpha.9。
 
 本文描述当前公共边界。高层结构见 [HLD](HLD.md)，共享输出的决策见 [ADR-010](ADR/ADR-010-sdk-product-output.md)，完整迁移清单见 [SDK 迁移](features/SDK_0.7.97_MIGRATION.md)。
 

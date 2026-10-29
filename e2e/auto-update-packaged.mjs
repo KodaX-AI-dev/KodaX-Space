@@ -4,7 +4,7 @@
 //   1. Setup-<V>.exe /S 静默安装基线版本（per-user，不弹 UI）
 //   2. 本地起 generic feed：latest.yml 声称更高版本，文件指向真实 Setup exe
 //   3. 改写已安装应用的 resources/app-update.yml → 指向本地 feed
-//   4. Playwright 启动已安装应用 → 等 banner"已就绪"（check → download 全链路）
+//   4. Playwright 启动已安装应用 → 在设置中手动检查、确认下载和安装
 //   5. 点击"重启并安装" → quitAndInstall(true,true) /S 静默装 → NSIS --force-run 重启
 //   6. 断言：应用退出、新进程从安装目录重启、诊断日志有 updater state_changed 链
 //   7. 清理：杀进程（含 relaunch 的）、/S 卸载、停 feed、删隔离 profile
@@ -52,8 +52,7 @@ const defaultInstallDir = path.join(
   'Programs',
   'KodaX Space',
 );
-const uninstallRegistryPath =
-  'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall';
+const uninstallRegistryPath = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -69,9 +68,7 @@ async function waitFor(predicate, timeoutMs, description) {
     }
     await sleep(500);
   }
-  throw new Error(
-    `timeout waiting for ${description}${lastError ? `: ${lastError.message}` : ''}`,
-  );
+  throw new Error(`timeout waiting for ${description}${lastError ? `: ${lastError.message}` : ''}`);
 }
 
 function runSync(cmd, args, options = {}) {
@@ -113,7 +110,9 @@ function findExistingInstall() {
 async function startFeedServer() {
   const exeName = path.basename(setupExe);
   const exeBytes = await stat(setupExe);
-  const sha512 = createHash('sha512').update(await readFile(setupExe)).digest('base64');
+  const sha512 = createHash('sha512')
+    .update(await readFile(setupExe))
+    .digest('base64');
   const latestYml =
     `version: ${fakeFeedVersion}\n` +
     `releaseDate: '${new Date().toISOString()}'\n` +
@@ -129,7 +128,7 @@ async function startFeedServer() {
     requests.push(request.url ?? '');
     // electron-updater 带 ?noCache=... 查询参数，必须按 pathname 匹配
     const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
-    if (pathname.endsWith('latest.yml')) {
+    if (/\/(?:latest|alpha|beta|rc)\.yml$/.test(pathname)) {
       response.writeHead(200, { 'Content-Type': 'text/yaml', 'Cache-Control': 'no-cache' });
       response.end(latestYml);
       return;
@@ -163,7 +162,11 @@ function createReadStreamSafe(filePath, response) {
 }
 
 function childTestEnv() {
-  const env = { ...process.env, KODAX_TEST_ONBOARDING: testId, SPACE_TEST_BYPASS_COMPLETE_EXIT: '1' };
+  const env = {
+    ...process.env,
+    KODAX_TEST_ONBOARDING: testId,
+    SPACE_TEST_BYPASS_COMPLETE_EXIT: '1',
+  };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.KODAX_HOME;
   delete env.KODAX_PROFILE_DIR;
@@ -182,12 +185,16 @@ async function readUpdaterDiagnostics() {
 // ---- 主流程 ----
 
 if (process.platform !== 'win32') throw new Error('this e2e drives the Windows NSIS flow only');
-if (!existsSync(unpackedExe)) throw new Error(`win-unpacked missing, run npm run build:win: ${unpackedExe}`);
-if (!existsSync(setupExe)) throw new Error(`setup installer missing, run npm run build:win: ${setupExe}`);
+if (!existsSync(unpackedExe))
+  throw new Error(`win-unpacked missing, run npm run build:win: ${unpackedExe}`);
+if (!existsSync(setupExe))
+  throw new Error(`setup installer missing, run npm run build:win: ${setupExe}`);
 
 const running = listAppProcesses();
 if (running.length > 0) {
-  throw new Error(`KodaX Space is already running (pid ${running.map((p) => p.pid).join(', ')}); close it first`);
+  throw new Error(
+    `KodaX Space is already running (pid ${running.map((p) => p.pid).join(', ')}); close it first`,
+  );
 }
 const existingInstall = findExistingInstall();
 if (existingInstall) {
@@ -232,52 +239,34 @@ try {
   );
   await window.waitForLoadState('domcontentloaded');
 
-  // check → available → downloading → ready；本地 feed 下载极快，直接等 ready 态 banner
-  const banner = window
-    .locator('[role="status"]')
-    .filter({ hasText: /已就绪|ready/i })
-    .first();
-  try {
-    await banner.waitFor({ state: 'visible', timeout: 180_000 });
-  } catch (error) {
-    // 失败取证：banner 实际内容 / feed 收到的请求 / 诊断日志，profile 留在现场不删
-    console.error('[e2e] banner wait failed; dumping evidence');
-    console.error('[e2e] feed requests:', JSON.stringify(feed.requests));
-    for (const status of await window.locator('[role="status"]').all()) {
-      try {
-        console.error('[e2e] visible banner:', (await status.innerText()).replace(/\s+/g, ' '));
-      } catch {
-        // banner 可能刚好卸载，读不到就算了
-      }
-    }
-    for (const line of await readUpdaterDiagnostics()) {
-      console.error('[e2e] diag:', line.slice(0, 300));
-    }
-    await window
-      .screenshot({ path: path.join(outDir, 'auto-update-e2e-failure.png') })
-      .catch(() => null);
-    throw error;
-  }
-  console.log('[e2e] update banner visible (state=ready)');
-  console.log('[e2e] banner text:', (await banner.innerText()).replace(/\s+/g, ' '));
-  const checksBeforeInstall = feed.requests.filter((url) => url.includes('latest.yml')).length;
-  console.log(`[e2e] feed saw ${checksBeforeInstall} latest.yml request(s) before install click`);
-
+  // Startup is offline. The test drives the same explicit settings confirmations as users.
+  if (feed.requests.length !== 0) throw new Error('Startup contacted the update feed');
+  await window.getByTestId('settings-button').click();
+  const section = window.getByTestId('update-settings');
+  await section.getByRole('button', { name: /Check for updates|检查更新/i }).click();
+  await section.getByRole('button', { name: /Download update|下载更新/i }).click();
   await window
-    .locator('[role="status"]')
-    .filter({ hasText: /已就绪|ready/i })
-    .getByRole('button')
-    .first()
+    .getByRole('dialog')
+    .getByRole('button', { name: /^(Confirm|确认)$/ })
     .click();
-  console.log('[e2e] clicked Restart & install; expecting quit + silent install + relaunch');
+  await section
+    .getByRole('button', { name: /Restart.*install|重启.*安装/i })
+    .waitFor({ state: 'visible', timeout: 180_000 });
+  await section.getByRole('button', { name: /Restart.*install|重启.*安装/i }).click();
+  await window
+    .getByRole('dialog')
+    .getByRole('button', { name: /^(Confirm|确认)$/ })
+    .click();
+  console.log(
+    '[e2e] confirmed manual download and installation; expecting normal shutdown and relaunch',
+  );
 
   await waitFor(() => (isPidAlive(oldPid) ? null : true), 30_000, 'old app process to exit');
   console.log(`[e2e] old app (pid ${oldPid}) exited`);
   const relaunched = await waitFor(
     () =>
       listAppProcesses().find(
-        (candidate) =>
-          candidate.path.startsWith(installedExe) && candidate.pid !== oldPid,
+        (candidate) => candidate.path.startsWith(installedExe) && candidate.pid !== oldPid,
       ) ?? null,
     150_000,
     'NSIS --force-run relaunch of the updated app',
@@ -290,16 +279,21 @@ try {
   // 不会再请求本地 feed（断言按此设计）。
   const rewritten = await readFile(appUpdateYmlPath, 'utf8');
   if (rewritten.includes('127.0.0.1')) {
-    throw new Error('app-update.yml still points at local feed; silent install did not rewrite resources');
+    throw new Error(
+      'app-update.yml still points at local feed; silent install did not rewrite resources',
+    );
   }
   console.log('[e2e] installer rewrote resources/app-update.yml (stock github feed restored)');
   const checkCount = feed.requests.filter((url) => url.includes('latest.yml')).length;
-  console.log(`[e2e] feed saw ${checkCount} latest.yml request(s) total (boot check only)`);
+  console.log(
+    `[e2e] feed saw ${checkCount} latest.yml request(s) total (user-requested checks only)`,
+  );
 
   const diagnostics = await readUpdaterDiagnostics();
   console.log(`[e2e] updater diagnostics (${diagnostics.length} entries):`);
   for (const line of diagnostics.slice(-8)) console.log('       ', line.slice(0, 200));
-  if (diagnostics.length === 0) throw new Error('no updater state_changed entries in diagnostics log');
+  if (diagnostics.length === 0)
+    throw new Error('no updater state_changed entries in diagnostics log');
 
   await app.close().catch(() => null);
   succeeded = true;

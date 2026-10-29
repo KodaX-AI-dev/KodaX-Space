@@ -167,6 +167,7 @@ const valueReplySchema = z.object({
 const cancelReplySchema = z.object({
   reqId: reqIdSchema,
   cancelled: z.literal(true),
+  reason: z.enum(['skipped', 'non_interactive']).optional(),
 });
 
 // ---- Invoke: askUser.reply ---- (renderer -> main)

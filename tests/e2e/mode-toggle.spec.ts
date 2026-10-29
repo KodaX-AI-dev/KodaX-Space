@@ -35,9 +35,13 @@ test('S4: Shift+Tab cycles through all four permission profiles', async () => {
       timeout: 10_000,
     });
     const modeButton = space.page.locator('button[title^="Mode:"]');
-    const agentModeButton = space.page.locator('button[title^="Agent:"]');
+    const agentModeStatus = space.page.getByText('AMA', { exact: true });
     await expect(modeButton).not.toContainText(/\(next\)|（下次）/);
-    await expect(agentModeButton).not.toContainText(/\(next\)|（下次）/);
+    await expect(agentModeStatus).toBeVisible();
+    await expect(space.page.locator('button[title^="Agent:"]')).toHaveCount(0);
+    await space.page.keyboard.press('Alt+M');
+    await expect(agentModeStatus).toBeVisible();
+    await expect(space.page.getByRole('button', { name: /^SA$/ })).toHaveCount(0);
 
     // 抓初始 label 文本
     const initialText = await space.page.getByText(initialLabelMatcher).first().textContent();

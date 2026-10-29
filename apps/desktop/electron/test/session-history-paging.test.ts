@@ -15,6 +15,7 @@ import {
   historyPhaseAllowsRuntimeObservation,
   invalidateSessionHistoryPaging,
   loadOlderSessionHistory,
+  loadNewerSessionHistory,
   olderHistoryWindowSeamScrollTop,
   PREPEND_ANCHOR_CORRECTION_FRAME_OFFSETS,
   preservesPrependAnchorForBoundaryInput,
@@ -5757,6 +5758,145 @@ test('an identical newest read is an idempotent no-op (fold not re-run)', async 
   const secondEvents = useAppStore.getState().eventsBySession[sessionId];
   assert.equal(secondEvents, firstEvents);
   assert.equal(useAppStore.getState().userMessagesBySession[sessionId], firstMessages);
+});
+
+test('visited SDK history pages can be read in both directions and newest selects the advancing live view', async () => {
+  const sessionId = 'sdk-product-bidirectional';
+  seedPagingStore(sessionId);
+  const requested: (string | undefined)[] = [];
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async (_channel: string, input: { cursor?: string }) => {
+          requested.push(input.cursor);
+          const index = input.cursor === 'oldest' ? 2 : input.cursor === 'middle' ? 1 : 0;
+          return {
+            ok: true,
+            data: {
+              items: [],
+              productItems: [
+                { id: ['newest', 'middle', 'oldest'][index], type: 'user', text: 'prompt' },
+              ],
+              page: {
+                outcome: 'ready',
+                revision: 'r',
+                sourceRevision: 's',
+                windowMode: 'replace',
+                hasMore: index < 2,
+                hasNewer: index > 0,
+                ...(index < 2 ? { nextCursor: index === 0 ? 'middle' : 'oldest' } : {}),
+              },
+            },
+          };
+        }),
+      },
+    },
+  });
+  await restoreNewestSessionHistory(sessionId, 'code');
+  await loadOlderSessionHistory(sessionId);
+  await loadOlderSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['oldest'],
+  );
+  replaceProductSessionView({
+    sessionId,
+    runtimeId: 'runtime',
+    revision: 2,
+    items: [{ id: 'live-new', type: 'user', text: 'new prompt' }],
+  });
+  await loadNewerSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['middle'],
+  );
+  await loadOlderSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['oldest'],
+  );
+  await loadNewerSessionHistory(sessionId);
+  await loadNewerSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['live-new'],
+  );
+  assert.deepEqual(requested, [
+    undefined,
+    'middle',
+    'oldest',
+    'middle',
+    'oldest',
+    'middle',
+    undefined,
+  ]);
+  assert.deepEqual(useAppStore.getState().eventsBySession[sessionId] ?? [], []);
+});
+
+test('failed and superseded forward reads retain the selected page and navigation position', async () => {
+  const sessionId = 'sdk-product-forward-race';
+  seedPagingStore(sessionId);
+  let forward = false;
+  let rejectForward = false;
+  let release: (() => void) | undefined;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async (_channel: string, input: { cursor?: string }) => {
+          if (forward && input.cursor === 'middle') {
+            if (rejectForward) throw new Error('history temporarily unavailable');
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          }
+          const index = input.cursor === 'oldest' ? 2 : input.cursor === 'middle' ? 1 : 0;
+          return {
+            ok: true,
+            data: {
+              items: [],
+              productItems: [
+                { id: ['newest', 'middle', 'oldest'][index], type: 'user', text: 'prompt' },
+              ],
+              page: {
+                outcome: 'ready',
+                revision: 'r',
+                sourceRevision: 's',
+                windowMode: 'replace',
+                hasMore: index < 2,
+                hasNewer: index > 0,
+                ...(index < 2 ? { nextCursor: index === 0 ? 'middle' : 'oldest' } : {}),
+              },
+            },
+          };
+        }),
+      },
+    },
+  });
+  await restoreNewestSessionHistory(sessionId, 'code');
+  await loadOlderSessionHistory(sessionId);
+  await loadOlderSessionHistory(sessionId);
+  forward = true;
+  rejectForward = true;
+  await assert.rejects(loadNewerSessionHistory(sessionId), /temporarily unavailable/);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['oldest'],
+  );
+  rejectForward = false;
+  const pending = loadNewerSessionHistory(sessionId);
+  assert.ok(release, 'retry must still request the adjacent middle page');
+  await restoreNewestSessionHistory(sessionId, 'code');
+  release();
+  await pending;
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['newest'],
+  );
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).hasNewer, false);
 });
 
 test('SDK paging keeps history as a separate frozen window and never folds its text into live events', async () => {

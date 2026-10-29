@@ -319,6 +319,19 @@ export const sessionProductItemSchema = z
     afterInputId: z.string().max(4096).optional(),
     icon: z.string().max(128).optional(),
     compactText: z.string().max(65536).optional(),
+    taskResult: z
+      .object({
+        type: z.literal('task_result'),
+        source: z.enum(['child_task', 'workflow']),
+        taskId: z.string().optional(),
+        runId: z.string().optional(),
+        title: z.string().optional(),
+        status: z.enum(['completed', 'failed', 'cancelled', 'unknown']),
+        reportFormat: z.literal('markdown'),
+        artifactRefs: z.array(z.string()).optional(),
+      })
+      .strict()
+      .optional(),
     historyBoundary: z
       .object({ entryId: z.string().min(1).max(4096), sourceRevision: z.string().min(1).max(4096) })
       .optional(),
@@ -359,6 +372,7 @@ export const sessionProductItemSchema = z
           .nonnegative()
           .max(16 * 1024 * 1024)
           .optional(),
+        outputPath: z.string().max(32768).optional(),
         progress: z.string().max(65536).optional(),
         startedAt: z.number().finite().optional(),
         endedAt: z.number().finite().optional(),
@@ -372,6 +386,28 @@ export const sessionProductViewSchema = z
     sessionId: z.string().min(1),
     runtimeId: z.string().min(1),
     revision: z.number().int().nonnegative(),
+    activity: z
+      .object({
+        runId: z.string(),
+        streaming: z.discriminatedUnion('kind', [
+          z.object({
+            kind: z.literal('thinking'),
+            providerRequestId: z.string(),
+            itemId: z.string(),
+            charCount: z.number().nonnegative(),
+            estimatedTokenCount: z.number().nonnegative().optional(),
+          }),
+          z.object({
+            kind: z.literal('tool-input'),
+            providerRequestId: z.string(),
+            toolName: z.string(),
+            callId: z.string().optional(),
+            charCount: z.number().nonnegative().optional(),
+            estimatedTokenCount: z.number().nonnegative().optional(),
+          }),
+        ]),
+      })
+      .optional(),
     items: z.array(sessionProductItemSchema).max(150),
   })
   .strict()
@@ -386,6 +422,28 @@ export const sessionProductViewSchema = z
   });
 export type SessionProductItem = z.infer<typeof sessionProductItemSchema>;
 export type SessionProductView = z.infer<typeof sessionProductViewSchema>;
+
+const sessionWorkModeStateSchema = z.object({
+  supported: z.boolean(),
+  revision: z.number().int().nonnegative(),
+  workMode: z.enum(['agent', 'coding', 'script']),
+});
+export const sessionWorkModeChannel = {
+  name: 'session.workMode',
+  direction: 'invoke',
+  input: z.object({ sessionId: z.string().min(1) }),
+  output: sessionWorkModeStateSchema,
+} as const;
+export const sessionSetWorkModeChannel = {
+  name: 'session.setWorkMode',
+  direction: 'invoke',
+  input: z.object({
+    sessionId: z.string().min(1),
+    workMode: z.enum(['agent', 'coding', 'script']),
+    expectedRevision: z.number().int().nonnegative(),
+  }),
+  output: sessionWorkModeStateSchema,
+} as const;
 
 export const sessionProductSnapshotChannel = {
   name: 'session.productSnapshot',
@@ -405,7 +463,7 @@ export const sessionProductItemChannel = {
     sessionId: z.string().min(1),
     itemId: z.string().min(1).max(4096),
     source: z.enum(['view', 'history']),
-    part: z.enum(['text', 'input']).default('text'),
+    part: z.enum(['text', 'input', 'original']).default('text'),
     offset: z.number().int().nonnegative().default(0),
   }),
   output: z

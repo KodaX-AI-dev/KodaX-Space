@@ -91,6 +91,13 @@ test('createSession: returns sessionId starting with "s_" + createdAt timestamp'
   assert.equal(kodaxHost.get(result.sessionId)?.sessionId, result.sessionId);
 });
 
+test('retired SA preferences create and update Space sessions as AMA', () => {
+  const created = kodaxHost.createSession({ projectRoot: '/r', provider: 'mock', agentMode: 'sa' });
+  assert.equal(kodaxHost.get(created.sessionId)?.agentMode, 'ama');
+  assert.equal(kodaxHost.setAgentMode(created.sessionId, 'sa'), true);
+  assert.equal(kodaxHost.get(created.sessionId)?.agentMode, 'ama');
+});
+
 test('embedded manual compact receives the exact Space keychain credential', async () => {
   _resetMemoryStoreForTesting();
   await setKey('anthropic', 'compact-credential');

@@ -62,7 +62,12 @@ import type {
   ClientWorkflowStartInput,
   ClientCommandResult,
 } from '@kodax-ai/kodax/client';
-import type { SessionProductView, SessionProductItem } from '@kodax-space/space-ipc-schema';
+import type {
+  ChannelInput,
+  SessionProductView,
+  SessionProductItem,
+} from '@kodax-space/space-ipc-schema';
+import { readSessionWorkMode, setSessionWorkMode } from './runtime/work-mode.js';
 import { projectProductItems } from './runtime/product-view.js';
 import { ensureSpaceBuiltinSkillsOnHost } from '../skill/space-builtins.js';
 import type { HostItemReader } from './runtime/host-image.js';
@@ -2077,6 +2082,7 @@ export class RuntimeHostAdapter {
   private closingRuntime: KodaXDaemonRuntime | null = null;
   private initializePromise: Promise<void> | null = null;
   private startupAbort: AbortController | undefined;
+  private startupPausedForExit = false;
   private startupAttempt = 0;
   private closePromise: Promise<void> | null = null;
   private lastError: string | undefined;
@@ -2223,7 +2229,8 @@ export class RuntimeHostAdapter {
     this.integrationHealthPollMs =
       options.integrationHealthPollMs ?? (options.runtimeFactory === undefined ? 2_000 : 0);
     this.startupTimingFactory =
-      options.startupTimingFactory ?? ((scope) => createRuntimeStartupTiming(scope));
+      options.startupTimingFactory ??
+      ((scope) => createRuntimeStartupTiming(scope, { reportSlowOrFailed: true }));
     this.credentialResolver = options.credentialResolver ?? readProviderCredential;
     this.credentialProvidersResolver =
       options.credentialProvidersResolver ??
@@ -2446,6 +2453,9 @@ export class RuntimeHostAdapter {
     }
     if (this.state === 'ready') return Promise.resolve();
     if (this.state === 'closed') return Promise.reject(new Error('Runtime host is closed'));
+    if (this.startupPausedForExit && this.initializePromise === null) {
+      return Promise.reject(new Error('Runtime startup is paused for complete exit.'));
+    }
     if (this.initializePromise !== null) return this.initializePromise;
     this.state = 'initializing';
     const startupAbort = new AbortController();
@@ -2455,6 +2465,12 @@ export class RuntimeHostAdapter {
     let pendingRuntime: KodaXDaemonRuntime | null = null;
     let attachedHostToolLeaseId: string | undefined;
     const timing = this.startupTimingFactory('runtime-host-initialize');
+    const launcherProgress: Array<{
+      stage: ClientStartupProgress['stage'];
+      reason?: string;
+      phase?: string;
+      changedAt: number;
+    }> = [];
     let activeStage = 'identity_open';
     timing.mark('initialize', 'start', { selectedHost: this.mode });
     this.initializePromise = this.identityStore
@@ -2469,10 +2485,29 @@ export class RuntimeHostAdapter {
           daemonStartupSignal: startupAbort.signal,
           onStartupProgress: (progress) => {
             if (this.startupAttempt !== startupAttempt || this.state !== 'initializing') return;
+            const reason = progress.stage === 'waiting' ? progress.reason : undefined;
+            const phase = progress.stage === 'initializing' ? progress.phase : undefined;
+            const last = launcherProgress.at(-1);
+            if (
+              last?.stage !== progress.stage ||
+              last?.reason !== reason ||
+              last?.phase !== phase
+            ) {
+              if (launcherProgress.length === 16) launcherProgress.shift();
+              launcherProgress.push({
+                stage: progress.stage,
+                ...(reason ? { reason } : {}),
+                ...(phase ? { phase } : {}),
+                changedAt: Date.now(),
+              });
+            }
             this.publishStartupProgress(progress, autoStart ? 'connecting' : 'reconnecting');
           },
         });
-        timing.mark(activeStage, 'complete', runtimeIdentityTimingData(runtime.identity));
+        timing.mark(activeStage, 'complete', {
+          ...runtimeIdentityTimingData(runtime.identity),
+          ...(launcherProgress.length > 0 ? { launcherProgress } : {}),
+        });
         pendingRuntime = runtime;
         return runtime;
       })
@@ -2620,7 +2655,10 @@ export class RuntimeHostAdapter {
         this.resolveRunRecoveryWaiters();
       })
       .catch(async (error: unknown) => {
-        timing.mark(activeStage, 'failed', runtimeStartupFailureData(error));
+        timing.mark(activeStage, startupAbort.signal.aborted ? 'skipped' : 'failed', {
+          ...runtimeStartupFailureData(error),
+          ...(launcherProgress.length > 0 ? { launcherProgress } : {}),
+        });
         if (error instanceof RuntimeInitializationAuthorityLostError) {
           pendingRuntime = null;
           this.initializePromise = null;
@@ -2646,11 +2684,14 @@ export class RuntimeHostAdapter {
         if (this.state === 'closed') throw error;
         this.lastError = runtimeInitializationDiagnostic(error);
         const retryableFailure = isRunRecoveryInitializationFailure(error);
-        this.state = 'failed';
-        this.publishUnavailable(retryableFailure ? 'reconnecting' : 'incompatible', this.lastError);
+        this.state = startupAbort.signal.aborted ? 'uninitialized' : 'failed';
+        this.publishUnavailable(
+          retryableFailure || startupAbort.signal.aborted ? 'reconnecting' : 'incompatible',
+          this.lastError,
+        );
         // Restart authority stays in the SDK. Retry transient attach/startup failures
         // with startup enabled when a missing or retiring Host may need replacement.
-        if (retryableFailure)
+        if (retryableFailure || startupAbort.signal.aborted)
           this.scheduleReconnect(autoStart || isDaemonEnsureRecoveryFailure(error));
         throw error;
       })
@@ -2817,7 +2858,7 @@ export class RuntimeHostAdapter {
   }
 
   private scheduleReconnect(ensureHost = false): void {
-    if (this.state === 'closed' || this.rollbackInProgress) return;
+    if (this.state === 'closed' || this.rollbackInProgress || this.startupPausedForExit) return;
     if (this.reconnectTimer) return;
     const delay = Math.min(30_000, 1_000 * 2 ** Math.min(this.reconnectAttempt, 5));
     this.reconnectTimer = setTimeout(() => {
@@ -4276,11 +4317,13 @@ export class RuntimeHostAdapter {
     const runtime = await this.requireRuntime();
     await this.assertPersistedCoderOwnershipIfChanged(sessionId);
     try {
+      // First observation can update SDK-owned Session metadata. Establish it before capturing
+      // the newest history revision so its continuation cursor is not stale on arrival.
+      if (cursor === undefined) await this.readSessionProductView(sessionId);
       const page = await runtime.sessions.readHistory(sessionId, {
         ...(cursor ? { cursor } : {}),
         limit: 150,
       });
-      if (cursor === undefined) await this.readSessionProductView(sessionId);
       if (this.runtime !== runtime)
         throw new Error('Runtime changed while reading Session history.');
       return {
@@ -4306,11 +4349,31 @@ export class RuntimeHostAdapter {
     }
   }
 
+  async readWorkMode(sessionId: string) {
+    const runtime = await this.requireRuntime();
+    await this.assertCoderSession(runtime, sessionId);
+    return readSessionWorkMode(runtime, sessionId);
+  }
+
+  async updateWorkMode(input: ChannelInput<'session.setWorkMode'>) {
+    const runtime = await this.requireRuntime();
+    await this.assertCoderSession(runtime, input.sessionId);
+    const result = await setSessionWorkMode(
+      runtime,
+      input.sessionId,
+      input.workMode,
+      input.expectedRevision,
+    );
+    if (this.runtime !== runtime)
+      throw new Error('Host changed while setting work mode; refresh the Session.');
+    return result;
+  }
+
   async readProductItem(input: {
     sessionId: string;
     itemId: string;
     source: 'view' | 'history';
-    part: 'text' | 'input';
+    part: 'text' | 'input' | 'original';
     offset: number;
   }) {
     const runtime = await this.requireRuntime();
@@ -4341,6 +4404,9 @@ export class RuntimeHostAdapter {
       throw new Error('SDK view belongs to another Session.');
     if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
     const previous = this.productViews.get(state.sessionId);
+    const activity = view.activity?.streaming
+      ? { runId: view.activity.runId, streaming: view.activity.streaming }
+      : undefined;
     const items = await projectProductItems(
       state.sessionId,
       view.items,
@@ -4350,12 +4416,14 @@ export class RuntimeHostAdapter {
     if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
     if (
       previous?.runtimeId !== state.runtime.identity.runtimeId ||
-      !isDeepStrictEqual(previous.items, items)
+      !isDeepStrictEqual(previous.items, items) ||
+      !isDeepStrictEqual(previous.activity, activity)
     ) {
       const next = {
         sessionId: state.sessionId,
         runtimeId: state.runtime.identity.runtimeId,
         revision: (previous?.revision ?? 0) + 1,
+        ...(activity ? { activity } : {}),
         items,
       };
       this.productViews.set(state.sessionId, next);
@@ -6454,6 +6522,7 @@ export class RuntimeHostAdapter {
     initial: Promise<RuntimeRunResult>,
   ): Promise<RuntimeRunResult> {
     let runtime = attached;
+    let runOwner = attached;
     let failure: unknown;
     try {
       return await initial;
@@ -6489,11 +6558,53 @@ export class RuntimeHostAdapter {
           failure = disconnectFailure;
           continue;
         }
+        runOwner = await this.resumeCheckpointedRun(runOwner, runtime, status);
+        if (this.runtime !== runtime || this.state !== 'ready') {
+          failure = disconnectFailure;
+          continue;
+        }
         return await runtime.runs.await(runId);
       } catch (error: unknown) {
         failure = error;
       }
     }
+  }
+
+  /** Resume a generation boundary on a replacement Host without resubmitting any input. */
+  private async resumeCheckpointedRun(
+    attached: KodaXDaemonRuntime,
+    runtime: KodaXDaemonRuntime,
+    status: RuntimeRunStatus,
+  ): Promise<KodaXDaemonRuntime> {
+    if (
+      runtime.identity.runtimeId === attached.identity.runtimeId ||
+      status.phase !== 'recovering' ||
+      !status.contextRecovery?.checkpoint ||
+      status.stop ||
+      status.terminal
+    )
+      return runtime;
+    const { sessionId, runId } = status;
+    const authorization = await this.authorizeProductExecution(
+      { kind: 'recovery', input: { sessionId, runId } },
+      runtime,
+    );
+    const settings = await runtime.sessions.getSettings(sessionId);
+    if (this.runtime !== runtime || this.state !== 'ready') return attached;
+    const recovered = await runtime.runs.recover({
+      runId,
+      options: {
+        provider: settings.provider,
+        model: settings.model,
+        reasoningMode: settings.reasoningMode,
+      },
+      authorization,
+    });
+    if (recovered.runId !== runId || recovered.sessionId !== sessionId)
+      throw new Error('Checkpoint recovery returned a different Run identity.');
+    // The verified acknowledgement establishes Run ownership even if this
+    // connection closes before the caller can await the result.
+    return runtime;
   }
 
   private waitForRunRecovery(): Promise<void> {
@@ -7514,20 +7625,20 @@ export class RuntimeHostAdapter {
 
   async respondUserInput(
     requestId: string,
-    reply: { readonly cancelled?: true; readonly value?: unknown },
+    reply: {
+      readonly cancelled?: true;
+      readonly reason?: 'skipped' | 'non_interactive';
+      readonly value?: unknown;
+    },
   ): Promise<boolean> {
     const runtime = await this.requireRuntime();
     const request = (await runtime.userInputs.listPending()).find((item) => item.id === requestId);
     if (!request) return false;
-    const resolution = reply.cancelled
-      ? await runtime.userInputs.dismiss(requestId, {
-          expectedRevision: request.revision,
-          runId: request.runId,
-        })
-      : await runtime.userInputs.respond(requestId, reply.value, {
-          expectedRevision: request.revision,
-          runId: request.runId,
-        });
+    const resolution = await runtime.userInputs.respond(
+      requestId,
+      reply.cancelled ? { unanswered: true, reason: reply.reason ?? 'skipped' } : reply.value,
+      { expectedRevision: request.revision, runId: request.runId },
+    );
     return resolution.accepted;
   }
 
@@ -7624,6 +7735,21 @@ export class RuntimeHostAdapter {
     await this.stopDaemonWithRuntimeExitSettlement();
   }
 
+  /** Cancel local startup waits before draining admitted requests; keep SDK exit verification. */
+  pauseStartupForCompleteExit(): () => void {
+    this.startupPausedForExit = true;
+    if (this.reconnectTimer !== undefined) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
+    this.startupAbort?.abort(
+      new DOMException('Runtime startup paused for complete exit.', 'AbortError'),
+    );
+    return () => {
+      if (!this.startupPausedForExit) return;
+      this.startupPausedForExit = false;
+      if (this.mode === 'runtime' && !this.hasReadyRuntime()) this.scheduleReconnect(true);
+    };
+  }
+
   private async settlePublishedRuntimeExit(
     input: RuntimeExitSettlementInput,
   ): Promise<RuntimeExitSettlement> {
@@ -7694,6 +7820,7 @@ export class RuntimeHostAdapter {
   }
 
   private async stopDaemonWithRuntimeExitSettlement(): Promise<void> {
+    if (this.startupPausedForExit) await this.initializePromise?.catch(() => undefined);
     if (this.state === 'initializing' || this.initializePromise !== null) {
       throw new Error('Wait for Coder initialization to settle before complete exit.');
     }

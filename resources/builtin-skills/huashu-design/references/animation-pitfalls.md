@@ -395,15 +395,39 @@ CSS `transition` 走的是墙钟，不是时间轴。逐帧 seek 渲染时每帧
 
 ## 20. 【HyperFrames】contrast 门与暗色电影风冲突 —— 用 `--no-contrast`，其余四门必须 0 error
 
-`npm run check` 的 contrast 门按 WCAG AA 4.5:1 检查所有文字。暗色 cinematic 设计里 16-40% 透明度的 mono 标签、装饰性文字是**刻意的**低对比（电影感的一部分），会成片报错，且框架没有逐元素豁免机制。c3 实测 42 个 contrast error 全部是设计本意。
+`npm run check` 的 contrast 门按 WCAG AA 4.5:1 检查所有文字。暗色 cinematic 设计里 16-40% 透明度的水印、mono 标签、装饰性文字是**刻意的**低对比（电影感的一部分），会成片报错，且框架没有逐元素豁免机制。c3 实测 42 个 contrast error 全部是设计本意。
 
-**修法**：暗色电影风产出用 `npx hyperframes check --no-contrast`，lint/runtime/layout/motion 四门仍必须 0 error。**亮底信息型产出不要跳 contrast**——那种场景下的报错通常是真的可读性问题（可读性硬底线见 SKILL.md Fallback 节）。
+**修法**：暗色电影风产出用 `npx hyperframes check --no-contrast`，lint/runtime/layout/motion 四门仍必须 0 error。**亮底信息型产出不要跳 contrast**——那种场景下的报错通常是真的可读性问题（可读性硬底线见 SKILL.md 窄桥 4）。
 
 ## 21. 【HyperFrames/GSAP】fromTo 的 immediateRender 幻影 —— 元素提前数秒出现
 
 GSAP 的 `fromTo()` 默认 `immediateRender: true`：build timeline 时就把 from 态渲染到元素上。如果 from 态本身可见（`autoAlpha > 0`），元素会在它的 tween 开始前就出现在画面里——火花、点击圈、涟漪、扬尘这类「短促特效」最容易中招（B00 实测一次踩了 4 处：特效在归位时刻前几秒就挂在画面上）。
 
 **修法**：所有 from 态可见的 `fromTo()` 显式加 `immediateRender: false`；或改成「set 初始隐藏 + to」。自查方式：渲染后抽每幕开头帧，看有没有「不该在场的特效元素」。
+
+## 22. 【镜头】3D/放大模式下文字发糊 —— 放大走 CSS zoom 不走 transform scale
+
+**症状**：用 `transform: scale()` 推近页面（尤其 3D perspective 模式下），文字发糊，倍率越高越糊，2x 以上不可交付。
+
+**根因**：Chromium 按元素的**布局尺寸**栅格化，再把位图放大。scale 只放大位图。
+
+**解法**（shotcraft 判例，全库最贵知识）：相机层的放大走 **CSS `zoom` 属性**（布局级缩放，按放大后尺寸重新 layout 并栅格化，文字任意倍率锐利）。坐标换算和完整公式见 `camera-language.md` §3.4、`gsap-recipes.md` §9.2。注意：`zoom` 每帧触发 re-layout，是「禁 tween 布局属性」的唯一合法例外，只许用在 `#world` 相机层；离线逐帧渲染下渲染时长变慢属正常，产物质量优先。配套：全页截图 2x 起，特写另备 4x 切片在推进期 6f 交叉淡入。
+
+## 23. 【镜头】perspective 被中间层打断 —— 3D 瞬间变平
+
+**症状**：设好了 `perspective` + `preserve-3d`，渲出来完全没有 3D 感，所有层平贴。
+
+**根因**：`#camera` 与 3D 子元素之间的**任何中间层**加了 `overflow: hidden`、`filter`、`opacity < 1`、`clip-path` 之一，都会创建新 stacking context，flatten 掉 preserve-3d。
+
+**解法**：3D 模式下滤镜/透明度效果只加在**最内层元素**上；容器链上逐层检查上述四类属性。排查口诀：从 `#camera` 到出问题的元素，中间每一层都 `getComputedStyle` 查一遍这四项。
+
+## 24. 【镜头】pan 露边 —— 平移时露出画布外空白
+
+**症状**：镜头平移/摇镜时画面边缘露出白边或黑边。
+
+**根因**：`#world` 尺寸只做到和视口一样大，镜头一动就出界。
+
+**解法**：`#world` 四周外扩 bleed ≥ 最大 pan 振幅 + 8% 安全边距（camera-language §3.3）。背景层/氛围层要跟着铺满 bleed 区，别只铺视口。自查：把 timeline seek 到每段 pan 的两个端点截图，看四边。
 
 ## 快速自查清单（开工前 5 秒）
 
@@ -420,11 +444,14 @@ GSAP 的 `fromTo()` 默认 `immediateRender: true`：build timeline 时就把 fr
 - [ ] 结尾 Sprite 的 `fadeOut` 设为 0（视频末尾停清晰帧）？
 - [ ] 60fps MP4 默认用帧复制模式（兼容性），高质量插帧才加 `--minterpolate`？
 - [ ] 导出后抽第 0 帧 + 末帧验证是动画初始/最终状态？
-- [ ] 涉及具体品牌（Stripe/Anthropic/Lovart/...）：走完了「品牌资产协议」（SKILL.md §1.a 五步）？有没有写 `brand-spec.md`？
+- [ ] 涉及具体品牌（Stripe/Anthropic/Lovart/...）：走完了「品牌资产协议」（SKILL.md 窄桥 1，五步）？有没有写 `brand-spec.md`？
 - [ ] 单文件交付的 HTML：`animations.jsx` 是内联的，不是 `src="..."`？（file:// 下 external .jsx 会 CORS 黑屏）
-- [ ] 跨 scene 出现的元素（chapter 标签/时间码/scene 编号）没有硬编码颜色？在每个 scene 底色下都可见？
+- [ ] 跨 scene 出现的元素（chapter 标签/水印/scene 编号）没有硬编码颜色？在每个 scene 底色下都可见？
 - [ ] 要离线/真自包含：React+ReactDOM 本地内联、**app 和 `animations.jsx` 引擎都过 Babel transpile**、字体用系统字体？（见坑 #17；引擎含 JSX，漏 transpile 必报 `Unexpected token '<'`）
 - [ ] 【HyperFrames】渲染路径上没有 CSS `transition`？状态变化全是 tween 或 t 的纯函数？（坑 #18）
 - [ ] 【HyperFrames】代理 tween 场景注册后补了 `render(0)`？（坑 #19）
 - [ ] 【HyperFrames】check 过了？暗色电影风用 `--no-contrast`，其余四门 0 error？（坑 #20）
 - [ ] 【HyperFrames/GSAP】from 态可见的 `fromTo()` 全部加了 `immediateRender:false`？（坑 #21，B00 实测 4 处幻影）
+- [ ] 【镜头】3D/放大特写走了 CSS `zoom`，没有 scale 放大发糊？（坑 #22）
+- [ ] 【镜头】`#camera` 到 3D 元素的中间层没有 overflow/filter/opacity/clip-path？（坑 #23）
+- [ ] 【镜头】`#world` 外扩了 bleed，pan 端点截图四边无露白？（坑 #24）

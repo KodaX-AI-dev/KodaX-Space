@@ -213,6 +213,24 @@ function genericRuntimeTerminalReason(phase: RuntimeRunStatus['phase']): string 
   }
 }
 
+function contextRecoveryProjection(
+  run: RuntimeRunStatus,
+): SpaceRuntimeRunProjectionT['contextRecovery'] {
+  const recovery = run.contextRecovery;
+  if (!recovery) return undefined;
+  const capacity =
+    recovery.requiredTokens !== undefined
+      ? recovery
+      : (recovery.children?.find((child) => child.requiredTokens !== undefined) ?? recovery);
+  const requiredTokens = nonNegativeInteger(capacity.requiredTokens);
+  const availableTokens = nonNegativeInteger(capacity.availableTokens);
+  return {
+    waitingSince: timestamp(recovery.waitingSince),
+    ...(requiredTokens !== undefined ? { requiredTokens } : {}),
+    ...(availableTokens !== undefined ? { availableTokens } : {}),
+  };
+}
+
 export function projectRuntimeRun(
   run: RuntimeRunStatus,
   queuePosition?: number,
@@ -229,6 +247,7 @@ export function projectRuntimeRun(
     });
   }
   const failureDetail = failureDetailResult.detail;
+  const contextRecovery = contextRecoveryProjection(run);
   const terminalReason = failureDetail?.safeMessage ?? genericRuntimeTerminalReason(run.phase);
   const retryAvailableAt = runtimeRetryAvailableAt(run.endedAt, failureDetail?.retryAfterMs);
   const failurePresentation =
@@ -244,6 +263,7 @@ export function projectRuntimeRun(
     sessionId: run.sessionId,
     ...(run.turnId !== undefined ? { turnId: run.turnId } : {}),
     phase: runtimePhase(run.phase),
+    ...(contextRecovery ? { contextRecovery } : {}),
     ...(run.stage !== undefined ? { stage: run.stage } : {}),
     ...(run.stageChangedAt !== undefined ? { stageChangedAt: timestamp(run.stageChangedAt) } : {}),
     ...(activeSubtaskCount !== undefined ? { activeSubtaskCount } : {}),
@@ -1007,6 +1027,9 @@ function settingsProjection(
         : {}),
       ...(text(value.executionCwd, 4_096)
         ? { executionCwd: text(value.executionCwd, 4_096)! }
+        : {}),
+      ...(['agent', 'coding', 'script'].includes(String(value.workMode))
+        ? { workMode: value.workMode as 'agent' | 'coding' | 'script' }
         : {}),
       ...(value.agentMode === 'ama' || value.agentMode === 'sa'
         ? { agentMode: value.agentMode }

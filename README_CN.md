@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前源码为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.9`。** 根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本；lockfile 校验 Registry 包完整性，详见 [alpha.9 接入记录](docs/releases/kodax-0.7.97-alpha.9-integration.md)与[发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)。当前源码即已发布的 `v0.1.47-alpha.3` 预发布版，安装包见其 GitHub Release。
+**当前工作区仍为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.11`，本轮集成尚未发布。** 已发布的 `v0.1.47-alpha.3` 安装器仍使用 SDK alpha.9。根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本，lockfile 校验 Registry 包完整性。AMA、提问、退出恢复与 Skill 改动见 [alpha.11 接入记录](docs/releases/kodax-0.7.97-alpha.11-integration.md)；已发布安装器的历史基线见[上一轮发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。

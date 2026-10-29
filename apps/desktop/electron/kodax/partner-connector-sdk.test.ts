@@ -54,7 +54,7 @@ const { getSpaceExpertCatalog, getSpaceExtensionStore } =
 const { registerSpaceBuiltinSkills } = await import('../skill/space-builtins.js');
 const repositoryRoot = path.resolve(import.meta.dirname, '../../../..');
 const workflowExperts: PartnerExpertSnapshotT[] = [];
-const systemPrompts: string[] = [];
+const requestPrompts: string[] = [];
 let workflowRun: { binding: PartnerConnectorSnapshotT; stage: number } | undefined;
 const binding: PartnerConnectorSnapshotT = {
   extensionId: 'kodax.partner-library',
@@ -89,7 +89,17 @@ class RecordingProvider extends KodaXBaseProvider {
     ...args: Parameters<InstanceType<typeof KodaXBaseProvider>['stream']>
   ): Promise<Awaited<ReturnType<InstanceType<typeof KodaXBaseProvider>['stream']>>> {
     toolLists.push(args[1].map((tool) => tool.name));
-    if (args[2].includes('KodaX Space Partner surface profile:')) systemPrompts.push(args[2]);
+    if (args[2].includes('KodaX Space Partner surface profile:')) {
+      const wireText = args[0].map((message) =>
+        typeof message.content === 'string'
+          ? message.content
+          : message.content
+              .filter((block) => block.type === 'text')
+              .map((block) => block.text)
+              .join('\n'),
+      );
+      requestPrompts.push([args[2], ...wireText].join('\n'));
+    }
     if (
       workflowRun &&
       workflowRun.stage < 2 &&
@@ -282,7 +292,7 @@ afterEach(async () => {
   requested = false;
   beforeRead = undefined;
   workflowRun = undefined;
-  systemPrompts.length = 0;
+  requestPrompts.length = 0;
 });
 after(async () => {
   unregister();
@@ -557,7 +567,7 @@ test('both shipped expert methods read and deliver through Feishu and Tencent in
         expert,
       );
       workflowRun = { binding: selected, stage: 0 };
-      systemPrompts.length = 0;
+      requestPrompts.length = 0;
       assert.equal(
         (await session.send(`读取指定资料，形成研究与需求报告，并在${selected.name}创建文档。`))
           .accepted,
@@ -580,10 +590,12 @@ test('both shipped expert methods read and deliver through Feishu and Tencent in
         expert.expert.id === 'product-management'
           ? '证据 → 用户问题 → 需求 → 验收'
           : '多个转载不能算独立交叉验证';
-      assert.ok(systemPrompts.length >= 3);
-      assert.ok(systemPrompts.every((system) => system.includes(method)));
+      assert.ok(requestPrompts.length >= 3);
+      assert.ok(requestPrompts.every((system) => system.includes(method)));
       assert.ok(
-        systemPrompts.every((system) => system.includes(expert.expert.workflow!.qualityChecks[0]!)),
+        requestPrompts.every((system) =>
+          system.includes(expert.expert.workflow!.qualityChecks[0]!),
+        ),
       );
       assert.equal(session.partnerExpert?.expert.id, expert.expert.id);
       await session.dispose();

@@ -6,6 +6,9 @@ test('Runtime startup progress carries only local launcher stages and waiting re
   const connecting = { state: 'connecting', changedAt: 1, stale: true, capabilities: [] };
   for (const startupProgress of [
     ...['checking', 'starting', 'upgrading', 'connecting', 'ready'].map((stage) => ({ stage })),
+    ...['modules', 'extensions', 'runtime', 'recovery', 'mcp', 'sessions', 'a2a', 'listener'].map(
+      (phase) => ({ stage: 'initializing', phase }),
+    ),
     ...['connected_clients', 'host_starting', 'host_stopping'].map((reason) => ({
       stage: 'waiting',
       reason,
@@ -22,6 +25,8 @@ test('Runtime startup progress carries only local launcher stages and waiting re
     { stage: 'waiting', reason: 'unknown' },
     { stage: 'starting', reason: 'host_starting' },
     { stage: 'starting', secret: 'must-not-cross-ipc' },
+    { stage: 'initializing' },
+    { stage: 'initializing', phase: 'unknown' },
   ]) {
     assert.equal(
       spaceCoderConnectionProjectionSchema.safeParse({ ...connecting, startupProgress }).success,

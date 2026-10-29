@@ -1,6 +1,6 @@
 # KodaX Space 高层设计（HLD）
 
-> 更新日期：2026-10-18。当前源码对应已发布的 Space `v0.1.47-alpha.3` 预发布版，精确依赖 npm Registry `@kodax-ai/kodax@0.7.97-alpha.9`；最新稳定版为 v0.1.46 / KodaX 0.7.96。
+> 更新日期：2026-10-28。当前工作区保留 Space `0.1.47-alpha.3` 版本号，精确依赖已发布的 Registry SDK `0.7.97-alpha.10`，本轮集成尚未发布，见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。已发布的 Space alpha.3 安装器仍使用 SDK alpha.9；最新稳定版为 v0.1.46 / KodaX 0.7.96。
 > 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，当前 SDK 与 Issue 222 恢复验收见[alpha.7 接入](releases/kodax-0.7.97-alpha.7-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
 
 共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
@@ -707,12 +707,13 @@ Space-owned stores use their declared schemas/migrators. KodaX integration files
 - Main 默认无监听端口
 - LLM / MCP 流量从 KodaX runtime 出（受 KodaX 自身策略）
 - OAuth 回调使用临时进程内 server（完成即关）
-- 自动更新仅访问官方 endpoint（白名单）
+- 手动检查更新仅访问官方 endpoint（白名单）
 
-### 13.4 自动更新
+### 13.4 用户确认的软件更新
 
 - Windows/macOS/Linux updater manifests 与 release assets 已进入当前 release staging。
-- `dev` / `beta` / `stable` channel policy、跨 channel eligibility、签名/notarization 与稳定发布信任门槛由 F101 完成。
+- 启动和退出不检查、下载或安装更新；设置内显式检查，下载与重启安装分别确认。正式版只接收正式候选，预发布版只接收同通道或正式候选；候选、下载和安装边界均校验通道及确认的版本，禁止降级。
+- 安装前复用 Main 的完全退出准入：活动任务或其他客户端阻止安装；Runtime 停止及本地清理完成后才启动安装器。未签名 macOS 构建从 Releases 手动下载 DMG。发布签名/notarization 与发布信任门槛仍按 F101 跟踪。
 - Manifest URL/asset name 必须一致，架构合并不得覆盖，缺失 payload/sidecar/native binary 时 release staging 失败。
 
 ---
@@ -794,7 +795,7 @@ NAPI crate 独立 Rust 单测 + 与 TS wrapper 的集成测。
 | Durable Task State        | 写盘真理面在 KodaX runtime（`~/.kodax/sessions/`）；Space 是读视图                                              |
 | Skill 集成                | 通过 public Skill registry/catalog；F135 以 SDK plugin API 注册审定的 Space builtin root                        |
 | 证据分层                  | UI 在 verdict 卡片浏览，不重新组织                                                                              |
-| Project + SA / AMA        | UI 用 surface（code / partner）+ mode（plan / edits / auto）；Quick Ask 是固定 `mode=plan` 的 transient session |
+| Project + SA / AMA        | UI 区分 Coder / Partner surface；Space 统一 AMA，不提供 SA 选择；Quick Ask 仍是 plan 权限的 transient session |
 | npm 发布 scoped 包        | Space 把 `@kodax-ai/{coding,llm,agent,skills}` 作为 dependency 按需拉                                           |
 
 ---

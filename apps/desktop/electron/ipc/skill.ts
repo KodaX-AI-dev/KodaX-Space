@@ -65,13 +65,7 @@ export function registerSkillChannels(): void {
     }
     if (runtimeHostAdapter.isRuntimeSelected()) {
       const runtimeSkills = keepValidSkillMetas(
-        (await runtimeHostAdapter.listRuntimeSkills(input.projectRoot)).map((skill) => ({
-          name: skill.name,
-          description: skill.description.slice(0, 512),
-          ...(skill.argumentHint ? { argumentHint: skill.argumentHint.slice(0, 128) } : {}),
-          source: skill.source,
-          path: skill.path,
-        })),
+        (await runtimeHostAdapter.listRuntimeSkills(input.projectRoot)).map(toSkillMeta),
       );
       return { skills: runtimeSkills.slice(0, 256) };
     }

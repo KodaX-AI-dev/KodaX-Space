@@ -1451,6 +1451,10 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     }),
   );
 
+  registerChannel('session.setWorkMode', (input) =>
+    runWithCoderAdmission(options, () => runtimeHostAdapter.updateWorkMode(input)),
+  );
+
   // session.setAgentMode — 切 KodaX agent 形态 (AMA / SA)。
   // AMA = 多 agent 协作（KodaX 默认）；SA = 单 agent 降级路径，接口并发受限时使用。
   // 切换不重启 in-flight session，下一条 prompt 走新形态。
@@ -2211,9 +2215,9 @@ function historyIdentityFromEntry(entry: {
 interface TaskResultMetadataLike {
   readonly type: 'task_result';
   readonly source: 'workflow' | 'child_task';
-  readonly taskId: string;
+  readonly taskId?: string;
   readonly runId?: string;
-  readonly status: 'completed' | 'failed' | 'cancelled';
+  readonly status: 'completed' | 'failed' | 'cancelled' | 'unknown';
   readonly title?: string;
   readonly summary?: string;
 }
@@ -2223,8 +2227,11 @@ function isTaskResultMetadataLike(value: unknown): value is TaskResultMetadataLi
   return (
     value.type === 'task_result' &&
     (value.source === 'workflow' || value.source === 'child_task') &&
-    typeof value.taskId === 'string' &&
-    (value.status === 'completed' || value.status === 'failed' || value.status === 'cancelled') &&
+    (value.taskId === undefined || typeof value.taskId === 'string') &&
+    (value.status === 'completed' ||
+      value.status === 'failed' ||
+      value.status === 'cancelled' ||
+      value.status === 'unknown') &&
     (value.runId === undefined || typeof value.runId === 'string') &&
     (value.title === undefined || typeof value.title === 'string') &&
     (value.summary === undefined || typeof value.summary === 'string')
@@ -2269,8 +2276,8 @@ function appendWorkflowTaskResultNotices(
   for (const result of taskResults) {
     if (result.source !== 'workflow') continue;
     const key = result.runId ?? result.taskId;
-    if (seenWorkflowRunIds.has(key)) continue;
-    seenWorkflowRunIds.add(key);
+    if (key && seenWorkflowRunIds.has(key)) continue;
+    if (key) seenWorkflowRunIds.add(key);
     items.push({
       ...historyIdentity,
       kind: 'workflow_notice',

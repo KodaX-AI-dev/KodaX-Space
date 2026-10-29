@@ -66,10 +66,11 @@ test('KodaX 0.7.77 Kimi catalog exposes public K3 and preserves Kimi Code tiers'
   assert.ok(kimiCode.models?.includes('kimi-for-coding-highspeed'));
 });
 
-test('KodaX 0.7.72 MiniMax Coding defaults to MiniMax M3', () => {
+test('KodaX alpha.11 MiniMax Coding defaults to M3.1 Flash and retains M3', () => {
   const minimax = getBuiltin('minimax-coding');
   assert.ok(minimax);
-  assert.equal(minimax.defaultModel, 'MiniMax-M3');
+  assert.equal(minimax.defaultModel, 'MiniMax-M3.1-Flash');
+  assert.ok(minimax.models?.includes('MiniMax-M3'));
 });
 
 test('catalog has fallback data for all 16 anchor providers (disaster recovery)', () => {

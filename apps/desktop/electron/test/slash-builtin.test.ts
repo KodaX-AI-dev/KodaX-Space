@@ -804,14 +804,17 @@ test('/agent-mode rejects retired AMAW inputs with a migration hint', async () =
   assert.equal(kodaxHost.get(sessionId)?.agentMode, 'ama');
 });
 
-test('/agent-mode toggle cycles AMA -> SA', async () => {
+test('/agent-mode keeps legacy toggle on AMA and rejects retired SA', async () => {
   const { sessionId } = kodaxHost.createSession({
     projectRoot: 'C:\\tmp\\proj',
     provider: 'mock',
   });
   assert.equal(kodaxHost.get(sessionId)?.agentMode, 'ama');
   assert.equal((await runCmd('agent-mode', sessionId, ['toggle'])).ok, true);
-  assert.equal(kodaxHost.get(sessionId)?.agentMode, 'sa');
+  assert.equal(kodaxHost.get(sessionId)?.agentMode, 'ama');
+  const retired = await runCmd('agent-mode', sessionId, ['sa']);
+  assert.equal(retired.ok, false);
+  assert.match(retired.message ?? '', /SA.*retired.*use AMA/);
   assert.equal((await runCmd('agent-mode', sessionId, ['toggle'])).ok, true);
   assert.equal(kodaxHost.get(sessionId)?.agentMode, 'ama');
 });

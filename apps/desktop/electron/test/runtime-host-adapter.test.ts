@@ -246,6 +246,38 @@ test('SDK product history maps expired cursor boundaries to data_changed without
   }
 });
 
+test('newest history returns a usable cursor after initial SDK observation updates its source', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_first_history');
+  let revision = 'before-observation';
+  fake.runtime.sessions.observeView = async (id, listener) => {
+    revision = 'after-observation';
+    return viewReader([], id).observeView(id, listener);
+  };
+  fake.runtime.sessions.readHistory = async () => ({
+    revision,
+    sourceRevision: revision,
+    status: 'resolved',
+    issues: [],
+    items: [],
+    oversized: [],
+    nextCursor: `cursor-${revision}`,
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    const result = await adapter.readProductHistory('s_first_history');
+    assert.equal(result.outcome === 'ready' && result.page?.revision, 'after-observation');
+    assert.equal(result.outcome === 'ready' && result.page?.nextCursor, 'cursor-after-observation');
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('newest history refreshes the SDK view after a quiescent observer has retired', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_mutated');
@@ -2836,6 +2868,46 @@ test('closing Space cancels SDK startup instead of waiting for its readiness dea
   } finally {
     rejectConnect?.(new Error('Runtime host closed during startup'));
     await Promise.all([rejected, adapter.close()]);
+  }
+});
+
+test('complete exit cancels pending startup, and cancelling exit permits a fresh attachment', async () => {
+  const fake = createFakeRuntime();
+  let startupEntered = false;
+  let attempts = 0;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    identityStore: testIdentityStore,
+    runtimeFactory: async (options) => {
+      if (++attempts > 1) return fake.runtime;
+      startupEntered = true;
+      return new Promise<KodaXDaemonRuntime>((_resolve, reject) => {
+        options.daemonStartupSignal?.addEventListener(
+          'abort',
+          () => reject(options.daemonStartupSignal!.reason),
+          { once: true },
+        );
+      });
+    },
+    runtimeExitSettler: async () => ({ status: 'clean', repairs: [] }),
+  });
+  const initializing = adapter.initialize();
+  const startupResult = initializing.catch((error: unknown) => String(error));
+  await waitForTest(() => startupEntered);
+  try {
+    const resume = adapter.pauseStartupForCompleteExit();
+    assert.match(String(await startupResult), /complete exit/);
+    await assert.rejects(adapter.initialize(), /complete exit/);
+    resume();
+    await adapter.initialize();
+    assert.equal(adapter.hasReadyRuntime(), true);
+    assert.equal(attempts, 2);
+    await adapter.stopDaemonForCompleteExit();
+    assert.equal(adapter.snapshot().state, 'closed');
+  } finally {
+    await adapter.close();
+    await startupResult;
   }
 });
 
@@ -9773,6 +9845,121 @@ test('Run recovery ignores a business failure that races with a disconnected Run
   );
   await adapter.close();
 });
+
+test('a replacement Host resumes the exact checkpointed Run with Main authorization', async () => {
+  const first = createFakeRuntime('rt_checkpoint_before');
+  const replacement = createFakeRuntime('rt_checkpoint_after');
+  const sessionId = 's_checkpoint_resume';
+  first.sessions.add(sessionId);
+  replacement.sessions.add(sessionId);
+  const runtimes = [first.runtime, replacement.runtime];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => runtimes.shift() ?? replacement.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    credentialResolver: async () => 'test-credential',
+  });
+  const handle = await adapter.startManagedRun({
+    sessionId,
+    prompt: 'continue the original work',
+    options: { provider: 'anthropic' },
+  });
+  const recovered: Parameters<KodaXDaemonRuntime['runs']['recover']>[0][] = [];
+  replacement.runtime.runs.get = async (runId) => ({
+    runId,
+    sessionId,
+    phase: 'recovering',
+    startedAt: '2026-10-28T00:00:00Z',
+    provider: 'anthropic',
+    contextRecovery: {
+      waitingSince: '2026-10-28T00:00:01Z',
+      checkpoint: { version: 1, sessionId, activeEntryId: null, messagesDigest: 'a'.repeat(64) },
+    },
+  });
+  replacement.runtime.runs.recover = async (input) => {
+    recovered.push(input);
+    return { runId: handle.runId, sessionId, result: replacement.runtime.runs.await(handle.runId) };
+  };
+  replacement.runtime.runs.await = async (runId) => ({ runId, sessionId, phase: 'completed' });
+  try {
+    first.disconnect(true);
+    first.pending.get(handle.runId)?.reject(testRuntimeDaemonDisconnectError());
+    assert.equal((await handle.result).phase, 'completed');
+    assert.equal(recovered.length, 1);
+    assert.equal(recovered[0]?.runId, handle.runId);
+    assert.ok(recovered[0]?.authorization?.credential);
+    assert.ok(recovered[0]?.authorization?.hostTools);
+    assert.equal(first.calls.started.length, 1);
+    assert.deepEqual(replacement.calls.started, [], 'recovery must not resubmit the prompt');
+  } finally {
+    await adapter.close();
+  }
+});
+
+for (const disconnectAt of ['capacity wait', 'recovery acknowledgement'] as const) {
+  test(`a recovered Run keeps waiting across a same-Host reconnect at ${disconnectAt}`, async () => {
+    const first = createFakeRuntime('rt_checkpoint_original');
+    const replacement = createFakeRuntime('rt_checkpoint_owner');
+    const reconnected = createFakeRuntime('rt_checkpoint_owner');
+    const sessionId = 's_checkpoint_capacity_reconnect';
+    first.sessions.add(sessionId);
+    replacement.sessions.add(sessionId);
+    reconnected.sessions.add(sessionId);
+    const runtimes = [first.runtime, replacement.runtime, reconnected.runtime];
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      profileRoot: path.resolve('C:\\isolated-profile'),
+      runtimeFactory: async () => runtimes.shift() ?? reconnected.runtime,
+      identityStore: testIdentityStore,
+      runtimeEventParser: testRuntimeEventParser,
+    });
+    const handle = await adapter.startManagedRun({ sessionId, prompt: 'keep the original Run' });
+    let recoveries = 0;
+    let waits = 0;
+    replacement.runtime.runs.get = async (runId) => ({
+      runId,
+      sessionId,
+      phase: 'recovering',
+      startedAt: '2026-10-28T00:00:00Z',
+      provider: 'anthropic',
+      contextRecovery: {
+        waitingSince: '2026-10-28T00:00:01Z',
+        checkpoint: { version: 1, sessionId, activeEntryId: null, messagesDigest: 'b'.repeat(64) },
+      },
+    });
+    const completed = { runId: handle.runId, sessionId, phase: 'completed' as const };
+    replacement.runtime.runs.recover = async () => {
+      recoveries += 1;
+      if (recoveries > 1) throw new Error('The live Host already owns this Run.');
+      if (disconnectAt === 'recovery acknowledgement') replacement.disconnect(true);
+      return { runId: handle.runId, sessionId, result: Promise.resolve(completed) };
+    };
+    replacement.runtime.runs.await = async () => {
+      waits += 1;
+      if (waits === 1 && disconnectAt === 'capacity wait') {
+        replacement.disconnect(true);
+        throw testRuntimeDaemonDisconnectError();
+      }
+      return completed;
+    };
+    reconnected.runtime.runs.get = replacement.runtime.runs.get;
+    reconnected.runtime.runs.recover = replacement.runtime.runs.recover;
+    reconnected.runtime.runs.await = replacement.runtime.runs.await;
+    try {
+      first.disconnect(true);
+      first.pending.get(handle.runId)?.reject(testRuntimeDaemonDisconnectError());
+      assert.equal((await handle.result).phase, 'completed');
+      assert.equal(recoveries, 1);
+      assert.equal(waits, disconnectAt === 'capacity wait' ? 2 : 1);
+      assert.deepEqual(replacement.calls.started, []);
+      assert.deepEqual(reconnected.calls.started, []);
+    } finally {
+      await adapter.close();
+    }
+  });
+}
 
 test('Run recovery survives another reconnect while querying the admitted runId', async () => {
   const first = createFakeRuntime('rt_run_recovery_first');

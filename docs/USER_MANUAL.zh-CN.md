@@ -6,7 +6,7 @@
 
 > 本文对应已发布预发布版 Space `v0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`。稳定版下载仍是 Space v0.1.46 / KodaX 0.7.96。旧版截图用于界面定位，以实际界面为准；本次变化与已验证范围见[发布准备记录](releases/v0.1.47-alpha.2-release-readiness.md)。
 
-> 当前源码对应已发布的 Space `v0.1.47-alpha.3` 预发布版，精确接入官方 SDK `0.7.97-alpha.9`。历史正文出现 EIO、但会话身份元数据可读时，无关会话的 Run 列表和退出检查不再被该正文阻塞；活动或未知任务、其他客户端仍受退出保护。打开受损会话本身仍会显示读取错误，元数据不可读时检查仍保守失败。这是软件隔离，不会修复磁盘或补回丢失的历史。验收及构建路径见 [alpha.9 接入记录](releases/kodax-0.7.97-alpha.9-integration.md)。
+> 当前工作区仍为 Space `0.1.47-alpha.3`，已接入 npm Registry SDK `0.7.97-alpha.10`，尚未发布新的 Space 安装器。新增提问等待/跳过、退出恢复、内置 Skill 本地错误及初始化进度适配；保留 alpha.9 的 EIO 会话隔离和其他客户端退出保护。能力与验证范围见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。
 
 共享 Coder 当前聊天与历史浏览分开；新建但未发送的会话不会留下新空记录；侧栏按真实消息时间排序。当前版本恢复 SDK 提供的用户图片、长正文、工具与 Artifact 记录，结果检查使用工具证据和 visual-review，旧的 /verifier-log 已移除。Windows 首次迁移如需 Sandbox Setup，应在 Settings → Runtime 显式执行；普通启动和工具调用不会隐式提权。旧会话文件与凭据不会因本轮文档或版本同步被删除。
 
@@ -386,6 +386,8 @@ host 中的变量值后，需要安全重启已连接的长驻 daemon。CLI 可�
 
 权限和 AskUser 请求按 Session 归属：权限 modal 只代表当前可见 Session；ask_user 提问卡渲染在该 Session 自己的对话流尾部，每个 reqId 独立结算，互不误答。后台 Session 的请求会留在耐久队列并在左侧栏显示等待标记；切换到对应 Session 后再处理。这样可以避免一个后台任务的确认盖住另一个正在阅读的会话。
 
+alpha.10 接入后的普通提问默认无限等待，不自动提交默认答案。点击“跳过”或按 Esc 返回未作答，任务可继续；Stop 才中断对应任务。Host 显式配置的提问期限到达时同样返回未作答。权限拒绝和授权保护仍独立生效。
+
 PowerShell 的 `-Path` 支持 `[...]` 通配符。最新版 KodaX 会把这类方括号路径视为不完整并升级确认，防止 `[.]kodax/config.json` 解析到受保护路径后绕过 Auto 审查；如果目标确实是名称中带方括号的普通文件，请使用 `-LiteralPath` 或 `-PSPath`，例如 `build/file[12].txt`，它仍会按精确目标建模。
 
 ## 8. Composer、附件与排队
@@ -444,10 +446,9 @@ KodaX 0.7.77 会为确认兼容的内置 Provider 建立稳定的提示词缓存
 
 ### Agent Mode
 
-- **SA**：单 Agent 路径，适合直接、小型任务。
-- **AMA**：默认的自适应多 Agent 协作方式。AMAW 已退出并合并到 AMA；旧配置会自动迁移。
+- **AMA**：Space 统一使用自适应多 Agent 协作方式。SA 和 AMAW 已退出界面；旧默认值和会话侧设置在后续执行时迁移为 AMA，历史事实不变。
 
-Workflow 只在显式 Workflow 强信号、`/workflow`、命名 Workflow 或 SDK 请求下开放，普通复杂任务、并行或审查等弱信号不会自动启动。不同 Provider、工具和任务并不保证两种模式产生相同效果；不确定时保留默认值，用 `Alt+M` 或 `/agent-mode` 调整。
+Workflow 只在显式 Workflow 强信号、`/workflow`、命名 Workflow 或 SDK 请求下开放，普通复杂任务、并行或审查等弱信号不会自动启动。`Alt+M` 不再切换形态；`/agent-mode sa` 提示使用 AMA。
 
 ### 子 Agent 与 mailbox 协调
 
@@ -650,7 +651,7 @@ Settings → Runtime → External Agents 同时展示 Space Reference Agent 与 
 | `/mode`                                     | 查看或切换权限模式            |
 | `/provider`、`/model`                       | 切换 Provider/Model           |
 | `/reasoning`、`/thinking`                   | 调整 Effort/Thinking          |
-| `/agent-mode`                               | 切换 SA/AMA                   |
+| `/agent-mode`                               | 查看或使用 AMA                   |
 | `/workflow`                                 | 启动或查看 Workflow           |
 | `/compact`                                  | 立即压缩当前持久会话上下文    |
 | `/tree`、`/history`                         | 查看 lineage 或用户消息历史   |
@@ -758,7 +759,7 @@ flowchart TD
 - Quick Ask 不是完全无 session side query。
 - React artifact 不是可交互 LiveCanvas。
 - Office/PDF writer 是基础可靠输出，不是品牌模板级设计系统。
-- Settings → Diagnostics 已提供脱敏诊断导出及诊断目录入口。诊断包包含运行状态、会话生命周期元数据和有界日志，不主动导出 Prompt、对话正文或工具载荷；导出后仍应检查日志中可能由第三方写入的内容。Windows/Linux 的受支持安装方式可通过更新提示下载并安装；当前未签名的 macOS 构建禁用自动更新，需从 Releases 手动下载。源码与 win-unpacked 构建不等于已发布版本。
+- Settings → Diagnostics 已提供脱敏诊断导出及诊断目录入口。诊断包包含运行状态、会话生命周期元数据和有界日志，不主动导出 Prompt、对话正文或工具载荷；导出后仍应检查日志中可能由第三方写入的内容。软件更新位于 Settings → Preferences → 软件更新。启动不检查、不下载，退出也不自动安装。先点“检查更新”，确认候选版本后点“下载更新”并确认；下载完成后另行确认“重启并安装”。正式版只接收正式版本，预发布版只接收同通道或正式版本，不自动降级。Windows/Linux 的受支持安装方式使用该流程；当前未签名 macOS 构建仍需从 Releases 手动下载。源码与 win-unpacked 构建不等于已发布版本。
 - KodaX 0.7.77 保留 Runtime Worker 可达的非交互 Windows 子进程隐藏；显式 editor、terminal 与 PTY 交互保持不变。若普通 Coder query 仍闪出 `cmd.exe`/console 窗口，请记录 Space/KodaX 版本、触发操作与进程名并作为回归报告。
 
 - Kimi Code 订阅默认使用直连 `k3-256k`（256K context），K3 推理默认档为 `high`；模型选择器仍保留 `k3`（1M）、`kimi-for-coding`（K2.7 Code）和 `kimi-for-coding-highspeed`。Space 从 SDK provider catalog 读取这些模型，不在本地改写 wire model。

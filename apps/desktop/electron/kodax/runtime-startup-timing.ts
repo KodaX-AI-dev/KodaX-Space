@@ -32,6 +32,8 @@ interface RuntimeStartupTimingOptions {
   readonly now?: () => number;
   readonly sink?: RuntimeStartupTimingSink;
   readonly attemptId?: string;
+  /** Keep a bounded timeline and log it only on failure or a startup over ten seconds. */
+  readonly reportSlowOrFailed?: boolean;
 }
 
 let nextAttempt = 0;
@@ -50,12 +52,33 @@ function defaultSink(event: RuntimeStartupTimingEvent): void {
   getDiagnosticsLogger()?.debug('runtime-startup', 'stage_timing', undefined, event);
 }
 
+function defaultProblemSink(event: RuntimeStartupTimingEvent): void {
+  getDiagnosticsLogger()?.info('runtime-startup', 'stage_timing', undefined, event);
+}
+
+function retainStartupTiming(
+  pending: RuntimeStartupTimingEvent[],
+  event: RuntimeStartupTimingEvent,
+  sink: RuntimeStartupTimingSink,
+): void {
+  if (pending.length === 32) pending.splice(1, 1);
+  pending.push(event);
+  const finished =
+    event.phase === 'failed' ||
+    event.phase === 'skipped' ||
+    (event.phase === 'complete' && (event.stage === 'initialize' || event.stage === 'reconcile'));
+  if (!finished) return;
+  if (event.phase === 'failed' || event.totalMs >= 10_000) pending.forEach(sink);
+  pending.length = 0;
+}
+
 export function createRuntimeStartupTiming(
   scope: string,
   options: RuntimeStartupTimingOptions = {},
 ): RuntimeStartupTimingRecorder {
-  const enabled = isRuntimeStartupDebugEnabled(options.env);
-  if (!enabled) {
+  const debug = isRuntimeStartupDebugEnabled(options.env);
+  const retained = !debug && options.reportSlowOrFailed === true;
+  if (!debug && !retained) {
     return {
       enabled: false,
       mark: () => undefined,
@@ -63,7 +86,8 @@ export function createRuntimeStartupTiming(
   }
 
   const now = options.now ?? (() => Number(process.hrtime.bigint()) / 1_000_000);
-  const sink = options.sink ?? defaultSink;
+  const sink = options.sink ?? (retained ? defaultProblemSink : defaultSink);
+  const pending: RuntimeStartupTimingEvent[] = [];
   const attemptId =
     options.attemptId ?? `${scope}-${process.pid}-${String(++nextAttempt).padStart(3, '0')}`;
   const startedAt = now();
@@ -74,7 +98,7 @@ export function createRuntimeStartupTiming(
     mark(stage, phase = 'complete', data) {
       const currentAt = now();
       try {
-        sink({
+        const event: RuntimeStartupTimingEvent = {
           attemptId,
           scope,
           stage,
@@ -82,7 +106,9 @@ export function createRuntimeStartupTiming(
           stepMs: roundedDuration(currentAt - previousAt),
           totalMs: roundedDuration(currentAt - startedAt),
           ...(data === undefined ? {} : { data }),
-        });
+        };
+        if (retained) retainStartupTiming(pending, event, sink);
+        else sink(event);
       } catch {
         // Diagnostics must never make Runtime startup fail or slow its recovery path.
       }

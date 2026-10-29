@@ -1,6 +1,8 @@
+diff --git a/SKILL.md b/SKILL.md
+index 853cf0f9..7f6e58cf 100644
 --- a/SKILL.md
 +++ b/SKILL.md
-@@ -3,6 +3,14 @@
+@@ -3,6 +3,14 @@ name: interview-prep
  description: Create structured interview plans with competency-based questions and scorecards. Trigger with "interview plan for", "interview questions for", "how should we interview", "scorecard for", or when the user is preparing to interview candidates.
  ---
  
@@ -15,3 +17,9 @@
  # Interview Prep
  
  Create structured interview plans to evaluate candidates consistently and fairly.
+@@ -34,4 +42,4 @@ Structured format for interviewers to share findings and make a decision.
+ 
+ ## Output
+ 
+-Produce a complete interview kit: panel assignment (who interviews for what), question bank by competency, scoring rubric, and debrief template.
++按用户需求选择题目、追问、评分表或完整面试方案。只要几道题时直接给适合岗位与时长的题目；完整套件才包含分工和复盘表，未知面试官与制度标为待确认。

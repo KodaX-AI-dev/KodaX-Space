@@ -37,7 +37,7 @@ import {
 const execFileAsync = promisify(execFile);
 
 const persistedAgentModeSchema = z.preprocess(
-  (value) => (value === 'amaw' || value === 'ama-workflow' ? 'ama' : value),
+  (value) => (value === 'sa' || value === 'amaw' || value === 'ama-workflow' ? 'ama' : value),
   z.enum(['ama', 'sa']),
 );
 
@@ -144,7 +144,7 @@ function hasRetiredAgentMode(raw: unknown): boolean {
     return false;
   }
   const agentMode = (runtimeDefaults as Record<string, unknown>).agentMode;
-  return agentMode === 'amaw' || agentMode === 'ama-workflow';
+  return agentMode === 'sa' || agentMode === 'amaw' || agentMode === 'ama-workflow';
 }
 
 function hasPreV3Schema(raw: unknown): boolean {

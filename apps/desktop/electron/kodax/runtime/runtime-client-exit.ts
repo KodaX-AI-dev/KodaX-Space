@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { ClientExitReceipt, RuntimeClientInfo } from '@kodax-ai/kodax/client';
+import type {
+  ClientExitReceipt,
+  ClientExitRecovery,
+  RuntimeClientInfo,
+} from '@kodax-ai/kodax/client';
 import type { KodaXDaemonRuntime, RuntimeOwnerPolicyState } from '@kodax-ai/kodax/runtime';
 
 /** Space dialog decisions; SDK execution evidence remains in the original receipt. */
@@ -50,7 +54,59 @@ export interface RuntimeDaemonRollbackResult {
   readonly ownerPolicy: RuntimeOwnerPolicyState & { readonly mode: 'inline' };
 }
 
+const RECOVERY_REASONS: Readonly<
+  Record<
+    ClientExitRecovery['reason'],
+    Extract<RuntimeExitSettlement, { status: 'blocked' }>['reason']
+  >
+> = {
+  host_shutdown_verified: 'cleanup_unverified',
+  client_cleanup_verified: 'cleanup_unverified',
+  client_cleanup_pending: 'cleanup_unverified',
+  client_cleanup_unknown: 'cleanup_unverified',
+  cleanup_failed: 'cleanup_failed',
+  host_protected: 'active_work',
+  daemon_active: 'active_work',
+  containment_active: 'containment_active',
+  containment_unavailable: 'containment_unavailable',
+  outcome_missing: 'cleanup_unverified',
+  owner_identity_unverified: 'owner_unverified',
+  owner_identity_mismatch: 'owner_identity_mismatch',
+};
+
 export function projectClientExitReceipt(receipt: ClientExitReceipt): RuntimeExitSettlement {
+  const recovery = receipt.recovery;
+  // A protected, identity-verified shared Host may keep running for peers after
+  // our own cleanup finishes. This completes only Space's client exit, never
+  // certifies Host shutdown or changes the SDK's blocked shutdown assessment.
+  if (
+    recovery?.reason === 'host_protected' &&
+    receipt.cleanup.state === 'succeeded' &&
+    receipt.host.state === 'protected'
+  ) {
+    return { status: 'clean', repairs: [], receipt };
+  }
+  if (recovery) {
+    if (recovery.state === 'ready') {
+      return {
+        status: receipt.cleanup.state === 'succeeded' ? 'clean' : 'recovered',
+        repairs: [],
+        receipt,
+      };
+    }
+    return {
+      status: 'blocked',
+      reason: RECOVERY_REASONS[recovery.reason],
+      nextAction:
+        recovery.nextAction === 'retry_verification'
+          ? 'retry-automatically'
+          : recovery.nextAction === 'retry_exit'
+            ? 'relaunch-space'
+            : 'manual-recovery',
+      message: `Runtime recovery is ${recovery.state}: ${recovery.reason}.`,
+      receipt,
+    };
+  }
   if (
     receipt.cleanup.state === 'succeeded' &&
     ['succeeded', 'protected', 'not_requested'].includes(receipt.host.state)
@@ -89,6 +145,7 @@ export async function settleRuntimeClientExit(
     );
     await input.onAccepted?.(receipt);
     while (
+      receipt.recovery?.state === 'pending' ||
       receipt.cleanup.state === 'pending' ||
       ['pending', 'accepted'].includes(receipt.host.state) ||
       (receipt.cleanup.state === 'succeeded' && receipt.host.state === 'unknown')

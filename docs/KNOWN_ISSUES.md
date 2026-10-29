@@ -1,8 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-10-21
+Last Updated: 2026-10-30
 
-> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96; the current unpublished candidate is Space 0.1.47-alpha.3 with exact Registry SDK 0.7.97-alpha.9. Start from the [documentation hub](README.md) and [alpha.2 readiness](releases/v0.1.47-alpha.2-release-readiness.md) for current behavior, qualification and remaining investigations.
+> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96. This unpublished working tree retains Space 0.1.47-alpha.3 and pins Registry SDK 0.7.97-alpha.11; the published alpha.3 installers still use SDK alpha.9. Start from the [documentation hub](README.md) and [alpha.11 integration](releases/kodax-0.7.97-alpha.11-integration.md) for current behavior, qualification and remaining investigations.
 
 ## Issue Index
 
@@ -219,6 +219,18 @@ Last Updated: 2026-10-21
 | 221 | Medium   | Resolved in source                                                                                           | Session deletion failures are misreported as another running KodaX process                                                                                                                                 | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 | 222 | High     | Resolved; Registry alpha.9 Windows verified                                                                                                            | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 | 223 | Medium | Resolved in source; local Windows package verified | Titlebar diagnostics retain startup state and obsolete version/dependency information | Observed v0.1.47-alpha.3; first affected version unknown | 2026-10-21 |
+| 224 | High | Resolved | Complete exit during cold Runtime startup times out instead of releasing startup admission | Observed v0.1.47-alpha.3 | 2026-10-25 |
+| 225 | Medium | needs-info | Intermittent packaged Runtime cold startup exceeds its readiness deadline | Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9 | 2026-10-25 |
+| 226 | High     | Resolved in source                                                                                           | Retired SA mode can still be selected or restored and fails on unavailable collaboration tools                                                                                                             | Reported v0.1.47-alpha.1                                                  | 2026-10-28 |
+| 227 | High     | Resolved in source                                                                                           | Idle questions time out as errors and dismissal interrupts instead of reporting unanswered                                                                                                                 | Reported v0.1.47-alpha.1 / SDK alpha.9                                    | 2026-10-28 |
+| 228 | Medium   | Resolved in source                                                                                           | Historical unknown client cleanup permanently blocks safe Windows restart                                                                                                                                  | Reported v0.1.47-alpha.1 / SDK alpha.9                                    | 2026-10-28 |
+| 229 | High     | Resolved in source                                                                                           | Coder builtin Skill rehydration can miss the Host registration and appear as a Provider error                                                                                                              | Reported since v0.1.46                                                    | 2026-10-28 |
+| 230 | High | Resolved in source | Linux hidden titlebar omits minimize/maximize/close controls | Reported v0.1.46 | 2026-10-28 |
+| 231 | Medium | ready | Linux CLI sandbox guidance omits the missing Node interpreter | Reported 2026-10-23; CLI version unknown | 2026-10-28 |
+| 232 | High | Resolved in source | Startup updater downloads automatically and lacks a stable-channel guard | Existing F022 behavior | 2026-10-28 |
+| 233 | High | Resolved in source | Cold Session history hydration can show React 185 when full-body reads complete together | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
+| 234 | Medium | Resolved in source | Ordinary child reports appear as yellow warnings with raw SDK transport markup | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
+| 235 | Medium | Resolved in source | Downward history scrolling and the bottom arrow stop at a frozen older window | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -15857,16 +15869,189 @@ misclassified as missing before the durable mutation is attempted.
 - Full desktop Electron suite: 2639 passed, 0 failed, 4 skipped (2643 total).
 - Desktop and Electron TypeScript checks, full ESLint, and main-process build passed.
 
+## Issue 224: Complete exit during cold Runtime startup times out instead of releasing startup admission
+
+- Priority: High
+- Status: Resolved
+- Introduced: Observed v0.1.47-alpha.3; first affected version unknown
+- Fixed: v0.1.47-alpha.3 local maintenance
+- Created: 2026-10-25
+- Resolution Date: 2026-10-25
+
+### Original Problem
+
+While the packaged assistant was starting, history displayed “Waiting for Runtime to restore
+history”. Complete exit twice failed after ten seconds with “Coder shutdown admission drain did
+not finish within 10000 ms”. The user had to choose between keeping Space open and force close.
+The small spinner supplied no elapsed time or explanation of an unusually long wait.
+
+### Root Cause
+
+The production exit path drained Coder admission before cancelling the SDK startup wait. An
+already-admitted Session request could be waiting on that same startup. The adapter's existing
+`close()` cancellation worked in isolation but was reached only after complete-exit preflight.
+Existing close unit tests therefore did not cover the actual entry point.
+
+### Resolution
+
+Close admission synchronously, pause reconnect and abort the local SDK startup wait, then drain
+requests and run the existing SDK exit settlement. Cancelling exit reopens admission and permits
+startup again. Intentional startup cancellation is recorded separately from initialization failure.
+An already-starting daemon still belongs to SDK cleanup: with a tray available the window leaves
+promptly while safe cleanup finishes in the background; without a tray the exit overlay remains
+visible until settlement. Other clients and active work retain their existing exit protections.
+
+The startup banner now has a spinner, elapsed seconds, a longer-than-usual message after 30 seconds,
+and a visible failure message. Elapsed updates do not announce every second to screen readers;
+the spinner respects reduced motion. It does not invent completion percentages or an ETA.
+
+### Files Changed
+
+- `apps/desktop/electron/main.ts`
+- `apps/desktop/electron/kodax/runtime-host-adapter.ts`
+- `apps/desktop/renderer/src/shell/RuntimeStartupStatus.tsx`
+- `apps/desktop/renderer/src/i18n/messages.ts`
+
+### Tests Added
+
+- Adapter regression: cancelling startup releases an in-flight attachment, exit cancellation permits
+  a fresh attachment, and normal verified shutdown still closes the adapter.
+- Renderer regression: long waits show elapsed time and recovery guidance; failure remains visible;
+  readiness removes the banner.
+- `tests/e2e/runtime-startup-exit.spec.ts`: start a real delayed SDK daemon, admit a Session during
+  startup, check the slow-wait feedback, request complete exit, verify prompt window hiding and
+  eventual process exit without forcing closure. The original package fails the exit assertion.
+
+Human verification: [Issue 224 regression guide](test-guides/ISSUE_224_0.1.47-alpha.3_REGRESSION_GUIDE.md).
+
+Local Windows verification on 2026-10-25: 300 related tests passed; TypeScript, lint and formatting
+passed. `scripts/pack.mjs --win --dir` completed all dependency/boot checks and six SDK acceptance
+cases. The new startup/exit case also passed against that unpacked executable (23.5 s, including
+the intentional delayed-start fixture). Startup-wait screenshot was visually checked.
+
+## Issue 225: Intermittent packaged Runtime cold startup exceeds its readiness deadline
+
+- Priority: Medium
+- Status: needs-info
+- Introduced: Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9; first affected version unknown
+- Created: 2026-10-25
+- Missing: a repeatable trigger or per-stage timing from another slow first launch
+
+### Original Problem
+
+On 2026-10-25 (Asia/Shanghai), main diagnostics began at 16:31:11, the renderer was visually ready
+at 16:31:18, and Runtime initialization failed at 16:32:17 with `daemon_startup_failed`. The daemon
+only reported ready at 16:32:36. This is an abnormal startup, rather than an expected animation
+duration. Issue 224 addresses the associated exit and feedback defects, not this SDK latency.
+
+### Investigation
+
+- The same unpacked executable and real profile subsequently initialized in approximately 5.9 s;
+  Runtime attachment and projection took 3.58 s, including 2.80 s in the SDK connection factory.
+- An isolated packaged smoke rendered in 2.53 s and initialized Runtime in 23.37 s including an
+  intentional 20 s hold. A separate run with 987 distinct absent historical PIDs initialized in
+  3.64 s without that hold. Historical child-record count alone does not reproduce the delay.
+- The readiness exception includes generic RunAsNode fuse advice; successful real and isolated
+  daemon launches do not support diagnosing a disabled fuse from that message alone.
+- No changes were made to user history, retained child evidence, SDK safety deadlines, or the
+  installed SDK package to mask the first-launch failure.
+
+The local maintenance build now automatically retains `runtime-startup/stage_timing` records when
+startup fails or takes at least ten seconds, including the SDK launcher's waiting stages/reasons.
+Fast successful starts stay quiet. Timelines are bounded to 32 timing events and 16 launcher
+transitions; durations use the monotonic clock. Explicit `KODAX_SPACE_RUNTIME_STARTUP_DEBUG=1` still
+records every startup immediately. Preserve these events plus the matching daemon bootstrap
+timestamps for a recurrence. This improves evidence capture without changing the SDK deadline.
+
+### Follow-up measurements (2026-10-25)
+
+The reported 66-second deadline was not reproduced. Three complete starts of the actual unpacked
+application with the real profile took 6.113, 5.900 and 6.212 seconds; each completed normal exit.
+SDK connection took 2.16–2.27 seconds and the first profile refresh took 0.76–0.84 seconds. A separate
+exploratory start took 11.213 seconds, including a 5.073-second profile refresh; this is a different
+stage from the original daemon-readiness timeout.
+
+The following probes exercised the installed Registry SDK 0.7.97-alpha.9, without editing that
+package or the sibling KodaX checkout:
+
+- Real-profile public `createKodaXRuntime` initialization under the packaged Electron executable:
+  0.948 seconds. It read 200 Run status files (about 309 KB), about 1.2 MB of managed-child
+  metadata, and **zero historical event bytes**. The roughly 2 GB of old event history was not
+  scanned by this startup in its current indexed state.
+- Isolated managed-child registries with about 988 retained records: 0.125 seconds when PIDs were
+  absent; 1.751 seconds with the real PID distribution and deliberately impossible identities.
+  The latter issued one 1.645-second PowerShell snapshot, with no process termination.
+- Both configured MCP servers use lazy connections. Public catalog prewarm with a copied cache
+  and an empty cache took 1 ms and less than 1 ms respectively, spawning no MCP process. Their
+  network initialization therefore did not reproduce this startup stall.
+
+These measurements characterize the present state; they do not reconstruct the state of the
+original failed first launch. Existing logs locate that failure before daemon readiness, but do
+not identify its internal blocking operation. Detailed daemon preload probes did not attach in
+this packaged launch path and were discarded; no internal trace or root-cause claim is based on
+them. The older journal-commit diagnostic also failed its own SDK-boundary assumption and is not
+evidence of an application regression.
+
+Local, untracked probe scripts and sanitized results remain under `artifacts/diagnostics/`.
+The user confirmed that the problem is intermittent and the boot/wake context is unknown. The
+useful remaining evidence is a timed capture while the daemon is actually stalled. No speculative
+SDK change, timeout increase, history deletion, or ownership-marker cleanup was applied. The
+automatic recorder regression is `tests/e2e/runtime-startup-diagnostics.spec.ts`: with the debug
+switch disabled, a real delayed SDK startup must persist timing and launcher progress.
+
+Verification of the automatic recorder: 306 related unit tests, Electron TypeScript, ESLint and
+formatting passed. The rebuilt Windows unpacked package passed all packaging/boot checks and six
+SDK acceptance cases. Both automatic-diagnostics and startup-exit tests passed against that exact
+package (16.2 s and 22.9 s, including intentional startup delays). Issue 225 remains `needs-info`:
+the recorder is verified; the intermittent original timeout is not claimed fixed.
+
+## Issues 226–229 — Runtime and builtin Skill integration
+
+- **Created**: 2026-10-28.
+- **Introduced**: 226–228 reported on 0.1.47-alpha.1; 229 reported since 0.1.46.
+- **Status**: Resolved in source, 2026-10-28; Space installer release remains pending.
+- **Original problems**: SA remains selectable despite retirement and can request unavailable child-agent tools; unanswered questions become failures; historical unknown cleanup blocks startup despite verified Host exit; main-process builtin Skill registration is missing from an independent Coder Host, with local policy failures mislabelled as Provider requests. Partner's same-process discovery can hide the latter defect.
+- **Required result**: use AMA; keep ordinary questions pending or explicitly unanswered; use fresh SDK recovery evidence without rewriting old unknown outcomes; retain independently registered, trusted Skill policy and typed local errors.
+- **Implementation**: exact Registry SDK alpha.10, Space mode migration and question callbacks, exit assessment projection, safe Skill failure DTO, and additional actual startup-phase/checkpoint/capacity-wait integration. No local SDK fork or customer-profile cleanup.
+- **Validation**: 4,435 Node tests passed with 20 conditional/platform skips; typecheck, lint, build and Skill integrity passed. The full source UI run and six-case corrective rerun leave no unresolved failures. The final metadata correction passed 17 focused tests and the actual Coder Skill invocation. The rebuilt Windows package passed Registry/native/worker/boot gates and all 19 packaged UI cases, including the installed builtin and Skip. See [alpha.10 integration](releases/kodax-0.7.97-alpha.10-integration.md) and [regression guide](test-guides/ISSUE_226_0.1.47-alpha.3_REGRESSION_GUIDE.md) for exact boundaries and commands. Issue 225 remains separate and needs information.
+
+## Issues 230–232 — Kylin controls and explicit updates
+
+- Created: 2026-10-28. Investigation and SDK handoff: [record](research/kylin-window-sandbox-and-manual-updates-2026-10-28.md). [Regression guide](test-guides/ISSUE_230_0.1.47-alpha.3_REGRESSION_GUIDE.md).
+- **230 Original Problem**: Kylin/UKUI users on Space 0.1.46 have no window operation buttons. Main hides the native caption on Linux while renderer renders controls only on Windows. **Status**: Resolved in source, 2026-10-28; shared custom controls now include Linux. Three-platform rendering and real Windows operations passed; customer UKUI acceptance and Space publication remain pending.
+- **231 Original Problem**: the independent CLI doctor reports a missing Node interpreter but SDK Linux setup guidance recommends only bubblewrap/socat/ripgrep. **Status**: ready, SDK-owned guidance defect; ordinary task fallback failure on Kylin is not established by that doctor result. User-confirmed design: preserve KodaX's automatic fallback through the current permission policy, without requiring users to install dependencies before continuing ordinary tasks. Published alpha.10 command tests cover preparation failure, non-selection, proven pre-start failure, denial and Stop (five pass); two SDK Auto boundary tests also pass. The earlier inference that doctor readiness necessarily blocks Agent Bash is withdrawn. CLI version/origin and Kylin task-level reproduction remain useful follow-up information. Electron interpreter discovery works without host Node in the isolated Windows probe; no claim of Kylin-wide readiness or a completed SDK guidance fix.
+- **232 Original Problem**: startup checks automatically and sets autoDownload=true. The download/install boundary has no independent stable-to-prerelease guard. The updater previously already disabled install-on-quit; automatic installation was not independently reproduced. **Status**: Resolved in source, 2026-10-28; settings-only check plus separately confirmed version-bound download/install, disabled automatic flags and explicit channel gates are implemented. Installation waits for verified Runtime shutdown and local cleanup; active tasks/connected peers block it. Current GitHub latest returns stable v0.1.46; customer-time feed contents remain unknown. Space publication remains pending.
+- **Validation**: full Node run passed 4,441 with 20 conditional/platform skips. Subsequent safe-install changes passed 37 focused tests, including all eight updater cases; typecheck/lint/build passed. Source UI passed 11 settings/window cases plus three real Runtime installation cases. The rebuilt Windows package passed Registry/native/worker/boot gates, six real SDK cases and all 15 additional UI/lifecycle cases. No actual installer replacement, SDK edits, customer-profile modifications or kernel sandbox weakening. Full evidence and installer hash are in the linked record.
+
+## Issue 233 — Cold history full-body hydration exceeds React update depth
+
+- **Created / fixed in source**: 2026-10-28. Space publication remains pending.
+- **Original report**: opening `20261026_200011_47f836372c903b` immediately after startup shows React 185 when the history loading animation ends and content first appears.
+- **Evidence**: an identity-preserving isolated copy of the original Session, tested in the original packaged executable with a deterministic Runtime startup hold, reproduced the same Toast twice in three cold starts. A targeted CDP breakpoint and SourceMap locate `installProductItemContent → publish → forceStoreRerender`. Stabilizing the subscription alone still failed all three tests.
+- **Fix**: preserve synchronous body-cache/snapshot installation, but coalesce full-body completion notifications within the same renderer frame. View/history publications and non-browser behavior stay immediate. No body truncation, ordering/identity changes, SDK patch or hidden error.
+- **Validation**: the original cold-load scenario passed three times after the change. The new public-hook browser regression failed on the old implementation and passed after the fix; it also verifies immediate complete snapshots and final display. Cache/body-read/product/history regressions give 86 passing tests. Typecheck, focused lint, exact Registry gate and build passed. The separate Windows validation directory passed actual boot, three original-Session cold loads and nine SDK output/history cases with zero retries; the original unpacked directory remains unchanged. No new installer release. Hashes and exact boundaries are recorded in the linked investigation.
+- **Scope**: yellow child-task result presentation and old-window navigation are tracked separately as 234/235. See [investigation](research/renderer-185-agent-notices-and-history-navigation-2026-10-28.md) and [regression guide](test-guides/ISSUE_233_0.1.47-alpha.3_REGRESSION_GUIDE.md).
+
+## Issues 234–235 — Informational reports and bidirectional history browsing
+
+- **Created / made ready**: 2026-10-28, from the supplied screenshots and isolated original-Session replay.
+- **Status**: Space fixes in source, 0.1.47-alpha.3; publication pending. SDK structured task-result metadata remains a separate follow-up.
+- **Original problems**: ordinary SDK info becomes a yellow workflow warning and exposes the escaped `<agent-completed>` envelope. After loading older history, downward scrolling and the ordinary bottom arrow cannot reach newer data without a separate return button.
+- **Resolution**: map ordinary Product info to neutral notices. A strictly framed legacy child-report envelope is normalized only for display, decoded once, collapsed by default and rendered with the existing safe Markdown component. This never supplies task identity, status or actions; malformed envelopes and other text remain literal. Real error notices retain diagnostics/actions. Preserve only public SDK cursor/revision breadcrumbs, re-read adjacent visited pages, and keep one selected page body. One bottom arrow supersedes old pagination, selects the latest window, and moves the matching Session viewport after its DOM commit.
+- **Changed files / tests**: `productConversation.ts`, `composeMessages.ts`, `messages/bubbles.tsx`, `i18n/messages.ts`, `sessionHistoryPaging.ts`, `ConversationStreamV2.tsx`, `runtime-host-adapter.ts`; colocated projection/notice/paging/Adapter tests, `conversationHistoryNavigation.browser.test.ts`, and packaged `sdk-history-navigation.spec.ts`. The first newest read now establishes SDK observation before capturing a history cursor, preventing immediate source invalidation. Validation: 107 related tests and the full Adapter suite pass; final package cold-load replay passes 3/3. Installer, Portable and final package results/hashes are in the [investigation](research/renderer-185-agent-notices-and-history-navigation-2026-10-28.md).
+- **Resolution date**: 2026-10-28. See [regression guide](test-guides/ISSUE_234_0.1.47-alpha.3_REGRESSION_GUIDE.md).
+
 ## Summary
 
-- Total: 210
+
+- Total: 222
 - Open: 1
-- Ready: 2
-- Needs info: 0
+- Ready: 3
+- Needs info: 1
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 196
-- High: 109
-- Medium: 89
+- Resolved (including source-only fixes): 206
+- High: 116
+- Medium: 94
 - Low: 12
 - Next ready to resolve: 222

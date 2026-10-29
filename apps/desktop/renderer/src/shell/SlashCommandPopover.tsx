@@ -464,7 +464,7 @@ function buildSlashArgSuggestions(
       suggestions = staticOptions(['auto']);
       break;
     case 'agent-mode':
-      suggestions = staticOptions(['ama', 'sa', 'toggle']);
+      suggestions = staticOptions(['ama']);
       break;
     case 'reasoning':
       suggestions = staticOptions([
@@ -679,12 +679,14 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
         if (cancelled) return;
         const merged: SlashPickerItem[] = [
           ...cmds.map((c): SlashPickerItem => ({ kind: 'slash', meta: c })),
-          ...skills.map((s): SlashPickerItem => ({
-            kind: 'skill',
-            meta: s,
-            displayName: safeSkillSlashText(s.name, cmds),
-            insertText: skillSlashInsertText(s.name, cmds),
-          })),
+          ...skills.map(
+            (s): SlashPickerItem => ({
+              kind: 'skill',
+              meta: s,
+              displayName: safeSkillSlashText(s.name, cmds),
+              insertText: skillSlashInsertText(s.name, cmds),
+            }),
+          ),
         ];
         merged.sort((a, b) => pickerItemName(a).localeCompare(pickerItemName(b)));
         setItems(merged);

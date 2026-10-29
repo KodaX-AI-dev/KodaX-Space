@@ -6,7 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider.js';
 import { useAppStore } from '../store/appStore.js';
 import { RuntimeStartupStatus } from './RuntimeStartupStatus.js';
 
-test('startup status explains waiting and clears when Space is ready or initialization fails', (t) => {
+test('startup status explains long waits and failures, and clears when Space is ready', (t) => {
   const initial = useAppStore.getInitialState();
   const original = { ...initial };
   t.after(() => Object.assign(initial, original));
@@ -20,17 +20,25 @@ test('startup status explains waiting and clears when Space is ready or initiali
     );
   initial.runtimeConnection = {
     state: 'connecting',
-    changedAt: 1,
+    changedAt: Date.now() - 35_000,
     stale: true,
     capabilities: [],
     startupProgress: { stage: 'waiting', reason: 'connected_clients' },
   };
   assert.match(render(), /Waiting for other connected apps|正在等待其他已连接的应用/);
+  assert.match(render(), /35/);
+  assert.match(render(), /longer than usual|耗时超出平常/);
+  assert.match(render(), /exit Space|退出 Space/);
   initial.runtimeConnection = {
     ...initial.runtimeConnection,
     startupProgress: { stage: 'ready' },
   };
   assert.match(render(), /Preparing conversation|正在准备会话/);
+  initial.runtimeConnection = {
+    ...initial.runtimeConnection,
+    startupProgress: { stage: 'initializing', phase: 'mcp' },
+  };
+  assert.match(render(), /Preparing connected tools|正在准备已连接的工具/);
   initial.runtimeConnection = {
     state: 'ready',
     runtimeId: 'runtime-1',
@@ -46,5 +54,5 @@ test('startup status explains waiting and clears when Space is ready or initiali
     capabilities: [],
     reason: 'startup failed',
   };
-  assert.equal(render(), '');
+  assert.match(render(), /startup failed|助手启动失败/);
 });

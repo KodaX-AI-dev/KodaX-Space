@@ -4,10 +4,12 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { launchSpace } from './fixtures.js';
 
+const manifest = JSON.parse(
+  await readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'),
+) as { version: string; dependencies: Record<string, string> };
+const declaredSdkVersion = manifest.dependencies['@kodax-ai/kodax'];
+
 test('runtime diagnostics reports the running build and its declared SDK dependency', async () => {
-  const manifest = JSON.parse(
-    await readFile(new URL('../../apps/desktop/package.json', import.meta.url), 'utf8'),
-  ) as { version: string; dependencies: Record<string, string> };
   const space = await launchSpace(`runtime-diagnostics-${Date.now()}`);
   try {
     const { page } = space;
@@ -71,7 +73,7 @@ test('Chinese diagnostics explains current capability limits and preserves techn
     await expect(panel).not.toContainText('Space v0.1.42');
     await panel.getByText('技术详情', { exact: true }).click();
     await expect(panel).toContainText('SDK 声明依赖');
-    await expect(panel).toContainText('0.7.97-alpha.9');
+    await expect(panel).toContainText(declaredSdkVersion);
     await expect(panel).not.toContainText('unknown');
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
@@ -108,7 +110,7 @@ test('diagnostics remains readable in both themes and short windows', async () =
     await page
       .getByText('SDK 声明依赖', { exact: true })
       .evaluate((node) => node.scrollIntoView({ block: 'start' }));
-    await expect(page.getByText('0.7.97-alpha.9', { exact: true })).toBeInViewport();
+    await expect(page.getByText(declaredSdkVersion, { exact: true })).toBeInViewport();
     await captureDiagnostics(page, 'zh-technical');
     await page.setViewportSize({ width: 1280, height: 400 });
     const refresh = page.getByRole('button', { name: '刷新诊断', exact: true });

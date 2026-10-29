@@ -1,6 +1,8 @@
+diff --git a/SKILL.md b/SKILL.md
+index 2d9bc245..ded9c656 100644
 --- a/SKILL.md
 +++ b/SKILL.md
-@@ -4,16 +4,25 @@
+@@ -4,20 +4,31 @@ description: Generate a status report with KPIs, risks, and action items. Use wh
  argument-hint: "[weekly | monthly | quarterly] [project or team]"
  ---
  
@@ -29,13 +31,18 @@
  ```
  
  ## Output
-@@ -57,18 +66,9 @@
+ 
++按用户指定篇幅选择需要的栏目；短进展直接交付短进展，完整周报才展开下列模板。没有依据的指标、负责人、日期和红黄绿状态保留缺口。
++
+ ```markdown
+ ## Status Report: [Project/Team] — [Period]
+ **Author:** [Name] | **Date:** [Date]
+@@ -57,18 +68,9 @@ Generate a polished status report for leadership or stakeholders. See the **risk
  3. [Priority 3]
  ```
  
 -## If Connectors Available
-+## 使用外部资料与交付
- 
+-
 -If **~~project tracker** is connected:
 -- Pull project status, completed items, and upcoming milestones automatically
 -- Identify at-risk items and overdue tasks
@@ -43,7 +50,8 @@
 -If **~~chat** is connected:
 -- Scan recent team discussions for decisions and blockers to include
 -- Offer to post the finished report to a channel
--
++## 使用外部资料与交付
+ 
 -If **~~calendar** is connected:
 -- Reference key meetings and decisions from the reporting period
 +需要外部资料时，先判断当前会话是否提供相应读取或搜索能力；按用户指定范围操作，不能因为已连接某服务就扫描全部资料。用户要求写入在线文档时，只使用实际支持创建/追加的连接器；否则给出缺口和可供用户处理的文稿，不声称已经发布或创建任务。

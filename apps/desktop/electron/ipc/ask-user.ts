@@ -14,7 +14,7 @@ export function registerAskUserChannels(): void {
       const ok = await runtimeHostAdapter.respondUserInput(
         input.reqId,
         'cancelled' in input
-          ? { cancelled: true }
+          ? { cancelled: true, reason: input.reason }
           : { value: 'value' in input ? input.value : input.verdict },
       );
       return { ok };

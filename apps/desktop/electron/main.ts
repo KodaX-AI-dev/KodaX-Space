@@ -425,6 +425,7 @@ let coderRuntimeRestartScheduled = false;
 let startupRecoveryRestartScheduled = false;
 let secondaryInstanceExit = false;
 let completeExitRequested = false;
+let pendingUpdateInstallation: (() => void) | null = null;
 let completeExitProgressActive = false;
 let completeExitBackgroundStartedAt: number | undefined;
 let completeExitBackgroundPhase: 'runtime' | 'finalizing-local' = 'runtime';
@@ -1778,6 +1779,28 @@ async function forceCompleteExit(
   }
 }
 
+async function requestUpdateInstallation(install: () => void): Promise<boolean> {
+  if (completeExitRequested || _quitting || pendingUpdateInstallation) return false;
+  pendingUpdateInstallation = install;
+  try {
+    await requestCompleteExit();
+    return (
+      _quitting &&
+      daemonStopConfirmedBeforeQuit &&
+      !forcedExitCommitted &&
+      !runtimeExitRecoveryScheduled
+    );
+  } finally {
+    if (
+      !_quitting ||
+      !daemonStopConfirmedBeforeQuit ||
+      forcedExitCommitted ||
+      runtimeExitRecoveryScheduled
+    )
+      pendingUpdateInstallation = null;
+  }
+}
+
 async function requestCompleteExit(): Promise<void> {
   if (completeExitRequested) return;
   completeExitRequested = true;
@@ -1785,10 +1808,13 @@ async function requestCompleteExit(): Promise<void> {
   const requestStartedAt = Date.now();
   console.info('[main] complete exit requested; preparing safe shutdown');
   let reopenCoderAdmission: (() => void) | undefined;
+  let resumeRuntimeStartup: (() => void) | undefined;
   let exitCommitted = false;
   let keepCoderAdmissionClosed = false;
   try {
-    reopenCoderAdmission = await beginCoderShutdown?.();
+    const admissionDrain = beginCoderShutdown?.();
+    resumeRuntimeStartup = runtimeHostAdapter.pauseStartupForCompleteExit();
+    reopenCoderAdmission = await admissionDrain;
     const locale = await resolveCurrentTrayLocale();
     const runtimeStatus = collectBackgroundRuntimeStatus();
     const [runtime, spaceBlockers] = await Promise.all([
@@ -1798,6 +1824,9 @@ async function requestCompleteExit(): Promise<void> {
     const runtimeBlockers = runtime.state === 'ready' && !runtime.canStop ? runtime.blockers : [];
     const blockers = [...spaceBlockers, ...runtimeBlockers];
     const disposition = resolveCompleteExitDisposition({ spaceBlockers, runtimeBlockers });
+    // Replacing installer-owned files cannot preserve a Host still used by peers,
+    // and an update must never fall through to a user-confirmed forced exit.
+    if (pendingUpdateInstallation && disposition !== 'stop-runtime-and-exit') return;
     console.info(`[main] complete exit preflight settled in ${Date.now() - requestStartedAt}ms`);
     if (disposition === 'exit-preserve-runtime') {
       const cleanup = await runtimeHostAdapter.stopSpaceOwnedRuntimeWorkForForcedExit();
@@ -1908,7 +1937,10 @@ async function requestCompleteExit(): Promise<void> {
     }
   } finally {
     if (!exitCommitted) {
-      if (!keepCoderAdmissionClosed) reopenCoderAdmission?.();
+      if (!keepCoderAdmissionClosed) {
+        reopenCoderAdmission?.();
+        resumeRuntimeStartup?.();
+      }
       setCompleteExitProgress(false);
     }
     completeExitRequested = false;
@@ -2274,6 +2306,10 @@ const startupPromise = app
                   diagnosticsLogger?.info('runtime', 'host_initialized');
                 },
                 onFailure: (err) => {
+                  if (err instanceof Error && err.name === 'AbortError') {
+                    diagnosticsLogger?.info('runtime', 'host_startup_cancelled');
+                    return;
+                  }
                   diagnosticsLogger?.warn('runtime', 'host_initialization_failed', undefined, err);
                   console.warn(
                     '[main] Shared Coder Runtime initialization failed; Coder is unavailable:',
@@ -2483,9 +2519,8 @@ const startupPromise = app
     setNotificationWindowGetter(() =>
       mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
     );
-    // F022 auto-updater — packaged 模式下走 GitHub Releases feed；dev 模式 idle
-    // initAutoUpdater 内部判断 app.isPackaged + 异步触发首次 check，不阻塞窗口创建
-    registerUpdaterChannels();
+    // F022 manual updates: bootstrap stays offline; Settings owns all update gestures.
+    registerUpdaterChannels({ requestInstall: requestUpdateInstallation });
     void initAutoUpdater().catch((err) =>
       console.warn(
         '[main] updater initialization failed:',
@@ -2806,8 +2841,10 @@ app.on('before-quit', (event) => {
   // own safety gate and recovers a visible Space if that confirmation stalls.
   // User-confirmed force close remains terminal and uses the short watchdog.
   let mayExitProcess = true;
+  let localCleanupCompleted = false;
   const watchdogMs = forcedExitCommitted ? 2_500 : stopDaemonOnQuit ? 25_000 : 2_500;
   const watchdog = setTimeout(() => {
+    pendingUpdateInstallation = null;
     console.warn(`[main] shutdown disposals exceeded ${watchdogMs}ms`);
     if (
       !shouldRecoverRuntimeAfterShutdownTimeout({
@@ -2841,10 +2878,34 @@ app.on('before-quit', (event) => {
       }
     })
     .then(() => flushDiagnostics())
+    .then(() => {
+      localCleanupCompleted = true;
+    })
     .finally(() => {
       clearTimeout(watchdog);
       if (mayExitProcess) {
         hideExitControlSurfaceForBackgroundShutdown();
+        const install = pendingUpdateInstallation;
+        pendingUpdateInstallation = null;
+        if (
+          install &&
+          localCleanupCompleted &&
+          daemonStopConfirmedBeforeQuit &&
+          !forcedExitCommitted &&
+          !runtimeExitRecoveryScheduled
+        ) {
+          try {
+            install();
+          } catch (error) {
+            console.error(
+              '[main] update installation failed after safe shutdown:',
+              sanitizeForDialog(error),
+            );
+            if (scheduleRuntimeExitRecovery('the update installer did not start')) app.exit(0);
+            else keepSpaceVisibleAfterRecoveryRelaunchFailure();
+          }
+          return;
+        }
         app.exit(0);
         return;
       }

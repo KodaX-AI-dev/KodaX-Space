@@ -42,4 +42,4 @@ Structured format for interviewers to share findings and make a decision.
 
 ## Output
 
-Produce a complete interview kit: panel assignment (who interviews for what), question bank by competency, scoring rubric, and debrief template.
+按用户需求选择题目、追问、评分表或完整面试方案。只要几道题时直接给适合岗位与时长的题目；完整套件才包含分工和复盘表，未知面试官与制度标为待确认。

@@ -23,19 +23,7 @@
 //   - Permission modal / Settings workspace → Shell 统一托管其挂载点
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  ChevronDown,
-  Copy,
-  Info,
-  Minus,
-  PanelLeft,
-  PawPrint,
-  Square,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Info, PanelLeft, PawPrint } from 'lucide-react';
 import type {
   LanguageModeT,
   LicenseStatusT,
@@ -52,6 +40,7 @@ import type {
 import { Breadcrumb } from './Breadcrumb.js';
 import { CommandToolbar, type PopoutKind } from './CommandToolbar.js';
 import { BottomBar } from './BottomBar.js';
+import { WindowControls } from './WindowControls.js';
 import { ConversationStreamV2 } from './ConversationStreamV2.js';
 import { AskUserDockBar, FOCUS_ASK_USER_EVENT } from '../features/ask-user/AskUserInline.js';
 import { PopoutOverlay } from './popouts/PopoutOverlay.js';
@@ -71,7 +60,6 @@ import { HelpOverlayController } from './HelpOverlay.js';
 import { CommandPaletteController } from './CommandPalette.js';
 import { ToastContainer } from './ToastContainer.js';
 import { ZoomController } from './ZoomController.js';
-import { UpdateBanner } from '../features/updater/UpdateBanner.js';
 import { useAppStore, clampSidebarWidthPx } from '../store/appStore.js';
 import { pushToast } from '../store/toastStore.js';
 import { useSurfaceStore } from '../store/surface.js';
@@ -1432,7 +1420,6 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     return () => window.removeEventListener(FOCUS_ASK_USER_EVENT, onFocusAskUser);
   }, [rightSidebarWorkspaceMode, setRightSidebarWidthMode]);
   const platformClass = getRendererPlatformClass();
-  const isWindows = platformClass === 'platform-win32';
 
   return (
     <div
@@ -1502,7 +1489,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
           <VisualQualityToggle />
           <ThemeToggle />
         </div>
-        {isWindows && <WindowsWindowControls />}
+        <WindowControls platformClass={platformClass} />
         {diagnosticsOpen && (
           <RuntimeDiagnostics
             version={version}
@@ -1785,7 +1772,6 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
 
       <ToastContainer />
       <ZoomController />
-      <UpdateBanner />
     </div>
   );
 }
@@ -2208,75 +2194,6 @@ interface TitlebarIconButtonProps {
   readonly disabled?: boolean;
   readonly onClick: () => void;
   readonly children: JSX.Element;
-}
-
-function WindowsWindowControls(): JSX.Element {
-  const { t } = useI18n();
-  const [maximized, setMaximized] = useState(false);
-
-  const refreshState = useCallback(async (): Promise<void> => {
-    if (!window.kodaxSpace) return;
-    const result = await window.kodaxSpace.invoke('window.state', undefined);
-    if (result.ok) setMaximized(result.data.maximized);
-  }, []);
-
-  useEffect(() => {
-    void refreshState();
-    const onStateHint = (): void => void refreshState();
-    window.addEventListener('focus', onStateHint);
-    window.addEventListener('resize', onStateHint);
-    return () => {
-      window.removeEventListener('focus', onStateHint);
-      window.removeEventListener('resize', onStateHint);
-    };
-  }, [refreshState]);
-
-  const runControl = useCallback(
-    async (action: 'minimize' | 'toggleMaximize' | 'close'): Promise<void> => {
-      if (!window.kodaxSpace) return;
-      const result = await window.kodaxSpace.invoke('window.control', { action });
-      if (result.ok) setMaximized(result.data.maximized);
-    },
-    [],
-  );
-
-  const maximizeLabel = maximized ? t('windowControls.restore') : t('windowControls.maximize');
-
-  return (
-    <div className="window-controls app-no-drag" aria-label={t('windowControls.group')}>
-      <button
-        type="button"
-        className="window-control-button"
-        onClick={() => void runControl('minimize')}
-        title={t('windowControls.minimize')}
-        aria-label={t('windowControls.minimize')}
-      >
-        <Minus className="h-4 w-4" strokeWidth={1.8} aria-hidden />
-      </button>
-      <button
-        type="button"
-        className="window-control-button"
-        onClick={() => void runControl('toggleMaximize')}
-        title={maximizeLabel}
-        aria-label={maximizeLabel}
-      >
-        {maximized ? (
-          <Copy className="h-3.5 w-3.5" strokeWidth={1.7} aria-hidden />
-        ) : (
-          <Square className="h-3.5 w-3.5" strokeWidth={1.7} aria-hidden />
-        )}
-      </button>
-      <button
-        type="button"
-        className="window-control-button window-control-button--close"
-        onClick={() => void runControl('close')}
-        title={t('windowControls.close')}
-        aria-label={t('windowControls.close')}
-      >
-        <X className="h-4 w-4" strokeWidth={1.8} aria-hidden />
-      </button>
-    </div>
-  );
 }
 
 function TitlebarIconButton({

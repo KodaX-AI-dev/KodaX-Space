@@ -95,6 +95,21 @@ export const spaceCoderConnectionStateSchema = z.enum([
 
 const startupProgressSchema = z.union([
   z
+    .object({
+      stage: z.literal('initializing'),
+      phase: z.enum([
+        'modules',
+        'extensions',
+        'runtime',
+        'recovery',
+        'mcp',
+        'sessions',
+        'a2a',
+        'listener',
+      ]),
+    })
+    .strict(),
+  z
     .object({ stage: z.enum(['checking', 'starting', 'upgrading', 'connecting', 'ready']) })
     .strict(),
   z
@@ -238,6 +253,8 @@ export const spaceRuntimeFailureStageSchema = z.enum([
   'runtime_control',
   'runtime_settlement',
   'local_execution',
+  'skill_load',
+  'skill_policy',
 ]);
 
 export const spaceRuntimeProviderErrorCodeSchema = z.enum([
@@ -260,6 +277,10 @@ export const spaceRuntimeProviderErrorCodeSchema = z.enum([
   'cancelled',
   'runtime_settlement_failed',
   'local_execution_error',
+  'skill_not_found',
+  'skill_not_registered',
+  'skill_registry_unavailable',
+  'skill_policy_restore_failed',
   'context_capacity_exceeded',
   'provider_error',
 ]);
@@ -277,6 +298,10 @@ export const spaceRuntimeFailureDetailSchema = z
     // Keep a bounded default path for codes introduced by a newer compatible Runtime.
     providerErrorCode: spaceRuntimeProviderErrorCodeSchema.or(spaceRuntimeFailureIdentifierSchema),
     safeMessage: z.string().min(1).max(MAX_RUNTIME_FAILURE_MESSAGE),
+    skillName: z
+      .string()
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/)
+      .optional(),
     httpStatus: z.number().int().min(100).max(599).optional(),
     upstreamErrorCode: spaceRuntimeFailureIdentifierSchema.optional(),
     requestId: spaceRuntimeFailureIdentifierSchema.optional(),
@@ -321,6 +346,14 @@ export const spaceRuntimeRunProjectionSchema = z
      *  lets the renderer deterministically claim a lost-ACK optimistic user message. */
     originOperationId: idSchema.optional(),
     phase: spaceRuntimeRunPhaseSchema,
+    contextRecovery: z
+      .object({
+        waitingSince: timestampSchema,
+        requiredTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+        availableTokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+      })
+      .strict()
+      .optional(),
     stage: spaceRuntimeRunStageSchema.optional(),
     stageChangedAt: timestampSchema.optional(),
     activeSubtaskCount: z.number().int().nonnegative().optional(),
@@ -797,6 +830,7 @@ export const spaceRuntimeSessionSettingsSchema = z
         permissionMode: z.enum(['plan', 'accept-edits', 'auto', 'full-access']).optional(),
         executionCwd: z.string().min(1).max(4096).optional(),
         agentMode: z.enum(['ama', 'sa']).optional(),
+        workMode: z.enum(['agent', 'coding', 'script']).optional(),
         autoModeClassifierModel: z.string().min(1).max(128).optional(),
         compactionTriggerPercent: z.number().min(15).max(90).optional(),
         compactionTriggerTokens: z.number().int().positive().max(10_000_000).optional(),

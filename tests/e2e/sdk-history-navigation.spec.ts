@@ -1,0 +1,173 @@
+import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { createSessionManager } from '@kodax-ai/kodax/session';
+import type { KodaXMessage } from '@kodax-ai/kodax/agent';
+import { createLocalSdkProvider, launchRealSdkSpace } from './sdk-provider-fixture.js';
+
+test.setTimeout(120_000);
+const SESSION = 'sdk-history-navigation';
+const REPORT =
+  '<agent-completed id="child-report" path="/root/review" state="completed">\n**Review report**\n\nThe checkpoint says &quot;preserve&quot;.\n</agent-completed>';
+
+async function seedHistory(root: string): Promise<void> {
+  const project = path.join(root, 'project');
+  await mkdir(project, { recursive: true });
+  const manager = createSessionManager({
+    sessionsDir: path.join(root, 'sessions'),
+    configHome: root,
+  });
+  const messages: KodaXMessage[] = [];
+  for (let index = 0; index < 260; index++) {
+    messages.push(
+      { role: 'user', inputId: `input-${index}`, content: `HISTORY_QUESTION_${index}` },
+      {
+        role: 'assistant',
+        outputId: `output-${index}`,
+        content: [
+          {
+            type: 'text',
+            text: `HISTORY_ANSWER_${index}\n\n${'Read the full report paragraph.\n\n'.repeat(6)}`,
+          },
+        ],
+      },
+    );
+  }
+  messages.push({ role: 'user', content: REPORT, _source: 'agent-completed' });
+  await manager.storage.save(SESSION, {
+    title: 'SDK_HISTORY_NAVIGATION',
+    gitRoot: project,
+    scope: 'user',
+    runtimeInfo: { workspaceRoot: project, surface: 'repl' },
+    messages,
+  });
+}
+
+test('packaged SDK history reports are readable and one bottom arrow reaches the latest after bidirectional browsing', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space } = await launchRealSdkSpace(
+    `history-navigation-${Date.now()}`,
+    provider.url,
+    seedHistory,
+  );
+  const failures: string[] = [];
+  space.page.on('pageerror', (error) => failures.push(error.message));
+  try {
+    await expect
+      .poll(
+        async () =>
+          space.page.evaluate(async () => {
+            const result = await window.kodaxSpace!.invoke('runtime.profileSnapshot', undefined);
+            return result.ok ? result.data.connection.state : 'unavailable';
+          }),
+        { timeout: 30_000 },
+      )
+      .toBe('ready');
+    await space.page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: 'SDK_HISTORY_NAVIGATION' })
+      .click();
+    const stream = space.page.getByTestId('conversation-stream');
+    const scroller = space.page.getByTestId('conversation-scroll-container');
+    const report = stream.getByTestId('system-notice').filter({ hasText: 'Task report' });
+    await expect(report).toHaveCount(1, { timeout: 30_000 });
+    await expect(report).toHaveAttribute('data-notice-variant', 'info');
+    await expect(report.locator('details')).not.toHaveAttribute('open');
+    await report.locator('summary').click();
+    await expect(report.locator('strong')).toHaveText('Review report');
+    await expect(report).toContainText('The checkpoint says "preserve".');
+    await expect(report).not.toContainText('<agent-completed');
+    const markerClass = await report.evaluate(
+      (element) =>
+        element
+          .closest('[data-testid="conversation-render-row"]')
+          ?.querySelector('.conversation-timeline-decoration')?.className,
+    );
+    expect(markerClass).not.toContain('bg-warn');
+    await expect(space.page.locator('html')).not.toHaveClass(/visual-history-restore-active/);
+    await report.evaluate(async (element) => {
+      await Promise.all(
+        (element.closest('.reveal')?.getAnimations() ?? []).map((animation) => animation.finished),
+      );
+    });
+    await space.page.screenshot({ path: test.info().outputPath('report-expanded.png') });
+    const ids = () =>
+      stream
+        .locator('[data-msg-id]')
+        .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+    const newest = await ids();
+    const moveToOlder = async () => {
+      const before = await ids();
+      await scroller.hover();
+      await space.page.mouse.wheel(
+        0,
+        -(await scroller.evaluate((element) => element.scrollHeight)),
+      );
+      try {
+        await expect.poll(ids, { timeout: 10_000 }).not.toEqual(before);
+        await expect
+          .poll(() =>
+            scroller.evaluate(
+              (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+            ),
+          )
+          .toBeLessThan(2);
+      } catch (error) {
+        const facts = await space.page.evaluate(async (sessionId) => {
+          const history = await window.kodaxSpace!.invoke('session.history', {
+            sessionId,
+            requestId: crypto.randomUUID(),
+            expectedSurface: 'code',
+          });
+          const profile = await window.kodaxSpace!.invoke('runtime.profileSnapshot', undefined);
+          const element = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+          return {
+            page: history.ok ? history.data.page : history.error,
+            connection: profile.ok ? profile.data.connection : profile.error,
+            geometry: {
+              top: element.scrollTop,
+              height: element.scrollHeight,
+              client: element.clientHeight,
+            },
+            paging: document.querySelector('[data-testid="history-paging-status"]')?.textContent,
+            failure: document.querySelector('[data-testid="history-paging-error"]')?.textContent,
+          };
+        }, SESSION);
+        await test.info().attach('navigation-failure.json', {
+          body: JSON.stringify(facts),
+          contentType: 'application/json',
+        });
+        throw error;
+      }
+    };
+    await moveToOlder();
+    const middle = await ids();
+    await moveToOlder();
+    const oldest = await ids();
+    expect(oldest).not.toEqual(middle);
+    await scroller.hover();
+    await space.page.mouse.wheel(0, await scroller.evaluate((element) => element.scrollHeight));
+    await expect.poll(ids).toEqual(middle);
+    await expect(
+      space.page.getByRole('button', { name: 'Return to newest messages', exact: true }),
+    ).toHaveCount(0);
+    const bottom = space.page.getByRole('button', { name: 'Jump to bottom', exact: true });
+    await expect(bottom).toHaveCount(1);
+    await bottom.click();
+    await expect.poll(ids).toEqual(newest);
+    await expect
+      .poll(() =>
+        scroller.evaluate(
+          (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+        ),
+      )
+      .toBeLessThan(2);
+    await expect(report).toHaveCount(1);
+    await space.page.screenshot({ path: test.info().outputPath('history-return-latest.png') });
+    expect(failures).toEqual([]);
+    expect(provider.errors).toEqual([]);
+  } finally {
+    await provider.close();
+    await space.close();
+  }
+});

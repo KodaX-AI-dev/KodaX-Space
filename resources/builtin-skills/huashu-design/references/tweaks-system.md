@@ -18,7 +18,7 @@ Tweaks是这个skill里很核心的能力——让用户不改代码就能实时
 
 ```jsx
 const TWEAK_DEFAULTS = {
-  "primaryColor": "#D97757",
+  "primaryColor": "#2F6F5E",
   "fontSize": 16,
   "density": "comfortable",
   "dark": false
@@ -277,7 +277,7 @@ Tweaks是**锦上添花**。默认值必须本身就是一个完整、可发布�
 
 ```jsx
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "primaryColor": "#D97757",
+  "primaryColor": "#2F6F5E",
   "fontSize": 16,
   "density": "comfortable",
   "dark": false

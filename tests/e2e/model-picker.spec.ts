@@ -8,11 +8,7 @@ test('Escape dismisses composer selectors without changing their selection', asy
   const space = await launchSpace(`composer-selectors-escape-${Date.now()}`);
   try {
     const { page } = space;
-    const controls = [
-      page.getByTitle(/^Mode:/),
-      page.getByTitle(/^Agent:/),
-      page.getByTestId('model-effort-selector'),
-    ];
+    const controls = [page.getByTitle(/^Mode:/), page.getByTestId('model-effort-selector')];
     for (const control of controls) {
       const selection = await control.textContent();
       await control.click();

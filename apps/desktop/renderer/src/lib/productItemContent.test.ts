@@ -2,6 +2,44 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readProductItemText } from './productItemContent.js';
 
+test('saved original uses its own paging length and never substitutes the preview', async () => {
+  const item = {
+    id: 'tool',
+    type: 'tool' as const,
+    text: 'preview',
+    totalTextLength: 7,
+    outputState: 'committed' as const,
+    textRevision: 0,
+  };
+  const offsets: number[] = [];
+  const text = await readProductItemText(
+    item,
+    async (offset) => {
+      offsets.push(offset);
+      return {
+        id: 'tool',
+        offset,
+        totalLength: 8,
+        text: offset === 0 ? 'FULL' : 'BODY',
+        ...(offset === 0 ? { nextOffset: 4 } : {}),
+      };
+    },
+    'original',
+  );
+  assert.equal(text, 'FULLBODY');
+  assert.deepEqual(offsets, [0, 4]);
+  await assert.rejects(
+    readProductItemText(
+      item,
+      async () => {
+        throw new Error('not_found');
+      },
+      'original',
+    ),
+    /not_found/,
+  );
+});
+
 test('SDK body chunks restore the complete text and reject a changed output version', async () => {
   const item = {
     id: 'output',

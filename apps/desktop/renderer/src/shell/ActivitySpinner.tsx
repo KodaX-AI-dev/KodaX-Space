@@ -1,3 +1,5 @@
+import { useProductSessionTranscript } from '../store/productSessionView.js';
+import { productStreamingProgress } from './productStreaming.js';
 // ActivitySpinner — alpha.1 / P0 polish
 //
 // 流式响应中的活动指示器，挂在输入框上方。CSS spinner +
@@ -30,6 +32,7 @@ const EMPTY_EVENTS: readonly SessionEvent[] = [];
 export interface ActivitySnapshot {
   readonly streaming: boolean;
   readonly status: string;
+  readonly contextCapacity?: { readonly required: number; readonly available: number };
   /** Nested root compaction lifecycle, independent from the translated status label. */
   readonly compacting?: boolean;
   readonly iter?: { current: number; max: number };
@@ -360,6 +363,15 @@ function snapshotFromRuntimeRunState(
   }
   const activeTodo = detail?.todos.find((todo) => todo.status === 'in_progress');
   const activeTool = detail?.activeTools.at(-1);
+  const required = run.contextRecovery?.requiredTokens;
+  const available = run.contextRecovery?.availableTokens;
+  const contextCapacity =
+    run.phase === 'recovering' &&
+    required !== undefined &&
+    available !== undefined &&
+    required > available
+      ? { required, available }
+      : undefined;
   const status =
     run.phase === 'waiting_permission'
       ? 'Waiting for permission…'
@@ -370,7 +382,9 @@ function snapshotFromRuntimeRunState(
             ? `Waiting for ${run.activeSubtaskCount} agent${run.activeSubtaskCount === 1 ? '' : 's'}…`
             : 'Waiting for agents…'
           : run.phase === 'recovering'
-            ? 'Recovering…'
+            ? contextCapacity
+              ? 'Waiting for context capacity…'
+              : 'Recovering…'
             : run.phase === 'unknown'
               ? run.lifecycleError?.code === 'actor_settlement_not_persisted'
                 ? 'Stopping and repairing run state…'
@@ -397,6 +411,7 @@ function snapshotFromRuntimeRunState(
   return {
     streaming: true,
     status,
+    ...(contextCapacity ? { contextCapacity } : {}),
     startedAt: run.startedAt ?? run.queuedAt ?? Date.now(),
     ...(detail?.iteration?.runId === run.runId
       ? { iter: { current: detail.iteration.current, max: detail.iteration.max } }
@@ -800,7 +815,8 @@ export function ActivitySpinner(): ReactJSX.Element | null {
     runtimeConnectionHasFreshLiveAuthority(s.runtimeConnection),
   );
 
-  const snap = selectActivitySnapshot(
+  const product = useProductSessionTranscript(currentSessionId)?.view;
+  const baseSnapshot = selectActivitySnapshot(
     runtimeLive,
     events,
     pending,
@@ -810,6 +826,19 @@ export function ActivitySpinner(): ReactJSX.Element | null {
     runtimeProfileCursor,
     { currentRuntimeId },
   );
+  const activeRun = runtimeLive?.activeRun ?? runtimeProfileSession?.activeRun;
+  const productProgress =
+    runtimeConnectionAuthoritative &&
+    product?.runtimeId === currentRuntimeId &&
+    activeRun?.phase === 'running'
+      ? productStreamingProgress(product?.activity, activeRun.runId)
+      : undefined;
+  const snap = {
+    ...baseSnapshot,
+    thinkingTokens: undefined,
+    toolInputTokens: undefined,
+    ...productProgress,
+  };
   // Elapsed display still ticks once per second; spinner motion itself is CSS-driven.
   const [, forceTick] = useState(0);
 
@@ -845,7 +874,12 @@ export function ActivitySpinner(): ReactJSX.Element | null {
 
   // Pending includes local history reads and initialization before the model is contacted.
   const sendingTooLong = snap.status === 'Sending…' && elapsedSec >= 2;
-  const statusBase = formatActivityStatus(snap.status, sendingTooLong, t);
+  const statusBase = snap.contextCapacity
+    ? t('activity.contextCapacity', {
+        required: formatTokens(snap.contextCapacity.required),
+        available: formatTokens(snap.contextCapacity.available),
+      })
+    : formatActivityStatus(snap.status, sendingTooLong, t);
 
   // tool path 显示 basename — 全路径太长，basename + dim 灰显
   const toolBase = snap.toolPath ? snap.toolPath.split(/[\\/]/).filter(Boolean).pop() : null;
@@ -854,9 +888,9 @@ export function ActivitySpinner(): ReactJSX.Element | null {
   // `~` 标记是估算（区别于 iteration_end 的权威 tokens），单位统一为 token 而非 chars。
   let liveTokStr = '';
   if (snap.thinkingTokens !== undefined) {
-    liveTokStr = `~${formatTokens(snap.thinkingTokens)} tok`;
+    liveTokStr = `~${formatTokens(snap.thinkingTokens)} tokens`;
   } else if (snap.toolInputTokens !== undefined) {
-    liveTokStr = `~${formatTokens(snap.toolInputTokens)} tok`;
+    liveTokStr = `~${formatTokens(snap.toolInputTokens)} tokens`;
   }
 
   const tail = [elapsedStr, iterStr, tokenStr, liveTokStr].filter(Boolean).join(' · ');
@@ -1001,6 +1035,8 @@ type Translate = (key: MessageKey, vars?: Record<string, string | number>) => st
 function formatActivityStatus(status: string, sendingTooLong: boolean, t: Translate): string {
   if (sendingTooLong) return t('activity.sendingWaiting');
   if (status === 'Sending…') return t('activity.sending');
+  if (status.startsWith('Receiving ') && status.endsWith('…'))
+    return t('activity.receivingTool', { tool: status.slice(10, -1) });
   if (status === 'Thinking…') return t('activity.thinking');
   if (status === 'Processing result…') return t('activity.processingResult');
   if (status === 'Writing…') return t('activity.writing');

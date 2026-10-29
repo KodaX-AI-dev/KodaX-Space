@@ -14,7 +14,10 @@ import assert from 'node:assert/strict';
 import { askUserBroker } from '../permission/ask-user-broker.js';
 import { setRendererTarget } from '../ipc/push.js';
 
-interface Captured { channel: string; payload: unknown }
+interface Captured {
+  channel: string;
+  payload: unknown;
+}
 const captured: Captured[] = [];
 
 // Broker 的 setTimeout 在生产里 unref()——避免悬挂 timer 阻止 app 退出。
@@ -25,17 +28,23 @@ let keepalive: NodeJS.Timeout | null = null;
 
 beforeEach(() => {
   captured.length = 0;
-  setRendererTarget(() => ({
-    send: (channel: string, payload: unknown) => captured.push({ channel, payload }),
-    isDestroyed: () => false,
-  }) as unknown as Electron.WebContents);
+  setRendererTarget(
+    () =>
+      ({
+        send: (channel: string, payload: unknown) => captured.push({ channel, payload }),
+        isDestroyed: () => false,
+      }) as unknown as Electron.WebContents,
+  );
   keepalive = setInterval(() => {}, 1000);
 });
 
 afterEach(() => {
   askUserBroker.cancelAll('shutdown');
   setRendererTarget(() => null);
-  if (keepalive) { clearInterval(keepalive); keepalive = null; }
+  if (keepalive) {
+    clearInterval(keepalive);
+    keepalive = null;
+  }
 });
 
 function lastRequest(): { reqId: string; sessionId: string } {
@@ -85,8 +94,8 @@ test('timeout fires "block" + pushes cancelled', async () => {
   const result = await pending;
   assert.equal(result, 'block', 'timeout must auto-block');
   const cancelled = captured.find(
-    (c) => c.channel === 'askUser.cancelled'
-      && (c.payload as { reason: string }).reason === 'timeout',
+    (c) =>
+      c.channel === 'askUser.cancelled' && (c.payload as { reason: string }).reason === 'timeout',
   );
   assert.ok(cancelled, 'must push cancelled with reason=timeout');
 });
@@ -115,8 +124,8 @@ test('cancelSession blocks all pending for that session + pushes cancelled', asy
   assert.equal(r2, 'block');
   // p3 仍 pending
   const sBCancelled = captured.filter(
-    (c) => c.channel === 'askUser.cancelled'
-      && (c.payload as { sessionId: string }).sessionId === 's_b',
+    (c) =>
+      c.channel === 'askUser.cancelled' && (c.payload as { sessionId: string }).sessionId === 's_b',
   );
   assert.equal(sBCancelled.length, 0, 's_b should not have been cancelled');
   // 清理 p3 让测试不挂
@@ -140,8 +149,8 @@ test('cancelAll blocks all pending (shutdown)', async () => {
   assert.equal(await p1, 'block');
   assert.equal(await p2, 'block');
   const shutdownEvents = captured.filter(
-    (c) => c.channel === 'askUser.cancelled'
-      && (c.payload as { reason: string }).reason === 'shutdown',
+    (c) =>
+      c.channel === 'askUser.cancelled' && (c.payload as { reason: string }).reason === 'shutdown',
   );
   assert.equal(shutdownEvents.length, 2, 'both should get shutdown cancelled push');
 });
@@ -290,7 +299,9 @@ test('pendingCount reflects in-flight requests', async () => {
   assert.equal(askUserBroker.pendingCount(), baseline + 1);
 
   await new Promise((r) => setImmediate(r));
-  const reqId = (captured.find((c) => c.channel === 'askUser.request')!.payload as { reqId: string }).reqId;
+  const reqId = (
+    captured.find((c) => c.channel === 'askUser.request')!.payload as { reqId: string }
+  ).reqId;
   askUserBroker.resolve(reqId, 'allow');
   await p1;
   assert.equal(askUserBroker.pendingCount(), baseline);
@@ -408,7 +419,10 @@ test('requestQuestion drops inverted max selection bound before push validation'
   assert.equal(payload.minSelections, 2);
   assert.equal(payload.maxSelections, undefined);
 
-  assert.equal(askUserBroker.resolve(payload.reqId, { reqId: payload.reqId, value: ['a', 'b'] }), true);
+  assert.equal(
+    askUserBroker.resolve(payload.reqId, { reqId: payload.reqId, value: ['a', 'b'] }),
+    true,
+  );
   assert.deepEqual(await pending, ['a', 'b']);
 });
 
@@ -422,7 +436,10 @@ test('requestQuestion select without options cancels without pending push', asyn
 
   assert.equal(result, undefined);
   assert.equal(askUserBroker.pendingCount(), before);
-  assert.equal(captured.some((c) => c.channel === 'askUser.request'), false);
+  assert.equal(
+    captured.some((c) => c.channel === 'askUser.request'),
+    false,
+  );
 });
 
 test('requestQuestion input resolves undefined when cancelled', async () => {
@@ -434,6 +451,30 @@ test('requestQuestion input resolves undefined when cancelled', async () => {
   await new Promise((r) => setImmediate(r));
   askUserBroker.cancelSession('s_input_cancel', 'session_cancelled');
   assert.equal(await pending, undefined);
+});
+
+test('explicit question skip returns unanswered without submitting the default', async () => {
+  const pending = askUserBroker.requestQuestion({
+    sessionId: 's_question_skip',
+    kind: 'input',
+    question: 'Choose when ready',
+    default: 'not an answer',
+  });
+  const { reqId } = lastRequest();
+  assert.equal(askUserBroker.resolve(reqId, { reqId, cancelled: true }), true);
+  assert.deepEqual(await pending, { unanswered: true, reason: 'skipped' });
+  assert.equal(askUserBroker.resolve(reqId, { reqId, value: 'late answer' }), false);
+});
+
+test('a non-interactive surface preserves its unanswered reason', async () => {
+  const pending = askUserBroker.requestQuestion({
+    sessionId: 's_no_surface',
+    kind: 'input',
+    question: 'Answer?',
+  });
+  const { reqId } = lastRequest();
+  askUserBroker.resolve(reqId, { reqId, cancelled: true, reason: 'non_interactive' });
+  assert.deepEqual(await pending, { unanswered: true, reason: 'non_interactive' });
 });
 
 test('requestQuestion remains pending past the former timeout until the user answers', async (t) => {
@@ -461,9 +502,6 @@ test('requestQuestion remains pending past the former timeout until the user ans
     false,
   );
 
-  assert.equal(
-    askUserBroker.resolve(reqId, { reqId, value: 'explicit answer' }),
-    true,
-  );
+  assert.equal(askUserBroker.resolve(reqId, { reqId, value: 'explicit answer' }), true);
   assert.equal(await pending, 'explicit answer');
 });

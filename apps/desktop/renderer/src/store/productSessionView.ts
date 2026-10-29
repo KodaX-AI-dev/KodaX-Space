@@ -9,6 +9,10 @@ interface ProductTranscript {
 }
 const transcripts = new Map<string, ProductTranscript>();
 const listeners = new Set<() => void>();
+let pendingBodyNotification: number | undefined;
+function notifyListeners(): void {
+  for (const listener of listeners) listener();
+}
 const EMPTY_ITEMS: readonly SessionProductItem[] = [];
 interface ItemBody {
   readonly itemId: string;
@@ -43,7 +47,7 @@ function completeItems(
   });
 }
 
-function publish(sessionId: string, next: ProductTranscript): void {
+function publish(sessionId: string, next: ProductTranscript, deferBodyNotification = false): void {
   const retained = new Set(
     [...next.items, ...next.historyItems, ...(next.view?.items ?? [])].flatMap((item) => [
       bodyKey(item, 'text'),
@@ -53,7 +57,18 @@ function publish(sessionId: string, next: ProductTranscript): void {
   for (const key of bodies.get(sessionId)?.keys() ?? [])
     if (!retained.has(key)) bodies.get(sessionId)!.delete(key);
   transcripts.set(sessionId, next);
-  for (const listener of listeners) listener();
+  // Keep completed bodies immediately readable, while coalescing their render
+  // notifications. A cold history load can finish dozens of IPC reads together;
+  // publishing every reply synchronously can exceed React's nested update limit.
+  if (!deferBodyNotification || typeof requestAnimationFrame !== 'function') {
+    notifyListeners();
+    return;
+  }
+  if (pendingBodyNotification !== undefined) return;
+  pendingBodyNotification = requestAnimationFrame(() => {
+    pendingBodyNotification = undefined;
+    notifyListeners();
+  });
 }
 export function productTranscriptSnapshot(sessionId: string | null): ProductTranscript | undefined {
   return sessionId ? transcripts.get(sessionId) : undefined;
@@ -103,12 +118,16 @@ export function installProductItemContent(
     ? { ...previous.view, items: completeItems(sessionId, previous.view.items) }
     : undefined;
   const historyItems = completeItems(sessionId, previous.historyItems);
-  publish(sessionId, {
-    ...previous,
-    ...(view ? { view } : {}),
-    historyItems,
-    items: previous.browsingOlder || !view ? historyItems : view.items,
-  });
+  publish(
+    sessionId,
+    {
+      ...previous,
+      ...(view ? { view } : {}),
+      historyItems,
+      items: previous.browsingOlder || !view ? historyItems : view.items,
+    },
+    true,
+  );
 }
 export function resetProductSessionViews(sessionId?: string): void {
   if (sessionId) {
@@ -128,6 +147,7 @@ export function useProductSessionTranscript(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    () => productTranscriptSnapshot(sessionId),
     () => productTranscriptSnapshot(sessionId),
   );
 }

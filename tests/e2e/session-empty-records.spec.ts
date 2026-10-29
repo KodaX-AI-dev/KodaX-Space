@@ -5,43 +5,48 @@ import { createSessionManager } from '@kodax-ai/kodax/session';
 import { launchSpace } from './fixtures.js';
 
 test('sidebar preserves real SDK message recency across reload instead of creation order', async () => {
-  const space = await launchSpace(`message-recency-${Date.now()}`);
+  const recentMessageAt = Date.now() - 3_600_000;
+  let projectRoot = '';
+  const space = await launchSpace(`message-recency-${Date.now()}`, {
+    prepareProfile: async (profileRoot) => {
+      // Seed before the Host can migrate the same session layout during startup.
+      const root = await fs.realpath(profileRoot);
+      projectRoot = path.join(root, 'workspace');
+      const manager = createSessionManager({ sessionsDir: path.join(root, 'sessions') });
+      await manager.storage.save('older-continued', {
+        title: 'Older session continued recently',
+        gitRoot: projectRoot,
+        scope: 'user',
+        runtimeInfo: { workspaceRoot: projectRoot, surface: 'repl' },
+        messages: [
+          {
+            role: 'user',
+            content: 'Recent real message',
+            timestamp: new Date(recentMessageAt).toISOString(),
+          },
+        ],
+      });
+      const first = (await manager.listSessions()).find(
+        (session) => session.id === 'older-continued',
+      );
+      expect(first?.createdAt).toBeDefined();
+      await expect.poll(() => Date.now() > Date.parse(first!.createdAt!)).toBe(true);
+      await manager.storage.save('newer-inactive', {
+        title: 'Newer session with older conversation',
+        gitRoot: projectRoot,
+        scope: 'user',
+        runtimeInfo: { workspaceRoot: projectRoot, surface: 'repl' },
+        messages: [
+          {
+            role: 'user',
+            content: 'Older real message',
+            timestamp: new Date(recentMessageAt - 86_400_000).toISOString(),
+          },
+        ],
+      });
+    },
+  });
   try {
-    const root = await fs.realpath(space.testDataDir);
-    const projectRoot = path.join(root, 'workspace');
-    const manager = createSessionManager({ sessionsDir: path.join(root, 'sessions') });
-    const recentMessageAt = Date.now() - 3_600_000;
-    await manager.storage.save('older-continued', {
-      title: 'Older session continued recently',
-      gitRoot: projectRoot,
-      scope: 'user',
-      runtimeInfo: { workspaceRoot: projectRoot, surface: 'repl' },
-      messages: [
-        {
-          role: 'user',
-          content: 'Recent real message',
-          timestamp: new Date(recentMessageAt).toISOString(),
-        },
-      ],
-    });
-    const first = (await manager.listSessions()).find(
-      (session) => session.id === 'older-continued',
-    );
-    expect(first?.createdAt).toBeDefined();
-    await expect.poll(() => Date.now() > Date.parse(first!.createdAt!)).toBe(true);
-    await manager.storage.save('newer-inactive', {
-      title: 'Newer session with older conversation',
-      gitRoot: projectRoot,
-      scope: 'user',
-      runtimeInfo: { workspaceRoot: projectRoot, surface: 'repl' },
-      messages: [
-        {
-          role: 'user',
-          content: 'Older real message',
-          timestamp: new Date(recentMessageAt - 86_400_000).toISOString(),
-        },
-      ],
-    });
     await space.seedProject(projectRoot);
     for (let round = 0; round < 2; round++) {
       await expect

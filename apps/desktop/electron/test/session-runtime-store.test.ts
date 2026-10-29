@@ -33,7 +33,7 @@ test('SessionRuntimeStore merges partial runtime patches', async () => {
     thinking: true,
     permissionMode: 'auto',
     reasoningMode: 'ultra',
-    agentMode: 'sa',
+    agentMode: 'ama',
   });
 });
 
@@ -210,7 +210,7 @@ test('SessionRuntimeStore serializes concurrent partial runtime writes', async (
     permissionMode: 'auto',
     thinking: true,
     reasoningMode: 'max',
-    agentMode: 'sa',
+    agentMode: 'ama',
   });
 });
 

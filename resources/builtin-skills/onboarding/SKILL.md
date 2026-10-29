@@ -24,6 +24,8 @@ Generate a comprehensive onboarding plan for a new team member.
 
 ## What I Need From You
 
+复用已给出的信息，只询问影响本次计划的缺口。下面的姓名、角色和时间字段按需求填写；模板固定时刻只是示例，以实际工作日、时区、岗位与制度安排。
+
 - **New hire name**: Who's starting?
 - **Role**: What position?
 - **Team**: Which team are they joining?

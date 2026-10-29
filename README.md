@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**This checkout carries Space `0.1.47-alpha.3`, with the published Registry SDK `0.7.97-alpha.9` pinned exactly.** Root, Desktop, IPC schema and UI kit share the Space version; the lockfile verifies the Registry package integrity. See the [alpha.9 integration](docs/releases/kodax-0.7.97-alpha.9-integration.md) and [release readiness](docs/releases/v0.1.47-alpha.3-release-readiness.md). This checkout is the published `v0.1.47-alpha.3` prerelease; see its GitHub release for the installers.
+**This working tree retains Space `0.1.47-alpha.3` and pins the published Registry SDK `0.7.97-alpha.11` exactly.** Its integration is unpublished; the existing `v0.1.47-alpha.3` installers still contain SDK alpha.9. Root, Desktop, IPC schema and UI kit share the Space version; the lockfile verifies Registry integrity. See the [alpha.11 integration](docs/releases/kodax-0.7.97-alpha.11-integration.md) for the AMA, question, exit-recovery and Skill changes, and the [previous release readiness](docs/releases/v0.1.47-alpha.3-release-readiness.md) for the published installer baseline.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.

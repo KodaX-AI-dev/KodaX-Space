@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createServer } from 'node:http';
 import {
   _resetSpaceBuiltinSkillsForTests,
   isSpaceBuiltinSkillPath,
@@ -203,6 +204,111 @@ test('an Artifact extension failure leaves actual Host Skills and Session histor
     );
   }
 });
+
+for (const registeredInHost of [false, true]) {
+  test(`explicit builtin policy crosses the real daemon boundary (Host registered=${registeredInHost})`, async (t) => {
+    await registerSpaceBuiltinSkills(builtinRoot);
+    const keyName = 'SPACE_BUILTIN_FIXTURE_KEY';
+    const previousKey = process.env[keyName];
+    process.env[keyName] = 'offline-fixture';
+    let requests = 0;
+    const wire = createServer(async (request, response) => {
+      for await (const _chunk of request) {
+        /* Drain the local fixture request. */
+      }
+      requests++;
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      response.end(
+        `data: ${JSON.stringify({
+          id: 'skill-fixture',
+          choices: [{ index: 0, delta: { content: 'Fixture complete.' }, finish_reason: 'stop' }],
+        })}\n\ndata: [DONE]\n\n`,
+      );
+    });
+    t.after(async () => {
+      wire.closeAllConnections();
+      await new Promise<void>((resolve) => wire.close(() => resolve()));
+      if (previousKey === undefined) delete process.env[keyName];
+      else process.env[keyName] = previousKey;
+    });
+    await new Promise<void>((resolve) => wire.listen(0, '127.0.0.1', resolve));
+    const address = wire.address();
+    assert.ok(address && typeof address === 'object');
+    const { ensureKodaXRuntime, waitForRuntimeDaemonShutdown } =
+      await import('@kodax-ai/kodax/runtime');
+    const runtime = await ensureKodaXRuntime({ homeDir: temporaryRoot, defaultProvider: 'openai' });
+    const owner = (await runtime.daemon.inspect()).owner;
+    try {
+      if (registeredInHost) {
+        fs.writeFileSync(
+          path.join(temporaryRoot, 'space-builtins.mjs'),
+          'export default api => api.registerSkillPath("./builtin-skills");',
+        );
+        await ensureSpaceBuiltinSkillsOnHost(runtime, path.join(temporaryRoot, '.kodax'));
+      }
+      await runtime.catalog.upsertCustomProvider({
+        name: 'space-skill-fixture',
+        protocol: 'openai',
+        model: 'fixture',
+        apiKeyEnv: keyName,
+        baseUrl: `http://127.0.0.1:${address.port}/v1`,
+      });
+      const session = await runtime.sessions.create({
+        projectPath: temporaryRoot,
+        gitRoot: temporaryRoot,
+      });
+      const run = await runtime.runs.start({
+        sessionId: session.id,
+        prompt: 'Use the fixture Skill.',
+        options: {
+          provider: 'space-skill-fixture',
+          modelOverride: 'fixture',
+          agentMode: 'ama',
+          lsp: false,
+          context: {
+            gitRoot: temporaryRoot,
+            executionCwd: temporaryRoot,
+            repoIntelligenceMode: 'off',
+            skillInvocation: {
+              name: 'space-test-skill',
+              path: path.join(builtinRoot, 'space-test-skill', 'SKILL.md'),
+              expandedContent: 'Fixture Skill body.',
+              runtimePolicy: { enforceAtRuntime: true },
+            },
+          },
+        },
+      });
+      const result = await run.result;
+      if (registeredInHost) {
+        assert.equal(result.phase, 'completed', JSON.stringify(result));
+        assert.ok(requests > 0);
+      } else {
+        assert.equal(result.phase, 'failed');
+        assert.equal(requests, 0);
+        assert.equal(result.failureDetail?.failureKind, 'local_execution');
+        assert.equal(result.failureDetail?.stage, 'skill_load');
+        assert.equal(result.failureDetail?.providerErrorCode, 'skill_not_found');
+        assert.equal(result.failureDetail?.skillName, 'space-test-skill');
+        assert.doesNotMatch(result.failureDetail?.safeMessage ?? '', /Provider|[A-Z]:\\/);
+      }
+    } finally {
+      try {
+        await runtime.daemon.shutdown();
+      } finally {
+        await runtime.close();
+      }
+      assert.equal(
+        (
+          await waitForRuntimeDaemonShutdown({
+            configHome: path.join(temporaryRoot, '.kodax'),
+            owner,
+          })
+        ).status,
+        'succeeded',
+      );
+    }
+  });
+}
 
 test('repository builtin snapshot contains the formal Feishu expert skill and design skills', async () => {
   const repositoryBuiltinRoot = path.resolve(

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import { syncBuiltinESMExports } from 'node:module';
 import { after, afterEach, before, test } from 'node:test';
 import JSZip from 'jszip';
 import type {
@@ -20,6 +22,11 @@ const { applySdkHomeEnv, getKodaxDir } = await import('./data-paths.js');
 applySdkHomeEnv();
 const profileDirectory = getKodaxDir();
 await fs.mkdir(profileDirectory, { recursive: true });
+// SDK discovery also scans os.homedir()/.agents/skills. Keep personal overrides
+// out of these bundled-resource tests without changing production precedence.
+const originalHomedir = os.homedir;
+os.homedir = () => profileDirectory;
+syncBuiltinESMExports();
 await fs.writeFile(
   path.join(profileDirectory, 'config.json'),
   `${JSON.stringify(
@@ -58,7 +65,7 @@ const { KodaXBaseProvider, registerModelProvider } = await import('@kodax-ai/kod
 const { awaitLatestCodingMemoryReviewDrain } = await import('@kodax-ai/kodax/coding');
 const projectRoot = path.join(profileDirectory, 'project');
 const boundaryProjectRoot = path.join(profileDirectory, 'boundary-project');
-const systems: string[] = [];
+const requestPrompts: string[] = [];
 const conversations: string[] = [];
 const shippedExperts: PartnerExpertSnapshotT[] = [];
 const expandedExpertTasks = [
@@ -80,14 +87,32 @@ const expandedExpertTasks = [
     '会议记录：小王建议周五上线。小李说测试未完成，日期未定。整理决定和行动，不补造负责人。',
   ],
   ['email-editing', '客户问何时交付。团队原话是争取周五，尚未确认。起草回复，保留承诺强度。'],
-  ['process-documentation', '采购流程：申请人提交，主管审批。超过五万元还需财务审批。缺少材料退回；审批通过才能采购。整理SOP，不编造时限。'],
-  ['customer-support', '客户说导出失败要求今天修好和退款。只确认正在调查，无修复时间、退款决定或升级记录。写回复草稿和内部待核实项。'],
-  ['knowledge-synthesis', '正式政策A：2026年9月1日起报销上限500元。9月3日聊天B提议改成800元但未批准。C转发B。整理知识条目，保留冲突与来源，不能把转发视为独立证据。'],
-  ['call-preparation', '准备30分钟拜访，客户预算与决策权未知，希望两周交付但未获批准。给议程和待确认项。'],
+  [
+    'process-documentation',
+    '采购流程：申请人提交，主管审批。超过五万元还需财务审批。缺少材料退回；审批通过才能采购。整理SOP，不编造时限。',
+  ],
+  [
+    'customer-support',
+    '客户说导出失败要求今天修好和退款。只确认正在调查，无修复时间、退款决定或升级记录。写回复草稿和内部待核实项。',
+  ],
+  [
+    'knowledge-synthesis',
+    '正式政策A：2026年9月1日起报销上限500元。9月3日聊天B提议改成800元但未批准。C转发B。整理知识条目，保留冲突与来源，不能把转发视为独立证据。',
+  ],
+  [
+    'call-preparation',
+    '准备30分钟拜访，客户预算与决策权未知，希望两周交付但未获批准。给议程和待确认项。',
+  ],
   ['interview-design', '为SQL数据分析师设计30分钟面试，给问题与评分锚点。没有候选人回答，不评分。'],
   ['new-hire-onboarding', '制定入职首周计划，导师和账号审批尚未确认。只给建议，不发邀请。'],
-  ['presentation-html', '制作4页离线HTML演示和讲稿，只有本期6/10人完成的数据，不编造增长或称为PPTX。'],
-  ['status-report', '本周计划10项、完成6项；其中2项验收未通过。预算实际8万元、总预算10万元。没有上期数据和新增时间承诺。生成周报，区别开发完成与验收完成，不编造趋势。'],
+  [
+    'presentation-html',
+    '制作4页离线HTML演示和讲稿，只有本期6/10人完成的数据，不编造增长或称为PPTX。',
+  ],
+  [
+    'status-report',
+    '本周计划10项、完成6项；其中2项验收未通过。预算实际8万元、总预算10万元。没有上期数据和新增时间承诺。生成周报，区别开发完成与验收完成，不编造趋势。',
+  ],
 ] as const;
 
 const sessions: InstanceType<typeof RealKodaXSession>[] = [];
@@ -114,7 +139,17 @@ class RecordingProvider extends KodaXBaseProvider {
     ...args: Parameters<InstanceType<typeof KodaXBaseProvider>['stream']>
   ): Promise<Awaited<ReturnType<InstanceType<typeof KodaXBaseProvider>['stream']>>> {
     if (args[2].includes('KodaX Space Partner surface profile:')) {
-      systems.push(args[2]);
+      // AMA carries active execution context in wire messages as well as the
+      // system prompt; inspect the real request without changing its payload.
+      const wireText = args[0].map((message) =>
+        typeof message.content === 'string'
+          ? message.content
+          : message.content
+              .filter((block) => block.type === 'text')
+              .map((block) => block.text)
+              .join('\n'),
+      );
+      requestPrompts.push([args[2], ...wireText].join('\n'));
       conversations.push(JSON.stringify(args[0]));
       await beforeResponse?.();
     }
@@ -301,6 +336,8 @@ after(async () => {
   _resetSpaceBuiltinSkillsForTests();
   keychain._resetMemoryStoreForTesting();
   await fs.rm(profileDirectory, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  os.homedir = originalHomedir;
+  syncBuiltinESMExports();
   if (previousCredential === undefined) delete process.env[credentialEnv];
   else process.env[credentialEnv] = previousCredential;
 });
@@ -311,7 +348,7 @@ afterEach(async () => {
   setSessionStoreImpl(null);
   setSessionRuntimeStoreForTesting(null);
   await awaitLatestCodingMemoryReviewDrain(2_000);
-  systems.length = 0;
+  requestPrompts.length = 0;
   conversations.length = 0;
 });
 
@@ -349,11 +386,15 @@ function makeHostSession(expert?: PartnerExpertSnapshotT) {
 }
 
 async function sendAndRecord(session: ReturnType<typeof makeHostSession>, message: string) {
-  const count = systems.length;
+  const count = requestPrompts.length;
   assert.deepEqual(await session.send(message), { accepted: true, queued: false });
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, count + 1, 'the actual SDK must call the controlled provider');
-  return systems.at(-1)!;
+  assert.equal(
+    requestPrompts.length,
+    count + 1,
+    'the actual SDK must call the controlled provider',
+  );
+  return requestPrompts.at(-1)!;
 }
 
 async function selectShippedExpert(
@@ -437,7 +478,10 @@ for (const [id, task] of expandedExpertTasks) {
     await kodaxHost.persistRuntime(session.sessionId);
     await selectShippedExpert(session.sessionId, expert);
     const first = await sendAndRecord(session, task);
-    assert.ok(first.includes(methodBody), 'full shipped method reaches the actual model call');
+    assert.ok(
+      first.includes(methodBody),
+      `full shipped method reaches the actual model call; first missing line: ${methodBody.split('\n').find((line) => line.trim() && !first.includes(line))}`,
+    );
     for (const check of expert.expert.workflow.qualityChecks) assert.ok(first.includes(check));
     session = await resumeRecordedSession(session.sessionId);
     const followUp = await sendAndRecord(session, '沿用上述材料，复核结果中的证据与不确定性。');
@@ -498,14 +542,14 @@ test('real Partner sends include the selected role on every SDK run without leak
   await second.session.send('Summarize this source.');
   await waitFor(() => !second.session.isRunning());
 
-  assert.equal(systems.length, 3);
-  assert.ok(systems[0]!.includes('EXPERT-WRITING'));
-  assert.ok(systems[1]!.includes('EXPERT-WRITING'));
-  assert.ok(!systems[0]!.includes('EXPERT-RESEARCH'));
-  assert.ok(systems[2]!.includes('EXPERT-RESEARCH'));
-  assert.ok(!systems[2]!.includes('EXPERT-WRITING'));
+  assert.equal(requestPrompts.length, 3);
+  assert.ok(requestPrompts[0]!.includes('EXPERT-WRITING'));
+  assert.ok(requestPrompts[1]!.includes('EXPERT-WRITING'));
+  assert.ok(!requestPrompts[0]!.includes('EXPERT-RESEARCH'));
+  assert.ok(requestPrompts[2]!.includes('EXPERT-RESEARCH'));
+  assert.ok(!requestPrompts[2]!.includes('EXPERT-WRITING'));
   assert.ok(
-    systems.every(
+    requestPrompts.every(
       (system) =>
         !system.includes('EXPERT_DEFAULT_SKILL_BODY') &&
         !system.includes('EXPERT_EXPLICIT_SKILL_BODY'),
@@ -524,7 +568,7 @@ test('disabling a bound expert package rejects a fresh send rather than silently
     /expert.*unavailable.*disabled/i,
   );
   assert.equal(session.isRunning(), false);
-  assert.equal(systems.length, 0);
+  assert.equal(requestPrompts.length, 0);
   assert.deepEqual(session.partnerExpert, writingExpert);
 });
 
@@ -540,7 +584,7 @@ test('a queued next turn rechecks the extension after disable and never calls th
   });
   t.after(() => getSpaceExtensionStore().setEnabled('partner.library', true));
   await session.send('The first turn may finish with its original expert.');
-  await waitFor(() => systems.length === 1);
+  await waitFor(() => requestPrompts.length === 1);
   const queued = await session.send('Only run when the expert is available.', undefined, {
     queueMode: 'after-turn',
   });
@@ -549,7 +593,7 @@ test('a queued next turn rechecks the extension after disable and never calls th
   release();
   await waitFor(() => !session.isRunning());
 
-  assert.equal(systems.length, 1);
+  assert.equal(requestPrompts.length, 1);
   assert.ok(
     events.some(
       (event) => event.kind === 'session_error' && /expert.*unavailable/i.test(event.error),
@@ -568,16 +612,16 @@ test('a committed expert change applies to the queued next turn, never the runni
     release();
   });
   await session.send('First turn.');
-  await waitFor(() => systems.length === 1);
+  await waitFor(() => requestPrompts.length === 1);
   await session.send('Queued next turn.', undefined, { queueMode: 'after-turn' });
   assert.equal(await kodaxHost.setPartnerExpert(session.sessionId, researchExpert), 'ok');
   release();
   await waitFor(() => !session.isRunning());
 
-  assert.equal(systems.length, 2);
-  assert.ok(systems[0]!.includes('EXPERT-WRITING'));
-  assert.ok(!systems[0]!.includes('EXPERT-RESEARCH'));
-  assert.ok(systems[1]!.includes('EXPERT-RESEARCH'));
+  assert.equal(requestPrompts.length, 2);
+  assert.ok(requestPrompts[0]!.includes('EXPERT-WRITING'));
+  assert.ok(!requestPrompts[0]!.includes('EXPERT-RESEARCH'));
+  assert.ok(requestPrompts[1]!.includes('EXPERT-RESEARCH'));
 });
 
 test('a queued turn starting before the expert write ACK uses the old role until a later run', async (t) => {
@@ -610,7 +654,7 @@ test('a queued turn starting before the expert write ACK uses the old role until
     releaseWrite();
   });
   await session.send('First turn.');
-  await waitFor(() => systems.length === 1);
+  await waitFor(() => requestPrompts.length === 1);
   await session.send('Queued before expert ACK.', undefined, { queueMode: 'after-turn' });
   setSessionRuntimeStoreForTesting(
     new SlowStore(path.join(profileDirectory, 'space', 'session-runtime')),
@@ -619,13 +663,13 @@ test('a queued turn starting before the expert write ACK uses the old role until
   await writeEntered;
   releaseResponse();
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 2);
-  assert.ok(systems.every((system) => system.includes('EXPERT-WRITING')));
+  assert.equal(requestPrompts.length, 2);
+  assert.ok(requestPrompts.every((system) => system.includes('EXPERT-WRITING')));
   releaseWrite();
   assert.equal(await changing, 'ok');
   await session.send('Sent after expert ACK.');
   await waitFor(() => !session.isRunning());
-  assert.ok(systems[2]!.includes('EXPERT-RESEARCH'));
+  assert.ok(requestPrompts[2]!.includes('EXPERT-RESEARCH'));
 });
 
 test('uninstalling a bound package prevents the next real run without discarding its saved role', async (t) => {
@@ -638,7 +682,7 @@ test('uninstalling a bound package prevents the next real run without discarding
   await assert.rejects(() => session.send('Use the removed expert.'), /Partner expert unavailable/);
   assert.deepEqual(session.partnerExpert, writingExpert);
   assert.equal(session.isRunning(), false);
-  assert.equal(systems.length, 0);
+  assert.equal(requestPrompts.length, 0);
 });
 
 test('an expert default Skill reaches the actual SDK model on every turn with that turn’s arguments', async () => {
@@ -653,11 +697,11 @@ test('an expert default Skill reaches the actual SDK model on every turn with th
     queued: false,
   });
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 2);
-  assert.ok(systems.every((system) => system.includes('EXPERT-SKILLED')));
-  assert.ok(systems.every((system) => system.includes('EXPERT_DEFAULT_SKILL_BODY')));
-  assert.ok(systems[0]!.includes('FIRST-DRAFT-TASK'));
-  assert.ok(systems[1]!.includes('SECOND-DRAFT-TASK'));
+  assert.equal(requestPrompts.length, 2);
+  assert.ok(requestPrompts.every((system) => system.includes('EXPERT-SKILLED')));
+  assert.ok(requestPrompts.every((system) => system.includes('EXPERT_DEFAULT_SKILL_BODY')));
+  assert.ok(requestPrompts[0]!.includes('FIRST-DRAFT-TASK'));
+  assert.ok(requestPrompts[1]!.includes('SECOND-DRAFT-TASK'));
 });
 
 test('an after-turn queued run prepares the same expert Skill with the queued task instead of bypassing it', async (t) => {
@@ -669,17 +713,18 @@ test('an after-turn queued run prepares the same expert Skill with the queued ta
   beforeResponse = () => gate;
   t.after(() => release());
   await session.send('FIRST-QUEUED-SKILL-TASK');
-  await waitFor(() => systems.length === 1);
+  await waitFor(() => requestPrompts.length === 1);
   const queued = await session.send('SECOND-QUEUED-SKILL-TASK', undefined, {
     queueMode: 'after-turn',
   });
   assert.equal(queued.accepted && queued.queued, true);
   release();
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 2);
-  assert.ok(systems[1]!.includes('EXPERT_DEFAULT_SKILL_BODY'));
-  assert.ok(systems[1]!.includes('SECOND-QUEUED-SKILL-TASK'));
-  assert.ok(!systems[1]!.includes('FIRST-QUEUED-SKILL-TASK'));
+  assert.equal(requestPrompts.length, 2);
+  assert.ok(requestPrompts[1]!.includes('EXPERT_DEFAULT_SKILL_BODY'));
+  assert.ok(requestPrompts[1]!.includes('SECOND-QUEUED-SKILL-TASK'));
+  assert.ok(requestPrompts[1]!.includes('Apply this rubric to: SECOND-QUEUED-SKILL-TASK'));
+  assert.ok(!requestPrompts[1]!.includes('Apply this rubric to: FIRST-QUEUED-SKILL-TASK'));
 });
 
 test('a user-selected slash Skill wins over the expert default without changing the expert role', async () => {
@@ -689,11 +734,11 @@ test('a user-selected slash Skill wins over the expert default without changing 
     queued: false,
   });
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 1);
-  assert.ok(systems[0]!.includes('EXPERT-SKILLED'));
-  assert.ok(systems[0]!.includes('EXPERT_EXPLICIT_SKILL_BODY'));
-  assert.ok(systems[0]!.includes('EXPLICIT-CHOICE-TASK'));
-  assert.ok(!systems[0]!.includes('EXPERT_DEFAULT_SKILL_BODY'));
+  assert.equal(requestPrompts.length, 1);
+  assert.ok(requestPrompts[0]!.includes('EXPERT-SKILLED'));
+  assert.ok(requestPrompts[0]!.includes('EXPERT_EXPLICIT_SKILL_BODY'));
+  assert.ok(requestPrompts[0]!.includes('EXPLICIT-CHOICE-TASK'));
+  assert.ok(!requestPrompts[0]!.includes('EXPERT_DEFAULT_SKILL_BODY'));
   assert.deepEqual(session.partnerExpert, skillExpert);
 });
 
@@ -703,11 +748,11 @@ test('prompt-only disables only the expert default and leaves user-selected Skil
   await waitFor(() => !session.isRunning());
   await session.send('/expert-explicit-fixture User selected this Skill.');
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 2);
-  assert.ok(systems.every((system) => system.includes('EXPERT-SKILLED')));
-  assert.ok(systems.every((system) => !system.includes('EXPERT_DEFAULT_SKILL_BODY')));
-  assert.ok(!systems[0]!.includes('EXPERT_EXPLICIT_SKILL_BODY'));
-  assert.ok(systems[1]!.includes('EXPERT_EXPLICIT_SKILL_BODY'));
+  assert.equal(requestPrompts.length, 2);
+  assert.ok(requestPrompts.every((system) => system.includes('EXPERT-SKILLED')));
+  assert.ok(requestPrompts.every((system) => !system.includes('EXPERT_DEFAULT_SKILL_BODY')));
+  assert.ok(!requestPrompts[0]!.includes('EXPERT_EXPLICIT_SKILL_BODY'));
+  assert.ok(requestPrompts[1]!.includes('EXPERT_EXPLICIT_SKILL_BODY'));
   assert.equal(session.partnerExpert?.useSkill, false);
 });
 
@@ -720,7 +765,7 @@ test('a missing default rejects before model admission until the user explicitly
     queueMode: 'interrupt',
   });
   assert.equal(session.isRunning(), false);
-  assert.equal(systems.length, 0);
+  assert.equal(requestPrompts.length, 0);
   const state = await setPartnerExpertForIpc({
     sessionId: session.sessionId,
     expert: {
@@ -733,9 +778,9 @@ test('a missing default rejects before model admission until the user explicitly
   assert.deepEqual(state.expert, { ...missingSkillExpert, useSkill: false });
   assert.deepEqual(await session.send('PROMPT-ONLY-TASK'), { accepted: true, queued: false });
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 1);
-  assert.ok(systems[0]!.includes('EXPERT-MISSING-SKILL'));
-  assert.ok(!systems[0]!.includes('EXPERT_DEFAULT_SKILL_BODY'));
+  assert.equal(requestPrompts.length, 1);
+  assert.ok(requestPrompts[0]!.includes('EXPERT-MISSING-SKILL'));
+  assert.ok(!requestPrompts[0]!.includes('EXPERT_DEFAULT_SKILL_BODY'));
   await assert.rejects(
     () =>
       setPartnerExpertForIpc({
@@ -761,13 +806,13 @@ test('an unavailable default Skill cannot fall through on an internally started 
   beforeResponse = () => gate;
   t.after(() => release());
   await session.send('Current task.');
-  await waitFor(() => systems.length === 1);
+  await waitFor(() => requestPrompts.length === 1);
   await session.send('QUEUED-MISSING-SKILL-TASK', undefined, { queueMode: 'after-turn' });
   // Models a restored binding whose external Skill was removed before the next turn.
   session.partnerExpert = structuredClone(missingSkillExpert);
   release();
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 1);
+  assert.equal(requestPrompts.length, 1);
   assert.ok(
     events.some(
       (event) => event.kind === 'session_error' && event.error.includes('skill_not_found'),
@@ -790,7 +835,7 @@ for (const { kind, reason } of [
       queueMode: 'interrupt',
     });
     assert.equal(session.isRunning(), false);
-    assert.equal(systems.length, 0);
+    assert.equal(requestPrompts.length, 0);
     await assert.rejects(fs.access(path.join(boundaryProjectRoot, `${kind}-must-not-run`)), {
       code: 'ENOENT',
     });
@@ -806,8 +851,8 @@ test('expert Skill dynamic context retains the SDK disabled placeholder and neve
   // rejecting the whole Skill. Preserve that existing behavior, without shell authority.
   assert.deepEqual(await session.send('Check dynamic context.'), { accepted: true, queued: false });
   await waitFor(() => !session.isRunning());
-  assert.equal(systems.length, 1);
-  assert.ok(systems[0]!.includes('Dynamic context disabled by host'));
+  assert.equal(requestPrompts.length, 1);
+  assert.ok(requestPrompts[0]!.includes('Dynamic context disabled by host'));
   await assert.rejects(fs.access(path.join(boundaryProjectRoot, 'dynamic-must-not-run')), {
     code: 'ENOENT',
   });

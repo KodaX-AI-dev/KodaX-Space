@@ -292,7 +292,7 @@ test('setRuntimeDefaults merges and persists runtime defaults', async () => {
   assert.deepEqual(merged.runtimeDefaults, {
     permissionMode: 'full-access',
     reasoningMode: 'ultra',
-    agentMode: 'sa',
+    agentMode: 'ama',
   });
 
   const reloaded = await new SettingsStore(settingsFile, tmpDir).load();
@@ -328,7 +328,7 @@ test('load preserves valid runtime default fields when one field is invalid', as
 
   assert.deepEqual(loaded.runtimeDefaults, {
     permissionMode: 'auto',
-    agentMode: 'sa',
+    agentMode: 'ama',
   });
 });
 

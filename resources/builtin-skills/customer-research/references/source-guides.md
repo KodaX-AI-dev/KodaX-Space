@@ -333,7 +333,7 @@ SparkToro data is aggregated and anonymized — it shows patterns, not individua
 - Skews English-language, US-centric
 - Shows what audiences do, not why — pair with qualitative sources
 
-SparkToro access is optional and is not bundled with this Skill. Use it only if a suitable tool is already available and authorized; otherwise work from supplied audience research and state coverage limits.
+See [tools/integrations/sparktoro.md](https://github.com/coreyhaines31/marketingskills/blob/main/tools/integrations/sparktoro.md) for full tool details and pricing.
 
 ---
 

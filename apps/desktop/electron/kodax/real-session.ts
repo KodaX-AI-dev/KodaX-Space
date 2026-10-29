@@ -105,6 +105,7 @@ function isSessionHistoryReadTimeout(error: unknown): boolean {
 
 import type {
   AskUserAnswer as SdkAskUserAnswer,
+  AskUserUnanswered,
   AskUserSelectionAnswer as SdkAskUserSelectionAnswer,
   AutoModeToolGuardrail,
   Guardrail,
@@ -481,7 +482,7 @@ export class RealKodaXSession implements ManagedSession {
     this.model = opts.model;
     this.reasoningMode = opts.reasoningMode;
     this.permissionMode = opts.permissionMode;
-    this.agentMode = opts.agentMode ?? 'ama';
+    this.agentMode = 'ama';
     this.surface = opts.surface ?? 'code';
     this.partnerExpert = opts.partnerExpert ? structuredClone(opts.partnerExpert) : undefined;
     this.partnerConnectors = opts.partnerConnectors
@@ -534,7 +535,7 @@ export class RealKodaXSession implements ManagedSession {
       // survived. `null` carries delete semantics; the adapter's versioned
       // no-op check avoids a write when the Runtime value already matches.
       shellExecution: shellExecution ?? null,
-      agentMode: this.agentMode,
+      agentMode: 'ama',
     });
     // Runtime permissions are live settings: a mode selected while the daemon
     // was initializing or while the versioned update was in flight must govern
@@ -1620,6 +1621,7 @@ export class RealKodaXSession implements ManagedSession {
     ensurePartnerFileProposalToolsRegistered(sdk);
     ensurePartnerHelperRunnerToolsRegistered(sdk);
     ensureSpaceControlToolsRegistered(sdk);
+    const { isAskUserUnanswered } = await import('@kodax-ai/kodax/agent');
 
     type SdkAskUserQuestionOptions = Parameters<NonNullable<KodaXEvents['askUser']>>[0];
     type SdkAskUserMultiOptions = Parameters<NonNullable<KodaXEvents['askUserMulti']>>[0];
@@ -1646,7 +1648,7 @@ export class RealKodaXSession implements ManagedSession {
     const askUserArrayResultsSupported = supportsAskUserArrayResults(sdk);
     const requestSdkUserQuestion = async (
       options: FutureSdkAskUserQuestionOptions,
-    ): Promise<SdkAskUserAnswer | undefined> => {
+    ): Promise<SdkAskUserAnswer | AskUserUnanswered | undefined> => {
       const kind = options.kind ?? 'select';
       if (kind === 'select' && (!options.options || options.options.length === 0)) {
         console.warn(
@@ -1677,24 +1679,26 @@ export class RealKodaXSession implements ManagedSession {
           : {}),
       });
       if (answer === undefined) return undefined;
+      if (isAskUserUnanswered(answer)) return answer;
       return askUserArrayResultsSupported ? answer : legacyAskUserAnswer(answer);
     };
 
     const requestSdkUserInput = async (
       options: SdkAskUserInputOptions,
-    ): Promise<string | undefined> => {
+    ): Promise<string | AskUserUnanswered | undefined> => {
       const answer = await askUserBroker.requestQuestion({
         sessionId: sid,
         kind: 'input',
         question: options.question,
         ...(options.default !== undefined ? { default: options.default } : {}),
       });
-      return answer === undefined ? undefined : askUserAnswerToInputText(answer);
+      if (answer === undefined || isAskUserUnanswered(answer)) return answer;
+      return askUserAnswerToInputText(answer);
     };
 
     const requestSdkUserMulti = async (
       options: SdkAskUserMultiOptions,
-    ): Promise<Record<string, SdkAskUserAnswer> | undefined> => {
+    ): Promise<Record<string, SdkAskUserAnswer> | AskUserUnanswered | undefined> => {
       const answers: Record<string, SdkAskUserAnswer> = {};
       let questionIndex = 0;
       while (questionIndex < options.questions.length) {
@@ -1764,6 +1768,7 @@ export class RealKodaXSession implements ManagedSession {
             : {}),
         });
         if (answer === undefined) return undefined;
+        if (isAskUserUnanswered(answer)) return answer;
         if (!Array.isArray(answer) && answer === ASK_USER_BACK_SIGNAL) {
           questionIndex = Math.max(0, questionIndex - 1);
           continue;
@@ -2613,8 +2618,8 @@ export class RealKodaXSession implements ManagedSession {
       const options: KodaXOptions = {
         provider: this.provider,
         effort: reasoningModeToEffort(this.reasoningMode),
-        // KodaX agent 形态：AMA / SA。显式传以便用户切换生效。
-        agentMode: this.agentMode,
+        // SA is retired in Space, including resumed historical sessions.
+        agentMode: 'ama',
         // SDK 0.7.42 wired (P0): /model + /thinking 设置在下一 turn 生效
         ...(this.model !== undefined ? { model: this.model } : {}),
         ...(explicitSkill?.modelOverride !== undefined

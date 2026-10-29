@@ -44,6 +44,8 @@
 }
 ```
 
+> 这套配色是 huashu-design 自己宣传片的品牌选择（贴近 Claude 生态），**不是默认值**。给别的题材用这个画廊手法时，颜色按题材重新推导——暖米白＋陶土色正是 2026 年 AI 默认外观的第一条。
+
 **关键原则**：
 1. **绝不用纯黑底**。黑底会让作品看起来像电影、不像「可以被采用的工作成果」
 2. **赤陶橙是唯一色相accent**，其他全部是灰阶 + 白
@@ -227,7 +229,7 @@ const T = {
   s4_walloff: [21.1, 21.8], s4_in: [21.8, 22.7], s4_hold: [23.7, 25.0],
 };
 
-// 核心 easing
+// 核心 easing（v9 历史实现用 cubic；新项目主 easing 默认 expoOut，见 best-practices §2 / hero-case-study 模式1 的修正）
 const easeOut = t => 1 - Math.pow(1 - t, 3);
 const easeInOut = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
 function lerp(time, start, end, fromV, toV, easing) {

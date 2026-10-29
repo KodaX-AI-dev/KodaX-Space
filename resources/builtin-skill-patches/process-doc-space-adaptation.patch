@@ -1,6 +1,8 @@
+diff --git a/SKILL.md b/SKILL.md
+index ebba066e..5881358f 100644
 --- a/SKILL.md
 +++ b/SKILL.md
-@@ -4,16 +4,25 @@
+@@ -4,16 +4,25 @@ description: Document a business process — flowcharts, RACI, and SOPs. Use whe
  argument-hint: "<process name or description>"
  ---
  
@@ -18,7 +20,8 @@
 -> If you see unfamiliar placeholders or need to check which tools are connected, see [CONNECTORS.md](../../CONNECTORS.md).
 +平台资料使用方式见本文件的 Space 适配。
  
- Document a business process as a complete standard operating procedure (SOP).
+-Document a business process as a complete standard operating procedure (SOP).
++按本次请求整理业务流程；需要完整 SOP 时再展开责任、异常和指标，简短交接不强制完整模板。
  
  ## Usage
  
@@ -28,17 +31,17 @@
  ```
  
  ## How It Works
-@@ -65,15 +74,9 @@
+@@ -65,15 +74,9 @@ Walk me through the process — describe it, paste existing docs, or just tell m
  - [Link to related process or policy]
  ```
  
 -## If Connectors Available
-+## 使用外部资料与交付
- 
+-
 -If **~~knowledge base** is connected:
 -- Search for existing process documentation to update rather than duplicate
 -- Publish the completed SOP to your wiki
--
++## 使用外部资料与交付
+ 
 -If **~~project tracker** is connected:
 -- Link the process to related projects and workflows
 -- Create tasks for process improvement action items

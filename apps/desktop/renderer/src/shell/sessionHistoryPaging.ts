@@ -65,6 +65,13 @@ const activeTokens = new Map<string, symbol>();
 const cacheOrder = new Map<string, true>();
 const invalidationEpochs = new Map<string, number>();
 const loadedEpochs = new Map<string, number>();
+interface HistoryPageReference {
+  readonly cursor?: string;
+  readonly revision?: string;
+  readonly sourceRevision?: string;
+}
+// Navigation breadcrumbs only; SDK page bodies remain a single frozen window.
+const productPageTrail = new Map<string, readonly HistoryPageReference[]>();
 const deferredReadyRevalidations = new Set<string>();
 type TerminalHistoryWorkflowStatus = 'pending' | 'in-flight' | 'completed';
 interface TerminalHistoryWorkflowGroup {
@@ -307,6 +314,7 @@ function touchCache(sessionId: string): void {
     loadedItems.delete(candidate);
     invalidationEpochs.delete(candidate);
     loadedEpochs.delete(candidate);
+    productPageTrail.delete(candidate);
     deferredReadyRevalidations.delete(candidate);
     terminalHistoryEvidenceBySession.delete(candidate);
     listeners.delete(candidate);
@@ -401,6 +409,7 @@ export function sessionEventInvalidatesHistoryCache(kind: SessionEvent['kind']):
 export function invalidateSessionHistoryPaging(sessionId: string): void {
   if (!states.has(sessionId) && !loadedItems.has(sessionId) && !inFlight.has(sessionId)) return;
   invalidationEpochs.set(sessionId, (invalidationEpochs.get(sessionId) ?? 0) + 1);
+  productPageTrail.delete(sessionId);
   const state = states.get(sessionId);
   if (
     activeTokens.has(sessionId) &&
@@ -780,6 +789,7 @@ async function requestHistory(
   continuation: boolean,
   expectedSurface?: 'code' | 'partner',
   retainReadyProjection = false,
+  newerPage?: HistoryPageReference & { readonly cursor: string },
 ): Promise<void> {
   const activeToken = activeTokens.get(sessionId);
   if (activeToken === undefined) return;
@@ -788,7 +798,7 @@ async function requestHistory(
   const previous = sessionHistoryPagingSnapshot(sessionId);
   const requestedEpoch = invalidationEpochs.get(sessionId) ?? 0;
   const continueFromCurrentBoundary =
-    continuation && loadedEpochs.get(sessionId) === requestedEpoch;
+    continuation && newerPage === undefined && loadedEpochs.get(sessionId) === requestedEpoch;
   if (continueFromCurrentBoundary && (!previous.hasMore || previous.nextCursor === undefined)) {
     return;
   }
@@ -838,15 +848,16 @@ async function requestHistory(
       }
       return response.data;
     };
-    let result = await invokeHistoryPage(
-      continueFromCurrentBoundary && boundary.nextCursor !== undefined
+    const requestedBoundary =
+      newerPage ??
+      (continueFromCurrentBoundary && boundary.nextCursor !== undefined
         ? {
             cursor: boundary.nextCursor,
             revision: boundary.revision,
             sourceRevision: boundary.sourceRevision,
           }
-        : undefined,
-    );
+        : undefined);
+    let result = await invokeHistoryPage(requestedBoundary);
     if (activeTokens.get(sessionId) !== activeToken) return;
     if ((invalidationEpochs.get(sessionId) ?? 0) !== requestedEpoch) {
       // A terminal/lineage persistence boundary overtook this read. Do not install a page or a
@@ -865,9 +876,19 @@ async function requestHistory(
       return;
     }
     let page = result.page;
-    if (page?.outcome === 'data_changed') {
+    if (
+      page?.outcome === 'data_changed' ||
+      (result.productItems !== undefined &&
+        page?.outcome === 'ready' &&
+        requestedBoundary &&
+        ((requestedBoundary.revision !== undefined &&
+          page.revision !== requestedBoundary.revision) ||
+          (requestedBoundary.sourceRevision !== undefined &&
+            page.sourceRevision !== requestedBoundary.sourceRevision)))
+    ) {
       invalidateSessionCanonicalTranscriptPage(sessionId);
       loadedEpochs.delete(sessionId);
+      productPageTrail.delete(sessionId);
       publish(sessionId, {
         ...(retainReadyProjection && previous.phase === 'ready' ? previous : IDLE_HISTORY_STATE),
         ...(surface ? { surface } : {}),
@@ -894,6 +915,20 @@ async function requestHistory(
     }
     const installsPrepend = continueFromCurrentBoundary && page?.windowMode === 'prepend';
     if (result.productItems !== undefined && page?.outcome === 'ready') {
+      const reference: HistoryPageReference = {
+        cursor: requestedBoundary?.cursor,
+        revision: page.revision,
+        sourceRevision: page.sourceRevision,
+      };
+      const trail = productPageTrail.get(sessionId) ?? [];
+      productPageTrail.set(
+        sessionId,
+        requestedBoundary === undefined
+          ? [reference]
+          : newerPage
+            ? trail.slice(0, -1)
+            : [...trail, reference],
+      );
       installProductHistory(sessionId, result.productItems, page.hasNewer);
       updateAllTerminalHistoryWorkflows(sessionId, 'in-flight', 'completed');
       deferredReadyRevalidations.delete(sessionId);
@@ -1200,6 +1235,27 @@ export function restoreNewestSessionHistory(
   return requestHistory(sessionId, false, expectedSurface, retainReadyProjection);
 }
 
+export async function loadNewerSessionHistory(sessionId: string): Promise<void> {
+  const token = activeTokens.get(sessionId);
+  if (token === undefined) return;
+  const pending = inFlight.get(sessionId);
+  if (pending?.token === token) return pending.promise;
+  const state = sessionHistoryPagingSnapshot(sessionId);
+  if (!state.hasNewer) return;
+  const trail = productPageTrail.get(sessionId);
+  const target = trail?.[trail.length - 2];
+  if (
+    target?.cursor !== undefined &&
+    loadedEpochs.get(sessionId) === (invalidationEpochs.get(sessionId) ?? 0)
+  ) {
+    return requestHistory(sessionId, true, state.surface, false, {
+      ...target,
+      cursor: target.cursor,
+    });
+  }
+  return restoreNewestSessionHistory(sessionId, state.surface ?? 'code');
+}
+
 export async function loadOlderSessionHistory(sessionId: string): Promise<void> {
   const activeToken = activeTokens.get(sessionId);
   if (activeToken === undefined) return;
@@ -1292,6 +1348,7 @@ export function resetSessionHistoryPagingLifecycle(): void {
   cacheOrder.clear();
   invalidationEpochs.clear();
   loadedEpochs.clear();
+  productPageTrail.clear();
   deferredReadyRevalidations.clear();
   terminalHistoryEvidenceBySession.clear();
   for (const listener of new Set(subscribers)) listener();

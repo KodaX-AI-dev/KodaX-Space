@@ -1,6 +1,6 @@
 # Typography：排印推理系统
 
-> **这不是字体清单，是配对与排版的推理规则。** `design-styles.md` 已经给了 40 种风格各自的字体名；本文回答的是「为什么这样配」「拿到任意内容怎么推导出字号/行长/字重」。目标：同一个风格标签，落到不同内容上，能推导出不同的排印结果，而不是每次都抄同一套字号。
+> **这不是字体清单，是配对与排版的推理规则。** `design-styles.md` 已经给了 60 种风格各自的字体名；本文回答的是「为什么这样配」「拿到任意内容怎么推导出字号/行长/字重」。目标：同一个风格标签，落到不同内容上，能推导出不同的排印结果，而不是每次都抄同一套字号。
 >
 > 前置纪律不变：有 design context 先 lift 用户自己的字体（见 `design-context.md`），本文的一切只在「用户没有字体规范」时启用。
 
@@ -105,7 +105,7 @@ balance 只用于 ≤4 行的标题（算法限制 6 行且有性能成本）；
 | 9 | Cormorant Garamond + Work Sans | 高反差奢侈感：Cormorant 笔画极细，**必须 ≥40px 才成立**，小字号笔画会断；适合时尚/太空图录风 | 大胆 | Google Fonts |
 | 10 | Geist Mono / JetBrains Mono + Geist | 等宽当主角：命令行感、工程感；等宽只用于标签/编号/代码，整段正文用等宽是灾难（行长膨胀 30%） | 中性·技术 | Vercel / JetBrains 官方，均 OFL |
 
-**已被用烂名单**（AI 生成页面的指纹，用了等于自曝）：
+**已被用烂名单**（单款字体被 AI 工具用到泛滥，换平替通常更好）：
 
 | 烂大街 | 为什么烂 | 平替 |
 |--------|----------|------|
@@ -113,6 +113,8 @@ balance 只用于 ≤4 行的标题（算法限制 6 行且有性能成本）；
 | Inter 当 display | Inter 是为 UI 小字设计的，大字号下匀质无表情 | Archivo、Anton、Schibsted Grotesk |
 | Space Grotesk | 「科技感」的偷懒答案，泛滥于加密/AI 落地页 | Schibsted Grotesk、Familjen Grotesk |
 | Playfair Display | 「优雅」的偷懒答案，婚礼请柬既视感 | Cormorant（更极端）、DM Serif Display（更憨） |
+
+「高反差衬线 × 暖奶油底」这个**组合**不在名单里：它是一个外观家族，不是一款烂字体。可以按题材或用户品牌使用；需要比较时避免候选同质化，已有规范不为追求差异而更换（`references/content-guidelines.md`）。
 
 ## 4. 中文排印（本文最重的一章）
 
@@ -142,8 +144,8 @@ balance 只用于 ≤4 行的标题（算法限制 6 行且有性能成本）；
 ```css
 /* 西文在前，中文在后，系统中文兜底，泛型收尾 */
 font-family: "Geist", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-/* 衬线同理 */
-font-family: "Newsreader", "Noto Serif SC", "Songti SC", serif;
+/* 衬线同理（字体名只是示例，按配对表和题材选） */
+font-family: "Source Serif 4", "Noto Serif SC", "Songti SC", serif;
 ```
 
 为什么这个顺序：font-family 是逐字符匹配的，西文字体不含 CJK 码位，汉字自然穿透到中文字体。反过来写（中文在前）西文字符全被中文字体吃掉，等于白配。
@@ -225,7 +227,7 @@ font-family: "Newsreader", "Noto Serif SC", "Songti SC", serif;
 :root {
   /* 1. fallback 链：西文 → 中文 → 系统中文 → 泛型（顺序即规则，见 4.2） */
   --font-body: "Geist", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-display: "Newsreader", "Noto Serif SC", "Songti SC", serif;
+  --font-display: "<按配对表为这个题材选>", "Noto Serif SC", "Songti SC", serif;  /* 不要默认填一个衬线 */
 
   /* 2. 禁合成：不接受浏览器伪造的斜体/加粗（中文场景必开） */
   font-synthesis: none;

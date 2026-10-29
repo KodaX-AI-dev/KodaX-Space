@@ -1,16 +1,18 @@
 # KodaX Capability Ledger
 
-> 2026-10-20：当前依赖为官方 alpha.9；EIO 元数据准入及持有 owner fence 的活动控制器准入修复已随 npm 发布接入。Artifact 四入口与资源继续保留，启用边界不变。验收见 [alpha.9 接入](releases/kodax-0.7.97-alpha.9-integration.md)。
+> 2026-10-29：工作区已精确接入官方 Registry alpha.11，本轮 Space 改动尚未发布。AMA、提问与 Skip、退出恢复、Skill 本地错误，以及启动阶段、检查点恢复和容量提示的实施与验收见 [alpha.11 接入](releases/kodax-0.7.97-alpha.11-integration.md)。18 项 Space builtin 内容改进保持；不复制 SDK 执行引擎。
+
+> 2026-10-20 历史记录：alpha.9 的 EIO 元数据准入及持有 owner fence 的活动控制器准入修复已随 npm 发布接入。Artifact 四入口与资源继续保留，启用边界不变。验收见 [alpha.9 接入](releases/kodax-0.7.97-alpha.9-integration.md)。
 
 > 2026-10-18：当前 alpha.7 主链验收与全产品迁移完整性分开记录。最新逐入口复核及遗留项见 [SDK 对齐与迁移完整性审计](research/kodax-space-sdk-alignment-audit-2026-10-18.md)；下方历史支持条目不能替代该审计的当前实现边界。
 
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
-> Last reviewed: 2026-10-20
-> Space baseline: published prerelease [`v0.1.47-alpha.2`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.2) / SDK `0.7.97-alpha.6`; latest stable [v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96.
-> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-alpha.9` (`sha512-cw/Eh2idVD381auW3JZVNMThO0OHICLnH0H7uQTUBL62PhjX0WpkOYtxstMIPhpNQXQemAaquil/Xthlr23ipA==`).
+> Last reviewed: 2026-10-28
+> Published Space baseline: prerelease [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3) / SDK `0.7.97-alpha.9`; latest stable [v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96. The alpha.10 working-tree integration is unpublished.
+> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-alpha.11` (`sha512-Fo4qL6qvA/1ViL8sElvXB+X0+xP6c23GGJ5iJY10wDUDLXokIiVXY8+4bXx3r8OYFyiqUyBJ7+9v2UnCc5cNHg==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
-> Workspace dependency: root/Desktop/lockfile pin published 0.7.97-alpha.9 for the published Space v0.1.47-alpha.3 prerelease. Current qualification is recorded in [alpha.9 integration](releases/kodax-0.7.97-alpha.9-integration.md); previous release and SDK integration evidence retain their original source fingerprints.
+> Workspace dependency: root/Desktop/lockfile pin published 0.7.97-alpha.11 while retaining Space 0.1.47-alpha.3. Current qualification is recorded in [alpha.11 integration](releases/kodax-0.7.97-alpha.11-integration.md); previous release and SDK integration evidence retain their original source fingerprints.
 > Package/source evidence: a formal release requires both workspaces to resolve one deduplicated exact Registry package whose root/desktop manifests, lock views, installed package, tarball URL, and integrity agree. Release acceptance also imports every public KodaX facade, verifies ancestor-aware transitive dependencies, loads packaged `better-sqlite3`from unpacked native bytes, and boots the packaged application.
 > Published KodaX review: all earlier compaction/history/Actor/usage/learning/external-agent contracts plus 0.7.78 ownership/integration/sandbox contracts, 0.7.80`managedRunDurability:1`, 0.7.81 canonical delivered-interrupt `entryId`, 0.7.83 active-run/session-recovery and exact-shutdown fixes, 0.7.84 same-owner Actor settlement recovery, 0.7.85 `actorSettlementConvergence:1`plus`sessionEventJournal:1`, 0.7.87 `sandboxRuntime:3`, 0.7.88 `actorSettlementConvergence:2`, 0.7.89 `runBoundHostTools:2`plus`materializedAgentTools`, and 0.7.91 `runtimeExitSettlement:1`plus`liveOutputSegments:1`have been reviewed. F118 is released; broader F117/F138 work remains planned.
 > Published 0.7.94 adds`conversationHistory:2`, typed daemon disconnect facts, credential-safe Run failure classification, fail-closed Run/sandbox finalization hardening, and the explicit-Skill contract in which legacy `user-invocable`no longer gates execution while`disable-model-invocation`gates only model discovery/tool use. Space treats lifecycle support as capability contracts, not SemVer inference.

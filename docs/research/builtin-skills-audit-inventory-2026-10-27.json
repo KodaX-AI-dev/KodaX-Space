@@ -1,0 +1,517 @@
+{
+  "date": "2026-10-27",
+  "spaceHead": "e3ba5893347e20b09d37f6ea95265daa375bacc3",
+  "sdkHead": "6d101b599878ffd0e90fc79ddf24e8067d0379e5",
+  "installedSdkVersion": "0.7.97-alpha.9",
+  "scopeCount": 24,
+  "skills": [
+    {
+      "name": "feishu-office-suite",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\feishu-office-suite\\SKILL.md",
+      "lines": 30,
+      "bytes": 3576,
+      "sha256": "11170c9b63fd81b565d7cabf51bf5785ccd3ae23e86c74a75a416d55abccc469",
+      "normalizedSha256": "11170c9b63fd81b565d7cabf51bf5785ccd3ae23e86c74a75a416d55abccc469",
+      "descriptionChars": 246,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "feishu-office-suite",
+        "sourcePath": "first-party-skills/feishu-office-suite"
+      }
+    },
+    {
+      "name": "frontend-slides",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\frontend-slides\\SKILL.md",
+      "lines": 380,
+      "bytes": 28187,
+      "sha256": "832994fe1dfcce2aa7ceca9a1b7b708eca94becef242713999855f4e946cf4d5",
+      "normalizedSha256": "832994fe1dfcce2aa7ceca9a1b7b708eca94becef242713999855f4e946cf4d5",
+      "descriptionChars": 311,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "frontend-slides",
+        "repository": "https://github.com/zarazhangrui/frontend-slides.git",
+        "ref": "9906a34d640d2111f724544cbc50f7f130569ae1",
+        "installedPath": "frontend-slides",
+        "sourceSubdir": "plugins/frontend-slides/skills/frontend-slides",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "62928eb197fe4662d1efc3af0735b3ba5df3c0308badd9a2baf2b619009f5366"
+        },
+        "exclude": []
+      }
+    },
+    {
+      "name": "huashu-design",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\huashu-design\\SKILL.md",
+      "lines": 522,
+      "bytes": 59264,
+      "sha256": "a71c83f70337c877220a886e3214ec84aab4cd1defd3dbe7145b05aec75093ff",
+      "normalizedSha256": "a71c83f70337c877220a886e3214ec84aab4cd1defd3dbe7145b05aec75093ff",
+      "descriptionChars": 163,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "huashu-design",
+        "repository": "https://github.com/alchaincyf/huashu-design.git",
+        "ref": "c9b06710b057a45fe6165e52aa8690f55182ea13",
+        "installedPath": "huashu-design",
+        "sourceSubdir": ".",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "6d6a2a9caf2e6d2b76974050427053b2892d8aa4c33fd168ce63a537fcee9d96"
+        },
+        "exclude": [
+          ".git/**",
+          ".gitignore",
+          "README.md",
+          "README.en.md",
+          "test-prompts.json"
+        ],
+        "patches": [
+          "builtin-skill-patches/huashu-design-no-watermark.patch",
+          "builtin-skill-patches/huashu-design-builtin-portability.patch",
+          "builtin-skill-patches/huashu-design-remove-promotional-signatures.patch"
+        ],
+        "forbiddenText": [
+          "created by huashu-design",
+          "huashu · design",
+          "huashu<span",
+          "huasheng.ai/huashu-design-hero",
+          "Skill 推广水印",
+          "默认带水印",
+          "动画场景必加",
+          "~/.claude/",
+          "写作/.env",
+          "/path/to/claude-design",
+          "design-philosophy skill"
+        ]
+      }
+    },
+    {
+      "name": "partner-product-management",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-product-management\\SKILL.md",
+      "lines": 32,
+      "bytes": 2473,
+      "sha256": "c2c89f6b77e13a461a34663d7cbeb9ded18e0a6d5b7de94445c1a167d8d4b45a",
+      "normalizedSha256": "c2c89f6b77e13a461a34663d7cbeb9ded18e0a6d5b7de94445c1a167d8d4b45a",
+      "descriptionChars": 52,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "partner-product-management",
+        "sourcePath": "first-party-skills/partner-product-management"
+      }
+    },
+    {
+      "name": "partner-deep-research",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-deep-research\\SKILL.md",
+      "lines": 28,
+      "bytes": 2477,
+      "sha256": "76b24d3e290f443e6e4eb25385c6381a1904e52c4089298c15f2d1ced0521302",
+      "normalizedSha256": "76b24d3e290f443e6e4eb25385c6381a1904e52c4089298c15f2d1ced0521302",
+      "descriptionChars": 56,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "partner-deep-research",
+        "sourcePath": "first-party-skills/partner-deep-research"
+      }
+    },
+    {
+      "name": "copywriting",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\copywriting\\SKILL.md",
+      "lines": 269,
+      "bytes": 9808,
+      "sha256": "0316ee5e7536a5c37159a7e454abeb039739a38b9361c9a30b41564e60aed630",
+      "normalizedSha256": "0316ee5e7536a5c37159a7e454abeb039739a38b9361c9a30b41564e60aed630",
+      "descriptionChars": 753,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "copywriting",
+        "repository": "https://github.com/coreyhaines31/marketingskills.git",
+        "ref": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+        "installedPath": "copywriting",
+        "sourceSubdir": "skills/copywriting",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591"
+        },
+        "exclude": [
+          "evals/**"
+        ],
+        "patches": [
+          "builtin-skill-patches/copywriting-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "customer-research",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\customer-research\\SKILL.md",
+      "lines": 316,
+      "bytes": 16187,
+      "sha256": "40c18fcfe936624393960e4c9b114badf89329f61c4855ed69da7c6254c14442",
+      "normalizedSha256": "40c18fcfe936624393960e4c9b114badf89329f61c4855ed69da7c6254c14442",
+      "descriptionChars": 953,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "customer-research",
+        "repository": "https://github.com/coreyhaines31/marketingskills.git",
+        "ref": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+        "installedPath": "customer-research",
+        "sourceSubdir": "skills/customer-research",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591"
+        },
+        "exclude": [
+          "evals/**"
+        ],
+        "patches": [
+          "builtin-skill-patches/customer-research-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "partner-project-management",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-project-management\\SKILL.md",
+      "lines": 16,
+      "bytes": 1807,
+      "sha256": "6e75da51bd3359f83a641ad798848fc8da9a91f7f093af2d7f0d3ea14f1f71c4",
+      "normalizedSha256": "6e75da51bd3359f83a641ad798848fc8da9a91f7f093af2d7f0d3ea14f1f71c4",
+      "descriptionChars": 32,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "partner-project-management",
+        "sourcePath": "first-party-skills/partner-project-management"
+      }
+    },
+    {
+      "name": "partner-data-analysis",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-data-analysis\\SKILL.md",
+      "lines": 16,
+      "bytes": 1740,
+      "sha256": "4b3b05ac98194a065bf951e46b6036a4024c820f13dd8f97a904302679306a4e",
+      "normalizedSha256": "4b3b05ac98194a065bf951e46b6036a4024c820f13dd8f97a904302679306a4e",
+      "descriptionChars": 35,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "partner-data-analysis",
+        "sourcePath": "first-party-skills/partner-data-analysis"
+      }
+    },
+    {
+      "name": "partner-meeting-minutes",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-meeting-minutes\\SKILL.md",
+      "lines": 16,
+      "bytes": 1805,
+      "sha256": "7aea5e369e72a3b31689b6549a973b17664452543905d1f3cea0eff9c406f99a",
+      "normalizedSha256": "7aea5e369e72a3b31689b6549a973b17664452543905d1f3cea0eff9c406f99a",
+      "descriptionChars": 32,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "partner-meeting-minutes",
+        "sourcePath": "first-party-skills/partner-meeting-minutes"
+      }
+    },
+    {
+      "name": "partner-business-communication",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\partner-business-communication\\SKILL.md",
+      "lines": 16,
+      "bytes": 1662,
+      "sha256": "14db85f6c6078e7ae2476d539b92c83b0d81e7248839b30019093eb049f10d47",
+      "normalizedSha256": "14db85f6c6078e7ae2476d539b92c83b0d81e7248839b30019093eb049f10d47",
+      "descriptionChars": 36,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "partner-business-communication",
+        "sourcePath": "first-party-skills/partner-business-communication"
+      }
+    },
+    {
+      "name": "process-doc",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\process-doc\\SKILL.md",
+      "lines": 85,
+      "bytes": 3913,
+      "sha256": "6f0575f74458998aac1bab1b293f8ecfb80708a15e2c4819f7569afb042c3cf5",
+      "normalizedSha256": "6f0575f74458998aac1bab1b293f8ecfb80708a15e2c4819f7569afb042c3cf5",
+      "descriptionChars": 274,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "process-doc",
+        "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+        "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+        "installedPath": "process-doc",
+        "sourceSubdir": "operations/skills/process-doc",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+        },
+        "exclude": [],
+        "patches": [
+          "builtin-skill-patches/process-doc-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "draft-response",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\draft-response\\SKILL.md",
+      "lines": 300,
+      "bytes": 13040,
+      "sha256": "29587653225325ee1b922be776ca9bce235007c371713ed6add1e50422130997",
+      "normalizedSha256": "29587653225325ee1b922be776ca9bce235007c371713ed6add1e50422130997",
+      "descriptionChars": 275,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "draft-response",
+        "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+        "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+        "installedPath": "draft-response",
+        "sourceSubdir": "customer-support/skills/draft-response",
+        "license": {
+          "sourcePath": "customer-support/LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        "exclude": [],
+        "patches": [
+          "builtin-skill-patches/draft-response-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "knowledge-synthesis",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\knowledge-synthesis\\SKILL.md",
+      "lines": 266,
+      "bytes": 9837,
+      "sha256": "345e9e20ebb2acc31b35b0bc2e89e6bfee023ee871e96ef2ba54cd259a6e1ade",
+      "normalizedSha256": "345e9e20ebb2acc31b35b0bc2e89e6bfee023ee871e96ef2ba54cd259a6e1ade",
+      "descriptionChars": 213,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "knowledge-synthesis",
+        "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+        "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+        "installedPath": "knowledge-synthesis",
+        "sourceSubdir": "enterprise-search/skills/knowledge-synthesis",
+        "license": {
+          "sourcePath": "enterprise-search/LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        "exclude": [],
+        "patches": [
+          "builtin-skill-patches/knowledge-synthesis-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "status-report",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\status-report\\SKILL.md",
+      "lines": 77,
+      "bytes": 4084,
+      "sha256": "c80458407c529f9ddcf84dda603f35a7f1e407d5e829a72ba663504fe1424647",
+      "normalizedSha256": "c80458407c529f9ddcf84dda603f35a7f1e407d5e829a72ba663504fe1424647",
+      "descriptionChars": 313,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "status-report",
+        "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+        "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+        "installedPath": "status-report",
+        "sourceSubdir": "operations/skills/status-report",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+        },
+        "exclude": [],
+        "patches": [
+          "builtin-skill-patches/status-report-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "call-prep",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\call-prep\\SKILL.md",
+      "lines": 264,
+      "bytes": 9665,
+      "sha256": "ace85d9bda95d12736435e404f0a90a205d55344d5d2bb46b0cc98a909ab5b62",
+      "normalizedSha256": "ace85d9bda95d12736435e404f0a90a205d55344d5d2bb46b0cc98a909ab5b62",
+      "descriptionChars": 352,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "call-prep",
+        "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+        "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+        "installedPath": "call-prep",
+        "sourceSubdir": "sales/skills/call-prep",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+        },
+        "exclude": [],
+        "patches": [
+          "builtin-skill-patches/call-prep-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "interview-prep",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\interview-prep\\SKILL.md",
+      "lines": 45,
+      "bytes": 2661,
+      "sha256": "dc69487a5d7e856d33e5b75238650ad6b77e30ab1d31637b4e144342e50b6d92",
+      "normalizedSha256": "dc69487a5d7e856d33e5b75238650ad6b77e30ab1d31637b4e144342e50b6d92",
+      "descriptionChars": 242,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "interview-prep",
+        "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+        "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+        "installedPath": "interview-prep",
+        "sourceSubdir": "human-resources/skills/interview-prep",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+        },
+        "exclude": [],
+        "patches": [
+          "builtin-skill-patches/interview-prep-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "onboarding",
+      "group": "space",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\resources\\builtin-skills\\onboarding\\SKILL.md",
+      "lines": 110,
+      "bytes": 4226,
+      "sha256": "0c8cae86b66b0ef1dc784731f8ffafa09c406d02a49f178e84d86bbbd0227539",
+      "normalizedSha256": "0c8cae86b66b0ef1dc784731f8ffafa09c406d02a49f178e84d86bbbd0227539",
+      "descriptionChars": 258,
+      "disableModelInvocation": false,
+      "provenance": {
+        "name": "onboarding",
+        "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
+        "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+        "installedPath": "onboarding",
+        "sourceSubdir": "human-resources/skills/onboarding",
+        "license": {
+          "sourcePath": "LICENSE",
+          "destinationPath": "LICENSE",
+          "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26"
+        },
+        "exclude": [],
+        "patches": [
+          "builtin-skill-patches/onboarding-space-adaptation.patch"
+        ]
+      }
+    },
+    {
+      "name": "code-review",
+      "group": "sdk-core",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\code-review\\SKILL.md",
+      "lines": 82,
+      "bytes": 3741,
+      "sha256": "f0b6931557a30512154b3d9236d0a10ea56c561250176ea1d3d1c3f013524db0",
+      "normalizedSha256": "f0b6931557a30512154b3d9236d0a10ea56c561250176ea1d3d1c3f013524db0",
+      "descriptionChars": 131,
+      "disableModelInvocation": false,
+      "provenance": {
+        "source": "C:\\Works\\GitProj\\KodaX-AI\\KodaX\\packages\\agent\\src\\capabilities\\skills\\builtin\\code-review\\SKILL.md"
+      }
+    },
+    {
+      "name": "git-workflow",
+      "group": "sdk-core",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\git-workflow\\SKILL.md",
+      "lines": 84,
+      "bytes": 3890,
+      "sha256": "80cb6d6f556d03c3b4c7277b5a1c2bee1bb412623d93c69708a71f85eb668009",
+      "normalizedSha256": "80cb6d6f556d03c3b4c7277b5a1c2bee1bb412623d93c69708a71f85eb668009",
+      "descriptionChars": 93,
+      "disableModelInvocation": true,
+      "provenance": {
+        "source": "C:\\Works\\GitProj\\KodaX-AI\\KodaX\\packages\\agent\\src\\capabilities\\skills\\builtin\\git-workflow\\SKILL.md"
+      }
+    },
+    {
+      "name": "skill-creator",
+      "group": "sdk-core",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\skill-creator\\SKILL.md",
+      "lines": 127,
+      "bytes": 8656,
+      "sha256": "79de739feaf38500ed9122aa988c63a9f679154b8498a3b771aacfb47d89a859",
+      "normalizedSha256": "79de739feaf38500ed9122aa988c63a9f679154b8498a3b771aacfb47d89a859",
+      "descriptionChars": 213,
+      "disableModelInvocation": false,
+      "provenance": {
+        "source": "C:\\Works\\GitProj\\KodaX-AI\\KodaX\\packages\\agent\\src\\capabilities\\skills\\builtin\\skill-creator\\SKILL.md"
+      }
+    },
+    {
+      "name": "tdd",
+      "group": "sdk-core",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\tdd\\SKILL.md",
+      "lines": 56,
+      "bytes": 2531,
+      "sha256": "60f8a880c428271097fcdab17344449edb65043afa222e134dd831a533a2a2ae",
+      "normalizedSha256": "60f8a880c428271097fcdab17344449edb65043afa222e134dd831a533a2a2ae",
+      "descriptionChars": 109,
+      "disableModelInvocation": true,
+      "provenance": {
+        "source": "C:\\Works\\GitProj\\KodaX-AI\\KodaX\\packages\\agent\\src\\capabilities\\skills\\builtin\\tdd\\SKILL.md"
+      }
+    },
+    {
+      "name": "visual-review",
+      "group": "sdk-core",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\builtin\\visual-review\\SKILL.md",
+      "lines": 80,
+      "bytes": 5007,
+      "sha256": "a1b7456e615a16dd2a0c30eef07e3d6046f1a7783b6b18cc6dc2a51052577684",
+      "normalizedSha256": "a1b7456e615a16dd2a0c30eef07e3d6046f1a7783b6b18cc6dc2a51052577684",
+      "descriptionChars": 370,
+      "disableModelInvocation": false,
+      "provenance": {
+        "source": "C:\\Works\\GitProj\\KodaX-AI\\KodaX\\packages\\agent\\src\\capabilities\\skills\\builtin\\visual-review\\SKILL.md"
+      }
+    },
+    {
+      "name": "artifact-review",
+      "group": "sdk-artifact-optional",
+      "path": "C:\\Works\\GitProj\\KodaX-AI\\KodaX-Space\\node_modules\\@kodax-ai\\kodax\\dist\\artifacts\\skills\\artifact-review\\SKILL.md",
+      "lines": 16,
+      "bytes": 2742,
+      "sha256": "05876fa79b51dd77c26a6b4a5e3b545ae287e19746cdab33c14cc250cd5e7a85",
+      "normalizedSha256": "05876fa79b51dd77c26a6b4a5e3b545ae287e19746cdab33c14cc250cd5e7a85",
+      "descriptionChars": 131,
+      "disableModelInvocation": false,
+      "provenance": {
+        "source": "C:\\Works\\GitProj\\KodaX-AI\\KodaX\\packages\\artifacts\\skills\\artifact-review\\SKILL.md"
+      }
+    }
+  ]
+}

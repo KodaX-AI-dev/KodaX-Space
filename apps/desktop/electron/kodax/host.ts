@@ -316,7 +316,7 @@ class KodaXHost {
       reasoningMode: opts.reasoningMode ?? 'auto',
       // FEATURE_029: canonical 缺省 'accept-edits' — 与 sessionMetaSchema.default 同步
       permissionMode: opts.permissionMode ?? 'accept-edits',
-      agentMode: opts.agentMode ?? 'ama',
+      agentMode: 'ama',
       surface,
       partnerExpert: opts.partnerExpert,
       partnerConnectors: opts.partnerConnectors,
@@ -1073,15 +1073,14 @@ class KodaXHost {
   }
 
   /**
-   * 切 agent 形态 (AMA ↔ SA)。
+   * Space uses AMA; legacy SA requests converge on the supported mode.
    * 立即赋值到 session.agentMode，下条 prompt 走新形态 (real-session 闭包 live-read)。
    * 不重启 in-flight session — 当前 turn 仍以旧形态完成。幂等：相同值直接返回。
    */
-  setAgentMode(sessionId: string, agentMode: ManagedSession['agentMode']): boolean {
+  setAgentMode(sessionId: string, _agentMode: ManagedSession['agentMode']): boolean {
     const s = this.sessions.get(sessionId);
     if (!s) return false;
-    if (s.agentMode === agentMode) return true;
-    s.agentMode = agentMode;
+    s.agentMode = 'ama';
     return true;
   }
 

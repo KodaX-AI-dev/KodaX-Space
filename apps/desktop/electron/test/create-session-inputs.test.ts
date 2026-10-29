@@ -50,11 +50,11 @@ test('resolveSessionCreateInputs prefers configured pending provider over defaul
   assert.equal(out.model, 'pending-fast');
   assert.equal(out.reasoningMode, 'quick');
   assert.equal(out.permissionMode, 'accept-edits');
-  assert.equal(out.agentMode, 'sa');
+  assert.equal(out.agentMode, 'ama');
   assert.deepEqual(out.runtimeOverrides, {
     reasoningMode: 'quick',
     permissionMode: 'accept-edits',
-    agentMode: 'sa',
+    agentMode: 'ama',
   });
 });
 
@@ -115,7 +115,7 @@ test('resolveSessionCreateInputs does not turn hydrated Space defaults into expl
 
   assert.equal(out.reasoningMode, 'quick');
   assert.equal(out.permissionMode, 'auto');
-  assert.equal(out.agentMode, 'sa');
+  assert.equal(out.agentMode, 'ama');
   assert.deepEqual(out.runtimeOverrides, {});
 });
 

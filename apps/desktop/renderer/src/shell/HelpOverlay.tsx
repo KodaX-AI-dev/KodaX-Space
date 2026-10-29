@@ -35,7 +35,6 @@ const GROUPS: readonly ShortcutGroup[] = [
       { keys: ['Ctrl', 'M'], labelKey: 'help.openPermissionModePicker' },
       { keys: ['Ctrl', 'I'], labelKey: 'help.openModelPicker' },
       { keys: ['Ctrl', 'Shift', 'E'], labelKey: 'help.cycleReasoningDepth' },
-      { keys: ['Alt', 'M'], labelKey: 'help.toggleAgentMode' },
     ],
   },
   {

@@ -19,7 +19,7 @@ import { replaceFileIfUnchanged, writeNewFileExclusive } from './atomic-file.js'
 
 const MAX_RUNTIME_FILE_BYTES = 256 * 1024;
 const persistedAgentModeSchema = z.preprocess(
-  (value) => (value === 'amaw' || value === 'ama-workflow' ? 'ama' : value),
+  (value) => (value === 'sa' || value === 'amaw' || value === 'ama-workflow' ? 'ama' : value),
   z.enum(['ama', 'sa']),
 );
 
@@ -95,15 +95,15 @@ function settingsFromParsed(parsed: z.infer<typeof sessionRuntimeSchema>): Sessi
 function hasRetiredAgentMode(raw: unknown): boolean {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
   const agentMode = (raw as Record<string, unknown>).agentMode;
-  return agentMode === 'amaw' || agentMode === 'ama-workflow';
+  return agentMode === 'sa' || agentMode === 'amaw' || agentMode === 'ama-workflow';
 }
 
 function hasRetiredAutoModeSettings(raw: unknown): boolean {
   return Boolean(
     raw &&
-      typeof raw === 'object' &&
-      !Array.isArray(raw) &&
-      Object.prototype.hasOwnProperty.call(raw, 'autoModeEngine'),
+    typeof raw === 'object' &&
+    !Array.isArray(raw) &&
+    Object.prototype.hasOwnProperty.call(raw, 'autoModeEngine'),
   );
 }
 
@@ -249,10 +249,7 @@ export class SessionRuntimeStore {
     }
   }
 
-  private async migrateRetiredSettingsUnlocked(
-    sessionId: string,
-    filePath: string,
-  ): Promise<void> {
+  private async migrateRetiredSettingsUnlocked(sessionId: string, filePath: string): Promise<void> {
     const current = await this.inspect(sessionId, filePath);
     if (current.kind !== 'valid' || !current.needsSettingsMigration) return;
     const bytes = Buffer.from(

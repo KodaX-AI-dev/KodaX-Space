@@ -8,6 +8,34 @@ import { ActivitySpinner } from './ActivitySpinner.js';
 
 const TestI18nProvider = I18nProvider as ComponentType<PropsWithChildren>;
 
+test('events arriving before the Product view never supply a client token estimate', (t) => {
+  const initial = useAppStore.getInitialState();
+  const original = { ...initial };
+  t.after(() => Object.assign(initial, original));
+  Object.assign(initial, {
+    currentSessionId: 'before-product-view',
+    pendingSendBySession: {},
+    runtimeProfile: undefined,
+    liveProjectionBySession: {},
+    runtimeConnection: { state: 'disconnected', changedAt: 0, stale: true, capabilities: [] },
+    eventsBySession: {
+      'before-product-view': [
+        { kind: 'session_start', sessionId: 'before-product-view', provider: 'mock' },
+        {
+          kind: 'thinking_delta',
+          sessionId: 'before-product-view',
+          text: 'reasoning '.repeat(100),
+        },
+      ],
+    },
+  });
+  const html = renderToStaticMarkup(
+    createElement(TestI18nProvider, null, createElement(ActivitySpinner)),
+  );
+  assert.match(html, /activity-spinner-comet/);
+  assert.doesNotMatch(html, /~[\d.]+(?:k)? tokens/);
+});
+
 test('pending send elapsed time survives rerenders and resets for a retry', (t) => {
   const initial = useAppStore.getInitialState();
   const original = { ...initial };

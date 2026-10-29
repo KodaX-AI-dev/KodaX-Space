@@ -2,6 +2,31 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { projectProductConversation } from './productConversation.js';
 
+test('ordinary SDK information is neutral while failures and local workflow warnings keep their meaning', () => {
+  const { messages } = projectProductConversation(
+    [
+      { id: 'report', type: 'info', text: '<agent-completed>report</agent-completed>' },
+      { id: 'failure', type: 'error', text: 'Provider authentication failed.' },
+    ],
+    [],
+    [],
+    [],
+    { workflow: [{ id: 'paused', content: 'Workflow paused', sentAt: 1 }] },
+  );
+  assert.deepEqual(
+    messages.map((message) => [message.id, message.kind === 'system_notice' && message.variant]),
+    [
+      ['report', 'info'],
+      ['failure', 'error'],
+      ['paused', 'workflow'],
+    ],
+  );
+  assert.equal(
+    messages[0]?.kind === 'system_notice' && messages[0].text,
+    '<agent-completed>report</agent-completed>',
+  );
+});
+
 test('the accepted SDK input replaces its optimistic bubble despite different attachment text', () => {
   const projected = projectProductConversation(
     [

@@ -1,3 +1,4 @@
+import { ProductToolOriginal } from './ProductToolOriginal.js';
 // Bubble + ToolCallCard + SystemNotice 组件集合。
 // 单文件聚合：每个组件 < 80 行，共享 ConversationMessage 类型，拆分反而提高复杂度。
 
@@ -43,29 +44,6 @@ const NORMAL_HEAD_TAIL_LINES = 5;
 /** 超过此行数：极端守门 — 只显示头 5 行 + N 行折叠，不做对称的尾巴避免拉爆视窗。*/
 const EXTREME_LINE_THRESHOLD = 200;
 const EXTREME_HEAD_LINES = 5;
-
-/**
- * 粗略估算 token 数——renderer 拿不到真 tokenizer，给个跟人类直觉对得上的近似：
- *   - ASCII (英文 / 数字 / 标点)：每 4 chars ≈ 1 token（GPT/Claude BPE 经验值）
- *   - 其他 (中文/日文/韩文/emoji 等)：每字符 ≈ 1 token（CJK 字符通常单独成 token）
- * 误差通常在 ±20%，对 Thinking 段长度感知足够。
- */
-function approxTokens(text: string): number {
-  let ascii = 0;
-  let nonAscii = 0;
-  for (let i = 0; i < text.length; i++) {
-    if (text.charCodeAt(i) < 128) ascii++;
-    else nonAscii++;
-  }
-  return Math.max(1, Math.round(ascii / 4 + nonAscii));
-}
-
-function formatCompactCount(value: number): string {
-  if (!Number.isFinite(value)) return '0';
-  if (value < 1000) return String(value);
-  const precision = value < 10000 ? 1 : 0;
-  return `${(value / 1000).toFixed(precision).replace(/\.0$/, '')}k`;
-}
 
 function isDiffLike(text: string): boolean {
   // 启发式：unified diff 必含 "@@ " hunk 头，或 >40% 行以 +/- 起头（排除 ---/+++ 头部
@@ -615,13 +593,7 @@ export function AssistantBubble({
 }): JSX.Element {
   const { t } = useI18n();
   const [showThinking, setShowThinking] = useState(false);
-  const thinkingTokenLabel = useMemo(
-    () =>
-      thinking !== undefined
-        ? t('message.thinkingSummary', { tokens: formatCompactCount(approxTokens(thinking)) })
-        : null,
-    [thinking, t],
-  );
+  const thinkingTokenLabel = t('transcript.view.thinking');
   const turnActions =
     completed === true && turnIndex !== undefined
       ? {
@@ -631,7 +603,7 @@ export function AssistantBubble({
         }
       : undefined;
   // 「对话即文档」—— assistant 不包 bubble，直接 markdown 进入文档流。
-  // thinking 改成一行折叠摘要 (▸ Thinking (~N tokens))，跟外层 ToolCluster header 视觉一致。
+  // thinking 改成一行折叠摘要 (▸ Thinking)，跟外层 ToolCluster header 视觉一致。
   return (
     <div className="conversation-assistant group">
       {thinking !== undefined && (
@@ -709,6 +681,7 @@ const FILE_MUTATION_TOOLS_DEFAULT_EXPANDED: ReadonlySet<string> = new Set([
 ]);
 
 export function ToolCallCard({
+  productItem,
   toolName,
   attachments,
   input,
@@ -821,6 +794,7 @@ export function ToolCallCard({
               <div className="text-xs text-info">{progress}</div>
             </section>
           )}
+          {productItem && <ProductToolOriginal item={productItem} />}
           {result !== undefined && (
             <ToolResultView
               toolName={toolName}
@@ -995,7 +969,54 @@ function RuntimeFailureDetails(message: RuntimeFailureDetailsProps): JSX.Element
   );
 }
 
+function InformationNotice({
+  text,
+  sentAt,
+  taskResult,
+}: Pick<SystemNoticeMessage, 'text' | 'sentAt' | 'taskResult'>): JSX.Element {
+  const { t } = useI18n();
+  const report = taskResult !== undefined;
+  const collapsed = report || text.length > 1000 || text.split('\n').length > 8;
+  const body = text;
+  return (
+    <div
+      className="conversation-notice notice-in flex items-start gap-3 rounded-xl border border-border-default px-4 py-3 text-left text-fg-secondary"
+      data-testid="system-notice"
+      data-notice-variant="info"
+    >
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+      <div className="min-w-0 flex-1">
+        {collapsed ? (
+          <details>
+            <summary className="cursor-pointer">
+              {t(report ? 'message.taskReport' : 'message.information')}
+              {taskResult && (
+                <>
+                  {' '}
+                  · {t(`message.taskReport.${taskResult.status}`)}
+                  {taskResult.title ? ` · ${taskResult.title}` : ''}
+                </>
+              )}
+            </summary>
+            <div className="mt-3">
+              {report ? (
+                <Markdown content={body} />
+              ) : (
+                <div className="whitespace-pre-wrap break-words">{body}</div>
+              )}
+            </div>
+          </details>
+        ) : (
+          <div className="whitespace-pre-wrap break-words">{body}</div>
+        )}
+        <MessageFooter text={body} sentAt={sentAt} />
+      </div>
+    </div>
+  );
+}
+
 export function SystemNotice({
+  taskResult,
   variant,
   text,
   lineageKind,
@@ -1037,6 +1058,9 @@ export function SystemNotice({
           : variant === 'sidecar' && historical === true
             ? `${t('session.sidecarHistoricalLabel')}: ${text}`
             : text;
+
+  if (variant === 'info')
+    return <InformationNotice text={text} sentAt={sentAt} taskResult={taskResult} />;
 
   if (isWorkflow) {
     return (

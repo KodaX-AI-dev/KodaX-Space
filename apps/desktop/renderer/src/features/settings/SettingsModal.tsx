@@ -74,6 +74,7 @@ import { requestSpaceVersionRefresh } from '../../lib/versionEvents.js';
 import { SpaceExtensionsProvider } from '../extensions/SpaceExtensionsProvider.js';
 import { ExtensionSettingsPanel } from '../extensions/ExtensionSettingsPanel.js';
 import { AppearanceSettings } from './AppearanceSettings.js';
+import { UpdateSettings } from '../updater/UpdateSettings.js';
 
 export type SettingsTab =
   | 'providers'
@@ -530,6 +531,13 @@ function PreferencesPanel(): JSX.Element {
         <AppearanceSettings />
       </SettingsSection>
       <LanguageSection />
+      <SettingsSection
+        title={t('update.title')}
+        description={t('update.manualPolicy')}
+        icon={RefreshCw}
+      >
+        <UpdateSettings />
+      </SettingsSection>
       <TerminalShellSection />
       {window.kodaxSpace?.platform === 'win32' && <WindowCloseBehaviorSection />}
 

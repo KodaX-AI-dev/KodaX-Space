@@ -193,6 +193,54 @@ test('Runtime Run projection preserves credential-safe provider failure details'
   assert.equal(projected.action, 'check_network');
 });
 
+test('Runtime Run projection retains local Skill loading and policy failures', () => {
+  for (const [stage, providerErrorCode] of [
+    ['skill_load', 'skill_not_found'],
+    ['skill_load', 'skill_not_registered'],
+    ['skill_load', 'skill_registry_unavailable'],
+    ['skill_policy', 'skill_policy_restore_failed'],
+  ] as const) {
+    const detail = {
+      failureKind: 'local_execution' as const,
+      stage,
+      providerErrorCode,
+      skillName: 'draft-response',
+      safeMessage: 'Skill "draft-response" could not be prepared.',
+    };
+    const projected = projectRuntimeRun({ ...running, phase: 'failed', failureDetail: detail });
+    assert.deepEqual(projected.failureDetail, detail);
+    assert.equal(projected.terminalReason, detail.safeMessage);
+    assert.equal(projected.retriable, false);
+    assert.equal(projected.action, undefined);
+  }
+});
+
+test('recovering Run projection preserves capacity wait facts without exporting checkpoints', () => {
+  const projected = projectRuntimeRun({
+    ...running,
+    phase: 'recovering',
+    contextRecovery: {
+      waitingSince: '2026-10-28T00:00:00Z',
+      children: [
+        { waitingSince: '2026-10-28T00:00:00Z', requiredTokens: 150_000, availableTokens: 128_000 },
+      ],
+      checkpoint: {
+        version: 1,
+        sessionId: running.sessionId,
+        activeEntryId: null,
+        messagesDigest: 'b'.repeat(64),
+      },
+    },
+  });
+  assert.deepEqual(projected.contextRecovery, {
+    waitingSince: Date.parse('2026-10-28T00:00:00Z'),
+    requiredTokens: 150_000,
+    availableTokens: 128_000,
+  });
+  assert.equal(projected.phase, 'recovering');
+  assert.equal(projected.failureDetail, undefined);
+});
+
 test('Runtime Run projection omits malformed optional identifiers', () => {
   const warnings: unknown[][] = [];
   const originalWarn = console.warn;

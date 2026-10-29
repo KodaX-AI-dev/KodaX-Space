@@ -27,6 +27,8 @@ Generate a polished status report for leadership or stakeholders. Use the suppli
 
 ## Output
 
+按用户指定篇幅选择需要的栏目；短进展直接交付短进展，完整周报才展开下列模板。没有依据的指标、负责人、日期和红黄绿状态保留缺口。
+
 ```markdown
 ## Status Report: [Project/Team] — [Period]
 **Author:** [Name] | **Date:** [Date]

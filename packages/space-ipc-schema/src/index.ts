@@ -658,6 +658,8 @@ export {
 
 export {
   updaterCheckChannel,
+  updaterGetStateChannel,
+  updaterDownloadChannel,
   updaterInstallChannel,
   updaterStatusChannel,
   type UpdaterStateT,

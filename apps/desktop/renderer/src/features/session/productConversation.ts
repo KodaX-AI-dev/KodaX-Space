@@ -79,6 +79,7 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
       id: item.id,
       toolId: item.id,
       toolName: item.tool.name,
+      ...(item.tool.outputPath ? { productItem: item } : {}),
       ...(item.imageAttachments ? { attachments: item.imageAttachments } : {}),
       input: toolInput(item.tool.inputText),
       result:
@@ -96,8 +97,9 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
   return {
     kind: 'system_notice',
     id: item.id,
-    variant: item.type === 'error' ? 'error' : item.type === 'sidecar' ? 'sidecar' : 'workflow',
+    variant: item.type === 'error' ? 'error' : item.type === 'sidecar' ? 'sidecar' : 'info',
     text: item.text,
+    taskResult: item.taskResult,
     sentAt: item.timestamp,
     ...(item.type === 'error' ? { runtimeRunId: item.sourceRunId } : {}),
   };

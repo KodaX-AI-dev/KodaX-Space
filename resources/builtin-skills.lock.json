@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "sourcesSha256": "b286135f1126b97b516067b116947318caa254f4434ec2e7810681df6af29008",
+  "sourcesSha256": "542230f0b17817ad8160ff1f4db1e6d7a0088b4711d15a7ccf82655ab3726cc9",
   "skills": [
     {
       "name": "feishu-office-suite",
       "sourcePath": "first-party-skills/feishu-office-suite",
-      "revision": "first-party:cbcd8adfd3444903b2c348e0cb63c01e56b28da4ae16d10810fd3eb48e99ad88",
+      "revision": "first-party:c0843f76af07af7289ae8a8690d4bc9f4dcf61b0c251048fb26c8657d1b0c6cc",
       "patches": [],
       "files": [
         {
           "path": "SKILL.md",
-          "bytes": 3576,
-          "sha256": "11170c9b63fd81b565d7cabf51bf5785ccd3ae23e86c74a75a416d55abccc469"
+          "bytes": 3823,
+          "sha256": "1622b3574305eafeb7447c5228a336771ee4f11630afb15e05db31a9273dc516"
         }
       ]
     },
@@ -19,7 +19,12 @@
       "name": "frontend-slides",
       "repository": "https://github.com/zarazhangrui/frontend-slides.git",
       "revision": "9906a34d640d2111f724544cbc50f7f130569ae1",
-      "patches": [],
+      "patches": [
+        {
+          "path": "builtin-skill-patches/frontend-slides-space-adaptation.patch",
+          "sha256": "cfecb74ada260be15ed459f87b4f6e6bcd95f5c9556b60a2ef61b75b09108c1e"
+        }
+      ],
       "files": [
         {
           "path": "animation-patterns.md",
@@ -408,8 +413,8 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 28187,
-          "sha256": "832994fe1dfcce2aa7ceca9a1b7b708eca94becef242713999855f4e946cf4d5"
+          "bytes": 3686,
+          "sha256": "0b0af9284ca7bd25f056d0a08ca8f31ffe041164c6c00a1ba3ba07d3a6ffe0d4"
         },
         {
           "path": "STYLE_PRESETS.md",
@@ -426,26 +431,18 @@
     {
       "name": "huashu-design",
       "repository": "https://github.com/alchaincyf/huashu-design.git",
-      "revision": "c9b06710b057a45fe6165e52aa8690f55182ea13",
+      "revision": "4fc7bfdbd5ec3fa2d43ce7a6433de60976a5e4b1",
       "patches": [
         {
-          "path": "builtin-skill-patches/huashu-design-no-watermark.patch",
-          "sha256": "f26b61da6de43a8a461275e2156fc3d23391268152d58fca829a46aab8f1d257"
-        },
-        {
-          "path": "builtin-skill-patches/huashu-design-builtin-portability.patch",
-          "sha256": "a57cf73c168965b4c80777295b3f4217319476ebec8511ff1d4d389a4953fcee"
-        },
-        {
-          "path": "builtin-skill-patches/huashu-design-remove-promotional-signatures.patch",
-          "sha256": "e06b08a869d230801172c9777fc938bf2f09ebb328c79a20ebd671e4bc43691f"
+          "path": "builtin-skill-patches/huashu-design-space-adaptation.patch",
+          "sha256": "234c8b65162731df8555698f1118f1d45625eb611a151185ec32a7b9f5f680ac"
         }
       ],
       "files": [
         {
           "path": ".env.example",
-          "bytes": 280,
-          "sha256": "5aee74d6cbd16f727e5fcd82927b8428c51474920a2d5aa16f3590dbabadea62"
+          "bytes": 463,
+          "sha256": "ee04a1e71a37d698b68cda506eba579c47d7559b345ae90a350e890130cfafb4"
         },
         {
           "path": "assets/android_frame.jsx",
@@ -496,6 +493,11 @@
           "path": "assets/browser_window.jsx",
           "bytes": 3975,
           "sha256": "59e412322a5ca34d68716978b4e1147efc95ba65f6fd4d4a99abcc96909f7d55"
+        },
+        {
+          "path": "assets/cursor.jsx",
+          "bytes": 14408,
+          "sha256": "6321767cf44d7b95aeb2eeef756fc45d44e53985dc060f8e1c8805bb5f8e45a4"
         },
         {
           "path": "assets/deck_index.html",
@@ -968,6 +970,871 @@
           "sha256": "5f877b12ca5fb876a92f8b44f1f7968de4366dd30c88479e7bf3f361dd2df455"
         },
         {
+          "path": "assets/style-specimens/app/01-hardware-panel.html",
+          "bytes": 7283,
+          "sha256": "d5e4e7d6dcf9363131f4792a7bdccf582b0b29953f20d9c27c63cea60dd15e9e"
+        },
+        {
+          "path": "assets/style-specimens/app/01-hardware-panel.jpg",
+          "bytes": 75421,
+          "sha256": "17baae2788df3f48a7aceb65a9e1e929932a51f1154da6b9546343825453a6e9"
+        },
+        {
+          "path": "assets/style-specimens/app/02-liquid-glass.html",
+          "bytes": 6962,
+          "sha256": "9e0af28bb1d37de3a7067f9b03c2fc32fe2eaf0106775f3a74e9c8b61b574a86"
+        },
+        {
+          "path": "assets/style-specimens/app/02-liquid-glass.jpg",
+          "bytes": 90008,
+          "sha256": "1052b50f7ad652bd2d671b117da359543b3ae87f7aae64c554288838b327d1d6"
+        },
+        {
+          "path": "assets/style-specimens/app/03-playful-3d.html",
+          "bytes": 5753,
+          "sha256": "a84cca82724b5bd75a7d3e75329285214bcf452b1cc3fdb4832d7c51b4651065"
+        },
+        {
+          "path": "assets/style-specimens/app/03-playful-3d.jpg",
+          "bytes": 94978,
+          "sha256": "bd79f2fa5b86b9a5aff59060043f33c2950267038d4be0ca617f5ec826fedf8c"
+        },
+        {
+          "path": "assets/style-specimens/app/04-friendly-fintech.html",
+          "bytes": 6381,
+          "sha256": "b5248496d8256f9b928127e47ee97d0e5d94b7c74708e6b8b1c5462167376eee"
+        },
+        {
+          "path": "assets/style-specimens/app/04-friendly-fintech.jpg",
+          "bytes": 93529,
+          "sha256": "1de1ee8a5d485c338a6d5ef96a4bd16e2ec4a527db6e4dac639db0759c4c0414"
+        },
+        {
+          "path": "assets/style-specimens/app/05-pro-camera.html",
+          "bytes": 7254,
+          "sha256": "3bd9e62b49fa54ce4ff9529612637c9d1858663fdac6e980fededa449f77b12f"
+        },
+        {
+          "path": "assets/style-specimens/app/05-pro-camera.jpg",
+          "bytes": 76334,
+          "sha256": "f3edb0ff5d65e920b14475096ff4d7feae2dbe02c174ef2f0166c6cb152ecd82"
+        },
+        {
+          "path": "assets/style-specimens/app/06-topo-outdoor.html",
+          "bytes": 9151,
+          "sha256": "0baceb953f5bcaf279a55e7104142089eabec72af00be63de9907643ff512595"
+        },
+        {
+          "path": "assets/style-specimens/app/06-topo-outdoor.jpg",
+          "bytes": 92581,
+          "sha256": "daab07d59c5d5c9708ff6fb335caeb1376df960ccb466f44b2aa07742f73286c"
+        },
+        {
+          "path": "assets/style-specimens/app/07-feed-waterfall.html",
+          "bytes": 7716,
+          "sha256": "c65f0a8fa9296b3845d0d6269bdcd8272af55a9e308e9f24c847a7df51514f2c"
+        },
+        {
+          "path": "assets/style-specimens/app/07-feed-waterfall.jpg",
+          "bytes": 83495,
+          "sha256": "01995163559aaa994bbd3389f8b4d994c51c2159e2bd9312c6d1160983589a9a"
+        },
+        {
+          "path": "assets/style-specimens/app/08-command-palette.html",
+          "bytes": 6505,
+          "sha256": "d4b1e0c12b3cd2c99c04c71f9eb439e8a0e28e626c338ad35169bd1ebcb4f120"
+        },
+        {
+          "path": "assets/style-specimens/app/08-command-palette.jpg",
+          "bytes": 56758,
+          "sha256": "94dfaa2adb3f182a0bf8f6a8e1999e635a7a65ba68632b0c239b79bdbf9a4d80"
+        },
+        {
+          "path": "assets/style-specimens/app/09-health-color-code.html",
+          "bytes": 7485,
+          "sha256": "6856f15940eb62559034d2bf455e21205c811dc1cf93aa903c49abe9d3797fe0"
+        },
+        {
+          "path": "assets/style-specimens/app/09-health-color-code.jpg",
+          "bytes": 75935,
+          "sha256": "6e39a9b9a9474261ce32d8abc908480246dcb6ddd379d11fa45983bc8d7c5b25"
+        },
+        {
+          "path": "assets/style-specimens/app/10-native-polish.html",
+          "bytes": 6513,
+          "sha256": "37ab518616a0286ca72900d617978d0a5ab44f7cb41b1ac8af4db8fa2bb555be"
+        },
+        {
+          "path": "assets/style-specimens/app/10-native-polish.jpg",
+          "bytes": 76319,
+          "sha256": "738a4783963c2f684df4247fb01475704edfdae3e2ad6c16fd55241268bb3fc4"
+        },
+        {
+          "path": "assets/style-specimens/app/11-gentle-encouraging.html",
+          "bytes": 6438,
+          "sha256": "4ea3caa190edd364af6b76161354777981511a39c6c9d4ee325c0c6ef7c9c84e"
+        },
+        {
+          "path": "assets/style-specimens/app/11-gentle-encouraging.jpg",
+          "bytes": 81985,
+          "sha256": "03f37da5e77b8086f5c8cb0daf9ebda8750c33a6a61987fe2dc8ae8ae5df04d1"
+        },
+        {
+          "path": "assets/style-specimens/app/12-editorial-reader.html",
+          "bytes": 6078,
+          "sha256": "3feb16f7afb1763bdb0a7af7e0ddb9cad62d4380b1512093511298324f97e718"
+        },
+        {
+          "path": "assets/style-specimens/app/12-editorial-reader.jpg",
+          "bytes": 116882,
+          "sha256": "e6368309e162ef14a8a111f56eb82fba47d332ac19deda2407af9f000f0d752a"
+        },
+        {
+          "path": "assets/style-specimens/east/01-lu-jingren-bookcraft.html",
+          "bytes": 4128,
+          "sha256": "88b5a1c89af9d789112212da0f2c1f232d4d408a023f87b56028eb8014d2e59d"
+        },
+        {
+          "path": "assets/style-specimens/east/01-lu-jingren-bookcraft.jpg",
+          "bytes": 70152,
+          "sha256": "a18a4224002862a1052ef5c97bbcb04768cc4ee7276b8af94b924a1e20030851"
+        },
+        {
+          "path": "assets/style-specimens/east/02-song-block-print.html",
+          "bytes": 4835,
+          "sha256": "e68fac02350c6ddc913f0ecec20737b4421c72165809e75f5fb51572bde7e408"
+        },
+        {
+          "path": "assets/style-specimens/east/02-song-block-print.jpg",
+          "bytes": 149839,
+          "sha256": "ae3d457ad80fb11217daf2800f27cee6018cb5bebba49ff06ae3dc993e3ba295"
+        },
+        {
+          "path": "assets/style-specimens/east/03-republic-book-jacket.html",
+          "bytes": 4717,
+          "sha256": "f16a55e5766604f29de568b25d2a90319d03ec2aaa78641b4c75b31f6591c6cf"
+        },
+        {
+          "path": "assets/style-specimens/east/03-republic-book-jacket.jpg",
+          "bytes": 59094,
+          "sha256": "180e9beddd9104ef52ff613aa9357d3638fb2ee633b01d6ef00c0cb704fcd9ea"
+        },
+        {
+          "path": "assets/style-specimens/east/04-shanghai-deco-calendar.html",
+          "bytes": 5104,
+          "sha256": "34745cfa8a07298375ba7cbdb5882a7b72d400974d395b1dab43e8d59639e8cf"
+        },
+        {
+          "path": "assets/style-specimens/east/04-shanghai-deco-calendar.jpg",
+          "bytes": 78134,
+          "sha256": "cff470c256366f06e56a20872ce1d0036d5216df5b7f4ce6323c95a653b8e79e"
+        },
+        {
+          "path": "assets/style-specimens/east/05-hanzi-experimental-poster.html",
+          "bytes": 5087,
+          "sha256": "7022996f64ff7a1f56754b599d43ebc3d55708baab18028d08f770aee8d2c3f5"
+        },
+        {
+          "path": "assets/style-specimens/east/05-hanzi-experimental-poster.jpg",
+          "bytes": 55436,
+          "sha256": "93401c18c734872d702d8c70ec2ed053b6be67a7e73e09e501e6a098abe57795"
+        },
+        {
+          "path": "assets/style-specimens/east/06-hk-street-signs.html",
+          "bytes": 4496,
+          "sha256": "e6c3c5f54c5164485cb5363c78474974fd3f07eecdcc8a987aa2c1e1cfc27079"
+        },
+        {
+          "path": "assets/style-specimens/east/06-hk-street-signs.jpg",
+          "bytes": 118281,
+          "sha256": "a24288318c1d1065b0dd631b72197724bdc53e21f64920cf6b72cabc00e33c00"
+        },
+        {
+          "path": "assets/style-specimens/east/07-traditional-colors-solar-terms.html",
+          "bytes": 6097,
+          "sha256": "ea7951d9e6b978ff49220046df8601aa72c5fe9c6a31688bd2f5f8aa790a7217"
+        },
+        {
+          "path": "assets/style-specimens/east/07-traditional-colors-solar-terms.jpg",
+          "bytes": 81663,
+          "sha256": "e6f8e1753e9a3071b2dced70e7f2981cc0459b1698d5aba82c685297a0d1e514"
+        },
+        {
+          "path": "assets/style-specimens/east/08-sugiura-info-mandala.html",
+          "bytes": 28521,
+          "sha256": "700d7770b16cb425721676d10f88945ff675ef9fe8a779f0da65ec1602807370"
+        },
+        {
+          "path": "assets/style-specimens/east/08-sugiura-info-mandala.jpg",
+          "bytes": 130342,
+          "sha256": "ba5054c1e6c7b8adc438d2d03198d112e827fc10b3a75feef8771f927e38b27d"
+        },
+        {
+          "path": "assets/style-specimens/east/09-tanaka-geometric-poster.html",
+          "bytes": 3179,
+          "sha256": "b738974d0826eddbdbd5f46c92528cd1816476e2a28d55320f9b4a968bac0e3f"
+        },
+        {
+          "path": "assets/style-specimens/east/09-tanaka-geometric-poster.jpg",
+          "bytes": 54851,
+          "sha256": "47266f3a69e54d4e4683c2367ba4e44fa7509ed7d9126e0d99495cab0c3a1b8d"
+        },
+        {
+          "path": "assets/style-specimens/east/10-hattori-playful-offset.html",
+          "bytes": 2990,
+          "sha256": "17b02b67a43c6d15a795857f7c473b4f5700f4e825e253def716935804bda48a"
+        },
+        {
+          "path": "assets/style-specimens/east/10-hattori-playful-offset.jpg",
+          "bytes": 91746,
+          "sha256": "d046c05e1ab331fe54a6d633904a6cf5327eeadfa949895da91481bfecb2af2c"
+        },
+        {
+          "path": "assets/style-specimens/east/11-sato-minimal-symbol.html",
+          "bytes": 2827,
+          "sha256": "10896e14e1fe1290446a93bb38f69f926babf81e4375842ee5c6313032e8e258"
+        },
+        {
+          "path": "assets/style-specimens/east/11-sato-minimal-symbol.jpg",
+          "bytes": 46514,
+          "sha256": "c2cd9dcc545c3c89d4124a37b4403f54a24205f778820ec2f2d5253dacd17e81"
+        },
+        {
+          "path": "assets/style-specimens/east/12-japan-magazine-dense.html",
+          "bytes": 14513,
+          "sha256": "65643f8d9cfec47ab6301105a2c53dc39a847241a7017beef2bdce2b8a20a159"
+        },
+        {
+          "path": "assets/style-specimens/east/12-japan-magazine-dense.jpg",
+          "bytes": 125558,
+          "sha256": "27c3002c9f4b9cc551cc6a59920a5512e5a1e44a1df077ed4d4f7cf13202d02b"
+        },
+        {
+          "path": "assets/style-specimens/info/01-personal-annual-report.html",
+          "bytes": 9510,
+          "sha256": "cc2e35e924d1a93f7a2bc59ef2235bacf2a8189a9bae2666d6e35ff32039909d"
+        },
+        {
+          "path": "assets/style-specimens/info/01-personal-annual-report.jpg",
+          "bytes": 124360,
+          "sha256": "d0683fe42d498828e178cd59cf2f84f1cf541f7c58df8783bb576f44b6634e03"
+        },
+        {
+          "path": "assets/style-specimens/info/02-explanation-graphics.html",
+          "bytes": 5055,
+          "sha256": "81c91e42ea6cf9401c1490a2f2ea0dfdc74b12626df88a748fc34adf57dec420"
+        },
+        {
+          "path": "assets/style-specimens/info/02-explanation-graphics.jpg",
+          "bytes": 112423,
+          "sha256": "cea60ba8740409b39b1ff891e15c8396e1a727aba333cb99d89841bcface0ae4"
+        },
+        {
+          "path": "assets/style-specimens/info/03-cross-section-epic.html",
+          "bytes": 7255,
+          "sha256": "2d55c50e7f31607d260769439d221d698c6e6039dc8200e2576a454f34422611"
+        },
+        {
+          "path": "assets/style-specimens/info/03-cross-section-epic.jpg",
+          "bytes": 153950,
+          "sha256": "dd12e567da01086b96f9aceff66a48d6cf7d1854562cc0c5222f49ea1d872111"
+        },
+        {
+          "path": "assets/style-specimens/info/04-magazine-pop-data.html",
+          "bytes": 3682,
+          "sha256": "b460783b39e0625881b6a7c050ee044f71f46de1cde34db6a390eda0dac141b3"
+        },
+        {
+          "path": "assets/style-specimens/info/04-magazine-pop-data.jpg",
+          "bytes": 86801,
+          "sha256": "71fd894c2342c2e31073612d37114d9b0a552579f0ed5944a1efcba299a41e18"
+        },
+        {
+          "path": "assets/style-specimens/info/05-isotype.html",
+          "bytes": 4001,
+          "sha256": "fc8f3f52b9100f73013f78fe84e05064a37bcaad3f10deaf6b86e1915d969301"
+        },
+        {
+          "path": "assets/style-specimens/info/05-isotype.jpg",
+          "bytes": 123494,
+          "sha256": "7afe3cba97941bbd7904a0c8f00ed557188bb085344af21d218439d7563fac74"
+        },
+        {
+          "path": "assets/style-specimens/info/06-data-humanism.html",
+          "bytes": 6064,
+          "sha256": "482fe2a2c3556803974840181908624d608c2ed93943b8d7289322e2ad880864"
+        },
+        {
+          "path": "assets/style-specimens/info/06-data-humanism.jpg",
+          "bytes": 87739,
+          "sha256": "d3867b5667bc18b4506425b00778f4864e76918496faaba4b107ac20e1201d5c"
+        },
+        {
+          "path": "assets/style-specimens/info/07-scrollytelling.html",
+          "bytes": 5031,
+          "sha256": "f78938a03ef01b196164a9305e7e840fc6f7d1d5ec83036825c5695c7c98fba9"
+        },
+        {
+          "path": "assets/style-specimens/info/07-scrollytelling.jpg",
+          "bytes": 71448,
+          "sha256": "41abff0a3eb941b7e865c58eeb33940f96ff5886f163cc5dd4214257fde8f5f6"
+        },
+        {
+          "path": "assets/style-specimens/info/08-cartographic-lead.html",
+          "bytes": 4747,
+          "sha256": "d68e13f51a35ea273c9cc359b063375d55f3e5cb848b681f29a9394b7029b3b2"
+        },
+        {
+          "path": "assets/style-specimens/info/08-cartographic-lead.jpg",
+          "bytes": 85839,
+          "sha256": "4c73b0ab08b40387539bf092369ec9236ba009fc5ec19f6084b26f89a172bb4e"
+        },
+        {
+          "path": "assets/style-specimens/info/09-newsroom-chart.html",
+          "bytes": 5185,
+          "sha256": "89ffd58e6a8e1a4f3d0d869e9846c5087367b5812b6f37efdb3bd51c26126d45"
+        },
+        {
+          "path": "assets/style-specimens/info/09-newsroom-chart.jpg",
+          "bytes": 65398,
+          "sha256": "483d39f9628df5a059646f930210c4a5e472a38c3312a06e30a852f594ed2c60"
+        },
+        {
+          "path": "assets/style-specimens/info/10-computational-portrait.html",
+          "bytes": 4471,
+          "sha256": "a86d723d0b1a1c8ff6ace7f77225cfbd45c90ac55307343eb1250d7d3d5949b2"
+        },
+        {
+          "path": "assets/style-specimens/info/10-computational-portrait.jpg",
+          "bytes": 150930,
+          "sha256": "9872cdc6ef5c3be1f140c4546b000706f6dd1e1c70a10f7d8613b9297197870f"
+        },
+        {
+          "path": "assets/style-specimens/info/11-beautiful-information.html",
+          "bytes": 4309,
+          "sha256": "127068a30a630025a544d175149ceebe14fc578bba03980c4368d57c16fcd8c4"
+        },
+        {
+          "path": "assets/style-specimens/info/11-beautiful-information.jpg",
+          "bytes": 94419,
+          "sha256": "f3980defee4b1bb3085eab17d132d1077526379e5a1622bc0368d39e0f3536e9"
+        },
+        {
+          "path": "assets/style-specimens/info/12-open-research-data.html",
+          "bytes": 3497,
+          "sha256": "3e7e3337fe6858334dffd7327916e9bcd65cc9e646889c33278fd6eb497df53c"
+        },
+        {
+          "path": "assets/style-specimens/info/12-open-research-data.jpg",
+          "bytes": 86806,
+          "sha256": "dccb6ddf86aef0805e6a0bb2704051a247ab57185184ae13976ac3c88bfe5c99"
+        },
+        {
+          "path": "assets/style-specimens/info/13-speculative-tech-diagram.html",
+          "bytes": 4103,
+          "sha256": "12e5204aab8b2e99acc7961523ec5306755c504d2f0ceaa2a5bb889f25ccaae9"
+        },
+        {
+          "path": "assets/style-specimens/info/13-speculative-tech-diagram.jpg",
+          "bytes": 50160,
+          "sha256": "c29e907095988a0750cebea76613ab651fb4211bd56ec6a2eb534557743f5911"
+        },
+        {
+          "path": "assets/style-specimens/info/14-pictogram-system.html",
+          "bytes": 4402,
+          "sha256": "40d611d0a4ecf35b3dafc12819164bf3a08f64e8f1cfa9f1cb2bc38871f0fc8b"
+        },
+        {
+          "path": "assets/style-specimens/info/14-pictogram-system.jpg",
+          "bytes": 81737,
+          "sha256": "22cd68b1c0a080cbddbe2a29db845a0d6e21732be5e006de3c0ba86a89b9b59b"
+        },
+        {
+          "path": "assets/style-specimens/info/15-small-multiples.html",
+          "bytes": 3028,
+          "sha256": "d833bc247900a2458348af449bb40480a8a60e04db305bf896112ae93db0338c"
+        },
+        {
+          "path": "assets/style-specimens/info/15-small-multiples.jpg",
+          "bytes": 70229,
+          "sha256": "9bc2e0e57d6d832c480b23634ea0907c5d69cdeb525683afe36b334294548a3a"
+        },
+        {
+          "path": "assets/style-specimens/info/16-topological-transit-map.html",
+          "bytes": 3662,
+          "sha256": "ae3d5e5af17ddc6d37de07ff4e50c5b69d15ce5b97d047b7c7380352ed642f59"
+        },
+        {
+          "path": "assets/style-specimens/info/16-topological-transit-map.jpg",
+          "bytes": 64615,
+          "sha256": "7730317c9e42bf5c30022cff515ff19af81b863cab05d642ce6b1d6e077452af"
+        },
+        {
+          "path": "assets/style-specimens/info/17-ma-emptiness.html",
+          "bytes": 2035,
+          "sha256": "d66a9d1d8acfb94f50dc424c2a5cddf71a6b86c4fbb5063f2103d9f4cfafc120"
+        },
+        {
+          "path": "assets/style-specimens/info/17-ma-emptiness.jpg",
+          "bytes": 21024,
+          "sha256": "acc39ebfaed91a54ae1e15b441e432bf05fd434b607e0c6f2837dcc818d1e462"
+        },
+        {
+          "path": "assets/style-specimens/info/18-bookcraft-data.html",
+          "bytes": 3087,
+          "sha256": "fe67bc3766136121a0b3dbba0fb0d2aca0743cc2da4da54a6eecab667b87e9ab"
+        },
+        {
+          "path": "assets/style-specimens/info/18-bookcraft-data.jpg",
+          "bytes": 99155,
+          "sha256": "4820a9fb03a2057cf498dcf2e459e251a40c86b9f651ef267708b26603676f34"
+        },
+        {
+          "path": "assets/style-specimens/info/19-scientific-figure-plate.html",
+          "bytes": 5291,
+          "sha256": "c9211878ed04097cbe9c950d7022b5ff6ecddab22590af721c3f7ed1c4a58c23"
+        },
+        {
+          "path": "assets/style-specimens/info/19-scientific-figure-plate.jpg",
+          "bytes": 82562,
+          "sha256": "b4f143d737d3a837756ce9432c55b9dc86be1ba8b0499b04946a8a2f33966625"
+        },
+        {
+          "path": "assets/style-specimens/info/20-swiss-grid-report.html",
+          "bytes": 3271,
+          "sha256": "3c359424e539394a0e4d9cf4b66cd77945e7f8dd5c491490e10860f2127cea0e"
+        },
+        {
+          "path": "assets/style-specimens/info/20-swiss-grid-report.jpg",
+          "bytes": 70845,
+          "sha256": "1df972f662d7c4f2aff7bb2e5dd824f2a0a898dec5d0eda78ac36cb05bdefd01"
+        },
+        {
+          "path": "assets/style-specimens/ppt/01-neo-swiss-billboard.html",
+          "bytes": 2642,
+          "sha256": "49d739d24466d9e2bd4c89b1ca486c3cfe5bb06f5a6e606573df865196ddbe6f"
+        },
+        {
+          "path": "assets/style-specimens/ppt/01-neo-swiss-billboard.jpg",
+          "bytes": 69373,
+          "sha256": "3f8381294c83f814128740aa890c4a6d0098799ab66ab2570c42ad1822f79634"
+        },
+        {
+          "path": "assets/style-specimens/ppt/02-black-big-number-stage.html",
+          "bytes": 1297,
+          "sha256": "a0139a0822c08c806e46aaf78883b26c4205a7f4e6d797ecc022fef6757b1167"
+        },
+        {
+          "path": "assets/style-specimens/ppt/02-black-big-number-stage.jpg",
+          "bytes": 29916,
+          "sha256": "c0e23767d35937522f46fc4aa5d22f9459a4cd5b1bc466e0ad8685edb3ad67a7"
+        },
+        {
+          "path": "assets/style-specimens/ppt/03-mono-brand-type-hero.html",
+          "bytes": 1633,
+          "sha256": "2ecb0639539c3d8ba255ed5f29c36ae295a0be6c1ce3ac0622d3a02834cb5454"
+        },
+        {
+          "path": "assets/style-specimens/ppt/03-mono-brand-type-hero.jpg",
+          "bytes": 51475,
+          "sha256": "d826de5001a9630b5d5c6d457026dfecdb21197ae209a75497446b33bdac5f0b"
+        },
+        {
+          "path": "assets/style-specimens/ppt/04-full-bleed-gradient-manifesto.html",
+          "bytes": 1488,
+          "sha256": "f7f89a68831e71348309207a2f0e3e2a0ca6e98a4d076310251d3dcbd4ab535a"
+        },
+        {
+          "path": "assets/style-specimens/ppt/04-full-bleed-gradient-manifesto.jpg",
+          "bytes": 77190,
+          "sha256": "72dedc5717e4390dbea9335751d645bb90cab38b30a517c84288f1dc86528b5c"
+        },
+        {
+          "path": "assets/style-specimens/ppt/05-candy-lecture-stage.html",
+          "bytes": 1573,
+          "sha256": "00c86946634f5728251c4f9ad47de2e8ce46cac0b98b9bb6d3bcd6ff3a68dc48"
+        },
+        {
+          "path": "assets/style-specimens/ppt/05-candy-lecture-stage.jpg",
+          "bytes": 35181,
+          "sha256": "4502460b3363aa3259c72928a632ce3d5b81f0679a04d0fd41d7387b4b82af66"
+        },
+        {
+          "path": "assets/style-specimens/ppt/06-playful-collins-editorial.html",
+          "bytes": 2455,
+          "sha256": "e68f65cfcb13362c6f5af41017bc1f099cd7cb214e6fe82b9d04693ed6a1fcfd"
+        },
+        {
+          "path": "assets/style-specimens/ppt/06-playful-collins-editorial.jpg",
+          "bytes": 83057,
+          "sha256": "9b6b08760dabd3f6ec1f86a609ad7ef75ff238190a71f4677630eb903ab47e9d"
+        },
+        {
+          "path": "assets/style-specimens/ppt/07-irreverent-pop.html",
+          "bytes": 2877,
+          "sha256": "10c8d55a8f09b195330377d58b0549b75fdccbb4d643aa964c677e033f1aef4c"
+        },
+        {
+          "path": "assets/style-specimens/ppt/07-irreverent-pop.jpg",
+          "bytes": 87248,
+          "sha256": "d4043c3954b29882eef4e1533f17ecb2fbbd2bac1ada6242c9e12ac7352208e3"
+        },
+        {
+          "path": "assets/style-specimens/ppt/08-y2k-inflated-wrapped.html",
+          "bytes": 2434,
+          "sha256": "8ef6bd944fbd1f222ddfb1e7dfffdd1e0bda8ebe6390499584e7ae2c4e3a5580"
+        },
+        {
+          "path": "assets/style-specimens/ppt/08-y2k-inflated-wrapped.jpg",
+          "bytes": 76749,
+          "sha256": "48fb317f52eb73ad656f59db4c2ec989809e9a341ef8ee3c211724755e8e4df6"
+        },
+        {
+          "path": "assets/style-specimens/ppt/09-bento-grid.html",
+          "bytes": 4237,
+          "sha256": "405d02432275be8b64eba1770bf17297f61910d1af0a7bdff7a80c7a3924f25d"
+        },
+        {
+          "path": "assets/style-specimens/ppt/09-bento-grid.jpg",
+          "bytes": 69785,
+          "sha256": "90d78334ae11ff9b22b0ea06be121a5833ac6826638857d4983313db76e3eb75"
+        },
+        {
+          "path": "assets/style-specimens/ppt/10-dark-hairline-terminal.html",
+          "bytes": 2790,
+          "sha256": "d730a3a8ba6645d2e6a3ae0c062cc8e741600256994a0fb3c5e494119ec298a0"
+        },
+        {
+          "path": "assets/style-specimens/ppt/10-dark-hairline-terminal.jpg",
+          "bytes": 56116,
+          "sha256": "1f03761282e9d64528e7685dc62a52591cf23fdac63cb146a7fb1d793849cd94"
+        },
+        {
+          "path": "assets/style-specimens/ppt/11-two-font-consulting.html",
+          "bytes": 3821,
+          "sha256": "c7ab93e9666f0e6a1d426c574fd102566ac0bf1c4fb9823a131e370bd63d8e09"
+        },
+        {
+          "path": "assets/style-specimens/ppt/11-two-font-consulting.jpg",
+          "bytes": 94912,
+          "sha256": "acc405fa6573376009ccf50d8345f1d5a270b87ab75ca97b293f3909f6a1af23"
+        },
+        {
+          "path": "assets/style-specimens/ppt/12-diagram-isotype.html",
+          "bytes": 5300,
+          "sha256": "9a47fef22c1d21cca139e115a7f39fa00e3919f2128f23ba4cdfed5a5498de4b"
+        },
+        {
+          "path": "assets/style-specimens/ppt/12-diagram-isotype.jpg",
+          "bytes": 96851,
+          "sha256": "ef1493cfc4901b80d63a31f9c7cff6f1580a58e8aa8f66fefc8914d0ff87dcc5"
+        },
+        {
+          "path": "assets/style-specimens/ppt/13-diagrammatic-minimalism.html",
+          "bytes": 3054,
+          "sha256": "b92e7681c6fe9d27ee4546956f4e0d8cead7258e4e83c2565216a6802d220df0"
+        },
+        {
+          "path": "assets/style-specimens/ppt/13-diagrammatic-minimalism.jpg",
+          "bytes": 77262,
+          "sha256": "9f4c83788bd492adecbd52a1fe4140512366d14d7e66860d0d04d170bcd082bb"
+        },
+        {
+          "path": "assets/style-specimens/ppt/14-narrative-sparkline.html",
+          "bytes": 3755,
+          "sha256": "45b047d5258367c4406ed2b955cd74bad23a7601c8ba8175c139418c866d2079"
+        },
+        {
+          "path": "assets/style-specimens/ppt/14-narrative-sparkline.jpg",
+          "bytes": 67301,
+          "sha256": "f6ff43699ed0efb8eed96470b37de886f7190138b217ec7b6dd8d679384b6b3d"
+        },
+        {
+          "path": "assets/style-specimens/ppt/15-assertion-evidence.html",
+          "bytes": 3295,
+          "sha256": "9ffc87de6a4664860963516aca4d9d6bdfd06bbff2e2a7007fb35294286ae349"
+        },
+        {
+          "path": "assets/style-specimens/ppt/15-assertion-evidence.jpg",
+          "bytes": 61037,
+          "sha256": "7f2dcc5b38338bb796af00c4f454a81e8817bea92582fc68b6deab190fc0e40b"
+        },
+        {
+          "path": "assets/style-specimens/ppt/16-institutional-swiss.html",
+          "bytes": 2651,
+          "sha256": "9cb0fe718d1c5f12e77158055e7bc255d176c57dbe1d00e2937e9334f1891170"
+        },
+        {
+          "path": "assets/style-specimens/ppt/16-institutional-swiss.jpg",
+          "bytes": 76585,
+          "sha256": "6b873145d2e56d111c3c0dd6e74ef77dab4ed5bbcc38df0eb15f29c55227be2a"
+        },
+        {
+          "path": "assets/style-specimens/ppt/17-editorial-longform.html",
+          "bytes": 3985,
+          "sha256": "d419e5701e6b009cb0a7553f5fd482bc7c9a9d08f3b1e71730cb110291722faa"
+        },
+        {
+          "path": "assets/style-specimens/ppt/17-editorial-longform.jpg",
+          "bytes": 107466,
+          "sha256": "b1f4906eb0272b2d1ecdf3765ab8e201da4bc793377b20c8ce467277e1501012"
+        },
+        {
+          "path": "assets/style-specimens/ppt/18-humanist-rounded-cards.html",
+          "bytes": 4190,
+          "sha256": "f2276487b8200ba34025610258d38e43f21e8272af53b4415adde3354468b98d"
+        },
+        {
+          "path": "assets/style-specimens/ppt/18-humanist-rounded-cards.jpg",
+          "bytes": 84719,
+          "sha256": "2fb1ec3b71316923b27eab8cbab0ee57c7ff3cb71f57da46c9ca06fa376beb6a"
+        },
+        {
+          "path": "assets/style-specimens/ppt/19-dense-research-report.html",
+          "bytes": 5263,
+          "sha256": "417b352d07f8ceb28552d74f259439261a00ed9a26d65fba809ed9aed2c8a1e6"
+        },
+        {
+          "path": "assets/style-specimens/ppt/19-dense-research-report.jpg",
+          "bytes": 94418,
+          "sha256": "ffea87ec45533c704fcedfb6c3648f774210f85c55f754d400bccf9a4d4bd614"
+        },
+        {
+          "path": "assets/style-specimens/ppt/20-all-text-manifesto.html",
+          "bytes": 1612,
+          "sha256": "64eff20afc3a4e297ea15dce0e0cba56c385ca91595a431f06fa6a14965486d7"
+        },
+        {
+          "path": "assets/style-specimens/ppt/20-all-text-manifesto.jpg",
+          "bytes": 67491,
+          "sha256": "ddf14da94bd6bf8cd52c0aa027dd6826559ad9a8d0d6cd0b51a028b82eda4ff3"
+        },
+        {
+          "path": "assets/style-specimens/sheet-app.jpg",
+          "bytes": 148578,
+          "sha256": "6968748b54bc587e08d36635024d54cbecb164313246180a8d78e315fa2210c5"
+        },
+        {
+          "path": "assets/style-specimens/sheet-east.jpg",
+          "bytes": 159571,
+          "sha256": "22586e2ae6a34a52ee1d29c4bc8ef7893e1a8e335435d548ab11721fb6e7265e"
+        },
+        {
+          "path": "assets/style-specimens/sheet-info.jpg",
+          "bytes": 236666,
+          "sha256": "d09eff02d9bff67f158aebe5eff35dce3a57fbf30041a3663dc655cbeb244355"
+        },
+        {
+          "path": "assets/style-specimens/sheet-ppt.jpg",
+          "bytes": 235020,
+          "sha256": "3aae03870a686a3a0ff87a5eda1f3d89d945c9ce7b919a63f1ec7eb8f3ad8128"
+        },
+        {
+          "path": "assets/style-specimens/sheet-web.jpg",
+          "bytes": 240289,
+          "sha256": "08f51463f68aacb88e1b4db44fce17cbe03bdb336bc75a169eade13f2618535e"
+        },
+        {
+          "path": "assets/style-specimens/web/01-editorial-brutalism.html",
+          "bytes": 4348,
+          "sha256": "4c49116ec0ef45202727f9545e51518162714f9fc2e680fb2c2a3a0b167881f7"
+        },
+        {
+          "path": "assets/style-specimens/web/01-editorial-brutalism.jpg",
+          "bytes": 106477,
+          "sha256": "1a70e829303e58d3cf67b6e9f0c1b617a7b81411887b9e3d9e8758f5e1125f8e"
+        },
+        {
+          "path": "assets/style-specimens/web/02-neo-brutalism.html",
+          "bytes": 4334,
+          "sha256": "9d9dbfbad5d86383c6e4f2a87b566cd1b548c0dd94588a00d08d10e259e3dd46"
+        },
+        {
+          "path": "assets/style-specimens/web/02-neo-brutalism.jpg",
+          "bytes": 116438,
+          "sha256": "f9ba3be4c448ef11b7d2c9d8c22cfb03f6f917377daa445653c54c131506291c"
+        },
+        {
+          "path": "assets/style-specimens/web/03-memphis-maximalism.html",
+          "bytes": 4868,
+          "sha256": "c0a6c05cca835af676890b1dbc5cd14cfc64eb30824090c7cf47cdda51390429"
+        },
+        {
+          "path": "assets/style-specimens/web/03-memphis-maximalism.jpg",
+          "bytes": 170654,
+          "sha256": "69640e0b4f733cbdab5a301738ffeda19c399135bb4ff04f84a84dae613f5852"
+        },
+        {
+          "path": "assets/style-specimens/web/04-friendly-candy.html",
+          "bytes": 4946,
+          "sha256": "915740a37779ce5f5df0c0b6b16f99d1ef5507f7a4753e2291cbd8cfb4e167fc"
+        },
+        {
+          "path": "assets/style-specimens/web/04-friendly-candy.jpg",
+          "bytes": 65788,
+          "sha256": "67699fbda4dd15bf3fc446f2e4d8768e4bf8db7e173e373d9747a8b87116155e"
+        },
+        {
+          "path": "assets/style-specimens/web/05-pure-css-art.html",
+          "bytes": 5501,
+          "sha256": "58bc8e95d2de0224119a1209f971e258d73c19165189e44a992f850fd8a50117"
+        },
+        {
+          "path": "assets/style-specimens/web/05-pure-css-art.jpg",
+          "bytes": 74833,
+          "sha256": "0df99ce1a3252897ac7b3a92832da2670e073a067ae473900b0be0c578002b04"
+        },
+        {
+          "path": "assets/style-specimens/web/06-bold-big-type.html",
+          "bytes": 2594,
+          "sha256": "a057d7c38954333987ca97507d7710984070de73acbc62c9103cea0d691ebb3d"
+        },
+        {
+          "path": "assets/style-specimens/web/06-bold-big-type.jpg",
+          "bytes": 68854,
+          "sha256": "1b19fd1e4df6e29683b3437e578a1faa27a27e114648597a35e279e4c251d324"
+        },
+        {
+          "path": "assets/style-specimens/web/07-cosmic-retro-futurism.html",
+          "bytes": 4124,
+          "sha256": "7bad5b4137696a86b49a6fd49511e1c0ed8436d83b6341e07400394bc81d0942"
+        },
+        {
+          "path": "assets/style-specimens/web/07-cosmic-retro-futurism.jpg",
+          "bytes": 85819,
+          "sha256": "0cdfb491a5abbc5f35b9d20eeaf5efec34c5179f638378d79520afce0a2c0c90"
+        },
+        {
+          "path": "assets/style-specimens/web/08-cinematic-sound-viz.html",
+          "bytes": 12474,
+          "sha256": "e951e44bc6e0c7137bd9068142d4c8b356c5d8311db1f7528ae200a8efebf4f9"
+        },
+        {
+          "path": "assets/style-specimens/web/08-cinematic-sound-viz.jpg",
+          "bytes": 89936,
+          "sha256": "e147bc5a692b832d3e1c70a5364d04ede600a917f37729d0404177fba8cbf6c9"
+        },
+        {
+          "path": "assets/style-specimens/web/09-pixel-side-scroller.html",
+          "bytes": 14976,
+          "sha256": "a119feff61af79b876018d44ff2fcf556ce32dad3f543307ed78545e6ff65a37"
+        },
+        {
+          "path": "assets/style-specimens/web/09-pixel-side-scroller.jpg",
+          "bytes": 60901,
+          "sha256": "2d363ed56b943b9234e5bceca3682900cddbbd68a0e89b31fe0eb3862ce34e37"
+        },
+        {
+          "path": "assets/style-specimens/web/10-bauhaus-geometric.html",
+          "bytes": 4955,
+          "sha256": "685664fb0b7b770ac3c82298adf19666d92876b721a549879df97d8284e74b88"
+        },
+        {
+          "path": "assets/style-specimens/web/10-bauhaus-geometric.jpg",
+          "bytes": 70772,
+          "sha256": "68c714cc3bdae6ca9850ae345b8b4a5bd03f9ea5cccd94fcbdeb4810127140f5"
+        },
+        {
+          "path": "assets/style-specimens/web/11-dark-editorial.html",
+          "bytes": 4452,
+          "sha256": "e389f9eae9f15031bb214f6fcbcc049b08560c183ca5ce63eca2ff777d5c250d"
+        },
+        {
+          "path": "assets/style-specimens/web/11-dark-editorial.jpg",
+          "bytes": 58035,
+          "sha256": "9a08db764f3fc67e36e253a4340e77385df80a8e91b9961ad2b2b421d9aef8e8"
+        },
+        {
+          "path": "assets/style-specimens/web/12-warm-editorial.html",
+          "bytes": 3922,
+          "sha256": "1ea4568d632006069eafcb9a6f45d24b49f1a1fe22f5c33f5c1244ba2489250f"
+        },
+        {
+          "path": "assets/style-specimens/web/12-warm-editorial.jpg",
+          "bytes": 77516,
+          "sha256": "074ad8e7194ed9526d6dc055b42a388fb1213498131e8813e83d44c7f4e04eb1"
+        },
+        {
+          "path": "assets/style-specimens/web/13-glassmorphism-bento.html",
+          "bytes": 5807,
+          "sha256": "3dd9bcde77c62c49177094069409df40efee58febf391881391ef56eacf3916a"
+        },
+        {
+          "path": "assets/style-specimens/web/13-glassmorphism-bento.jpg",
+          "bytes": 73854,
+          "sha256": "3f01e24b49a3095bfcf2ca32fa4926ed8fc108ab51a20f5d88420426ca0cced2"
+        },
+        {
+          "path": "assets/style-specimens/web/14-angled-fluid-gradient.html",
+          "bytes": 4064,
+          "sha256": "d0a574946b3699c8d58f776df6789024243d70adb493d47eea6834c4601dbb00"
+        },
+        {
+          "path": "assets/style-specimens/web/14-angled-fluid-gradient.jpg",
+          "bytes": 87254,
+          "sha256": "0634346b71bb0c57fe8d116368c5404b878b3eb470cc117eee3b2175d8e5cbdb"
+        },
+        {
+          "path": "assets/style-specimens/web/15-utility-colorful-docs.html",
+          "bytes": 5911,
+          "sha256": "8ba86721b3fcc443dde736562154dce5d027b25685e9dbf10607cbb676bec528"
+        },
+        {
+          "path": "assets/style-specimens/web/15-utility-colorful-docs.jpg",
+          "bytes": 67154,
+          "sha256": "9829ee9a9bac99668964381a9a652c93c5405642dd391055f4d4c9650fad2c4f"
+        },
+        {
+          "path": "assets/style-specimens/web/16-terminal-core.html",
+          "bytes": 5068,
+          "sha256": "d0c8bc0fc56b6dfd19a86be2bc7c6dbddea5ac13dce38e9e0626fa682a7c069c"
+        },
+        {
+          "path": "assets/style-specimens/web/16-terminal-core.jpg",
+          "bytes": 64169,
+          "sha256": "467bea81d4fcadfc07843deb595dbcb66d3e066adf914f2b880b9fff977713b7"
+        },
+        {
+          "path": "assets/style-specimens/web/17-functional-brutalism.html",
+          "bytes": 5608,
+          "sha256": "ef6eea5bda776402ec920459e4254ac300774150d78cc56009a9af6ddc445aef"
+        },
+        {
+          "path": "assets/style-specimens/web/17-functional-brutalism.jpg",
+          "bytes": 119761,
+          "sha256": "800bb9957bce73490abbbf3049b1047ebe915df14232e33e3ee67734af33b974"
+        },
+        {
+          "path": "assets/style-specimens/web/18-gallery-dark.html",
+          "bytes": 5021,
+          "sha256": "22136de8ed2bf4321bd1d3f0395bec7a86a9bb2a96575cc9f17c050bc96a88e1"
+        },
+        {
+          "path": "assets/style-specimens/web/18-gallery-dark.jpg",
+          "bytes": 23228,
+          "sha256": "8336268b8078a95c779ca052aa45e3ba180ed7410f0209007735babf53759425"
+        },
+        {
+          "path": "assets/style-specimens/web/19-swiss-monochrome.html",
+          "bytes": 3363,
+          "sha256": "40c4cab166cbee428bcbc276a038361f619862e1fc4ca7d333c9e7650c443ef1"
+        },
+        {
+          "path": "assets/style-specimens/web/19-swiss-monochrome.jpg",
+          "bytes": 68812,
+          "sha256": "63deec444647a10bfe5a4fae314889548c5cbc021ecb965c369eec63e5c4219d"
+        },
+        {
+          "path": "assets/style-specimens/web/20-kenya-hara-white-gallery.html",
+          "bytes": 3263,
+          "sha256": "4d5bab9d1b3a33baba2c09fd9e8be704191925db5e6eb8558b92bc76abb1a3f9"
+        },
+        {
+          "path": "assets/style-specimens/web/20-kenya-hara-white-gallery.jpg",
+          "bytes": 35039,
+          "sha256": "ce229d702a9674a48bba239aaa862ba01cd6e0bf18f674a742b1924b323136f0"
+        },
+        {
           "path": "demos/c1-ios-prototype-en.html",
           "bytes": 34440,
           "sha256": "f7e520c4e53bd49858b84e34e656636f4fc969e011a5ce238bfaa1784b781b07"
@@ -1034,8 +1901,8 @@
         },
         {
           "path": "demos/md-html-narration/md-html-demo.html",
-          "bytes": 37051,
-          "sha256": "70710dbe6674ec237330850afe6dbfcf183af8cbdd4f281c825b390041c1b4d7"
+          "bytes": 37707,
+          "sha256": "af94b13acbdcc8c40ecc171ed5056fdd18bd6349514419bfaade7fbf3051cc6f"
         },
         {
           "path": "demos/md-html-narration/script.md",
@@ -1049,8 +1916,8 @@
         },
         {
           "path": "demos/voiceover-demo/什么是token.html",
-          "bytes": 11143,
-          "sha256": "044497d93579e198fba31052cc545153f1e53b441020e47197e7dd4154e4b13b"
+          "bytes": 11721,
+          "sha256": "00fbcabd549471f59b6ea47b5edef92340841a464b971d3a5daefa389b4fc5e4"
         },
         {
           "path": "demos/w1-brand-protocol-en.html",
@@ -1098,34 +1965,39 @@
           "sha256": "144b28fbf3911f2969589bbddb3208bb02e98bfb33988723d33d3a724ad3b7d5"
         },
         {
+          "path": "references/about-author.md",
+          "bytes": 10181,
+          "sha256": "e1ea9261abb4877b09cfb0b9033b5ebeeae001a8a00823d1731dc55129efd102"
+        },
+        {
           "path": "references/ai-video-review.md",
-          "bytes": 3318,
-          "sha256": "0de497ee52e188fa83b5e710678f3f2dc341b53c0dc5466f40700c3f79c6476c"
+          "bytes": 4010,
+          "sha256": "3955637ca770db9db3beb772c286e29efa9ee4195cee565d8659ff4f7c2d8b61"
         },
         {
           "path": "references/animation-best-practices.md",
-          "bytes": 22446,
-          "sha256": "347a751b3114199e52c2349c2ad6a00c619a5cee5f50cec114ded0d0fbdc9ffe"
+          "bytes": 22545,
+          "sha256": "e745699a1a0846d2c6633d370c74848e6dcd4f604c2a8b512b6f4b4ba2f4b025"
         },
         {
           "path": "references/animation-pitfalls.md",
-          "bytes": 28479,
-          "sha256": "f42a81ed1e1cb9386eb957e3687dfe980dff7691d1687ebf019712918added9d"
+          "bytes": 30821,
+          "sha256": "77645307fe81f7ad6f78e19a072c96b8581c10226cde835e0fff345154e68dfb"
         },
         {
           "path": "references/animations.md",
-          "bytes": 7427,
-          "sha256": "84472fb92832298dde3f2371422e0d01d2f70e863cbf815c6738fa63fc535c04"
+          "bytes": 7762,
+          "sha256": "58f056917e469fe4b9e3d6422721ba80e68c980e5e30b17297f1bef2bcfca9c0"
         },
         {
           "path": "references/app-prototype.md",
-          "bytes": 9893,
-          "sha256": "964492c5d298c30445080ec176969c538da283f039b514047db1abe9a8634a43"
+          "bytes": 11872,
+          "sha256": "3a03ddfd6ffa43bbb927a4c43946b646efc9b2364b9c12f73d31c62381835bc0"
         },
         {
           "path": "references/apple-gallery-showcase.md",
-          "bytes": 11327,
-          "sha256": "e4a8fb9a8783ad706be86c0ebed85ebf6079b71e13783f04c05b4f4120d81b43"
+          "bytes": 11712,
+          "sha256": "262cdce8f093ffe404a77d169baf4377880697e199127ec91739fcd0111ad668"
         },
         {
           "path": "references/audio-design-rules.md",
@@ -1134,8 +2006,13 @@
         },
         {
           "path": "references/brand-asset-protocol.md",
-          "bytes": 15418,
-          "sha256": "bc476983114f00057134d47b229fb4496a37bbac2fcbb4bf9f86139165e1528d"
+          "bytes": 15567,
+          "sha256": "59ff061a7913dadc9daa2dca582110238ee4568ab4823eeeb9c82d9d0a2ada19"
+        },
+        {
+          "path": "references/camera-language.md",
+          "bytes": 23221,
+          "sha256": "17d9ec457df9920953588ffdd1fdff92c3679093cebd3b022b48861105563c71"
         },
         {
           "path": "references/cinematic-patterns.md",
@@ -1144,8 +2021,8 @@
         },
         {
           "path": "references/content-guidelines.md",
-          "bytes": 8389,
-          "sha256": "3c0bcf0e94b4f6cc64b11e871ba8d53607ad6ec7317f08dc3f7f5bb6708088a7"
+          "bytes": 11978,
+          "sha256": "e6de46f0623f3b0da2afcc9afeea25e467cc13b8ff2f97300d50ce19c8746754"
         },
         {
           "path": "references/critique-guide.md",
@@ -1154,38 +2031,78 @@
         },
         {
           "path": "references/design-context.md",
-          "bytes": 6704,
-          "sha256": "93a7e6be5f6cb29076d3651747d5033701362ddd03283b1ddf11b105757430b6"
+          "bytes": 1967,
+          "sha256": "640bea3a78f3997d8cb4f3c711510d632042036500b3a7207db408dd786005d5"
         },
         {
           "path": "references/design-styles.md",
-          "bytes": 45926,
-          "sha256": "f1904cd217fe3c974d7bc4ae6ea57cbbfef9e5362e86f836ed45fd74af8f0fea"
+          "bytes": 101291,
+          "sha256": "76ffb4544ef2534bdb2faf35d690d122b63b162de721b2d38a06a9fb3d6547cc"
+        },
+        {
+          "path": "references/directions.md",
+          "bytes": 1120,
+          "sha256": "2f566ffcaf7a4b069f3f42e677a6bc81f6a67f259cfca6c2e293768e242cf175"
         },
         {
           "path": "references/editable-pptx.md",
-          "bytes": 15942,
-          "sha256": "b5b56aa3e94bc5858b1b0405b86a3c4f5f983ddf0df4584d63caf44328a8e2d7"
+          "bytes": 18570,
+          "sha256": "cc76f248d3f22f6c2b42b9b02acc95a1b278f2e57bfcc22120d6fa0b09a285ad"
+        },
+        {
+          "path": "references/evolution.md",
+          "bytes": 799,
+          "sha256": "af6a67b5d7a64b3090454cf71f07708d8b0d8291c131fb51c2ac0cd44769d3f4"
+        },
+        {
+          "path": "references/experience.md",
+          "bytes": 5220,
+          "sha256": "06ce6c443967b06f1d53f500b5b9a65dc7262bdf93d4e116396af4a9cd99a5aa"
         },
         {
           "path": "references/gsap-recipes.md",
-          "bytes": 29343,
-          "sha256": "c97bd1e5f043b754d86c1d5d3090a072bb7ebeaeb5b90c6c96333325dcd4f774"
+          "bytes": 35591,
+          "sha256": "374f346aeab61192f497130f933424bd3a3850e2f68e03f73cd3fa81e058a33a"
         },
         {
           "path": "references/hero-animation-case-study.md",
-          "bytes": 11391,
-          "sha256": "bb42bbcfd6e67b9ea33fe914e1bc1b737e75cf0c54c95fb5e939569a8f79451a"
+          "bytes": 11613,
+          "sha256": "4f2f1ce2f027e795a331fdcfeef2a6eff6710e26b7cfa77d1a8891bb03703373"
         },
         {
           "path": "references/hyperframes-backend.md",
-          "bytes": 7177,
-          "sha256": "7851629849e0f9fc6d0dc8a8061259f4db1574dd784fd1cb28a3118f4f073e26"
+          "bytes": 7487,
+          "sha256": "542e5e85d2906900655a614876924e395db61492c93ae2fee79f341633705cfe"
         },
         {
           "path": "references/launch-film-director-notes.md",
-          "bytes": 14681,
-          "sha256": "0041485606659acdeeb2b83fddf8a1166f357448b2876ba0c0cba4cdc4360f73"
+          "bytes": 3350,
+          "sha256": "df0848482620c7916c0b82db707e5254b2d7ed83cfc8276604b729214b6ba655"
+        },
+        {
+          "path": "references/materials.md",
+          "bytes": 5211,
+          "sha256": "a740878ee8ac6d3dc748f51cb661633a4a28edec76b9570248cf522182877c42"
+        },
+        {
+          "path": "references/modules/deck.md",
+          "bytes": 1850,
+          "sha256": "923c29d285ba41f5b9034fe2330ab2893323fcedf405dba90a2a99f18fbd06b8"
+        },
+        {
+          "path": "references/modules/infographic.md",
+          "bytes": 2487,
+          "sha256": "11a0067e937e17caa4ad1c73dacf04624eaf163c0333edb24a2f4cf8626e75fc"
+        },
+        {
+          "path": "references/modules/motion.md",
+          "bytes": 2145,
+          "sha256": "48ad31c8e71cae1670b4d9b6ee9956e87863d91fbf802b2492a8a24b1719aec4"
+        },
+        {
+          "path": "references/modules/web.md",
+          "bytes": 2537,
+          "sha256": "53a6cd46d2625b8c8e2feb3e618c9fa6d5618b961a81413595ca74394c1c7a59"
         },
         {
           "path": "references/multi-perspective-parallel-case-study.md",
@@ -1193,9 +2110,14 @@
           "sha256": "e1f80cc2e3e12d04405f897f3da49b371dbc7782c5ba23152a956c2780e738da"
         },
         {
+          "path": "references/pptx-from-rendered-html.md",
+          "bytes": 10415,
+          "sha256": "19d51068ca2377eec60b7261cbc450c98cce51f1584f0a1c7857575c1fed1b0d"
+        },
+        {
           "path": "references/react-setup.md",
-          "bytes": 9318,
-          "sha256": "84533868f53023ea9484a9fd77b0fe79f0aa200bc4030f7810a1f1c95df0c4b5"
+          "bytes": 9682,
+          "sha256": "97dfcbbea673131b9d10c5fe0c553fe489d3c2e583381de72e8c1b3c5eed5346"
         },
         {
           "path": "references/scene-templates.md",
@@ -1209,38 +2131,48 @@
         },
         {
           "path": "references/slide-decks.md",
-          "bytes": 36185,
-          "sha256": "657b72f1071ac574fbe8671969e2e6e78057c26cdfadd55dc145401f86d45154"
+          "bytes": 29739,
+          "sha256": "f9961e6753b6b9ecd799713a280629c0ac5374e12c76923830abaa1370ed1acc"
+        },
+        {
+          "path": "references/storyboard-basics.md",
+          "bytes": 23237,
+          "sha256": "f771e5700b42b5e70342453e1a027e0dd186f224ce110aaab6db8ceb2317cdc0"
         },
         {
           "path": "references/tweaks-system.md",
           "bytes": 9015,
-          "sha256": "88569174eaa1d790e5f261a287e44ea39f6b8bce926493d21ad5ff4e7c2ef441"
+          "sha256": "d3ec4727ae9d677ee7ade220180b803064310ef7e730436da4d66367362ec5d2"
         },
         {
           "path": "references/typography.md",
-          "bytes": 18348,
-          "sha256": "661ec64c19df00ef0e90fc388a1e61f5adbdd3b7fe0f4c536f9ba60901c3dee7"
+          "bytes": 18763,
+          "sha256": "746b62c8811bb96b3f0525255280d1cb3bf843932be1f232624405dab80f8d02"
+        },
+        {
+          "path": "references/ui-demo-animation.md",
+          "bytes": 28829,
+          "sha256": "ce81700eb41531e885626167f29547f769242e0325ae9c719a812d599454c93c"
         },
         {
           "path": "references/verification.md",
-          "bytes": 5038,
-          "sha256": "4f350d25ecadd8ddbbfb0aa590bb28d569fff406dd46c316eba4e0f840ecfff6"
+          "bytes": 6980,
+          "sha256": "29501c042872c21e9e052c8345b71aebf1c0c20b2b498bb0c6f9ec417530a086"
         },
         {
           "path": "references/video-export.md",
-          "bytes": 10970,
-          "sha256": "6a5ea373dc78fa2abde02a13f4f80ebbdf2495a5de668b611116faa1ae91dcda"
+          "bytes": 11235,
+          "sha256": "49b517e9e51648c3b7d517374beec80cf4b66c83a2ce424541eb6e969103a2aa"
         },
         {
           "path": "references/voiceover-pipeline.md",
-          "bytes": 19751,
-          "sha256": "ef847e9a7c72cd9f1f52330dbbcb52c4e7118f413a783786c353af8fd903d4f8"
+          "bytes": 20121,
+          "sha256": "c8e992779eb3de74b7c46c195a46dd716ee922def7ea5f9e19beef814834e756"
         },
         {
           "path": "references/workflow.md",
-          "bytes": 7090,
-          "sha256": "57c032774cb789949bb5ef5840cefc137f31573cc2449fc8f699a794bf40d4ee"
+          "bytes": 1417,
+          "sha256": "bb3a5d56d38a3ec72fc4e1ae04f21a29fd9894871adb6e01805642ec3521ca39"
         },
         {
           "path": "scripts/add-music.sh",
@@ -1248,9 +2180,24 @@
           "sha256": "d3d07de431975f15c05e04826e5df588f4a4eebecd70fa55b51bc79af7658a1b"
         },
         {
-          "path": "scripts/ai-review-video.py",
-          "bytes": 19301,
-          "sha256": "fbf21e3a6ad2bfcb294ad1452d76a3d1f5ec5007c2fa253a03c221ea6c1a918a"
+          "path": "scripts/build_specimens.py",
+          "bytes": 4456,
+          "sha256": "a1fb2a4cbe295b4350c5ec429d41b50056b4018c3d2dfb5d641ad80d393b0728"
+        },
+        {
+          "path": "scripts/capabilities.py",
+          "bytes": 3868,
+          "sha256": "3057760e28f42453a4be8fbafd44023afe8eef474f17ce0334c31fc26b144b24"
+        },
+        {
+          "path": "scripts/cloud/ai-review-video.py",
+          "bytes": 20433,
+          "sha256": "c882682ab99a3d61b1955240b2d386363893a0cc65e4c6930bc27857d33d2560"
+        },
+        {
+          "path": "scripts/cloud/tts-doubao.mjs",
+          "bytes": 10071,
+          "sha256": "8ddc9980b76a60deaf057b732d80d187382ddd9188d9d673ebd9e35c461a0015"
         },
         {
           "path": "scripts/convert-formats.sh",
@@ -1258,9 +2205,14 @@
           "sha256": "4fdf469a1f1c44b40858cea8484d92fcae48096de1dedc3d4b9d640b5026277b"
         },
         {
+          "path": "scripts/design_lint.py",
+          "bytes": 28396,
+          "sha256": "46d649cd5a655a6f97dba3d8d5837ac8461bed7b3bfca8a5eb0c634917b3c3b2"
+        },
+        {
           "path": "scripts/design-gate-hook.sh",
-          "bytes": 3122,
-          "sha256": "53ae09cf9c948466e2a0ad430083091e92e9ab7214bbc217c852e2685e967388"
+          "bytes": 3459,
+          "sha256": "e8f255791e1475202f84aa6ac9589cf5790aa3cb0afe6f294237099583a8c42b"
         },
         {
           "path": "scripts/export_deck_pdf.mjs",
@@ -1289,8 +2241,13 @@
         },
         {
           "path": "scripts/html2pptx.js",
-          "bytes": 46385,
-          "sha256": "389a0cfb5406a37b2dd73beed6c2e3078e9491f1285328e36a92490e4f90bd67"
+          "bytes": 34510,
+          "sha256": "79bd2df2c0aed3548ba78d88f7bf2906c2fbdef6bcf9dce8ee4a83013c6563ac"
+        },
+        {
+          "path": "scripts/learn.py",
+          "bytes": 10510,
+          "sha256": "e4b01cc8c3d64bb7e83087a0ee646c142462e287e211b6d94388af1ff15e3bf9"
         },
         {
           "path": "scripts/mix-voiceover.sh",
@@ -1299,8 +2256,18 @@
         },
         {
           "path": "scripts/narrate-pipeline.mjs",
-          "bytes": 11804,
-          "sha256": "bc1ee768b57ca0a2b58e1d22fdeb31af2277854155e97e16db6474ec11e132f7"
+          "bytes": 12530,
+          "sha256": "5b387544314c9f6374de7399a23b6692b77333e53a8fb4e2d892e2ae6e836a14"
+        },
+        {
+          "path": "scripts/pptx_from_rendered.py",
+          "bytes": 29541,
+          "sha256": "e8c4dcdc712ad8cbe6e9cd17e8c454ecb2edea7e22e77ca4246578c86f6a0a00"
+        },
+        {
+          "path": "scripts/ref_board.py",
+          "bytes": 6865,
+          "sha256": "a6365647e91de2ef9c3802d3d043ba5974f533673678dd6c5b6e654909a85f67"
         },
         {
           "path": "scripts/render-narration.sh",
@@ -1323,9 +2290,59 @@
           "sha256": "842cda4237dd88d84b4de634bf23507ec01aacb621ce5f6ac17e2a1c60857244"
         },
         {
-          "path": "scripts/tts-doubao.mjs",
-          "bytes": 8684,
-          "sha256": "3b35f57ec9e631b81a4999ddd34e865d32bcdd5e32375e526b4332a2be2a32ec"
+          "path": "scripts/tests/fixtures/assets/logo.png",
+          "bytes": 76,
+          "sha256": "cb2e77c9e8f959033fce306468281a1c2c3fb66c8529e7a3d858da602fee75ae"
+        },
+        {
+          "path": "scripts/tests/fixtures/lint_broken.html",
+          "bytes": 391,
+          "sha256": "71e32ad3a9059201faef0e9915a98c14c0586390fe82bf90026d69bdde485f12"
+        },
+        {
+          "path": "scripts/tests/fixtures/lint_clean.html",
+          "bytes": 778,
+          "sha256": "a9549087308a305d0ce2ff727ef204d1a579b82268a3e1d6d22f085e1ddf2bde"
+        },
+        {
+          "path": "scripts/tests/fixtures/lint_offline.html",
+          "bytes": 302,
+          "sha256": "c61756f15b30c57d233cabf94c06f9c3c7fe68b6d95f26a06436494d6d5934be"
+        },
+        {
+          "path": "scripts/tests/fixtures/lint_reskin.html",
+          "bytes": 1749,
+          "sha256": "e49bf584d93596b891517bcdfc1e2c719d150ddbe2c8e771b6a54496c8d1516a"
+        },
+        {
+          "path": "scripts/tests/fixtures/lint_slop.html",
+          "bytes": 1742,
+          "sha256": "facad17c3839d0319b1b899fb9503b188ae819605778a5b968cfc5adcc764fc3"
+        },
+        {
+          "path": "scripts/tests/fixtures/lint_tricky_bad.html",
+          "bytes": 633,
+          "sha256": "48bb2e71b5e350b36a0eed369d4f3cc32bbc3d8a09e73d5ca83d35d576fd4007"
+        },
+        {
+          "path": "scripts/tests/fixtures/lint_tricky_ok.html",
+          "bytes": 1347,
+          "sha256": "b006ed1f1b36e62b6ae21f20f86e609424f93338fa4e3cb1b585b9688bb56608"
+        },
+        {
+          "path": "scripts/tests/fixtures/mixed_text.html",
+          "bytes": 1091,
+          "sha256": "1d74749163760e65f138d77443f81a7adf7326348c22eb187ec631ec13e513f3"
+        },
+        {
+          "path": "scripts/tests/test_design_lint.py",
+          "bytes": 8606,
+          "sha256": "220d4ddf35fabe9d720dd999017733563bcaf0fd5d93ab5325243cfc9c2e4f41"
+        },
+        {
+          "path": "scripts/tests/test_pptx_from_rendered.py",
+          "bytes": 3213,
+          "sha256": "eeefcc7e1a58ccb21c1da7974ca945057691911f6ea0be30893fff64045ee6d0"
         },
         {
           "path": "scripts/verify-video.sh",
@@ -1338,9 +2355,14 @@
           "sha256": "7a0a3243f51a1c816944a948a5caba239c63c9890327a60d80934d493153e9e4"
         },
         {
+          "path": "SECURITY.md",
+          "bytes": 7396,
+          "sha256": "5d532eb498f94ff81472ec4642a15fd58dfd46a7af19bd2b0b6d426c374631d1"
+        },
+        {
           "path": "SKILL.md",
-          "bytes": 59264,
-          "sha256": "a71c83f70337c877220a886e3214ec84aab4cd1defd3dbe7145b05aec75093ff"
+          "bytes": 4432,
+          "sha256": "a951b2d29e214f6fb49bc04d2589601a7d9220fd1bdc4affea9b01a54d40819c"
         }
       ]
     },
@@ -1360,24 +2382,24 @@
     {
       "name": "partner-deep-research",
       "sourcePath": "first-party-skills/partner-deep-research",
-      "revision": "first-party:2b5359ce0ba9e312276403896d2f6f9f7bc6dedc4242ed627f7a895be5908fbf",
+      "revision": "first-party:83585fb5f312d31348631d5ea3615a9b2655f827302e78e038e37db74a296024",
       "patches": [],
       "files": [
         {
           "path": "SKILL.md",
-          "bytes": 2477,
-          "sha256": "76b24d3e290f443e6e4eb25385c6381a1904e52c4089298c15f2d1ced0521302"
+          "bytes": 2545,
+          "sha256": "71d0d400502efcfd14bd03b678eb0b63df128c4d9046446abd9f4b6b730b8db6"
         }
       ]
     },
     {
       "name": "copywriting",
       "repository": "https://github.com/coreyhaines31/marketingskills.git",
-      "revision": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "revision": "17772c7a80b7b8c7a47af30f648374cd8bd8adc5",
       "patches": [
         {
           "path": "builtin-skill-patches/copywriting-space-adaptation.patch",
-          "sha256": "f2ad052d7ea107a3d027f9d5c026bc66e914901dcb2588b49bcc47e0b36bebab"
+          "sha256": "1220c9ac2e4fbc482ae44ec06377f851a600b88d0ba13606a0aaa4712b6397bf"
         }
       ],
       "files": [
@@ -1387,30 +2409,35 @@
           "sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591"
         },
         {
+          "path": "references/ai-tells.md",
+          "bytes": 20804,
+          "sha256": "b98c3a19b3a75c714d69e80a0076e4c07244b0e833c2ce81ff2631224fb7f7b2"
+        },
+        {
           "path": "references/copy-frameworks.md",
-          "bytes": 14328,
-          "sha256": "d98818886525908bf17dd6412d0b72731b313d6eef3e1ab6b365828a3a342779"
+          "bytes": 14352,
+          "sha256": "352122944bf9e891ceb0e003adce41591d111e9d97057700626249919dfe430d"
         },
         {
           "path": "references/natural-transitions.md",
-          "bytes": 5684,
-          "sha256": "4ff23f8943af2f65b072f26f1c53ce55f19cc26d7be211c11cae8e34b43e859f"
+          "bytes": 5561,
+          "sha256": "9bd61b0de5be2c4de4ce130c68236b4f290b12737823827a458bb2b4c8584683"
         },
         {
           "path": "SKILL.md",
-          "bytes": 9808,
-          "sha256": "0316ee5e7536a5c37159a7e454abeb039739a38b9361c9a30b41564e60aed630"
+          "bytes": 2738,
+          "sha256": "7a9305ed474a231e0ec740bd891a9d75771deaf313b3f4409363cff56b49b874"
         }
       ]
     },
     {
       "name": "customer-research",
       "repository": "https://github.com/coreyhaines31/marketingskills.git",
-      "revision": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "revision": "17772c7a80b7b8c7a47af30f648374cd8bd8adc5",
       "patches": [
         {
           "path": "builtin-skill-patches/customer-research-space-adaptation.patch",
-          "sha256": "5fa0ea845677dc011055ce716d2b85af1534db37af3585bb29b4a7e399ff238f"
+          "sha256": "d6d28e62b31aa50b3785ed65b6f671f563eab51f15681589b86e194004d29d75"
         }
       ],
       "files": [
@@ -1426,13 +2453,13 @@
         },
         {
           "path": "references/source-guides.md",
-          "bytes": 16282,
-          "sha256": "60f846755448579d5321a92268a5a27216f86bfd694eabf2848eb6efd300f39d"
+          "bytes": 16240,
+          "sha256": "7490a8d04f209d4c8c987530e79d0883a6b42027b86a920fc751cf8ea9904892"
         },
         {
           "path": "SKILL.md",
-          "bytes": 16187,
-          "sha256": "40c18fcfe936624393960e4c9b114badf89329f61c4855ed69da7c6254c14442"
+          "bytes": 2400,
+          "sha256": "aa3729fbafaa3596ab601135447d8e9b2fc1367bfbec787666aa7003f800bdd6"
         }
       ]
     },
@@ -1495,7 +2522,7 @@
       "patches": [
         {
           "path": "builtin-skill-patches/process-doc-space-adaptation.patch",
-          "sha256": "42d61cea2e105109c17460a60fa533e5e73a1519df496cec73e92b4385c6df76"
+          "sha256": "aeded7b9d1690511976ee9b15b3253db8737b9b27c0fab765cc82b315def0d36"
         }
       ],
       "files": [
@@ -1506,8 +2533,8 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 3913,
-          "sha256": "6f0575f74458998aac1bab1b293f8ecfb80708a15e2c4819f7569afb042c3cf5"
+          "bytes": 3964,
+          "sha256": "4a67e069bad3e30657a567a081bbf4c0eba3b989aa21b00efeabe06622f9e6df"
         }
       ]
     },
@@ -1518,7 +2545,7 @@
       "patches": [
         {
           "path": "builtin-skill-patches/draft-response-space-adaptation.patch",
-          "sha256": "72cef3a2cdc597cf73e5e811d3b101cb46fd3c2f8930b4b6cbb6d7e4375f69b6"
+          "sha256": "30e3c80ce763640285a448a2675a0d0d70267e5924d29902dcf3b608335ce62d"
         }
       ],
       "files": [
@@ -1529,8 +2556,8 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 13040,
-          "sha256": "29587653225325ee1b922be776ca9bce235007c371713ed6add1e50422130997"
+          "bytes": 1801,
+          "sha256": "70ce86da15bbb4111bcc3cbff17d18ce850d5d3b8a2bca6bfcc79413f7ee87e4"
         }
       ]
     },
@@ -1541,7 +2568,7 @@
       "patches": [
         {
           "path": "builtin-skill-patches/knowledge-synthesis-space-adaptation.patch",
-          "sha256": "0dad9513425c34db9a628d4ddb92d2d4997141763bb797fd964dc3fbf94b5c36"
+          "sha256": "dd4357c75d39e5e0e5a637982acc0e3ab88c0e17eb2dafe0a1a9b5bcec786354"
         }
       ],
       "files": [
@@ -1552,8 +2579,8 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 9837,
-          "sha256": "345e9e20ebb2acc31b35b0bc2e89e6bfee023ee871e96ef2ba54cd259a6e1ade"
+          "bytes": 1680,
+          "sha256": "f48cbb5ac8d5a7ce261cd21c51f58765e8a03796433f3965b9cfde8a1c727843"
         }
       ]
     },
@@ -1564,7 +2591,7 @@
       "patches": [
         {
           "path": "builtin-skill-patches/status-report-space-adaptation.patch",
-          "sha256": "39080b4e8a8cad39de1922261e4c6d3e821753e9392fdbf7700000de39c0317f"
+          "sha256": "b091a3f9b1905f00526f17600eb22a8f4a27a8d6252aa358db3e53cab061c649"
         }
       ],
       "files": [
@@ -1575,19 +2602,19 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 4084,
-          "sha256": "c80458407c529f9ddcf84dda603f35a7f1e407d5e829a72ba663504fe1424647"
+          "bytes": 4275,
+          "sha256": "d9ecfce56871421191d0b5a6e024433d03456a91075171e158ff2f774a13a68b"
         }
       ]
     },
     {
       "name": "call-prep",
       "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
-      "revision": "1f517b9de47e827c80cd933ed364e16838072239",
+      "revision": "c75fda00ff0e41c8ee331ae312c8a07f1967653b",
       "patches": [
         {
           "path": "builtin-skill-patches/call-prep-space-adaptation.patch",
-          "sha256": "e15982f462c7d328f1aa2e2540c363e2a5380d65fbe0bcc3d33ce9c8c9a3a35e"
+          "sha256": "4f820d54d0d113acacd1a30e0ab2f2d2c4cfe018dadde4b16a6f240e934f7caa"
         }
       ],
       "files": [
@@ -1598,8 +2625,8 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 9665,
-          "sha256": "ace85d9bda95d12736435e404f0a90a205d55344d5d2bb46b0cc98a909ab5b62"
+          "bytes": 1847,
+          "sha256": "44ee2cb4912f17827dbaed3765f38930c336e6a267cf0241b32f0cbb655ec8ef"
         }
       ]
     },
@@ -1610,7 +2637,7 @@
       "patches": [
         {
           "path": "builtin-skill-patches/interview-prep-space-adaptation.patch",
-          "sha256": "a47b8571870ea89d73dd3204efdbdc03e17f1909dec265b2ce89f0db1208afd4"
+          "sha256": "0189a4204971647e9c72564ed11d311ca0892522ebf285af0882b8d9a32ac1dd"
         }
       ],
       "files": [
@@ -1621,8 +2648,8 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 2661,
-          "sha256": "dc69487a5d7e856d33e5b75238650ad6b77e30ab1d31637b4e144342e50b6d92"
+          "bytes": 2733,
+          "sha256": "ce24c594f54a52aad67ee36e9528dc2c3b64d27d535e82826fc6da605b9d41a4"
         }
       ]
     },
@@ -1633,7 +2660,7 @@
       "patches": [
         {
           "path": "builtin-skill-patches/onboarding-space-adaptation.patch",
-          "sha256": "d7e5a773e015f71f4ef277705a4db4eedba0dc0e30869c7daf8e024d36192d74"
+          "sha256": "858800b9ba3a039f470895813419983232dee3fa3276ac3db613d18d60986062"
         }
       ],
       "files": [
@@ -1644,8 +2671,8 @@
         },
         {
           "path": "SKILL.md",
-          "bytes": 4226,
-          "sha256": "0c8cae86b66b0ef1dc784731f8ffafa09c406d02a49f178e84d86bbbd0227539"
+          "bytes": 4438,
+          "sha256": "d3cbe7c5347bfde4adc697d4a4c90ab1418c650ad4f44643cb71e838bdf80709"
         }
       ]
     }

@@ -17,7 +17,7 @@ const TRANSIENT_INSTALL_ALIAS_RETRIES = 4;
 const permissionModeSchema = z.enum(['plan', 'accept-edits', 'auto', 'full-access']);
 const autoModeEngineSchema = z.enum(['llm', 'rules']);
 const agentModeSchema = z.preprocess(
-  (value) => (value === 'amaw' || value === 'ama-workflow' ? 'ama' : value),
+  (value) => (value === 'sa' || value === 'amaw' || value === 'ama-workflow' ? 'ama' : value),
   z.enum(['ama', 'sa']),
 );
 
@@ -116,7 +116,7 @@ function hasRetiredAgentMode(raw: unknown): boolean {
   const effective = (raw as Record<string, unknown>).effective;
   if (!effective || typeof effective !== 'object' || Array.isArray(effective)) return false;
   const agentMode = (effective as Record<string, unknown>).agentMode;
-  return agentMode === 'amaw' || agentMode === 'ama-workflow';
+  return agentMode === 'sa' || agentMode === 'amaw' || agentMode === 'ama-workflow';
 }
 
 function hasRetiredAutoModeSettings(raw: unknown): boolean {
@@ -124,9 +124,9 @@ function hasRetiredAutoModeSettings(raw: unknown): boolean {
   const effective = (raw as Record<string, unknown>).effective;
   return Boolean(
     effective &&
-      typeof effective === 'object' &&
-      !Array.isArray(effective) &&
-      Object.prototype.hasOwnProperty.call(effective, 'autoModeEngine'),
+    typeof effective === 'object' &&
+    !Array.isArray(effective) &&
+    Object.prototype.hasOwnProperty.call(effective, 'autoModeEngine'),
   );
 }
 
@@ -407,8 +407,7 @@ export class PartnerEffectiveConfigStore {
       return {
         kind: 'valid',
         snapshot: freezeSnapshot(parsed.data),
-        needsSettingsMigration:
-          hasRetiredAgentMode(decoded) || hasRetiredAutoModeSettings(decoded),
+        needsSettingsMigration: hasRetiredAgentMode(decoded) || hasRetiredAutoModeSettings(decoded),
         hash: sha256(bytes),
       };
     } finally {

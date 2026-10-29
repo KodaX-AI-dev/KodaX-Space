@@ -57,7 +57,7 @@ import { memoryGovernanceService } from '../memory/memory-service.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 
 const PERMISSION_MODES: readonly PermissionMode[] = ['plan', 'accept-edits', 'auto', 'full-access'];
-const AGENT_MODES: readonly AgentMode[] = ['ama', 'sa'];
+const AGENT_MODES: readonly AgentMode[] = ['ama'];
 const REASONING_EXAMPLES = ['off', 'auto', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 function isPermissionMode(s: string): s is PermissionMode {
@@ -72,7 +72,7 @@ function parseReasoningMode(s: string): ReasoningMode | undefined {
 function normalizeAgentMode(s: string): AgentMode | 'toggle' | 'retired' | undefined {
   const lower = s.toLowerCase();
   if (lower === 'toggle') return 'toggle';
-  if (lower === 'amaw' || lower === 'ama-workflow') return 'retired';
+  if (lower === 'sa' || lower === 'amaw' || lower === 'ama-workflow') return 'retired';
   return AGENT_MODES.includes(lower as AgentMode) ? (lower as AgentMode) : undefined;
 }
 
@@ -1975,8 +1975,8 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
   {
     name: 'agent-mode',
     aliases: ['am'],
-    description: 'Switch agent mode (ama=adaptive multi-agent / sa=single-agent)',
-    argsHint: '[ama|sa|toggle]',
+    description: 'Use AMA adaptive multi-agent mode',
+    argsHint: '[ama]',
     source: 'builtin',
     handler: async (ctx) => {
       const session = kodaxHost.get(ctx.sessionId);
@@ -1985,7 +1985,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       if (!raw) {
         return {
           ok: true,
-          message: `Agent mode: ${session.agentMode.toUpperCase()}\nUsage: /agent-mode [ama|sa|toggle]`,
+          message: 'Agent mode: AMA\nUsage: /agent-mode [ama]',
           echo: true,
         };
       }
@@ -1994,7 +1994,9 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
         return {
           ok: false,
           message:
-            'AMAW was retired in KodaX 0.7.72; use AMA. Workflow remains available through explicit Workflow intent, /workflow, named patterns, and SDK requests.',
+            raw.toLowerCase() === 'sa'
+              ? 'SA has been retired in Space; use AMA.'
+              : 'AMAW was retired in KodaX 0.7.72; use AMA. Workflow remains available through explicit Workflow intent, /workflow, named patterns, and SDK requests.',
         };
       }
       if (!parsed) {

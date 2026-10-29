@@ -113,8 +113,7 @@ export function resolveSessionCreateInputs(input: CreateSessionInput): CreateSes
     spaceRuntimeDefaults?.permissionMode ??
     kodaxDefaults?.permissionMode ??
     'accept-edits';
-  // Default 'ama' matches the SDK default; SA remains an explicit fallback.
-  const agentMode = pendingAgentMode ?? spaceRuntimeDefaults?.agentMode ?? 'ama';
+  const agentMode = 'ama';
   const explicitReasoningMode = pendingRuntimeOverride(
     pendingReasoningMode,
     spaceRuntimeDefaults?.reasoningMode,
@@ -124,8 +123,8 @@ export function resolveSessionCreateInputs(input: CreateSessionInput): CreateSes
     spaceRuntimeDefaults?.permissionMode,
   );
   const explicitAgentMode = pendingRuntimeOverride(
-    pendingAgentMode,
-    spaceRuntimeDefaults?.agentMode,
+    pendingAgentMode === 'sa' ? 'ama' : pendingAgentMode,
+    spaceRuntimeDefaults?.agentMode === 'sa' ? 'ama' : spaceRuntimeDefaults?.agentMode,
   );
   const runtimeOverrides = {
     ...(explicitReasoningMode !== undefined ? { reasoningMode: explicitReasoningMode } : {}),

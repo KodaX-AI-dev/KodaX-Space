@@ -20,6 +20,7 @@
 
 import type {
   SessionEvent,
+  SessionProductItem,
   SpaceRuntimeFailureDetailT,
   SpaceRuntimeRunFailureKindT,
   SpaceRuntimeRunProjectionT,
@@ -78,6 +79,7 @@ export type ConversationMessage =
       id: string;
       toolId: string;
       toolName: string;
+      productItem?: SessionProductItem;
       attachments?: UserMessage['attachments'];
       input?: Record<string, unknown>;
       result?: string;
@@ -87,7 +89,8 @@ export type ConversationMessage =
   | {
       kind: 'system_notice';
       id: string;
-      variant: 'iteration' | 'error' | 'sidecar' | 'workflow' | 'lineage';
+      taskResult?: SessionProductItem['taskResult'];
+      variant: 'iteration' | 'error' | 'sidecar' | 'workflow' | 'lineage' | 'info';
       /** iteration: "iter 1/30 · 1280 tokens"; error: 错误文本；sidecar: verifier 可读消息；
        *  lineage: fork/rewind branch_summary 或 compaction 的历史提示条（v0.1.x）。
        *  v0.1.x: 'complete' variant 已废弃——assistant bubble footer 自带 "Xd ago"，

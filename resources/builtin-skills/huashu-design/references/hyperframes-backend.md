@@ -12,12 +12,16 @@
 | 老 Stage demo 要复用/改版 | 顺手迁移（适配器配方见下，20-30 分钟/个）；只重渲不改就仍用 render-video-seek.js |
 | 弱 runtime（无 npm / 无法装依赖 / 单文件交付给用户双击打开） | 自研 Stage（assets/animations.jsx），老流程不变 |
 | 交互演示（用户要在浏览器里玩，不导出视频） | 自研 Stage 或普通 HTML，HyperFrames 是渲染管线不是交互框架 |
-| 带解说长视频（Step 9.5，narration_stage 驱动） | **自研 narration 管线**（voiceover-pipeline.md + render-narration.sh），暂不走 HyperFrames——双时间源/字幕/TTS timeline 深度耦合自研 Stage；与「动画默认 HyperFrames」两行同时命中时按本行裁决 |
+| 带解说长视频（narration_stage 驱动） | **自研 narration 管线**（voiceover-pipeline.md + render-narration.sh），暂不走 HyperFrames——双时间源/字幕/TTS timeline 深度耦合自研 Stage；与「动画默认 HyperFrames」两行同时命中时按本行裁决 |
 | 批量参数化视频（千人千面/模板换字） | Remotion（见规划方向5，独立于本 skill 主流程） |
 
 **设计语言永远是甲方**：叙事结构、easing 体系、SFX/BGM 双轨制照旧全部生效（animation-best-practices.md / audio-design-rules.md），HyperFrames 只是实现和渲染工具。GSAP 实现配方见 `references/gsap-recipes.md`。
 
 ## 项目脚手架
+
+> ⚠️ 安装预警：`hyperframes init` 除了生成项目文件，还会把 **19 个 hyperframes skill 安装到
+> `当前运行时的外部技能目录/`**（渲染后端的合成契约文档，纯文档无可执行 hook）。介意的话先跑
+> `npx hyperframes docs` 看本地文档清单再决定是否 init。
 
 ```bash
 npx -y hyperframes init 项目名 --example blank   # 非交互必须带 --example

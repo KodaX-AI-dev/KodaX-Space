@@ -487,8 +487,9 @@ html.q-minimal .content-copy-button {
 .platform-darwin .titlebar-brand {
   padding-left: 70px;
 }
-/* Windows: renderer 自绘 close/min/max，保留 VS Code 风格 hover/press 反馈。 */
-.platform-win32 .app-titlebar {
+/* Windows/Linux share custom close/min/max controls. */
+.platform-win32 .app-titlebar,
+.platform-linux .app-titlebar {
   padding-right: 0;
 }
 .window-controls {

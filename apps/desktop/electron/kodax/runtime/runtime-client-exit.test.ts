@@ -41,6 +41,58 @@ test('unknown client cleanup retains recovery even after Host success', () => {
   );
 });
 
+test('fresh SDK readiness releases startup without rewriting unknown historical cleanup', () => {
+  const historical: ClientExitReceipt = {
+    ...receipt,
+    cleanup: { ...receipt.cleanup, state: 'unknown', issues: ['original outcome is unknown'] },
+    host: { ...receipt.host, state: 'succeeded' },
+    recovery: {
+      state: 'ready',
+      checkedAt: '2026-10-28T00:00:00Z',
+      reason: 'host_shutdown_verified',
+      nextAction: 'start_or_connect',
+    },
+  };
+  const projected = projectClientExitReceipt(historical);
+  assert.equal(projected.status, 'recovered');
+  assert.equal(projected.receipt?.cleanup.state, 'unknown');
+  assert.deepEqual(projected.receipt, historical);
+});
+
+test('a fresh blocking recovery assessment overrides a historical clean receipt', () => {
+  const projected = projectClientExitReceipt({
+    ...receipt,
+    host: { ...receipt.host, state: 'succeeded' },
+    recovery: {
+      state: 'blocked',
+      checkedAt: '2026-10-28T00:00:00Z',
+      reason: 'containment_active',
+      nextAction: 'retry_verification',
+    },
+  });
+  assert.equal(projected.status, 'blocked');
+  if (projected.status === 'blocked') {
+    assert.equal(projected.reason, 'containment_active');
+    assert.equal(projected.nextAction, 'retry-automatically');
+  }
+});
+
+test('verified personal cleanup can finish while the SDK protects an online peer Host', () => {
+  const projected = projectClientExitReceipt({
+    ...receipt,
+    host: { ...receipt.host, state: 'protected' },
+    recovery: {
+      state: 'blocked',
+      checkedAt: '2026-10-28T00:00:00Z',
+      reason: 'host_protected',
+      nextAction: 'retry_exit',
+    },
+  });
+  assert.equal(projected.status, 'clean');
+  assert.equal(projected.receipt?.host.state, 'protected');
+  assert.equal(projected.receipt?.recovery?.state, 'blocked', 'Host shutdown is still blocked');
+});
+
 test('exit waits for verified cleanup using the accepted request identity', async () => {
   const calls: string[] = [];
   const result = await settleRuntimeClientExit({

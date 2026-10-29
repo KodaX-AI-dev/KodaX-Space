@@ -18,6 +18,10 @@ interface IsolatedUpdater {
     default: {
       instance: {
         checks: number;
+        downloads: number;
+        allowPrerelease: boolean;
+        allowDowngrade: boolean;
+        channel: string;
         autoDownload: boolean;
         autoInstallOnAppQuit: boolean;
         emit: (event: string, arg?: unknown) => void;
@@ -34,7 +38,10 @@ interface IsolatedUpdater {
  * __updaterTestChannels，electron-updater 换成可控的 autoUpdater 桩。
  * platform 传 '"darwin"' / '"win32"' 时经 define 固定 process.platform。
  */
-async function buildIsolatedUpdater(platform?: string): Promise<IsolatedUpdater> {
+async function buildIsolatedUpdater(
+  platform?: string,
+  version = '0.1.46',
+): Promise<IsolatedUpdater> {
   const directory = await mkdtemp(path.join(tmpdir(), 'space-updater-'));
   const fixture = path.join(directory, 'updater.cjs');
   await writeFile(
@@ -43,9 +50,11 @@ async function buildIsolatedUpdater(platform?: string): Promise<IsolatedUpdater>
     const cbs = {};
     const instance = {
       checks: 0,
+      downloads: 0,
       on(event, cb) { cbs[event] = cb; },
       emit(event, arg) { cbs[event]?.(arg); },
       async checkForUpdates() { this.checks++; },
+      async downloadUpdate() { this.downloads++; },
       quitAndInstallArgs: null,
       quitAndInstall(isSilent, isForceRunAfter) {
         this.quitAndInstallArgs = [isSilent, isForceRunAfter];
@@ -77,7 +86,7 @@ async function buildIsolatedUpdater(platform?: string): Promise<IsolatedUpdater>
           );
           builder.onLoad({ filter: /.*/, namespace: 'host' }, () => ({
             contents: `
-          export const app = { isPackaged: true };
+          export const app = { isPackaged: true, getVersion: () => ${JSON.stringify(version)} };
           // esbuild 把 host 命名空间的每个虚拟模块当独立实例求值，必须幂等复用
           // 同一个 channels 对象，否则 registerChannel 与测试读到的不是同一个 map。
           globalThis.__updaterTestChannels ??= {};
@@ -98,14 +107,16 @@ async function buildIsolatedUpdater(platform?: string): Promise<IsolatedUpdater>
       return loaded;
     },
     fixture: async () =>
-      (await import(pathToFileURL(fixture).href)) as Awaited<ReturnType<IsolatedUpdater['fixture']>>,
+      (await import(pathToFileURL(fixture).href)) as Awaited<
+        ReturnType<IsolatedUpdater['fixture']>
+      >,
     channels: () =>
       (globalThis as unknown as Record<string, Record<string, ChannelHandler>>)
         .__updaterTestChannels,
   } as IsolatedUpdater;
 }
 
-test('packaged updater initializes a CommonJS getter export and checks once without downloading', async (t) => {
+test('packaged startup never checks or downloads until the user checks in settings', async (t) => {
   // Pin the supported-platform bundle: without a define the isolated host keeps
   // the real process.platform, so a darwin runner would hit the updater gate
   // this suite tests separately below.
@@ -115,8 +126,11 @@ test('packaged updater initializes a CommonJS getter export and checks once with
   await Promise.all([handler.initAutoUpdater(), handler.initAutoUpdater()]);
   assert.deepEqual(handler.getUpdaterStateForDiagnostics(), { state: 'idle' });
   const loaded = await isolated.fixture();
+  assert.equal(loaded.default.instance.checks, 0);
+  await handler.registerUpdaterChannels();
+  await isolated.channels()['updater.check']({});
   assert.equal(loaded.default.instance.checks, 1);
-  assert.equal(loaded.default.instance.autoDownload, true);
+  assert.equal(loaded.default.instance.autoDownload, false);
   assert.equal(loaded.default.instance.autoInstallOnAppQuit, false);
 });
 
@@ -144,25 +158,143 @@ test('install triggers a silent NSIS quitAndInstall with force run-after', async
   const isolated = await buildIsolatedUpdater('"win32"');
   t.after(() => rm(isolated.directory, { recursive: true, force: true }));
   const handler = await isolated.module();
-  await handler.registerUpdaterChannels();
-  // 挂上事件监听（ensureAutoUpdater import electron-updater 桩并注册 on(...)）
-  await handler.initAutoUpdater();
+  await handler.registerUpdaterChannels({
+    requestInstall: async (install) => {
+      install();
+      return true;
+    },
+  });
+  await isolated.channels()['updater.check']({});
   const loaded = await isolated.fixture();
   // 未 ready 时 install 必须拒绝
-  const early = (await isolated.channels()['updater.install']({})) as { accepted: boolean };
+  const early = (await isolated.channels()['updater.install']({ version: '0.1.47' })) as {
+    accepted: boolean;
+  };
   assert.equal(early.accepted, false);
   // 模拟 electron-updater 报告下载完成 → state=ready
-  loaded.default.instance.emit('update-downloaded', { version: '0.1.46-rc.5' });
+  loaded.default.instance.emit('update-available', { version: '0.1.47' });
+  await isolated.channels()['updater.download']({ version: '0.1.47' });
+  loaded.default.instance.emit('update-downloaded', { version: '0.1.47' });
   assert.deepEqual(handler.getUpdaterStateForDiagnostics(), {
     state: 'ready',
-    version: '0.1.46-rc.5',
+    version: '0.1.47',
   });
-  const accepted = (await isolated.channels()['updater.install']({})) as { accepted: boolean };
+  const accepted = (await isolated.channels()['updater.install']({ version: '0.1.47' })) as {
+    accepted: boolean;
+  };
   assert.equal(accepted.accepted, true);
   // install 内部 setTimeout 100ms 后才 quitAndInstall
   await new Promise((resolve) => setTimeout(resolve, 300));
   assert.deepEqual(loaded.default.instance.quitAndInstallArgs, [true, true]);
   // installing guard：第二次 invoke 必须拒绝
-  const repeated = (await isolated.channels()['updater.install']({})) as { accepted: boolean };
+  const repeated = (await isolated.channels()['updater.install']({ version: '0.1.47' })) as {
+    accepted: boolean;
+  };
   assert.equal(repeated.accepted, false);
 });
+
+test('checking and discovering a release never authorize its download or a cached install', async (t) => {
+  const isolated = await buildIsolatedUpdater('"win32"');
+  t.after(() => rm(isolated.directory, { recursive: true, force: true }));
+  const handler = await isolated.module();
+  handler.registerUpdaterChannels();
+  await isolated.channels()['updater.getState']({});
+  const loaded = await isolated.fixture();
+  assert.equal(loaded.default.instance.checks, 0);
+  await isolated.channels()['updater.check']({});
+  loaded.default.instance.emit('update-downloaded', { version: '0.1.47' });
+  assert.notEqual(handler.getUpdaterStateForDiagnostics().state, 'ready');
+  loaded.default.instance.emit('update-available', { version: '0.1.47' });
+  assert.equal(loaded.default.instance.downloads, 0);
+  assert.deepEqual(await isolated.channels()['updater.download']({ version: '0.1.48' }), {
+    accepted: false,
+  });
+  assert.deepEqual(await isolated.channels()['updater.download']({ version: '0.1.47' }), {
+    accepted: true,
+  });
+  assert.equal(loaded.default.instance.downloads, 1);
+  assert.deepEqual(await isolated.channels()['updater.download']({ version: '0.1.47' }), {
+    accepted: false,
+  });
+  loaded.default.instance.emit('update-downloaded', { version: '0.1.48' });
+  assert.equal(handler.getUpdaterStateForDiagnostics().state, 'downloading');
+  loaded.default.instance.emit('update-downloaded', { version: '0.1.47' });
+  assert.deepEqual(await isolated.channels()['updater.install']({ version: '0.1.48' }), {
+    accepted: false,
+  });
+});
+
+test('a stable installation rejects prereleases even when a contaminated latest feed offers one', async (t) => {
+  const isolated = await buildIsolatedUpdater('"win32"');
+  t.after(() => rm(isolated.directory, { recursive: true, force: true }));
+  const handler = await isolated.module();
+  handler.registerUpdaterChannels();
+  await isolated.channels()['updater.check']({});
+  const { instance } = (await isolated.fixture()).default;
+  assert.equal(instance.allowPrerelease, false);
+  assert.equal(instance.channel, 'latest');
+  assert.equal(instance.allowDowngrade, false);
+  instance.emit('update-available', { version: '0.1.47-alpha.3' });
+  assert.equal(handler.getUpdaterStateForDiagnostics().state, 'error');
+  assert.deepEqual(await isolated.channels()['updater.download']({ version: '0.1.47-alpha.3' }), {
+    accepted: false,
+  });
+  instance.emit('update-downloaded', { version: '0.1.47-alpha.3' });
+  assert.deepEqual(await isolated.channels()['updater.install']({ version: '0.1.47-alpha.3' }), {
+    accepted: false,
+  });
+  assert.equal(instance.downloads, 0);
+});
+
+test('a prerelease installation accepts its own channel and stable releases only', async (t) => {
+  const isolated = await buildIsolatedUpdater('"linux"', '0.1.47-alpha.3');
+  t.after(() => rm(isolated.directory, { recursive: true, force: true }));
+  const handler = await isolated.module();
+  handler.registerUpdaterChannels();
+  await isolated.channels()['updater.check']({});
+  const { instance } = (await isolated.fixture()).default;
+  assert.equal(instance.channel, 'alpha');
+  assert.equal(instance.allowPrerelease, true);
+  instance.emit('update-available', { version: '0.1.47-beta.1' });
+  assert.equal(handler.getUpdaterStateForDiagnostics().state, 'error');
+  for (const version of ['0.1.47-alpha.4', '0.1.47']) {
+    instance.emit('update-available', { version });
+    assert.deepEqual(handler.getUpdaterStateForDiagnostics(), { state: 'available', version });
+  }
+});
+
+for (const permitted of [false, true]) {
+  test(`installation waits for the host safe-exit barrier (${permitted ? 'accepted' : 'blocked'})`, async (t) => {
+    const isolated = await buildIsolatedUpdater('"win32"');
+    t.after(() => rm(isolated.directory, { recursive: true, force: true }));
+    let release!: (allowed: boolean) => void;
+    const barrier = new Promise<boolean>((resolve) => {
+      release = resolve;
+    });
+    const handler = await isolated.module();
+    handler.registerUpdaterChannels({
+      requestInstall: async (install: () => void) => {
+        const allowed = await barrier;
+        if (allowed) install();
+        return allowed;
+      },
+    });
+    await isolated.channels()['updater.check']({});
+    const { instance } = (await isolated.fixture()).default;
+    instance.emit('update-available', { version: '0.1.47' });
+    await isolated.channels()['updater.download']({ version: '0.1.47' });
+    instance.emit('update-downloaded', { version: '0.1.47' });
+    assert.deepEqual(await isolated.channels()['updater.install']({ version: '0.1.47' }), {
+      accepted: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    assert.equal(
+      instance.quitAndInstallArgs,
+      null,
+      'the installer must wait for completed safe shutdown',
+    );
+    release(permitted);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.deepEqual(instance.quitAndInstallArgs, permitted ? [true, true] : null);
+  });
+}

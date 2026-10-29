@@ -2,6 +2,28 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sessionProductViewSchema } from './session.js';
 
+test('task reports cross IPC without inventing missing identities or changing unknown status', () => {
+  const view = {
+    sessionId: 's',
+    runtimeId: 'r',
+    revision: 1,
+    items: [
+      {
+        id: 'report',
+        type: 'event',
+        text: '**literal** &quot;',
+        taskResult: {
+          type: 'task_result',
+          source: 'child_task',
+          status: 'unknown',
+          reportFormat: 'markdown',
+        },
+      },
+    ],
+  };
+  assert.deepEqual(sessionProductViewSchema.parse(view), view);
+});
+
 test('the product display boundary preserves SDK item identity and Host order', () => {
   const view = {
     sessionId: 'session',

@@ -75,7 +75,7 @@ const EMPTY_MATCH_IDS: readonly string[] = [];
 const INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS = 120;
 const SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS = 400;
 // 追底判定与 jump-to-bottom 按钮显隐共用此阈值，两者严格互补（< 阈值追底，>= 阈值显示按钮），避免双阈值死区。
-// 例外：older-window-seam 历史分页恢复（restoreScrollSnapshot）刻意不追底且隐藏按钮——浏览更早历史时不打扰，另有 return-to-newest 按钮兜底。
+// 冻结历史窗口始终保留同一个回到最新按钮；物理页底不能开启实时追底。
 const BOTTOM_DISTANCE_PX = 32;
 const USER_SCROLL_INTENT_DELTA_PX = 4;
 const HISTORY_LOAD_THRESHOLD_PX = 240;
@@ -110,6 +110,7 @@ import { useI18n } from '../i18n/I18nProvider.js';
 import type { MessageKey } from '../i18n/messages.js';
 import {
   loadOlderSessionHistory,
+  loadNewerSessionHistory,
   olderHistoryWindowSeamScrollTop,
   PREPEND_ANCHOR_CORRECTION_FRAME_OFFSETS,
   preservesPrependAnchorForBoundaryInput,
@@ -148,9 +149,6 @@ type ToolClusterMessage = {
   subClusters: SubCluster[];
   totalTools: number;
   turnIndex?: number;
-  /** 组内折进来的 thinking 估算 token 总量（4 chars ≈ 1 token）。groupTools 里预算一次，
-   *  避免 ToolCluster 每次 render 都 reduce 全部 thinking 字符串。0 = 没折进任何推理。 */
-  thinkingTokens: number;
 };
 
 type ArtifactMessage = {
@@ -250,13 +248,6 @@ function compactInlineText(text: string): string {
 function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return `${text.slice(0, Math.max(0, maxChars - 1)).trimEnd()}...`;
-}
-
-function formatCompactCount(value: number): string {
-  if (!Number.isFinite(value)) return '0';
-  if (value < 1000) return String(value);
-  const precision = value < 10000 ? 1 : 0;
-  return `${(value / 1000).toFixed(precision).replace(/\.0$/, '')}k`;
 }
 
 function messageTopWithinScroller(scroller: HTMLDivElement, target: HTMLElement): number {
@@ -431,6 +422,7 @@ function viewMessagesShareProjection(previous: ViewMessage, next: ViewMessage): 
     case 'system_notice':
       return (
         next.kind === 'system_notice' &&
+        JSON.stringify(previous.taskResult) === JSON.stringify(next.taskResult) &&
         previous.variant === next.variant &&
         previous.text === next.text &&
         previous.lineageKind === next.lineageKind &&
@@ -448,7 +440,6 @@ function viewMessagesShareProjection(previous: ViewMessage, next: ViewMessage): 
         next.kind === 'tool_cluster' &&
         previous.totalTools === next.totalTools &&
         previous.turnIndex === next.turnIndex &&
-        previous.thinkingTokens === next.thinkingTokens &&
         subClustersShareProjection(previous.subClusters, next.subClusters)
       );
     case 'thinking':
@@ -671,8 +662,6 @@ function groupTools(
   messages: readonly ConversationMessage[],
   view: 'normal' | 'thinking' | 'verbose' | 'summary',
   t: Translate,
-  countThinkingTokens: (id: string, thinking: string) => number = (_id, thinking) =>
-    approxTokens(thinking),
 ): ViewMessage[] {
   // normal/summary = 紧凑：thinking-only step 的推理折进工具组，连续 thinking→cmd 收敛成一个 cluster。
   // thinking/verbose = 摊开：thinking 仍是独立可读行，每个 step 各自成组（看清每一步在想什么）。
@@ -684,10 +673,6 @@ function groupTools(
   const flushCluster = (): void => {
     if (pendingCluster.length === 0) return;
     const totalTools = pendingCluster.reduce((acc, sc) => acc + sc.tools.length, 0);
-    const thinkingTokens = pendingCluster.reduce(
-      (acc, sc) => acc + (sc.thinking ? countThinkingTokens(sc.id, sc.thinking) : 0),
-      0,
-    );
     const turnIndex = pendingCluster.find((sc) => sc.turnIndex !== undefined)?.turnIndex;
     out.push({
       kind: 'tool_cluster',
@@ -695,7 +680,6 @@ function groupTools(
       subClusters: pendingCluster,
       totalTools,
       ...(turnIndex !== undefined ? { turnIndex } : {}),
-      thinkingTokens,
     });
     pendingCluster = [];
   };
@@ -978,10 +962,6 @@ export function ConversationStreamV2(): JSX.Element {
     readonly sessionId: string | null;
     readonly items: readonly ConversationRenderItem[];
   } | null>(null);
-  const thinkingTokenCacheRef = useRef<{
-    sessionId: string | null;
-    entries: Map<string, { readonly source: string; readonly tokens: number }>;
-  }>({ sessionId: null, entries: new Map() });
 
   const eventMessages = useMemo(() => {
     if (productConversation) return productConversation.messages;
@@ -1047,46 +1027,16 @@ export function ConversationStreamV2(): JSX.Element {
         : appendRuntimeFailureNotices(eventMessages, runtimeLive, runtimeProfileSession),
     [eventMessages, runtimeLive, runtimeProfileSession, productConversation],
   );
-  const groupedProjection = useMemo(() => {
-    const pendingTokenEntries = new Map<
-      string,
-      { readonly source: string; readonly tokens: number }
-    >();
-    const countThinkingTokens = (id: string, thinking: string): number => {
-      const committed = thinkingTokenCacheRef.current;
-      const cached =
-        committed.sessionId === currentSessionId ? committed.entries.get(id) : undefined;
-      if (cached?.source === thinking) return cached.tokens;
-      const pending = pendingTokenEntries.get(id);
-      if (pending?.source === thinking) return pending.tokens;
-      const tokens = approxTokens(thinking);
-      pendingTokenEntries.set(id, { source: thinking, tokens });
-      return tokens;
-    };
-    const fresh = groupTools(messages, transcriptView, t, countThinkingTokens);
+  const viewMessages = useMemo(() => {
+    const fresh = groupTools(messages, transcriptView, t);
     const previous = viewMessagesCacheRef.current;
-    const viewMessages =
-      previous?.sessionId === currentSessionId
-        ? retainStableViewMessages(previous.messages, fresh)
-        : fresh;
-    return { viewMessages, pendingTokenEntries };
+    return previous?.sessionId === currentSessionId
+      ? retainStableViewMessages(previous.messages, fresh)
+      : fresh;
   }, [messages, transcriptView, t, currentSessionId]);
-  const viewMessages = groupedProjection.viewMessages;
   useLayoutEffect(() => {
-    let cache = thinkingTokenCacheRef.current;
-    if (cache.sessionId !== currentSessionId) {
-      cache = { sessionId: currentSessionId, entries: new Map() };
-      thinkingTokenCacheRef.current = cache;
-    }
-    for (const [id, entry] of groupedProjection.pendingTokenEntries) {
-      if (cache.entries.size >= 2_500 && !cache.entries.has(id)) {
-        const oldest = cache.entries.keys().next().value;
-        if (oldest !== undefined) cache.entries.delete(oldest);
-      }
-      cache.entries.set(id, entry);
-    }
     viewMessagesCacheRef.current = { sessionId: currentSessionId, messages: viewMessages };
-  }, [currentSessionId, groupedProjection.pendingTokenEntries, viewMessages]);
+  }, [currentSessionId, viewMessages]);
   // summary 视图：滤掉 thinking 行和工具组，只保留对话正文。其余视图原样渲染。
   const displayMessages = useMemo(
     () =>
@@ -1199,7 +1149,7 @@ export function ConversationStreamV2(): JSX.Element {
     | ((
         scroller: HTMLDivElement,
         snapshot: ScrollSnapshot,
-        missingAnchorFallback?: 'ratio' | 'older-window-seam',
+        missingAnchorFallback?: 'ratio' | 'older-window-seam' | 'newer-window-seam',
       ) => boolean)
     | null
   >(null);
@@ -1208,6 +1158,12 @@ export function ConversationStreamV2(): JSX.Element {
     ((scroller: HTMLDivElement, guardMs?: number) => void) | null
   >(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const latestJumpOwnerRef = useRef<symbol | null>(null);
+  const [latestJumpRequest, setLatestJumpRequest] = useState<{
+    sessionId: string;
+    token: symbol;
+    completed: boolean;
+  } | null>(null);
   const [activeQueryAnchorId, setActiveQueryAnchorId] = useState<string | null>(null);
   const [hoverQueryAnchorId, setHoverQueryAnchorId] = useState<string | null>(null);
   // 每个 tool_group 的展开状态；默认折叠
@@ -1476,25 +1432,29 @@ export function ConversationStreamV2(): JSX.Element {
   function restoreScrollSnapshot(
     scroller: HTMLDivElement,
     snapshot: ScrollSnapshot,
-    missingAnchorFallback: 'ratio' | 'older-window-seam' = 'ratio',
+    missingAnchorFallback: 'ratio' | 'older-window-seam' | 'newer-window-seam' = 'ratio',
   ): boolean {
     if (snapshot.atBottom) return false;
     if (restoreViewportScrollAnchor(scroller, snapshot.anchor)) return true;
 
-    if (missingAnchorFallback === 'older-window-seam') {
+    if (
+      missingAnchorFallback === 'older-window-seam' ||
+      missingAnchorFallback === 'newer-window-seam'
+    ) {
       // A bounded older window can intentionally have no canonical row in common with the page
       // it replaces. The semantic seam is the bottom/newest edge of that older window, not the
       // same scroll-height ratio (which would jump a user loading at top to another arbitrary top).
-      const nextMaxTop = olderHistoryWindowSeamScrollTop(
-        scroller.scrollHeight,
-        scroller.clientHeight,
-      );
+      const nextMaxTop =
+        missingAnchorFallback === 'newer-window-seam'
+          ? 0
+          : olderHistoryWindowSeamScrollTop(scroller.scrollHeight, scroller.clientHeight);
       markProgrammaticScroll();
       scroller.scrollTop = nextMaxTop;
       wasAtBottomRef.current = false;
       viewportScrollAnchorRef.current = captureViewportScrollAnchor(scroller);
       setShowJumpToBottom(false);
       syncActiveQueryAnchorFromScrollPosition(scroller);
+      rememberScrollSnapshot(scroller);
       return true;
     }
 
@@ -1562,7 +1522,7 @@ export function ConversationStreamV2(): JSX.Element {
 
   function syncFollowStateFromScrollPosition(el: HTMLDivElement): void {
     const distance = getDistanceFromBottom(el);
-    const atBottom = distance < BOTTOM_DISTANCE_PX;
+    const atBottom = distance < BOTTOM_DISTANCE_PX && !productTranscript?.browsingOlder;
     wasAtBottomRef.current = atBottom;
     rememberScrollSnapshot(el);
     setShowJumpToBottom(!atBottom);
@@ -1584,10 +1544,12 @@ export function ConversationStreamV2(): JSX.Element {
     syncActiveQueryAnchorFromScrollPosition(el);
   }
 
-  function syncFollowStateOnNextFrame(scroller: HTMLDivElement): void {
+  function followUserScrollTowardNewer(scroller: HTMLDivElement): void {
     requestAnimationFrame(() => {
       if (scrollRef.current !== scroller) return;
       syncFollowStateFromScrollPosition(scroller);
+      if (getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX)
+        requestAdjacentHistory(scroller, 'newer');
     });
   }
 
@@ -1611,10 +1573,14 @@ export function ConversationStreamV2(): JSX.Element {
   scheduleAutoFollowRef.current = scheduleAutoFollow;
   scrollToBottomNowRef.current = scrollToBottomNow;
 
-  function requestOlderHistoryAtCurrentAnchor(scroller: HTMLDivElement): void {
+  function requestAdjacentHistory(
+    scroller: HTMLDivElement,
+    direction: 'older' | 'newer' = 'older',
+  ): void {
     if (
       currentSessionId === null ||
-      !historyPaging.hasMore ||
+      !(direction === 'older' ? historyPaging.hasMore : historyPaging.hasNewer) ||
+      latestJumpRequest !== null ||
       historyPaging.phase === 'loading' ||
       prependAnchorRestoreRef.current !== null
     ) {
@@ -1636,9 +1602,12 @@ export function ConversationStreamV2(): JSX.Element {
       scroller,
     };
     prependAnchorRestoreRef.current = restoreState;
-    setOlderHistoryFeedback({ sessionId: requestedSessionId, phase: 'loading' });
+    if (direction === 'older')
+      setOlderHistoryFeedback({ sessionId: requestedSessionId, phase: 'loading' });
     wasAtBottomRef.current = false;
-    void loadOlderSessionHistory(requestedSessionId)
+    void (direction === 'older' ? loadOlderSessionHistory : loadNewerSessionHistory)(
+      requestedSessionId,
+    )
       .then(() => {
         if (prependAnchorRestoreRef.current?.token !== token) return;
         setOlderHistoryFeedback(null);
@@ -1669,7 +1638,7 @@ export function ConversationStreamV2(): JSX.Element {
             // `content-visibility` can replace intrinsic estimates only after the first restored
             // scroll exposes the seam. Re-apply the original canonical anchor at sparse checkpoints
             // across a bounded settling window so delayed corrections cannot move the user's view.
-            if (snapshot.atBottom) {
+            if (snapshot.atBottom && direction === 'older') {
               markProgrammaticScroll();
               scroller.scrollTop = scroller.scrollHeight;
               wasAtBottomRef.current = true;
@@ -1677,7 +1646,11 @@ export function ConversationStreamV2(): JSX.Element {
               scrollSnapshotRef.current = null;
               setShowJumpToBottom(false);
             } else {
-              restoreScrollSnapshotRef.current?.(scroller, snapshot, 'older-window-seam');
+              restoreScrollSnapshotRef.current?.(
+                scroller,
+                direction === 'newer' ? { ...snapshot, atBottom: false } : snapshot,
+                direction === 'older' ? 'older-window-seam' : 'newer-window-seam',
+              );
             }
           }
           const finalSettleFrame = correctionFrames[correctionFrames.length - 1];
@@ -1691,8 +1664,15 @@ export function ConversationStreamV2(): JSX.Element {
         restoreState.rafId = requestAnimationFrame(restoreAfterLayout);
       })
       .catch(() => {
-        if (prependAnchorRestoreRef.current?.token === token) cancelPrependAnchorRestore();
-        setOlderHistoryFeedback({ sessionId: requestedSessionId, phase: 'error' });
+        if (
+          prependAnchorRestoreRef.current?.token !== token ||
+          useAppStore.getState().currentSessionId !== requestedSessionId
+        )
+          return;
+        cancelPrependAnchorRestore();
+        if (direction === 'older')
+          setOlderHistoryFeedback({ sessionId: requestedSessionId, phase: 'error' });
+        else pushToast(t('conversation.historyLoadFailed'), 'error');
       });
   }
 
@@ -1708,11 +1688,16 @@ export function ConversationStreamV2(): JSX.Element {
       if (performance.now() < programmaticScrollIgnoreUntilRef.current) return;
       // Freeze at the user's latest real position, not the threshold position where the async
       // request happened to start. The snapshot becomes immutable when phase turns restoring.
+      const previousTop = scrollSnapshotRef.current?.scrollTop ?? scroller.scrollTop;
+      const movedDown = scroller.scrollTop > previousTop;
+      const movedUp = scroller.scrollTop < previousTop;
       refreshPendingPrependSnapshot(scroller);
       syncFollowStateFromScrollPosition(scroller);
       syncActiveQueryAnchorFromScrollPosition(scroller);
-      if (scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX) {
-        requestOlderHistoryAtCurrentAnchor(scroller);
+      if (movedUp && scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX) {
+        requestAdjacentHistory(scroller);
+      } else if (movedDown && getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX) {
+        requestAdjacentHistory(scroller, 'newer');
       }
     });
   }
@@ -1745,7 +1730,7 @@ export function ConversationStreamV2(): JSX.Element {
     if (deltaY < 0 && scrollTopBefore > 0) {
       disengageFollowForUserScrollIntent(scroller);
     } else if (deltaY < 0 && scrollTopBefore <= HISTORY_LOAD_THRESHOLD_PX) {
-      requestOlderHistoryAtCurrentAnchor(scroller);
+      requestAdjacentHistory(scroller);
     }
 
     requestAnimationFrame(() => {
@@ -1757,6 +1742,8 @@ export function ConversationStreamV2(): JSX.Element {
         disengageFollowForUserScrollIntent(scroller);
       } else if (deltaY > 0) {
         syncFollowStateFromScrollPosition(scroller);
+        if (getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX)
+          requestAdjacentHistory(scroller, 'newer');
       }
     });
   }
@@ -1793,14 +1780,14 @@ export function ConversationStreamV2(): JSX.Element {
           disengageFollowForUserScrollIntent(scroller);
         } else {
           handlePrependUserScrollIntent();
-          syncFollowStateOnNextFrame(scroller);
+          followUserScrollTowardNewer(scroller);
         }
         break;
       case 'ArrowDown':
       case 'PageDown':
       case 'End':
         handlePrependUserScrollIntent();
-        syncFollowStateOnNextFrame(scroller);
+        followUserScrollTowardNewer(scroller);
         break;
     }
   }
@@ -1841,7 +1828,7 @@ export function ConversationStreamV2(): JSX.Element {
       disengageFollowForUserScrollIntent(scroller);
     } else if (deltaY < -USER_SCROLL_INTENT_DELTA_PX) {
       handlePrependUserScrollIntent();
-      syncFollowStateOnNextFrame(scroller);
+      followUserScrollTowardNewer(scroller);
     }
   }
 
@@ -1931,14 +1918,43 @@ export function ConversationStreamV2(): JSX.Element {
 
   useEffect(() => {
     cancelPrependAnchorRestore();
+    latestJumpOwnerRef.current = null;
+    setLatestJumpRequest(null);
     if (scrollRef.current) {
       scrollToBottomNowRef.current?.(scrollRef.current);
       wasAtBottomRef.current = true;
       setShowJumpToBottom(false);
       setExpanded(new Set());
     }
-    return () => cancelPrependAnchorRestore();
+    return () => {
+      latestJumpOwnerRef.current = null;
+      cancelPrependAnchorRestore();
+    };
   }, [currentSessionId]);
+
+  useLayoutEffect(() => {
+    if (!latestJumpRequest?.completed || latestJumpRequest.sessionId !== currentSessionId) return;
+    if (historyPaging.phase === 'error') {
+      latestJumpOwnerRef.current = null;
+      setLatestJumpRequest(null);
+      pushToast(t('conversation.historyLoadFailed'), 'error');
+      return;
+    }
+    if (
+      historyPaging.phase !== 'ready' ||
+      historyPaging.hasNewer ||
+      productTranscript?.browsingOlder
+    )
+      return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    // The selected SDK window is now committed to the DOM; only this Session may move its viewport.
+    scrollToBottomNowRef.current?.(scroller);
+    wasAtBottomRef.current = true;
+    setShowJumpToBottom(false);
+    latestJumpOwnerRef.current = null;
+    setLatestJumpRequest(null);
+  }, [latestJumpRequest, currentSessionId, historyPaging, productTranscript, t]);
 
   useEffect(() => {
     if (!showQueryJumpRail) {
@@ -1957,16 +1973,13 @@ export function ConversationStreamV2(): JSX.Element {
   }, [currentSessionId, queryJumpAnchors, showQueryJumpRail]);
 
   function jumpToBottom(): void {
+    if (historyPaging.hasNewer || prependAnchorRestoreRef.current?.phase === 'loading') {
+      returnToNewestHistory();
+      return;
+    }
     const scroller = scrollRef.current;
     if (!scroller) return;
     handlePrependUserScrollIntent();
-    if (prependAnchorRestoreRef.current?.phase === 'loading') {
-      scrollToBottomNow(scroller);
-      wasAtBottomRef.current = true;
-      setShowJumpToBottom(false);
-      setActiveQueryAnchorId(queryJumpAnchors[queryJumpAnchors.length - 1]?.id ?? null);
-      return;
-    }
     markProgrammaticScroll(SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS);
     wasAtBottomRef.current = true;
     viewportScrollAnchorRef.current = null;
@@ -1976,20 +1989,40 @@ export function ConversationStreamV2(): JSX.Element {
   }
 
   function returnToNewestHistory(): void {
-    if (!currentSessionId) return;
+    if (!currentSessionId || latestJumpRequest !== null) return;
     // This replaces the paging lifecycle token, so the stale continuation cannot apply data.
     // Its viewport RAF must be fenced independently before the newest request starts.
     cancelPrependAnchorRestore();
+    cancelJumpToBottomAnimation();
+    const sessionId = currentSessionId;
+    const token = Symbol('latest-history');
+    latestJumpOwnerRef.current = token;
+    setLatestJumpRequest({ sessionId, token, completed: false });
     const session = useAppStore
       .getState()
       .sessions.find((candidate) => candidate.sessionId === currentSessionId);
     const surface = session?.surface ?? useSurfaceStore.getState().currentSurface;
-    void restoreNewestSessionHistory(currentSessionId, surface)
+    void restoreNewestSessionHistory(sessionId, surface)
       .then(() => {
-        const scroller = scrollRef.current;
-        if (scroller) scrollToBottomNow(scroller);
+        if (
+          latestJumpOwnerRef.current !== token ||
+          useAppStore.getState().currentSessionId !== sessionId
+        )
+          return;
+        setLatestJumpRequest((request) =>
+          request?.token === token ? { ...request, completed: true } : request,
+        );
       })
-      .catch(() => pushToast(t('conversation.historyLoadFailed'), 'error'));
+      .catch(() => {
+        if (
+          latestJumpOwnerRef.current !== token ||
+          useAppStore.getState().currentSessionId !== sessionId
+        )
+          return;
+        latestJumpOwnerRef.current = null;
+        setLatestJumpRequest((request) => (request?.token === token ? null : request));
+        pushToast(t('conversation.historyLoadFailed'), 'error');
+      });
   }
 
   function jumpToQueryAnchor(id: string): void {
@@ -2204,7 +2237,7 @@ export function ConversationStreamV2(): JSX.Element {
                 }
                 onRetry={() => {
                   const scroller = scrollRef.current;
-                  if (scroller !== null) requestOlderHistoryAtCurrentAnchor(scroller);
+                  if (scroller !== null) requestAdjacentHistory(scroller);
                 }}
               />
             )}
@@ -2361,25 +2394,22 @@ export function ConversationStreamV2(): JSX.Element {
           chevron 用 2.5 描边补足「细 V 不够显眼」；hover 时 outline 微光环（用 outline 不用 ring，
           避免和 .lift 的 box-shadow 抢同一属性、hover 反而丢掉浮影）。
           外层 div 负责居中定位，内层 button 的 .ix-pop 悬停缩放不和居中 translate 打架。 */}
-      {historyPaging.hasNewer === true && (
-        <button
-          type="button"
-          onClick={returnToNewestHistory}
-          className="absolute bottom-14 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border-default bg-surface-4 px-3 py-1.5 text-xs text-fg-secondary lift hover:text-fg-primary"
-        >
-          {t('conversation.returnToNewest')}
-        </button>
-      )}
-      {showJumpToBottom && (
+      {(showJumpToBottom || historyPaging.hasNewer || latestJumpRequest !== null) && (
         <div className="reveal-marker absolute bottom-4 left-1/2 -ml-4 z-10">
           <button
             type="button"
             onClick={jumpToBottom}
             aria-label={t('conversation.jumpToBottom')}
-            title={t('conversation.jumpToBottom')}
+            title={t('conversation.returnToNewest')}
+            disabled={latestJumpRequest !== null}
+            aria-busy={latestJumpRequest !== null}
             className="ix-pop w-8 h-8 rounded-full flex items-center justify-center bg-surface-4 border border-border-default lift text-fg-secondary hover:text-fg-primary hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-border-strong"
           >
-            <ChevronDown className="w-4 h-4" strokeWidth={2.5} aria-hidden />
+            {latestJumpRequest !== null ? (
+              <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />
+            ) : (
+              <ChevronDown className="w-4 h-4" strokeWidth={2.5} aria-hidden />
+            )}
           </button>
         </div>
       )}
@@ -2697,13 +2727,22 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   );
 });
 
-type MarkerTone = 'user' | 'queued' | 'assistant' | 'system' | 'tool' | 'artifact' | 'thinking';
+type MarkerTone =
+  | 'user'
+  | 'queued'
+  | 'assistant'
+  | 'system'
+  | 'info'
+  | 'tool'
+  | 'artifact'
+  | 'thinking';
 
 const MARKER_TONE_CLASS: Record<MarkerTone, string> = {
   user: 'bg-run',
   queued: 'bg-warn',
   assistant: 'bg-ok',
   system: 'bg-warn',
+  info: 'bg-fg-muted',
   tool: 'bg-fg-faint dark:bg-fg-muted',
   artifact: 'bg-accent-ink',
   thinking: 'bg-thinking',
@@ -2720,7 +2759,7 @@ function messageMarkerTone(message: StandardViewMessage): MarkerTone {
     case 'assistant_text':
       return 'assistant';
     case 'system_notice':
-      return 'system';
+      return message.variant === 'info' ? 'info' : 'system';
     case 'artifact':
       return 'artifact';
   }
@@ -2850,7 +2889,7 @@ function StreamingSpinnerRow(): JSX.Element | null {
 }
 /**
  * ThinkingBlock — receipt strip + expandable pre-wrap text.
- * approxTokens 复用 bubbles.tsx 的算法（4 chars ≈ 1 token），但这里 inline 实现避免循环依赖。
+ * Token estimates belong to Host activity; transcript text only identifies the state.
  */
 function ThinkingBlock({
   thinking,
@@ -2864,8 +2903,7 @@ function ThinkingBlock({
   onToggle: () => void;
 }): JSX.Element {
   const { t } = useI18n();
-  const tokens = Math.max(1, Math.round(thinking.length / 4));
-  const tokenLabel = t('message.thinkingSummary', { tokens: formatCompactCount(tokens) });
+  const tokenLabel = t('transcript.view.thinking');
   return (
     <div className="inline-flex w-fit min-w-0 max-w-full flex-col">
       <button
@@ -2915,20 +2953,15 @@ interface ToolClusterProps {
   onToggle: () => void;
 }
 
-/** 4 chars ≈ 1 token —— 跟 ThinkingBlock 同一套估算（避免引 bubbles 造成循环依赖）。 */
-function approxTokens(text: string): number {
-  return Math.max(1, Math.round(text.length / 4));
-}
-
 /**
  * 单层折叠 cluster：一次点击 = 全部展开（thinking + 所有 ToolCallCard），不再有内层 ▸/⌄。
  *
- *   折叠态：`› Ran 6 commands · bash/read · Thinking (~826 tokens)`
+ *   折叠态：`› Ran 6 commands · bash/read · Thinking`
  *   展开态：按 step 顺序，每步先一段紫色 thinking（若有）再该步的工具卡，全部直接可见。
  *
  * 设计取舍（2026-06-08 用户反馈）：连续的 thinking→cmd→thinking→cmd 在 normal 视图下太占地方，
  *   把 thinking 折进工具组收敛成一个 cluster；展开逻辑保持"一次点开看全部"最简单，
- *   thinking 用整组 token 总量在 header 给个量级提示。
+ *   thinking 在 header 标识，token 估算统一由 Host activity 提供。
  *
  * 历史：v0.1.0 起曾两层折叠（外+内 sub-cluster），用户 2026-06-02 反馈两层不直观，降回单层。
  */
@@ -2940,13 +2973,9 @@ function ToolCluster({ cluster, followTail, expanded, onToggle }: ToolClusterPro
     cluster.totalTools === 1
       ? t('conversation.ranOneCommand')
       : t('conversation.ranCommands', { count: cluster.totalTools });
-  // 组内折进来的 thinking 总 token —— header 给个量级提示，让用户知道"这组里藏了多少推理"。
-  // 在 groupTools 里预算好（见 ToolClusterMessage.thinkingTokens），这里直接读。
-  const thinkingTokens = cluster.thinkingTokens;
-  const thinkingLabel =
-    thinkingTokens > 0
-      ? t('message.thinkingSummary', { tokens: formatCompactCount(thinkingTokens) })
-      : null;
+  const thinkingLabel = cluster.subClusters.some((step) => step.thinking)
+    ? t('transcript.view.thinking')
+    : null;
   const toolNames = Array.from(new Set(allTools.map((tool) => tool.toolName))).filter(Boolean);
   const visibleToolNames = toolNames.slice(0, 3);
   const hiddenToolNameCount = Math.max(0, toolNames.length - visibleToolNames.length);

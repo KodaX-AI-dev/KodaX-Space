@@ -5,6 +5,7 @@
 // resolve to a user-provided string or undefined when cancelled.
 
 import { randomUUID } from 'node:crypto';
+import type { AskUserUnanswered } from '@kodax-ai/kodax/agent';
 import type {
   AskUserQuestionAnswer,
   AskUserQuestionOption,
@@ -58,7 +59,7 @@ type PendingAskUser =
       readonly kind: 'question';
       readonly reqId: string;
       readonly sessionId: string;
-      readonly resolve: (answer: AskUserQuestionAnswer | undefined) => void;
+      readonly resolve: (answer: AskUserQuestionAnswer | AskUserUnanswered | undefined) => void;
     };
 
 /** Mirrors the askUser.request push schema's `.max(20)` on options[] and signals[]. */
@@ -67,9 +68,8 @@ const ASK_USER_ARRAY_MAX = 20;
 function normalizeOption(option: AskUserQuestionOption): AskUserQuestionOption {
   const value = sanitizeForDisplay(option.value, 512) || '(empty)';
   const label = sanitizeForDisplay(option.label, 160) || value;
-  const description = option.description !== undefined
-    ? sanitizeForDisplay(option.description, 512)
-    : undefined;
+  const description =
+    option.description !== undefined ? sanitizeForDisplay(option.description, 512) : undefined;
   return {
     label,
     value,
@@ -143,15 +143,19 @@ class AskUserBroker {
   }
 
   /** SDK ask_user_question prompt. It remains pending until answered or explicitly cancelled. */
-  requestQuestion(req: AskUserQuestionRequestInput): Promise<AskUserQuestionAnswer | undefined> {
+  requestQuestion(
+    req: AskUserQuestionRequestInput,
+  ): Promise<AskUserQuestionAnswer | AskUserUnanswered | undefined> {
     if (req.kind === 'select' && (!req.options || req.options.length === 0)) {
-      console.warn('[ask-user-broker] select question requested without options; cancelling prompt');
+      console.warn(
+        '[ask-user-broker] select question requested without options; cancelling prompt',
+      );
       return Promise.resolve(undefined);
     }
 
     const reqId = randomUUID();
 
-    return new Promise<AskUserQuestionAnswer | undefined>((resolve) => {
+    return new Promise<AskUserQuestionAnswer | AskUserUnanswered | undefined>((resolve) => {
       this.pending.set(reqId, {
         kind: 'question',
         reqId,
@@ -215,6 +219,8 @@ class AskUserBroker {
 
     if (typeof reply !== 'string' && 'value' in reply && isSingleQuestionAnswer(reply.value)) {
       entry.resolve(reply.value);
+    } else if (typeof reply !== 'string' && 'cancelled' in reply) {
+      entry.resolve({ unanswered: true, reason: reply.reason ?? 'skipped' });
     } else {
       entry.resolve(undefined);
     }

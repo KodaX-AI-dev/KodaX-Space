@@ -570,6 +570,25 @@ test('Runtime profile keeps spinner and Stop active while the session observatio
   assert.deepEqual(selected, direct);
 });
 
+test('capacity recovery stays active and carries the model-selection hint facts', () => {
+  const snapshot = snapshotFromRuntimeProfileSession({
+    sessionId: sid,
+    surface: 'code',
+    createdAt: 10,
+    lastActivityAt: 20,
+    activeRun: {
+      runId: 'run_capacity_wait',
+      sessionId: sid,
+      phase: 'recovering',
+      contextRecovery: { waitingSince: 10, requiredTokens: 150_000, availableTokens: 128_000 },
+    },
+    queuedRuns: [],
+  });
+  assert.equal(snapshot?.streaming, true);
+  assert.equal(snapshot?.status, 'Waiting for context capacity…');
+  assert.deepEqual(snapshot?.contextCapacity, { required: 150_000, available: 128_000 });
+});
+
 test('profile-only unknown state exposes the exact effective active Run to composer controls', () => {
   const profileSession: SpaceRuntimeProfileProjectionT['sessions'][number] = {
     sessionId: sid,

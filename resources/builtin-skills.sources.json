@@ -16,12 +16,15 @@
         "destinationPath": "LICENSE",
         "sha256": "62928eb197fe4662d1efc3af0735b3ba5df3c0308badd9a2baf2b619009f5366"
       },
-      "exclude": []
+      "exclude": [],
+      "patches": [
+        "builtin-skill-patches/frontend-slides-space-adaptation.patch"
+      ]
     },
     {
       "name": "huashu-design",
       "repository": "https://github.com/alchaincyf/huashu-design.git",
-      "ref": "c9b06710b057a45fe6165e52aa8690f55182ea13",
+      "ref": "4fc7bfdbd5ec3fa2d43ce7a6433de60976a5e4b1",
       "installedPath": "huashu-design",
       "sourceSubdir": ".",
       "license": {
@@ -37,9 +40,7 @@
         "test-prompts.json"
       ],
       "patches": [
-        "builtin-skill-patches/huashu-design-no-watermark.patch",
-        "builtin-skill-patches/huashu-design-builtin-portability.patch",
-        "builtin-skill-patches/huashu-design-remove-promotional-signatures.patch"
+        "builtin-skill-patches/huashu-design-space-adaptation.patch"
       ],
       "forbiddenText": [
         "created by huashu-design",
@@ -66,7 +67,7 @@
     {
       "name": "copywriting",
       "repository": "https://github.com/coreyhaines31/marketingskills.git",
-      "ref": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "ref": "17772c7a80b7b8c7a47af30f648374cd8bd8adc5",
       "installedPath": "copywriting",
       "sourceSubdir": "skills/copywriting",
       "license": {
@@ -84,7 +85,7 @@
     {
       "name": "customer-research",
       "repository": "https://github.com/coreyhaines31/marketingskills.git",
-      "ref": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "ref": "17772c7a80b7b8c7a47af30f648374cd8bd8adc5",
       "installedPath": "customer-research",
       "sourceSubdir": "skills/customer-research",
       "license": {
@@ -182,7 +183,7 @@
     {
       "name": "call-prep",
       "repository": "https://github.com/anthropics/knowledge-work-plugins.git",
-      "ref": "1f517b9de47e827c80cd933ed364e16838072239",
+      "ref": "c75fda00ff0e41c8ee331ae312c8a07f1967653b",
       "installedPath": "call-prep",
       "sourceSubdir": "sales/skills/call-prep",
       "license": {

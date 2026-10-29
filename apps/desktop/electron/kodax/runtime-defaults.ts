@@ -138,7 +138,7 @@ export async function resolveRuntimeDefaults(
   return {
     permissionMode: permissionMode.value,
     reasoningMode: reasoningMode.value,
-    agentMode: agentMode.value,
+    agentMode: 'ama',
     sources: {
       permissionMode: permissionMode.source,
       reasoningMode: reasoningMode.source,

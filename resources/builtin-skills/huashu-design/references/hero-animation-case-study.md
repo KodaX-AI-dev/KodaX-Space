@@ -162,6 +162,8 @@ const panY = Math.cos(panT * 0.09) * 120 - panT * 5;
 
 ### 2. **纸感底色 + 赤陶橙 accent（Anthropic 血统）**
 
+> 这是本 skill 自己的 hero 动画（Claude 生态题材）的品牌选择，**不要当默认搬到别的题材**。可迁移的是「一个 accent 串起所有视觉锚点」这个方法，不是这两个色值。
+
 ```css
 --bg: #F7F4EE;        /* 暖纸 */
 --ink: #1D1D1F;       /* 几乎黑 */

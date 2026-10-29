@@ -38,7 +38,7 @@ test('resolveRuntimeDefaults prioritizes explicit over session, Space, KodaX, an
 
   assert.equal(out.permissionMode, 'auto');
   assert.equal(out.reasoningMode, 'quick');
-  assert.equal(out.agentMode, 'sa');
+  assert.equal(out.agentMode, 'ama');
   assert.deepEqual(out.sources, {
     permissionMode: 'explicit',
     reasoningMode: 'session',
@@ -71,7 +71,7 @@ test('resolveRuntimeDefaults uses Space before KodaX and KodaX before builtins',
 
   assert.equal(out.permissionMode, 'plan');
   assert.equal(out.reasoningMode, 'deep');
-  assert.equal(out.agentMode, 'sa');
+  assert.equal(out.agentMode, 'ama');
   assert.deepEqual(out.sources, {
     permissionMode: 'kodax',
     reasoningMode: 'kodax',

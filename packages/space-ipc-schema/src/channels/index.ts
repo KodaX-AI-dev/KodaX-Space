@@ -68,6 +68,8 @@ import {
   sessionAgentsMdChannel,
   sessionAgentsMdSaveChannel,
   sessionHistoryChannel,
+  sessionWorkModeChannel,
+  sessionSetWorkModeChannel,
   sessionProductSnapshotChannel,
   sessionProductChangedChannel,
   sessionProductItemChannel,
@@ -236,7 +238,13 @@ import {
   windowSetBadgeCountChannel,
   windowStateChannel,
 } from './window.js';
-import { updaterCheckChannel, updaterInstallChannel, updaterStatusChannel } from './updater.js';
+import {
+  updaterCheckChannel,
+  updaterInstallChannel,
+  updaterStatusChannel,
+  updaterGetStateChannel,
+  updaterDownloadChannel,
+} from './updater.js';
 import {
   mcpbInstallChannel,
   mcpbUninstallChannel,
@@ -361,6 +369,8 @@ const sessionInvokeChannels = {
   [sessionAgentsMdChannel.name]: sessionAgentsMdChannel,
   [sessionAgentsMdSaveChannel.name]: sessionAgentsMdSaveChannel,
   [sessionHistoryChannel.name]: sessionHistoryChannel,
+  [sessionWorkModeChannel.name]: sessionWorkModeChannel,
+  [sessionSetWorkModeChannel.name]: sessionSetWorkModeChannel,
   [sessionProductSnapshotChannel.name]: sessionProductSnapshotChannel,
   [sessionProductItemChannel.name]: sessionProductItemChannel,
   [sessionProductSearchChannel.name]: sessionProductSearchChannel,
@@ -495,6 +505,8 @@ const coreInvokeChannels = {
   [windowControlChannel.name]: windowControlChannel,
   [windowSetBadgeCountChannel.name]: windowSetBadgeCountChannel,
   [updaterCheckChannel.name]: updaterCheckChannel,
+  [updaterGetStateChannel.name]: updaterGetStateChannel,
+  [updaterDownloadChannel.name]: updaterDownloadChannel,
   [updaterInstallChannel.name]: updaterInstallChannel,
   [mcpbInstallChannel.name]: mcpbInstallChannel,
   [mcpbUninstallChannel.name]: mcpbUninstallChannel,

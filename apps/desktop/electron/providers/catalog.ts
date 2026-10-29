@@ -127,7 +127,7 @@ const SPACE_OVERRIDES: Record<string, SpaceOverride> = {
     displayName: 'MiniMax Coding',
     protocol: 'anthropic',
     fallbackApiKeyEnv: 'MINIMAX_CODING_API_KEY',
-    fallbackDefaultModel: 'MiniMax-M3',
+    fallbackDefaultModel: 'MiniMax-M3.1-Flash',
   },
   'mimo-coding': {
     displayName: 'MiMo Coding (Xiaomi)',
