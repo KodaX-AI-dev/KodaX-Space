@@ -4,14 +4,20 @@ import { loadKodaxCustomProviders } from '../kodax/user-config.js';
 import { BUILTIN_PROVIDERS, getBuiltin, isBuiltinId } from './catalog.js';
 import { providerConfigStore } from './config.js';
 import { validateApiKeyEnv } from './env-guard.js';
-import { getKey, hasKey } from './keychain.js';
+import { getKey, configuredConnection, describeProviderCredential } from './provider-storage.js';
+import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import path from 'node:path';
+import { invalidateProviderCredential } from './credential-invalidation.js';
+import type { OAuthCredentialSession } from '@kodax-ai/kodax/llm';
 import {
   externalProviderEnvValue,
   restoreManagedProviderEnv,
   setManagedProviderEnv,
+  rememberProviderSecret,
 } from './managed-env.js';
 
 type ConfiguredSource = ProviderInfo['configuredSource'];
+const oauthSessions = new Map<string, { readonly key: string; readonly session: OAuthCredentialSession; readonly unsubscribe: () => void }>();
 
 interface TrustedSharedCredentialAccount {
   readonly providerId: string;
@@ -47,7 +53,7 @@ export function providerCredentialSource(
     (account) => keychainAccounts.has(account),
   );
   if (hasKeychain && hasEnv) return 'both';
-  if (hasKeychain) return 'keychain';
+  if (hasKeychain) return 'file';
   if (hasEnv) return 'env';
   if (hasTrustedSharedKeychain) return 'runtime';
   return 'none';
@@ -96,24 +102,38 @@ export async function resolveProviderCredentialInfo(
   return sdkCustom ? { apiKeyEnv: sdkCustom.apiKeyEnv } : undefined;
 }
 
-async function resolveCredentialAccount(
-  providerId: string,
-  apiKeyEnv: string,
-): Promise<string | undefined> {
-  if (await hasKey(providerId)) return providerId;
-  for (const accountId of trustedSharedCredentialAccounts(providerId, apiKeyEnv)) {
-    if (await hasKey(accountId)) return accountId;
-  }
-  return undefined;
-}
-
 /** Main-process-only lookup. The returned secret must never cross renderer IPC. */
-export async function readProviderCredential(providerId: string): Promise<string | undefined> {
+export async function readProviderCredential(providerId: string, connectionFingerprint?: string): Promise<string | undefined> {
   if (providerId === 'mock') return undefined;
+  const stored = await getKey(providerId, connectionFingerprint);
+  const connection = await configuredConnection(providerId);
+  if (connection?.oauth) {
+    if (!connection.oauthRegistration) throw new Error('OAuth connection has no approved registration.');
+    const [runtime, llm] = await Promise.all([import('@kodax-ai/kodax/runtime'), import('@kodax-ai/kodax/llm')]);
+    const configPath = path.join(getKodaxRuntimeDir(), 'config.json');
+    await runtime.migrateProviderOAuthRegistration({ configPath, registrationId: connection.oauthRegistration });
+    const key = JSON.stringify([configPath, connection.oauthRegistration]);
+    const previous = oauthSessions.get(providerId);
+    if (previous && previous.key !== key) { previous.unsubscribe(); oauthSessions.delete(providerId); await invalidateProviderCredential(providerId); }
+    let session = oauthSessions.get(providerId)?.session;
+    if (!session) {
+      session = await llm.openOAuthSession({ id: connection.oauthRegistration, store: runtime.providerOAuthStore(configPath), driver: llm.createOAuthRefreshDriver(connection.oauth) });
+      const unsubscribe = session.onInvalidate(() => invalidateProviderCredential(providerId));
+      oauthSessions.set(providerId, { key, session, unsubscribe });
+    }
+    if ((session.profile ?? 'default') !== 'default' || session.service !== connection.oauth
+      || (connection.oauth === 'radius' && new URL(session.issuer ?? '').href.replace(/\/$/, '') !== new URL(connection.baseUrl).href.replace(/\/$/, ''))) throw new Error('OAuth registration does not match the approved connection.');
+    return rememberProviderSecret(await session.acquire());
+  }
+  if (connection?.cloud) {
+    const [runtime, llm] = await Promise.all([import('@kodax-ai/kodax/runtime'), import('@kodax-ai/kodax/llm')]);
+    const credential = stored ? connection.cloud.service === 'bedrock' ? { type: 'bearer' as const, token: stored } : { type: 'api-key' as const, key: stored }
+      : await runtime.createNativeCloudCredentialResolver(connection)(new AbortController().signal);
+    for (const value of Object.values(credential)) if (typeof value === 'string') rememberProviderSecret(value);
+    return rememberProviderSecret(llm.serializeCloudCredential(providerId, credential));
+  }
   const info = await resolveProviderCredentialInfo(providerId);
   if (!info) return undefined;
-  const accountId = await resolveCredentialAccount(providerId, info.apiKeyEnv);
-  const stored = accountId ? await getKey(accountId) : undefined;
   if (hasNonEmptyValue(stored)) return stored;
   return externalProviderEnvValue(info.apiKeyEnv);
 }
@@ -122,11 +142,11 @@ export async function ensureProviderKeyInjected(providerId: string): Promise<boo
   if (providerId === 'mock') return false;
   const info = await resolveProviderCredentialInfo(providerId);
   if (!info) return false;
+  if ((await describeProviderCredential(providerId)).authenticationConfigured === true) return true;
   const credential = await readProviderCredential(providerId);
   if (!credential) {
     restoreManagedProviderEnv(info.apiKeyEnv);
     return false;
   }
-  setManagedProviderCredentialEnv(info.apiKeyEnv, credential);
   return true;
 }

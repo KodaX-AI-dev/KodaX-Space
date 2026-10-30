@@ -620,7 +620,7 @@ interface AppState {
    * Keychain backend 状态。'memory' 表示 key 仅在本进程内有效；
    * UI 应显著告警，否则用户以为配了 key 但重启就丢（review M1-sec）。
    */
-  keychainBackend: 'keychain' | 'memory' | 'unknown';
+  keychainBackend: 'keychain' | 'memory' | 'file' | 'unknown';
 
   /**
    * F008: 每个 session 的当前 Work 预算（used / cap）。
@@ -1004,7 +1004,7 @@ interface AppState {
   setProviders(
     providers: readonly ProviderInfo[],
     defaultProviderId: string | null,
-    keychainBackend: 'keychain' | 'memory' | 'unknown',
+    keychainBackend: 'keychain' | 'memory' | 'file' | 'unknown',
   ): void;
   /** Keep the renderer's provider catalog aligned after provider.setDefault succeeds. */
   setDefaultProviderId(id: string | null): void;

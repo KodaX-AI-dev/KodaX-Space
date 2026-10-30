@@ -75,9 +75,11 @@ let requestTencent = false;
 let requested = false;
 let beforeRead: (() => void) | undefined;
 class RecordingProvider extends KodaXBaseProvider {
+  protected override getReasoningApi(): string { return 'openai-chat-completions'; }
   readonly name = 'space-connector-sdk-test';
   readonly supportsThinking = false;
   protected readonly config = {
+    baseUrl: 'https://example.invalid/v1',
     apiKeyEnv: 'CONNECTOR_TEST_UNUSED',
     model: 'test',
     supportsThinking: false,

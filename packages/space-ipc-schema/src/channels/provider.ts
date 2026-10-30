@@ -47,15 +47,21 @@ const customProviderContextWindowSchema = z
 // `isCustom` 区分 built-in 和用户加的自定义 provider
 // `defaultModel` / `models` 给 SessionCreate 下拉选模型用
 // `protocol` 标识 SDK 协议族（Anthropic / OpenAI / CLI-bridge）—— 自定义 provider 必填
+const credentialStateSchema = z.object({
+  binding: z.object({ profile: z.string(), provider: z.string(), connectionFingerprint: z.string().regex(/^[a-f0-9]{64}$/) }),
+  revision: z.string().nullable(), configured: z.boolean(), migration: z.enum(['none', 'pending', 'conflict', 'unavailable']),
+  authentication: z.enum(['oauth', 'cloud', 'external']).optional(), authenticationConfigured: z.boolean().optional(),
+});
 const providerInfoSchema = z.object({
   id: z.string().min(1).max(64),
   displayName: z.string().min(1).max(128),
   apiKeyEnv: z.string().min(1).max(128),
-  protocol: z.enum(['anthropic', 'openai', 'gemini-cli', 'codex-cli']),
+  protocol: z.enum(['anthropic', 'openai', 'google', 'bedrock', 'mistral', 'pi-messages', 'gemini-cli', 'codex-cli']),
   defaultModel: z.string().min(1).max(128),
   models: z.array(z.string().min(1).max(128)).max(64).optional(),
   configured: z.boolean(),
-  configuredSource: z.enum(['none', 'keychain', 'env', 'runtime', 'both']),
+  configuredSource: z.enum(['none', 'keychain', 'file', 'env', 'runtime', 'both', 'oauth', 'cloud', 'external']),
+  credentialState: credentialStateSchema.optional(),
   isDefault: z.boolean(),
   isCustom: z.boolean(),
   // 自定义 provider 才有；built-in 走 SDK 内置 baseUrl
@@ -82,7 +88,7 @@ export const providerListChannel = {
   output: z.object({
     providers: z.array(providerInfoSchema),
     defaultProviderId: z.string().min(1).max(64).nullable(),
-    keychainBackend: z.enum(['keychain', 'memory']),
+    keychainBackend: z.enum(['keychain', 'memory', 'file']),
   }),
 } as const;
 
@@ -96,6 +102,7 @@ export const providerSetKeyChannel = {
   input: z.object({
     providerId: z.string().min(1).max(64),
     apiKey: z.string().min(1).max(4096),
+    expected: credentialStateSchema.optional(),
   }),
   output: z.object({
     ok: z.boolean(),
@@ -108,6 +115,7 @@ export const providerRemoveKeyChannel = {
   direction: 'invoke',
   input: z.object({
     providerId: z.string().min(1).max(64),
+    expected: credentialStateSchema.optional(),
   }),
   output: z.object({
     ok: z.boolean(),
@@ -194,6 +202,7 @@ const providerAddCustomInputSchema = customProviderConfigInputSchema.superRefine
 const providerUpdateCustomInputSchema = customProviderConfigInputSchema
   .extend({
     providerId: z.string().min(1).max(64),
+    expectedCredential: credentialStateSchema.optional(),
   })
   .superRefine(validateCustomProviderBaseUrl);
 
@@ -204,6 +213,7 @@ export const providerAddCustomChannel = {
   output: z.object({
     ok: z.boolean(),
     providerId: z.string().min(1).max(64),
+    credentialState: credentialStateSchema.optional(),
   }),
 } as const;
 
@@ -215,6 +225,7 @@ export const providerUpdateCustomChannel = {
   output: z.object({
     ok: z.boolean(),
     providerId: z.string().min(1).max(64),
+    credentialState: credentialStateSchema.optional(),
   }),
 } as const;
 
@@ -224,6 +235,7 @@ export const providerRemoveCustomChannel = {
   direction: 'invoke',
   input: z.object({
     providerId: z.string().min(1).max(64),
+    expected: credentialStateSchema.optional(),
   }),
   output: z.object({
     ok: z.boolean(),

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { createOwnedTestRuntime, stopOwnedTestRuntime, killOwnedSyntheticHostFixture } from './owned-runtime-fixture.mjs';
 
 function historicalMetadata(root, sessionId, phase) {
   return {
@@ -65,28 +65,24 @@ async function createHistoricalRun(t, phase) {
     assert.ok(path.basename(root).startsWith('space-admission-'));
     await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });
   });
-  return { root, sessionId, sessionFile, content };
-}
+  const releaseFile = path.join(root, 'allow-history-body');
+  const counterFile = path.join(root, 'history-body-read');
+  const extension = path.join(root, 'fail-history-body.mjs');
+  await fs.writeFile(extension, `import fs from 'node:fs/promises';import {existsSync,writeFileSync} from 'node:fs';import {syncBuiltinESMExports} from 'node:module';export default function activate(){const original=fs.readFile;fs.readFile=(...args)=>{if(String(args[0])===${JSON.stringify(sessionFile)}&&!existsSync(${JSON.stringify(releaseFile)})){writeFileSync(${JSON.stringify(counterFile)},'body');return Promise.reject(Object.assign(new Error('EIO: fixture history body unavailable'),{code:'EIO'}));}return original(...args);};syncBuiltinESMExports();}`);
+  await fs.writeFile(path.join(root, '.kodax', 'config.json'), JSON.stringify({ extensions: [extension] }));
 
-function failBodyReads(t, sessionFile) {
-  const originalRead = fs.readFile;
-  return t.mock.method(fs, 'readFile', (...args) => {
-    if (String(args[0]) === sessionFile) {
-      return Promise.reject(Object.assign(new Error('EIO: i/o error, read'), { code: 'EIO' }));
-    }
-    return originalRead(...args);
-  });
+  return { root, sessionId, sessionFile, content, releaseFile, counterFile };
 }
 
 for (const phase of ['completed', 'running']) {
   test(`published SDK inspects a ${phase} Run with unreadable history without losing exit protection`, async (t) => {
-    const { root, sessionId, sessionFile, content } = await createHistoricalRun(t, phase);
-    const runtime = await createKodaXRuntime({
+    const { root, sessionId, sessionFile, content, releaseFile, counterFile } = await createHistoricalRun(t, phase);
+    const runtime = await createOwnedTestRuntime({
       homeDir: root,
       profile: 'coder',
       sharedDaemonHost: true,
     });
-    const bodyRead = failBodyReads(t, sessionFile);
+
     try {
       const runs = await runtime.runs.list();
       assert.equal(runs[0]?.runId, 'historical-run');
@@ -98,18 +94,20 @@ for (const phase of ['completed', 'running']) {
         assert.ok(preflight.blockers.includes('active_agent_turns'));
         assert.equal(preflight.activeAgentTurns[0]?.turnId, 'active-turn');
       }
-      assert.equal(
-        bodyRead.mock.calls.filter(({ arguments: args }) => String(args[0]) === sessionFile).length,
-        0,
-      );
-      await assert.rejects(runtime.sessions.load(sessionId), { code: 'EIO' });
-      bodyRead.mock.restore();
+      await assert.rejects(fs.access(counterFile), { code: 'ENOENT' });
+      await assert.rejects(runtime.sessions.load(sessionId), { code: 'internal_error', message: 'EIO: fixture history body unavailable' });
+      assert.equal(await fs.readFile(counterFile, 'utf8'), 'body');
+      await fs.writeFile(releaseFile, 'allow');
       assert.equal(await fs.readFile(sessionFile, 'utf8'), content);
       await fs.writeFile(sessionFile, '{broken\n');
       await assert.rejects(runtime.runs.list(), { code: 'data_corrupt' });
     } finally {
-      bodyRead.mock.restore();
-      await runtime.close();
+      await fs.writeFile(releaseFile, 'allow');
+      await fs.writeFile(sessionFile, content);
+      if (phase === 'running') {
+        await assert.rejects(runtime.daemon.shutdown(), { code: 'busy' });
+        await killOwnedSyntheticHostFixture(runtime);
+      } else await stopOwnedTestRuntime(runtime);
     }
   });
 }

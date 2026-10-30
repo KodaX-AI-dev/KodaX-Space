@@ -57,6 +57,19 @@ function emptyState(): CredentialVaultState {
   return { version: VAULT_VERSION, records: {}, revokedLegacyAccounts: [] };
 }
 
+/** Migration discovery reads account metadata without asking the OS to decrypt a value. */
+export async function readCredentialVaultMetadata(filePath: string) {
+  try {
+    const bytes = await fs.readFile(filePath);
+    if (bytes.length > 5 * 1024 * 1024) throw new CredentialVaultCorruptError('credential vault is too large');
+    const state = parseState(JSON.parse(bytes.toString('utf8')) as unknown);
+    return { accounts: Object.keys(state.records), revokedAccounts: state.revokedLegacyAccounts };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw new CredentialVaultCorruptError('Legacy credential metadata could not be read.');
+  }
+}
+
 function isSafeAccount(value: unknown): value is string {
   return (
     typeof value === 'string' &&

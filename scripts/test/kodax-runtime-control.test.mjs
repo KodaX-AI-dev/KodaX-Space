@@ -3,8 +3,34 @@ import { mkdtemp, mkdir, realpath, writeFile, readFile, rm } from 'node:fs/promi
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
-import { registerTool } from '@kodax-ai/kodax/coding';
+import { createOwnedTestRuntime, stopOwnedTestRuntime } from './owned-runtime-fixture.mjs';
+
+const gateExtension = `import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
+const marker = name => fileURLToPath(new URL(name, import.meta.url));
+export default function activate(api) {
+ api.registerTool({name:'space_control_gate',description:'Offline owner cancellation gate',
+ sideEffect:'readonly',toClassifierInput:()=>'',input_schema:{type:'object',properties:{}},
+ handler:async(_input,context)=>new Promise((resolve,reject)=>{
+  if(!context.abortSignal) return reject(new Error('missing owner AbortSignal'));
+  const finish=value=>{clearInterval(timer);context.abortSignal.removeEventListener('abort',onAbort);resolve(value);};
+  const onAbort=()=>{fs.writeFileSync(marker('aborted'),'aborted');finish('[Cancelled] Operation cancelled by user');};
+  const timer=setInterval(()=>{if(fs.existsSync(marker('release')))finish('done');},20);
+  context.abortSignal.addEventListener('abort',onAbort,{once:true});
+  fs.writeFileSync(marker('entered'),'entered');
+  if(context.abortSignal.aborted)onAbort();
+ })});
+}`;
+
+async function waitForGate(workspace) {
+  const deadline = Date.now() + 5000;
+  while (true) {
+    try { assert.equal(await readFile(path.join(workspace, 'entered'), 'utf8'), 'entered'); return; }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    assert.ok(Date.now() < deadline, 'actual Host did not enter fixture tool');
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+}
 
 async function fixture(t, extensionSource) {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'space-sdk-control-'));
@@ -22,13 +48,14 @@ async function fixture(t, extensionSource) {
       JSON.stringify({ extensions: [extension] }),
     );
   }
-  const runtime = await createKodaXRuntime({
+  const runtime = await createOwnedTestRuntime({
     homeDir: path.join(root, 'home'),
     sessionsDir: path.join(root, 'sessions'),
     defaultProvider: 'anthropic',
   });
   t.after(async () => {
-    await runtime.close();
+    if (extensionSource === gateExtension) await writeFile(path.join(workspace, 'release'), 'release');
+    await stopOwnedTestRuntime(runtime);
     assert.equal(path.dirname(root), await realpath(os.tmpdir()));
     assert.ok(path.basename(root).startsWith('space-sdk-control-'));
     await rm(temp, { recursive: true, force: true, maxRetries: 3 });
@@ -42,34 +69,9 @@ test(
   'published owner cancels its queue frontier; replay does not cancel a later Run',
   { timeout: 20_000 },
   async (t) => {
-    const { runtime, sessionId, workspace } = await fixture(t);
+    const { runtime, sessionId, workspace } = await fixture(t, gateExtension);
     assert.equal(runtime.capabilities.sessionCancellation.version, 1);
     assert.equal(runtime.capabilities.toolInvocation.version, 1);
-    let entered;
-    const started = new Promise((resolve) => {
-      entered = resolve;
-    });
-    let release;
-    const dispose = registerTool({
-      name: 'space_control_gate',
-      description: 'Offline cancellation gate',
-      sideEffect: 'readonly',
-      toClassifierInput: () => '',
-      input_schema: { type: 'object', properties: {} },
-      handler: async (_input, context) =>
-        new Promise((resolve) => {
-          release = () => resolve('[Cancelled] Operation cancelled by user');
-          const signal = context.abortSignal;
-          assert.ok(signal, 'managed tools must receive an owner AbortSignal');
-          if (signal.aborted) release();
-          else signal.addEventListener('abort', release, { once: true });
-          entered();
-        }),
-    });
-    t.after(() => {
-      release?.();
-      dispose();
-    });
     const start = (toolInvocation) =>
       runtime.runs.start({
         sessionId,
@@ -77,7 +79,7 @@ test(
         options: { lsp: false, toolInvocation },
       });
     const active = await start({ name: 'space_control_gate', input: {} });
-    await started;
+    await waitForGate(workspace);
     const forbidden = path.join(workspace, 'queued-must-not-run.txt');
     const queued = await start({
       name: 'write',
@@ -136,7 +138,7 @@ test(
   'published owner rejects a fresh Stop bound to a terminal Run without cancelling its successor',
   { timeout: 20000 },
   async (t) => {
-    const { runtime, sessionId, workspace } = await fixture(t);
+    const { runtime, sessionId, workspace } = await fixture(t, gateExtension);
     const first = await runtime.runs.start({
       sessionId,
       prompt: 'offline first',
@@ -149,53 +151,25 @@ test(
       },
     });
     assert.equal((await first.result).phase, 'completed');
-    let entered;
-    const started = new Promise((resolve) => {
-      entered = resolve;
-    });
-    let release;
-    let successorAborted = false;
-    const dispose = registerTool({
-      name: 'space_stale_stop_probe',
-      description: 'Offline successor probe',
-      sideEffect: 'readonly',
-      toClassifierInput: () => '',
-      input_schema: { type: 'object', properties: {} },
-      handler: async (_input, context) =>
-        new Promise((resolve) => {
-          release = () => resolve('done');
-          const onAbort = () => {
-            successorAborted = true;
-            resolve('[Cancelled] Operation cancelled by user');
-          };
-          if (context.abortSignal.aborted) onAbort();
-          else context.abortSignal.addEventListener('abort', onAbort, { once: true });
-          entered();
-        }),
-    });
-    t.after(() => {
-      release?.();
-      dispose();
-    });
     const next = await runtime.runs.start({
       sessionId,
       prompt: 'offline successor',
       options: {
         lsp: false,
-        toolInvocation: { name: 'space_stale_stop_probe', input: {} },
+        toolInvocation: { name: 'space_control_gate', input: {} },
       },
     });
-    await started;
+    await waitForGate(workspace);
     await assert.rejects(
       runtime.sessions.cancel({
         sessionId,
         expectedRunId: first.runId,
         requestId: 'never-accepted-before',
       }),
-      { code: 'conflict', denialSource: 'stale_run', retryable: false },
+      { code: 'conflict', data: { denialSource: 'stale_run', retryable: false, operation: 'sessions.cancel' } },
     );
-    release();
+    await writeFile(path.join(workspace, 'release'), 'release');
     assert.equal((await next.result).phase, 'completed');
-    assert.equal(successorAborted, false, 'fresh Stop targeting terminal A aborted successor B');
+    await assert.rejects(readFile(path.join(workspace, 'aborted')), { code: 'ENOENT' });
   },
 );

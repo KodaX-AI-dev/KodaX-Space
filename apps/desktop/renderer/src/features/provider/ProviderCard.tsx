@@ -49,7 +49,7 @@ export function ProviderCard({
   const credentialSource: CredentialSource =
     provider.configuredSource ?? (provider.configured ? 'keychain' : 'none');
   const canSetDefault = provider.configured && !provider.isDefault;
-  const canRemoveKey = credentialSource === 'keychain' || credentialSource === 'both';
+  const canRemoveKey = credentialSource === 'keychain' || credentialSource === 'file' || credentialSource === 'both';
 
   async function handleSave(): Promise<void> {
     if (!window.kodaxSpace) return;
@@ -66,6 +66,7 @@ export function ProviderCard({
       const result = await window.kodaxSpace.invoke('provider.setKey', {
         providerId: provider.id,
         apiKey: submitted,
+        expected: provider.credentialState,
       });
       if (!result.ok) {
         setErr(`${result.error.code}: ${result.error.message}`);
@@ -88,6 +89,7 @@ export function ProviderCard({
     try {
       const result = await window.kodaxSpace.invoke('provider.removeKey', {
         providerId: provider.id,
+        expected: provider.credentialState,
       });
       if (!result.ok) {
         setErr(`${result.error.code}: ${result.error.message}`);
@@ -164,6 +166,7 @@ export function ProviderCard({
     try {
       const result = await window.kodaxSpace.invoke('provider.removeCustom', {
         providerId: provider.id,
+        expected: provider.credentialState,
       });
       if (!result.ok) {
         setErr(`${result.error.code}: ${result.error.message}`);
@@ -238,6 +241,10 @@ export function ProviderCard({
         <MetaRow label={t('provider.meta.model')} value={provider.defaultModel} />
         {provider.baseUrl && <MetaRow label="URL" value={provider.baseUrl} />}
       </dl>
+
+      {provider.credentialState?.migration !== undefined && provider.credentialState.migration !== 'none' && (
+        <p className="mt-3 text-xs text-warning">{t('provider.credentialMigration')}</p>
+      )}
 
       {editing ? (
         <div className="mt-4 rounded-lg border border-info/40 bg-info/10 p-3">
@@ -328,7 +335,7 @@ export function ProviderCard({
         </div>
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
-          {provider.isCustom && (
+          {provider.isCustom && (provider.protocol === 'openai' || provider.protocol === 'anthropic') && (
             <button
               type="button"
               onClick={() => {
@@ -349,7 +356,7 @@ export function ProviderCard({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            disabled={busy || externallyEditing}
+            disabled={busy || externallyEditing || credentialSource === 'oauth'}
             className={[
               'inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50',
               provider.configured
@@ -445,6 +452,10 @@ function MetaRow({
 
 function credentialSourceLabel(source: CredentialSource, t: Translate): string {
   if (source === 'both') return t('provider.keySource.both');
+  if (source === 'file') return t('provider.keySource.file');
+  if (source === 'oauth') return 'OAuth';
+  if (source === 'cloud') return t('provider.keySource.cloud');
+  if (source === 'external') return t('provider.keySource.external');
   if (source === 'keychain') return t('provider.keySource.keychain');
   if (source === 'env') return t('provider.keySource.env');
   if (source === 'runtime') return t('provider.keySource.runtime');

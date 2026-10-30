@@ -3,7 +3,7 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { createOwnedTestRuntime, stopOwnedTestRuntime } from './owned-runtime-fixture.mjs';
 
 async function resultWithinDeadline(run) {
   let timer;
@@ -21,7 +21,7 @@ async function resultWithinDeadline(run) {
 
 async function fixture(t, userInputTimeoutMs) {
   const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'space-sdk-questions-')));
-  const runtime = await createKodaXRuntime({
+  const runtime = await createOwnedTestRuntime({
     homeDir: root,
     sessionsDir: path.join(root, 'sessions'),
     defaultProvider: 'anthropic',
@@ -29,7 +29,7 @@ async function fixture(t, userInputTimeoutMs) {
     ...(userInputTimeoutMs !== undefined ? { userInputTimeoutMs } : {}),
   });
   t.after(async () => {
-    await runtime.close();
+    await stopOwnedTestRuntime(runtime);
     assert.equal(path.dirname(root), await realpath(os.tmpdir()));
     assert.ok(path.basename(root).startsWith('space-sdk-questions-'));
     await rm(root, { recursive: true, force: true, maxRetries: 3 });

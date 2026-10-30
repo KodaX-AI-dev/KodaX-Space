@@ -3,31 +3,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
-import { KodaXBaseProvider, registerModelProvider } from '@kodax-ai/kodax/llm';
-
-function registerInterruptedProvider(providerName, keyName, requests) {
-  class Provider extends KodaXBaseProvider {
-    name = providerName;
-    supportsThinking = false;
-    config = { apiKeyEnv: keyName, model: 'fixture', supportsThinking: false };
-    async stream(messages, _tools, _system, _reasoning, streamOptions) {
-      requests.push(structuredClone(messages));
-      if (requests.length === 1) {
-        streamOptions.onTextDelta('UNSAVED_PROGRESS: script drafted, render still pending.');
-        throw Object.assign(new TypeError('offline interrupted stream'), {
-          code: 'ERR_INVALID_ARG_TYPE',
-        });
-      }
-      return {
-        textBlocks: [{ type: 'text', text: 'Resumed normally.' }],
-        thinkingBlocks: [],
-        toolBlocks: [],
-      };
-    }
-  }
-  return registerModelProvider(providerName, () => new Provider());
-}
+import { createOwnedTestRuntime, stopOwnedTestRuntime, bindOwnedTestProvider, startOwnedTestRun } from './owned-runtime-fixture.mjs';
+import { createProviderHttpFixture, saveFixtureProvider } from './provider-http-fixture.mjs';
 
 async function createRecoveryFixture(t, mode) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'space-sdk-recovery-'));
@@ -37,13 +14,22 @@ async function createRecoveryFixture(t, mode) {
   process.env.KODAX_HOME = path.join(root, 'home');
   process.env[keyName] = 'offline-fixture';
   const requests = [];
-  const unregister = registerInterruptedProvider(providerName, keyName, requests);
+  const connection = await createProviderHttpFixture(t, { name: providerName, keyName, stream: async (messages, _tools, _system, _reasoning, streamOptions) => {
+    requests.push(structuredClone(messages));
+    if (requests.length === 1) {
+      streamOptions.onTextDelta('UNSAVED_PROGRESS: script drafted, render still pending.');
+      throw Object.assign(new TypeError('offline interrupted stream'), { code: 'ERR_INVALID_ARG_TYPE' });
+    }
+    return { textBlocks: [{ type: 'text', text: 'Resumed normally.' }], thinkingBlocks: [], toolBlocks: [] };
+  } });
+  await saveFixtureProvider(path.join(root, 'home'), connection);
+
   let runtime;
   t.after(async () => {
     try {
-      await runtime?.close();
+      await stopOwnedTestRuntime(runtime);
     } finally {
-      unregister();
+
       for (const [key, value] of previous) {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;
@@ -55,12 +41,13 @@ async function createRecoveryFixture(t, mode) {
   });
   const workspace = path.join(root, 'workspace');
   await fs.mkdir(workspace);
-  runtime = await createKodaXRuntime({
+  runtime = await createOwnedTestRuntime({
     homeDir: path.join(root, 'home'),
     sessionsDir: path.join(root, 'sessions'),
     defaultProvider: providerName,
     defaultModel: 'fixture',
   });
+  bindOwnedTestProvider(runtime, connection);
   const session = await runtime.sessions.create({ projectPath: workspace });
   return { runtime, session, requests };
 }
@@ -69,7 +56,7 @@ for (const mode of ['managed_task', 'coding']) {
   test(`published ${mode} resumes journal replies in requests without rewriting history`, async (t) => {
     const { runtime, session, requests } = await createRecoveryFixture(t, mode);
     const start = (prompt) =>
-      runtime.runs.start({
+      startOwnedTestRun(runtime, {
         sessionId: session.id,
         mode,
         prompt,

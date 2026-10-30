@@ -15,8 +15,9 @@
 // 错误脱敏：本模块只把凭据交给 SDK exact scope，不记录、拼接或返回 secret。
 
 import type { BuiltinProvider } from './catalog.js';
-import type { CustomProvider } from './config.js';
+import type { KodaXCustomProviderConfig } from '@kodax-ai/kodax/llm';
 import { validateBaseUrl } from './url-guard.js';
+import { configuredConnection } from './provider-storage.js';
 import {
   MissingExactProviderCredentialError,
   runWithExactProviderCredential,
@@ -24,7 +25,7 @@ import {
 
 export interface CustomProviderProbe {
   readonly id: string;
-  readonly protocol: CustomProvider['protocol'];
+  readonly protocol: KodaXCustomProviderConfig['protocol'];
   readonly baseUrl: string;
   readonly skipBaseUrlValidation?: boolean;
   readonly apiKeyEnv: string;
@@ -107,7 +108,7 @@ async function runCredentialVerification(
     if (error instanceof MissingExactProviderCredentialError) {
       return { ok: false, error: 'no API key configured' };
     }
-    throw error;
+    return { ok: false, error: 'credential storage or configuration unavailable' };
   }
 }
 
@@ -147,7 +148,8 @@ export async function testProvider(
     }
     let instance: ReturnType<TestProviderModule['createCustomProvider']>;
     try {
-      instance = sdk.createCustomProvider({
+      const full = deps === undefined ? await configuredConnection(provider.id) : undefined;
+      instance = sdk.createCustomProvider(full ?? {
         name: provider.id,
         protocol: provider.protocol,
         baseUrl: urlCheck.normalizedUrl,

@@ -125,9 +125,11 @@ const restrictedExperts = new Map<string, PartnerExpertSnapshotT>();
 let beforeResponse: (() => Promise<void>) | undefined;
 
 class RecordingProvider extends KodaXBaseProvider {
+  protected override getReasoningApi(): string { return 'openai-chat-completions'; }
   readonly name = 'space-expert-runtime-test';
   readonly supportsThinking = false;
   protected readonly config = {
+    baseUrl: 'https://example.invalid/v1',
     apiKeyEnv: 'SPACE_EXPERT_TEST_UNUSED',
     model: 'test-model',
     supportsThinking: false,

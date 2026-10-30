@@ -35,7 +35,11 @@ import {
   getKey,
   listConfiguredAccounts,
   getBackendStatus,
-} from '../providers/keychain.js';
+  describeProviderCredential,
+  moveProviderCredential,
+  assertProviderCredentialState,
+  removeProviderWithCredentials,
+} from '../providers/provider-storage.js';
 import { testProvider } from '../providers/test-connection.js';
 import { validateBaseUrl } from '../providers/url-guard.js';
 import { validateApiKeyEnv } from '../providers/env-guard.js';
@@ -57,7 +61,6 @@ import {
   listKnownProviderIds,
   providerCredentialSource,
   readProviderCredential,
-  resolveProviderCredentialInfo,
   setManagedProviderCredentialEnv,
 } from '../providers/credentials.js';
 
@@ -133,58 +136,8 @@ export function injectAllKeysToEnv(): Promise<void> {
 }
 
 async function injectAllKeysToEnvUnlocked(): Promise<void> {
-  await providerConfigStore.load();
-  const defaultId = providerConfigStore.getDefaultProviderId();
-  // 1) 收集 keychain 里实际有 key 的 apiKeyEnv 名（按 account → provider info → env name）。
-  //    只清这些，留住 shell-exported 的 ZHIPU_API_KEY / DEEPSEEK_API_KEY 等 — 用户在
-  //    shell rc 里 export 的 key 是 KodaX/Claude Code 等工具的常用配置方式，删了之后
-  //    Space provider.list 会显示"未配置"，与用户预期完全不符 (regression discovered
-  //    via e2e 测试发现：zhipu-coding 在 shell 有 ZHIPU_API_KEY 但 list 显示未配置)。
   restoreManagedProviderEnvs();
-
-  // 2) 按 account 重新注入；未知 account 自动清掉（旧 dev key / 测试残留）
-  //    v0.1.6: 之前只 log warn 不删，导致用户启动每次报一遍"a/b/c/x skipping"。
-  //    detect 条件保守：account 不匹配任何已知 provider id (built-in catalog 稳定 +
-  //    custom_<hex> CSPRNG 永不重生) → 安全删除。
-  if (process.platform === 'darwin') {
-    if (defaultId) await ensureProviderKeyInjected(defaultId);
-    return;
-  }
-
-  const accounts = await listConfiguredAccounts(await listKnownProviderIds());
-  const orphanAccounts: string[] = [];
-  for (const acct of accounts) {
-    const info = await resolveProviderCredentialInfo(acct);
-    if (!info) {
-      orphanAccounts.push(acct);
-      continue;
-    }
-    const value = await getKey(acct);
-    if (value) setManagedEnv(info.apiKeyEnv, value);
-  }
-  if (orphanAccounts.length > 0) {
-    console.info(
-      `[provider] cleaning up ${orphanAccounts.length} orphan keychain account(s): ${orphanAccounts.join(', ')}`,
-    );
-    for (const acct of orphanAccounts) {
-      try {
-        await deleteKey(acct);
-      } catch (err) {
-        console.warn(
-          `[provider] failed to delete orphan account "${acct}":`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-  }
-  // 4) 默认 provider 的 key 最后注入一次——保证共享 env 时它胜出
-  if (defaultId) {
-    const info = await resolveProviderCredentialInfo(defaultId);
-    if (info) {
-      const value = await getKey(defaultId);
-      if (value) setManagedEnv(info.apiKeyEnv, value);
-    }
-  }
+  await getBackendStatus();
 }
 
 async function resolveKnownProvider(id: string): Promise<KnownProvider | undefined> {
@@ -280,9 +233,14 @@ export function registerProviderChannels(): void {
       });
     }
 
-    const effectiveDefaultId =
-      defaultId && list.some((p) => p.id === defaultId && p.configured) ? defaultId : null;
-    const providers = list.map((p) => ({ ...p, isDefault: p.id === effectiveDefaultId }));
+    const detailed = await Promise.all(list.map(async (p) => {
+      const credentialState = await describeProviderCredential(p.id);
+      return { ...p, credentialState,
+        configured: p.configured || credentialState.authenticationConfigured === true,
+        configuredSource: credentialState.authentication ?? p.configuredSource };
+    }));
+    const effectiveDefaultId = defaultId && detailed.some(p => p.id === defaultId && p.configured) ? defaultId : null;
+    const providers = detailed.map(p => ({ ...p, isDefault: p.id === effectiveDefaultId }));
     const keychainBackend = await getBackendStatus();
     return { providers, defaultProviderId: effectiveDefaultId, keychainBackend };
   });
@@ -297,14 +255,14 @@ export function registerProviderChannels(): void {
     const keyErr = validateApiKey(input.apiKey);
     if (keyErr) throw new Error(keyErr);
 
-    await setKey(input.providerId, input.apiKey);
+    await setKey(input.providerId, input.apiKey, input.expected);
     await injectAllKeysToEnv();
     return { ok: true };
   });
 
   // provider.removeKey
   registerChannel('provider.removeKey', async (input) => {
-    const removed = await deleteKey(input.providerId);
+    const removed = await deleteKey(input.providerId, input.expected);
     // 重新跑一遍全量注入——如果该 provider 跟其他共享 apiKeyEnv，
     // 删它的 key 之后那个 env 应回到另一个共享者的值（或被默认 provider 覆盖）
     await injectAllKeysToEnv();
@@ -374,7 +332,7 @@ export function registerProviderChannels(): void {
       });
 
       await refreshSdkCustomProviderRegistry();
-      return { ok: true, providerId: id };
+      return { ok: true, providerId: id, credentialState: await describeProviderCredential(id) };
     }),
   );
 
@@ -382,6 +340,8 @@ export function registerProviderChannels(): void {
   registerChannel('provider.updateCustom', (input) =>
     customProviderMutationQueue.run(async () => {
       await providerConfigStore.load();
+      const beforeCredential = await assertProviderCredentialState(input.providerId, input.expectedCredential);
+      let movedCredential: Awaited<ReturnType<typeof moveProviderCredential>>;
 
       const urlCheck = validateBaseUrl(input.baseUrl, {
         skipValidation: input.skipBaseUrlValidation === true,
@@ -438,36 +398,13 @@ export function registerProviderChannels(): void {
 
         const existingKey =
           nextProviderIdCandidate !== input.providerId ? await getKey(input.providerId) : undefined;
-        let keyMoved = false;
-        if (existingKey) {
-          await setKey(nextProviderIdCandidate, existingKey);
-          const oldKeyRemoved = await deleteKey(input.providerId);
-          if (!oldKeyRemoved) {
-            await deleteKey(nextProviderIdCandidate).catch(() => undefined);
-            throw new Error('failed to remove old provider key during rename');
-          }
-          keyMoved = true;
-        }
+        const previousCredential = existingKey ? await describeProviderCredential(input.providerId) : undefined;
 
-        let updated: Awaited<ReturnType<typeof updateKodaxConfigCustomProvider>>;
-        try {
-          updated = await updateKodaxConfigCustomProvider(input.providerId, update);
-          if (!updated.updated) {
-            throw new Error('unknown writable custom providerId');
-          }
-        } catch (err) {
-          if (keyMoved && existingKey) {
-            await setKey(input.providerId, existingKey).catch(() => undefined);
-            await deleteKey(nextProviderIdCandidate).catch(() => undefined);
-          }
-          throw err;
-        }
+        const updated = await updateKodaxConfigCustomProvider(input.providerId, update, previousCredential
+          ? async name => { movedCredential = await moveProviderCredential(name, previousCredential); } : undefined);
+        if (!updated.updated) throw new Error('unknown writable custom providerId');
         nextProviderId = updated.providerId;
         if (nextProviderId !== input.providerId) {
-          if (keyMoved && nextProviderId !== nextProviderIdCandidate && existingKey) {
-            await setKey(nextProviderId, existingKey);
-            await deleteKey(nextProviderIdCandidate).catch(() => undefined);
-          }
           if (providerConfigStore.getDefaultProviderId() === input.providerId) {
             await providerConfigStore.setDefault(nextProviderId);
           }
@@ -477,13 +414,18 @@ export function registerProviderChannels(): void {
       await refreshSdkCustomProviderRegistry();
       await injectAllKeysToEnv();
       await reloadCoderConfigBestEffort('provider.updateCustom');
-      return { ok: true, providerId: nextProviderId };
+      const afterCredential = await describeProviderCredential(nextProviderId);
+      const sameConnection = beforeCredential.binding.connectionFingerprint === afterCredential.binding.connectionFingerprint;
+      const credentialState = movedCredential ?? { ...afterCredential, revision: sameConnection ? beforeCredential.revision : null,
+        configured: sameConnection && beforeCredential.configured };
+      return { ok: true, providerId: nextProviderId, credentialState };
     }),
   );
   // provider.removeCustom
   registerChannel('provider.removeCustom', (input) =>
     customProviderMutationQueue.run(async () => {
       await providerConfigStore.load();
+      const removed = await removeProviderWithCredentials(input.providerId, input.expected, async () => {
       let removed = false;
 
       if (providerConfigStore.getCustom(input.providerId)) {
@@ -495,9 +437,12 @@ export function registerProviderChannels(): void {
         }
       }
 
+        return removed;
+      });
+
       if (removed) {
         // 删 custom 时同步删 keychain 中的 key
-        await deleteKey(input.providerId);
+
         await injectAllKeysToEnv();
         if (input.providerId !== 'mock' && !isBuiltinId(input.providerId)) {
           await refreshSdkCustomProviderRegistry();

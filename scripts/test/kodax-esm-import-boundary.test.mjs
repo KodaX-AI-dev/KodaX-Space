@@ -13,7 +13,7 @@ async function productionTypeScriptFiles(root) {
     const absolute = path.join(root, entry.name);
     if (entry.isDirectory()) {
       if (entry.name !== 'test') files.push(...(await productionTypeScriptFiles(absolute)));
-    } else if (entry.name.endsWith('.ts')) {
+    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) {
       files.push(absolute);
     }
   }

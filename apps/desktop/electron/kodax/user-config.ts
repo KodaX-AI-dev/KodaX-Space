@@ -15,6 +15,8 @@
 //   - 默认值是 string / boolean / enum 标量，无 secret 风险
 
 import { promises as fsp } from 'node:fs';
+import { closeSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import {
   CUSTOM_PROVIDER_CONTEXT_WINDOW_MAX,
@@ -67,7 +69,7 @@ export interface KodaxRunConfig {
 export interface KodaxConfigCustomProvider {
   readonly id: string;
   readonly displayName: string;
-  readonly protocol: 'anthropic' | 'openai';
+  readonly protocol: SdkCustomProviderConfig['protocol'];
   readonly baseUrl: string;
   readonly skipBaseUrlValidation?: boolean;
   readonly apiKeyEnv: string;
@@ -94,7 +96,7 @@ export interface KodaxConfigCustomProviderUpdate {
 }
 export interface SpaceCustomProviderForSdk {
   readonly id: string;
-  readonly protocol: 'anthropic' | 'openai';
+  readonly protocol: SdkCustomProviderConfig['protocol'];
   readonly baseUrl: string;
   readonly skipBaseUrlValidation?: boolean;
   readonly apiKeyEnv: string;
@@ -346,6 +348,7 @@ export async function loadKodaxRunConfig(): Promise<KodaxRunConfig> {
 export async function updateKodaxConfigCustomProvider(
   providerId: string,
   update: KodaxConfigCustomProviderUpdate,
+  moveCredential?: (providerId: string) => Promise<void>,
 ): Promise<{ readonly updated: boolean; readonly providerId: string }> {
   const raw = await loadWritableKodaxConfig();
   const providers = Array.isArray(raw.customProviders) ? [...raw.customProviders] : [];
@@ -380,8 +383,45 @@ export async function updateKodaxConfigCustomProvider(
     provider: raw.provider === providerId ? nextProviderId : raw.provider,
     customProviders: providers,
   };
-  saveWritableKodaxConfig(nextConfig);
+  if (moveCredential) await commitProviderRename(raw, nextConfig, nextProviderId, moveCredential);
+  else saveWritableKodaxConfig(nextConfig);
   return { updated: true, providerId: nextProviderId };
+}
+
+async function commitProviderRename(previous: SdkLoadConfigReturn, next: SdkLoadConfigReturn, name: string,
+  moveCredential: (providerId: string) => Promise<void>): Promise<void> {
+  const { withCoreConfigWriteLock } = await import('@kodax-ai/kodax/repl');
+  const file = getKodaxConfigPath();
+  const read = (): Record<string, unknown> => {
+    const value: unknown = JSON.parse(readFileSync(file, 'utf8'));
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid provider configuration.');
+    return value as Record<string, unknown>;
+  };
+  const matches = (value: Record<string, unknown>, expected: SdkLoadConfigReturn) =>
+    JSON.stringify(value.customProviders ?? []) === JSON.stringify(expected.customProviders ?? []) && value.provider === expected.provider;
+  const apply = (expected: SdkLoadConfigReturn, value: SdkLoadConfigReturn) => withCoreConfigWriteLock(file, () => {
+    const current = read();
+    if (!matches(current, expected)) throw new Error('Provider configuration changed concurrently. Refresh before retrying.');
+    writeProviderConfig(file, { ...current, provider: value.provider, customProviders: value.customProviders });
+    invalidateUserDefaultsCache();
+  });
+  apply(previous, next);
+  try { await moveCredential(name); }
+  catch (error) {
+    try { apply(next, previous); }
+    catch (rollback) { throw new AggregateError([error, rollback], 'Credential move failed and configuration rollback conflicted. Concurrent values were preserved.'); }
+    throw error;
+  }
+}
+
+function writeProviderConfig(file: string, config: Record<string, unknown>): void {
+  const staged = `${file}.${randomUUID()}.tmp`;
+  const descriptor = openSync(staged, 'wx', 0o600);
+  try {
+    try { writeFileSync(descriptor, JSON.stringify(config, null, 2)); fsyncSync(descriptor); }
+    finally { closeSync(descriptor); }
+    renameSync(staged, file);
+  } finally { rmSync(staged, { force: true }); }
 }
 
 export async function removeKodaxConfigCustomProvider(providerId: string): Promise<boolean> {
@@ -1021,8 +1061,8 @@ function normalizeModelList(models: unknown): readonly string[] | undefined {
   return seen.size > 0 ? [...seen] : undefined;
 }
 
-function isSupportedCustomProtocol(v: unknown): v is 'anthropic' | 'openai' {
-  return v === 'anthropic' || v === 'openai';
+function isSupportedCustomProtocol(v: unknown): v is SdkCustomProviderConfig['protocol'] {
+  return typeof v === 'string' && ['anthropic', 'openai', 'google', 'bedrock', 'mistral', 'pi-messages'].includes(v);
 }
 
 function isNonEmptyString(v: unknown): v is string {

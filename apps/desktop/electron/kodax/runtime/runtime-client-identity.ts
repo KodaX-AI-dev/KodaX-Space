@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { replaceFileIfUnchanged, writeNewFileExclusive } from '../atomic-file.js';
 import { getSpaceDataDir } from '../data-paths.js';
-import { verifyLegacyRuntimeSecret } from './runtime-credential-recovery.js';
+import { createRuntimeClientFileSecretStore } from './runtime-client-secret-file.js';
 
 const MAX_IDENTITY_BYTES = 4 * 1024;
 const CLIENT_ID_RE =
@@ -113,42 +113,6 @@ function identityBytes(identity: StableRuntimeClientIdentity): Buffer {
   return Buffer.from(`${JSON.stringify(identity, null, 2)}\n`, 'utf8');
 }
 
-function defaultSecretStore(): RuntimeClientSecretStore {
-  if (process.env.KODAX_TEST_ONBOARDING) {
-    // Real Runtime tests need a restart-stable secret, while Provider test
-    // credentials remain in memory. The profile owns this separate keyring
-    // entry; runtime-test-credential-cleanup removes it before profile deletion.
-    const service = 'kodax-space-test-runtime';
-    const keyring = async () => {
-      const moduleId = '@napi-rs/keyring/keytar.js';
-      return (await import(moduleId)) as typeof import('@napi-rs/keyring/keytar.js');
-    };
-    return {
-      async read(account) {
-        return (await (await keyring()).getPassword(service, account)) ?? undefined;
-      },
-      async write(account, secret) {
-        await (await keyring()).setPassword(service, account, secret);
-      },
-    };
-  }
-  return {
-    async read(account, identity) {
-      const keychain = await import('../../providers/keychain.js');
-      return keychain.getPersistentKey(
-        account,
-        identity === undefined
-          ? undefined
-          : (candidate) => verifyLegacyRuntimeSecret(identity, candidate),
-      );
-    },
-    async write(account, secret) {
-      const keychain = await import('../../providers/keychain.js');
-      await keychain.setPersistentKey(account, secret);
-    },
-  };
-}
-
 /**
  * Owns Space's stable daemon client identity without importing the KodaX SDK.
  *
@@ -169,12 +133,14 @@ export class RuntimeClientIdentityStore {
     filePath = path.join(getSpaceDataDir(), 'runtime-client-identity.json'),
     directory = path.dirname(filePath),
     uuid: () => string = randomUUID,
-    secretStore: RuntimeClientSecretStore = defaultSecretStore(),
+    secretStore?: RuntimeClientSecretStore,
   ) {
     this.#filePath = filePath;
     this.#directory = directory;
     this.#uuid = uuid;
-    this.#secretStore = secretStore;
+    this.#secretStore = secretStore ?? createRuntimeClientFileSecretStore({
+      authFile: path.join(path.basename(directory) === 'space' ? path.dirname(directory) : directory, 'auth.json'),
+    });
   }
 
   loadOrCreate(): Promise<StableRuntimeClientIdentity> {
@@ -345,7 +311,7 @@ export class RuntimeClientIdentityStore {
         const existing = await this.#secretStore.read(account, identity);
         if (existing !== undefined) {
           if (existing.length < 32 || existing.length > 512) {
-            throw new Error('Runtime client secret stored in the OS keychain is invalid.');
+            throw new Error('Runtime client secret stored in the credential file is invalid.');
           }
           return existing;
         }

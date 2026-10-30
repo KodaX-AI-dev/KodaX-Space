@@ -1,3 +1,4 @@
+import type { RuntimeInlineOwnerHandle } from '../kodax/runtime-host-adapter.js';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
@@ -8,7 +9,6 @@ import type {
   KodaXDaemonRuntime,
   RuntimeConnectionState,
   RuntimeDaemonManagementState,
-  RuntimeInlineOwnerHandle,
   RuntimeRunHandle,
   RuntimeRunResult,
   RuntimeRunStatus,

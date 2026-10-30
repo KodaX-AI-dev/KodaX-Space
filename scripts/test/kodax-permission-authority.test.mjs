@@ -1,10 +1,11 @@
+import { createProviderHttpFixture, saveFixtureProvider } from './provider-http-fixture.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { createOwnedTestRuntime, stopOwnedTestRuntime, bindOwnedTestProvider, startOwnedTestRun } from './owned-runtime-fixture.mjs';
 import { runKodaX, runManagedTask } from '@kodax-ai/kodax/coding';
 import { KodaXBaseProvider, registerModelProvider } from '@kodax-ai/kodax/llm';
 
@@ -45,20 +46,23 @@ async function fixture(t, stream) {
     assert.ok(path.basename(root).startsWith('sdk-permissions-'));
     await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });
   });
-  return { root, workspace, target };
+  const connection = await createProviderHttpFixture(t, { name: providerName, keyName, stream });
+  await saveFixtureProvider(path.join(root, 'home'), connection);
+  return { root, workspace, target, connection };
 }
 
 async function runtimeFixture(paths, permissionMode) {
-  const runtime = await createKodaXRuntime({
+  const runtime = await createOwnedTestRuntime({
     homeDir: path.join(paths.root, 'home'),
     sessionsDir: path.join(paths.root, 'sessions'),
     defaultProvider: providerName,
     defaultModel: 'fixture',
     sharedDaemonHost: true,
   });
+  bindOwnedTestProvider(runtime, paths.connection);
   const session = await runtime.sessions.create({ projectPath: paths.workspace });
   await runtime.sessions.updateSettings(session.id, { permissionMode });
-  return { runtime, session, close: () => runtime.close() };
+  return { runtime, session, close: () => stopOwnedTestRuntime(runtime) };
 }
 
 test('an already-cancelled direct Run completes without calling the Provider', async (t) => {
@@ -105,7 +109,7 @@ test('Runtime Full Access and reviewed Auto write outside workspace; a later den
       for (const allowed of mode === 'auto' ? [true, false] : [true]) {
         decision = allowed ? 'allow' : 'ask';
         const target = `${paths.target}-${mode}-${allowed}`;
-        const run = await runtime.runs.start({
+        const run = await startOwnedTestRun(runtime, {
           sessionId: session.id,
           prompt: 'Write this fixture.',
           options: {
@@ -187,7 +191,7 @@ test('Runtime refreshes permission facts after a live mode change despite prompt
   await fs.writeFile(paths.target, 'fixture');
   owner = await runtimeFixture(paths, 'full-access');
   try {
-    const run = await owner.runtime.runs.start({
+    const run = await startOwnedTestRun(owner.runtime, {
       sessionId: owner.session.id,
       prompt: 'Read the fixture.',
       mode: 'managed_task',

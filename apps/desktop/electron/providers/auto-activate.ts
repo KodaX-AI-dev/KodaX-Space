@@ -20,7 +20,7 @@
 
 import { BUILTIN_PROVIDERS } from './catalog.js';
 import { providerConfigStore } from './config.js';
-import { listConfiguredAccounts } from './keychain.js';
+import { listConfiguredAccounts } from './provider-storage.js';
 import { externalProviderEnvValue } from './managed-env.js';
 
 // "coding 偏好"优先级。Anthropic / Codex CLI 类 coding-first provider 排前。

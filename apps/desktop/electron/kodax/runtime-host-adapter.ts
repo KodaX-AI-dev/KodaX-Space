@@ -1,3 +1,4 @@
+import { providerCredentialEpoch, onProviderCredentialInvalidation } from '../providers/credential-invalidation.js';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
@@ -19,7 +20,6 @@ import type {
   RuntimeDaemonManagementState,
   RuntimeDaemonPreflight,
   RuntimeForkSessionInput,
-  RuntimeInlineOwnerHandle,
   RuntimeOwnerPolicyState,
   RuntimeOwnerState,
   RuntimeRewindSessionInput,
@@ -1351,6 +1351,12 @@ interface RuntimeIdentityStoreLike extends Partial<
 
 type RuntimeClientIdentity = Awaited<ReturnType<RuntimeIdentityStoreLike['openInstance']>>;
 
+export interface RuntimeInlineOwnerHandle {
+  readonly profile: string;
+  readonly ownerId: string;
+  readonly ownerPolicy: RuntimeOwnerPolicyState;
+  close(): void;
+}
 interface RuntimeOwnerControl {
   acquireInline(input: {
     readonly homeDir?: string;
@@ -1444,7 +1450,7 @@ export interface RuntimeHostAdapterOptions {
   readonly startupTimingFactory?: RuntimeStartupTimingFactory;
 }
 
-type RuntimeProviderCredentialResolver = (provider: string) => Promise<string | undefined>;
+type RuntimeProviderCredentialResolver = (provider: string, connectionFingerprint?: string) => Promise<string | undefined>;
 
 export function resolveRuntimeHostMode(value: string | undefined): RuntimeHostMode {
   return value?.trim().toLowerCase() === 'legacy' ? 'legacy' : 'runtime';
@@ -1789,17 +1795,15 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
 }
 
 const publishedRuntimeOwnerControl: RuntimeOwnerControl = {
-  async acquireInline(input) {
-    const sdk = await import('@kodax-ai/kodax/runtime');
-    return sdk.acquireKodaXInlineOwner(input);
+  async acquireInline() {
+    throw new Error('This KodaX SDK retired the legacy inline Coder owner. Use the Runtime Host.');
   },
   async getState(input) {
     const sdk = await import('@kodax-ai/kodax/runtime');
     return sdk.getKodaXRuntimeOwnerState(input);
   },
-  async enableDaemon(input) {
-    const sdk = await import('@kodax-ai/kodax/runtime');
-    return sdk.enableKodaXDaemonOwner(input);
+  async enableDaemon() {
+    throw new Error('This KodaX SDK retired manual owner transitions. Restart with the Runtime Host.');
   },
 };
 
@@ -2049,7 +2053,7 @@ function isReconnectableRunTransportLoss(error: unknown): boolean {
 export class RuntimeHostAdapter {
   private readonly productCredentialLeases = new Map<
     string,
-    Promise<{ readonly id: string; readonly broker: RuntimeScopedCredentialBroker }>
+    Promise<{ readonly id: string; readonly broker: RuntimeScopedCredentialBroker; readonly providers: readonly string[] }>
   >();
   private productRuntimeId: string | undefined;
   private productClientInstanceId: string | undefined;
@@ -2071,6 +2075,7 @@ export class RuntimeHostAdapter {
   private readonly projectionController: RuntimeProjectionController;
   private readonly push: RuntimeProjectionPush;
   private readonly credentialResolver: RuntimeProviderCredentialResolver;
+  private readonly unsubscribeCredentialInvalidation: () => void;
   private readonly credentialProvidersResolver: () => Promise<readonly string[]>;
   private readonly ownerControl: RuntimeOwnerControl;
   private readonly idleDaemonStop: () => Promise<SafeDaemonStopResult>;
@@ -2232,6 +2237,8 @@ export class RuntimeHostAdapter {
       options.startupTimingFactory ??
       ((scope) => createRuntimeStartupTiming(scope, { reportSlowOrFailed: true }));
     this.credentialResolver = options.credentialResolver ?? readProviderCredential;
+    this.unsubscribeCredentialInvalidation = this.credentialResolver === readProviderCredential
+      ? onProviderCredentialInvalidation(provider => this.invalidateProviderLeases(provider)) : () => undefined;
     this.credentialProvidersResolver =
       options.credentialProvidersResolver ??
       (options.credentialResolver ? async () => [] : listKnownProviderIds);
@@ -2398,6 +2405,7 @@ export class RuntimeHostAdapter {
         askUserTransport: 1,
         permissionCas: 1,
         providerCredentialBroker: 2,
+        providerCredentialConnectionBinding: 1,
         effectiveConfig: 1,
         runBoundHostTools: 2,
         coderOwnerFencing: 1,
@@ -6236,7 +6244,7 @@ export class RuntimeHostAdapter {
     services,
   ) => {
     const runtime = await this.requireRuntime();
-    const sessionId = request.input.sessionId;
+    const sessionId = 'sessionId' in request.input ? request.input.sessionId : undefined;
     if (!sessionId) throw new Error('Space execution requires an identified Coder Session.');
     await ensureSpaceBuiltinSkillsOnHost(runtime, this.profileRoot);
     await this.ensureObserved(sessionId);
@@ -6293,12 +6301,14 @@ export class RuntimeHostAdapter {
         providers,
         sessionId,
         authorize: (call) => isAuthorizedRunCredentialPurpose(call.target, call.purpose),
-        readCredential: this.credentialResolver,
+        credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+      requireConnectionProof: this.credentialResolver === readProviderCredential,
+      readCredential: this.credentialResolver,
       });
       lease = services.credentials.registerScoped({ providers }, broker).then((value) => {
         leaseBinding.leaseId = value.id;
         attachments.add(value.id);
-        return { id: value.id, broker };
+        return { id: value.id, broker, providers };
       });
       this.productCredentialLeases.set(key, lease);
       void lease.catch(() => {
@@ -6368,13 +6378,15 @@ export class RuntimeHostAdapter {
         providers: credential.providers,
         sessionId,
         authorize: (call) => isAuthorizedRunCredentialPurpose(call.target, call.purpose),
-        readCredential: this.credentialResolver,
+        credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+      requireConnectionProof: this.credentialResolver === readProviderCredential,
+      readCredential: this.credentialResolver,
       });
       await runtime.credentials.resumeScoped(credential.leaseId, broker);
       attachments.add(credential.leaseId);
       this.productCredentialLeases.set(
         JSON.stringify([sessionId, credential.providers]),
-        Promise.resolve({ id: credential.leaseId, broker }),
+        Promise.resolve({ id: credential.leaseId, broker, providers: credential.providers }),
       );
     }
     if (authorization.hostTools && !this.hostToolLeaseIds.has(authorization.hostTools.leaseId)) {
@@ -6666,6 +6678,8 @@ export class RuntimeHostAdapter {
         boundOperationId ??= request.target.operationId;
         return request.target.operationId === boundOperationId;
       },
+      credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+      requireConnectionProof: this.credentialResolver === readProviderCredential,
       readCredential: this.credentialResolver,
     });
     const lease = await runtime.credentials.registerScoped({ providers }, broker);
@@ -6709,6 +6723,8 @@ export class RuntimeHostAdapter {
           target.parentRunId === runBinding.boundRunId
         );
       },
+      credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+      requireConnectionProof: this.credentialResolver === readProviderCredential,
       readCredential: this.credentialResolver,
     });
   }
@@ -6742,6 +6758,21 @@ export class RuntimeHostAdapter {
     }
   }
 
+  private async invalidateProviderLeases(provider: string): Promise<void> {
+    const runtime = this.runtime;
+    const ids = new Set<string>();
+    for (const [key, pending] of [...this.productCredentialLeases]) {
+      const lease = await pending;
+      if (lease.providers.includes(provider)) { this.productCredentialLeases.delete(key); ids.add(lease.id); }
+    }
+    for (const [id, lease] of [...this.credentialLeases]) {
+      if (lease.providers.includes(provider)) { this.credentialLeases.delete(id); ids.add(id); }
+    }
+    if (runtime) {
+      const results = await Promise.allSettled([...ids].map(id => runtime.credentials.revoke(id)));
+      if (results.some(result => result.status === 'rejected')) throw new Error('Credential was fenced locally but Host cleanup failed.');
+    }
+  }
   private async revokeCredentialLease(runtime: KodaXDaemonRuntime, leaseId: string): Promise<void> {
     this.credentialLeases.delete(leaseId);
     for (const [runId, candidate] of this.continuationCredentialLeases) {
@@ -8084,6 +8115,7 @@ export class RuntimeHostAdapter {
     const runtime = this.closingRuntime ?? this.runtime;
     if (runtime !== null) this.closingRuntime = runtime;
     const initializing = this.initializePromise;
+    this.unsubscribeCredentialInvalidation();
     this.connectionSubscription?.close();
     this.connectionSubscription = undefined;
     this.workflowSubscription?.close();

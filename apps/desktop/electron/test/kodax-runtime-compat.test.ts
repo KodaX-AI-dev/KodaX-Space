@@ -684,6 +684,8 @@ import path from 'node:path';
 import {
   connectKodaXRuntime,
   createKodaXRuntime,
+  getKodaXRuntimeOwnerState,
+  waitForRuntimeDaemonShutdown,
   KODAX_DAEMON_PROTOCOL_VERSION,
   KODAX_RUNTIME_SDK_CAPABILITIES,
 } from '@kodax-ai/kodax/runtime';
@@ -695,11 +697,20 @@ import {
   migrateA2ALegacyTaskOwners,
 } from '@kodax-ai/kodax/a2a';
 
+async function closeProbeOwner(value, root) {
+  const state = await getKodaXRuntimeOwnerState({ homeDir: root, profile: 'default' });
+  if (!state.owner || state.owner.runtimeId !== value.identity.runtimeId) throw new Error('Probe owner changed');
+  await value.daemon.shutdown();
+  await value.close();
+  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), profile: 'default', owner: state.owner, timeoutMs: 15000 });
+  if (verified.status !== 'succeeded') throw new Error('Probe owner shutdown was not verified');
+}
+
 const homeDir = await mkdtemp(path.join(tmpdir(), 'kodax-space-runtime-child-'));
 let runtime;
 try {
   runtime = await createKodaXRuntime({
-    mode: 'embedded',
+    mode: 'daemon',
     requirements: {
       learningCenter: 1,
       actorControlPlane: 1,
@@ -712,7 +723,7 @@ try {
   const created = await runtime.sessions.create({
     title: 'Space SDK compatibility probe',
     projectPath: process.cwd(),
-    surface: 'release-probe',
+    surface: 'code',
   });
   const loaded = await runtime.sessions.load(created.id);
   const sessionStatus = await runtime.sessions.status(created.id);
@@ -726,118 +737,26 @@ try {
     limit: 1,
   });
   const learningSnapshot = await runtime.learning.getSnapshot();
-  const externalRuntime = await createKodaXRuntime({
-    mode: 'embedded',
-    isolation: 'inline',
-    homeDir: path.join(homeDir, 'external-owner'),
-    externalAgents: {
-      factories: [createReferenceAgentExecutorFactory({
-        executorId: 'space-reference',
-        protocol: 'http',
-      })],
-      policy: ({ registration }) => ({ allowed: registration.enabled }),
-      defaultContext: { actorId: 'kodax-space-runtime-compat' },
-    },
-    requirements: { externalAgents: true, externalAgentAdmin: 1, actorControlPlane: 1 },
-  });
-  let externalAgentResult;
+  let privateOwnerRejected = false;
   try {
-    const registration = {
-      agentId: 'external:space-reference',
-      displayName: 'Space Reference Agent',
-      enabled: true,
-      managementOwner: 'kodax-space-runtime-compat',
-      executorId: 'space-reference',
-      protocol: 'http',
-      configurationRevision: 'space-reference-v1',
-      endpointIdentityHash: 'sha256:space-reference',
-      skills: ['conformance'],
-      inputModalities: ['text'],
-      outputModalities: ['text'],
-      capabilities: {
-        streaming: 'supported',
-        durableTasks: 'supported',
-        inputRequired: 'conditional',
-        cancellation: 'supported',
-        artifacts: 'unsupported',
-      },
-      effects: { remote: 'none', workspace: 'none' },
-    };
-    await externalRuntime.admin.agentRegistrations.upsert(registration, {
-      expectedConfigurationRevision: null,
-      expectedManagementOwner: null,
-    });
-    const disabled = await externalRuntime.admin.agentRegistrations.setEnabled(
-      registration.agentId,
-      false,
-      {
-        expectedConfigurationRevision: registration.configurationRevision,
-        expectedManagementOwner: registration.managementOwner,
-      },
-    );
-    const enabled = await externalRuntime.admin.agentRegistrations.setEnabled(
-      registration.agentId,
-      true,
-      {
-        expectedConfigurationRevision: registration.configurationRevision,
-        expectedManagementOwner: registration.managementOwner,
-      },
-    );
-    const dispatchable = await externalRuntime.agents.listDispatchable({
-      actorId: 'kodax-space-runtime-compat',
-      readOnly: true,
-    });
-    const externalSession = await externalRuntime.sessions.create({
-      title: 'Space external Actor compatibility probe',
-      projectPath: process.cwd(),
-      surface: 'release-probe',
-    });
-    const started = await externalRuntime.agents.spawn(externalSession.id, {
-      taskName: 'reference',
-      kind: 'external',
-      objective: 'space-reference-round-trip',
-      metadata: { agentId: registration.agentId },
-    });
-    const deadline = Date.now() + 5_000;
-    let terminal = await externalRuntime.agents.output(
-      externalSession.id,
-      started.actorPath,
-      started.turnId,
-    );
-    while (terminal.state === 'accepted' || terminal.state === 'running') {
-      if (Date.now() >= deadline) throw new Error('Timed out waiting for the external Actor turn.');
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      terminal = await externalRuntime.agents.output(
-        externalSession.id,
-        started.actorPath,
-        started.turnId,
-      );
-    }
-    const actorEvents = await externalRuntime.agents.events(externalSession.id, 0);
-    const actorControlPlaneCapability = externalRuntime.capabilities.actorControlPlane;
-    externalAgentResult = {
-      capability: externalRuntime.agents.enabled,
-      actorControlPlane: actorControlPlaneCapability?.version === 1,
-      disabled: disabled?.enabled === false,
-      enabled: externalRuntime.agents.enabled,
-      reenabled: enabled?.enabled === true,
-      listed: dispatchable.some((item) => item.descriptor.agentId === registration.agentId),
-      state: terminal.state,
-      output: terminal.output,
-      events: actorEvents.length > 0,
-    };
-  } finally {
-    await externalRuntime.close();
-  }
-  const inlineHome = path.join(homeDir, 'inline-owner');
+    await createKodaXRuntime({ mode: 'daemon', homeDir: path.join(homeDir, 'retired-private'),
+      isolation: 'inline', externalAgents: { factories: [] } });
+  } catch (error) { privateOwnerRejected = error?.code === 'runtime_host_migration_required'; }
+  if (!privateOwnerRejected) throw new Error('Private Host options were accepted by the public constructor');
+  const externalAgentResult = {
+    capability: runtime.agents.enabled,
+    actorControlPlane: runtime.capabilities.actorControlPlane?.version === 1,
+    privateOwnerRejected,
+  };
+
+  const inlineHome = path.join(homeDir, 'shared-managed-owner');
   const inlineRuntime = await createKodaXRuntime({
-    mode: 'embedded',
-    isolation: 'inline',
+    mode: 'daemon',
     homeDir: inlineHome,
     sessionsDir: path.join(inlineHome, 'sessions'),
     clientInfo: { name: 'kodax-space-runtime-inline', version: '0.1.31' },
   });
-  let inlineManagedResult;
+  let sharedManagedResult;
   try {
     const inlineSession = await inlineRuntime.sessions.create({
       title: 'Space inline managed-run probe',
@@ -867,14 +786,10 @@ try {
         options: {
           provider: 'space-probe-missing',
           agentMode: 'sa',
-          events: {
-            onError: () => { callbackErrors += 1; },
-            onComplete: () => { callbackCompletes += 1; },
-          },
         },
       });
       const result = await handle.result;
-      inlineManagedResult = {
+      sharedManagedResult = {
         phase: result.phase,
         error: result.error?.message,
         failedEventCount: failedEvents.length,
@@ -887,7 +802,7 @@ try {
       subscription.close();
     }
   } finally {
-    await inlineRuntime.close();
+    await closeProbeOwner(inlineRuntime, inlineHome);
   }
   process.stdout.write('KODAX_RUNTIME_PROBE=' + JSON.stringify({
     createAvailable: typeof createKodaXRuntime === 'function',
@@ -960,10 +875,10 @@ try {
       migrateTaskOwners: typeof migrateA2ALegacyTaskOwners === 'function',
     },
     externalAgentResult,
-    inlineManagedResult,
+    sharedManagedResult,
   }));
 } finally {
-  await runtime?.close();
+  if (runtime) await closeProbeOwner(runtime, homeDir);
   await rm(homeDir, { recursive: true, force: true });
 }
 `;
@@ -1330,7 +1245,7 @@ test(
     let runtime: Awaited<ReturnType<typeof sdk.createKodaXRuntime>> | undefined;
     try {
       runtime = await sdk.createKodaXRuntime({
-        mode: 'embedded',
+        mode: 'daemon',
         homeDir,
         sessionsDir: path.join(homeDir, 'sessions'),
       });
@@ -1363,10 +1278,17 @@ test(
       assert.equal(userMessages[0]?.content, rawUserInput);
       assert.equal(JSON.stringify(transcript.messages).includes(executionPrompt), false);
     } finally {
-      await runtime?.close();
+      if (runtime) {
+        const state = await sdk.getKodaXRuntimeOwnerState({ homeDir, profile: 'default' });
+        assert.equal(state.owner?.runtimeId, runtime.identity.runtimeId, 'never stop a replacement Host');
+        await runtime.daemon.shutdown();
+        await runtime.close();
+        const verified = await sdk.waitForRuntimeDaemonShutdown({ configHome: path.join(homeDir, '.kodax'),
+          profile: 'default', owner: state.owner!, timeoutMs: 15000 });
+        assert.equal(verified.status, 'succeeded');
+      }
       await new Promise<void>((resolve) => server.close(() => resolve()));
-      // rc.10 drains owned memory work before close() returns. Retain bounded
-      // removal retries for transient Windows filesystem contention.
+      // The owner is verified stopped before deleting its isolated home.
       await rm(homeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       if (previousCredential === undefined) delete process.env[credentialName];
       else process.env[credentialName] = previousCredential;
@@ -1385,8 +1307,8 @@ test(
     assert.equal(result.createAvailable, true);
     assert.equal(result.connectAvailable, true);
     assert.ok(Number.isSafeInteger(result.protocolVersion));
-    assert.equal(result.mode, 'embedded');
-    assert.equal(result.isolation, 'inline', 'unified createKodaXRuntime owns an in-process Host');
+    assert.equal(result.mode, 'daemon');
+    assert.equal(result.isolation, 'process', 'public construction connects to the shared Host');
     assert.equal(result.sessionRoundTrip, true);
     assert.deepEqual(result.sessionLifecycle, {
       statusPhase: 'idle',
@@ -1426,18 +1348,8 @@ test(
       inspectConfig: true,
       migrateTaskOwners: true,
     });
-    assert.deepEqual(result.externalAgentResult, {
-      capability: true,
-      actorControlPlane: true,
-      disabled: true,
-      enabled: true,
-      reenabled: true,
-      listed: true,
-      state: 'completed',
-      output: 'space-reference-round-trip',
-      events: true,
-    });
-    const inlineManagedResult = result.inlineManagedResult as {
+    assert.deepEqual(result.externalAgentResult, { capability: true, actorControlPlane: true, privateOwnerRejected: true });
+    const sharedManagedResult = result.sharedManagedResult as {
       phase?: unknown;
       error?: unknown;
       failedEventCount?: unknown;
@@ -1446,19 +1358,19 @@ test(
       callbackCompletes?: unknown;
       settings?: Record<string, unknown>;
     };
-    assert.equal(inlineManagedResult.phase, 'failed');
-    assert.equal(inlineManagedResult.error, 'Provider is not registered in the catalog.');
-    assert.equal(inlineManagedResult.failedEventCount, 1);
+    assert.equal(sharedManagedResult.phase, 'failed');
+    assert.equal(sharedManagedResult.error, 'Provider is not registered in the catalog.');
+    assert.equal(sharedManagedResult.failedEventCount, 1);
     // Provider resolution fails before the coding loop owns callbacks. Space must
     // therefore normalize RuntimeRunResult.error instead of relying on onError/onComplete.
-    assert.equal(inlineManagedResult.callbackErrors, 0);
-    assert.equal(inlineManagedResult.callbackCompletes, 0);
+    assert.equal(sharedManagedResult.callbackErrors, 0);
+    assert.equal(sharedManagedResult.callbackCompletes, 0);
     assert.ok(
-      Array.isArray(inlineManagedResult.eventTypes) &&
-        inlineManagedResult.eventTypes.includes('run.started') &&
-        inlineManagedResult.eventTypes.includes('run.failed'),
+      Array.isArray(sharedManagedResult.eventTypes) &&
+        sharedManagedResult.eventTypes.includes('run.started') &&
+        sharedManagedResult.eventTypes.includes('run.failed'),
     );
-    assert.deepEqual(inlineManagedResult.settings, {
+    assert.deepEqual(sharedManagedResult.settings, {
       provider: 'space-probe-missing',
       permissionMode: 'accept-edits',
       executionCwd: process.cwd(),

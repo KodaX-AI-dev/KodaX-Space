@@ -36,7 +36,7 @@ test(
       account = (JSON.parse(await readFile(file, 'utf8')) as { secretAccount: string })
         .secretAccount;
       assert.ok(
-        (await keyring.getPassword('kodax-space-test-runtime', account)) === first.instanceSecret,
+        (await keyring.getPassword('kodax-space-test-runtime', account)) === null,
       );
       assert.equal(await keyring.getPassword('kodax-space', account), null);
       _resetMemoryStoreForTesting();

@@ -1,4 +1,6 @@
 const managedEnvOriginals = new Map<string, string | undefined>();
+const fileSecretValues = new Set<string>();
+export function rememberProviderSecret(value: string): string { fileSecretValues.add(value); return value; }
 
 function nonEmpty(value: string | undefined): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
@@ -12,7 +14,7 @@ export function externalProviderEnvValue(name: string): string | undefined {
 
 /** Return values only, so diagnostics can redact both sides of a managed env replacement. */
 export function managedProviderSecretValues(): readonly string[] {
-  const values = new Set<string>();
+  const values = new Set<string>(fileSecretValues);
   for (const [name, original] of managedEnvOriginals) {
     const external = nonEmpty(original);
     const managed = nonEmpty(process.env[name]);

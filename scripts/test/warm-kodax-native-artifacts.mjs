@@ -15,11 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { setupKodaXSandbox } from '@kodax-ai/kodax/sandbox';
-import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
-import { KodaXBaseProvider, registerModelProvider } from '@kodax-ai/kodax/llm';
-
-const providerName = 'space-native-warmup';
-const keyName = 'SPACE_NATIVE_WARMUP_KEY';
+import { createOwnedTestRuntime, stopOwnedTestRuntime } from './owned-runtime-fixture.mjs';
 
 async function warmOnce() {
   if (process.platform === 'win32') {
@@ -36,43 +32,11 @@ async function warmOnce() {
   const workspace = path.join(root, 'workspace');
   const target = path.join(workspace, 'warmup.txt');
   await fs.mkdir(workspace);
-  const previousKey = process.env[keyName];
-  process.env[keyName] = 'offline-fixture';
-  let toolResultText;
-  class Provider extends KodaXBaseProvider {
-    name = providerName;
-    supportsThinking = false;
-    config = { apiKeyEnv: keyName, model: 'fixture', supportsThinking: false };
-    async stream(messages) {
-      if (toolResultText === undefined) {
-        const last = messages[messages.length - 1];
-        toolResultText = JSON.stringify(last?.content)?.slice(0, 800) ?? 'no follow-up message';
-        return {
-          textBlocks: [],
-          thinkingBlocks: [],
-          toolBlocks: [
-            {
-              type: 'tool_use',
-              id: 'warmup-write',
-              name: 'write',
-              input: { path: target, content: 'warmup' },
-            },
-          ],
-        };
-      }
-      return {
-        textBlocks: [{ type: 'text', text: 'warmup' }],
-        toolBlocks: [],
-        thinkingBlocks: [],
-      };
-    }
-  }
-  const unregister = registerModelProvider(providerName, () => new Provider());
   try {
-    const runtime = await createKodaXRuntime({
+    const runtime = await createOwnedTestRuntime({
       homeDir: path.join(root, 'home'),
       sessionsDir: path.join(root, 'sessions'),
-      defaultProvider: providerName,
+      defaultProvider: 'anthropic',
       defaultModel: 'fixture',
     });
     let phase;
@@ -94,15 +58,14 @@ async function warmOnce() {
       assert.equal(await fs.readFile(target, 'utf8'), 'warmup');
     } catch (error) {
       throw new Error(
-        `warmup write failed (phase=${phase}, lastText=${JSON.stringify(lastText)}, toolResult=${toolResultText}): ${error.message}`,
+        `warmup write failed (phase=${phase}, lastText=${JSON.stringify(lastText)}): ${error.message}`,
       );
     } finally {
-      await runtime.close();
+      await stopOwnedTestRuntime(runtime);
     }
   } finally {
-    unregister();
-    if (previousKey === undefined) delete process.env[keyName];
-    else process.env[keyName] = previousKey;
+    assert.equal(path.dirname(root), await fs.realpath(os.tmpdir()));
+    assert.ok(path.basename(root).startsWith('space-native-warmup-'));
     await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });
   }
 }

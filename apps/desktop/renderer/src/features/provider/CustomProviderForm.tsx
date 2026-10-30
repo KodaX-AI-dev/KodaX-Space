@@ -38,7 +38,7 @@ function providerCredentialMode(provider: ProviderInfo | undefined): CredentialM
 }
 
 function providerHasManagedKey(provider: ProviderInfo | undefined): boolean {
-  return provider?.configuredSource === 'keychain' || provider?.configuredSource === 'both';
+  return provider?.configuredSource === 'keychain' || provider?.configuredSource === 'file' || provider?.configuredSource === 'both';
 }
 
 function providerModelsCsv(provider: ProviderInfo | undefined): string {
@@ -249,6 +249,7 @@ export function CustomProviderForm({
         if (!provider) return;
         const result = await window.kodaxSpace.invoke('provider.updateCustom', {
           providerId: provider.id,
+          expectedCredential: provider.credentialState,
           ...config,
         });
         if (!result.ok) {
@@ -262,6 +263,7 @@ export function CustomProviderForm({
           const keyResult = await window.kodaxSpace.invoke('provider.setKey', {
             providerId,
             apiKey: submittedKey,
+            expected: result.data.credentialState,
           });
           if (!keyResult.ok) {
             await onPartialSaved?.(providerId);
@@ -279,6 +281,7 @@ export function CustomProviderForm({
           setStep('removeKey');
           const removeResult = await window.kodaxSpace.invoke('provider.removeKey', {
             providerId,
+            expected: result.data.credentialState,
           });
           if (!removeResult.ok) {
             await onPartialSaved?.(providerId);
@@ -305,6 +308,7 @@ export function CustomProviderForm({
         const keyResult = await window.kodaxSpace.invoke('provider.setKey', {
           providerId,
           apiKey: submittedKey,
+          expected: result.data.credentialState,
         });
         if (!keyResult.ok) {
           setCreatedProviderId(providerId);

@@ -90,7 +90,7 @@ test('managed keychain env injection is reported as keychain only', () => {
 
   assert.equal(
     _credentialSourceForTesting('kimi-code', 'KIMI_CODE_API_KEY', new Set(['kimi-code'])),
-    'keychain',
+    'file',
   );
 });
 
@@ -109,7 +109,7 @@ test('ensureProviderKeyInjected supports the explicit openai to codex-cli creden
   await setKey('openai', 'sk-openai');
 
   assert.equal(await ensureProviderKeyInjected('codex-cli'), true);
-  assert.equal(process.env.OPENAI_API_KEY, 'sk-openai');
+  assert.equal(process.env.OPENAI_API_KEY, undefined);
 });
 
 test('external env-only provider is reported as env', () => {

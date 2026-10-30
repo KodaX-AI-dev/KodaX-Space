@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { realpath } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -13,8 +15,8 @@ import {
 test('Space Artifact extension resolves the installed public SDK and a real Node worker', async () => {
   assert.equal(await resolveArtifactNode(), process.execPath);
   const imports = resolveSpaceArtifactImports();
-  assert.equal(imports.artifact, import.meta.resolve('@kodax-ai/kodax/artifacts/kodax'));
-  assert.equal(imports.coding, import.meta.resolve('@kodax-ai/kodax/coding'));
+  assert.equal(await realpath(fileURLToPath(imports.artifact)), await realpath(fileURLToPath(import.meta.resolve('@kodax-ai/kodax/artifacts/kodax'))));
+  assert.equal(await realpath(fileURLToPath(imports.coding)), await realpath(fileURLToPath(import.meta.resolve('@kodax-ai/kodax/coding'))));
   const names = [];
   const removed = [];
   const dispose = await registerSpaceArtifacts({

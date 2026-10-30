@@ -3,7 +3,7 @@ import test from 'node:test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createKodaXRuntime } from '@kodax-ai/kodax/runtime';
+import { createKodaXRuntime, getKodaXRuntimeOwnerState, waitForRuntimeDaemonShutdown } from '@kodax-ai/kodax/runtime';
 import {
   initializeCoderDaemonProjectionSdk,
   projectRuntimeSessionSnapshot,
@@ -16,6 +16,16 @@ import {
 import { buildTaskDockRunView } from '../../renderer/src/shell/taskDockProjection.js';
 import { composerRunControls } from '../../renderer/src/shell/composerInvoke.js';
 
+async function shutdownOwner(runtime: Awaited<ReturnType<typeof createKodaXRuntime>>, root: string): Promise<void> {
+  const state = await getKodaXRuntimeOwnerState({ homeDir: root, profile: 'default' });
+  assert.ok(state.owner);
+  assert.equal(state.owner.runtimeId, runtime.identity.runtimeId, 'never stop a replacement Host');
+  await runtime.daemon.shutdown();
+  await runtime.close();
+  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), profile: 'default', owner: state.owner, timeoutMs: 15000 });
+  assert.equal(verified.status, 'succeeded');
+}
+
 test(
   'installed SDK recovery reaches Space terminal UI and admits the next message',
   { timeout: 30_000 },
@@ -24,8 +34,9 @@ test(
     const oldHome = process.env.KODAX_HOME;
     process.env.KODAX_HOME = path.join(root, '.kodax');
     const options = {
+      mode: 'daemon' as const,
       homeDir: root,
-      sharedDaemonHost: true,
+
       defaultProvider: 'unconfigured-provider',
     };
     let runtime: Awaited<ReturnType<typeof createKodaXRuntime>> | undefined;
@@ -45,7 +56,8 @@ test(
         },
       });
       assert.equal((await run.result).phase, 'completed');
-      await runtime.close();
+      await shutdownOwner(runtime, root);
+      runtime = undefined;
       const statusFile = path.join(
         root,
         '.kodax/runtime/profiles/default/runs',
@@ -104,7 +116,8 @@ test(
           todos: [{ id: 'old', content: 'Old unfinished plan', status: 'in_progress' }],
         });
         assert.equal(dock.mode, 'idle');
-        await runtime.close();
+        await shutdownOwner(runtime, root);
+        runtime = undefined;
       }
       runtime = await createKodaXRuntime(options);
       const next = await runtime.runs.start({
@@ -117,7 +130,7 @@ test(
       });
       assert.equal((await next.result).phase, 'completed');
     } finally {
-      await runtime?.close();
+      if (runtime) await shutdownOwner(runtime, root);
       if (oldHome === undefined) delete process.env.KODAX_HOME;
       else process.env.KODAX_HOME = oldHome;
       await rm(root, { recursive: true, force: true, maxRetries: 3 });

@@ -25,7 +25,7 @@ import { askUserBroker } from '../permission/ask-user-broker.js';
 import { installSessionStoreMock, type MockSessionState } from './_helpers/session-store-mock.js';
 import { setSessionStoreImpl } from '../kodax/session-store.js';
 import { _resetMemoryStoreForTesting, setKey } from '../providers/keychain.js';
-import { getScopedProviderCredential } from '@kodax-ai/kodax/llm';
+import { getScopedProviderCredential, getProvider, withProviderRequestCredential } from '@kodax-ai/kodax/llm';
 
 // Stub webContents：捕获所有 session.event payload 到数组里
 type CapturedSend = { channel: string; payload: unknown };
@@ -110,7 +110,7 @@ test('embedded manual compact receives the exact Space keychain credential', asy
     loadSession: async () => null,
     watchSessions: () => ({ close: () => undefined }),
     compactSession: async () => {
-      scopedCredential = getScopedProviderCredential('anthropic');
+      scopedCredential = await withProviderRequestCredential(getProvider('anthropic'), 'compaction', undefined, async () => getScopedProviderCredential('anthropic'));
       return {
         compacted: true,
         tokensBefore: 100,

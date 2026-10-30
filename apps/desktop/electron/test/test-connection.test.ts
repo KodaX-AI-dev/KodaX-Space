@@ -123,10 +123,10 @@ test('custom provider unauthorized → mapped message', async () => {
   assert.equal(r.error, 'unauthorized (check API key)');
 });
 
-test('production connection test reports a missing exact credential without starting a request', async () => {
+test('production connection test refuses an unregistered connection without starting a request', async () => {
   const r = await testProvider(CUSTOM);
 
-  assert.deepEqual(r, { ok: false, error: 'no API key configured' });
+  assert.deepEqual(r, { ok: false, error: 'credential storage or configuration unavailable' });
 });
 
 test('custom provider createCustomProvider throws → invalid config error', async () => {

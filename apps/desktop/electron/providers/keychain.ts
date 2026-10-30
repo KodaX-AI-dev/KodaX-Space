@@ -43,6 +43,7 @@ import {
   CredentialVaultCorruptError,
   CredentialVaultDecryptionError,
   EncryptedCredentialVault,
+  readCredentialVaultMetadata,
 } from './encrypted-credential-vault.js';
 
 interface KeyringApi {
@@ -558,6 +559,25 @@ export async function hasKey(account: string): Promise<boolean> {
   const macosResult = await macosHasGenericPassword(account);
   if (macosResult !== undefined) return macosResult;
   return (await listAccounts()).includes(account);
+}
+
+/** Strict, account-scoped migration discovery; never treat a damaged vault as absent. */
+export async function hasMigrationKey(account: string): Promise<boolean> {
+  if (process.env.KODAX_TEST_ONBOARDING) return memoryStore.has(account);
+  if (process.platform === 'win32' || process.platform === 'darwin') {
+    const metadata = await readCredentialVaultMetadata(VAULT_FILE);
+    if (metadata?.accounts.includes(account)) return true;
+    if (metadata?.revokedAccounts.includes(account)) return false;
+  }
+  if (process.platform === 'darwin') {
+    const result = await macosHasGenericPassword(account);
+    if (result === undefined) throw new Error('Legacy credential metadata is unavailable.');
+    return result;
+  }
+  const keyring = await loadKeyring();
+  if (!keyring) return false;
+  try { return (await keyring.getPassword(SERVICE_NAME, account)) !== null; }
+  catch { throw new Error('Legacy credential metadata is unavailable.'); }
 }
 
 export async function listConfiguredAccounts(

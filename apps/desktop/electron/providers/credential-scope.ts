@@ -7,16 +7,17 @@ import {
   readProviderCredential,
   resolveCredentialProviderIds,
 } from './credentials.js';
+import { onProviderCredentialInvalidation } from './credential-invalidation.js';
 
 type SdkLlmModule = typeof import('@kodax-ai/kodax/llm');
 
 export interface ExactProviderCredentialScopeDependencies {
-  readProviderCredential(provider: string): Promise<string | undefined>;
+  readProviderCredential(provider: string, connectionFingerprint?: string): Promise<string | undefined>;
   runWithProviderCredential<T>(provider: string, credential: string, operation: () => T): T;
 }
 
 export interface ProviderCredentialLeaseDependencies {
-  readProviderCredential(provider: string): Promise<string | undefined>;
+  readProviderCredential(provider: string, connectionFingerprint?: string): Promise<string | undefined>;
   listProviderCredentialIds(): Promise<readonly string[]>;
   createProviderCredentialLeaseScope: SdkLlmModule['createProviderCredentialLeaseScope'];
   runWithProviderCredentialLeaseScope: SdkLlmModule['runWithProviderCredentialLeaseScope'];
@@ -55,8 +56,9 @@ function loadSdkLlm(): Promise<SdkLlmModule> {
 
 async function readSpaceProviderCredential(
   provider: string,
+  connectionFingerprint?: string,
 ): ReturnType<ExactProviderCredentialScopeDependencies['readProviderCredential']> {
-  return readProviderCredential(provider);
+  return readProviderCredential(provider, connectionFingerprint);
 }
 
 async function listSpaceProviderCredentialIds(): Promise<readonly string[]> {
@@ -68,7 +70,7 @@ function createDetachedWorkflowRootScope(
 ): ProviderCredentialLeaseScope {
   return input.createLease({
     allowedProviders: input.providers,
-    async acquire(requestedProvider, _purpose, signal, attribution) {
+    async acquire(requestedProvider, _purpose, signal, attribution, connectionFingerprint) {
       if (
         !input.providers.includes(requestedProvider) ||
         attribution?.kind !== 'workflow' ||
@@ -77,7 +79,7 @@ function createDetachedWorkflowRootScope(
         throw new Error('Provider credential request exceeded its detached Workflow scope.');
       }
       signal.throwIfAborted();
-      const credential = await input.readCredential(requestedProvider);
+      const credential = await input.readCredential(requestedProvider, connectionFingerprint);
       signal.throwIfAborted();
       if (credential === undefined) {
         throw new MissingExactProviderCredentialError(requestedProvider);
@@ -98,13 +100,21 @@ export async function runWithExactProviderCredential<T>(
   operation: () => T,
   dependencies?: ExactProviderCredentialScopeDependencies,
 ): Promise<Awaited<T>> {
-  if (provider === 'mock') return await operation();
+  if (provider === 'mock' || provider === 'codex-cli' || provider === 'gemini-cli') return await operation();
   const credential = await (dependencies?.readProviderCredential(provider) ??
     readSpaceProviderCredential(provider));
   if (credential === undefined) {
     throw new MissingExactProviderCredentialError(provider);
   }
 
+  if (!dependencies) {
+    const sdk = await loadSdkLlm();
+    return await runWithSpaceProviderCredentialLease(provider, operation, {
+      readProviderCredential, listProviderCredentialIds: async () => [provider],
+      createProviderCredentialLeaseScope: sdk.createProviderCredentialLeaseScope,
+      runWithProviderCredentialLeaseScope: sdk.runWithProviderCredentialLeaseScope,
+    });
+  }
   const runScoped =
     dependencies?.runWithProviderCredential ?? (await loadSdkLlm()).runWithProviderCredential;
   return await runScoped(provider, credential, operation);
@@ -130,12 +140,12 @@ export async function runWithSpaceProviderCredentialLease<T>(
     dependencies?.runWithProviderCredentialLeaseScope ?? sdk.runWithProviderCredentialLeaseScope;
   const scope = createLease({
     allowedProviders: providers,
-    async acquire(requestedProvider, _purpose, signal) {
+    async acquire(requestedProvider, _purpose, signal, _attribution, connectionFingerprint) {
       if (!providers.includes(requestedProvider)) {
         throw new Error('Provider credential request exceeded its Space operation scope.');
       }
       signal.throwIfAborted();
-      const credential = await readCredential(requestedProvider);
+      const credential = await readCredential(requestedProvider, connectionFingerprint);
       signal.throwIfAborted();
       if (credential === undefined) {
         throw new MissingExactProviderCredentialError(requestedProvider);
@@ -143,10 +153,14 @@ export async function runWithSpaceProviderCredentialLease<T>(
       return credential;
     },
   });
+  const unsubscribe = onProviderCredentialInvalidation(provider => {
+    if (providers.includes(provider)) scope.close('Space OAuth credential was revoked');
+  });
 
   try {
     return await runWithLease(scope, operation);
   } finally {
+    unsubscribe();
     scope.close('Space Provider operation settled');
   }
 }
@@ -190,9 +204,13 @@ export async function runDetachedWorkflowWithProviderCredentialLease<
 
   let workflowScope: ProviderCredentialLeaseScope | undefined;
   let closed = false;
+  const unsubscribe = onProviderCredentialInvalidation(provider => {
+    if (providers.includes(provider)) closeScopes('Space OAuth credential was revoked');
+  });
   const closeScopes = (reason: string): void => {
     if (closed) return;
     closed = true;
+    unsubscribe();
     workflowScope?.close(reason);
     rootScope.close(reason);
   };
