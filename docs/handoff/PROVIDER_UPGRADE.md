@@ -1,8 +1,8 @@
-# Provider upgrade handoff — FEATURE_302 T12-H/I
+# Provider upgrade handoff — FEATURE_302 T12-H/I/J
 
 Updated 2026-10-31. This is an unpublished integration branch, not an installer release.
 
-可转交说明：Root 在独立 `codex/llm-provider-parity` 分支完成 LLM 接入与老用户兼容补齐，并整合另一线程已提交的 `0fa38e5b2`，保留双方 Host/执行 profile/恢复与 Windows 回收改动，原 config/API_KEY 入口有效；原主分支未改动、未推送或发布。Space 配套代码位于独立 `codex/provider-credentials-space`：旧凭证自动迁到私有作用域并保留原副本，首次来源持久固定，只有显式发布/采用才共享；CLI 与 Space 不同账号不会自动合并，env 消失、墓碑、地址变化、迟到迁移/OAuth 刷新均不能悄悄改用另一账号，原客户端身份和退出恢复保持。Root 本轮全量 18,747、发布包 71、历史 Host 切换/真实 alpha.11 升级 4 项通过；配套 Space 本轮完整与实际重启证据见 I 验收条目。Space 私有授权 helper 已准确声明仅依赖 credentials，JavaScript 不变；这不替代负责线程的 persona/Partner/工具 profile 产品迁移，后者必须使用真实 Host 目录和公开 profile helper。请逐项整合配套分支，保留 credential proof/epoch/owner 与账号来源断言；先发布并锁定匹配 SDK，再走原生产安装包门禁。macOS/Linux 真实旧凭证库、真实账号权益和任意旧版降级仍需额外验证。
+可转交说明：Root 已安全合入本地 `KodaX` 主分支 `db4e10bb`，设计子仓本地 `main` 同步到 `8574086`，完整保留另一线程 `a9587af7e` 的 MCP/Skill 修复及此前 Host/profile/恢复改动；未推送或发布，原 config/API_KEY 入口有效。Root 合并后全量 18,777、串行发布包 80、历史切换/真实 alpha.11 Host 升级 4 项通过，源码与构建字节指纹全程一致，两轴复核无发现。Space 产品代码仍停在独立 `codex/provider-credentials-space` 的 `da531f0a`，本轮只更新交接文档，不合入 Space 主分支，也不把历史 I 的 4,531 与 Electron 两项冒充新 Root 配套验收。请保留旧凭证私有迁移、原备份、首次来源持久固定及显式发布/采用共享规则：env 消失、墓碑、地址变化、迟到迁移/OAuth 刷新均不能改用另一账号，原客户端身份和退出恢复保持。后续 persona/Partner/工具 profile 迁移由负责线程接手，须使用真实 Host 目录和公开 profile helper，保持 credential proof/epoch/owner 边界。先发布并锁定匹配 SDK 再走原生产门禁；真实账号、跨平台旧凭证库、安装包及任意旧版降级仍需对应验证。
 
 ## 1. User intent
 
@@ -12,18 +12,33 @@ a different account silently. Space and CLI may share a file without sharing the
 
 ## 2. Progress and ownership
 
+Current J checkpoint: Root local `KodaX` main is `db4e10bb640ebd1a2e622826b5a29e54145793ec`;
+design local `main` and Root gitlink are `8574086208d6b5cc6ff6599c825fe88d986c4dd0`.
+The other chat's newer `a9587af7e` MCP/Skill merge was combined in isolation before guarded
+fast-forwards. Main's lockfile install, build/types, complete source **18,777** (98 skipped,
+19 todo), serial full package **80**, historical cutover **three** and real alpha.11 Host upgrade
+**one** passed. All 3,267 source and 262 build files kept identical bytes throughout. Only
+acceptance Markdown/gitlink changed after the frozen checkpoints `9674047c` / `702c1af6`.
+Both review axes have no remaining findings; no push, version bump or publication occurred.
+
+Space implementation remains exactly `da531f0a` on its independent branch. J changes only this
+handoff/acceptance documentation; it does not rerun Space or change its manifests, source, SDK
+pin or production gates. The original Space checkout and its dirty fixture/research drafts remain
+untouched. The following H/I checkpoints and counts are historical.
+
 Space work is isolated at `C:\Users\ADMIN\.codex\workspaces\provider-credentials-space\KodaX-Space`,
 branch `codex/provider-credentials-space`, H checkpoint `437cac7d`. The paired SDK is isolated at
 `C:\Users\ADMIN\.codex\worktrees\llm-provider-parity\KodaX`, branch `codex/llm-provider-parity`,
 H checkpoint `95e95a61`. H implementation and offline regression/review are complete; final evidence
 is appended to the credential contract. Do not interpret earlier E/F/G/H counts as acceptance of
 the subsequent combined I tree.
-The original Root/Space checkouts belong to another working chat and were not edited.
+H/I left the original Root/Space checkouts untouched. J updates Root as authorized above;
+the original Space checkout still belongs to the other chat and was not edited.
 I integrates committed Root `0fa38e5b213ee41eabb0f33e57f5353c5c507414` from the other chat's
 local main development branch `KodaX`, preserving both histories after `f6a01046`. It includes
 execution-profile/recovery, view close draining and Windows process-cleanup work. Uncommitted
 work is never imported. Original Space `7801a8ca` and its dirty fixture/research drafts are outside
-this combined acceptance. Root's local main is not updated by this operation. The checked remote
+this combined I acceptance. I did not update Root's local main; J subsequently did as recorded above. The checked I remote
 default branch is also `KodaX`, at `0f3930e95` (11 commits behind local main); recheck before merge/push.
 
 The new Root public authorization services include `createExecutionProfile`. Space's private
@@ -106,6 +121,8 @@ new selections/tombstones. Integrate and release the paired SDK/Space, preservin
 - Raw runs are OS-temporary `kodax-t12h-*` and `space-t12h-*` logs, never credential dumps.
   I integration adds `kodax-t12i-*` and `space-t12i-*`, including full1/Desktop2 failures,
   final Desktop3 and actual Electron/Node restore receipts.
+  J main integration adds `kodax-t12j-*` for actual-main full/package/Host checks and unchanged
+  identity manifests. Root's FEATURE_302 guide J is the accepted record; raw logs stay temporary.
   Keep initial failures and their eventual disposition visible in tracked acceptance evidence.
 
 ## 7. Suggested working discipline

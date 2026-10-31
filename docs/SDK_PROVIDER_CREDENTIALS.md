@@ -214,3 +214,16 @@ cutover three / integrity-pinned alpha.11 Host upgrade one pass. Original Root r
 No main branch, remote, Registry version or installer gate is updated by this acceptance.
 Evidence: OS-temp `space-t12i-*` and paired `kodax-t12i-*`; the complete combined matrix and initial
 compiler/budget failure dispositions belong in Root's FEATURE_302 test guide I section.
+
+## T12-J Root main handoff checkpoint — 2026-10-31
+
+Root is now locally integrated on `KodaX` at `db4e10bb`, including the other chat's newer
+`a9587af7e` MCP/Skill fixes. Its design submodule local main is `8574086`. Actual-main complete
+source 18,777 / serial package 80 / historical and real-alpha.11 Host four passed; source and
+build bytes remained identical, with zero remaining review findings. See Root's FEATURE_302
+test guide J for frozen checkpoints, hashes and scope. Nothing was pushed or published.
+
+Space remains independent: product code is still `da531f0a`; J updates only these handoff docs.
+The I counts above are historical and do not certify a newly paired Space build. Integrate and
+validate with the responsible Space chat later, preserving source selection/proof/epoch/owner
+and actual Host profile/catalog contracts. SDK dependency pins and production gates stay intact.
