@@ -8,7 +8,7 @@ import { getKey, configuredConnection, describeProviderCredential } from './prov
 import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import path from 'node:path';
 import { invalidateProviderCredential } from './credential-invalidation.js';
-import type { OAuthCredentialSession } from '@kodax-ai/kodax/llm';
+import type { KodaXCustomProviderConfig, OAuthCredentialSession } from '@kodax-ai/kodax/llm';
 import {
   externalProviderEnvValue,
   restoreManagedProviderEnv,
@@ -17,7 +17,12 @@ import {
 } from './managed-env.js';
 
 type ConfiguredSource = ProviderInfo['configuredSource'];
-const oauthSessions = new Map<string, { readonly key: string; readonly session: OAuthCredentialSession; readonly unsubscribe: () => void }>();
+interface OAuthSource {
+  readonly key: string;
+  readonly session: Promise<OAuthCredentialSession>;
+  unsubscribe: () => void;
+}
+const oauthSessions = new Map<string, OAuthSource>();
 
 interface TrustedSharedCredentialAccount {
   readonly providerId: string;
@@ -102,29 +107,47 @@ export async function resolveProviderCredentialInfo(
   return sdkCustom ? { apiKeyEnv: sdkCustom.apiKeyEnv } : undefined;
 }
 
+async function retireOAuthSource(providerId: string): Promise<void> {
+  const previous = oauthSessions.get(providerId);
+  if (!previous) return;
+  oauthSessions.delete(providerId); previous.unsubscribe();
+  await invalidateProviderCredential(providerId);
+}
+async function readOAuthCredential(providerId: string, connection: KodaXCustomProviderConfig, proof?: string): Promise<string> {
+  const { oauth: service, oauthRegistration: registrationId } = connection;
+  if (!service || !registrationId) throw new Error('OAuth connection has no approved registration.');
+  const [runtime, llm] = await Promise.all([import('@kodax-ai/kodax/runtime'), import('@kodax-ai/kodax/llm')]);
+  const fingerprint = llm.createCustomProvider(connection).getCredentialConnectionFingerprint();
+  if (proof !== undefined && proof !== fingerprint) throw new Error('Provider credential connection does not match.');
+  const configPath = path.join(getKodaxRuntimeDir(), 'config.json'), key = JSON.stringify([configPath, registrationId, fingerprint]);
+  let selected = oauthSessions.get(providerId);
+  if (!selected || selected.key !== key) {
+    const previous = selected;
+    const created: OAuthSource = { key, unsubscribe: () => undefined, session: Promise.resolve().then(async () => {
+      if (previous) { previous.unsubscribe(); await invalidateProviderCredential(providerId); }
+      await runtime.migrateProviderOAuthRegistration({ configPath, registrationId });
+      const session = await llm.openOAuthSession({ id: registrationId, store: runtime.providerOAuthStore(configPath), driver: llm.createOAuthRefreshDriver(service) });
+      if (oauthSessions.get(providerId) !== created) throw new Error('OAuth connection changed during credential acquisition.');
+      created.unsubscribe = session.onInvalidate(() => invalidateProviderCredential(providerId));
+      return session;
+    }).catch(error => { if (oauthSessions.get(providerId) === created) oauthSessions.delete(providerId); throw error; }) };
+    oauthSessions.set(providerId, created); selected = created;
+  }
+  const session = await selected.session;
+  if ((session.profile ?? 'default') !== 'default' || session.service !== service
+    || (service === 'radius' && new URL(session.issuer ?? '').href.replace(/\/$/, '') !== new URL(connection.baseUrl).href.replace(/\/$/, ''))) throw new Error('OAuth registration does not match the approved connection.');
+  const value = await session.acquire();
+  if (oauthSessions.get(providerId) !== selected) throw new Error('OAuth connection changed during credential acquisition.');
+  return rememberProviderSecret(value);
+}
+
 /** Main-process-only lookup. The returned secret must never cross renderer IPC. */
 export async function readProviderCredential(providerId: string, connectionFingerprint?: string): Promise<string | undefined> {
   if (providerId === 'mock') return undefined;
-  const stored = await getKey(providerId, connectionFingerprint);
   const connection = await configuredConnection(providerId);
-  if (connection?.oauth) {
-    if (!connection.oauthRegistration) throw new Error('OAuth connection has no approved registration.');
-    const [runtime, llm] = await Promise.all([import('@kodax-ai/kodax/runtime'), import('@kodax-ai/kodax/llm')]);
-    const configPath = path.join(getKodaxRuntimeDir(), 'config.json');
-    await runtime.migrateProviderOAuthRegistration({ configPath, registrationId: connection.oauthRegistration });
-    const key = JSON.stringify([configPath, connection.oauthRegistration]);
-    const previous = oauthSessions.get(providerId);
-    if (previous && previous.key !== key) { previous.unsubscribe(); oauthSessions.delete(providerId); await invalidateProviderCredential(providerId); }
-    let session = oauthSessions.get(providerId)?.session;
-    if (!session) {
-      session = await llm.openOAuthSession({ id: connection.oauthRegistration, store: runtime.providerOAuthStore(configPath), driver: llm.createOAuthRefreshDriver(connection.oauth) });
-      const unsubscribe = session.onInvalidate(() => invalidateProviderCredential(providerId));
-      oauthSessions.set(providerId, { key, session, unsubscribe });
-    }
-    if ((session.profile ?? 'default') !== 'default' || session.service !== connection.oauth
-      || (connection.oauth === 'radius' && new URL(session.issuer ?? '').href.replace(/\/$/, '') !== new URL(connection.baseUrl).href.replace(/\/$/, ''))) throw new Error('OAuth registration does not match the approved connection.');
-    return rememberProviderSecret(await session.acquire());
-  }
+  if (connection?.oauth) return readOAuthCredential(providerId, connection, connectionFingerprint);
+  await retireOAuthSource(providerId);
+  const stored = await getKey(providerId, connectionFingerprint);
   if (connection?.cloud) {
     const [runtime, llm] = await Promise.all([import('@kodax-ai/kodax/runtime'), import('@kodax-ai/kodax/llm')]);
     const credential = stored ? connection.cloud.service === 'bedrock' ? { type: 'bearer' as const, token: stored } : { type: 'api-key' as const, key: stored }

@@ -40,8 +40,8 @@ test('Coder action manifest has one explicit non-inline disposition per entrypoi
   }
 });
 
-test('Space Artifact and notification entrypoints remain Space-owned', () => {
-  for (const entrypoint of ['artifact.create', 'artifact.read', 'notification.show'] as const) {
+test('Space Artifact, credential and notification entrypoints remain Space-owned', () => {
+  for (const entrypoint of ['artifact.create', 'artifact.read', 'provider.shareKey', 'notification.show'] as const) {
     const entry = CODER_ACTION_MANIFEST.find((item) => item.entrypoint === entrypoint);
     assert.ok(entry);
     assert.equal(entry.targetOwner, 'space-host-provider');

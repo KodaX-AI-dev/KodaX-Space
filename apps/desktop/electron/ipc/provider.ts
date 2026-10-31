@@ -39,6 +39,7 @@ import {
   moveProviderCredential,
   assertProviderCredentialState,
   removeProviderWithCredentials,
+  shareProviderCredential,
 } from '../providers/provider-storage.js';
 import { testProvider } from '../providers/test-connection.js';
 import { validateBaseUrl } from '../providers/url-guard.js';
@@ -235,6 +236,9 @@ export function registerProviderChannels(): void {
 
     const detailed = await Promise.all(list.map(async (p) => {
       const credentialState = await describeProviderCredential(p.id);
+      if (credentialState.migration === 'connection-changed' && !credentialState.authentication) {
+        return { ...p, credentialState, configured: false, configuredSource: 'none' as const };
+      }
       return { ...p, credentialState,
         configured: p.configured || credentialState.authenticationConfigured === true,
         configuredSource: credentialState.authentication ?? p.configuredSource };
@@ -267,6 +271,13 @@ export function registerProviderChannels(): void {
     // 删它的 key 之后那个 env 应回到另一个共享者的值（或被默认 provider 覆盖）
     await injectAllKeysToEnv();
     return { ok: removed };
+  });
+
+  registerChannel('provider.shareKey', async input => {
+    if (!await resolveKnownProvider(input.providerId)) throw new Error('unknown providerId');
+    await shareProviderCredential(input.providerId, input.expected, input.mode);
+    await injectAllKeysToEnv();
+    return { ok: true };
   });
 
   // provider.test

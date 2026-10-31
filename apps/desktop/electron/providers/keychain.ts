@@ -81,6 +81,7 @@ function loadKeyring(): Promise<KeyringApi | null> {
   keyringPromise = import(/* @vite-ignore */ moduleId)
     .then((mod) => (mod as { default?: KeyringApi }).default ?? (mod as unknown as KeyringApi))
     .catch((err) => {
+      keyringPromise = null;
       console.warn('[keychain] failed to load @napi-rs/keyring', err);
       return null;
     });
@@ -114,7 +115,7 @@ function loadVault(): Promise<EncryptedCredentialVault | null> {
       console.warn('[keychain] encrypted credential vault unavailable', err);
       return null;
     }
-  })();
+  })().then(vault => { if (!vault) vaultPromise = null; return vault; });
   return vaultPromise;
 }
 
@@ -177,21 +178,27 @@ async function requirePersistentVault(): Promise<EncryptedCredentialVault> {
   return vault;
 }
 
+function cancelledMacosRead(error: unknown): boolean {
+  const seen = new Set<Error>();
+  while (error instanceof Error && !seen.has(error)) {
+    seen.add(error);
+    const description = `${'code' in error ? String(error.code) : ''} ${error.message}`;
+    if (/(?:^|[\s(])-(?:128|25293)(?=$|[\s).,:;])|\b(?:cancell?ed|denied)\b/i.test(description)) return true;
+    error = error.cause;
+  }
+  return false;
+}
 /** Runtime authority must never fall back to an ephemeral secret or swallow storage errors. */
 export async function getPersistentKey(
   account: string,
   verifyRecoverySecret?: (candidate: string) => Promise<boolean>,
 ): Promise<string | undefined> {
-  if (process.platform === 'darwin' && skippedMacosReads.has(account)) {
-    throw new Error('Credential access was cancelled or failed; retry after relaunch.');
-  }
+  if (backendStatus === 'memory' && !process.env.KODAX_TEST_ONBOARDING) backendStatus = 'unknown';
+  if (process.platform === 'darwin' && skippedMacosReads.has(account)) throw new Error('Credential access was cancelled or denied; retry after relaunch or an explicit save.');
   const queued = persistentReadQueue.get(account);
   if (queued) return queued;
   const pending = readPersistentKey(account, verifyRecoverySecret)
-    .catch((error: unknown) => {
-      if (process.platform === 'darwin') skippedMacosReads.add(account);
-      throw error;
-    })
+    .catch((error: unknown) => { if (process.platform === 'darwin' && cancelledMacosRead(error)) skippedMacosReads.add(account); throw error; })
     .finally(() => persistentReadQueue.delete(account));
   persistentReadQueue.set(account, pending);
   return pending;
@@ -575,7 +582,7 @@ export async function hasMigrationKey(account: string): Promise<boolean> {
     return result;
   }
   const keyring = await loadKeyring();
-  if (!keyring) return false;
+  if (!keyring) throw new Error('Legacy credential metadata is unavailable.');
   try { return (await keyring.getPassword(SERVICE_NAME, account)) !== null; }
   catch { throw new Error('Legacy credential metadata is unavailable.'); }
 }

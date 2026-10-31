@@ -82,6 +82,8 @@ async function fixture(
             reads.push(account);
             await options.beforeLegacyRead?.();
             if (account === 'broken') throw new Error('invalid UTF16');
+            if (account === 'cancelled') throw new Error('Keychain operation failed', { cause: Object.assign(new Error('OSStatus failure'), { code: -128 }) });
+            if (account === 'denied') throw new Error('Keychain operation failed (-25293)');
             return options.legacy?.[account] ?? null;
           },
           setPassword: async () => assert.fail('must write Windows secrets to vault'),
@@ -124,7 +126,7 @@ test('native keyring loader retains nested causes for the structured console bri
   assert.equal((error.cause[0] as NodeJS.ErrnoException).code, 'ERR_DLOPEN_FAILED');
 });
 
-test('strict Runtime reads preserve macOS cancellation suppression until an explicit save', async (t) => {
+test('strict Runtime reads deduplicate simultaneous macOS failures and retry a later lookup', async (t) => {
   const f = await fixture(t, { platform: 'darwin' });
   const keys = await f.load();
   await Promise.all([
@@ -132,9 +134,20 @@ test('strict Runtime reads preserve macOS cancellation suppression until an expl
     assert.rejects(keys.getPersistentKey('broken'), /invalid UTF16/),
   ]);
   await assert.rejects(keys.getPersistentKey('broken'));
-  assert.deepEqual(f.reads, ['broken']);
+  assert.deepEqual(f.reads, ['broken', 'broken']);
   await keys.setPersistentKey('broken', 'fixture-recovered');
   assert.equal(await keys.getPersistentKey('broken'), 'fixture-recovered');
+});
+
+test('strict macOS reads keep explicit cancellation and denial suppressed until an explicit save', async t => {
+  const f = await fixture(t, { platform: 'darwin' }), keys = await f.load();
+  for (const account of ['cancelled', 'denied']) {
+    await assert.rejects(keys.getPersistentKey(account), /Keychain operation failed/);
+    await assert.rejects(keys.getPersistentKey(account));
+    assert.equal(f.reads.filter(value => value === account).length, 1);
+    await keys.setPersistentKey(account, 'fixture-recovered');
+    assert.equal(await keys.getPersistentKey(account), 'fixture-recovered');
+  }
 });
 
 test('Runtime opens a fresh profile and reconnects with identical authority without native keyring', async (t) => {

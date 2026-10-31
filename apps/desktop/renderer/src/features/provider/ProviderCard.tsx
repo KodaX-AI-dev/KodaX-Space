@@ -104,6 +104,19 @@ export function ProviderCard({
     }
   }
 
+  async function handleShare(mode: 'publish' | 'adopt'): Promise<void> {
+    if (!window.kodaxSpace || !provider.credentialState) return;
+    setBusy(true); setErr(null);
+    try {
+      const result = await window.kodaxSpace.invoke('provider.shareKey', {
+        providerId: provider.id, expected: provider.credentialState, mode,
+      });
+      if (!result.ok) { setErr(`${result.error.code}: ${result.error.message}`); return; }
+      setTest({ kind: 'idle' }); await onChanged();
+    } catch (error) { setErr(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  }
+
   async function handleTest(): Promise<void> {
     if (!window.kodaxSpace || test.kind === 'testing') return;
     setBusy(true);
@@ -236,15 +249,34 @@ export function ProviderCard({
         <MetaRow label={t('provider.meta.env')} value={provider.apiKeyEnv} />
         <MetaRow
           label={t('provider.meta.key')}
-          value={credentialSourceLabel(credentialSource, t)}
+          value={provider.credentialState?.scope === 'space' && provider.credentialState.configured ? t('provider.keySource.space') : credentialSourceLabel(credentialSource, t)}
         />
         <MetaRow label={t('provider.meta.model')} value={provider.defaultModel} />
         {provider.baseUrl && <MetaRow label="URL" value={provider.baseUrl} />}
       </dl>
 
       {provider.credentialState?.migration !== undefined && provider.credentialState.migration !== 'none' && (
-        <p className="mt-3 text-xs text-warning">{t('provider.credentialMigration')}</p>
+        <p className="mt-3 text-xs text-warning">{t(provider.credentialState.migration === 'connection-changed'
+          ? 'provider.credentialConnectionChanged' : provider.credentialState.migration === 'unavailable'
+          ? 'provider.credentialUnavailable' : provider.credentialState.migration === 'pending'
+            ? 'provider.credentialPending' : 'provider.credentialMigration')}</p>
       )}
+
+      {provider.credentialState?.scope === 'space' && credentialSource !== 'oauth' && credentialSource !== 'external' && (
+        <div className="mt-3 text-xs text-fg-muted">
+          <p>{t('provider.spaceCredential')}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {provider.credentialState.configured && <button type="button" disabled={busy} onClick={() => void handleShare('publish')}
+              className="rounded border border-border-default px-2 py-1 disabled:opacity-50">
+              {t(provider.credentialState.sharedConfigured ? 'provider.replaceShared' : 'provider.publishShared')}
+            </button>}
+            {provider.credentialState.sharedConfigured && <button type="button" disabled={busy} onClick={() => void handleShare('adopt')}
+              className="rounded border border-border-default px-2 py-1 disabled:opacity-50">{t('provider.adoptShared')}</button>}
+          </div>
+        </div>
+      )}
+      {provider.credentialState?.scope === 'shared' && <p className="mt-3 text-xs text-fg-muted">{t('provider.sharedCredential')}</p>}
+      {credentialSource === 'both' && <p className="mt-2 text-xs text-fg-muted">{t('provider.removeUsesEnvironment')}</p>}
 
       {editing ? (
         <div className="mt-4 rounded-lg border border-info/40 bg-info/10 p-3">

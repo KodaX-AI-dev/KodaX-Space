@@ -97,6 +97,7 @@ export const FROZEN_V0131_CODER_ENTRYPOINTS = [
   'provider.removeKey',
   'provider.setDefault',
   'provider.setKey',
+  'provider.shareKey',
   'provider.test',
   'provider.updateCustom',
   'runtime.profileSnapshot',

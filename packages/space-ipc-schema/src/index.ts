@@ -373,6 +373,7 @@ export {
   providerListChannel,
   providerSetKeyChannel,
   providerRemoveKeyChannel,
+  providerShareKeyChannel,
   providerTestChannel,
   providerSetDefaultChannel,
   providerAddCustomChannel,

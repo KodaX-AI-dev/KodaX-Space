@@ -1836,10 +1836,10 @@ test('Runtime effective config preserves daemon source provenance without creden
   await adapter.close();
 });
 
-test('resolveRuntimeHostMode defaults to runtime and accepts explicit legacy rollback', () => {
+test('resolveRuntimeHostMode upgrades a retired legacy setting to the shared Runtime Host', () => {
   assert.equal(resolveRuntimeHostMode(undefined), 'runtime');
   assert.equal(resolveRuntimeHostMode('runtime'), 'runtime');
-  assert.equal(resolveRuntimeHostMode('legacy'), 'legacy');
+  assert.equal(resolveRuntimeHostMode('legacy'), 'runtime');
   assert.equal(resolveRuntimeHostMode('unexpected'), 'runtime');
 });
 

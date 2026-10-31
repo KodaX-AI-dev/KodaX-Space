@@ -1,13 +1,26 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { RuntimeClientIdentityStore } from './runtime-client-identity.js';
 import { createRuntimeClientFileSecretStore } from './runtime-client-secret-file.js';
 import { createFileProviderCredentialStore } from '@kodax-ai/kodax/llm';
 import { createHash } from 'node:crypto';
+
+test('client storage retries initialization after a transient storage failure without replacing its identity', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-client-init-retry-'));
+  try {
+    const authFile = path.join(root, 'auth.json');
+    await writeFile(authFile, '{broken');
+    const secrets = createRuntimeClientFileSecretStore({ authFile });
+    await assert.rejects(secrets.read('account'));
+    await writeFile(authFile, JSON.stringify({ version: 2, apiKeys: {}, oauth: {} }));
+    await secrets.write('account', 'unchanged-secret');
+    assert.equal(await secrets.read('account'), 'unchanged-secret');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 test('migrates active and exit-recovery secrets with all stable identity bytes unchanged', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-runtime-secret-file-'));

@@ -33,7 +33,7 @@ export function createRuntimeClientFileSecretStore(input: {
 } = {}): RuntimeClientSecretStore {
   const authFile = input.authFile ?? path.join(getKodaxRuntimeDir(), 'auth.json');
   let pending: Promise<FileProviderCredentialStore> | undefined;
-  const store = () => pending ??= openFile(authFile);
+  const store = () => pending ??= openFile(authFile).catch(error => { pending = undefined; throw error; });
   const binding = (account: string) => ({ profile: 'space-client-identity', provider: account,
     connectionFingerprint: createHash('sha256').update(JSON.stringify(['space-client-secret-v1', account])).digest('hex') });
   const legacy = input.legacy ?? legacyStore(authFile);

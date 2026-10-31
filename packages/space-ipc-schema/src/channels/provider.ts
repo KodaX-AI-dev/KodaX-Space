@@ -49,7 +49,9 @@ const customProviderContextWindowSchema = z
 // `protocol` 标识 SDK 协议族（Anthropic / OpenAI / CLI-bridge）—— 自定义 provider 必填
 const credentialStateSchema = z.object({
   binding: z.object({ profile: z.string(), provider: z.string(), connectionFingerprint: z.string().regex(/^[a-f0-9]{64}$/) }),
-  revision: z.string().nullable(), configured: z.boolean(), migration: z.enum(['none', 'pending', 'conflict', 'unavailable']),
+  revision: z.string().nullable(), configured: z.boolean(), migration: z.enum(['none', 'pending', 'conflict', 'unavailable', 'connection-changed']),
+  scope: z.enum(['shared', 'space']).optional(), sharedRevision: z.string().nullable().optional(),
+  selectionRevision: z.string().nullable().optional(), sharedConfigured: z.boolean().optional(),
   authentication: z.enum(['oauth', 'cloud', 'external']).optional(), authenticationConfigured: z.boolean().optional(),
 });
 const providerInfoSchema = z.object({
@@ -120,6 +122,12 @@ export const providerRemoveKeyChannel = {
   output: z.object({
     ok: z.boolean(),
   }),
+} as const;
+
+export const providerShareKeyChannel = {
+  name: 'provider.shareKey', direction: 'invoke',
+  input: z.object({ providerId: z.string().min(1).max(64), expected: credentialStateSchema, mode: z.enum(['publish', 'adopt']) }),
+  output: z.object({ ok: z.boolean() }),
 } as const;
 
 // --- Invoke: provider.test ---

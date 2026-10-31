@@ -1,12 +1,14 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import type { KodaXCustomProviderConfig } from '@kodax-ai/kodax/llm';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxRuntimeDir, getSpaceDataDir } from '../kodax/data-paths.js';
 import { mergeSdkCustomProviderConfig, normalizeSpaceCustomProviderForSdk } from '../kodax/user-config.js';
 import { providerConfigStore } from './config.js';
 import * as legacy from './keychain.js';
 import { createSpaceFileCredentials, type SpaceCredentialState } from './file-credentials.js';
-import { rememberProviderSecret } from './managed-env.js';
+import { externalProviderEnvValue, rememberProviderSecret } from './managed-env.js';
+import { invalidateProviderCredential } from './credential-invalidation.js';
+import { legacyDiscovery } from './legacy-discovery.js';
 
 const sdk = () => import('@kodax-ai/kodax/llm');
 const authPath = () => path.join(getKodaxRuntimeDir(), 'auth.json');
@@ -38,9 +40,21 @@ async function storage() {
   if (credentials) return credentials;
   const file = (await sdk()).createFileProviderCredentialStore(authPath());
   await file.initialize();
-  credentials = createSpaceFileCredentials({ store: file, resolve: providerStorageBinding,
-    legacy: { has: legacy.hasMigrationKey, read: process.env.KODAX_TEST_ONBOARDING ? legacy.getKey : legacy.getPersistentKey, remove: legacy.deleteKey } });
+  const discovery = process.env.KODAX_TEST_ONBOARDING ? { enabled: true, scopeId: undefined } : await legacyDiscovery(file, getSpaceDataDir());
+  credentials = createSpaceFileCredentials({ store: file, scopeId: discovery.scopeId, resolve: providerStorageBinding, hasEnvironment: async provider => {
+    const module = await sdk(), preset = Object.entries(module.KODAX_PROVIDER_SNAPSHOTS).find(([name]) => name === provider)?.[1];
+    if (preset?.capabilityProfile.transport === 'cli-bridge') return false;
+    const connection = await configuredConnection(provider);
+    return !connection?.oauth && externalProviderEnvValue(preset?.apiKeyEnv ?? connection?.apiKeyEnv ?? '') !== undefined;
+  },
+    legacy: { has: account => discovery.enabled ? legacy.hasMigrationKey(account) : Promise.resolve(false),
+      read: process.env.KODAX_TEST_ONBOARDING ? legacy.getKey : legacy.getPersistentKey, remove: legacy.deleteKey } });
   return credentials;
+}
+
+async function fencePreviousCredentials(provider: string): Promise<void> {
+  try { await invalidateProviderCredential(provider); }
+  catch { console.warn('[provider] Credential is saved and fenced locally; some previous Host leases could not be closed.'); }
 }
 
 // Aliases are an explicit reviewed migration map, never inferred from equal env names.
@@ -55,9 +69,10 @@ export async function describeProviderCredential(provider: string): Promise<Spac
   const connection = await configuredConnection(provider);
   if (connection?.cloud) return { ...state, authentication: 'cloud', authenticationConfigured: true };
   if (connection?.oauth) {
+    const profile = (await providerStorageBinding(provider)).profile;
     const registered = connection.oauthRegistration && await module.createFileProviderCredentialStore(authPath()).oauth.transact(connection.oauthRegistration,
-      async record => ({ record, result: !!record && (record.profile ?? 'default') === state.binding.profile && record.service === connection.oauth && !!record.credentials }));
-    return { ...state, authentication: 'oauth', authenticationConfigured: !!registered };
+      async record => ({ record, result: !!record && (record.profile ?? 'default') === profile && record.service === connection.oauth && !!record.credentials }));
+    return { ...state, migration: 'none', authentication: 'oauth', authenticationConfigured: !!registered };
   }
   return state;
 }
@@ -66,15 +81,17 @@ export async function getKey(provider: string, proof?: string): Promise<string |
   let key = await store.read(provider, legacyAccounts(provider), proof);
   if (!key && (provider === 'codex-cli' || provider === 'openai')) {
     const state = await store.describe(provider, []);
-    if (state.revision === null) key = await store.read(provider === 'openai' ? 'codex-cli' : 'openai', [], undefined);
+    if (state.scope === 'shared' && state.revision === null) key = await store.read(provider === 'openai' ? 'codex-cli' : 'openai', [], undefined);
   }
   return key === undefined ? undefined : rememberProviderSecret(key);
 }
 export async function assertProviderCredentialState(provider: string, expected: SpaceCredentialState | undefined): Promise<SpaceCredentialState> {
   if (!expected) throw new Error('Provider update requires its displayed credential revision. Refresh before retrying.');
   const current = await describeProviderCredential(provider);
-  if (JSON.stringify(current.binding) !== JSON.stringify(expected.binding) || current.revision !== expected.revision) throw new Error('Provider connection or credential changed. Refresh before retrying.');
-  return current;
+  if (JSON.stringify(current.binding) !== JSON.stringify(expected.binding) || current.revision !== expected.revision
+    || current.scope !== expected.scope || current.selectionRevision !== expected.selectionRevision
+    || current.sharedRevision !== expected.sharedRevision) throw new Error('Provider connection or credential changed. Refresh before retrying.');
+  return (await storage()).pin(provider, current, legacyAccounts(provider));
 }
 export async function setKey(provider: string, key: string, expected?: SpaceCredentialState): Promise<void> {
   if (!expected) throw new Error('Credential update requires its displayed revision. Refresh before retrying.');
@@ -82,21 +99,31 @@ export async function setKey(provider: string, key: string, expected?: SpaceCred
   rememberProviderSecret(key);
   const store = await storage();
   await store.set(provider, key, expected, legacyAccounts(provider));
+  await fencePreviousCredentials(provider);
 }
 export async function deleteKey(provider: string, expected?: SpaceCredentialState): Promise<boolean> {
   if (!expected) throw new Error('Credential removal requires its displayed revision. Refresh before retrying.');
   const store = await storage();
-  return store.remove(provider, expected, legacyAccounts(provider));
+  const removed = await store.remove(provider, expected, legacyAccounts(provider));
+  await fencePreviousCredentials(provider); return removed;
+}
+export async function shareProviderCredential(provider: string, expected: SpaceCredentialState, mode: 'publish' | 'adopt'): Promise<void> {
+  if ((await configuredConnection(provider))?.oauth) throw new Error('Use OAuth login for this connection.');
+  await (await storage()).share(provider, expected, mode, legacyAccounts(provider));
+  await fencePreviousCredentials(provider);
 }
 export async function removeProviderWithCredentials(provider: string, expected: SpaceCredentialState | undefined, operation: () => Promise<boolean>): Promise<boolean> {
   if (!expected) throw new Error('Provider removal requires its displayed credential revision. Refresh before retrying.');
-  return (await storage()).removeWithConfig(provider, expected, operation, legacyAccounts(provider));
+  const removed = await (await storage()).removeWithConfig(provider, expected, operation, legacyAccounts(provider));
+  await fencePreviousCredentials(provider); return removed;
 }
 export async function moveProviderCredential(provider: string, previous: SpaceCredentialState): Promise<SpaceCredentialState | undefined> {
   const connection = await configuredConnection(provider);
   if (!connection) throw new Error('Unknown alias migration destination.');
   const proof = (await sdk()).createCustomProvider({ ...connection, name: previous.binding.provider }).getCredentialConnectionFingerprint();
-  return (await storage()).move(provider, previous, proof);
+  const moved = await (await storage()).move(provider, previous, proof, legacyAccounts(previous.binding.provider));
+  if (moved) { await fencePreviousCredentials(previous.binding.provider); await fencePreviousCredentials(provider); }
+  return moved;
 }
 export async function hasKey(provider: string): Promise<boolean> {
   const state = await describeProviderCredential(provider);

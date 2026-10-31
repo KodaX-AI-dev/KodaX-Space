@@ -1453,7 +1453,9 @@ export interface RuntimeHostAdapterOptions {
 type RuntimeProviderCredentialResolver = (provider: string, connectionFingerprint?: string) => Promise<string | undefined>;
 
 export function resolveRuntimeHostMode(value: string | undefined): RuntimeHostMode {
-  return value?.trim().toLowerCase() === 'legacy' ? 'legacy' : 'runtime';
+  // Persisted legacy settings follow the SDK's single-Host upgrade path; fixture-only legacy ports stay injectable.
+  void value;
+  return 'runtime';
 }
 
 export async function withDarwinRuntimeDaemonTmpdir<T>(
