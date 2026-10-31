@@ -25,7 +25,6 @@ const baseFields: FeishuCreateBaseInput['fields'] = [
 ];
 async function fixture(t: { after(fn: () => Promise<void>): void }) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'partner-connectors-test-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
   let enabled = true;
   let writes = 0;
   let revision = 1;
@@ -110,6 +109,8 @@ async function fixture(t: { after(fn: () => Promise<void>): void }) {
     },
     changed: (value) => changes.push(value ?? {}),
   });
+  // The task receipt can be visible before its background notification finishes reading.
+  t.after(() => service.deactivate(undefined, () => rm(root, { recursive: true, force: true })));
   const connection = await service.connect({
     extensionId: 'partner.library',
     connectorId: 'feishu',

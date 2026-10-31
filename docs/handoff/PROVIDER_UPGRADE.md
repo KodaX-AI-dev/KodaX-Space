@@ -1,8 +1,8 @@
-# Provider upgrade handoff — FEATURE_302 T12-H
+# Provider upgrade handoff — FEATURE_302 T12-H/I
 
 Updated 2026-10-31. This is an unpublished integration branch, not an installer release.
 
-可转交说明：Root 已完成 LLM 接入能力对齐和 T12-H 兼容补齐，原 config/API_KEY 入口保留；Space 在独立 `codex/provider-credentials-space` 分支接入同根 auth.json，但旧 Space 凭证自动迁到私有作用域、保留原加密副本，与 CLI 不同账号不会自动合并，首次来源须持久固定，只有显式发布/采用才共享。迁移中断可安全重试，缺失来源、删除墓碑、迟到 OAuth 刷新和地址切换均不能改用别的账号，稳定身份与退出恢复原值保持；macOS 取消保护与普通故障自愈分开处理。Root 完整 18,659、发布包 70，Space 完整 4,531 和实际 Electron 两项均通过，两轴复审无剩余问题。请整合本分支及配套 Root SDK，重点保留这些凭证/epoch/owner 边界；原 Root 已推进到 `422acd4a` 的 Host/执行配置等后续工作尚未合入本隔离分支，需对重叠修改逐项协调并重跑合并后的验收。发布前须发布并锁定配套 SDK、通过原安装包门禁；macOS/Linux 真实旧凭证库、真实账号权益及任意旧版降级不属于本次已验证范围。
+可转交说明：Root 在独立 `codex/llm-provider-parity` 分支完成 LLM 接入与老用户兼容补齐，并整合另一线程已提交的 `0fa38e5b2`，保留双方 Host/执行 profile/恢复与 Windows 回收改动，原 config/API_KEY 入口有效；原主分支未改动、未推送或发布。Space 配套代码位于独立 `codex/provider-credentials-space`：旧凭证自动迁到私有作用域并保留原副本，首次来源持久固定，只有显式发布/采用才共享；CLI 与 Space 不同账号不会自动合并，env 消失、墓碑、地址变化、迟到迁移/OAuth 刷新均不能悄悄改用另一账号，原客户端身份和退出恢复保持。Root 本轮全量 18,747、发布包 71、历史 Host 切换/真实 alpha.11 升级 4 项通过；配套 Space 本轮完整与实际重启证据见 I 验收条目。Space 私有授权 helper 已准确声明仅依赖 credentials，JavaScript 不变；这不替代负责线程的 persona/Partner/工具 profile 产品迁移，后者必须使用真实 Host 目录和公开 profile helper。请逐项整合配套分支，保留 credential proof/epoch/owner 与账号来源断言；先发布并锁定匹配 SDK，再走原生产安装包门禁。macOS/Linux 真实旧凭证库、真实账号权益和任意旧版降级仍需额外验证。
 
 ## 1. User intent
 
@@ -13,18 +13,36 @@ a different account silently. Space and CLI may share a file without sharing the
 ## 2. Progress and ownership
 
 Space work is isolated at `C:\Users\ADMIN\.codex\workspaces\provider-credentials-space\KodaX-Space`,
-branch `codex/provider-credentials-space`, baseline `065cc39c`. The paired SDK is isolated at
+branch `codex/provider-credentials-space`, H checkpoint `437cac7d`. The paired SDK is isolated at
 `C:\Users\ADMIN\.codex\worktrees\llm-provider-parity\KodaX`, branch `codex/llm-provider-parity`,
-baseline `22e7bc708`. H implementation and offline regression/review are complete; final evidence
-is appended to the credential contract. The paired source is this Root branch's H delta after
-that baseline, not baseline SDK bytes alone. Do not interpret earlier E/F/G counts as H acceptance.
+H checkpoint `95e95a61`. H implementation and offline regression/review are complete; final evidence
+is appended to the credential contract. Do not interpret earlier E/F/G/H counts as acceptance of
+the subsequent combined I tree.
 The original Root/Space checkouts belong to another working chat and were not edited.
-The read-only upstream audit now sees Root `422acd4a84eb788e4bfe9d08da19ec5a4e2cc821`
-(new execution-profile/recovery and Windows process-cleanup work after `f6a01046`) and Space
-`7801a8ca` with its existing fixture plus new research drafts. This integration branch deliberately
-does not import that chat's ongoing work. The Root overlap snapshot is OS-temp
-`kodax-t12h-overlap-audit.json` (23 paths); reconcile Host/broker/schema, SDK client/runtime,
-coding substrate/types, bundle metadata and migration docs before combined acceptance.
+I integrates committed Root `0fa38e5b213ee41eabb0f33e57f5353c5c507414` from the other chat's
+local main development branch `KodaX`, preserving both histories after `f6a01046`. It includes
+execution-profile/recovery, view close draining and Windows process-cleanup work. Uncommitted
+work is never imported. Original Space `7801a8ca` and its dirty fixture/research drafts are outside
+this combined acceptance. Root's local main is not updated by this operation. The checked remote
+default branch is also `KodaX`, at `0f3930e95` (11 commits behind local main); recheck before merge/push.
+
+The new Root public authorization services include `createExecutionProfile`. Space's private
+authorization helper consumes only `credentials`; its parameter now explicitly declares this
+narrow dependency, keeping the public request/return types. Emitted JavaScript is unchanged.
+This does not implement Space's broader persona/Partner/tool-profile migration. When that work
+uses profiles, trusted Main must call the real helper against the actual Session Host catalog;
+do not fake the service or weaken the Root contract. Existing credential/Host lease behavior stays.
+
+I offline acceptance is complete: Root 18,747 / published 71 / historical cutover three / real
+integrity-pinned alpha.11 Host upgrade one; Space release 130, Desktop 4,031 and IPC 370 — 4,531
+passed / 20 conditional skips. Final types, lint and smoke build pass. Actual Electron two passed,
+including full close/relaunch, env A removal without adopting CLI B, and explicit adoption before
+dispatch. The Node sqlite ABI was restored. Both review axes have no remaining findings.
+The first Space run's stale Partner-inline expectation was replaced with capability-specific
+cross-process identity/legacy rejection and unsupported-surface checks. A later connector cleanup
+race was fixed by using existing `deactivate` to drain background notifications before deletion.
+Complete Desktop replay 3 is green; product behavior and permission assertions are unchanged.
+See [I evidence](../SDK_PROVIDER_CREDENTIALS.md#t12-i-combined-root-integration--2026-10-31).
 
 ## 3. Decisions and interfaces
 
@@ -82,10 +100,12 @@ new selections/tombstones. Integrate and release the paired SDK/Space, preservin
 - Retry/identity: `runtime-client-secret-file*.ts`, `legacy-storage-retry.test.ts`.
 - Main/UI/schema: Provider IPC, ProviderCard and `packages/space-ipc-schema`.
 - Actual desktop: `tests/e2e/provider-file-credentials.spec.ts`.
-- Root design and final matrix: `docs/features/v0.7.99.md` section 9 and
+- Root design and final matrix: `docs/features/v0.7.99.md` sections 9–10 and
   `docs/test-guides/FEATURE_302_v0.7.99_TEST_GUIDE.md` in the paired Root checkout.
   Root `docs/features` is a separate Git repository/gitlink; carry its design commit with Root.
 - Raw runs are OS-temporary `kodax-t12h-*` and `space-t12h-*` logs, never credential dumps.
+  I integration adds `kodax-t12i-*` and `space-t12i-*`, including full1/Desktop2 failures,
+  final Desktop3 and actual Electron/Node restore receipts.
   Keep initial failures and their eventual disposition visible in tracked acceptance evidence.
 
 ## 7. Suggested working discipline

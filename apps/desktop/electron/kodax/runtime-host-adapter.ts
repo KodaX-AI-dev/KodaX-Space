@@ -6241,10 +6241,10 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private readonly authorizeProductExecution: KodaXClientHostAuthorization = async (
-    request,
-    services,
-  ) => {
+  private readonly authorizeProductExecution = async (
+    request: Parameters<KodaXClientHostAuthorization>[0],
+    services: Pick<Parameters<KodaXClientHostAuthorization>[1], 'credentials'>,
+  ): ReturnType<KodaXClientHostAuthorization> => {
     const runtime = await this.requireRuntime();
     const sessionId = 'sessionId' in request.input ? request.input.sessionId : undefined;
     if (!sessionId) throw new Error('Space execution requires an identified Coder Session.');

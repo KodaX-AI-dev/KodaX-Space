@@ -171,3 +171,46 @@ Evidence lives in OS-temp `space-t12h-full{1,2,3}.log`, `space-t12h-coverage-fin
 `space-t12h-electron-final.log`, native restore/type/lint/build and focused RED/GREEN logs.
 Root's H section in the FEATURE_302 test guide records all initial failures and the read-only
 upstream audit. There is no Registry/version update or production installer acceptance here.
+
+## T12-I combined Root integration — 2026-10-31
+
+The paired Root branch combines H `95e95a61` with the other chat's committed local main
+`0fa38e5b2`. Both histories and credential/account/recovery boundaries remain. Root's original
+`KodaX` branch and original Space `7801a8ca` working tree are untouched. This section separately
+certifies the combined candidate, not the H snapshot alone.
+
+The initial Space typecheck found five bare-Runtime arguments incompatible with Root's expanded
+public Main authorization services (`createExecutionProfile` is now required). The private Space
+helper actually consumes only credentials: its parameter now uses that narrow public service
+type while retaining public request/return types. No runtime expression changes. Independent
+transpilation equality and Spec/Standards reviews confirm unchanged JavaScript and no findings.
+This is not a persona/Partner/profile implementation: that work must use trusted Main and the
+actual Session Host catalog through the real profile helper, preserving existing tool ceilings.
+
+Combined-candidate typecheck, lint and smoke build pass; the credential migration/source/OAuth/
+identity slice has 37 passing tests, and Host/broker/account-isolation/exit/recovery has 324.
+The first complete run passed release 130 / seven skipped and IPC 370. Desktop had 4,030 passed,
+one failed and 13 skipped: the old fixture incorrectly required Partner to stay inline despite
+the accepted unified Host contract. A six-second focused replay reproduced it. The fixture now
+asserts v2 Partner identity across two processes, preserves legacy rejection when the capability
+is absent, and rejects unsupported surfaces in both cases. Focused GREEN and both reviews pass;
+the complete Desktop tier is rerun below. No dependency
+version, lockfile, production byte gate, identity protocol or credential/account policy changes.
+Desktop replay 2 also found an unrelated test cleanup hook race (`ENOTEMPTY` after a successful
+receipt assertion). The fixture now blocks/drains tracked background verification through the
+existing service `deactivate` before deleting its owned directory. All 35 connector tests pass;
+no product behavior, timeout or business assertion is changed. A fresh complete Desktop replay
+is recorded below; initial failures remain in `space-t12i-full1.log` and `space-t12i-desktop2.log`.
+Final complete Desktop replay 3 passed: **4,031 passed / 13 skipped, zero failures**, 549.84 seconds.
+Together with the unchanged green release/IPC tiers, complete acceptance has **4,531 passed /
+20 conditional skips**. Final Electron source/test types and lint pass; smoke build passed before
+the test-only changes. Actual Electron **two passed** (35.1 seconds), including full close/relaunch:
+removing env A cannot dispatch CLI B; explicit adoption then dispatches B to the owned loopback
+fixture. This does not certify client-identity file migration; separate regressions preserve its
+exact active/exit-recovery bytes. The Node sqlite ABI is restored after Electron.
+Both review axes have no remaining findings. Root complete 18,747 / published 71 / historical
+cutover three / integrity-pinned alpha.11 Host upgrade one pass. Original Root remains clean at
+`0fa38e5b2`; original Space remains `7801a8ca` with its pre-existing dirty fixture/research drafts.
+No main branch, remote, Registry version or installer gate is updated by this acceptance.
+Evidence: OS-temp `space-t12i-*` and paired `kodax-t12i-*`; the complete combined matrix and initial
+compiler/budget failure dispositions belong in Root's FEATURE_302 test guide I section.

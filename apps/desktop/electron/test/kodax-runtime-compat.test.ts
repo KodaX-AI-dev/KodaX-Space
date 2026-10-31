@@ -430,16 +430,25 @@ try {
   const preflight = await runtime.status.preflight();
   const learningSnapshot = await runtime.learning.getSnapshot();
   let partnerError;
+  let partnerSession;
   try {
-    await runtime.sessions.create({
-      sessionId: 'partner-must-stay-inline',
-      title: 'Partner must stay inline',
+    const created = await runtime.sessions.create({
+      sessionId: 'shared-partner-probe',
+      title: 'Shared Partner probe',
       projectPath: process.cwd(),
       surface: 'partner',
+      profileId: 'kodax-space.partner',
       tag: 'partner',
     });
+    partnerSession = { id: created.id, surface: created.surface, profileId: created.profileId };
   } catch (error) {
     partnerError = { code: error?.code, message: String(error?.message ?? error) };
+  }
+  let unknownSurfaceError;
+  try {
+    await runtime.sessions.create({ sessionId: 'unsupported-surface-probe', surface: 'unsupported-compatibility-probe' });
+  } catch (error) {
+    unknownSurfaceError = { code: error?.code, message: String(error?.message ?? error) };
   }
   process.stdout.write('KODAX_SHARED_DAEMON_PEER=' + JSON.stringify({
     runtimeId: runtime.identity.runtimeId,
@@ -459,7 +468,10 @@ try {
     clientCount: preflight.clientCount,
     activeWorkflows: Array.isArray(preflight.activeWorkflows),
     activeAgentTurns: Array.isArray(preflight.activeAgentTurns),
+    executionProfileVersion: runtime.capabilities.productExecutionProfile?.version,
+    partnerSession,
     partnerError,
+    unknownSurfaceError,
   }));
 } finally {
   readinessSubscription?.close();
@@ -578,6 +590,7 @@ try {
   });
   const clientBaseline = await runtime.status.preflight();
   const peer = await runPeer(session.id);
+  const partnerSession = peer.partnerSession ? await runtime.sessions.load(peer.partnerSession.id) : undefined;
   let eventTimeout;
   const eventType = await Promise.race([
     settingsEvent,
@@ -622,6 +635,7 @@ try {
     cursor: observation.snapshot.cursor,
     transcriptRevision: observation.snapshot.transcriptRevision,
     peer,
+    partnerSession: partnerSession && { id: partnerSession.id, surface: partnerSession.surface, profileId: partnerSession.profileId },
     eventType,
     settings,
     clientBaseline: clientBaseline.clientCount,
@@ -965,8 +979,12 @@ interface SharedDaemonHostResult {
     readonly clientCount: number;
     readonly activeWorkflows: boolean;
     readonly activeAgentTurns: boolean;
+    readonly executionProfileVersion?: number;
+    readonly partnerSession?: { readonly id: string; readonly surface: string; readonly profileId: string };
     readonly partnerError?: { readonly code?: string; readonly message?: string };
+    readonly unknownSurfaceError?: { readonly code?: string; readonly message?: string };
   };
+  readonly partnerSession?: { readonly id: string; readonly surface: string; readonly profileId: string };
   readonly eventType: string;
   readonly settings: { readonly revision: number; readonly value: Record<string, unknown> };
   readonly clientBaseline: number;
@@ -1589,6 +1607,18 @@ test(
     assert.equal(result.management.permissionGrantAdmin, true);
     assert.equal(result.management.runtimeAutoModeGuardrail, true);
     assert.equal(result.connectionState, 'connected');
-    assert.equal(result.peer.partnerError?.code, 'session_not_admitted');
+    if (result.peer.executionProfileVersion === 2) {
+      assert.equal(result.peer.partnerError, undefined);
+      assert.deepEqual(result.peer.partnerSession, {
+        id: 'shared-partner-probe', surface: 'partner', profileId: 'kodax-space.partner',
+      });
+      assert.deepEqual(result.partnerSession, result.peer.partnerSession);
+    } else {
+      assert.equal(result.peer.executionProfileVersion, undefined);
+      assert.equal(result.peer.partnerSession, undefined);
+      assert.equal(result.partnerSession, undefined);
+      assert.equal(result.peer.partnerError?.code, 'session_not_admitted');
+    }
+    assert.equal(result.peer.unknownSurfaceError?.code, 'session_not_admitted');
   },
 );
