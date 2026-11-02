@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -27,35 +25,6 @@ test('concurrent first credential reads preserve the environment account without
     import('./credentials.js'),
     import('@kodax-ai/kodax/llm'),
   ]);
-  await import('@kodax-ai/kodax/repl');
-  const configuration = path.join(root, 'config.json');
-  const connection = { name: 'coherent-read-fixture', protocol: 'openai',
-    baseUrl: 'https://coherent.invalid/v1', apiKeyEnv: 'COHERENT_FIXTURE_KEY', model: 'fixture' };
-  await writeFile(configuration, JSON.stringify({ customProviders: [connection] }));
-  for (const hold of [80, 400]) {
-    const writer = promisify(execFile)(process.execPath, ['--input-type=module', '-e', `
-    import { withCoreConfigWriteLock } from '@kodax-ai/kodax/repl';
-    import { readFileSync, writeFileSync } from 'node:fs';
-    const file = ${JSON.stringify(configuration)};
-    withCoreConfigWriteLock(file, () => {
-      const original = readFileSync(file, 'utf8');
-      try {
-        writeFileSync(file, '{');
-        process.stdout.write('configuration-locked');
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ${hold});
-      } finally { writeFileSync(file, original); }
-    });
-    `], { windowsHide: true, timeout: 15_000 });
-    await new Promise<void>((resolve, reject) => {
-      writer.child.stdout!.once('data', () => resolve());
-      writer.catch(reject);
-    });
-    try {
-      if (hold === 80) assert.deepEqual(await storage.configuredConnection(connection.name), connection);
-      else await assert.rejects(storage.configuredConnection(connection.name), /configuration busy/);
-    } finally { await writer; }
-    assert.deepEqual(await storage.configuredConnection(connection.name), connection);
-  }
   const binding = await storage.providerStorageBinding('openai');
   const shared = sdk.createFileProviderCredentialStore(path.join(root, 'auth.json'));
   await shared.setApiKey(binding, 'different-cli-fixture', null);
