@@ -1169,9 +1169,9 @@ export function projectRuntimeProfile(input: {
   readonly reason?: string;
 }): SpaceRuntimeProfileProjectionT {
   const sessions = input.status.sessions;
-  const codeSessionIds = runtimeSessionIds(input.status, input.verifiedOutOfPageSessionIds);
+  const sessionIds = runtimeSessionIds(input.status, input.verifiedOutOfPageSessionIds);
   const recentSessionIds = new Set(sessions.map((session) => session.id));
-  const activeSessionIdsOutsideRecentPage = [...codeSessionIds].filter(
+  const activeSessionIdsOutsideRecentPage = [...sessionIds].filter(
     (sessionId) => !recentSessionIds.has(sessionId),
   );
   const retainedRecentSessions = sessions.slice(
@@ -1226,8 +1226,8 @@ export function projectRuntimeProfile(input: {
       };
     }),
     interactions: projectRuntimeInteractions(
-      input.status.pendingPermissions.filter((request) => codeSessionIds.has(request.sessionId)),
-      input.userInputs.filter((request) => codeSessionIds.has(request.sessionId)),
+      input.status.pendingPermissions.filter((request) => sessionIds.has(request.sessionId)),
+      input.userInputs.filter((request) => sessionIds.has(request.sessionId)),
     ),
     notifications: [],
   });

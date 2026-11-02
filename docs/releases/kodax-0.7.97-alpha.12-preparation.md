@@ -19,7 +19,7 @@
 | 图片/费用/统计          | 模型 multimodalSupport 优先；text-only 模型在接受输入前拒绝新图片，原图/草稿保留；统计 partial/issues 不丢；cursor conflict 从第一页重取并显式 reset                                                               | Space 当前显示记录 token，不自行计算金额，因此不将 cost:null 变零，也不推算 nominal 为账单。独立 monetary/成本 API 未新增 UI |
 | 工具/Skill/MCP          | Skill 显式引用按 Host 实际 registry 识别，兼容中间 token 与 /skill:name；原文仍按具体工具项 ID 和 part:original 分页；权限计划、taskResult 与无超时提问沿现有契约                                                  | 真实 Host 验证 Space builtin 与项目 .agents/skills；vendored Space Skills 校验通过；其余组合回归另记                         |
 | 配置/错误               | Settings 读 Host application，分 immediate/next_run/extension_reload/restart；声明依赖与实际 SDK 版本分开；损坏配置与凭证不清空重置，修复后重试                                                                    | Host 未报告时显示未知，保存不宣称活跃 Run 已应用                                                                             |
-| 生命周期                | 个人清理成功与真实 Host 停止分别记录；late peer 保护 Host 时不启动安装；Partner 退出同样保护其他客户端                                                                                                             | 定向退出测试通过；正式安装包的手动更新/退出/多客户端竞争仍待发布后验收                                                       |
+| 生命周期                | 个人清理成功与真实 Host 停止分别记录；late peer 或 replacementRunning 保护 Host 时不启动安装；Partner 退出同样保护其他客户端                                                                                       | 定向退出测试通过；正式安装包的手动更新/退出/多客户端竞争仍待发布后验收                                                       |
 | 沙箱/分发               | 复用公开激活入口与 SDK 自动回退，不增加 Node 安装 gate；SDK 指引已区分 Electron Node 模式与 standalone 可选解释器修复；新增 client facade 保持 external；完整 SDK/native/artifact 资源门禁保留                     | Node/真实 Host 与源码构建验证；Galaxy Kylin/macOS/ARM、真实沙箱激活与正式 ASAR 包待验收                                      |
 | 其他 SDK 能力           | 原生 Actor checkpoint 由 SDK 管理；Space 外部任务 mailbox 不是另一个原生 followup 驱动。独立 image/classify/deferred API 按产品需要另接                                                                            | 不为覆盖导出逐一新增功能或重复轮询；不增加前台扫盘、TTL GC、自动修复/确认存储 fence                                          |
 
@@ -27,7 +27,7 @@
 
 ## 仍需 SDK 配合
 
-默认专家 Skill 的可信声明及 after-turn 真正消费时获取最新已提交专家/连接器绑定，当前公开契约还不能等价表达。缺默认方法时 Space 事实拒绝并保留草稿；显式已注册 Skill 可覆盖本轮方法，checkpoint 恢复沿已准入 persona 重绑，不重新要求新默认方法。完整问题、需求与验收段落见 [SDK 交接](kodax-alpha12-partner-sdk-handoff.md)。这项没有关闭，正式升级前须补接口并继续验证。
+默认专家 Skill 的可信声明及 after-turn 真正消费时获取最新已提交专家/连接器绑定，当前公开契约还不能等价表达。Quick Ask promotion 也缺 Host 元数据更新命令，候选已关闭旧 saveSession 直写并保留原会话；缺默认方法时 Space 事实拒绝并保留草稿；显式已注册 Skill 可覆盖本轮方法，checkpoint 恢复沿已准入 persona 重绑，不重新要求新默认方法。完整问题、需求与验收段落见 [SDK 交接](kodax-alpha12-partner-sdk-handoff.md)。这两项没有关闭，正式升级前须补接口并继续验证。
 
 ## 候选验证与交付
 
@@ -37,4 +37,8 @@
 
 已完成定向 RED/GREEN（退出证据、旧偏好迁移、授权 profile、OAuth context、实际执行事实、游标重取）、真实浏览器实际事实展示与模式切换、真实独立 Host 六项验收（含内置/项目 Skill、实际交付字节、Agent persona、shell scope）。该 Host 统计 physicalRequestCount=0，独占 owner 经 shutdown receipt 验证退出；没有用个人会话或在线模型。
 
-完整组合测试、typecheck/lint/Renderer+Main 构建结果在最终记录补充。正式 Registry 安装、lockfile、最终完整字节/ASAR 包、客户历史首次加载性能、真实 OAuth/云账户、外部服务和跨平台交付仍单独验收，不把 SDK CI 或旧分支的通过数字算成本次结果。
+组合回归启动于固定提交 `c171ca50`：Desktop 4057 项中 4041 通过、13 跳过、3 失败；IPC schema 371 项全部通过。失败中的两项是正式依赖/安装字节一致性门禁：正式声明 alpha.11，而本隔离工作区装的是 alpha.12 候选，保留门禁等正式发布后验收。另一项在首个 loopback 假 Provider 请求阶段出现 network failure；同一用例定向重跑通过（`migration-revoked-recheck.log`），没有放宽断言或超时，也未把复跑当成全量一次通过。
+
+之后的共享 writer/Quick Ask 保护及 Partner 不兼容 Host 停止重试修复，相关 7 个测试文件共 176 项全部通过；新增边界先 RED 6 项失败，再 GREEN 7 项通过。最终生产源码的 typecheck、lint 与 Renderer/Main 构建通过（构建保留既有 chunk-size 提示）。上述日志和真实 Host 能力报告均在本准备工作区 `artifacts/diagnostics/alpha12/`，正式资源/安装门禁仍未运行通过。整库覆盖率本轮未重新测量。
+
+复核及未关闭项见 [双轴复核记录](kodax-alpha12-preparation-review.md)。正式 Registry 安装、lockfile、最终完整字节/ASAR 包、客户历史首次加载性能、真实 OAuth/云账户、外部服务和跨平台交付仍单独验收，不把 SDK CI 或旧分支的通过数字算成本次结果。

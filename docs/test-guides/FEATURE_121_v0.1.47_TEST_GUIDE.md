@@ -36,3 +36,11 @@
 10. 正式发布后安装 Registry 包并锁完整 integrity，再跑真实 Electron/ASAR 启动、手动更新、退出、沙箱显式激活和 Linux 自动回退。保留 Node/Electron ABI 串行检查。真实 Kylin/macOS/ARM 与外部服务不算当前离线通过项。
 
 专家默认方法及消费时绑定的验收按 [SDK 交接](../releases/kodax-alpha12-partner-sdk-handoff.md) 执行，当前不能勾选完成；不以测试专用 `/coding` 进程内 fixtures 替代正式产品路径。
+
+### alpha.12 准备阶段补充边界
+
+- 断开 Space 连接而让共享 Host/其他客户端继续存活，追加本地 slash 通知只保留 Space side-store，不直接追加 SDK canonical 文件；删除应明确要求重连。
+- Fork 后注入连接丢失及本地 metadata 保存失败，回滚不得改用独立文件 writer；无法核验删除则保留新 Session/附件并记录清理失败。
+- 旧 Host 不兼容时，Partner/Coder 历史均终止轮询、显示实际原因；Host ready 后可重新获取历史，不以 ready 代替历史加载完成。
+- 退出回执报告 replacementRunning 时不得安装更新。仅旧 owner 退出不代表替代 Host 已停止。
+- Quick Ask 转正式会话暂缺 Host 公共 promotion/tag 接口：候选应提示不可用且保留会话，不能 saveSession 直写。SDK 补接口后需按 SDK 交接文档再验收，此项当前未通过产品闭环。

@@ -1918,13 +1918,13 @@ function capabilitiesFor(mode: RuntimeHostMode, state: RuntimeHostState): Runtim
       'runtime.worker',
       'unavailable',
       'unavailable',
-      'Function-valued Space bindings are inline-only.',
+      'Function-valued Runtime injection is retired; public Host tool leases and Actor services remain available.',
     ),
     capability(
       'runtime.daemon',
       runtimeReady ? 'supported' : 'partial',
       'runtime',
-      'Coder only; Partner remains on its independent inline owner.',
+      'Coder and Partner use the same independent shared Host.',
     ),
   ];
 }
@@ -2125,7 +2125,7 @@ export class RuntimeHostAdapter {
   private readonly observationOpenQueues = new WeakMap<KodaXDaemonRuntime, Promise<void>>();
   private readonly persistedIdentityTokens = new Map<string, string>();
   private readonly sessionSurfaces = new Map<string, RuntimeSessionIdentity['surface']>();
-  /** Exact out-of-page Run generations whose persisted Session was verified as Coder. */
+  /** Exact out-of-page Run generations whose persisted Session was verified for its trusted product surface. */
   private readonly verifiedOutOfPageSessionRuns = new Map<string, ReadonlySet<string>>();
   /** Exact out-of-page Run generations rejected by an authoritative Partner identity. */
   private readonly rejectedOutOfPageSessionRuns = new Map<string, ReadonlySet<string>>();

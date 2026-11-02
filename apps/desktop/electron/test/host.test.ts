@@ -666,7 +666,9 @@ test('concurrent send on same session is rejected (no queueing in F003 Mock)', a
   await waitFor(() => getEvents().some((e) => e.kind === 'session_complete'));
 });
 
-test('delete: removes session from list (in-memory + persisted)', async () => {
+test('delete: removes session from list (in-memory + persisted)', async (t) => {
+  // Independent file-store fixture; production shared Host paths are tested separately.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const { sessionId } = kodaxHost.createSession({ projectRoot: '/r', provider: 'mock' });
   assert.equal(kodaxHost.listInFlight().length, 1);
   const deleted = await kodaxHost.delete(sessionId);
@@ -679,7 +681,71 @@ test('delete: removes session from list (in-memory + persisted)', async () => {
   assert.equal(second, true);
 });
 
-test('disposeAll preserves durable attachments until the Session is deleted', async () => {
+test('shared Host deletion refuses a disconnected historical writer', async (t) => {
+  const sessionId = 's_disconnected_delete';
+  mockState.seedTagged(sessionId, '/r', 'partner');
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => false);
+  await assert.rejects(kodaxHost.delete(sessionId), /Host.*unavailable/);
+  assert.equal(mockState.has(sessionId), true);
+});
+
+test('Host not_found does not authorize a second writer to delete existing canonical data', async (t) => {
+  const sessionId = 's_unresolved_delete';
+  mockState.seedTagged(sessionId, '/r', 'partner');
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
+  t.mock.method(runtimeHostAdapter, 'deleteSession', async () => 'not_found');
+  assert.equal(await kodaxHost.delete(sessionId), false);
+  assert.equal(mockState.has(sessionId), true);
+});
+
+test('Quick Ask promotion preserves the session when the Host has no metadata command', async (t) => {
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: '/r',
+    provider: 'anthropic',
+    surface: 'partner',
+    ephemeral: true,
+  });
+  mockState.seedTagged(sessionId, '/r', 'space-ephemeral');
+  let persistenceCalls = 0;
+  t.mock.method(kodaxHost, 'persistRuntime', async () => {
+    persistenceCalls++;
+    return true;
+  });
+  await assert.rejects(kodaxHost.promoteEphemeral(sessionId), /Host cannot promote/);
+  assert.equal(kodaxHost.get(sessionId)?.ephemeral, true);
+  assert.equal(persistenceCalls, 0, 'no mutation before capability admission');
+});
+
+test('failed shared Host fork cleanup never changes writers after disconnect', async (t) => {
+  const { sessionId } = kodaxHost.createSession({ projectRoot: '/r', provider: 'mock' });
+  const forkId = 's_fork_disconnected';
+  let connected = true;
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => connected);
+  t.mock.method(runtimeHostAdapter, 'forkSession', async () => {
+    mockState.seed(forkId, '/r');
+    connected = false;
+    return { newSessionId: forkId, createdAt: 1 };
+  });
+  t.mock.method(kodaxHost, 'persistRuntime', async () => false);
+  let hostCleanupCalls = 0;
+  t.mock.method(runtimeHostAdapter, 'deleteSession', async () => {
+    hostCleanupCalls++;
+    throw new Error('Host disconnected');
+  });
+  await assert.rejects(
+    kodaxHost.fork(sessionId, 0, { boundaryId: 'entry', sourceRevision: 'revision' }),
+    /metadata could not be persisted/,
+  );
+  assert.equal(mockState.has(forkId), true, 'unverified cleanup retains canonical data');
+  assert.equal(hostCleanupCalls, 1, 'cleanup stays with the original Host owner');
+});
+
+test('disposeAll preserves durable attachments until the Session is deleted', async (t) => {
+  // Independent file-store fixture; production shared Host paths are tested separately.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const previousTestProfile = process.env.KODAX_TEST_ONBOARDING;
   process.env.KODAX_TEST_ONBOARDING = `host-attachments-${process.pid}`;
   _resetDataPathsCacheForTesting();
@@ -762,7 +828,9 @@ test('disposeAll removes unsent draft attachments', async () => {
   }
 });
 
-test('delete: returns false and preserves persisted state when SDK reports session_running', async () => {
+test('delete: returns false and preserves persisted state when SDK reports session_running', async (t) => {
+  // Independent file-store fixture; production shared Host paths are tested separately.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const sessionId = 's_busy_elsewhere';
   mockState.seed(sessionId, '/r', 'Busy elsewhere');
   mockState.setDeleteBusy(true);
@@ -773,7 +841,9 @@ test('delete: returns false and preserves persisted state when SDK reports sessi
   assert.equal(mockState.has(sessionId), true);
 });
 
-test('delete: SDK delete_failed is an error rather than a running-session result', async () => {
+test('delete: SDK delete_failed is an error rather than a running-session result', async (t) => {
+  // Independent file-store fixture; production shared Host paths are tested separately.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const sessionId = 's_delete_failed';
   setSessionStoreImpl({
     listSessions: async () => [],
@@ -804,7 +874,9 @@ test('delete: Runtime failure remains an error and restores the local session', 
   assert.equal(mockState.has(sessionId), true);
 });
 
-test('delete: preserves committed attachments while SDK reports session_running', async () => {
+test('delete: preserves committed attachments while SDK reports session_running', async (t) => {
+  // Independent file-store fixture; production shared Host paths are tested separately.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const previousTestProfile = process.env.KODAX_TEST_ONBOARDING;
   process.env.KODAX_TEST_ONBOARDING = `host-busy-attachments-${process.pid}`;
   _resetDataPathsCacheForTesting();
@@ -941,7 +1013,9 @@ test('setTitle: in-flight rename survives fallback to persisted list', async () 
   assert.equal(renamed?.title, 'Live renamed title');
 });
 
-test('delete clears a persisted title override', async () => {
+test('delete clears a persisted title override', async (t) => {
+  // Independent file-store fixture; production shared Host paths are tested separately.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const sessionId = 's_deleted_rename';
   mockState.seed(sessionId, '/r', 'Old title');
   await kodaxHost.setTitle(sessionId, 'Temporary title');

@@ -770,6 +770,11 @@ class KodaXHost {
     const s = this.sessions.get(sessionId);
     if (!s) return false;
     if (s.ephemeral !== true) return true;
+    if (s instanceof RealKodaXSession && runtimeHostAdapter.isRuntimeSelected()) {
+      throw new Error(
+        'Shared Host cannot promote Quick Ask sessions yet. Keep this session open until SDK promotion support is available.',
+      );
+    }
     if (!(await this.persistRuntime(sessionId))) return false;
     if (!(await retagPersistedSession({ sessionId, tag: s.surface }))) return false;
     s.ephemeral = false;
@@ -1087,6 +1092,31 @@ class KodaXHost {
     return true;
   }
 
+  private async cleanupFailedFork(sessionId: string, usesRuntime: boolean): Promise<void> {
+    try {
+      const deleted = usesRuntime
+        ? await runtimeHostAdapter
+            .deleteSession(sessionId)
+            .then(
+              async (outcome) =>
+                outcome === 'deleted' || (await loadPersistedSession(sessionId)) === null,
+            )
+        : (await deletePersistedSession({ sessionId })) === 'ok';
+      if (!deleted) {
+        console.warn(
+          `[host.fork] cleanup remains unverified for ${sessionId}; attachments retained`,
+        );
+        return;
+      }
+      await cleanupClipboardForSession(sessionId);
+    } catch (error: unknown) {
+      console.warn(
+        `[host.fork] original owner cleanup failed for ${sessionId}; data retained:`,
+        error,
+      );
+    }
+  }
+
   /**
    * FEATURE_038 (持久化): 从 sourceSessionId 在 forkPointTurnIdx 处 fork。
    *
@@ -1155,15 +1185,7 @@ class KodaXHost {
     try {
       await cloneClipboardAttachmentsForFork(sourceSessionId, sessionId);
     } catch (error) {
-      if (
-        (src.surface === 'code' || src instanceof RealKodaXSession) &&
-        runtimeHostAdapter.hasReadyRuntime()
-      ) {
-        await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
-      } else {
-        await deletePersistedSession({ sessionId }).catch(() => undefined);
-      }
-      await cleanupClipboardForSession(sessionId).catch(() => undefined);
+      await this.cleanupFailedFork(sessionId, usesRuntime);
       throw error;
     }
     // reviewer HIGH-1：factory 可能抛（MockKodaXSession / RealKodaXSession 构造路径）。
@@ -1206,15 +1228,7 @@ class KodaXHost {
       });
     } catch (err) {
       // best-effort 回滚：擦掉刚写盘的 fork——失败也无所谓，下一次 list/cleanup 会发现
-      if (
-        (src.surface === 'code' || src instanceof RealKodaXSession) &&
-        runtimeHostAdapter.hasReadyRuntime()
-      ) {
-        await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
-      } else {
-        await deletePersistedSession({ sessionId }).catch(() => undefined);
-      }
-      await cleanupClipboardForSession(sessionId).catch(() => undefined);
+      await this.cleanupFailedFork(sessionId, usesRuntime);
       throw err;
     }
     this.sessions.set(sessionId, session);
@@ -1223,15 +1237,7 @@ class KodaXHost {
     if (!(await this.persistRuntime(sessionId))) {
       await session.dispose().catch(() => undefined);
       this.sessions.delete(sessionId);
-      if (
-        (src.surface === 'code' || src instanceof RealKodaXSession) &&
-        runtimeHostAdapter.hasReadyRuntime()
-      ) {
-        await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
-      } else {
-        await deletePersistedSession({ sessionId }).catch(() => undefined);
-      }
-      await cleanupClipboardForSession(sessionId).catch(() => undefined);
+      await this.cleanupFailedFork(sessionId, usesRuntime);
       throw new Error('fork runtime metadata could not be persisted');
     }
     return { newSessionId: sessionId, createdAt };
@@ -1347,6 +1353,13 @@ class KodaXHost {
     await this.resumePromises.get(sessionId)?.catch(() => undefined);
     await this.runtimeMutationLocks.get(sessionId)?.catch(() => undefined);
     const s = this.sessions.get(sessionId);
+    if (
+      runtimeHostAdapter.isRuntimeSelected() &&
+      !runtimeHostAdapter.hasReadyRuntime() &&
+      s?.provider !== 'mock'
+    ) {
+      throw new Error('Shared Host is unavailable. Reconnect before deleting the Session.');
+    }
     if (s) {
       permissionBroker.cancelSession(sessionId, 'session_disposed');
       askUserBroker.cancelSession(sessionId, 'session_disposed');
@@ -1358,10 +1371,10 @@ class KodaXHost {
       runtimeHostAdapter.hasReadyRuntime()
         ? runtimeHostAdapter
             .deleteSession(sessionId)
-            .then((outcome) =>
-              outcome === 'not_found'
-                ? deletePersistedSession({ sessionId })
-                : Promise.resolve('ok' as const),
+            .then(async (outcome) =>
+              outcome === 'not_found' && (await loadPersistedSession(sessionId)) !== null
+                ? ('not_found' as const)
+                : ('ok' as const),
             )
         : deletePersistedSession({ sessionId })
     ).catch((error: unknown) => ({ error }));

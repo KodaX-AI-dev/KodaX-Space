@@ -79,7 +79,7 @@ npm run dev
 打开 Settings → Providers：
 
 1. 选择内置 Provider，或点击 Add custom 添加兼容网关。
-2. 填入 API Key；Keychain 可用时会保存在系统凭据存储中。
+2. 填入 API Key；默认写入配置目录旁权限受限的 `auth.json`，新 Key 不写入普通 `config.json`。
 3. 点击 Test connection。
 4. 需要时设为默认 Provider。
 
@@ -679,13 +679,14 @@ flowchart TD
     Skills["~/.kodax/skills + project .kodax"] --> K
     Runtime["~/.kodax/runtime"] --> Events["Shared Runtime daemon state / run-event journal"]
     Space["~/.kodax/space"] --> UI["Space projects/preferences/metadata"]
-    Keychain["OS Keychain"] --> Secret["Provider credentials"]
+    Auth["auth.json / 权限受限的凭证文件"] --> Secret["Provider credentials"]
 ```
 
 说明：默认 profile 根是 `~/.kodax`；因此 0.1.33 shared daemon 的 Runtime 状态/journal 实际默认位置是 `~/.kodax/runtime`。自定义 `KODAX_HOME` 或 `KODAX_PROFILE_DIR` 时路径随 profile 移动。0.1.31 embedded Runtime 可能留下历史的 `~/.kodax/.kodax/runtime`，0.1.32 起不再把它作为当前 daemon 真理源。
 
 - Renderer 不直接执行 LLM、文件工具或 shell。
-- API Key 不应进入 renderer、普通 IPC 列表、日志或错误消息。
+- Renderer 不读回已保存的 Key，普通 IPC 列表、日志和错误消息不包含 Key。
+- 旧 Space Key 迁移保留原应用账号和旧加密副本；CLI 已有不同 Key 时不会互相覆盖。只有显式“采用共享凭证”或“发布为共享凭证”才改变来源；来源不可用或已删除时不会静默换号。
 - 上下文构成 IPC 只包含分类 Token 数；Prompt cache 诊断只包含哈希、计数、模型/Provider 和 Provider usage，不包含提示词、消息或工具正文。
 - 系统文件管理器定位只允许已登记项目、KodaX 数据目录和 Space 数据目录；授权范围外、文件不存在和系统定位失败会显示不同提示，但不会借此开放任意路径探测。
 - Terminal 会剥离常见 `*_KEY`、`*_TOKEN` 环境变量。

@@ -1599,7 +1599,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     runWithCoderAdmission(options, async () => {
       const payload: Record<string, string> = { id: input.notice.id };
       if (input.notice.variant !== undefined) payload.variant = input.notice.variant;
-      const usesRuntimeConversation = runtimeHostAdapter.hasReadyRuntime();
+      const usesRuntimeConversation = runtimeHostAdapter.isRuntimeSelected();
       await appendSpaceOwnedLocalNotice(input.sessionId, input.notice, async () => {
         if (usesRuntimeConversation) {
           await runtimeHostAdapter.appendNotice({

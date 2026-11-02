@@ -393,11 +393,11 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'providers',
     title: 'Configure LLM providers',
-    summary: 'Settings -> Providers 配置内置或自定义 provider，key 优先存系统 Keychain。',
+    summary: 'Settings -> Providers 配置内置或自定义 provider，Key 默认存权限受限的 auth.json。',
     body: text(
       '打开 Settings -> Providers，可以搜索、测试、设默认 provider，也可以 Add custom。',
       '',
-      '内置 provider 包括常见云端和本地/网关类 provider。每个 provider 可配置 API key、默认 model、base URL 或环境变量来源。Key 优先存系统 Keychain；Keychain 不可用时会退回临时内存状态。',
+      '内置 provider 包括常见云端和本地/网关类 provider。每个 provider 可配置 API key、默认 model、base URL 或环境变量来源。Key 默认存配置目录旁权限受限的 auth.json，新 Key 不写入普通 config.json。旧 Space 凭证迁移保留原应用来源和旧加密副本；CLI 已有不同 Key 时不会覆盖，采用或发布共享凭证必须由用户显式选择。来源不可用或已删除时不会静默换号。',
       '',
       '自定义 provider 支持 OpenAI-compatible 与 Anthropic-compatible 协议，需要 display name、base URL、credential、default model，以及可选 model list/reasoning 声明。只在信任内部网关时跳过 base URL 安全校验。',
       '',

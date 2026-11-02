@@ -19,7 +19,48 @@ const { kodaxHost } = await import('../kodax/host.js');
 const { runtimeHostAdapter } = await import('../kodax/runtime-host-adapter.js');
 const { settingsStore } = await import('../settings/store.js');
 const { setUserConfigImpl } = await import('../kodax/user-config.js');
+const { setSessionStoreImpl } = await import('../kodax/session-store.js');
+const { getSessionLocalNoticeStore } = await import('../kodax/session-local-notice-store.js');
 registerSessionChannels();
+
+test('disconnected shared Host notices stay in the Space side-store without a canonical writer fallback', async (t) => {
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => false);
+  t.mock.method(runtimeHostAdapter, 'appendNotice', async () => {
+    throw new Error('Host disconnected');
+  });
+  let directWrites = 0;
+  setSessionStoreImpl({
+    listSessions: async () => [],
+    forkSession: async () => null,
+    rewindSession: async () => null,
+    deleteSession: async () => ({ ok: true }),
+    loadSession: async () => null,
+    watchSessions: () => ({ close: () => undefined }),
+    appendClientNotice: async () => {
+      directWrites++;
+      return null;
+    },
+  });
+  t.after(() => setSessionStoreImpl(null));
+  const invoke = handlers.get('session.localNotice.append');
+  assert.ok(invoke);
+  const sessionId = 's_disconnected_notice';
+  const notice = {
+    id: `notice-${Date.now()}`,
+    content: '/status',
+    sentAt: Date.now(),
+    variant: 'output',
+  };
+  const result = (await invoke({}, { sessionId, notice })) as IpcResult<
+    ChannelOutput<'session.localNotice.append'>
+  >;
+  assert.equal(result.ok, true);
+  assert.equal(directWrites, 0);
+  assert.ok(
+    (await getSessionLocalNoticeStore().list(sessionId)).some((row) => row.id === notice.id),
+  );
+});
 
 test('session.create uses daemon allocation for both real surfaces without trusting a renderer ID', async (t) => {
   setUserConfigImpl({

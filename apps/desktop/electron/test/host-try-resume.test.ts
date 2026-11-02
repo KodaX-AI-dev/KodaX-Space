@@ -10,6 +10,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { kodaxHost } from '../kodax/host.js';
+import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 import { deletePersistedSession, loadPersistedSession } from '../kodax/session-store.js';
 import { assertClipboardImageOwnerSession } from '../ipc/clipboard.js';
 import { setRendererTarget } from '../ipc/push.js';
@@ -160,7 +161,9 @@ test('concurrent tryResume calls share one Session construction', async () => {
   assert.equal(disposes, 1);
 });
 
-test('delete serializes with an in-flight tryResume and prevents Session resurrection', async () => {
+test('delete serializes with an in-flight tryResume and prevents Session resurrection', async (t) => {
+  // Independent file-store lifecycle fixture, without a shared Host writer.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const id = 's_delete-resume-race';
   mockState.seed(id, 'C:/proj/example', 'delete resume race');
   let notifyLoadEntered: () => void = () => {};
@@ -219,7 +222,9 @@ test('persisted load invalidation cannot repopulate a deleted Session from a sta
   mockState.setLoadSessionAfterReadHook(null);
 });
 
-test('delete drains an in-flight ownership probe and rejects its stale result', async () => {
+test('delete drains an in-flight ownership probe and rejects its stale result', async (t) => {
+  // Independent file-store lifecycle fixture, without a shared Host writer.
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => false);
   const id = 's_owner-delete-race';
   mockState.seed(id, 'C:/proj/example', 'owner delete race');
   let notifyLoadEntered: () => void = () => {};

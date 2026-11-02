@@ -33,7 +33,7 @@ export interface SessionHistoryPagingState {
   readonly conversationStatus?: 'resolved' | 'partial' | 'ambiguous';
   readonly surface?: 'code' | 'partner';
   readonly hasNewer?: boolean;
-  /** Cause of the current waiting/error cycle: the Coder Runtime is not ready for this
+  /** Cause of the current waiting/error cycle: the shared Runtime is not ready for this
    * surface. Cleared by ready/data_changed/epoch-reset publishes and re-set by each
    * runtime_unavailable response, so it never outlives the cycle it describes. */
   readonly runtimeUnavailable?: boolean;
@@ -696,7 +696,7 @@ function scheduleRuntimeRetry(
   if (!activeTokens.has(sessionId)) return;
   const current = sessionHistoryPagingSnapshot(sessionId);
   const connection = useAppStore.getState().runtimeConnection;
-  if (surface !== 'partner' && current.runtimeUnavailable && connection.state === 'incompatible') {
+  if (current.runtimeUnavailable && connection.state === 'incompatible') {
     clearRetry(sessionId);
     publish(sessionId, {
       ...current,
