@@ -980,11 +980,19 @@ interface SharedDaemonHostResult {
     readonly activeWorkflows: boolean;
     readonly activeAgentTurns: boolean;
     readonly executionProfileVersion?: number;
-    readonly partnerSession?: { readonly id: string; readonly surface: string; readonly profileId: string };
+    readonly partnerSession?: {
+      readonly id: string;
+      readonly surface: string;
+      readonly profileId: string;
+    };
     readonly partnerError?: { readonly code?: string; readonly message?: string };
     readonly unknownSurfaceError?: { readonly code?: string; readonly message?: string };
   };
-  readonly partnerSession?: { readonly id: string; readonly surface: string; readonly profileId: string };
+  readonly partnerSession?: {
+    readonly id: string;
+    readonly surface: string;
+    readonly profileId: string;
+  };
   readonly eventType: string;
   readonly settings: { readonly revision: number; readonly value: Record<string, unknown> };
   readonly clientBaseline: number;
@@ -1189,18 +1197,18 @@ test('installed KodaX version matches the exact Space dependency pin', () => {
   assert.equal(INSTALLED_KODAX_VERSION, EXPECTED_KODAX_VERSION);
 });
 
-test('Issue 222 uses the published alpha.11 SDK in both Space dependency manifests', () => {
+test('Issue 222 uses the published alpha.12 SDK in both Space dependency manifests', () => {
   const root = require('../../../../package.json') as { dependencies: Record<string, string> };
   const desktop = require('../../package.json') as { dependencies: Record<string, string> };
   const lock = require('../../../../package-lock.json') as {
     packages: Record<string, { version?: string; resolved?: string }>;
   };
-  assert.equal(root.dependencies['@kodax-ai/kodax'], '0.7.97-alpha.11');
-  assert.equal(desktop.dependencies['@kodax-ai/kodax'], '0.7.97-alpha.11');
-  assert.equal(INSTALLED_KODAX_VERSION, '0.7.97-alpha.11');
+  assert.equal(root.dependencies['@kodax-ai/kodax'], '0.7.97-alpha.12');
+  assert.equal(desktop.dependencies['@kodax-ai/kodax'], '0.7.97-alpha.12');
+  assert.equal(INSTALLED_KODAX_VERSION, '0.7.97-alpha.12');
   assert.match(
     lock.packages['node_modules/@kodax-ai/kodax']?.resolved ?? '',
-    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-alpha\.11\.tgz$/,
+    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-alpha\.12\.tgz$/,
   );
 });
 
@@ -1298,11 +1306,19 @@ test(
     } finally {
       if (runtime) {
         const state = await sdk.getKodaXRuntimeOwnerState({ homeDir, profile: 'default' });
-        assert.equal(state.owner?.runtimeId, runtime.identity.runtimeId, 'never stop a replacement Host');
+        assert.equal(
+          state.owner?.runtimeId,
+          runtime.identity.runtimeId,
+          'never stop a replacement Host',
+        );
         await runtime.daemon.shutdown();
         await runtime.close();
-        const verified = await sdk.waitForRuntimeDaemonShutdown({ configHome: path.join(homeDir, '.kodax'),
-          profile: 'default', owner: state.owner!, timeoutMs: 15000 });
+        const verified = await sdk.waitForRuntimeDaemonShutdown({
+          configHome: path.join(homeDir, '.kodax'),
+          profile: 'default',
+          owner: state.owner!,
+          timeoutMs: 15000,
+        });
         assert.equal(verified.status, 'succeeded');
       }
       await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -1366,7 +1382,11 @@ test(
       inspectConfig: true,
       migrateTaskOwners: true,
     });
-    assert.deepEqual(result.externalAgentResult, { capability: true, actorControlPlane: true, privateOwnerRejected: true });
+    assert.deepEqual(result.externalAgentResult, {
+      capability: true,
+      actorControlPlane: true,
+      privateOwnerRejected: true,
+    });
     const sharedManagedResult = result.sharedManagedResult as {
       phase?: unknown;
       error?: unknown;
@@ -1610,7 +1630,9 @@ test(
     if (result.peer.executionProfileVersion === 2) {
       assert.equal(result.peer.partnerError, undefined);
       assert.deepEqual(result.peer.partnerSession, {
-        id: 'shared-partner-probe', surface: 'partner', profileId: 'kodax-space.partner',
+        id: 'shared-partner-probe',
+        surface: 'partner',
+        profileId: 'kodax-space.partner',
       });
       assert.deepEqual(result.partnerSession, result.peer.partnerSession);
     } else {

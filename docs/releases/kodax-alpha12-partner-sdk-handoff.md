@@ -11,3 +11,5 @@ Space 候选代码可运行普通 Partner/prompt-only 专家；默认方法缺�
 ## Quick Ask 转正式会话
 
 Space 的 Quick Ask 会话使用隐藏 tag；“转为正式会话”需要保留同一个 Session ID 并由 Host 修改其持久化元数据。当前公开 Product Client 与 Runtime Session 服务只在 create 时接收 tag，没有 promote/tag/metadata 更新接口，而且对已存在 ID 调 create 会明确 conflict；Space 旧实现只能通过独立 `/session` 的 saveSession 改 tag，这会在共享 Host 仍持有会话时引入第二个 writer。请补充可信 Main 可调用、带能力协商和版本冲突保护的公开 Host promotion 或元数据更新命令，成功后返回权威 Session/修订，由 Host 判断并发及忙碌状态；旧 Host 不支持时明确要求升级，Space 不以文件直写或创建新 Session 代替。验收要求：Quick Ask 在允许的状态下转正式会话，ID、完整 canonical/nativeHistory、lineage、附件引用和执行统计不变；确认成功后才在侧栏显示并切换本地 ephemeral 状态；冲突、断连、响应丢失和另一客户端并发时可按原操作身份查询结果，不能部分改写、重复创建或丢失历史；公开 Product 入口与真实独立 Host 测试覆盖这些路径。当前 Space 候选已关闭该直写，并保留原会话和数据，正式升级前需补齐此接口及适配。
+
+2026-11-02 正式发布复核：已安装 Registry `0.7.97-alpha.12`（integrity `1LlTrz4SxQh77EMoj9E7ZE/jKWIYSBjZJv8+4i8BAfPjcD3R1wMSgtAL0SFKMYZo3uRBa07q4SQ47J/9dfPNug==`），随包公开类型仍不包含上述两组接缝，需求继续保持未关闭。Space 安装/验包进度见 [正式升级验收](kodax-0.7.97-alpha.12-release-validation.md)。

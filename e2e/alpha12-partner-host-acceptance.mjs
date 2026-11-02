@@ -1,8 +1,14 @@
-// Candidate-only offline acceptance: node --import tsx e2e/alpha12-partner-host-acceptance.mjs
+// Registry SDK offline acceptance: node --import tsx e2e/alpha12-partner-host-acceptance.mjs
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { assertKodaxReleaseDependencyState } from '../scripts/kodax-runtime-release-gate.mjs';
+
+const dependency = await assertKodaxReleaseDependencyState(
+  process.cwd(),
+  path.resolve('node_modules/@kodax-ai/kodax'),
+);
 
 process.env.KODAX_TEST_ONBOARDING = `alpha12-host-${randomUUID()}`;
 const { applySdkHomeEnv, getKodaxRuntimeDir } =
@@ -31,8 +37,8 @@ const { RuntimeClientIdentityStore } =
   await import('../apps/desktop/electron/kodax/runtime/runtime-client-identity.ts');
 let attached;
 const report = {
-  candidate: true,
-  sdk: JSON.parse(await readFile('node_modules/@kodax-ai/kodax/package.json', 'utf8')).version,
+  dependency,
+  sdk: dependency.version,
   profileRoot,
   checks: [],
 };
@@ -138,12 +144,12 @@ try {
     assert.equal(stopped.status, 'succeeded', JSON.stringify(stopped));
     report.shutdown = stopped.status;
   } else await adapter.close();
-  await mkdir('artifacts/diagnostics/alpha12', { recursive: true });
+  await mkdir('artifacts/diagnostics/alpha12-release', { recursive: true });
   await writeFile(
-    'artifacts/diagnostics/alpha12/real-partner-host-report.json',
+    'artifacts/diagnostics/alpha12-release/real-partner-host-report.json',
     JSON.stringify(report, null, 2),
   );
 }
 process.stdout.write(
-  `Candidate ${report.sdk}: ${report.checks.length} real shared-Host checks passed.\n`,
+  `Registry ${report.sdk}: ${report.checks.length} real shared-Host checks passed.\n`,
 );
