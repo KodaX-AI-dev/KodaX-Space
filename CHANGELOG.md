@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Resolve custom Providers when checking image input, while preserving model-specific text-only restrictions and unsent drafts on rejection.
+
 - Read Provider configuration under the SDK's shared lock, retry only short lock conflicts, and preserve explicit errors for corrupt or unreadable files without exposing config values.
 
 - Fix first-session credential conflicts during concurrent startup reads. Reconcile automatic origin pinning once under the original connection and source, preserve tombstones and explicit edit CAS, and keep environment accounts separate from CLI keys. The model picker now consumes canonical SDK reasoning facts while keeping selected effort and unknown observations distinct.

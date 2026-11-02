@@ -11,9 +11,10 @@ export async function readModelImageSupport(
   model?: string,
 ): Promise<MultimodalSupport | undefined> {
   if (providerId === 'mock') return undefined;
-  const { resolveModelCapabilities, getProvider } = await import('@kodax-ai/kodax/llm');
+  const { resolveModelCapabilities, resolveProvider } = await import('@kodax-ai/kodax/llm');
+  const provider = resolveProvider(providerId);
   return modelImageSupport(
-    resolveModelCapabilities(providerId, model ?? getProvider(providerId).getModel()),
-    getProvider(providerId).getCapabilityProfile(model),
+    resolveModelCapabilities(providerId, model ?? provider.getModel()),
+    provider.getCapabilityProfile(model),
   );
 }
