@@ -210,7 +210,8 @@ export function resolveSessionHistoryBackend(
   selectedHost: 'runtime' | 'legacy',
   runtimeReady: boolean,
 ): SessionHistoryBackend {
-  if (surface !== 'code' || selectedHost === 'legacy') return 'persisted';
+  if (selectedHost === 'legacy') return 'persisted';
+  void surface;
   return runtimeReady ? 'runtime' : 'runtime-unavailable';
 }
 
@@ -219,7 +220,7 @@ function assertSafePagedHistoryMutation(
   historyBoundary: { readonly boundaryId: string; readonly sourceRevision: string } | undefined,
 ): void {
   const session = kodaxHost.get(sessionId);
-  if (session?.surface === 'code' && historyBoundary === undefined) {
+  if (session !== undefined && session.provider !== 'mock' && historyBoundary === undefined) {
     throw new Error(
       'An exact persisted history boundary is required for a Runtime-backed Session mutation.',
     );
@@ -742,13 +743,12 @@ export async function createSessionForIpc(
       },
     });
     const allocatedSessionId =
-      (input.surface ?? 'code') === 'code' &&
       input.provider !== 'mock' &&
       process.env.KODAX_FORCE_MOCK !== '1' &&
       runtimeHostAdapter.isRuntimeSelected()
         ? await runtimeHostAdapter.createSession({
             projectRoot,
-            surface: 'code',
+            surface: input.surface ?? 'code',
             ephemeral: input.ephemeral ?? false,
           })
         : await generateKodaxSessionId();
@@ -1135,6 +1135,16 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         }
         await ensureProviderKeyInjected(session.provider);
         await validateInputArtifactsForSession(input.artifacts, session);
+        if (
+          input.artifacts?.some((artifact) => artifact.kind === 'image') &&
+          (await (
+            await import('../providers/model-images.js')
+          ).readModelImageSupport(session.provider, session.model)) === 'none'
+        ) {
+          throw new Error(
+            'The selected model does not support image input. Choose an image-capable model or remove the unsent images.',
+          );
+        }
         const preparedArtifacts =
           input.artifacts && input.artifacts.length > 0
             ? await prepareClipboardArtifactsForSend(input.sessionId, input.artifacts)
@@ -1281,9 +1291,8 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         return canonProjectRoot(m.projectRoot) === projectFilter;
       })
       .map((m) => {
-        const runtimeSession = m.surface === 'code' ? runtimeSessions.get(m.sessionId) : undefined;
-        const runtimeActivityAt =
-          m.surface === 'code' ? (runtimeActivity.get(m.sessionId) ?? 0) : 0;
+        const runtimeSession = runtimeSessions.get(m.sessionId);
+        const runtimeActivityAt = runtimeActivity.get(m.sessionId) ?? 0;
         const messageAt = m.lastMessageAt !== undefined ? Date.parse(m.lastMessageAt) : NaN;
         const lastMessageAt =
           Number.isFinite(messageAt) && messageAt >= 0
@@ -1586,12 +1595,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     runWithCoderAdmission(options, async () => {
       const payload: Record<string, string> = { id: input.notice.id };
       if (input.notice.variant !== undefined) payload.variant = input.notice.variant;
-      const liveSession = kodaxHost.get(input.sessionId);
-      const surface =
-        liveSession?.surface ??
-        sdkTagToSurface((await loadPersistedSession(input.sessionId))?.tag) ??
-        'code';
-      const usesRuntimeConversation = surface === 'code' && runtimeHostAdapter.hasReadyRuntime();
+      const usesRuntimeConversation = runtimeHostAdapter.hasReadyRuntime();
       await appendSpaceOwnedLocalNotice(input.sessionId, input.notice, async () => {
         if (usesRuntimeConversation) {
           await runtimeHostAdapter.appendNotice({

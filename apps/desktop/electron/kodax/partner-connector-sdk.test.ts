@@ -44,6 +44,17 @@ await fs.writeFile(
 );
 const keychain = await import('../providers/keychain.js');
 keychain._resetMemoryStoreForTesting();
+// These are independent /coding library contracts with an in-process recording provider.
+// The production shared-Host/lease path is covered by runtime-host-adapter and packaged regressions.
+const { runtimeHostAdapter } = await import('./runtime-host-adapter.js');
+const selectedRuntime = runtimeHostAdapter.isRuntimeSelected;
+const ensureOwner = runtimeHostAdapter.ensureLegacyOwner;
+runtimeHostAdapter.isRuntimeSelected = () => false;
+runtimeHostAdapter.ensureLegacyOwner = async () => undefined;
+after(() => {
+  runtimeHostAdapter.isRuntimeSelected = selectedRuntime;
+  runtimeHostAdapter.ensureLegacyOwner = ensureOwner;
+});
 const { RealKodaXSession } = await import('./real-session.js');
 const { setRendererTarget } = await import('../ipc/push.js');
 setRendererTarget(() => null);
@@ -75,7 +86,9 @@ let requestTencent = false;
 let requested = false;
 let beforeRead: (() => void) | undefined;
 class RecordingProvider extends KodaXBaseProvider {
-  protected override getReasoningApi(): string { return 'openai-chat-completions'; }
+  protected override getReasoningApi(): string {
+    return 'openai-chat-completions';
+  }
   readonly name = 'space-connector-sdk-test';
   readonly supportsThinking = false;
   protected readonly config = {

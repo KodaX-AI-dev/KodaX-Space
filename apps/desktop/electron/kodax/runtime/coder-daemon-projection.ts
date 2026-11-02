@@ -13,6 +13,7 @@ import type { KodaXOutputSegmentProjection } from '@kodax-ai/kodax/coding';
 import {
   agentIterationProgressSchema,
   spaceRuntimeProfileProjectionSchema,
+  spaceRuntimeRunProjectionSchema,
   spaceRuntimeToolSandboxSchema,
   spaceSessionLiveChangedSchema,
   spaceSessionLiveProjectionSchema,
@@ -165,15 +166,10 @@ export function coderRuntimeSessionIds(
   verifiedOutOfPageCoderSessionIds: ReadonlySet<string> = new Set(),
 ): ReadonlySet<string> {
   const sessionById = new Map(status.sessions.map((session) => [session.id, session]));
-  const sessionIds = new Set(
-    status.sessions
-      .filter((session) => !isPartnerRuntimeSessionIdentity(session))
-      .map((session) => session.id),
-  );
+  const sessionIds = new Set(status.sessions.map((session) => session.id));
   for (const run of status.runs) {
     if (run.phase !== 'queued' && !ACTIVE_PHASES.has(run.phase as never)) continue;
     const knownSession = sessionById.get(run.sessionId);
-    if (knownSession !== undefined && isPartnerRuntimeSessionIdentity(knownSession)) continue;
     if (knownSession === undefined && !verifiedOutOfPageCoderSessionIds.has(run.sessionId))
       continue;
     sessionIds.add(run.sessionId);
@@ -263,6 +259,14 @@ export function projectRuntimeRun(
     sessionId: run.sessionId,
     ...(run.turnId !== undefined ? { turnId: run.turnId } : {}),
     phase: runtimePhase(run.phase),
+    ...(run.workMode !== undefined ? { workMode: run.workMode } : {}),
+    ...(run.effectiveConfig !== undefined
+      ? {
+          effectiveConfig: spaceRuntimeRunProjectionSchema.shape.effectiveConfig.parse(
+            run.effectiveConfig,
+          ),
+        }
+      : {}),
     ...(contextRecovery ? { contextRecovery } : {}),
     ...(run.stage !== undefined ? { stage: run.stage } : {}),
     ...(run.stageChangedAt !== undefined ? { stageChangedAt: timestamp(run.stageChangedAt) } : {}),
@@ -1019,10 +1023,7 @@ function settingsProjection(
       ...(typeof value.permissionMode === 'string' && PERMISSION_MODES.has(value.permissionMode)
         ? {
             permissionMode: value.permissionMode as
-              | 'plan'
-              | 'accept-edits'
-              | 'auto'
-              | 'full-access',
+              'plan' | 'accept-edits' | 'auto' | 'full-access',
           }
         : {}),
       ...(text(value.executionCwd, 4_096)
@@ -1136,12 +1137,8 @@ export function projectRuntimeSessionSnapshot(
 }
 
 function projectSessionActivity(status: RuntimeStatusSnapshot) {
-  const partnerIds = new Set(
-    status.sessions.filter(isPartnerRuntimeSessionIdentity).map((session) => session.id),
-  );
   const activity = new Map<string, number>();
   for (const run of status.runs) {
-    if (partnerIds.has(run.sessionId)) continue;
     const lastActivityAt = Math.max(
       timestamp(run.acceptedAt),
       timestamp(run.startedAt),
@@ -1162,6 +1159,7 @@ function projectSessionActivity(status: RuntimeStatusSnapshot) {
 export function projectRuntimeProfile(input: {
   readonly status: RuntimeStatusSnapshot;
   readonly verifiedOutOfPageCoderSessionIds?: ReadonlySet<string>;
+  readonly sessionSurfaces?: ReadonlyMap<string, 'code' | 'partner'>;
   readonly userInputs: readonly RuntimeUserInputRequest[];
   readonly cursor: number;
   readonly projectionRevision: number;
@@ -1171,9 +1169,7 @@ export function projectRuntimeProfile(input: {
   readonly connectionState?: 'ready' | 'degraded';
   readonly reason?: string;
 }): SpaceRuntimeProfileProjectionT {
-  const codeSessions = input.status.sessions.filter(
-    (session) => !isPartnerRuntimeSessionIdentity(session),
-  );
+  const codeSessions = input.status.sessions;
   const codeSessionIds = coderRuntimeSessionIds(
     input.status,
     input.verifiedOutOfPageCoderSessionIds,
@@ -1220,7 +1216,9 @@ export function projectRuntimeProfile(input: {
       const lastMessageAt = timestamp(session?.lastMessageAt, NaN);
       return {
         sessionId,
-        surface: 'code' as const,
+        surface:
+          input.sessionSurfaces?.get(sessionId) ??
+          (isPartnerRuntimeSessionIdentity(session) ? ('partner' as const) : ('code' as const)),
         ...(session?.title ? { title: session.title.slice(0, 256) } : {}),
         ...(session?.workspaceRoot || session?.gitRoot
           ? { projectRoot: (session.workspaceRoot ?? session.gitRoot)!.slice(0, 4_096) }

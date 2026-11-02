@@ -64,7 +64,7 @@ export async function listExternalAgentTasksForIpc(
     parentTaskId: input.sessionId,
     ...(input.agentId ? { agentId: input.agentId } : {}),
   });
-  if (liveSession?.surface === 'partner' || !runtimeHostAdapter.isRuntimeSelected()) {
+  if (!runtimeHostAdapter.isRuntimeSelected()) {
     return { tasks: localTasks };
   }
 
@@ -244,7 +244,7 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
     return runWithCoderAdmission(options, async () => {
       assertPrimaryRenderer(event);
       const session = requireSession(input.sessionId);
-      if (session.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()) {
+      if (runtimeHostAdapter.isRuntimeSelected()) {
         const runtimeAgents = await runtimeHostAdapter
           .listRuntimeDispatchableAgents({
             projectRoot: session.projectRoot,
@@ -280,9 +280,8 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
   registerChannelWithEvent('agent.external.task.events', (input, event) =>
     runWithCoderAdmission(options, async () => {
       assertPrimaryRenderer(event);
-      const session = requireSession(input.sessionId);
+      requireSession(input.sessionId);
       if (
-        session.surface === 'code' &&
         runtimeHostAdapter.isRuntimeSelected() &&
         runtimeHostAdapter.ownsRuntimeActorTask(input.taskId)
       ) {
@@ -300,9 +299,8 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
   registerChannelWithEvent('agent.external.task.sendInput', async (input, event) => {
     return runWithCoderAdmission(options, async () => {
       assertPrimaryRenderer(event);
-      const session = requireSession(input.sessionId);
+      requireSession(input.sessionId);
       if (
-        session.surface === 'code' &&
         runtimeHostAdapter.isRuntimeSelected() &&
         runtimeHostAdapter.ownsRuntimeActorTask(input.taskId)
       ) {
@@ -320,9 +318,8 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
   registerChannelWithEvent('agent.external.task.cancel', (input, event) =>
     runWithCoderAdmission(options, async () => {
       assertPrimaryRenderer(event);
-      const session = requireSession(input.sessionId);
+      requireSession(input.sessionId);
       if (
-        session.surface === 'code' &&
         runtimeHostAdapter.isRuntimeSelected() &&
         runtimeHostAdapter.ownsRuntimeActorTask(input.taskId)
       ) {
@@ -340,9 +337,8 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
   registerChannelWithEvent('agent.external.task.reconcile', (input, event) =>
     runWithCoderAdmission(options, async () => {
       assertPrimaryRenderer(event);
-      const session = requireSession(input.sessionId);
+      requireSession(input.sessionId);
       if (
-        session.surface === 'code' &&
         runtimeHostAdapter.isRuntimeSelected() &&
         runtimeHostAdapter.ownsRuntimeActorTask(input.taskId)
       ) {

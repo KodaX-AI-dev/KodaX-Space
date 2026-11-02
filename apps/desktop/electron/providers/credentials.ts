@@ -1,3 +1,7 @@
+import {
+  acquireRuntimeOAuthCredential,
+  type RuntimeCredentialContext,
+} from './runtime-credential-context.js';
 import type { ProviderInfo } from '@kodax-space/space-ipc-schema';
 
 import { loadKodaxCustomProviders } from '../kodax/user-config.js';
@@ -110,49 +114,102 @@ export async function resolveProviderCredentialInfo(
 async function retireOAuthSource(providerId: string): Promise<void> {
   const previous = oauthSessions.get(providerId);
   if (!previous) return;
-  oauthSessions.delete(providerId); previous.unsubscribe();
+  oauthSessions.delete(providerId);
+  previous.unsubscribe();
   await invalidateProviderCredential(providerId);
 }
-async function readOAuthCredential(providerId: string, connection: KodaXCustomProviderConfig, proof?: string): Promise<string> {
+async function readOAuthCredential(
+  providerId: string,
+  connection: KodaXCustomProviderConfig,
+  proof?: string,
+  context?: RuntimeCredentialContext,
+): Promise<string> {
   const { oauth: service, oauthRegistration: registrationId } = connection;
-  if (!service || !registrationId) throw new Error('OAuth connection has no approved registration.');
-  const [runtime, llm] = await Promise.all([import('@kodax-ai/kodax/runtime'), import('@kodax-ai/kodax/llm')]);
+  if (!service || !registrationId)
+    throw new Error('OAuth connection has no approved registration.');
+  const [runtime, llm] = await Promise.all([
+    import('@kodax-ai/kodax/runtime'),
+    import('@kodax-ai/kodax/llm'),
+  ]);
   const fingerprint = llm.createCustomProvider(connection).getCredentialConnectionFingerprint();
-  if (proof !== undefined && proof !== fingerprint) throw new Error('Provider credential connection does not match.');
-  const configPath = path.join(getKodaxRuntimeDir(), 'config.json'), key = JSON.stringify([configPath, registrationId, fingerprint]);
+  if (proof !== undefined && proof !== fingerprint)
+    throw new Error('Provider credential connection does not match.');
+  const configPath = path.join(getKodaxRuntimeDir(), 'config.json'),
+    key = JSON.stringify([configPath, registrationId, fingerprint]);
   let selected = oauthSessions.get(providerId);
   if (!selected || selected.key !== key) {
     const previous = selected;
-    const created: OAuthSource = { key, unsubscribe: () => undefined, session: Promise.resolve().then(async () => {
-      if (previous) { previous.unsubscribe(); await invalidateProviderCredential(providerId); }
-      await runtime.migrateProviderOAuthRegistration({ configPath, registrationId });
-      const session = await llm.openOAuthSession({ id: registrationId, store: runtime.providerOAuthStore(configPath), driver: llm.createOAuthRefreshDriver(service) });
-      if (oauthSessions.get(providerId) !== created) throw new Error('OAuth connection changed during credential acquisition.');
-      created.unsubscribe = session.onInvalidate(() => invalidateProviderCredential(providerId));
-      return session;
-    }).catch(error => { if (oauthSessions.get(providerId) === created) oauthSessions.delete(providerId); throw error; }) };
-    oauthSessions.set(providerId, created); selected = created;
+    const created: OAuthSource = {
+      key,
+      unsubscribe: () => undefined,
+      session: Promise.resolve()
+        .then(async () => {
+          if (previous) {
+            previous.unsubscribe();
+            await invalidateProviderCredential(providerId);
+          }
+          await runtime.migrateProviderOAuthRegistration({ configPath, registrationId });
+          const session = await llm.openOAuthSession({
+            id: registrationId,
+            store: runtime.providerOAuthStore(configPath),
+            driver: llm.createOAuthRefreshDriver(service),
+          });
+          if (oauthSessions.get(providerId) !== created)
+            throw new Error('OAuth connection changed during credential acquisition.');
+          created.unsubscribe = session.onInvalidate(() =>
+            invalidateProviderCredential(providerId),
+          );
+          return session;
+        })
+        .catch((error) => {
+          if (oauthSessions.get(providerId) === created) oauthSessions.delete(providerId);
+          throw error;
+        }),
+    };
+    oauthSessions.set(providerId, created);
+    selected = created;
   }
   const session = await selected.session;
-  if ((session.profile ?? 'default') !== 'default' || session.service !== service
-    || (service === 'radius' && new URL(session.issuer ?? '').href.replace(/\/$/, '') !== new URL(connection.baseUrl).href.replace(/\/$/, ''))) throw new Error('OAuth registration does not match the approved connection.');
-  const value = await session.acquire();
-  if (oauthSessions.get(providerId) !== selected) throw new Error('OAuth connection changed during credential acquisition.');
+  if (
+    (session.profile ?? 'default') !== 'default' ||
+    session.service !== service ||
+    (service === 'radius' &&
+      new URL(session.issuer ?? '').href.replace(/\/$/, '') !==
+        new URL(connection.baseUrl).href.replace(/\/$/, ''))
+  )
+    throw new Error('OAuth registration does not match the approved connection.');
+  const value = await acquireRuntimeOAuthCredential(providerId, session, context);
+  if (oauthSessions.get(providerId) !== selected)
+    throw new Error('OAuth connection changed during credential acquisition.');
   return rememberProviderSecret(value);
 }
 
 /** Main-process-only lookup. The returned secret must never cross renderer IPC. */
-export async function readProviderCredential(providerId: string, connectionFingerprint?: string): Promise<string | undefined> {
+export async function readProviderCredential(
+  providerId: string,
+  connectionFingerprint?: string,
+  context?: RuntimeCredentialContext,
+): Promise<string | undefined> {
   if (providerId === 'mock') return undefined;
   const connection = await configuredConnection(providerId);
-  if (connection?.oauth) return readOAuthCredential(providerId, connection, connectionFingerprint);
+  if (connection?.oauth)
+    return readOAuthCredential(providerId, connection, connectionFingerprint, context);
+  if (context?.rejectedCredentialFingerprint !== undefined)
+    throw new Error('The approved credential source does not support OAuth recovery.');
   await retireOAuthSource(providerId);
   const stored = await getKey(providerId, connectionFingerprint);
   if (connection?.cloud) {
-    const [runtime, llm] = await Promise.all([import('@kodax-ai/kodax/runtime'), import('@kodax-ai/kodax/llm')]);
-    const credential = stored ? connection.cloud.service === 'bedrock' ? { type: 'bearer' as const, token: stored } : { type: 'api-key' as const, key: stored }
+    const [runtime, llm] = await Promise.all([
+      import('@kodax-ai/kodax/runtime'),
+      import('@kodax-ai/kodax/llm'),
+    ]);
+    const credential = stored
+      ? connection.cloud.service === 'bedrock'
+        ? { type: 'bearer' as const, token: stored }
+        : { type: 'api-key' as const, key: stored }
       : await runtime.createNativeCloudCredentialResolver(connection)(new AbortController().signal);
-    for (const value of Object.values(credential)) if (typeof value === 'string') rememberProviderSecret(value);
+    for (const value of Object.values(credential))
+      if (typeof value === 'string') rememberProviderSecret(value);
     return rememberProviderSecret(llm.serializeCloudCredential(providerId, credential));
   }
   const info = await resolveProviderCredentialInfo(providerId);

@@ -46,6 +46,7 @@ import {
   type PendingAttachmentGate,
 } from './attachmentFiles.js';
 import { useActivityState } from './ActivitySpinner.js';
+import { ExecutionFactsIndicator } from './ExecutionFactsIndicator.js';
 import { AgentModeSelector } from './AgentModeSelector.js';
 // Retired StashNotice; file changes now live in RightSidebar.ChangesSection.
 import { RetryBanner } from './RetryBanner.js';
@@ -1874,7 +1875,7 @@ export function BottomBar(): JSX.Element {
       const forkPointTurnIdx = requestedIdx ?? latestTurnIndex;
       const forkPointMessage = messageForSelectorTurn(userMsgs, forkPointTurnIdx);
       const historyBoundary = forkPointMessage?.historyBoundary;
-      if (session.surface === 'code' && historyBoundary === undefined) {
+      if (session.provider !== 'mock' && historyBoundary === undefined) {
         appendUserMessage(
           sessionId,
           '[fork] exact persisted history boundary is not available yet',
@@ -1968,7 +1969,7 @@ export function BottomBar(): JSX.Element {
         userMsgs,
         rewindPastTurnIdx,
       );
-      if (session.surface === 'code' && historyBoundary === undefined) {
+      if (session.provider !== 'mock' && historyBoundary === undefined) {
         appendUserMessage(
           sessionId,
           '[rewind] exact persisted history boundary is not available yet',
@@ -2898,6 +2899,10 @@ export function BottomBar(): JSX.Element {
               </div>
               {currentSurface !== 'partner' && <AgentPicker insertAtCaret={insertAtCaret} />}
               <ModeSelector />
+              <ExecutionFactsIndicator />
+              {currentSurface === 'partner' && (
+                <span className="text-xs text-fg-secondary">Agent</span>
+              )}
               {currentSurface !== 'partner' && (
                 <AgentModeSelector
                   ensureSession={ensureSession}

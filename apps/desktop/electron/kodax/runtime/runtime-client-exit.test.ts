@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
-import { projectClientExitReceipt, settleRuntimeClientExit } from './runtime-client-exit.js';
+import {
+  projectClientExitReceipt,
+  settleRuntimeClientExit,
+  runtimeExitConfirmsHostStopped,
+} from './runtime-client-exit.js';
 
 const receipt: ClientExitReceipt = {
   requestId: 'exit',
@@ -28,6 +32,30 @@ test('verified cleanup lets Space exit while preserving another client Host', ()
   assert.equal(
     projectClientExitReceipt({ ...receipt, host: { ...receipt.host, state: 'protected' } }).status,
     'clean',
+  );
+});
+
+test('a peer protected after preflight permits personal exit but cannot authorize installation', () => {
+  const settlement = projectClientExitReceipt({
+    ...receipt,
+    host: { ...receipt.host, state: 'protected' },
+    recovery: {
+      state: 'blocked',
+      checkedAt: '2026-11-02T00:00:00Z',
+      reason: 'host_protected',
+      nextAction: 'retry_exit',
+    },
+  });
+  assert.equal(settlement.status, 'clean');
+  assert.equal(runtimeExitConfirmsHostStopped(settlement), false);
+  assert.equal(
+    runtimeExitConfirmsHostStopped(
+      projectClientExitReceipt({
+        ...receipt,
+        host: { ...receipt.host, state: 'succeeded' },
+      }),
+    ),
+    true,
   );
 });
 test('unknown client cleanup retains recovery even after Host success', () => {

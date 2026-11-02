@@ -1417,7 +1417,7 @@ export const messages = {
     'settings.workflowHost.title': 'Workflow host',
     'settings.workflowHost.description':
       'Control runtime limits for explicit /workflow runs and AMA run_workflow.',
-    'settings.coderRuntimeMode.title': 'Coder runtime mode',
+    'settings.coderRuntimeMode.title': 'Shared execution Host',
     'settings.sandbox.title': 'Command sandbox (ASRT)',
     'settings.sandbox.description':
       'Inspect doctor-confirmed command containment and explicitly complete one-time setup when required.',
@@ -1467,8 +1467,17 @@ export const messages = {
     'settings.integrationHealth.lastReload': 'last valid reload: {time}',
     'settings.integrationHealth.neverReloaded': 'no valid reload recorded',
     'settings.coderRuntimeMode.description':
-      'Choose how Coder connects to KodaX. Daemon mode is recommended; Embedded mode is the compatibility fallback.',
-    'settings.coderRuntimeMode.label': 'Coder runtime mode',
+      'Coder and Partner share one Host for execution and recovery.',
+    'settings.configApplication.title': 'When saved settings apply',
+    'settings.configApplication.description':
+      'Saving a default does not change an active task. Session overrides and environment settings can still take precedence.',
+    'settings.configApplication.details': 'Show application timing reported by this Host',
+    'settings.configApplication.immediate': 'Immediately',
+    'settings.configApplication.next_run': 'Next task',
+    'settings.configApplication.extension_reload': 'After extension reload',
+    'settings.configApplication.restart': 'After Host restart',
+    'settings.configApplication.unknown': 'This Host has not reported application timing.',
+    'settings.coderRuntimeMode.label': 'Shared execution Host',
     'settings.coderRuntimeMode.daemon': 'Daemon',
     'settings.coderRuntimeMode.current': 'Current',
     'settings.coderRuntimeMode.recommended': 'Recommended',
@@ -2102,13 +2111,20 @@ export const messages = {
     'provider.meta.key': 'Key',
     'provider.meta.model': 'Model',
     'provider.keySource.both': 'Saved file + env',
-    'provider.credentialMigration': 'Space and the shared connection have different credentials. Space keeps its current account until you choose otherwise.',
-    'provider.credentialUnavailable': 'The old credential is temporarily inaccessible. Its original is retained; access will be retried on the next operation.',
-    'provider.credentialPending': 'Your existing credential remains in use. Migration will be retried automatically; no account is changed.',
-    'provider.credentialConnectionChanged': 'The connection changed. Your previous credential is retained; configure or explicitly choose a credential for this connection.',
-    'provider.spaceCredential': 'This credential keeps Space on its original account. Saving changes here leaves CLI unchanged; sharing changes the shared account only when you choose it.',
-    'provider.sharedCredential': 'This connection uses a shared credential. Saving or removing it also affects clients using that shared credential.',
-    'provider.removeUsesEnvironment': 'Removing the saved key will use the existing environment value for this connection.',
+    'provider.credentialMigration':
+      'Space and the shared connection have different credentials. Space keeps its current account until you choose otherwise.',
+    'provider.credentialUnavailable':
+      'The old credential is temporarily inaccessible. Its original is retained; access will be retried on the next operation.',
+    'provider.credentialPending':
+      'Your existing credential remains in use. Migration will be retried automatically; no account is changed.',
+    'provider.credentialConnectionChanged':
+      'The connection changed. Your previous credential is retained; configure or explicitly choose a credential for this connection.',
+    'provider.spaceCredential':
+      'This credential keeps Space on its original account. Saving changes here leaves CLI unchanged; sharing changes the shared account only when you choose it.',
+    'provider.sharedCredential':
+      'This connection uses a shared credential. Saving or removing it also affects clients using that shared credential.',
+    'provider.removeUsesEnvironment':
+      'Removing the saved key will use the existing environment value for this connection.',
     'provider.keySource.space': 'Space credential',
     'provider.publishShared': 'Share this credential with CLI',
     'provider.replaceShared': 'Replace the CLI shared credential with this one',
@@ -4974,12 +4990,16 @@ export const messages = {
     'provider.meta.key': '密钥',
     'provider.meta.model': '模型',
     'provider.keySource.both': '凭证文件 + 环境变量',
-    'provider.credentialMigration': 'Space 与共享连接使用不同凭证。你主动选择前，Space 会继续使用当前账号。',
+    'provider.credentialMigration':
+      'Space 与共享连接使用不同凭证。你主动选择前，Space 会继续使用当前账号。',
     'provider.credentialUnavailable': '旧凭证暂时无法读取，原值已保留；下次操作会重新尝试。',
     'provider.credentialPending': '继续沿用原有凭证，迁移将在后续操作中自动重试，不会更换账号。',
-    'provider.credentialConnectionChanged': '连接已变更。原凭证仍保留；请为此连接配置凭证，或明确选择已有的共享凭证。',
-    'provider.spaceCredential': '此凭证沿用 Space 原账号。在此保存不会改变 CLI；只有主动选择共享时才会更改共享账号。',
-    'provider.sharedCredential': '此连接使用共享凭证。在此保存或删除，也会影响使用该共享凭证的其他客户端。',
+    'provider.credentialConnectionChanged':
+      '连接已变更。原凭证仍保留；请为此连接配置凭证，或明确选择已有的共享凭证。',
+    'provider.spaceCredential':
+      '此凭证沿用 Space 原账号。在此保存不会改变 CLI；只有主动选择共享时才会更改共享账号。',
+    'provider.sharedCredential':
+      '此连接使用共享凭证。在此保存或删除，也会影响使用该共享凭证的其他客户端。',
     'provider.removeUsesEnvironment': '删除已保存的 Key 后，此连接将使用现有环境变量中的值。',
     'provider.keySource.space': 'Space 专用凭证',
     'provider.publishShared': '将此凭证与 CLI 共享',
@@ -6073,8 +6093,17 @@ export const messages = {
     'settings.integrationHealth.lastReload': '最近有效重载：{time}',
     'settings.integrationHealth.neverReloaded': '尚无有效重载记录',
     'settings.coderRuntimeMode.description':
-      '选择 Coder 连接 KodaX 的方式。推荐使用 Daemon 模式；Embedded 模式用于兼容与故障回退。',
-    'settings.coderRuntimeMode.label': 'Coder 运行模式',
+      'Coder 和 Partner 使用同一共享 Host 执行任务并恢复会话。',
+    'settings.configApplication.title': '保存设置后的生效时点',
+    'settings.configApplication.description':
+      '保存默认值不会改写正在执行的任务；会话覆盖和环境设置仍可能优先生效。',
+    'settings.configApplication.details': '查看当前 Host 报告的生效范围',
+    'settings.configApplication.immediate': '立即生效',
+    'settings.configApplication.next_run': '下一任务',
+    'settings.configApplication.extension_reload': '扩展重新加载后',
+    'settings.configApplication.restart': 'Host 重新启动后',
+    'settings.configApplication.unknown': '当前 Host 尚未报告生效时点。',
+    'settings.coderRuntimeMode.label': '共享执行 Host',
     'settings.coderRuntimeMode.daemon': 'Daemon',
     'settings.coderRuntimeMode.current': '当前',
     'settings.coderRuntimeMode.recommended': '推荐',

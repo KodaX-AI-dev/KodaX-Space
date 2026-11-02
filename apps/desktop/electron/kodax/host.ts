@@ -500,7 +500,7 @@ class KodaXHost {
         restore();
         return 'session-not-found';
       }
-      if (session.surface === 'code' && runtimeHostAdapter.hasReadyRuntime()) {
+      if (session instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
         // A newly-created Space session is intentionally admitted to the daemon
         // lazily. Settings can be changed before the first send, so admit it here
         // as well and seed the complete settings snapshot instead of applying only
@@ -520,7 +520,7 @@ class KodaXHost {
           {
             sessionId,
             projectRoot: session.projectRoot,
-            surface: 'code',
+            surface: session.surface,
             ephemeral: session.ephemeral === true,
           },
         );
@@ -528,7 +528,7 @@ class KodaXHost {
       if (await this.persistRuntime(sessionId)) {
         return 'ok';
       }
-      if (session.surface === 'code' && runtimeHostAdapter.hasReadyRuntime()) {
+      if (session instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
         const reasoningContextChanged =
           before.provider !== session.provider ||
           before.model !== session.model ||
@@ -867,10 +867,7 @@ class KodaXHost {
       // FEATURE_032：同样取消 askUser pending，否则 modal 残留
       askUserBroker.cancelSession(sessionId, 'session_cancelled');
     };
-    const runtimeCoder =
-      s instanceof RealKodaXSession &&
-      s.surface === 'code' &&
-      runtimeHostAdapter.isRuntimeSelected();
+    const runtimeCoder = s instanceof RealKodaXSession && runtimeHostAdapter.isRuntimeSelected();
     if (runtimeCoder) {
       const stop = await s.cancel(runId, requestId, retry);
       if (!stop) return { cancelled: false };
@@ -995,7 +992,7 @@ class KodaXHost {
     const s = this.sessions.get(sessionId);
     if (!s) return { ok: false, reason: `session not found: ${sessionId}` };
 
-    const usesRuntime = s.surface === 'code' && runtimeHostAdapter.isRuntimeSelected();
+    const usesRuntime = s instanceof RealKodaXSession && runtimeHostAdapter.isRuntimeSelected();
     // Runtime-backed sessions emit their own revisioned lifecycle. The compatibility events below
     // are retained only for embedded/legacy sessions, which do not have a daemon observation.
     if (!usesRuntime) pushToRenderer('session.event', { kind: 'compact_start', sessionId });
@@ -1108,7 +1105,7 @@ class KodaXHost {
     if (!src) return null;
 
     const forkTitle = src.title !== undefined ? `${stripForkSuffix(src.title)} (fork)` : undefined;
-    const usesRuntime = src.surface === 'code';
+    const usesRuntime = src instanceof RealKodaXSession;
     if (usesRuntime && !runtimeHostAdapter.hasReadyRuntime()) {
       throw new Error('Runtime is unavailable for an exact Coder Session fork.');
     }
@@ -1152,7 +1149,7 @@ class KodaXHost {
     try {
       await cloneClipboardAttachmentsForFork(sourceSessionId, sessionId);
     } catch (error) {
-      if (src.surface === 'code' && runtimeHostAdapter.hasReadyRuntime()) {
+      if (src instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
         await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
       } else {
         await deletePersistedSession({ sessionId }).catch(() => undefined);
@@ -1200,7 +1197,7 @@ class KodaXHost {
       });
     } catch (err) {
       // best-effort 回滚：擦掉刚写盘的 fork——失败也无所谓，下一次 list/cleanup 会发现
-      if (src.surface === 'code' && runtimeHostAdapter.hasReadyRuntime()) {
+      if (src instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
         await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
       } else {
         await deletePersistedSession({ sessionId }).catch(() => undefined);
@@ -1214,7 +1211,7 @@ class KodaXHost {
     if (!(await this.persistRuntime(sessionId))) {
       await session.dispose().catch(() => undefined);
       this.sessions.delete(sessionId);
-      if (src.surface === 'code' && runtimeHostAdapter.hasReadyRuntime()) {
+      if (src instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
         await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
       } else {
         await deletePersistedSession({ sessionId }).catch(() => undefined);
@@ -1259,7 +1256,7 @@ class KodaXHost {
   }> {
     const s = this.sessions.get(sessionId);
     if (!s) return { ok: false, reason: 'session_not_found' };
-    const usesRuntime = s.surface === 'code';
+    const usesRuntime = s instanceof RealKodaXSession;
     if (usesRuntime && !runtimeHostAdapter.hasReadyRuntime()) {
       throw new Error('Runtime is unavailable for an exact Coder Session rewind.');
     }
@@ -1335,8 +1332,6 @@ class KodaXHost {
     await this.resumePromises.get(sessionId)?.catch(() => undefined);
     await this.runtimeMutationLocks.get(sessionId)?.catch(() => undefined);
     const s = this.sessions.get(sessionId);
-    const persisted = s ? undefined : await loadPersistedSession(sessionId);
-    const surface = s?.surface ?? sdkTagToSurface(persisted?.tag) ?? 'code';
     if (s) {
       permissionBroker.cancelSession(sessionId, 'session_disposed');
       askUserBroker.cancelSession(sessionId, 'session_disposed');
@@ -1345,7 +1340,7 @@ class KodaXHost {
     }
     // 持久化擦盘——即便 in-memory 不存在也尝试擦（用户对 historical session 直接删）
     const diskDeleteResult = await (
-      surface === 'code' && runtimeHostAdapter.hasReadyRuntime()
+      runtimeHostAdapter.hasReadyRuntime()
         ? runtimeHostAdapter
             .deleteSession(sessionId)
             .then((outcome) =>

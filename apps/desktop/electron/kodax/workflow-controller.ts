@@ -1413,26 +1413,7 @@ export class WorkflowController {
    * 从一个 session 发起工作流:解析 module → 用 session 字段建精简 KodaXOptions →
    * manager.startFromOptions → 登记归属。事件经 F060 订阅自然回流到 renderer。
    */
-  /**
-   * SECURITY (Partner boundary): workflows spawn child agents with full tool
-   * access, which would bypass the Partner toolVisibilityPolicy / agentProfile.
-   * This is the single authoritative gate for every workflow-launch path (slash
-   * command, workflow.* IPC channels, and any future caller) — the slash-layer
-   * check in builtin.ts is a fast-fail UX nicety, this is the real fence.
-   */
-  private assertCoderSurface(session: LaunchSession): { error: string } | null {
-    if (session.surface === 'partner') {
-      return {
-        error:
-          '[partner] Workflows run under the Coder surface. Partner cannot create, run, or re-run a workflow — switch to a Coder session.',
-      };
-    }
-    return null;
-  }
-
   async start(input: LaunchInput): Promise<{ runId: string } | { error: string }> {
-    const partnerBlocked = this.assertCoderSurface(input.session);
-    if (partnerBlocked) return partnerBlocked;
     if (this.hostOwner?.enabled()) {
       if (input.agentTarget)
         return {
@@ -1543,8 +1524,6 @@ export class WorkflowController {
     request: string,
     session: LaunchSession,
   ): Promise<WorkflowStartResult> {
-    const partnerBlocked = this.assertCoderSurface(session);
-    if (partnerBlocked) return partnerBlocked;
     if (this.hostOwner?.enabled())
       return this.startOnHost(
         session,
@@ -1586,8 +1565,6 @@ export class WorkflowController {
     args: unknown,
     session: LaunchSession,
   ): Promise<WorkflowStartResult> {
-    const partnerBlocked = this.assertCoderSurface(session);
-    if (partnerBlocked) return partnerBlocked;
     const sdk = await loadCodingSdk();
     if (!sdk?.loadGeneratedWorkflowFromRun) return { error: 'workflow rerun unavailable' };
     const runDir = this.hostOwner?.enabled()
@@ -1701,8 +1678,6 @@ export class WorkflowController {
   }): Promise<WorkflowSavedResult> {
     // C3: reviseWorkflow generates + persists an executable workflow (an LLM scan of the project),
     // so it MUST carry the same Partner gate as start/create/rerun — this is the real authz fence.
-    const partnerBlocked = this.assertCoderSurface(input.session);
-    if (partnerBlocked) return partnerBlocked;
     if (input.replace && !input.saved) {
       return { error: 'revise --replace requires a saved workflow name target' };
     }

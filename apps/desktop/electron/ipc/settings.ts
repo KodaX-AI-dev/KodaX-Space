@@ -9,10 +9,7 @@ import { registerChannel } from './register.js';
 import { settingsStore, type SpaceSettings } from '../settings/store.js';
 import { validateProjectRoot } from './validate.js';
 import { resolveEffectiveLocale, type SpaceSettingsT } from '@kodax-space/space-ipc-schema';
-import {
-  loadKodaxConfigOverview,
-  updateKodaxCompactionConfig,
-} from '../kodax/user-config.js';
+import { loadKodaxConfigOverview, updateKodaxCompactionConfig } from '../kodax/user-config.js';
 import {
   applyKodaxIntegrationMigration,
   planKodaxIntegrationMigration,
@@ -87,11 +84,13 @@ function rethrowActionableConfigConflict(error: unknown): never {
 async function reloadRuntimeConfigAfterWrite(channel: string): Promise<{
   readonly status: 'applied' | 'not-required' | 'failed';
   readonly warning?: string;
+  readonly application?: import('@kodax-space/space-ipc-schema').KodaxConfigOverviewT['application'];
 }> {
   if (!runtimeHostAdapter.isRuntimeSelected()) return { status: 'not-required' };
   try {
     await runtimeHostAdapter.reloadRuntimeConfig();
-    return { status: 'applied' };
+    const { application } = await runtimeHostAdapter.readEffectiveRuntimeConfig();
+    return { status: 'applied', ...(application ? { application } : {}) };
   } catch (error) {
     console.warn(
       `[${channel}] Coder daemon config reload failed:`,
@@ -112,6 +111,8 @@ export function registerSettingsChannels(options: SettingsChannelsOptions = {}):
   });
 
   registerChannel('settings.setCoderRuntimeMode', async ({ coderRuntimeMode }) => {
+    if (coderRuntimeMode !== 'daemon')
+      throw new Error('Embedded execution is retired. Space uses a shared Host.');
     const result = options.switchCoderRuntimeMode
       ? await options.switchCoderRuntimeMode(coderRuntimeMode)
       : {
@@ -154,7 +155,10 @@ export function registerSettingsChannels(options: SettingsChannelsOptions = {}):
 
   registerChannel('settings.kodaxConfig.get', async ({ projectRoot }) => {
     const safeProjectRoot = projectRoot ? validateProjectRoot(projectRoot) : undefined;
-    return loadKodaxConfigOverview(safeProjectRoot);
+    const overview = await loadKodaxConfigOverview(safeProjectRoot);
+    if (!runtimeHostAdapter.hasReadyRuntime()) return overview;
+    const { application } = await runtimeHostAdapter.readEffectiveRuntimeConfig();
+    return { ...overview, ...(application ? { application } : {}) };
   });
 
   registerChannel('settings.kodaxConfig.setCompaction', ({ projectRoot, compaction }) =>

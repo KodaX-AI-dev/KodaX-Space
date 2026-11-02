@@ -536,6 +536,7 @@ export class RealKodaXSession implements ManagedSession {
       // no-op check avoids a write when the Runtime value already matches.
       shellExecution: shellExecution ?? null,
       agentMode: 'ama',
+      ...(this.surface === 'partner' ? { workMode: 'agent' as const } : {}),
     });
     // Runtime permissions are live settings: a mode selected while the daemon
     // was initializing or while the versioned update was in flight must govern
@@ -581,9 +582,13 @@ export class RealKodaXSession implements ManagedSession {
     );
     if (references.length === 0) return undefined;
 
-    const registry = await getSkillRegistry(this.projectRoot);
-    const registeredReferences = references.filter(
-      ({ reference }) => registry.get(reference.name) !== undefined,
+    const knownSkills = runtimeHostAdapter.isRuntimeSelected()
+      ? new Set(
+          (await runtimeHostAdapter.listRuntimeSkills(this.projectRoot)).map((skill) => skill.name),
+        )
+      : new Set((await getSkillRegistry(this.projectRoot)).list().map((skill) => skill.name));
+    const registeredReferences = references.filter(({ reference }) =>
+      knownSkills.has(reference.name),
     );
     if (registeredReferences.length > 1) {
       return {
@@ -603,7 +608,7 @@ export class RealKodaXSession implements ManagedSession {
       argumentsText: rawUserInput
         .slice(candidate.reference.end, nextReferenceStart ?? rawUserInput.length)
         .trim(),
-      registered: registry.get(candidate.reference.name) !== undefined,
+      registered: knownSkills.has(candidate.reference.name),
     };
   }
 
@@ -794,10 +799,9 @@ export class RealKodaXSession implements ManagedSession {
     const runPermissionMode = this.permissionMode;
     const runPartnerExpert = this.partnerExpert ? structuredClone(this.partnerExpert) : null;
     const runPartnerConnectors = structuredClone(this.partnerConnectors ?? []);
-    const toolInvocation =
-      this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()
-        ? await runtimeHostAdapter.resolveToolInvocation(prompt, this.projectRoot)
-        : undefined;
+    const toolInvocation = runtimeHostAdapter.isRuntimeSelected()
+      ? await runtimeHostAdapter.resolveToolInvocation(prompt, this.projectRoot)
+      : undefined;
     const explicitSkillReference = toolInvocation
       ? undefined
       : await this.resolveExplicitSkillReference(prompt);
@@ -811,7 +815,7 @@ export class RealKodaXSession implements ManagedSession {
       return { accepted: false, reason: 'skill_not_found', queueMode };
     }
 
-    if (this.surface === 'code' && !runtimeHostAdapter.isRuntimeSelected()) {
+    if (!runtimeHostAdapter.isRuntimeSelected()) {
       // Keep the admission gate held until the embedded owner has been proven.
       // Otherwise send() can report acceptance and only fail later inside the
       // fire-and-forget stream task after a failed owner recovery.
@@ -821,14 +825,14 @@ export class RealKodaXSession implements ManagedSession {
       }
     }
 
-    if (this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()) {
+    if (runtimeHostAdapter.isRuntimeSelected()) {
       let activeRunId: string | undefined;
       try {
         await runtimeHostAdapter.initialize();
         await runtimeHostAdapter.ensureSession({
           sessionId: this.sessionId,
           projectRoot: this.projectRoot,
-          surface: 'code',
+          surface: this.surface,
           ephemeral: this.ephemeral,
         });
         await runtimeHostAdapter.ensureObserved(this.sessionId);
@@ -1009,14 +1013,12 @@ export class RealKodaXSession implements ManagedSession {
   ): readonly RuntimeInput[] {
     return [
       { type: 'text', text: prompt },
-      ...(artifacts ?? []).map(
-        (artifact): RuntimeInput => ({
-          type: 'image',
-          path: artifact.path,
-          mediaType: artifact.mediaType,
-          source: artifact.source,
-        }),
-      ),
+      ...(artifacts ?? []).map((artifact): RuntimeInput => ({
+        type: 'image',
+        path: artifact.path,
+        mediaType: artifact.mediaType,
+        source: artifact.source,
+      })),
     ];
   }
 
@@ -1037,10 +1039,9 @@ export class RealKodaXSession implements ManagedSession {
     toolInvocation?: RuntimeDaemonKodaXOptions['toolInvocation'],
   ): RuntimeAdmissionState | null {
     const abort = new AbortController();
-    const runtimeAdmission =
-      this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()
-        ? createRuntimeAdmissionState(abort, restoreDraftOnBoundaryConflict)
-        : null;
+    const runtimeAdmission = runtimeHostAdapter.isRuntimeSelected()
+      ? createRuntimeAdmissionState(abort, restoreDraftOnBoundaryConflict)
+      : null;
     this.currentAbort = abort;
     this.runtimeAdmission = runtimeAdmission;
     this.lastActivityAt = Date.now();
@@ -1053,6 +1054,7 @@ export class RealKodaXSession implements ManagedSession {
     const prepareAndRun = async (): Promise<Error | undefined> => {
       if (
         preparedSkill === undefined &&
+        !runtimeHostAdapter.isRuntimeSelected() &&
         this.surface === 'partner' &&
         runPartnerExpert?.useSkill !== false &&
         runPartnerExpert?.expert.skillRef
@@ -1241,7 +1243,7 @@ export class RealKodaXSession implements ManagedSession {
       currentAbort !== null && this.runtimeAdmission?.abort === currentAbort
         ? this.runtimeAdmission
         : null;
-    const runtimeCoder = this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected();
+    const runtimeCoder = runtimeHostAdapter.isRuntimeSelected();
     if (runtimeCoder && runId !== undefined && admission?.runId !== runId) {
       return runtimeHostAdapter.cancelSessionRuns(this.sessionId, runId, requestId, retry);
     }
@@ -1319,12 +1321,7 @@ export class RealKodaXSession implements ManagedSession {
     this.disposed = true;
     for (const admissionAbort of this.sendAdmissionAborts) admissionAbort.abort();
     if (this.currentAbort) this.currentAbort.abort();
-    if (
-      abortRuntimeRun &&
-      hadCurrentRun &&
-      this.surface === 'code' &&
-      runtimeHostAdapter.isRuntimeSelected()
-    ) {
+    if (abortRuntimeRun && hadCurrentRun && runtimeHostAdapter.isRuntimeSelected()) {
       // A run may already be active, in which case the immediate abort handles
       // it. If runs.start() is still being acknowledged, runCoderDaemon repeats
       // the idempotent abort after admission completes.
@@ -1485,7 +1482,7 @@ export class RealKodaXSession implements ManagedSession {
     runPartnerConnectors: NonNullable<ManagedSession['partnerConnectors']> = [],
     toolInvocation?: RuntimeDaemonKodaXOptions['toolInvocation'],
   ): Promise<Error | undefined> {
-    if (this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()) {
+    if (runtimeHostAdapter.isRuntimeSelected()) {
       return this.runCoderDaemon(
         prompt,
         signal,
@@ -1497,9 +1494,7 @@ export class RealKodaXSession implements ManagedSession {
         toolInvocation,
       );
     }
-    if (this.surface === 'code') {
-      await runtimeHostAdapter.ensureLegacyOwner();
-    }
+    await runtimeHostAdapter.ensureLegacyOwner();
     await this.requirePartnerExpertAvailable(runPartnerExpert ?? null);
     const sid = this.sessionId;
     // Embedded mode changes are documented as next-run settings. The immutable
@@ -2671,13 +2666,13 @@ export class RealKodaXSession implements ManagedSession {
       try {
         // Runtime-selected Coder runs fail closed. They must never fall through to the
         // inline driver because that would bypass the daemon owner fence and could execute
-        // tools twice. Partner and explicitly fenced legacy Coder runs stay on the inline path.
-        if (this.surface === 'code' && runtimeHostAdapter.isRuntimeSelected()) {
+        // tools twice. Only explicitly injected historical test owners reach this driver.
+        if (runtimeHostAdapter.isRuntimeSelected()) {
           throw new Error(
             'Coder switched to the daemon while inline input was being prepared; retry the input.',
           );
         }
-        // Partner inline driver, or the explicitly selected legacy Coder rollback driver.
+        // Historical fixture driver; production always uses the shared Host.
         await this.requirePartnerExpertAvailable(runPartnerExpert ?? null);
         await runWithSpaceProviderCredentialLease(this.provider, () =>
           withSessionRunContext(

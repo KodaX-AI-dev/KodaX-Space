@@ -196,6 +196,7 @@ export const sessionExecutionFactsChannel = {
           revision: count,
           items: z.array(requestFact).max(512),
           nextCursor: id.optional(),
+          reset: z.literal(true).optional(),
         })
         .strict(),
       z
@@ -206,6 +207,7 @@ export const sessionExecutionFactsChannel = {
           revision: count,
           items: z.array(toolFact).max(512),
           nextCursor: id.optional(),
+          reset: z.literal(true).optional(),
         })
         .strict(),
     ])

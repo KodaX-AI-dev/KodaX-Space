@@ -6,7 +6,7 @@
 
 import type { Surface } from '@kodax-space/space-ipc-schema';
 
-export type SurfaceRuntimeOwner = 'coder-daemon' | 'partner-inline';
+export type SurfaceRuntimeOwner = 'shared-host';
 
 export interface SurfaceRuntimeAdapterRef<Owner extends SurfaceRuntimeOwner = SurfaceRuntimeOwner> {
   readonly owner: Owner;
@@ -19,9 +19,7 @@ export interface TrustedSurfaceSessionRecord {
 }
 
 export type SurfaceRuntimeRouteErrorCode =
-  | 'SURFACE_MISMATCH'
-  | 'TRUSTED_SURFACE_MISSING'
-  | 'TRUSTED_SURFACE_UNSUPPORTED';
+  'SURFACE_MISMATCH' | 'TRUSTED_SURFACE_MISSING' | 'TRUSTED_SURFACE_UNSUPPORTED';
 
 export class SurfaceRuntimeRouteError extends Error {
   readonly code: SurfaceRuntimeRouteErrorCode;
@@ -40,16 +38,16 @@ export class SurfaceRuntimeRouteError extends Error {
 }
 
 export interface SurfaceRuntimeRouterOptions<
-  Coder extends SurfaceRuntimeAdapterRef<'coder-daemon'>,
-  Partner extends SurfaceRuntimeAdapterRef<'partner-inline'>,
+  Coder extends SurfaceRuntimeAdapterRef<'shared-host'>,
+  Partner extends SurfaceRuntimeAdapterRef<'shared-host'>,
 > {
   readonly coder: Coder;
   readonly partner: Partner;
 }
 
 export class SurfaceRuntimeRouter<
-  Coder extends SurfaceRuntimeAdapterRef<'coder-daemon'>,
-  Partner extends SurfaceRuntimeAdapterRef<'partner-inline'>,
+  Coder extends SurfaceRuntimeAdapterRef<'shared-host'>,
+  Partner extends SurfaceRuntimeAdapterRef<'shared-host'>,
 > {
   readonly #coder: Coder;
   readonly #partner: Partner;

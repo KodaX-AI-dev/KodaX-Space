@@ -389,23 +389,46 @@ export const sessionProductViewSchema = z
     activity: z
       .object({
         runId: z.string(),
-        streaming: z.discriminatedUnion('kind', [
-          z.object({
-            kind: z.literal('thinking'),
-            providerRequestId: z.string(),
-            itemId: z.string(),
-            charCount: z.number().nonnegative(),
-            estimatedTokenCount: z.number().nonnegative().optional(),
-          }),
-          z.object({
-            kind: z.literal('tool-input'),
-            providerRequestId: z.string(),
-            toolName: z.string(),
-            callId: z.string().optional(),
-            charCount: z.number().nonnegative().optional(),
-            estimatedTokenCount: z.number().nonnegative().optional(),
-          }),
-        ]),
+        reasoning: z
+          .object({
+            providerRequestId: z.string().optional(),
+            provider: z.string(),
+            model: z.string(),
+            requestedEffort: z.string(),
+            sentEffort: z.string().optional(),
+            verified: z.literal(false),
+            fallbacks: z.array(
+              z.object({
+                effort: z.string().optional(),
+                reason: z.enum([
+                  'profile',
+                  'unsupported-effort',
+                  'unsupported-parameter',
+                  'cached-rejection',
+                ]),
+              }),
+            ),
+          })
+          .optional(),
+        streaming: z
+          .discriminatedUnion('kind', [
+            z.object({
+              kind: z.literal('thinking'),
+              providerRequestId: z.string(),
+              itemId: z.string(),
+              charCount: z.number().nonnegative(),
+              estimatedTokenCount: z.number().nonnegative().optional(),
+            }),
+            z.object({
+              kind: z.literal('tool-input'),
+              providerRequestId: z.string(),
+              toolName: z.string(),
+              callId: z.string().optional(),
+              charCount: z.number().nonnegative().optional(),
+              estimatedTokenCount: z.number().nonnegative().optional(),
+            }),
+          ])
+          .optional(),
       })
       .optional(),
     items: z.array(sessionProductItemSchema).max(150),

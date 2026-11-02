@@ -9,6 +9,26 @@ import { SettingsStore } from '../settings/store.js';
 let tmpDir = '';
 let settingsFile = '';
 
+test('retired embedded preference upgrades to the shared Host while preserving unrelated settings', async () => {
+  await fs.writeFile(
+    settingsFile,
+    JSON.stringify({
+      version: 3,
+      defaultWorkspace: tmpDir,
+      languageMode: 'zh-CN',
+      terminalShell: 'auto',
+      coderRuntimeMode: 'embedded',
+      customFutureField: { retained: true },
+    }),
+  );
+  const store = new SettingsStore(settingsFile, tmpDir, 'legacy');
+  assert.equal((await store.load()).coderRuntimeMode, 'daemon');
+  const saved = JSON.parse(await fs.readFile(settingsFile, 'utf8')) as Record<string, unknown>;
+  assert.equal(saved.coderRuntimeMode, 'daemon');
+  assert.deepEqual(saved.customFutureField, { retained: true });
+  await assert.rejects(store.setCoderRuntimeMode('embedded'), /retired|shared Host/i);
+});
+
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kodax-space-settings-'));
   settingsFile = path.join(tmpDir, 'settings.json');
@@ -44,7 +64,7 @@ test('load backfills languageMode for older settings files', async () => {
   assert.equal(persisted.coderRuntimeMode, 'daemon');
 });
 
-test('load migrates an unset legacy environment selection to embedded mode', async () => {
+test('load migrates an unset legacy environment selection to the shared Host', async () => {
   await fs.writeFile(
     settingsFile,
     JSON.stringify({
@@ -57,32 +77,32 @@ test('load migrates an unset legacy environment selection to embedded mode', asy
 
   const loaded = await new SettingsStore(settingsFile, tmpDir, 'legacy').load();
   assert.equal(loaded.version, 3);
-  assert.equal(loaded.coderRuntimeMode, 'embedded');
+  assert.equal(loaded.coderRuntimeMode, 'daemon');
 
   const persisted = JSON.parse(await fs.readFile(settingsFile, 'utf-8')) as {
     version: number;
     coderRuntimeMode: string;
   };
   assert.equal(persisted.version, 3);
-  assert.equal(persisted.coderRuntimeMode, 'embedded');
+  assert.equal(persisted.coderRuntimeMode, 'daemon');
 
   const reloadedWithoutLegacyEnvironment = await new SettingsStore(settingsFile, tmpDir, '').load();
-  assert.equal(reloadedWithoutLegacyEnvironment.coderRuntimeMode, 'embedded');
+  assert.equal(reloadedWithoutLegacyEnvironment.coderRuntimeMode, 'daemon');
 });
 
 test('missing settings persist the legacy environment selection exactly once', async () => {
   const first = await new SettingsStore(settingsFile, tmpDir, 'legacy').load();
-  assert.equal(first.coderRuntimeMode, 'embedded');
+  assert.equal(first.coderRuntimeMode, 'daemon');
 
   const persisted = JSON.parse(await fs.readFile(settingsFile, 'utf-8')) as {
     version: number;
     coderRuntimeMode: string;
   };
   assert.equal(persisted.version, 3);
-  assert.equal(persisted.coderRuntimeMode, 'embedded');
+  assert.equal(persisted.coderRuntimeMode, 'daemon');
 
   const reloadedWithoutLegacyEnvironment = await new SettingsStore(settingsFile, tmpDir, '').load();
-  assert.equal(reloadedWithoutLegacyEnvironment.coderRuntimeMode, 'embedded');
+  assert.equal(reloadedWithoutLegacyEnvironment.coderRuntimeMode, 'daemon');
 });
 
 test('concurrent missing-settings creators converge on the persisted migration winner', async () => {
@@ -140,17 +160,17 @@ test('concurrent loads on one store share the same initial read and create', asy
   releaseRead();
   const [first, second] = await Promise.all([firstLoad, secondLoad]);
   assert.deepEqual(first, second);
-  assert.equal(first.coderRuntimeMode, 'embedded');
+  assert.equal(first.coderRuntimeMode, 'daemon');
 });
 
-test('setCoderRuntimeMode persists the explicit customer preference', async () => {
+test('setCoderRuntimeMode persists the supported shared-Host preference', async () => {
   const store = new SettingsStore(settingsFile, tmpDir);
 
-  const next = await store.setCoderRuntimeMode('embedded');
-  assert.equal(next.coderRuntimeMode, 'embedded');
+  const next = await store.setCoderRuntimeMode('daemon');
+  assert.equal(next.coderRuntimeMode, 'daemon');
 
   const reloaded = await new SettingsStore(settingsFile, tmpDir, 'runtime').load();
-  assert.equal(reloaded.coderRuntimeMode, 'embedded');
+  assert.equal(reloaded.coderRuntimeMode, 'daemon');
   assert.equal(reloaded.version, 3);
 });
 

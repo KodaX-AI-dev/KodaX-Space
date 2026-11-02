@@ -88,7 +88,8 @@ export interface SpaceSettings {
 const DEFAULT_WORKSPACE = path.join(os.homedir(), 'kodax_workspace');
 
 function defaultCoderRuntimeMode(runtimeHostEnvironment: string | undefined): CoderRuntimeModeT {
-  return runtimeHostEnvironment?.trim().toLowerCase() === 'legacy' ? 'embedded' : 'daemon';
+  void runtimeHostEnvironment;
+  return 'daemon';
 }
 
 function normalizeSettings(
@@ -103,7 +104,7 @@ function normalizeSettings(
       languageMode: v3.data.languageMode,
       terminalShell: v3.data.terminalShell,
       windowCloseBehavior: v3.data.windowCloseBehavior,
-      coderRuntimeMode: v3.data.coderRuntimeMode,
+      coderRuntimeMode: 'daemon',
       runtimeDefaults: cleanRuntimeDefaults(v3.data.runtimeDefaults),
     };
   }
@@ -151,6 +152,15 @@ function hasPreV3Schema(raw: unknown): boolean {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
   const version = (raw as Record<string, unknown>).version;
   return version === 1 || version === 2;
+}
+
+function hasRetiredRuntimeMode(raw: unknown): boolean {
+  return (
+    !!raw &&
+    typeof raw === 'object' &&
+    'coderRuntimeMode' in raw &&
+    raw.coderRuntimeMode === 'embedded'
+  );
 }
 
 function migrateRetiredAgentMode(raw: unknown): unknown {
@@ -240,7 +250,11 @@ export class SettingsStore {
       const parsed = normalizeSettings(decoded, this.runtimeHostEnvironment);
       if (parsed) {
         this.cached = parsed;
-        if (hasPreV3Schema(decoded) || hasRetiredAgentMode(decoded)) {
+        if (
+          hasPreV3Schema(decoded) ||
+          hasRetiredAgentMode(decoded) ||
+          hasRetiredRuntimeMode(decoded)
+        ) {
           // Persist schema upgrades and retired modes exactly once. Replace only
           // the exact bytes read above, so a concurrent Space instance cannot
           // lose newer settings. Failure is non-fatal; a later launch retries.
@@ -346,6 +360,8 @@ export class SettingsStore {
   }
 
   async setCoderRuntimeMode(coderRuntimeMode: CoderRuntimeModeT): Promise<SpaceSettings> {
+    if (coderRuntimeMode !== 'daemon')
+      throw new Error('Embedded execution is retired. Space uses a shared Host.');
     return this.update((current) => ({ ...current, coderRuntimeMode }));
   }
 
@@ -398,9 +414,10 @@ export class SettingsStore {
     normalized: SpaceSettings,
     originalBytes: Buffer,
   ): Promise<void> {
-    const migrated = hasPreV3Schema(decoded)
-      ? migratePreV3Settings(decoded, normalized)
-      : migrateRetiredAgentMode(decoded);
+    const migrated =
+      hasPreV3Schema(decoded) || hasRetiredRuntimeMode(decoded)
+        ? migratePreV3Settings(decoded, normalized)
+        : migrateRetiredAgentMode(decoded);
     const migratedBytes = Buffer.from(JSON.stringify(migrated, null, 2), 'utf-8');
     this.writeLock = this.writeLock
       .catch(() => undefined)
@@ -434,7 +451,11 @@ export class SettingsStore {
         const decoded = JSON.parse(currentBytes.toString('utf-8')) as unknown;
         const current = normalizeSettings(decoded, this.runtimeHostEnvironment);
         if (current) {
-          if (hasPreV3Schema(decoded) || hasRetiredAgentMode(decoded)) {
+          if (
+            hasPreV3Schema(decoded) ||
+            hasRetiredAgentMode(decoded) ||
+            hasRetiredRuntimeMode(decoded)
+          ) {
             await this.migrateSettings(decoded, current, currentBytes).catch(() => undefined);
           }
           return current;

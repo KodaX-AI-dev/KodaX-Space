@@ -40,7 +40,7 @@ async function ensureSessionAvailableForSlash(sessionId: string): Promise<void> 
 
 export async function executeSlashCommand(input: SlashExecInput): Promise<SlashExecOutput> {
   const handler = getSlashHandler(input.name);
-  if (handler || input.expectedSurface === 'code')
+  if (handler || input.expectedSurface !== undefined)
     await ensureSessionAvailableForSlash(input.sessionId);
   const session = kodaxHost.get(input.sessionId);
   if (session)
@@ -49,7 +49,7 @@ export async function executeSlashCommand(input: SlashExecInput): Promise<SlashE
       expectedSurface: input.expectedSurface,
     });
   if (
-    session?.surface === 'code' &&
+    session !== undefined &&
     runtimeHostAdapter.isRuntimeSelected() &&
     (!handler || input.name === 'review')
   ) {

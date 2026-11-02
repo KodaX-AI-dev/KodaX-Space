@@ -89,19 +89,19 @@ export function shouldRecoverRuntimeAfterShutdownTimeout(state: {
 }
 
 /**
- * Daemon-backed Coder Sessions are shared attachment points, not client-owned
+ * Host-backed Sessions are shared attachment points, not client-owned
  * execution identities. They must use Runtime's principal/run cancellation.
  */
 export function shouldCancelSessionWideOnForcedExit(input: {
   readonly surface: 'code' | 'partner';
   readonly runtimeSelected: boolean;
 }): boolean {
-  return input.surface !== 'code' || !input.runtimeSelected;
+  return !input.runtimeSelected;
 }
 
 /**
- * A ready daemon preflight is authoritative for daemon-backed Coder Runs. Local stream cleanup may
- * lag its terminal fact and must not create a false first-close blocker. Partner, Embedded, and an
+ * A ready daemon preflight is authoritative for Host-backed Runs. Local stream cleanup may
+ * lag its terminal fact and must not create a false first-close blocker. Mock/fixture execution and an
  * unavailable Runtime remain locally fail-closed.
  */
 export function shouldCountLocalSessionExitBlocker(input: {
@@ -109,7 +109,7 @@ export function shouldCountLocalSessionExitBlocker(input: {
   readonly runtimeSelected: boolean;
   readonly runtimeAuthorityReady: boolean;
 }): boolean {
-  return input.surface !== 'code' || !input.runtimeSelected || !input.runtimeAuthorityReady;
+  return !input.runtimeSelected || !input.runtimeAuthorityReady;
 }
 
 export interface SpaceExitWorkSnapshot {

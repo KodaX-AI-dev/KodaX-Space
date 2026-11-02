@@ -211,7 +211,9 @@ function learningProposalMatchesFilter(
 
 function usesRuntimeSession(sessionId: string): boolean {
   const session = kodaxHost.get(sessionId);
-  return session?.surface === 'code' && runtimeHostAdapter.isRuntimeSelected();
+  return (
+    session !== undefined && session.provider !== 'mock' && runtimeHostAdapter.isRuntimeSelected()
+  );
 }
 
 function usesRuntimeLearning(sessionId: string): boolean {
@@ -1234,24 +1236,10 @@ type WorkflowInvocation =
   | { readonly kind: 'create'; readonly request: string }
   | { readonly kind: 'start'; readonly name: string; readonly rawArgs: string };
 
-/**
- * Read-only `/workflow` subcommands that never spawn child agents. Everything
- * else is execution-class (create/start/rerun/revise) or run-lifecycle
- * (pause/resume/stop/delete/prune/save/rename) and is fenced off from the
- * Partner surface — a Partner workflow would spawn full-tool-access children
- * that bypass the Partner toolVisibilityPolicy / agentProfile entirely. This
- * mirrors the SDK's own posture (SA strips the workflow tool cluster and rejects
- * execution-class `/workflow` subcommands; FEATURE_246 / ADR-047).
- */
-const WORKFLOW_INSPECTION_KINDS: ReadonlySet<WorkflowInvocation['kind']> = new Set([
-  'help',
-  'list',
-  'runs',
-  'show',
-]);
-
+/** Partner uses the general Agent surface; Host authorization governs Workflow effects. */
 export function isPartnerAllowedWorkflowKind(kind: WorkflowInvocation['kind']): boolean {
-  return WORKFLOW_INSPECTION_KINDS.has(kind);
+  void kind;
+  return true;
 }
 
 const DEFAULT_WORKFLOW_RUNS_LIMIT = 20;
@@ -2054,19 +2042,6 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       if (ctx.args[0]?.toLowerCase() === 'pending') return handleLearningPending(ctx, 'workflow');
 
       const invocation = parseWorkflowInvocation(ctx.args);
-
-      // Partner boundary: only read-only inspection is reachable from a Partner
-      // session. Blocks the /workflow create|start|rerun|revise|pause|resume|
-      // stop|delete|prune|save|rename escape hatch that would otherwise spawn
-      // full-tool-access child agents outside the Partner tool policy.
-      if (session.surface === 'partner' && !isPartnerAllowedWorkflowKind(invocation.kind)) {
-        return {
-          ok: false,
-          message:
-            '[partner] Workflows run under the Coder surface. In Partner, /workflow supports only inspection (list / runs / show / help). Switch to a Coder session to create, run, or manage a workflow.',
-          echo: true,
-        };
-      }
 
       if (invocation.kind === 'help') {
         return { ok: true, message: workflowHelp(), echo: true };
@@ -2950,8 +2925,8 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
     source: 'builtin',
     handler: async (ctx) => {
       const session = kodaxHost.get(ctx.sessionId);
-      if (session?.surface !== 'code' || !runtimeHostAdapter.isRuntimeSelected()) {
-        return { ok: false, message: 'Identity repair requires a Coder Runtime session.' };
+      if (!session || !runtimeHostAdapter.isRuntimeSelected()) {
+        return { ok: false, message: 'Identity repair requires a Host session.' };
       }
       const [
         sourceEntryId,

@@ -1,4 +1,8 @@
-import { providerCredentialEpoch, onProviderCredentialInvalidation } from '../providers/credential-invalidation.js';
+import { readExecutionFactsPage } from './runtime/execution-facts-page.js';
+import {
+  providerCredentialEpoch,
+  onProviderCredentialInvalidation,
+} from '../providers/credential-invalidation.js';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
@@ -78,6 +82,7 @@ export type {
 } from './runtime/runtime-client-exit.js';
 import {
   settleRuntimeClientExit,
+  runtimeExitConfirmsHostStopped,
   type RuntimeDaemonRollbackResult,
   type RuntimeExitSettlement,
   type RuntimeExitSettlementInput,
@@ -178,12 +183,7 @@ import { createScopedRuntimeCredentialBroker } from '../providers/runtime-creden
 
 export type RuntimeHostMode = 'legacy' | 'runtime';
 export type RuntimeHostState =
-  | 'uninitialized'
-  | 'initializing'
-  | 'legacy'
-  | 'ready'
-  | 'failed'
-  | 'closed';
+  'uninitialized' | 'initializing' | 'legacy' | 'ready' | 'failed' | 'closed';
 export type RuntimeCapabilityOwner = 'runtime' | 'space-bridge' | 'legacy' | 'unavailable';
 export type RuntimeCapabilitySupport = 'supported' | 'partial' | 'unavailable';
 
@@ -1450,7 +1450,11 @@ export interface RuntimeHostAdapterOptions {
   readonly startupTimingFactory?: RuntimeStartupTimingFactory;
 }
 
-type RuntimeProviderCredentialResolver = (provider: string, connectionFingerprint?: string) => Promise<string | undefined>;
+type RuntimeProviderCredentialResolver = (
+  provider: string,
+  connectionFingerprint?: string,
+  context?: RuntimeScopedCredentialRequest,
+) => Promise<string | undefined>;
 
 export function resolveRuntimeHostMode(value: string | undefined): RuntimeHostMode {
   // Persisted legacy settings follow the SDK's single-Host upgrade path; fixture-only legacy ports stay injectable.
@@ -1805,7 +1809,9 @@ const publishedRuntimeOwnerControl: RuntimeOwnerControl = {
     return sdk.getKodaXRuntimeOwnerState(input);
   },
   async enableDaemon() {
-    throw new Error('This KodaX SDK retired manual owner transitions. Restart with the Runtime Host.');
+    throw new Error(
+      'This KodaX SDK retired manual owner transitions. Restart with the Runtime Host.',
+    );
   },
 };
 
@@ -1938,7 +1944,11 @@ function canonicalRuntimeProjectRoot(projectRoot: string): string {
 
 function assertRuntimeSessionIdentity(
   session: RuntimeSession,
-  expected: { readonly sessionId: string; readonly projectRoot?: string },
+  expected: {
+    readonly sessionId: string;
+    readonly projectRoot?: string;
+    readonly surface?: RuntimeSessionIdentity['surface'];
+  },
 ): void {
   if (session.id !== expected.sessionId) {
     throw new RuntimeSessionIdentityConflictError(
@@ -1946,10 +1956,13 @@ function assertRuntimeSessionIdentity(
       `Runtime returned Session ${session.id}.`,
     );
   }
-  if (session.surface === 'partner' || session.profileId === 'kodax-space.partner') {
+  if (
+    expected.surface !== undefined &&
+    (isPartnerRuntimeSessionIdentity(session) ? 'partner' : 'code') !== expected.surface
+  ) {
     throw new RuntimeSessionIdentityConflictError(
       expected.sessionId,
-      'Partner Sessions must remain on the inline Partner owner.',
+      'Session surface does not match the trusted Space identity.',
     );
   }
   if (expected.projectRoot === undefined) return;
@@ -2055,7 +2068,11 @@ function isReconnectableRunTransportLoss(error: unknown): boolean {
 export class RuntimeHostAdapter {
   private readonly productCredentialLeases = new Map<
     string,
-    Promise<{ readonly id: string; readonly broker: RuntimeScopedCredentialBroker; readonly providers: readonly string[] }>
+    Promise<{
+      readonly id: string;
+      readonly broker: RuntimeScopedCredentialBroker;
+      readonly providers: readonly string[];
+    }>
   >();
   private productRuntimeId: string | undefined;
   private productClientInstanceId: string | undefined;
@@ -2065,8 +2082,7 @@ export class RuntimeHostAdapter {
     Awaited<ReturnType<KodaXClientHostAuthorization>>
   >();
   private workflowConcurrency:
-    | { readonly runtimeId: string; readonly maxConcurrency: number }
-    | undefined;
+    { readonly runtimeId: string; readonly maxConcurrency: number } | undefined;
   private readonly productLeaseAttachments = new WeakMap<object, Set<string>>();
   private mode: RuntimeHostMode;
   private readonly profileRoot: string;
@@ -2108,6 +2124,7 @@ export class RuntimeHostAdapter {
   private readonly observationPromises = new Map<string, Promise<void>>();
   private readonly observationOpenQueues = new WeakMap<KodaXDaemonRuntime, Promise<void>>();
   private readonly persistedOwnershipTokens = new Map<string, string>();
+  private readonly sessionSurfaces = new Map<string, RuntimeSessionIdentity['surface']>();
   /** Exact out-of-page Run generations whose persisted Session was verified as Coder. */
   private readonly verifiedOutOfPageCoderRuns = new Map<string, ReadonlySet<string>>();
   /** Exact out-of-page Run generations rejected by an authoritative Partner identity. */
@@ -2180,6 +2197,10 @@ export class RuntimeHostAdapter {
   >();
   private hostToolLeaseId: string | undefined;
   private readonly hostToolLeaseIds = new Set<string>();
+  private readonly hostToolAttachments = new WeakMap<
+    KodaXDaemonRuntime['hostTools'],
+    Set<string>
+  >();
   private connectionSubscription: RuntimeSubscription | undefined;
   private workflowSubscription: RuntimeSubscription | undefined;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
@@ -2239,8 +2260,10 @@ export class RuntimeHostAdapter {
       options.startupTimingFactory ??
       ((scope) => createRuntimeStartupTiming(scope, { reportSlowOrFailed: true }));
     this.credentialResolver = options.credentialResolver ?? readProviderCredential;
-    this.unsubscribeCredentialInvalidation = this.credentialResolver === readProviderCredential
-      ? onProviderCredentialInvalidation(provider => this.invalidateProviderLeases(provider)) : () => undefined;
+    this.unsubscribeCredentialInvalidation =
+      this.credentialResolver === readProviderCredential
+        ? onProviderCredentialInvalidation((provider) => this.invalidateProviderLeases(provider))
+        : () => undefined;
     this.credentialProvidersResolver =
       options.credentialProvidersResolver ??
       (options.credentialResolver ? async () => [] : listKnownProviderIds);
@@ -2267,6 +2290,8 @@ export class RuntimeHostAdapter {
     if (this.state !== 'uninitialized' || this.initializePromise !== null) {
       throw new Error('Coder owner policy can only be reconciled before initialization.');
     }
+    // The SDK launcher owns the one-way historical owner migration. Space never rewrites policy.
+    if (this.ownerControl === publishedRuntimeOwnerControl) return;
     const timing = this.startupTimingFactory('runtime-owner-policy');
     timing.mark('reconcile', 'start', { selectedHost: this.mode });
     if (this.mode !== 'runtime') {
@@ -2483,8 +2508,16 @@ export class RuntimeHostAdapter {
     }> = [];
     let activeStage = 'identity_open';
     timing.mark('initialize', 'start', { selectedHost: this.mode });
-    this.initializePromise = this.identityStore
-      .openInstance({ name: 'kodax-space', title: 'KodaX Space', version })
+    this.initializePromise = (
+      this.runtimeFactory === createPublishedRuntime
+        ? import('../providers/provider-storage.js').then((module) =>
+            module.initializeProviderCredentialStorage(),
+          )
+        : Promise.resolve()
+    )
+      .then(() =>
+        this.identityStore.openInstance({ name: 'kodax-space', title: 'KodaX Space', version }),
+      )
       .then(async (identity) => {
         startupAbort.signal.throwIfAborted();
         this.productClientInstanceId = identity.instanceId;
@@ -2568,6 +2601,7 @@ export class RuntimeHostAdapter {
         }
         this.hostToolLeaseId = hostToolLease.id;
         this.hostToolLeaseIds.add(hostToolLease.id);
+        this.hostToolAttachments.set(runtime.hostTools, new Set([hostToolLease.id]));
         this.runtime = runtime;
         this.runtimeProfile = runtime.identity.profile;
         this.integrationHealth = undefined;
@@ -3154,6 +3188,13 @@ export class RuntimeHostAdapter {
         'Coder daemon status runtimeId does not match the attached Runtime identity.',
       );
     }
+    for (const session of status.sessions) {
+      if (!this.sessionSurfaces.has(session.id))
+        this.sessionSurfaces.set(
+          session.id,
+          isPartnerRuntimeSessionIdentity(session) ? 'partner' : 'code',
+        );
+    }
     const verifiedOutOfPageCoderSessionIds = await this.verifyOutOfPageCoderSessions(
       runtime,
       status,
@@ -3169,6 +3210,7 @@ export class RuntimeHostAdapter {
     const projected = projectRuntimeProfile({
       status,
       verifiedOutOfPageCoderSessionIds,
+      sessionSurfaces: this.sessionSurfaces,
       userInputs,
       cursor,
       projectionRevision: this.profileRevision,
@@ -3237,12 +3279,20 @@ export class RuntimeHostAdapter {
         this.verifiedOutOfPageCoderRuns.delete(sessionId);
         return;
       }
-      if (isPartnerRuntimeSessionIdentity(persisted)) {
-        this.verifiedOutOfPageCoderRuns.delete(sessionId);
+      if (
+        (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code') !==
+        (this.sessionSurfaces.get(sessionId) ??
+          (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code'))
+      ) {
         this.rejectedOutOfPagePartnerRuns.set(sessionId, new Set(runIds));
-        this.outOfPageCoderVerificationWarnings.delete(sessionId);
+        this.verifiedOutOfPageCoderRuns.delete(sessionId);
         return;
       }
+      if (!this.sessionSurfaces.has(sessionId))
+        this.sessionSurfaces.set(
+          sessionId,
+          isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code',
+        );
       this.verifiedOutOfPageCoderRuns.set(sessionId, new Set(runIds));
       this.rejectedOutOfPagePartnerRuns.delete(sessionId);
       this.outOfPageCoderVerificationWarnings.delete(sessionId);
@@ -3447,7 +3497,14 @@ export class RuntimeHostAdapter {
       const persisted = await loadPersistedSessionFresh(sessionId);
       const after = persistedSessionFreshnessToken(sessionId);
       if (before !== after && attempt === 0) continue;
-      if (isPartnerRuntimeSessionIdentity(persisted)) {
+      const expectedSurface =
+        this.sessionSurfaces.get(sessionId) ??
+        (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code');
+      this.sessionSurfaces.set(sessionId, expectedSurface);
+      if (
+        persisted !== null &&
+        (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code') !== expectedSurface
+      ) {
         this.persistedOwnershipTokens.delete(sessionId);
         this.desiredObservations.delete(sessionId);
         this.activeCompactionsBySession.delete(sessionId);
@@ -3462,7 +3519,7 @@ export class RuntimeHostAdapter {
         this.projectionController.removeSessionLive(sessionId);
         throw new RuntimeSessionIdentityConflictError(
           sessionId,
-          'the persisted Session is owned by the inline Partner surface.',
+          'the persisted Session surface differs from its trusted Space identity.',
         );
       }
       // A second concurrent mutation must not make one read spin forever. Retain the older token
@@ -3508,7 +3565,7 @@ export class RuntimeHostAdapter {
       return false;
     }
     const session = profile.sessions.find((candidate) => candidate.sessionId === sessionId);
-    return session?.surface === 'code' && Boolean(session.activeRun || session.queuedRuns.length);
+    return session !== undefined && Boolean(session.activeRun || session.queuedRuns.length);
   }
 
   private async assertCoderSession(
@@ -3524,6 +3581,7 @@ export class RuntimeHostAdapter {
         const session = await runtime.sessions.load(sessionId, options);
         assertRuntimeSessionIdentity(session, {
           sessionId,
+          surface: this.sessionSurfaces.get(sessionId) ?? 'code',
           ...(expectedProjectRoot !== undefined ? { projectRoot: expectedProjectRoot } : {}),
         });
         return session;
@@ -3564,10 +3622,10 @@ export class RuntimeHostAdapter {
     }
     const session = profile.sessions.find((candidate) => candidate.sessionId === input.sessionId);
     if (session === undefined) return false;
-    if (session.surface !== 'code') {
+    if (session.surface !== input.surface) {
       throw new RuntimeSessionIdentityConflictError(
         input.sessionId,
-        'the Runtime profile is not owned by the Coder surface.',
+        'the Runtime profile surface differs from the trusted Space identity.',
       );
     }
     // Older/bounded profile rows may omit project identity. That is not proof of a mismatch; keep
@@ -3586,36 +3644,40 @@ export class RuntimeHostAdapter {
   }
 
   async createSession(input: Omit<RuntimeSessionIdentity, 'sessionId'>): Promise<string> {
-    if (input.surface !== 'code') {
-      throw new Error('Partner sessions must remain on the inline Partner owner.');
-    }
     const runtime = await this.requireRuntime();
+    this.assertSurfaceCapability(runtime, input.surface);
     // Omitting sessionId selects the SDK's generated-session storage path. Supplying a newly
     // allocated ID would first search historical storage to prove that the ID does not exist.
     const session = await runtime.sessions.create({
       projectPath: input.projectRoot,
       gitRoot: input.projectRoot,
-      surface: 'space-desktop',
+      surface: input.surface === 'partner' ? 'partner' : 'space-desktop',
+      ...(input.surface === 'partner' ? { profileId: 'kodax-space.partner' } : {}),
       ...(!input.ephemeral ? { draft: true } : {}),
-      tag: input.ephemeral ? SPACE_EPHEMERAL_SESSION_TAG : 'code',
+      tag: input.ephemeral ? SPACE_EPHEMERAL_SESSION_TAG : input.surface,
     });
     assertRuntimeSessionIdentity(session, {
       sessionId: session.id,
+      surface: input.surface,
       projectRoot: input.projectRoot,
     });
     if (this.runtime !== runtime || this.state !== 'ready') {
       throw new Error('Coder daemon connection changed while creating a Session.');
+    }
+    this.sessionSurfaces.set(session.id, input.surface);
+    if (input.surface === 'partner') {
+      const current = await runtime.sessions.getSettingsVersioned(session.id);
+      await runtime.sessions.updateSettingsVersioned(
+        session.id,
+        { workMode: 'agent' },
+        { expectedRevision: current.revision },
+      );
     }
     this.scheduleProfileRefresh(this.currentProfileCursor());
     return session.id;
   }
 
   async ensureSession(input: RuntimeSessionIdentity): Promise<boolean> {
-    if (input.surface !== 'code') {
-      throw new Error(
-        `Partner session ${input.sessionId} must remain on the inline Partner owner.`,
-      );
-    }
     const identityKey = `${canonicalRuntimeProjectRoot(input.projectRoot)}\0${input.surface}\0${input.ephemeral ? '1' : '0'}`;
     const existing = this.ensureSessionPromises.get(input.sessionId);
     if (existing !== undefined) {
@@ -3627,6 +3689,10 @@ export class RuntimeHostAdapter {
       }
       return existing.promise;
     }
+    const knownSurface = this.sessionSurfaces.get(input.sessionId);
+    if (knownSurface !== undefined && knownSurface !== input.surface)
+      throw new RuntimeSessionIdentityConflictError(input.sessionId, 'Session surface changed.');
+    this.sessionSurfaces.set(input.sessionId, input.surface);
     const pending = this.ensureSessionUnlocked(input).finally(() => {
       if (this.ensureSessionPromises.get(input.sessionId)?.promise === pending) {
         this.ensureSessionPromises.delete(input.sessionId);
@@ -3638,6 +3704,7 @@ export class RuntimeHostAdapter {
 
   private async ensureSessionUnlocked(input: RuntimeSessionIdentity): Promise<boolean> {
     const runtime = await this.requireRuntime();
+    this.assertSurfaceCapability(runtime, input.surface);
     const profileVerified = this.hasVerifiedProfileSession(runtime, input);
     if (profileVerified && this.hasActiveRuntimeOwnershipEvidence(input.sessionId)) return false;
     await this.assertPersistedCoderOwnership(input.sessionId);
@@ -3653,8 +3720,8 @@ export class RuntimeHostAdapter {
         sessionId: input.sessionId,
         projectPath: input.projectRoot,
         gitRoot: input.projectRoot,
-        surface: 'space-desktop',
-        tag: input.ephemeral ? SPACE_EPHEMERAL_SESSION_TAG : 'code',
+        surface: input.surface === 'partner' ? 'partner' : 'space-desktop',
+        tag: input.ephemeral ? SPACE_EPHEMERAL_SESSION_TAG : input.surface,
       });
       assertRuntimeSessionIdentity(created, {
         sessionId: input.sessionId,
@@ -3674,12 +3741,37 @@ export class RuntimeHostAdapter {
   }
 
   async listSessions(filter?: RuntimeSessionFilter): Promise<readonly RuntimeSessionSummary[]> {
-    if (filter?.surface === 'partner') {
-      throw new Error('Partner sessions are not listed through the Coder daemon.');
-    }
-    const { surface: _spaceSurface, ...runtimeFilter } = filter ?? {};
+    const { surface, ...runtimeFilter } = filter ?? {};
     const sessions = await (await this.requireRuntime()).sessions.list(runtimeFilter);
-    return sessions.filter((session) => !isPartnerRuntimeSessionIdentity(session));
+    return sessions.filter(
+      (session) =>
+        surface === undefined ||
+        (isPartnerRuntimeSessionIdentity(session) ? 'partner' : 'code') === surface,
+    );
+  }
+
+  private assertSurfaceCapability(
+    runtime: KodaXDaemonRuntime,
+    surface: RuntimeSessionIdentity['surface'],
+  ): void {
+    if (surface !== 'partner') return;
+    const admission = runtime.capabilities?.sessionAdmission;
+    const profile = runtime.capabilities?.productExecutionProfile;
+    if (
+      !admission ||
+      typeof admission !== 'object' ||
+      !('surfaces' in admission) ||
+      !Array.isArray(admission.surfaces) ||
+      !admission.surfaces.includes('partner') ||
+      !profile ||
+      typeof profile !== 'object' ||
+      !('version' in profile) ||
+      profile.version !== 2
+    ) {
+      throw Object.assign(new Error('Partner execution requires an upgraded shared Host.'), {
+        code: 'daemon_upgrade_required',
+      });
+    }
   }
 
   async transcript(sessionId: string): Promise<RuntimeTranscript | null> {
@@ -3935,8 +4027,14 @@ export class RuntimeHostAdapter {
     const options = { cursor: input.cursor, limit: input.limit };
     const page =
       input.kind === 'requests'
-        ? await runtime.statistics.readRequests(input.sessionId, options)
-        : await runtime.statistics.readTools(input.sessionId, options);
+        ? await readExecutionFactsPage(
+            (page) => runtime.statistics!.readRequests(input.sessionId, page),
+            options,
+          )
+        : await readExecutionFactsPage(
+            (page) => runtime.statistics!.readTools(input.sessionId, page),
+            options,
+          );
     if (
       this.runtime !== runtime ||
       this.state !== 'ready' ||
@@ -3985,8 +4083,7 @@ export class RuntimeHostAdapter {
     );
     let completedCompaction = false;
     let registeredCredential:
-      | { readonly binding: RuntimeCredentialBinding; readonly leaseId: string }
-      | undefined;
+      { readonly binding: RuntimeCredentialBinding; readonly leaseId: string } | undefined;
     try {
       registeredCredential =
         !input.credential && input.provider && input.provider !== 'mock'
@@ -4414,9 +4511,21 @@ export class RuntimeHostAdapter {
       throw new Error('SDK view belongs to another Session.');
     if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
     const previous = this.productViews.get(state.sessionId);
-    const activity = view.activity?.streaming
-      ? { runId: view.activity.runId, streaming: view.activity.streaming }
-      : undefined;
+    const activity =
+      view.activity && (view.activity.streaming || view.activity.reasoning)
+        ? {
+            runId: view.activity.runId,
+            ...(view.activity.streaming ? { streaming: view.activity.streaming } : {}),
+            ...(view.activity.reasoning
+              ? {
+                  reasoning: {
+                    ...view.activity.reasoning,
+                    fallbacks: view.activity.reasoning.fallbacks.map((value) => ({ ...value })),
+                  },
+                }
+              : {}),
+          }
+        : undefined;
     const items = await projectProductItems(
       state.sessionId,
       view.items,
@@ -5504,7 +5613,7 @@ export class RuntimeHostAdapter {
     const { kodaxHost, resolveEffectiveProviderModel } = await import('./host.js');
     if (!isCurrentRevision()) return;
     const session = kodaxHost.get(sessionId);
-    if (!session || session.surface !== 'code') return;
+    if (!session) return;
     const previousProvider = session.provider;
     if (typeof settings.provider === 'string' && settings.provider.length > 0) {
       session.provider = settings.provider;
@@ -6243,9 +6352,15 @@ export class RuntimeHostAdapter {
 
   private readonly authorizeProductExecution = async (
     request: Parameters<KodaXClientHostAuthorization>[0],
-    services: Pick<Parameters<KodaXClientHostAuthorization>[1], 'credentials'>,
+    services: Parameters<KodaXClientHostAuthorization>[1],
   ): ReturnType<KodaXClientHostAuthorization> => {
     const runtime = await this.requireRuntime();
+    if (
+      services.identity.runtimeId !== runtime.identity.runtimeId ||
+      services.identity.profile !== runtime.identity.profile
+    )
+      throw new Error('Main authorization Host identity changed.');
+    if (request.kind === 'provider_probe') return this.authorizeProviderProbe(request, services);
     const sessionId = 'sessionId' in request.input ? request.input.sessionId : undefined;
     if (!sessionId) throw new Error('Space execution requires an identified Coder Session.');
     await ensureSpaceBuiltinSkillsOnHost(runtime, this.profileRoot);
@@ -6303,9 +6418,10 @@ export class RuntimeHostAdapter {
         providers,
         sessionId,
         authorize: (call) => isAuthorizedRunCredentialPurpose(call.target, call.purpose),
-        credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
-      requireConnectionProof: this.credentialResolver === readProviderCredential,
-      readCredential: this.credentialResolver,
+        credentialEpoch:
+          this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+        requireConnectionProof: this.credentialResolver === readProviderCredential,
+        readCredential: this.credentialResolver,
       });
       lease = services.credentials.registerScoped({ providers }, broker).then((value) => {
         leaseBinding.leaseId = value.id;
@@ -6327,9 +6443,29 @@ export class RuntimeHostAdapter {
       throw new Error('Space Host Tools have not attached to the current Host.');
     const policy = workflowPolicyStore.get();
     await this.syncWorkflowConcurrency(runtime, policy.maxConcurrency);
+    const independentActor = request.kind === 'agent_spawn' || request.kind === 'agent_followup';
+    const partner =
+      !independentActor && this.sessionSurfaces.get(sessionId) === 'partner'
+        ? await (
+            await import('./runtime/partner-host-tools.js')
+          ).registerPartnerHostExecution(runtime, sessionId, undefined, {
+            explicitMethod:
+              request.kind === 'command' ||
+              request.kind === 'tool' ||
+              (request.kind === 'input' && /^\/[\w-]+(?:\s|$)/.test(request.input.text)),
+            ...(request.kind === 'input' ? { query: request.input.text } : {}),
+          })
+        : undefined;
+    if (partner) {
+      this.hostToolLeaseIds.add(partner.lease.id);
+      this.hostToolAttachments.get(runtime.hostTools)?.add(partner.lease.id);
+    }
     const authorization = {
+      ...(partner
+        ? { profile: await services.createExecutionProfile(partner.context, partner.lease.tools) }
+        : {}),
       credential: { leaseId: credential.id, mode: 'scoped' as const, providers },
-      hostTools: { leaseId: this.hostToolLeaseId },
+      hostTools: { leaseId: partner?.lease.id ?? this.hostToolLeaseId },
       ...(!['agent_spawn', 'agent_followup'].includes(request.kind)
         ? { workflowHostPolicy: { maxAgents: policy.maxAgents, tokenBudget: policy.tokenBudget } }
         : {}),
@@ -6337,6 +6473,103 @@ export class RuntimeHostAdapter {
     if (inputId) await this.captureInputAuthorization(runtime, sessionId, inputId, authorization);
     return authorization;
   };
+
+  private authorizationServices(
+    runtime: KodaXDaemonRuntime,
+    input: { readonly sessionId?: string },
+  ): Parameters<KodaXClientHostAuthorization>[1] {
+    return {
+      identity: runtime.identity,
+      credentials: runtime.credentials,
+      hostTools: runtime.hostTools,
+      createExecutionProfile: async (context, hostTools = []) => {
+        if (runtimeCapabilityVersion(runtime, 'productExecutionProfile') !== 2)
+          throw Object.assign(new Error('Execution profiles require an upgraded Host.'), {
+            code: 'daemon_upgrade_required',
+          });
+        if (!input.sessionId || !runtime.catalog.executionTools)
+          throw new Error('The Session Host tool catalog is unavailable.');
+        const catalog = await runtime.catalog.executionTools(input.sessionId);
+        const { createExecutionProfile } = await import('@kodax-ai/kodax/client');
+        const names = new Set(catalog.map((tool) => tool.name));
+        for (const tool of hostTools) {
+          if (names.has(tool.name))
+            throw new Error(`Host tool collides with a registered tool: ${tool.name}`);
+          names.add(tool.name);
+        }
+        return createExecutionProfile(context, [
+          ...catalog,
+          ...hostTools.map((tool) => ({
+            name: tool.name,
+            sideEffect:
+              tool.sideEffect === 'none' ? ('readonly' as const) : ('mutates-state' as const),
+            planModeAllowed: tool.sideEffect === 'none',
+          })),
+        ]);
+      },
+    };
+  }
+
+  private async authorizeProviderProbe(
+    request: Extract<Parameters<KodaXClientHostAuthorization>[0], { kind: 'provider_probe' }>,
+    services: Parameters<KodaXClientHostAuthorization>[1],
+  ) {
+    const provider = request.input.provider;
+    const binding: { leaseId?: string } = {};
+    const epoch =
+      this.credentialResolver === readProviderCredential
+        ? providerCredentialEpoch(provider)
+        : undefined;
+    const lease = await services.credentials.registerScoped(
+      { providers: [provider] },
+      async (call) => {
+        if (
+          call.leaseId !== binding.leaseId ||
+          call.provider !== provider ||
+          call.purpose !== 'utility' ||
+          call.target.kind !== 'operation' ||
+          call.target.operation !== 'provider.reasoning.probe' ||
+          call.sessionId !== call.target.operationId ||
+          (this.credentialResolver === readProviderCredential &&
+            (!/^[a-f0-9]{64}$/.test(call.connectionFingerprint ?? '') ||
+              epoch !== providerCredentialEpoch(provider)))
+        )
+          return undefined;
+        const value = await this.credentialResolver(provider, call.connectionFingerprint, call);
+        return this.credentialResolver !== readProviderCredential ||
+          epoch === providerCredentialEpoch(provider)
+          ? value
+          : undefined;
+      },
+    );
+    binding.leaseId = lease.id;
+    return { credential: { leaseId: lease.id, mode: 'scoped' as const, providers: [provider] } };
+  }
+
+  async probeReasoningEfforts(
+    input: Extract<
+      Parameters<KodaXClientHostAuthorization>[0],
+      { kind: 'provider_probe' }
+    >['input'],
+  ) {
+    const runtime = await this.requireRuntime();
+    if (runtimeCapabilityVersion(runtime, 'providerProbeAuthorization') !== 1)
+      throw Object.assign(new Error('Provider probes require an upgraded Host.'), {
+        code: 'daemon_upgrade_required',
+      });
+    const authorization = await this.authorizeProviderProbe(
+      { kind: 'provider_probe', input },
+      this.authorizationServices(runtime, {}),
+    );
+    try {
+      return await runtime.catalog.probeReasoningEfforts({
+        ...input,
+        credential: authorization.credential,
+      });
+    } finally {
+      await runtime.credentials.revoke(authorization.credential.leaseId);
+    }
+  }
 
   private async readCapturedInputAuthorization(
     runtime: KodaXDaemonRuntime,
@@ -6380,9 +6613,10 @@ export class RuntimeHostAdapter {
         providers: credential.providers,
         sessionId,
         authorize: (call) => isAuthorizedRunCredentialPurpose(call.target, call.purpose),
-        credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
-      requireConnectionProof: this.credentialResolver === readProviderCredential,
-      readCredential: this.credentialResolver,
+        credentialEpoch:
+          this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+        requireConnectionProof: this.credentialResolver === readProviderCredential,
+        readCredential: this.credentialResolver,
       });
       await runtime.credentials.resumeScoped(credential.leaseId, broker);
       attachments.add(credential.leaseId);
@@ -6391,10 +6625,21 @@ export class RuntimeHostAdapter {
         Promise.resolve({ id: credential.leaseId, broker, providers: credential.providers }),
       );
     }
-    if (authorization.hostTools && !this.hostToolLeaseIds.has(authorization.hostTools.leaseId)) {
+    if (
+      authorization.hostTools &&
+      !this.hostToolAttachments.get(runtime.hostTools)?.has(authorization.hostTools.leaseId)
+    ) {
       const { registerSpaceHostTools } = await import('./runtime/space-host-tools.js');
-      const lease = await registerSpaceHostTools(runtime, authorization.hostTools.leaseId);
+      const lease =
+        this.sessionSurfaces.get(sessionId) === 'partner'
+          ? (
+              await (
+                await import('./runtime/partner-host-tools.js')
+              ).registerPartnerHostExecution(runtime, sessionId, authorization.hostTools.leaseId)
+            ).lease
+          : await registerSpaceHostTools(runtime, authorization.hostTools.leaseId);
       this.hostToolLeaseIds.add(lease.id);
+      this.hostToolAttachments.get(runtime.hostTools)?.add(lease.id);
     }
   }
 
@@ -6495,7 +6740,10 @@ export class RuntimeHostAdapter {
             ...(artifacts.length ? { inputArtifacts: artifacts } : {}),
           },
         };
-    const authorization = await this.authorizeProductExecution(request, runtime);
+    const authorization = await this.authorizeProductExecution(
+      request,
+      this.authorizationServices(runtime, request.input),
+    );
     const accepted =
       request.kind === 'tool'
         ? await runtime.runs.start({
@@ -6601,7 +6849,7 @@ export class RuntimeHostAdapter {
     const { sessionId, runId } = status;
     const authorization = await this.authorizeProductExecution(
       { kind: 'recovery', input: { sessionId, runId } },
-      runtime,
+      this.authorizationServices(runtime, { sessionId }),
     );
     const settings = await runtime.sessions.getSettings(sessionId);
     if (this.runtime !== runtime || this.state !== 'ready') return attached;
@@ -6680,7 +6928,8 @@ export class RuntimeHostAdapter {
         boundOperationId ??= request.target.operationId;
         return request.target.operationId === boundOperationId;
       },
-      credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+      credentialEpoch:
+        this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
       requireConnectionProof: this.credentialResolver === readProviderCredential,
       readCredential: this.credentialResolver,
     });
@@ -6725,7 +6974,8 @@ export class RuntimeHostAdapter {
           target.parentRunId === runBinding.boundRunId
         );
       },
-      credentialEpoch: this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
+      credentialEpoch:
+        this.credentialResolver === readProviderCredential ? providerCredentialEpoch : undefined,
       requireConnectionProof: this.credentialResolver === readProviderCredential,
       readCredential: this.credentialResolver,
     });
@@ -6765,14 +7015,23 @@ export class RuntimeHostAdapter {
     const ids = new Set<string>();
     for (const [key, pending] of [...this.productCredentialLeases]) {
       const lease = await pending;
-      if (lease.providers.includes(provider)) { this.productCredentialLeases.delete(key); ids.add(lease.id); }
+      if (lease.providers.includes(provider)) {
+        this.productCredentialLeases.delete(key);
+        ids.add(lease.id);
+      }
     }
     for (const [id, lease] of [...this.credentialLeases]) {
-      if (lease.providers.includes(provider)) { this.credentialLeases.delete(id); ids.add(id); }
+      if (lease.providers.includes(provider)) {
+        this.credentialLeases.delete(id);
+        ids.add(id);
+      }
     }
     if (runtime) {
-      const results = await Promise.allSettled([...ids].map(id => runtime.credentials.revoke(id)));
-      if (results.some(result => result.status === 'rejected')) throw new Error('Credential was fenced locally but Host cleanup failed.');
+      const results = await Promise.allSettled(
+        [...ids].map((id) => runtime.credentials.revoke(id)),
+      );
+      if (results.some((result) => result.status === 'rejected'))
+        throw new Error('Credential was fenced locally but Host cleanup failed.');
     }
   }
   private async revokeCredentialLease(runtime: KodaXDaemonRuntime, leaseId: string): Promise<void> {
@@ -7105,7 +7364,10 @@ export class RuntimeHostAdapter {
         }),
       },
     };
-    const authorization = await this.authorizeProductExecution(request, runtime);
+    const authorization = await this.authorizeProductExecution(
+      request,
+      this.authorizationServices(runtime, request.input),
+    );
     // An acceptance reply can precede the SDK view notification. Keep this
     // input's observer until its canonical queue/user identity has arrived.
     const pending =
@@ -7198,7 +7460,7 @@ export class RuntimeHostAdapter {
     await this.ensureSession({
       sessionId: input.sessionId,
       projectRoot: input.projectRoot,
-      surface: 'code',
+      surface: this.sessionSurfaces.get(input.sessionId) ?? 'code',
       ephemeral: false,
     });
     const runtime = await this.requireRuntime();
@@ -7213,7 +7475,10 @@ export class RuntimeHostAdapter {
       kind: input.name === 'review' ? ('review' as const) : ('command' as const),
       input: command,
     };
-    const authorization = await this.authorizeProductExecution(request, runtime);
+    const authorization = await this.authorizeProductExecution(
+      request,
+      this.authorizationServices(runtime, request.input),
+    );
     const result =
       input.name === 'review'
         ? await runtime.invocations.startReview({ ...command, authorization })
@@ -7250,13 +7515,13 @@ export class RuntimeHostAdapter {
     await this.ensureSession({
       sessionId: input.sessionId,
       projectRoot: input.projectRoot,
-      surface: 'code',
+      surface: this.sessionSurfaces.get(input.sessionId) ?? 'code',
       ephemeral: false,
     });
     const runtime = await this.requireRuntime();
     const authorization = await this.authorizeProductExecution(
       { kind: 'workflow', input },
-      runtime,
+      this.authorizationServices(runtime, input),
     );
     const result = await runtime.workflows.start({
       ...input,
@@ -7751,7 +8016,7 @@ export class RuntimeHostAdapter {
    * only after daemon policy is restored, leaving the profile both unowned and
    * ready for the next launch.
    */
-  async stopDaemonForCompleteExit(_operationId?: string): Promise<void> {
+  async stopDaemonForCompleteExit(_operationId?: string): Promise<boolean> {
     if (this.mode !== 'runtime') {
       // Embedded Coder has no detached daemon. Closing the inline owner is the
       // complete shutdown operation and preserves the persisted inline policy.
@@ -7763,9 +8028,9 @@ export class RuntimeHostAdapter {
           'Embedded Coder shutdown did not finish cleanly; restart required.',
         );
       }
-      return;
+      return false;
     }
-    await this.stopDaemonWithRuntimeExitSettlement();
+    return this.stopDaemonWithRuntimeExitSettlement();
   }
 
   /** Cancel local startup waits before draining admitted requests; keep SDK exit verification. */
@@ -7852,7 +8117,7 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private async stopDaemonWithRuntimeExitSettlement(): Promise<void> {
+  private async stopDaemonWithRuntimeExitSettlement(): Promise<boolean> {
     if (this.startupPausedForExit) await this.initializePromise?.catch(() => undefined);
     if (this.state === 'initializing' || this.initializePromise !== null) {
       throw new Error('Wait for Coder initialization to settle before complete exit.');
@@ -7897,6 +8162,7 @@ export class RuntimeHostAdapter {
     this.closingRuntime = null;
     await this.close();
     this.rollbackInProgress = previousRollbackState;
+    return runtimeExitConfirmsHostStopped(settlement);
   }
 
   async prepareEmbeddedRestart(operationId?: string): Promise<void> {

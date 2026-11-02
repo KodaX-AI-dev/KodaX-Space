@@ -4,7 +4,7 @@ export function productStreamingProgress(
   activity: SessionProductView['activity'],
   activeRunId?: string,
 ) {
-  if (!activity || activity.runId !== activeRunId) return undefined;
+  if (!activity?.streaming || activity.runId !== activeRunId) return undefined;
   const streaming = activity.streaming;
   return streaming.kind === 'thinking'
     ? { status: 'Thinking…', thinkingTokens: streaming.estimatedTokenCount }

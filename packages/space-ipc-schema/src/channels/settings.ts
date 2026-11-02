@@ -7,11 +7,7 @@
 //   - settings.setDefaultWorkspace { path } → 改默认 workspace + ensureExists 一次
 
 import { z } from 'zod';
-import {
-  agentModeSchema,
-  permissionModeSchema,
-  reasoningModeSchema,
-} from './session.js';
+import { agentModeSchema, permissionModeSchema, reasoningModeSchema } from './session.js';
 
 export const supportedLocaleSchema = z.enum(['zh-CN', 'en-US']);
 export type SupportedLocaleT = z.infer<typeof supportedLocaleSchema>;
@@ -160,10 +156,14 @@ const kodaxSkillStorageSchema = z
   })
   .strict();
 
+const configApplicationSchema = z.record(
+  z.enum(['immediate', 'next_run', 'extension_reload', 'restart']),
+);
 const kodaxConfigOverviewSchema = z
   .object({
     configPath: z.string().min(1).max(4096),
     configExists: z.boolean(),
+    application: configApplicationSchema.optional(),
     compaction: kodaxCompactionSettingsSchema,
     sandbox: kodaxSandboxConfigOverviewSchema,
     mcp: kodaxMcpConfigSummarySchema,
@@ -177,6 +177,7 @@ export type KodaxConfigOverviewT = z.infer<typeof kodaxConfigOverviewSchema>;
 const kodaxRuntimeConfigReloadSchema = z
   .object({
     status: z.enum(['applied', 'not-required', 'failed']),
+    application: configApplicationSchema.optional(),
     warning: z.string().min(1).max(512).optional(),
   })
   .strict();

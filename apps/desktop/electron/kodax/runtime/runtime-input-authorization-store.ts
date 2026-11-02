@@ -7,8 +7,102 @@ import type { RuntimeExecutionAuthorization } from '@kodax-ai/kodax/client';
 import { writeNewFileExclusive } from '../atomic-file.js';
 
 const id = z.string().min(1).max(256);
+const verificationSchema = z
+  .object({
+    summary: z.string().optional(),
+    instructions: z.array(z.string()).optional(),
+    requiredEvidence: z.array(z.string()).optional(),
+    requiredChecks: z.array(z.string()).optional(),
+    capabilityHints: z
+      .array(
+        z
+          .object({
+            kind: z.enum(['skill', 'tool', 'command', 'workflow']),
+            name: id,
+            details: z.string().optional(),
+          })
+          .strict(),
+      )
+      .optional(),
+    rubricFamily: z
+      .enum([
+        'code-review',
+        'frontend',
+        'product-completeness',
+        'functionality',
+        'code-quality',
+        'partner-research',
+      ])
+      .optional(),
+    criteria: z
+      .array(
+        z
+          .object({
+            id,
+            label: z.string(),
+            description: z.string(),
+            threshold: z.number(),
+            weight: z.number(),
+            requiredEvidence: z.array(z.string()).optional(),
+          })
+          .strict(),
+      )
+      .optional(),
+    runtime: z
+      .object({
+        startupCommand: z.string().optional(),
+        cwd: z.string().optional(),
+        env: z.record(z.string()).optional(),
+        readySignal: z.string().optional(),
+        baseUrl: z.string().optional(),
+        uiFlows: z.array(z.string()).optional(),
+        apiChecks: z.array(z.string()).optional(),
+        dbChecks: z.array(z.string()).optional(),
+        fixtures: z.array(z.string()).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+const profileSchema = z
+  .object({
+    agentProfile: z
+      .object({
+        surface: id.optional(),
+        id: id.optional(),
+        version: id.optional(),
+        name: z.string().optional(),
+        instructions: z.string().optional(),
+        verification: verificationSchema.optional(),
+      })
+      .strict()
+      .optional(),
+    taskVerification: verificationSchema.optional(),
+    tools: z.array(id).max(512).optional(),
+    toolMetadata: z
+      .array(
+        z
+          .object({
+            name: id,
+            sideEffect: z.enum([
+              'readonly',
+              'reads-network',
+              'mutates-fs',
+              'mutates-shell',
+              'mutates-network',
+              'mutates-state',
+            ]),
+            planModeAllowed: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(512)
+      .optional(),
+  })
+  .strict();
 const authorizationSchema = z
   .object({
+    profile: profileSchema.optional(),
     credential: z
       .object({ leaseId: id, mode: z.literal('scoped'), providers: z.array(id).max(256) })
       .strict()

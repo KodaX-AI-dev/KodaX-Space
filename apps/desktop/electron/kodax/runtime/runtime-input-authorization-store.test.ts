@@ -42,3 +42,23 @@ test('captured input authority is immutable and failed writes do not poison late
   assert.deepEqual(await store.read('host', 'client', 's', 'i'), authorization);
   assert.deepEqual(await store.read('host', 'client', 's', 'next'), authorization);
 });
+
+test('persona, verification and actual Host tool metadata survive durable input capture', async () => {
+  const store = new RuntimeInputAuthorizationStore();
+  const authorization = {
+    profile: {
+      agentProfile: {
+        surface: 'partner',
+        id: 'expert',
+        instructions: 'Inspect sources',
+        verification: { rubricFamily: 'partner-research' as const, requiredChecks: ['sources'] },
+      },
+      tools: ['bash'],
+      toolMetadata: [
+        { name: 'bash', sideEffect: 'mutates-shell' as const, planModeAllowed: false },
+      ],
+    },
+  };
+  await store.capture('host', 'client', { sessionId: 's', inputId: 'i', authorization });
+  assert.deepEqual(await store.read('host', 'client', 's', 'i'), authorization);
+});

@@ -1695,12 +1695,7 @@ function transcriptTurnSnapshots(
 }
 
 type CanonicalTranscriptRecordKind =
-  | 'user'
-  | 'assistant'
-  | 'tool'
-  | 'sidecar'
-  | 'lineage'
-  | 'workflow';
+  'user' | 'assistant' | 'tool' | 'sidecar' | 'lineage' | 'workflow';
 
 interface CanonicalTranscriptRecord {
   readonly kind: CanonicalTranscriptRecordKind;
@@ -8708,7 +8703,7 @@ export const useAppStore = create<AppState>((setState) => {
         const retiredRuntimeSessionIds = new Set<string>();
         if (replacesKnownRuntime) {
           for (const session of state.sessions) {
-            if ((session.surface ?? 'code') === 'code') {
+            if (session.provider !== 'mock') {
               retiredRuntimeSessionIds.add(session.sessionId);
             }
           }

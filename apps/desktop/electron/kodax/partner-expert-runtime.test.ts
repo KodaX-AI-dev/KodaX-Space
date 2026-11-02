@@ -48,6 +48,17 @@ await fs.writeFile(
 );
 const keychain = await import('../providers/keychain.js');
 keychain._resetMemoryStoreForTesting();
+// Independent /coding library regressions, using the file-local in-process Provider.
+// Shared Host admission/profile/lease behavior is tested separately.
+const { runtimeHostAdapter } = await import('./runtime-host-adapter.js');
+const selectedRuntime = runtimeHostAdapter.isRuntimeSelected;
+const ensureOwner = runtimeHostAdapter.ensureLegacyOwner;
+runtimeHostAdapter.isRuntimeSelected = () => false;
+runtimeHostAdapter.ensureLegacyOwner = async () => undefined;
+after(() => {
+  runtimeHostAdapter.isRuntimeSelected = selectedRuntime;
+  runtimeHostAdapter.ensureLegacyOwner = ensureOwner;
+});
 const { RealKodaXSession } = await import('./real-session.js');
 const { kodaxHost } = await import('./host.js');
 const { SessionRuntimeStore, setSessionRuntimeStoreForTesting } =
@@ -125,7 +136,9 @@ const restrictedExperts = new Map<string, PartnerExpertSnapshotT>();
 let beforeResponse: (() => Promise<void>) | undefined;
 
 class RecordingProvider extends KodaXBaseProvider {
-  protected override getReasoningApi(): string { return 'openai-chat-completions'; }
+  protected override getReasoningApi(): string {
+    return 'openai-chat-completions';
+  }
   readonly name = 'space-expert-runtime-test';
   readonly supportsThinking = false;
   protected readonly config = {

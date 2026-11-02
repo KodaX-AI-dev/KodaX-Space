@@ -22,17 +22,17 @@ import {
   makeSpaceControlApplyHandler,
   makeSpaceControlInspectHandler,
 } from '../../space-control/tools.js';
-import type { SdkToolExecutionContextLike } from '../session-run-context.js';
+import { withSessionRunContext, type SdkToolExecutionContextLike } from '../session-run-context.js';
 import { buildSpaceManual } from '../space-manual-topics.js';
 
-type SpaceToolDefinition = {
+export type SpaceToolDefinition = {
   readonly name: string;
   readonly description: string;
-  readonly sideEffect: 'readonly' | 'mutates-state';
+  readonly sideEffect: 'readonly' | 'reads-network' | 'mutates-state';
   readonly input_schema: Readonly<Record<string, unknown>>;
 };
 
-type SpaceToolHandler = (
+export type SpaceToolHandler = (
   input: Record<string, unknown>,
   context?: SdkToolExecutionContextLike,
 ) => Promise<string>;
@@ -112,8 +112,12 @@ function buildHandlers(): Readonly<Record<string, SpaceToolHandler>> {
 export async function registerSpaceHostTools(
   runtime: Pick<KodaXRuntime, 'hostTools' | 'sessions' | 'runs'>,
   resumeLeaseId?: string,
+  extra: readonly (SpaceToolDefinition & { readonly handler: SpaceToolHandler })[] = [],
 ): Promise<RuntimeHostToolLease> {
-  const implementations = buildHandlers();
+  const implementations = {
+    ...buildHandlers(),
+    ...Object.fromEntries(extra.map((tool) => [tool.name, tool.handler])),
+  };
   const results = new Map<string, Promise<{ content: string }>>();
   let leaseId: string | undefined = resumeLeaseId;
   const handlers: Record<string, RuntimeHostToolHandler> = {};
@@ -131,24 +135,34 @@ export async function registerSpaceHostTools(
           runtime.runs.get(invocation.runId),
           runtime.sessions.getSettings(invocation.sessionId),
         ]);
-        if (
-          run.sessionId !== invocation.sessionId ||
-          session.surface === 'partner' ||
-          session.profileId === 'kodax-space.partner'
-        ) {
+        if (run.sessionId !== invocation.sessionId) {
           return { content: 'Error: Space host tool is not authorized for this run.' };
         }
         const projectRoot = session.workspaceRoot ?? session.gitRoot;
         if (!projectRoot) return { content: 'Error: Coder session has no trusted project root.' };
+        const surface =
+          session.surface === 'partner' || session.profileId === 'kodax-space.partner'
+            ? 'partner'
+            : 'code';
         const context = {
           sessionId: invocation.sessionId,
           toolCallId: invocation.invocationId,
-          taskSurface: 'repl' as const,
+          taskSurface: settings.permissionMode === 'plan' ? ('plan' as const) : ('repl' as const),
           executionCwd: settings.executionCwd ?? projectRoot,
           gitRoot: session.gitRoot ?? projectRoot,
-          agentProfile: { surface: 'code' },
+          agentProfile: { surface },
         } as SdkToolExecutionContextLike;
-        return { content: await implementation({ ...invocation.input }, context) };
+        return withSessionRunContext(
+          {
+            sessionId: invocation.sessionId,
+            projectRoot,
+            surface,
+            permissionMode: settings.permissionMode,
+            toolCallId: invocation.invocationId,
+            taskSurface: context.taskSurface,
+          },
+          async () => ({ content: await implementation({ ...invocation.input }, context) }),
+        );
       })();
       results.set(invocation.invocationId, pending);
       // Bound memory without compromising retry idempotency for recent calls.
@@ -159,7 +173,10 @@ export async function registerSpaceHostTools(
 
   const lease = resumeLeaseId
     ? await runtime.hostTools.resume(resumeLeaseId, handlers)
-    : await runtime.hostTools.register(spaceHostToolDescriptors(), handlers);
+    : await runtime.hostTools.register(
+        [...spaceHostToolDescriptors(), ...extra.map(descriptor)],
+        handlers,
+      );
   leaseId = lease.id;
   return lease;
 }

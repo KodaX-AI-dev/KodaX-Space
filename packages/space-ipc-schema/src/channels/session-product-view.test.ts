@@ -65,3 +65,26 @@ test('one current view cannot contain the same SDK display item twice', () => {
     false,
   );
 });
+
+test('current view preserves actual reasoning even when there is no streaming progress', () => {
+  const activity = {
+    runId: 'run',
+    reasoning: {
+      provider: 'test',
+      model: 'model',
+      requestedEffort: 'high',
+      verified: false,
+      fallbacks: [{ reason: 'unsupported-parameter' }],
+    },
+  };
+  assert.deepEqual(
+    sessionProductViewSchema.parse({
+      sessionId: 'session',
+      runtimeId: 'host',
+      revision: 1,
+      activity,
+      items: [],
+    }).activity,
+    activity,
+  );
+});

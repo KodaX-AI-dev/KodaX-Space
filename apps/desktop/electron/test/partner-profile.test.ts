@@ -30,7 +30,7 @@ test('Partner agent profile steers knowledge work without leaving managed task h
   assert.match(profile.instructions, /Partner run output workspace/);
   assert.match(profile.instructions, /Partner KB tools/);
   assert.match(profile.instructions, /heavy execution/);
-  assert.match(profile.instructions, /unrestricted shell/);
+  assert.match(profile.instructions, /including shell, file writes and child agents/);
   assert.equal(profile.verification.rubricFamily, 'partner-research');
   assert.ok(profile.verification.requiredChecks?.includes('source-faithfulness'));
 });

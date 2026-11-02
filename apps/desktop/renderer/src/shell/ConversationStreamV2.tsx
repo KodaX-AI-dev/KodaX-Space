@@ -2077,7 +2077,7 @@ export function ConversationStreamV2(): JSX.Element {
         (message) => selectorIndexes.get(message.id) === turnIndex,
       );
       const localNoticeCutoffSentAt = localNoticeCutoffSentAtForSelectorTurn(userMsgs, turnIndex);
-      if (session.surface === 'code' && selectedMessage?.historyBoundary === undefined) {
+      if (session.provider !== 'mock' && selectedMessage?.historyBoundary === undefined) {
         pushToast(t('session.historyBoundaryUnavailable'), 'warning');
         return;
       }
@@ -2149,7 +2149,7 @@ export function ConversationStreamV2(): JSX.Element {
       const selectedMessage = userMsgs.find(
         (message) => selectorIndexes.get(message.id) === turnIndex,
       );
-      if (session.surface === 'code' && selectedMessage?.historyBoundary === undefined) {
+      if (session.provider !== 'mock' && selectedMessage?.historyBoundary === undefined) {
         pushToast(t('session.historyBoundaryUnavailable'), 'warning');
         return;
       }
@@ -2728,14 +2728,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
 });
 
 type MarkerTone =
-  | 'user'
-  | 'queued'
-  | 'assistant'
-  | 'system'
-  | 'info'
-  | 'tool'
-  | 'artifact'
-  | 'thinking';
+  'user' | 'queued' | 'assistant' | 'system' | 'info' | 'tool' | 'artifact' | 'thinking';
 
 const MARKER_TONE_CLASS: Record<MarkerTone, string> = {
   user: 'bg-run',

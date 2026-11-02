@@ -7,12 +7,12 @@ import {
   type SurfaceRuntimeAdapterRef,
 } from '../kodax/runtime/surface-runtime-router.js';
 
-const coder: SurfaceRuntimeAdapterRef<'coder-daemon'> = {
-  owner: 'coder-daemon',
+const coder: SurfaceRuntimeAdapterRef<'shared-host'> = {
+  owner: 'shared-host',
   surface: 'code',
 };
-const partner: SurfaceRuntimeAdapterRef<'partner-inline'> = {
-  owner: 'partner-inline',
+const partner: SurfaceRuntimeAdapterRef<'shared-host'> = {
+  owner: 'shared-host',
   surface: 'partner',
 };
 
@@ -57,7 +57,7 @@ test('SurfaceRuntimeRouter construction rejects adapters registered for the wron
   assert.throws(
     () =>
       new SurfaceRuntimeRouter({
-        coder: { owner: 'coder-daemon', surface: 'partner' } as never,
+        coder: { owner: 'shared-host', surface: 'partner' } as never,
         partner,
       }),
     /Coder adapter must be registered for code/i,

@@ -234,17 +234,23 @@ export function registerProviderChannels(): void {
       });
     }
 
-    const detailed = await Promise.all(list.map(async (p) => {
-      const credentialState = await describeProviderCredential(p.id);
-      if (credentialState.migration === 'connection-changed' && !credentialState.authentication) {
-        return { ...p, credentialState, configured: false, configuredSource: 'none' as const };
-      }
-      return { ...p, credentialState,
-        configured: p.configured || credentialState.authenticationConfigured === true,
-        configuredSource: credentialState.authentication ?? p.configuredSource };
-    }));
-    const effectiveDefaultId = defaultId && detailed.some(p => p.id === defaultId && p.configured) ? defaultId : null;
-    const providers = detailed.map(p => ({ ...p, isDefault: p.id === effectiveDefaultId }));
+    const detailed = await Promise.all(
+      list.map(async (p) => {
+        const credentialState = await describeProviderCredential(p.id);
+        if (credentialState.migration === 'connection-changed' && !credentialState.authentication) {
+          return { ...p, credentialState, configured: false, configuredSource: 'none' as const };
+        }
+        return {
+          ...p,
+          credentialState,
+          configured: p.configured || credentialState.authenticationConfigured === true,
+          configuredSource: credentialState.authentication ?? p.configuredSource,
+        };
+      }),
+    );
+    const effectiveDefaultId =
+      defaultId && detailed.some((p) => p.id === defaultId && p.configured) ? defaultId : null;
+    const providers = detailed.map((p) => ({ ...p, isDefault: p.id === effectiveDefaultId }));
     const keychainBackend = await getBackendStatus();
     return { providers, defaultProviderId: effectiveDefaultId, keychainBackend };
   });
@@ -273,8 +279,8 @@ export function registerProviderChannels(): void {
     return { ok: removed };
   });
 
-  registerChannel('provider.shareKey', async input => {
-    if (!await resolveKnownProvider(input.providerId)) throw new Error('unknown providerId');
+  registerChannel('provider.shareKey', async (input) => {
+    if (!(await resolveKnownProvider(input.providerId))) throw new Error('unknown providerId');
     await shareProviderCredential(input.providerId, input.expected, input.mode);
     await injectAllKeysToEnv();
     return { ok: true };
@@ -351,7 +357,10 @@ export function registerProviderChannels(): void {
   registerChannel('provider.updateCustom', (input) =>
     customProviderMutationQueue.run(async () => {
       await providerConfigStore.load();
-      const beforeCredential = await assertProviderCredentialState(input.providerId, input.expectedCredential);
+      const beforeCredential = await assertProviderCredentialState(
+        input.providerId,
+        input.expectedCredential,
+      );
       let movedCredential: Awaited<ReturnType<typeof moveProviderCredential>>;
 
       const urlCheck = validateBaseUrl(input.baseUrl, {
@@ -409,10 +418,19 @@ export function registerProviderChannels(): void {
 
         const existingKey =
           nextProviderIdCandidate !== input.providerId ? await getKey(input.providerId) : undefined;
-        const previousCredential = existingKey ? await describeProviderCredential(input.providerId) : undefined;
+        const previousCredential = existingKey
+          ? await describeProviderCredential(input.providerId)
+          : undefined;
 
-        const updated = await updateKodaxConfigCustomProvider(input.providerId, update, previousCredential
-          ? async name => { movedCredential = await moveProviderCredential(name, previousCredential); } : undefined);
+        const updated = await updateKodaxConfigCustomProvider(
+          input.providerId,
+          update,
+          previousCredential
+            ? async (name) => {
+                movedCredential = await moveProviderCredential(name, previousCredential);
+              }
+            : undefined,
+        );
         if (!updated.updated) throw new Error('unknown writable custom providerId');
         nextProviderId = updated.providerId;
         if (nextProviderId !== input.providerId) {
@@ -426,9 +444,14 @@ export function registerProviderChannels(): void {
       await injectAllKeysToEnv();
       await reloadCoderConfigBestEffort('provider.updateCustom');
       const afterCredential = await describeProviderCredential(nextProviderId);
-      const sameConnection = beforeCredential.binding.connectionFingerprint === afterCredential.binding.connectionFingerprint;
-      const credentialState = movedCredential ?? { ...afterCredential, revision: sameConnection ? beforeCredential.revision : null,
-        configured: sameConnection && beforeCredential.configured };
+      const sameConnection =
+        beforeCredential.binding.connectionFingerprint ===
+        afterCredential.binding.connectionFingerprint;
+      const credentialState = movedCredential ?? {
+        ...afterCredential,
+        revision: sameConnection ? beforeCredential.revision : null,
+        configured: sameConnection && beforeCredential.configured,
+      };
       return { ok: true, providerId: nextProviderId, credentialState };
     }),
   );
@@ -436,20 +459,24 @@ export function registerProviderChannels(): void {
   registerChannel('provider.removeCustom', (input) =>
     customProviderMutationQueue.run(async () => {
       await providerConfigStore.load();
-      const removed = await removeProviderWithCredentials(input.providerId, input.expected, async () => {
-      let removed = false;
+      const removed = await removeProviderWithCredentials(
+        input.providerId,
+        input.expected,
+        async () => {
+          let removed = false;
 
-      if (providerConfigStore.getCustom(input.providerId)) {
-        removed = await removeSpaceCustomProvider(input.providerId);
-      } else {
-        removed = await removeKodaxConfigCustomProvider(input.providerId);
-        if (removed && providerConfigStore.getDefaultProviderId() === input.providerId) {
-          await providerConfigStore.clearDefault();
-        }
-      }
+          if (providerConfigStore.getCustom(input.providerId)) {
+            removed = await removeSpaceCustomProvider(input.providerId);
+          } else {
+            removed = await removeKodaxConfigCustomProvider(input.providerId);
+            if (removed && providerConfigStore.getDefaultProviderId() === input.providerId) {
+              await providerConfigStore.clearDefault();
+            }
+          }
 
-        return removed;
-      });
+          return removed;
+        },
+      );
 
       if (removed) {
         // 删 custom 时同步删 keychain 中的 key
@@ -531,6 +558,10 @@ export function registerProviderChannels(): void {
       ).getReasoningProfile?.(input.model);
       const reasoningProfile = providerReasoningProfile ?? capabilities?.reasoningProfile;
       const reasoning = projectReasoningProfile(reasoningProfile);
+      const multimodalSupport = (await import('../providers/model-images.js')).modelImageSupport(
+        capabilities,
+        provider.getCapabilityProfile(input.model),
+      );
       return {
         contextWindow: cw,
         source,
@@ -540,6 +571,7 @@ export function registerProviderChannels(): void {
         ...(reasoning.supportedEfforts ? { supportedEfforts: reasoning.supportedEfforts } : {}),
         ...(reasoning.defaultEffort ? { defaultEffort: reasoning.defaultEffort } : {}),
         canDisableThinking: reasoning.canDisableThinking,
+        ...(multimodalSupport !== undefined ? { multimodalSupport } : {}),
       };
     } catch (err) {
       // resolveProvider 不识别 custom_* id 时会 throw — 报 fallback 200k 让 UI 渲染

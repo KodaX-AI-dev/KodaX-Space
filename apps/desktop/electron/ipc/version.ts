@@ -42,7 +42,7 @@ function runtimeHostCapability(snapshot: RuntimeHostSnapshot): SpaceCapability {
   const failed = snapshot.state === 'failed';
   const identity = snapshot.identity;
   const detail = ready
-    ? `KodaX Runtime ${identity?.version ?? 'unknown'} (${identity?.mode ?? 'embedded'}/${identity?.isolation ?? 'inline'}) owns Coder Product inputs, current views, canonical history, execution statistics and client lifecycle. Space hosts Partner inline execution and explicitly registered desktop tools.`
+    ? `KodaX Runtime ${identity?.version ?? 'unknown'} (${identity?.mode ?? 'embedded'}/${identity?.isolation ?? 'inline'}) owns Coder Product inputs, current views, canonical history, execution statistics and client lifecycle. The same Host owns Partner Agent execution; Space supplies explicitly leased desktop tools.`
     : legacy
       ? 'The internal legacy rollback host is selected before run start. No Runtime-managed run is active.'
       : failed

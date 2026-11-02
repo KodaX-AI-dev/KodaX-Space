@@ -58,7 +58,7 @@ test('expert work expectations reach the agent and its verification without chan
       (criterion) => criterion.description === workflow.qualityChecks[0],
     ),
   );
-  assert.ok(profile.instructions.includes('Do not request unrestricted shell'));
+  assert.ok(profile.instructions.includes('including shell, file writes and child agents'));
   assert.ok(!PARTNER_AGENT_PROFILE.instructions.includes('Target user and problem evidence'));
   assert.equal(configured.expert.workflow.connectorNeeds[0]!.required, false);
 });
@@ -125,7 +125,11 @@ test('the actual SDK system prompt contains the selected expert and the original
   assert.ok(
     systemPrompts.some((prompt) => prompt.includes('EXPERT-WRITING: Explain the evidence')),
   );
-  assert.ok(systemPrompts.some((prompt) => prompt.includes('Do not request unrestricted shell')));
+  assert.ok(
+    systemPrompts.some((prompt) =>
+      prompt.includes('including shell, file writes and child agents'),
+    ),
+  );
   assert.equal(buildPartnerAgentProfile().instructions, PARTNER_AGENT_PROFILE.instructions);
   assert.doesNotMatch(PARTNER_AGENT_PROFILE.instructions, /EXPERT-WRITING/);
 });

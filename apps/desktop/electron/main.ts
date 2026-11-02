@@ -21,6 +21,7 @@ import {
   type NativeImage,
 } from 'electron';
 import path from 'node:path';
+import { runtimeExitConfirmsHostStopped } from './kodax/runtime/runtime-client-exit.js';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { registerVersionChannel } from './ipc/version.js';
@@ -455,14 +456,9 @@ function createWindowsTrayBadgeImage(count: number): NativeImage {
 }
 let mainWindowBootOverlay: BootSplashOverlay<WebContentsView> | null = null;
 type BootRecoveryActionMode =
-  | 'none'
-  | 'renderer-retry'
-  | 'app-restart'
-  | 'runtime-exit-recovery'
-  | 'close-only';
+  'none' | 'renderer-retry' | 'app-restart' | 'runtime-exit-recovery' | 'close-only';
 let mainWindowBootStatusUpdater:
-  | ((message: string, action: BootRecoveryActionMode) => void)
-  | null = null;
+  ((message: string, action: BootRecoveryActionMode) => void) | null = null;
 let mainWindowAwaitingInitialReveal = false;
 let pendingMainWindowActivation = false;
 let queueWatchShutdown: (() => void) | null = null;
@@ -1648,7 +1644,7 @@ async function collectActiveSpaceExitBlockers(
       session.isRunning() &&
       shouldCountLocalSessionExitBlocker({
         surface: session.surface,
-        runtimeSelected,
+        runtimeSelected: session.provider !== 'mock' && runtimeSelected,
         runtimeAuthorityReady: runtime?.state === 'ready',
       }),
   ).length;
@@ -1700,7 +1696,7 @@ async function stopSpaceOwnedWorkForForcedExit(): Promise<void> {
   const locallyOwnedRunningSessions = runningSessions.filter((session) =>
     shouldCancelSessionWideOnForcedExit({
       surface: session.surface,
-      runtimeSelected: runtimeHostAdapter.isRuntimeSelected(),
+      runtimeSelected: session.provider !== 'mock' && runtimeHostAdapter.isRuntimeSelected(),
     }),
   );
   const runningWorkflows = workflowController
@@ -1745,8 +1741,7 @@ async function tryStopDaemonAfterForcedExitCancellation(): Promise<boolean> {
   if (runtime.state === 'ready' && !runtime.canStop) {
     return false;
   }
-  await runtimeHostAdapter.stopDaemonForCompleteExit();
-  return true;
+  return runtimeHostAdapter.stopDaemonForCompleteExit();
 }
 
 async function forceCompleteExit(
@@ -1810,6 +1805,7 @@ async function requestCompleteExit(): Promise<void> {
   let reopenCoderAdmission: (() => void) | undefined;
   let resumeRuntimeStartup: (() => void) | undefined;
   let exitCommitted = false;
+  let hostStopped = false;
   let keepCoderAdmissionClosed = false;
   try {
     const admissionDrain = beginCoderShutdown?.();
@@ -1877,13 +1873,20 @@ async function requestCompleteExit(): Promise<void> {
             setTimeout(resolve, testCompleteExitBackgroundHoldMs),
           );
         }
-        await runtimeHostAdapter.stopDaemonForCompleteExit();
+        hostStopped = await runtimeHostAdapter.stopDaemonForCompleteExit();
+        if (pendingUpdateInstallation && !hostStopped) {
+          throw createCoderOwnerRecoveryRestartError(
+            [new Error('Shared Host remains protected or its shutdown is unverified.')],
+            'Update installation requires verified Host shutdown; reconnect before retrying.',
+          );
+        }
       },
       beginLocalFinalization: markCompleteExitLocalFinalization,
       handlePresentationError: logCompleteExitPresentationError,
       commitExit: () => {
-        daemonStopConfirmedBeforeQuit = true;
-        stopDaemonOnQuit = true;
+        daemonStopConfirmedBeforeQuit = hostStopped;
+        stopDaemonOnQuit = hostStopped;
+        sharedRuntimeExitCommitted = !hostStopped;
         exitCommitted = true;
         app.quit();
       },
@@ -2242,9 +2245,7 @@ const startupPromise = app
     // Explorer PATH even if hydration completed a few milliseconds later.
     const startupSettings = await settingsStore.load();
     if (startupShutdownCoordinator.isShutdownRequested()) return;
-    runtimeHostAdapter.configureStartupMode(
-      startupSettings.coderRuntimeMode === 'embedded' ? 'legacy' : 'runtime',
-    );
+    runtimeHostAdapter.configureStartupMode('runtime');
     await hydrateShellEnvOnce({
       preference: startupSettings.terminalShell,
       cwd: startupSettings.defaultWorkspace,
@@ -2257,8 +2258,7 @@ const startupPromise = app
     try {
       startupBoundary = await runRuntimeStartupBoundary({
         recoveryRequested: runtimeExitRecoveryRequested,
-        scanPendingExit:
-          runtimeExitRecoveryRequested || startupSettings.coderRuntimeMode !== 'embedded',
+        scanPendingExit: true,
         settle: () => runtimeHostAdapter.resumePendingRuntimeExitSettlement(),
         continueAutomaticRetry: () => !startupShutdownCoordinator.isShutdownRequested(),
         shutdownSignal: startupShutdownCoordinator.shutdownSignal,
@@ -2347,8 +2347,9 @@ const startupPromise = app
       console.info(
         `[main] Runtime exit ${startupBoundary.settlement.status}; completing the original quit request`,
       );
-      daemonStopConfirmedBeforeQuit = true;
-      stopDaemonOnQuit = true;
+      daemonStopConfirmedBeforeQuit = runtimeExitConfirmsHostStopped(startupBoundary.settlement);
+      stopDaemonOnQuit = daemonStopConfirmedBeforeQuit;
+      sharedRuntimeExitCommitted = !daemonStopConfirmedBeforeQuit;
       app.quit();
       return;
     }

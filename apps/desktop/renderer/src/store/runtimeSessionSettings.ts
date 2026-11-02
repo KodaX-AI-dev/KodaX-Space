@@ -21,7 +21,7 @@ export function mergeRuntimeSettingsIntoSessions(
   const settings = projection.settings?.value;
   if (!settings) return sessions;
   return sessions.map((session) => {
-    if (session.sessionId !== projection.sessionId || session.surface !== 'code') return session;
+    if (session.sessionId !== projection.sessionId) return session;
     const effortMode = settings.effort ? sdkEffortToReasoningMode(settings.effort) : null;
     const legacyMode = settings.reasoningMode
       ? sdkEffortToReasoningMode(settings.reasoningMode)
@@ -74,13 +74,12 @@ export function mergeRuntimeActivityIntoSessions(
   );
   let changed = false;
   const merged = sessions.map((session) => {
-    if ((session.surface ?? 'code') !== 'code') return session;
     const candidate = previousBySessionId.get(session.sessionId);
     const previous =
       candidate &&
       sessionMatchesScope(candidate, {
         projectRoot: session.projectRoot,
-        surface: 'code',
+        surface: session.surface,
       })
         ? candidate
         : undefined;

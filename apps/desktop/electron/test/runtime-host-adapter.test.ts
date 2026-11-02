@@ -57,6 +57,99 @@ import { encodeRuntimeActorTaskId } from '../kodax/runtime/runtime-agent-project
 
 await initializeCoderDaemonProjectionSdk();
 
+test('Partner drafts belong to the shared Host and select Agent without creating a private writer', async () => {
+  const fake = createFakeRuntime();
+  Object.assign(fake.runtime.capabilities!, {
+    productExecutionProfile: { version: 2 },
+    sessionAdmission: { version: 1, surfaces: ['space-desktop', 'partner'], partnerDenied: false },
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    profileRoot: path.resolve('C:\\isolated-profile'),
+  });
+  try {
+    await adapter.initialize();
+    const id = await adapter.createSession({
+      projectRoot: 'C:\\repo',
+      surface: 'partner',
+      ephemeral: false,
+    });
+    const session = await fake.runtime.sessions.load(id);
+    assert.equal(session.surface, 'partner');
+    assert.equal((await fake.runtime.sessions.getSettingsVersioned(id)).value.workMode, 'agent');
+    assert.equal(
+      await adapter.ensureSession({
+        sessionId: id,
+        projectRoot: 'C:\\repo',
+        surface: 'partner',
+        ephemeral: false,
+      }),
+      false,
+    );
+    await assert.rejects(
+      adapter.ensureSession({
+        sessionId: id,
+        projectRoot: 'C:\\repo',
+        surface: 'code',
+        ephemeral: false,
+      }),
+      /surface|identity|Partner/i,
+    );
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('Partner shared Host authorizes persona and product tools without a blanket generic-tool ceiling', async () => {
+  const fake = createFakeRuntime();
+  Object.assign(fake.runtime.capabilities!, {
+    productExecutionProfile: { version: 2 },
+    sessionAdmission: { version: 1, surfaces: ['space-desktop', 'partner'] },
+  });
+  fake.runtime.catalog.executionTools = async () => [
+    { name: 'bash', sideEffect: 'mutates-shell', planModeAllowed: false },
+    { name: 'spawn_agent', sideEffect: 'mutates-state', planModeAllowed: false },
+  ];
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    credentialResolver: async () => 'test-key',
+    credentialProvidersResolver: async () => ['anthropic'],
+  });
+  try {
+    const sessionId = await adapter.createSession({
+      projectRoot: 'C:\\repo',
+      surface: 'partner',
+      ephemeral: false,
+    });
+    const run = await adapter.startManagedRun({ sessionId, prompt: 'research' });
+    const started = fake.calls.started[0] as Parameters<KodaXDaemonRuntime['runs']['start']>[0];
+    assert.equal(started.authorization?.profile?.agentProfile?.surface, 'partner');
+    assert.equal(
+      started.authorization?.profile?.agentProfile?.verification?.rubricFamily,
+      'partner-research',
+    );
+    assert.equal(started.authorization?.profile?.tools, undefined);
+    assert.ok(
+      !started.authorization?.profile?.agentProfile?.instructions?.includes(
+        'Do not request unrestricted shell',
+      ),
+    );
+    const tools = fake.calls.hostToolRegistrations.at(-1) as {
+      descriptors: readonly { name: string }[];
+    };
+    assert.ok(tools.descriptors.some((tool) => tool.name === 'write_partner_deliverable'));
+    fake.pending.get(run.runId)?.resolve({ runId: run.runId, sessionId, phase: 'completed' });
+    await run.result;
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('Space creates Coder drafts when the SDK advertises draft admission', async () => {
   const fake = createFakeRuntime();
   assert.ok(fake.runtime.capabilities);
@@ -2913,8 +3006,7 @@ test('complete exit cancels pending startup, and cancelling exit permits a fresh
 
 test('closing while client identity opens never starts a late Host', async () => {
   let releaseIdentity:
-    | ((identity: Awaited<ReturnType<typeof testIdentityStore.openInstance>>) => void)
-    | undefined;
+    ((identity: Awaited<ReturnType<typeof testIdentityStore.openInstance>>) => void) | undefined;
   let factoryCalls = 0;
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
@@ -5483,7 +5575,7 @@ test('Coder session listing excludes every Partner ownership marker', async () =
     ['s_code'],
   );
   assert.deepEqual(filters, [{}]);
-  await assert.rejects(adapter.listSessions({ surface: 'partner' }), /Partner sessions.*Coder/i);
+  assert.equal((await adapter.listSessions({ surface: 'partner' })).length, 4);
 });
 
 test('oversized daemon transcripts are rebuilt from bounded pages and entry chunks', async () => {
@@ -6905,7 +6997,7 @@ test('new Coder Sessions use daemon allocation without a historical ID lookup', 
     }
     await assert.rejects(
       adapter.createSession({ projectRoot: 'C:\\repo', surface: 'partner', ephemeral: false }),
-      /Partner.*inline/i,
+      /Partner.*upgraded shared Host/i,
     );
     assert.equal(fake.calls.created.length, 2);
   } finally {
@@ -6940,7 +7032,7 @@ test('daemon allocated Session identity is checked before Space adopts its ID', 
     });
     await assert.rejects(
       adapter.createSession({ projectRoot: 'C:\\repo', surface: 'code', ephemeral: false }),
-      /Partner.*inline/,
+      /surface.*trusted Space identity/,
     );
   } finally {
     await adapter.close();
@@ -6971,7 +7063,7 @@ test('daemon allocated Sessions still reject a persisted Partner retag before fi
         surface: 'code',
         ephemeral: false,
       }),
-      /inline Partner surface/,
+      /surface.*trusted Space identity/,
     );
     assert.deepEqual(fake.calls.loaded, []);
   } finally {
@@ -6979,7 +7071,7 @@ test('daemon allocated Sessions still reject a persisted Partner retag before fi
   }
 });
 
-test('ensureSession accepts Coder only and rejects Partner before daemon access', async () => {
+test('ensureSession gates Partner on actual Host capabilities before daemon access', async () => {
   installPersistedSessionLookup();
   const fake = createFakeRuntime();
   fake.sessions.add('s_existing');
@@ -7003,7 +7095,7 @@ test('ensureSession accepts Coder only and rejects Partner before daemon access'
       surface: 'partner',
       ephemeral: false,
     }),
-    /Partner.*inline/i,
+    /Partner.*upgraded shared Host/i,
   );
   await adapter.ensureSession({
     sessionId: 's_new',
@@ -7145,7 +7237,7 @@ test('ensureSession rejects a persisted tag-only Partner before daemon reuse', a
     (error: unknown) =>
       error instanceof Error &&
       (error as Error & { code?: string }).code === 'session_identity_conflict' &&
-      /inline Partner surface/i.test(error.message),
+      /surface.*trusted Space identity/i.test(error.message),
   );
   assert.deepEqual(fake.calls.loaded, []);
 });
@@ -7181,7 +7273,7 @@ test('Coder operations reject a persisted tag-only Partner without an expected p
     (error: unknown) =>
       error instanceof Error &&
       (error as Error & { code?: string }).code === 'session_identity_conflict' &&
-      /inline Partner surface/i.test(error.message),
+      /surface.*trusted Space identity/i.test(error.message),
   );
   assert.deepEqual(fake.calls.loaded, []);
   assert.deepEqual(fake.calls.compacted, []);
@@ -7742,8 +7834,7 @@ test('cached idle snapshot ownership rejects an external retag without a profile
     ['s_cached_retag', { title: '', messages: [], gitRoot: 'C:\\repo', tag: 'code' }],
   ]);
   let notifySessionChange:
-    | ((event: { kind: 'change' | 'add' | 'remove'; sessionId: string }) => void)
-    | undefined;
+    ((event: { kind: 'change' | 'add' | 'remove'; sessionId: string }) => void) | undefined;
   setSessionStoreImpl({
     listSessions: async () => [],
     forkSession: async () => null,
@@ -7836,7 +7927,7 @@ test('a Runtime profile read refreshes status instead of returning a stale main 
   await adapter.close();
 });
 
-test('out-of-page active profile rows require persisted Coder identity proof', async () => {
+test('out-of-page active profile rows preserve persisted surface identity for both products', async () => {
   const records = new Map<string, Readonly<Record<string, unknown>>>([
     ['s_out_of_page_coder', { title: '', messages: [], gitRoot: 'C:\\repo', tag: 'code' }],
     ['s_out_of_page_partner', { title: '', messages: [], gitRoot: 'C:\\repo', tag: 'partner' }],
@@ -7890,7 +7981,7 @@ test('out-of-page active profile rows require persisted Coder identity proof', a
   await adapter.initialize();
   assert.deepEqual(
     (await adapter.readRuntimeProfileSnapshot()).sessions.map((session) => session.sessionId),
-    ['s_out_of_page_coder'],
+    ['s_out_of_page_coder', 's_out_of_page_partner'],
   );
   assert.equal(
     persistedReads,

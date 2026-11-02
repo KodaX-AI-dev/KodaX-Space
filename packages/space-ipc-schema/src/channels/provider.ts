@@ -48,21 +48,49 @@ const customProviderContextWindowSchema = z
 // `defaultModel` / `models` 给 SessionCreate 下拉选模型用
 // `protocol` 标识 SDK 协议族（Anthropic / OpenAI / CLI-bridge）—— 自定义 provider 必填
 const credentialStateSchema = z.object({
-  binding: z.object({ profile: z.string(), provider: z.string(), connectionFingerprint: z.string().regex(/^[a-f0-9]{64}$/) }),
-  revision: z.string().nullable(), configured: z.boolean(), migration: z.enum(['none', 'pending', 'conflict', 'unavailable', 'connection-changed']),
-  scope: z.enum(['shared', 'space']).optional(), sharedRevision: z.string().nullable().optional(),
-  selectionRevision: z.string().nullable().optional(), sharedConfigured: z.boolean().optional(),
-  authentication: z.enum(['oauth', 'cloud', 'external']).optional(), authenticationConfigured: z.boolean().optional(),
+  binding: z.object({
+    profile: z.string(),
+    provider: z.string(),
+    connectionFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  revision: z.string().nullable(),
+  configured: z.boolean(),
+  migration: z.enum(['none', 'pending', 'conflict', 'unavailable', 'connection-changed']),
+  scope: z.enum(['shared', 'space']).optional(),
+  sharedRevision: z.string().nullable().optional(),
+  selectionRevision: z.string().nullable().optional(),
+  sharedConfigured: z.boolean().optional(),
+  authentication: z.enum(['oauth', 'cloud', 'external']).optional(),
+  authenticationConfigured: z.boolean().optional(),
 });
 const providerInfoSchema = z.object({
   id: z.string().min(1).max(64),
   displayName: z.string().min(1).max(128),
   apiKeyEnv: z.string().min(1).max(128),
-  protocol: z.enum(['anthropic', 'openai', 'google', 'bedrock', 'mistral', 'pi-messages', 'gemini-cli', 'codex-cli']),
+  protocol: z.enum([
+    'anthropic',
+    'openai',
+    'google',
+    'bedrock',
+    'mistral',
+    'pi-messages',
+    'gemini-cli',
+    'codex-cli',
+  ]),
   defaultModel: z.string().min(1).max(128),
   models: z.array(z.string().min(1).max(128)).max(64).optional(),
   configured: z.boolean(),
-  configuredSource: z.enum(['none', 'keychain', 'file', 'env', 'runtime', 'both', 'oauth', 'cloud', 'external']),
+  configuredSource: z.enum([
+    'none',
+    'keychain',
+    'file',
+    'env',
+    'runtime',
+    'both',
+    'oauth',
+    'cloud',
+    'external',
+  ]),
   credentialState: credentialStateSchema.optional(),
   isDefault: z.boolean(),
   isCustom: z.boolean(),
@@ -125,8 +153,13 @@ export const providerRemoveKeyChannel = {
 } as const;
 
 export const providerShareKeyChannel = {
-  name: 'provider.shareKey', direction: 'invoke',
-  input: z.object({ providerId: z.string().min(1).max(64), expected: credentialStateSchema, mode: z.enum(['publish', 'adopt']) }),
+  name: 'provider.shareKey',
+  direction: 'invoke',
+  input: z.object({
+    providerId: z.string().min(1).max(64),
+    expected: credentialStateSchema,
+    mode: z.enum(['publish', 'adopt']),
+  }),
   output: z.object({ ok: z.boolean() }),
 } as const;
 
@@ -289,6 +322,7 @@ export const providerModelContextWindowChannel = {
      * so it doesn't mislabel a control the runtime would silently clamp up to the weakest rung.
      */
     canDisableThinking: z.boolean().optional(),
+    multimodalSupport: z.enum(['none', 'image-input', 'full']).optional(),
   }),
 } as const;
 

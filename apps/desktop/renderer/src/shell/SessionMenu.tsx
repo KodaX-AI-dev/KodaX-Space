@@ -159,7 +159,7 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
     }
     const forkPointTurnIdx = latestTurnIndex;
     const historyBoundary = messageForSelectorTurn(userMessages, forkPointTurnIdx)?.historyBoundary;
-    if (session.surface === 'code' && historyBoundary === undefined) {
+    if (session.provider !== 'mock' && historyBoundary === undefined) {
       pushToast(t('session.historyBoundaryUnavailable'), 'warning');
       onClose();
       return;
@@ -249,7 +249,7 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
       userMessages,
       rewindPastTurnIdx,
     );
-    if (session.surface === 'code' && historyBoundary === undefined) {
+    if (session.provider !== 'mock' && historyBoundary === undefined) {
       pushToast(t('session.historyBoundaryUnavailable'), 'warning');
       onClose();
       return;

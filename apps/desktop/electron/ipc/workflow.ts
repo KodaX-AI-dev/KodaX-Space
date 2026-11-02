@@ -49,11 +49,7 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
   registerChannel('workflow.list', (input) =>
     runWithCoderAdmission(options, async () => {
       const localRuns = workflowController.list(input?.sessionId);
-      const session = input?.sessionId ? kodaxHost.get(input.sessionId) : undefined;
-      if (
-        !runtimeHostAdapter.isRuntimeSelected() ||
-        (input?.sessionId !== undefined && session?.surface === 'partner')
-      ) {
+      if (!runtimeHostAdapter.isRuntimeSelected()) {
         return { runs: localRuns };
       }
       try {

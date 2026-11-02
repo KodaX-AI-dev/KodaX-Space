@@ -46,6 +46,19 @@ export interface RuntimeExitSettlementInput {
   readonly onAccepted?: (receipt: ClientExitReceipt) => Promise<void>;
 }
 
+/** Personal cleanup can finish while a peer keeps the Host alive. Installation needs its exit. */
+export function runtimeExitConfirmsHostStopped(settlement: RuntimeExitSettlement): boolean {
+  const receipt = settlement.receipt;
+  return (
+    settlement.status !== 'blocked' &&
+    receipt?.accepted === true &&
+    receipt.host.state === 'succeeded' &&
+    receipt.host.owner?.runtimeId === receipt.runtimeId &&
+    (receipt.recovery === undefined ||
+      (receipt.recovery.state === 'ready' && receipt.recovery.reason === 'host_shutdown_verified'))
+  );
+}
+
 /** Space mode-switch result, produced after SDK verifies exit and Space acquires its fence. */
 export interface RuntimeDaemonRollbackResult {
   readonly accepted: true;

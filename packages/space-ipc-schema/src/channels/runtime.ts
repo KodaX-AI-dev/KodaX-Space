@@ -337,6 +337,24 @@ const runtimeTerminalFactSchema = z.object({
   failureKind: spaceRuntimeRunFailureKindSchema.optional(),
 });
 
+const effectiveTaskConfigSchema = z.object({
+  agentMode: z.enum(['sa', 'ama', 'amaw']),
+  workMode: z.enum(['agent', 'coding', 'script']),
+  toolScope: z.array(z.string().max(512)).max(4096),
+  modelToolScope: z.array(z.string().max(512)).max(4096).optional(),
+  agentProfile: z
+    .object({
+      surface: z.string().optional(),
+      id: z.string().optional(),
+      version: z.string().optional(),
+      name: z.string().optional(),
+      instructions: z.string().max(262144).optional(),
+      verification: z.record(z.unknown()).optional(),
+    })
+    .optional(),
+  verification: z.record(z.unknown()).optional(),
+});
+
 export const spaceRuntimeRunProjectionSchema = z
   .object({
     runId: idSchema,
@@ -346,6 +364,8 @@ export const spaceRuntimeRunProjectionSchema = z
      *  lets the renderer deterministically claim a lost-ACK optimistic user message. */
     originOperationId: idSchema.optional(),
     phase: spaceRuntimeRunPhaseSchema,
+    workMode: z.enum(['agent', 'coding', 'script']).optional(),
+    effectiveConfig: effectiveTaskConfigSchema.optional(),
     contextRecovery: z
       .object({
         waitingSince: timestampSchema,
@@ -462,7 +482,7 @@ function addRunOwnershipIssues(
 export const spaceRuntimeSessionProfileSchema = z
   .object({
     sessionId: idSchema,
-    surface: z.literal('code'),
+    surface: z.enum(['code', 'partner']),
     title: z.string().max(256).optional(),
     projectRoot: z.string().min(1).max(4096).optional(),
     createdAt: timestampSchema,
