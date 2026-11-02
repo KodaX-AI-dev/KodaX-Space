@@ -1273,10 +1273,8 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
-  createKodaXRuntime,
   ensureKodaXRuntime,
-  enableKodaXDaemonOwner,
-  getKodaXRuntimeOwnerState,
+  waitForRuntimeDaemonShutdown,
   KODAX_RUNTIME_SDK_CAPABILITIES,
 } from ${JSON.stringify(runtimeModuleUrl)};
 import { randomUUID } from 'node:crypto';
@@ -1317,6 +1315,7 @@ let daemonRuntime;
 let daemonClientInfo;
 let providerServer;
 const daemonProfile = 'space-pack-lifecycle';
+const workerClientInfo = { name: 'kodax-space-pack-smoke', version: ${JSON.stringify(SPACE_VERSION)}, instanceId: randomUUID(), instanceSecret: randomUUID() + randomUUID() };
 const providerName = 'space-pack-shell-probe';
 const providerModel = 'space-pack-shell-model';
 const providerKeyEnv = 'KODAX_SPACE_PACK_SHELL_PROBE_KEY';
@@ -1562,13 +1561,18 @@ function createDaemonProbeRuntime(clientName) {
     clientInfo: daemonClientInfo,
   });
 }
-async function settleProbeClientExit({ runtime }) {
+async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo }) {
   const requestId = randomUUID();
-  const clientInfo = daemonClientInfo;
+  const identity = runtime.identity;
   let receipt = await runtime.lifecycle.requestExit({ requestId, shutdownHost: true });
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     if (receipt.cleanup.state === 'succeeded' && receipt.host.state === 'succeeded') {
+      if (receipt.runtimeId !== identity.runtimeId || receipt.host.owner?.runtimeId !== identity.runtimeId || receipt.host.replacementRunning === true)
+        throw new Error('Packaged SDK exit owner changed or a replacement is running.');
+      const stopped = await waitForRuntimeDaemonShutdown({ configHome: process.env.KODAX_HOME, profile: identity.profile,
+        owner: receipt.host.owner, timeoutMs: 20_000 });
+      if (stopped.status !== 'succeeded') throw new Error('Packaged Host shutdown unverified: ' + JSON.stringify(stopped));
       await runtime.close();
       return { status: 'clean', receipt };
     }
@@ -1576,43 +1580,12 @@ async function settleProbeClientExit({ runtime }) {
     try {
       receipt = await runtime.lifecycle.readExit(requestId) ?? receipt;
     } catch (error) {
-      const offline = (await readKodaXClientExits({ homeDir, profile: daemonProfile, clientInfo })).find((item) => item.requestId === requestId);
+      const offline = (await readKodaXClientExits({ homeDir, profile: identity.profile, clientInfo })).find((item) => item.requestId === requestId);
       if (!offline) throw error;
       receipt = offline;
     }
   }
   throw new Error('Packaged SDK exit is not verified: ' + JSON.stringify(receipt));
-}
-async function waitForDaemonOwnerRelease(runtimeId) {
-  const deadline = Date.now() + 5_000;
-  while (true) {
-    const ownerState = getKodaXRuntimeOwnerState({ profile: daemonProfile, homeDir });
-    if (ownerState.ownerStatus === 'unowned') return;
-    if (ownerState.ownerStatus === 'unreadable') {
-      throw new Error('packaged lifecycle probe owner state became unreadable');
-    }
-    if (ownerState.owner?.runtimeId !== runtimeId) {
-      throw new Error('a different Runtime acquired the packaged lifecycle probe profile');
-    }
-    if (Date.now() >= deadline) {
-      throw new Error('packaged lifecycle probe daemon did not release its owner state');
-    }
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-}
-async function enableDaemonOwnerWhenReady() {
-  const deadline = Date.now() + 10_000;
-  while (true) {
-    try {
-      return enableKodaXDaemonOwner({ profile: daemonProfile, homeDir });
-    } catch (error) {
-      if (!String(error).includes('owner transition is already in progress')) throw error;
-      if (Date.now() >= deadline) {
-        throw new Error('packaged lifecycle probe owner transition did not drain');
-      }
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-  }
 }
 try {
   await Promise.all(${JSON.stringify(publicFacadeUrls)}.map((moduleUrl) => import(moduleUrl)));
@@ -1704,15 +1677,17 @@ try {
       );
     }
   }
-  runtime = await createKodaXRuntime({
+  runtime = await ensureKodaXRuntime({
     homeDir,
+    profile: 'space-pack-worker',
+    daemonOrphanExitMs: 1_000,
     sessionsDir: path.join(homeDir, 'sessions'),
-    clientInfo: { name: 'kodax-space-pack-smoke', version: ${JSON.stringify(SPACE_VERSION)} },
+    clientInfo: workerClientInfo,
   });
   const created = await runtime.sessions.create({
     title: 'Packaged Runtime compatibility probe',
     projectPath: process.cwd(),
-    surface: 'release-probe',
+    surface: 'space-desktop',
   });
   const loaded = await runtime.sessions.load(created.id);
   const handler = await loadHandler(
@@ -1763,10 +1738,6 @@ try {
     throw new Error('packaged SDK does not advertise sharedSessionSettings v2 before auto-start');
   }
   const providerBaseUrl = sandboxDoctor.ready ? await startProviderServer() : undefined;
-  const initialOwnerPolicy = await enableDaemonOwnerWhenReady();
-  if (initialOwnerPolicy.mode !== 'daemon') {
-    throw new Error('packaged lifecycle probe did not enable daemon ownership');
-  }
   daemonRuntime = await createDaemonProbeRuntime('kodax-space-pack-lifecycle-smoke');
   const cancellation = daemonRuntime.capabilities?.sessionCancellation;
   if (cancellation?.version !== 1 || cancellation.durableFrontier !== true) {
@@ -1881,10 +1852,6 @@ try {
   daemonRuntime = undefined;
   let restartedDaemonShellBackend;
   let restartedRuntimeExitSettlement;
-  const restartedOwnerPolicy = await enableDaemonOwnerWhenReady();
-  if (restartedOwnerPolicy.mode !== 'daemon') {
-    throw new Error('packaged lifecycle probe did not restore daemon ownership');
-  }
   daemonRuntime = await createDaemonProbeRuntime('kodax-space-pack-restart-smoke');
   if (providerBaseUrl) {
     await configureProbeProvider(daemonRuntime, providerBaseUrl);
@@ -1913,10 +1880,6 @@ try {
   }
   restartedRuntimeExitSettlement = restartedExitSettlement.status;
   daemonRuntime = undefined;
-  const finalOwnerPolicy = await enableDaemonOwnerWhenReady();
-  if (finalOwnerPolicy.mode !== 'daemon') {
-    throw new Error('packaged lifecycle probe did not restore daemon ownership after restart');
-  }
   const result = {
     version: runtime.identity.version,
     mode: runtime.identity.mode,
@@ -1942,8 +1905,8 @@ try {
   };
   if (
     result.version !== ${JSON.stringify(KODAX_VERSION)} ||
-    result.mode !== 'embedded' ||
-    result.isolation !== 'inline' ||
+    result.mode !== 'daemon' ||
+    result.isolation !== 'process' ||
     !result.sessionRoundTrip ||
     result.constructedHandlerIsMainThread !== 'false' ||
     result.daemonOrphanExit !== 1 ||
@@ -1962,7 +1925,7 @@ try {
   ) {
     throw new Error('unexpected packaged Worker result: ' + JSON.stringify(result));
   }
-  await runtime.close();
+  await settleProbeClientExit({ runtime, clientInfo: workerClientInfo });
   runtime = undefined;
   await closeProviderServer();
   if (ownsHomeDir) {
@@ -2026,18 +1989,14 @@ try {
     }
     daemonRuntime = undefined;
   }
-  await runtime?.close().catch(() => undefined);
-  await closeProviderServer().catch(() => undefined);
-  if (ownsHomeDir && process.platform !== 'win32') {
-    await rm(homeDir, {
-      recursive: true,
-      force: true,
-      maxRetries: 5,
-      retryDelay: 100,
-    }).catch(() => undefined);
-  } else if (ownsHomeDir) {
-    console.error('KODAX_PACK_SMOKE_HOME_RETAINED=' + homeDir);
+  if (runtime) {
+    try { await settleProbeClientExit({ runtime, clientInfo: workerClientInfo }); }
+    catch (cleanupError) { console.error('KODAX_PACK_SMOKE_WORKER_CLEANUP_FAILED=' + String(cleanupError)); }
+    try { await runtime.close(); }
+    catch (closeError) { console.error('KODAX_PACK_SMOKE_WORKER_CLOSE_FAILED=' + String(closeError)); }
   }
+  await closeProviderServer().catch(() => undefined);
+  if (ownsHomeDir) console.error('KODAX_PACK_SMOKE_HOME_RETAINED=' + homeDir);
   if (daemonBootstrapTail) {
     console.error('KODAX_DAEMON_BOOTSTRAP_TAIL\\n' + daemonBootstrapTail);
   }
