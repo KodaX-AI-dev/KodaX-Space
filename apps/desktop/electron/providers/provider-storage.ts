@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { setTimeout as delay } from 'node:timers/promises';
 import type { KodaXCustomProviderConfig } from '@kodax-ai/kodax/llm';
 import { getKodaxRuntimeDir, getSpaceDataDir } from '../kodax/data-paths.js';
 import {
@@ -16,18 +17,34 @@ import { legacyDiscovery } from './legacy-discovery.js';
 const sdk = () => import('@kodax-ai/kodax/llm');
 const authPath = () => path.join(getKodaxRuntimeDir(), 'auth.json');
 
+async function readProviderConfiguration(): Promise<unknown> {
+  const { withCoreConfigWriteLock, CoreConfigWriteConflictError } = await import('@kodax-ai/kodax/repl');
+  const file = path.join(getKodaxRuntimeDir(), 'config.json');
+  const backoff = [10, 25, 50, 100];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      // Some SDK writers truncate under this lock; async reads can observe half-written JSON.
+      return withCoreConfigWriteLock(file, () => JSON.parse(readFileSync(file, 'utf8')) as unknown);
+    } catch (error) {
+      if (error instanceof CoreConfigWriteConflictError && attempt < backoff.length) {
+        await delay(backoff[attempt]);
+        continue;
+      }
+      const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+      if (code === 'ENOENT') return undefined;
+      // JSON parser messages can quote config values; report only the failure category.
+      const reason = error instanceof CoreConfigWriteConflictError ? 'configuration busy'
+        : error instanceof SyntaxError ? 'invalid JSON'
+        : typeof code === 'string' && /^[A-Z_]{2,32}$/.test(code) ? code : 'read failed';
+      throw new Error(`Cannot read provider configuration (${reason}).`);
+    }
+  }
+}
+
 export async function configuredConnection(
   provider: string,
 ): Promise<KodaXCustomProviderConfig | undefined> {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(
-      await readFile(path.join(getKodaxRuntimeDir(), 'config.json'), 'utf8'),
-    ) as unknown;
-  } catch (error) {
-    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'ENOENT')
-      throw new Error('Cannot read provider configuration.');
-  }
+  const raw = await readProviderConfiguration();
   if (raw !== undefined && (!raw || typeof raw !== 'object' || Array.isArray(raw)))
     throw new Error('Invalid provider configuration.');
   const configured =

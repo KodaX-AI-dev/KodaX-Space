@@ -82,6 +82,8 @@ async function prepareUpgradeProfile(root: string, connection: Awaited<ReturnTyp
 }
 
 test('an actual desktop restart keeps the Space env source and uses the other account only after explicit adoption', async () => {
+  // Two real launches and their independently bounded shutdowns share this budget.
+  test.setTimeout(60_000);
   const fixture = await localUpgradeConnection(), backup = await mkdtemp(path.join(os.tmpdir(), 'space-provider-upgrade-backup-'));
   const { KODAX_PROVIDER_SNAPSHOTS } = await import('@kodax-ai/kodax/llm');
   const cleanEnv = Object.fromEntries(Object.values(KODAX_PROVIDER_SNAPSHOTS).map(value => [value.apiKeyEnv, '']));

@@ -87,6 +87,16 @@ test('real Main storage shares CLI keys, survives restart and fences a revoked O
     assert.equal((await storage.describeProviderCredential('native-cloud')).authentication, 'cloud');
     await writeFile(configPath, JSON.stringify({ customProviders: [cloud, cloud] }));
     await assert.rejects(storage.configuredConnection('native-cloud'), /Duplicate/);
+    await writeFile(configPath, '{"apiKey":"private-config-fixture",');
+    await assert.rejects(storage.configuredConnection('native-cloud'), (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.message, 'Cannot read provider configuration (invalid JSON).');
+      assert.doesNotMatch(error.message, /private-config-fixture/);
+      return true;
+    });
+    await rm(configPath);
+    await mkdir(configPath);
+    await assert.rejects(storage.configuredConnection('native-cloud'), /configuration \(EISDIR\)/);
   } finally {
     if (originalEnv === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = originalEnv;
     await rm(root, { recursive: true, force: true });
