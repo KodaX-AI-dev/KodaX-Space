@@ -22,7 +22,7 @@ test('Escape dismisses composer selectors without changing their selection', asy
   }
 });
 
-test('unknown reasoning controls preserve selection and show last sent effort separately', async () => {
+test('unknown reasoning controls preserve selection before and after Mock session creation', async () => {
   const testId = `reasoning-picker-${Date.now()}`;
   const space = await launchSpace(testId, { env: { OPENAI_API_KEY: 'e2e-placeholder' } });
   const projectDir = path.join(space.testDataDir, 'reasoning-project');
@@ -54,36 +54,14 @@ test('unknown reasoning controls preserve selection and show last sent effort se
     await textarea.fill('reasoning observation fixture');
     await textarea.press('Enter');
     await expect(selector).toHaveAttribute('aria-label', 'Change provider, model, and effort');
-    const session = await space.page.evaluate(async () => {
-      const result = await window.kodaxSpace.invoke('session.list', { surface: 'code' });
-      if (!result.ok || !result.data.sessions[0]) throw new Error('Test session unavailable');
-      return result.data.sessions[0];
-    });
-    await space.app.evaluate(({ BrowserWindow }, current) => {
-      BrowserWindow.getAllWindows()[0]?.webContents.send('session.event', {
-        kind: 'reasoning_resolved',
-        sessionId: current.sessionId,
-        resolution: {
-          provider: current.provider,
-          model: current.model ?? 'gpt-5.4',
-          requestedEffort: 'none',
-          sentEffort: 'minimal',
-          verified: false,
-          fallbacks: [{ effort: 'none', reason: 'cached-rejection' }],
-        },
-      });
-    }, session);
-    await space.page.keyboard.press('Control+i');
+    // Mock execution has no real Run that synchronizes pending SDK settings.
+    // Canonical wire observations have their own browser contract test.
+    await selector.click();
+    await space.page.getByRole('button', { name: 'Off', exact: true }).click();
     await expect(selector).toContainText('Off');
-    const observation = space.page.getByTestId('reasoning-resolution');
-    await expect(observation).toContainText(
-      'Last request sent: Minimal. Effective strength unconfirmed.',
-    );
-    await expect(observation).toContainText('Skipped a previously rejected setting');
     await space.page.screenshot({ path: test.info().outputPath('reasoning-picker.png') });
     await space.page.getByRole('button', { name: 'Max', exact: true }).click();
     await expect(selector).toContainText('Max');
-    await expect(observation).toHaveCount(0);
   } finally {
     await space.close();
   }

@@ -66,15 +66,20 @@ export async function providerStorageBinding(provider: string) {
   };
 }
 
-let credentials: ReturnType<typeof createSpaceFileCredentials> | undefined;
-async function storage() {
-  if (credentials) return credentials;
+let storageInitialization: Promise<ReturnType<typeof createSpaceFileCredentials>> | undefined;
+function storage(): Promise<ReturnType<typeof createSpaceFileCredentials>> {
+  return (storageInitialization ??= initializeStorage().catch((error: unknown) => {
+    storageInitialization = undefined;
+    throw error;
+  }));
+}
+async function initializeStorage() {
   const file = (await sdk()).createFileProviderCredentialStore(authPath());
   await file.initialize();
   const discovery = process.env.KODAX_TEST_ONBOARDING
     ? { enabled: true, scopeId: undefined }
     : await legacyDiscovery(file, getSpaceDataDir());
-  credentials = createSpaceFileCredentials({
+  return createSpaceFileCredentials({
     store: file,
     scopeId: discovery.scopeId,
     resolve: providerStorageBinding,
@@ -97,7 +102,6 @@ async function storage() {
       remove: legacy.deleteKey,
     },
   });
-  return credentials;
 }
 
 async function fencePreviousCredentials(provider: string): Promise<void> {

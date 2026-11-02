@@ -18,11 +18,7 @@ test('S4: Shift+Tab cycles through all four permission profiles', async () => {
   const projectDir = path.join(os.tmpdir(), `kodax-test-${testId}-project`);
   await fs.mkdir(projectDir, { recursive: true });
 
-  // This spec verifies renderer permission controls, not the shared daemon
-  // lifecycle. Keep its isolated profile on the deterministic embedded host.
-  const space = await launchSpace(testId, {
-    env: { KODAX_SPACE_RUNTIME_HOST: 'legacy' },
-  });
+  const space = await launchSpace(testId);
   try {
     // 先把 project 注入让 ModeSelector / textarea 都活 (fixture 共享 helper)
     await space.seedProject(projectDir);
@@ -35,12 +31,13 @@ test('S4: Shift+Tab cycles through all four permission profiles', async () => {
       timeout: 10_000,
     });
     const modeButton = space.page.locator('button[title^="Mode:"]');
-    const agentModeStatus = space.page.getByText('AMA', { exact: true });
+    const workMode = space.page.getByTestId('work-mode-selector');
     await expect(modeButton).not.toContainText(/\(next\)|（下次）/);
-    await expect(agentModeStatus).toBeVisible();
+    await expect(workMode).toBeVisible();
+    const initialWorkMode = await workMode.inputValue();
     await expect(space.page.locator('button[title^="Agent:"]')).toHaveCount(0);
     await space.page.keyboard.press('Alt+M');
-    await expect(agentModeStatus).toBeVisible();
+    await expect(workMode).toHaveValue(initialWorkMode);
     await expect(space.page.getByRole('button', { name: /^SA$/ })).toHaveCount(0);
 
     // 抓初始 label 文本
@@ -78,6 +75,7 @@ test('S4: Shift+Tab cycles through all four permission profiles', async () => {
         { timeout: 5_000 },
       )
       .toBe(initialText);
+    await expect(workMode).toHaveValue(initialWorkMode);
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

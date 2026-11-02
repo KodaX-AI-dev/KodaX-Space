@@ -6,6 +6,54 @@ import path from 'node:path';
 import { createFileProviderCredentialStore, createCustomProvider } from '@kodax-ai/kodax/llm';
 import { createSpaceFileCredentials } from './file-credentials.js';
 
+test('a late initial environment read converges after another read pins the same origin', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-env-pin-convergence-'));
+  let release!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const delayed = new Promise<void>(resolve => { entered = resolve; });
+  try {
+    const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
+    await store.setApiKey(binding, 'different-cli-account', null);
+    let reads = 0;
+    const api = createSpaceFileCredentials({ store, resolve: async () => binding,
+      hasEnvironment: async () => { if (++reads === 1) { entered(); await gate; } return true; },
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } });
+    const first = api.read('a', ['a']);
+    await delayed;
+    assert.equal(await api.read('a', ['a']), undefined);
+    release();
+    assert.equal(await first, undefined);
+    assert.equal((await api.describe('a', ['a'])).scope, 'space');
+    assert.equal((await store.readApiKey(binding))?.key, 'different-cli-account');
+  } finally { release(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('an initial environment read cannot adopt a different source after a concurrent selection', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-env-pin-source-conflict-'));
+  let release!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const delayed = new Promise<void>(resolve => { entered = resolve; });
+  try {
+    const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
+    await store.setApiKey(binding, 'different-cli-account', null);
+    let reads = 0;
+    const api = createSpaceFileCredentials({ store, resolve: async () => binding,
+      hasEnvironment: async () => { if (++reads === 1) { entered(); await gate; } return true; },
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } });
+    const first = api.read('a', ['a']);
+    await delayed;
+    await api.set('a', 'new-space-key', await api.describe('a', ['a']), ['a']);
+    await api.share('a', await api.describe('a', ['a']), 'adopt', ['a']);
+    release();
+    await assert.rejects(first, /conflict/i);
+    assert.equal(await api.read('a', ['a']), 'different-cli-account', 'subsequent reads honor the explicit choice');
+  } finally { release(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('first shared use is pinned before a previously absent legacy backend recovers', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-upgrade-shared-pin-'));
   try {

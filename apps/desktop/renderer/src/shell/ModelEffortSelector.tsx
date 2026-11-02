@@ -24,6 +24,7 @@
 // Ctrl+I 切换打开；底部 effort 块保持以前用法。
 
 import { useEffect, useRef, useState } from 'react';
+import { useProductSessionTranscript } from '../store/productSessionView.js';
 import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 import { BrainCircuit, ChevronDown } from 'lucide-react';
 import type { ProviderInfo, SessionMeta, SessionEvent } from '@kodax-space/space-ipc-schema';
@@ -72,6 +73,7 @@ export function ModelEffortSelector(): JSX.Element {
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
   const sessions = useAppStore((s) => s.sessions);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const productView = useProductSessionTranscript(currentSessionId)?.view;
   const events = useAppStore((s) =>
     currentSessionId ? (s.eventsBySession[currentSessionId] ?? EMPTY_EVENTS) : EMPTY_EVENTS,
   );
@@ -149,7 +151,17 @@ export function ModelEffortSelector(): JSX.Element {
     kodaxDefaults?.reasoningMode ??
     'auto';
   const activeEffort = sdkEffortToReasoningMode(configuredEffort) ?? 'auto';
-  const resolution = latestReasoningResolution(events, activeProviderId, activeModel, activeEffort);
+  let resolution = latestReasoningResolution(events, activeProviderId, activeModel, activeEffort);
+  if (productView) {
+    const reported = productView.activity?.reasoning;
+    resolution =
+      reported &&
+      reported.provider.toLowerCase() === activeProviderId?.toLowerCase() &&
+      reported.model === activeModel &&
+      sdkEffortToReasoningMode(reported.requestedEffort) === activeEffort
+        ? reported
+        : undefined;
+  }
   const sentMode = resolution?.sentEffort ? sdkEffortToReasoningMode(resolution.sentEffort) : null;
   const resolutionLabel = resolution
     ? t('modelPicker.reasoning.sent', {

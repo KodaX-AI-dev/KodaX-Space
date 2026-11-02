@@ -2046,6 +2046,11 @@ try {
         `${(result.stderr || result.stdout || 'no output').slice(-4_000)}`,
     );
   }
+  const proof = JSON.parse(result.stdout.slice(result.stdout.lastIndexOf(marker) + marker.length));
+  await fs.writeFile(
+    path.join(outDir, 'kodax-runtime-smoke.json'),
+    `${JSON.stringify(proof, null, 2)}\n`,
+  );
   ok(`KodaX ${KODAX_VERSION} Runtime and constructed-handler Workers execute from packaged asar`);
 }
 

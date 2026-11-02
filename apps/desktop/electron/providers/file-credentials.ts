@@ -131,16 +131,25 @@ async function migrateLegacy(context: FileCredentialDependencies, binding: Provi
   if (latest.space.revision !== current.space.revision || latest.selection.revision !== current.selection.revision || latest.selected.key !== undefined) key = latest.selected.key;
   return key;
 }
-async function read(context: FileCredentialDependencies, provider: string, accounts: readonly string[], proof?: string): Promise<string | undefined> {
+async function read(context: FileCredentialDependencies, provider: string, accounts: readonly string[], proof?: string, retryConflict = true, expectedScope?: Snapshot['scope']): Promise<string | undefined> {
   const binding = await context.resolve(provider);
   if (proof !== undefined && binding.connectionFingerprint !== proof) throw new Error('Provider credential connection does not match.');
   const current = await snapshot(context, binding, accounts);
+  if (expectedScope !== undefined && current.scope !== expectedScope) throw new Error('Provider credential conflict: source changed during initialization. Refresh before retrying.');
   let key = current.selected.key;
   if (current.migration === 'connection-changed') throw new Error('Provider connection changed. The original credential is retained; configure this connection explicitly.');
   if (current.migration === 'unavailable') throw new Error('Legacy credential migration is unavailable. Its original value is retained; retry after restoring access.');
-  if (current.environment) key = await pinEnvironment(context, binding, current);
-  else if (current.scope === 'shared' && current.shared.key !== undefined && current.selection.key === undefined) key = await pinShared(context, binding, current);
-  else if (current.scope === 'space' && current.space.revision === null) key = await migrateLegacy(context, binding, current, accounts);
+  try {
+    if (current.environment) key = await pinEnvironment(context, binding, current);
+    else if (current.scope === 'shared' && current.shared.key !== undefined && current.selection.key === undefined) key = await pinShared(context, binding, current);
+    else if (current.scope === 'space' && current.space.revision === null) key = await migrateLegacy(context, binding, current, accounts);
+  } catch (error: unknown) {
+    const { CredentialUpdateConflictError } = await import('@kodax-ai/kodax/llm');
+    if (!retryConflict || !(error instanceof CredentialUpdateConflictError)) throw error;
+    // Another startup read may have fixed this origin after our snapshot. Read
+    // authoritative state once; retain the connection proof and every tombstone.
+    return read(context, provider, accounts, binding.connectionFingerprint, false, current.scope);
+  }
   if (!sameBinding(binding, await context.resolve(provider))) throw new Error('Provider connection changed during credential migration.');
   return key;
 }

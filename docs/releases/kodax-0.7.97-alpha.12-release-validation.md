@@ -37,3 +37,13 @@
 完整问题、需求和验收要求仍在 [SDK 交接说明](kodax-alpha12-partner-sdk-handoff.md)。该正式包没有关闭这两组能力缺口，不能标记所有专家和 Quick Ask 已完成，也不能将本地验收包当作无剩余问题的产品发布。
 
 历史首次读取性能 Issue 371、Linux/Kylin/macOS/ARM 真机、真实 OAuth/云账户及外部服务权益仍不由本机离线测试代替。
+
+## Electron 回归中补齐的 Space 遗漏
+
+首次完整 Electron 回归发现并保留了两类证据，原运行已暂停，修复后重新执行：
+
+- 首次会话创建会触发多路凭证读取，自动来源固定拿到相同旧修订后竞争写入；存储初始化也可能产生多个实例。现在 Main 共用一次初始化，初始化失败可重试；只对 SDK 明确的 `CredentialUpdateConflictError` 自动重读一次，并携带原连接指纹及原来源 scope。显式 set/remove/share 的用户可见修订校验不变，不缓存或复用旧 Key，不换到另一个来源，不重放生成请求。新增并发 12 读、迟到读取收敛、并发显式改来源时拒绝跟随三个回归，先 RED 再 GREEN；相关凭证用例 26 项通过，CLI 不同账号和 env 消失不回退均受保护。
+- 模型选择器原来只读旧 `reasoning_resolved` 事件，现在优先读 SDK 当前 view 的 `activity.reasoning`，仍按所选 provider/model/intent 过滤；缺事实保持未知，不以旧事件补造 canonical 结果。浏览器 RED/GREEN 验证实际发送值、fallback 原因、`verified:false`、异 Provider 及缺失事实，并保持用户选择值。
+- 旧 E2E 夹具补齐 `provider.setKey.expected`；权限测试检查新的 work-mode 控件，四种权限轮换不改变工作模式。Mock 界面操作与 SDK wire 事实分在合适的用例边界，不再向首个 BrowserWindow 注入不属于它的假运行事件。
+
+最终源码的完整工作区测试、类型检查、lint、Renderer/Main 与 172 项 Electron 用例会重新核对。之前基线数字保留为各自检查点，最终结果在此续记。当前已生成的首轮安装包仍需重打，不能当成这些后续源码修复的交付物。

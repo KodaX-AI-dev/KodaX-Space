@@ -328,10 +328,17 @@ export async function launchRealSdkSpace(
       });
       if (!added.ok) throw new Error(added.error.message);
       const id = added.data.providerId;
+      const listed = await window.kodaxSpace!.invoke('provider.list', undefined);
+      if (!listed.ok) throw new Error(listed.error.message);
+      const credentialState = listed.data.providers.find(
+        (provider) => provider.id === id,
+      )?.credentialState;
+      if (!credentialState) throw new Error('Fixture provider credential revision is unavailable');
       for (const result of [
         await window.kodaxSpace!.invoke('provider.setKey', {
           providerId: id,
           apiKey: 'space-e2e-fixture',
+          expected: credentialState,
         }),
         await window.kodaxSpace!.invoke('provider.setDefault', { providerId: id }),
         await window.kodaxSpace!.invoke('settings.setRuntimeDefaults', {
