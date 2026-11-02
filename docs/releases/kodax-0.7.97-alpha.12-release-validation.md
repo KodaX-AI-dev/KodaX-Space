@@ -1,73 +1,75 @@
-# Registry alpha.12 升级与验收
+# Registry alpha.12 升级验收
 
-2026-11-02。按用户发布通知安装正式 npm 包，延续 [源码准备](kodax-0.7.97-alpha.12-preparation.md)。本记录区分 SDK 已发布、Space 依赖已安装、构建产物及尚未闭环的产品能力。
+2026-11-02。正式 `@kodax-ai/kodax@0.7.97-alpha.12` 已安装，Space 适配及本次可独立完成的修复已提交，Windows Setup/Portable 已重打并验证。仍需 SDK 补齐的产品接口列在下方，当前候选包不能据此宣称所有问题已闭环。
 
-## 安装与字节
+工作区：`C:/Users/ADMIN/.codex/worktrees/sdk-alpha12-preparation/KodaX-Space`，分支 `codex/sdk-alpha12-preparation`。Space 版本保持 `0.1.47-alpha.3`；没有发布 Space Release，也没有改写原 Space 主工作区的 fixture/research 文件。
 
-- Root/Desktop 精确依赖及 package-lock 均为 `0.7.97-alpha.12`，来自 `https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.12.tgz`；无 SDK dev-link、file tarball 或嵌套旧版本。
-- Registry integrity：`sha512-1LlTrz4SxQh77EMoj9E7ZE/jKWIYSBjZJv8+4i8BAfPjcD3R1wMSgtAL0SFKMYZo3uRBa07q4SQ47J/9dfPNug==`，shasum `11862309611d2557c50b5a955b1985e8eb9b3e5a`。该字节与此前本地候选不同，已重新验证完整安装目录，而非只读版本号。
-- 本次 lockfile 仅 SDK 包版本由 alpha.11 升到 alpha.12，并新增其所需的 96 条依赖记录；已有其他包版本未漂移。
-- 本线程未修改 SDK 源码工作区；不以其 HEAD 或旧 CI 结果代替本次正式字节验收。
+## 正式安装与实际 Host
 
-## 实际 Host
+- Root/Desktop 精确依赖及 lockfile 均为 alpha.12，完整安装目录与 Registry tarball 字节门禁两次通过；无 dev-link、本地候选 tarball 或嵌套旧 SDK。lockfile 仅原有 SDK 版本变化并新增其所需的 96 条依赖，其他已有包版本未漂移。
+- Registry：`https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.12.tgz`；shasum `11862309611d2557c50b5a955b1985e8eb9b3e5a`；integrity `sha512-1LlTrz4SxQh77EMoj9E7ZE/jKWIYSBjZJv8+4i8BAfPjcD3R1wMSgtAL0SFKMYZo3uRBa07q4SQ47J/9dfPNug==`。
+- 真实隔离 Host：version alpha.12、mode daemon、profile coder、build fingerprint `43cedce678867a869a012d8a6dd7fad38a957b4e4427ece3631d2303a0ac66ef`。实际确认 productExecutionProfile:2、providerProbeAuthorization:1、providerCredentialConnectionBinding:1、actorCheckpointRecovery:1 等能力，完整 capabilities 在验收 JSON。
+- 真实 Host 六项通过：Space builtin Skill rehydrate、项目 `.agents/skills` 发现、Partner Agent 准入、Host lease 执行 Space 交付工具、shell scope 和 persona 保留。实际交付文件按字节核验，physicalRequestCount=0；测试独占 owner 经 SDK 验证退出。
+- 本线程未修改或构建 SDK 源码。构建期间 SDK 工作区出现其他线程的后续未发布 promotion/execution-binding 改动，未混入安装包，也不用它们关闭已发布 alpha.12 的接口缺口。
 
-隔离 profile、未使用个人会话或在线模型。实测 Host 版本 `0.7.97-alpha.12`，mode `daemon`、profile `coder`，build fingerprint `43cedce678867a869a012d8a6dd7fad38a957b4e4427ece3631d2303a0ac66ef`。已确认 `productExecutionProfile:2`、`providerProbeAuthorization:1`、`providerCredentialConnectionBinding:1`、`actorCheckpointRecovery:1` 等能力，完整 capabilities 保存在验收 JSON。
+## Space 适配范围
 
-真实共享 Host 六项验收通过：Space builtin Skill 发现/rehydrate、项目 `.agents/skills` 发现、Partner Agent 准入、Space 交付工具 lease 执行、实际 shell scope 和 persona 保留。实际交付文件逐字节核验，`physicalRequestCount=0`；独占测试 Host owner 核对后关闭，并由 SDK 证明已退出。
+完整契约矩阵见 [源码准备记录](kodax-0.7.97-alpha.12-preparation.md)，其中候选字节/旧版本声明属于历史检查点，本次正式安装以本记录为准。
 
-## 验证进度
+| 范围 | 当前处理与验证边界 |
+| --- | --- |
+| 共享 Host、Session、Actor | 真实 Coder/Partner 统一使用 Product/Host；不新增 Runtime 或 Session writer。恢复、命令、历史、Fork/Rewind、Workflow 和工具 lease 继续走 Host。 |
+| 工作模式 | Coder 可在首次输入前选择 Agent/Coding/实验性 Script，安全空闲时通过 Host CAS 修改；Partner 使用 Agent，并保留正常 shell/write/子 Agent 能力。模式与模型、权限独立，旧 Host/冲突不伪造本地状态。SA 隐藏和 AMA 迁移继续保留。 |
+| 流式事实、模型、图片 | 消费 Host estimatedTokenCount 和 canonical reasoning 事实；缺事实保持未知。模型级 text-only 优先；修复自定义 Provider 图片检查使用 built-in-only getter 的遗漏，改用统一 resolver。 |
+| 历史与报告 | 保留 canonical/native 字段、taskResult 多报告/未知状态，按具体工具 ID 分页读取 original。中性通知、长历史 React 185 的同帧通知合并，以及双向浏览后同一个底部按钮回最新的修复继续保留。 |
+| 交互与凭据 | 普通问题无客户端默认超时，skipped/non_interactive 保持区别；审批独立。文件凭据来源固定、CAS、墓碑、显式共享/采用、OAuth context 和恢复不放宽。真实云账户/订阅权益未由离线测试替代。 |
+| 配置与生命周期 | 读取 Host application 及其生效时机；Host ready 与历史加载完成分开。手动检查更新、分别确认下载/安装，稳定版过滤预发布；退出保护其他客户端与活跃任务。 |
+| 平台与沙箱 | 保留 SDK 自动回退和正常权限策略，不增加 Node 安装 gate。Linux 自绘窗口按钮继续使用原生窗口控制。Windows 成品已实测；其他平台真机仍待验证。 |
 
-- 正式 Registry 完整字节门禁：通过。
-- 正式依赖版本回归：先 RED，再更新版本要求，2 项通过。
-- 类型检查与 Renderer/Main 构建：通过。
-- 完整工作区：Desktop 4064 项，4051 通过、13 跳过、0 失败；IPC schema 371 项全部通过。
-- `npm run test:release`：137 项，130 通过、7 跳过、0 失败；未放宽版本/资源门禁。
-- Windows Setup/Portable 已生成（约 205 MiB）。首次打包在旧验收探针处 RED：移除的 `enableKodaXDaemonOwner` 导出；修正后真实 ASAR 完整 smoke 已通过。
-- 打包探针改用公开 `ensureKodaXRuntime` 和合法 product surface，不手改 owner policy，不构造 embedded Runtime。独占临时 Host 的 lifecycle 回执与 owner 身份核对后，再用 SDK `waitForRuntimeDaemonShutdown` 证明真实退出；清理未核验时保留目录。
-- 探针相关 8 项契约通过，lint 复查通过。完整 Electron/E2E、最终打包流程及启动/退出验收正在执行，最终结果补充。
-- 日志与 Host 能力证据位于 `artifacts/diagnostics/alpha12-release/`；保留原候选目录，不覆盖旧证据。
+## 此轮补齐的遗漏
 
-## 正式包仍缺的 SDK 接口
+1. 首次凭据多路读取产生来源固定 CAS 竞争。Main 共用初始化；仅 SDK CredentialUpdateConflictError 可在原连接指纹和原 scope 下自动重读一次。显式编辑、删除、共享的修订校验不变，不缓存旧 Key、不换号、不重放请求。
+2. 模型选择器读取 canonical view 的 activity.reasoning；真实 Session 缺整个 view 或 reasoning 时保持未知，旧事件兼容只限明确 Mock。浏览器 RED/GREEN 覆盖缺失事实、异 Provider、fallback、verified:false 和用户选择值保留。
+3. Provider 配置异步读取可能观察到 SDK 持锁截断写的中间 JSON。跨进程受控回归先 RED；现在使用公开 SDK 同一锁同步读取，仅锁忙短暂重试四次，坏 JSON/IO 仍拒绝且不输出原文。原 Electron 两次失败没有保留底层错误，受控复现不等于逐次溯源。
+4. 自定义 Provider 发图片前错误调用 getProvider。真实 SDK 注册连接回归先 RED；改 resolveProvider 后，自定义视觉模型、模型级 none、未知 Provider 和 Mock 的专项通过。最终包实际图片发送、缩略图、原图和 reload 验证通过，错误时草稿保留。
+5. 打包探针迁移到 ensureKodaXRuntime、合法 product surface 和 SDK 的精确 owner 退出证据。退出夹具改从 auth.json 的保留客户端绑定读取密钥；topology data_changed 仅对指定 Session 做有界只读重读；旧历史 fixture 的 seed 移到 Host 启动前。未通过放宽运行断言或增加 writer 消除失败。
 
-本次按已安装的 `docs/SDK_MIGRATION.md`、`docs/CLIENT_CONTRACT.md`、`docs/SPACE_SDK_SEAMS.md`、`public_docs/sdk/embedder-guide.md` 以及公开 `.d.ts` 核对：
+## 验证结果
 
-1. `RuntimeExecutionProfileSource` 只有 persona、验证和工具策略；没有可信专家默认 Skill 声明，以及 after-turn 真正消费时读取最新已提交专家/连接器绑定的公开接缝。默认方法和排队/恢复业务绑定未等价迁移，不能拼接 slash、修改原问题或借私有 Run options 假装完成。
-2. Product/Runtime Session 服务没有 promotion/tag 更新命令，tag 只在 create 时声明；对已有 ID create 会 conflict。Quick Ask 转正式会话仍事实拒绝，UI 保留回答，只有 Host 明确确认成功才切换；不执行 saveSession 直写。
+| 检查点 | 实际结果 |
+| --- | --- |
+| 正式版本/完整 Registry 字节 | 通过；依赖版本要求先 RED 后 GREEN，2 项通过。 |
+| 工作区完整回归（配置 reader 修复后） | Desktop 4069 项：4056 通过、13 跳过、0 失败；IPC schema 371 全通过。830.7s。 |
+| 随后图片小修复 | 两项真实 SDK RED/GREEN，最新 typecheck、lint 和 Main 构建通过；没有冒称整库又跑一遍。Renderer 无后续生产改动，已有最终构建通过。 |
+| release 与探针契约 | test:release 137 项：130 通过、7 跳过；打包探针相关 8 项通过。 |
+| 凭据/配置专项 | 21 项通过；两文件合计行覆盖率 87.57%、分支 81.52%、函数 90.00%。file-credentials 行 91.77%，provider-storage 行 84.12%。此前 27 项较宽集合的旧覆盖数字不合并。 |
+| 源码定向 Electron | 8 项通过：工作面四项、凭据 IPC/重启、Coder builtin Skill、问题 Skip。 |
+| 扩展包内回归 | 99 项：93 通过、3 跳过、3 失败、0 flaky，1631.8s。三个失败分别为 snapshot topology 旧夹具、Host 后 seed 旧夹具、自定义 Provider 图片 getter，证据保留。不能写成一次全绿。 |
+| 最新 Windows 完整打包流程 | build:pack -- --win --x64 返回 0；Runtime/资源/Worker/SQLite/Artifact 完整 smoke 通过，最终 Product 生命周期 6 项全通过。 |
+| 最新包失败项复验 | 4 项全通过、0 跳过/失败/重试，68.5s：流式估算、用户图片及两项空记录/侧栏历史。对应前轮三个失败均已复验。 |
+| 代码复核 | 各生产/夹具增量分别经独立 Standards/Spec 双轴复核。测试职责分离、去掉固定持锁窗口两项 finding 已修复，最终无未解决发现。 |
 
-完整问题、需求和验收要求仍在 [SDK 交接说明](kodax-alpha12-partner-sdk-handoff.md)。该正式包没有关闭这两组能力缺口，不能标记所有专家和 Quick Ask 已完成，也不能将本地验收包当作无剩余问题的产品发布。
+172 项 Electron 用例分段执行，早段源码回归、扩展成品及定向复验分别留证；没有宣称最新成品一次执行整套 172 项全绿。Node 与成品 Electron 并行期间使用独立 SQLite 二进制，前后 hash/inode 不变；其余切换 ABI 的构建/源码阶段串行进行。
 
-历史首次读取性能 Issue 371、Linux/Kylin/macOS/ARM 真机、真实 OAuth/云账户及外部服务权益仍不由本机离线测试代替。
+最新 Runtime smoke：alpha.12 daemon/process，constructed handler 不在主线程，Session round-trip、history boundaries/cursor 有效，integration health=healthy；首次和重启后 exit settlement 均 clean。Windows 沙箱实际执行，backend=windows-restricted-user，保留 SDK 的 normal-permission-policy 回退策略。原始 JSON：`out/kodax-runtime-smoke.json`。
 
-## Electron 回归中补齐的 Space 遗漏
+最新冷启动：Renderer 7370ms，Runtime 29666ms，含确定性的 20000ms Host test hold，122 条历史 child 记录保留。不能把它解释为历史首次读取完成或 Issue 371 关闭。
 
-首次完整 Electron 回归发现并保留了两类证据，原运行已暂停，修复后重新执行：
+## 最终产物
 
-- 首次会话创建会触发多路凭证读取，自动来源固定拿到相同旧修订后竞争写入；存储初始化也可能产生多个实例。现在 Main 共用一次初始化，初始化失败可重试；只对 SDK 明确的 `CredentialUpdateConflictError` 自动重读一次，并携带原连接指纹及原来源 scope。显式 set/remove/share 的用户可见修订校验不变，不缓存或复用旧 Key，不换到另一个来源，不重放生成请求。新增并发 12 读、迟到读取收敛、并发显式改来源时拒绝跟随三个回归，先 RED 再 GREEN；相关凭证用例 26 项通过，CLI 不同账号和 env 消失不回退均受保护。
-- 模型选择器原来只读旧 `reasoning_resolved` 事件，现在优先读 SDK 当前 view 的 `activity.reasoning`，仍按所选 provider/model/intent 过滤；缺事实保持未知，不以旧事件补造 canonical 结果。浏览器 RED/GREEN 验证实际发送值、fallback 原因、`verified:false`、异 Provider 及缺失事实，并保持用户选择值。
-- 旧 E2E 夹具补齐 `provider.setKey.expected`；权限测试检查新的 work-mode 控件，四种权限轮换不改变工作模式。Mock 界面操作与 SDK wire 事实分在合适的用例边界，不再向首个 BrowserWindow 注入不属于它的假运行事件。
+均在当前工作区 `out/`；Main 已与 ASAR 逐字节比较，SDK client/runtime/llm 入口与正式安装目录逐字节相同。
 
-最终源码的完整工作区测试、类型检查、lint、Renderer/Main 与 172 项 Electron 用例会重新核对。之前基线数字保留为各自检查点，最终结果在此续记。当前已生成的首轮安装包仍需重打，不能当成这些后续源码修复的交付物。
+- Setup：`KodaX-Space-Setup-0.1.47-alpha.3.exe`，214607200 bytes，SHA-256 `9490607a20737c0b9874c80ecad8995583d2d654d048df33be8dfdebd1ba6c06`。
+- Portable：`KodaX-Space-Portable-0.1.47-alpha.3.exe`，214397283 bytes，SHA-256 `63b5b48f47cc3bbcd68eccaa1a3598d187bbdbb99a4077328edb85261386ca93`。
+- 成品程序：`out/win-unpacked/KodaX Space.exe`。Main SHA-256 `189b71cda9d4f352c8de1c4669d5bc05ce0fc9c415039ca56419f97b50b30f23`。
+- 原始日志、Registry/Host/成品 manifest、截图和失败 trace：`artifacts/diagnostics/alpha12-release/`。原候选 alpha12 目录和首轮失败证据保留，未覆盖。
 
-## 最终源码检查点（d4d5ac6e）
+## 仍未闭环
 
-- 完整工作区：Desktop 4068 项，4055 通过、13 跳过、0 失败；IPC schema 371 项全部通过。
-- 类型检查、lint、Renderer/Main 构建再次通过。
-- 凭据专项 27 项通过，相关两文件合计行覆盖率 88.89%、分支 83.21%、函数 91.04%；文件凭据模块行覆盖率 95.47%，Main storage 模块 83.15%。
-- 独立 Standards/Spec 审查覆盖正式安装、打包探针和启动凭据/推理事实修复。Spec 的 canonical view 缺失时错误回退旧事件一项 P2 已修复并以浏览器 RED/GREEN 验证；最终两个审查轴均无未解决发现。
-- 172 项 Electron 全量正在执行。已发现的重启凭据用例业务断言全部通过、两次退出清理超过单例默认 30 秒，已将该用例预算显式设为 60 秒；另一配置读取失败待复核，不按超时解释或忽略。
+1. 正式 alpha.12 缺可信专家默认 Skill 声明及 after-turn 真消费时的最新已提交专家/连接器绑定；普通 Partner/prompt-only 可用，带默认方法的专家不能静默丢方法。恢复需保留原业务绑定，不能借同名工具冒充。
+2. 正式 alpha.12 缺 Quick Ask 的 Host promotion/tag 更新命令；Space 保留同一会话和回答，只有确认 promoted 才 handoff，不 saveSession 直写。
+3. SDK 部分配置 writer 仍截断重写，损坏读取的空对象降级也需上游修正。Space reader 的同锁保护不能代替 writer 的原子替换。
 
-配置读取失败在另一真实 SDK 用例再次出现后，保留 trace 并中断首段。新增跨进程持锁截断回归稳定 RED；Space reader 现使用 SDK 公开配置锁同步读取，只对明确锁忙做四次短暂重试。20 项相关凭据/配置用例通过；补充验证锁持续忙时有限等待后明确拒绝、释放后可读，损坏 JSON/目录 IO 拒绝且不暴露原文。未对解析错误做重试或空配置降级。SDK 部分 writer 仍截断重写，另有 [原子性需求和验收交接](kodax-alpha12-config-atomicity-handoff.md)；原 Electron 失败未保留底层错误，受控复现不能代替逐次溯源。Electron 剩余用例及原失败相关场景分段继续执行。
+前两组完整需求/验收见 [Partner 与 Session 交接](kodax-alpha12-partner-sdk-handoff.md)，第三组见 [配置原子性交接](kodax-alpha12-config-atomicity-handoff.md)。后续 SDK 源码支持、正式发布和 Space 实际启用仍分别确认。
 
-配置 reader 修复提交 ba921570：相关 20 项通过；另补锁持续忙超限与释放恢复通过，typecheck/lint/Main 构建通过。独立 Spec 轴 0 项发现。源码定向 8 项全部通过（2.6 分钟），包含 integrated-workspace 全部四项、两个实际凭据 IPC/重启用例、Coder 内置 Skill 和普通问题 Skip。第一轮两处配置失败相关场景在旧 reader 加分类后重复三轮共 6 项也通过，说明原问题为间歇性；该结果不替代持锁截断的 RED/GREEN 证据。最终 Windows 包正在重打，剩余全量条目将使用该包继续回归。
-
-Standards 两项测试发现已在 3c61dba3 修复：把配置一致性用例从首次凭据并发读取用例独立出来；用显式释放文件信号替代固定 400ms 持锁窗口。拆分后两项通过，新增生产代码未变；最终 Standards/Spec 两轴均为 0 项未解决发现。
-
-构建期间观察到 SDK 工作区出现其他线程的后续未发布改动，包括 session-promotion 和 execution-binding 文件。本次继续以已安装 Registry alpha.12 的公开契约及字节验收，不构建、不安装或修改那些工作区改动，也不以它们关闭正式包接口缺口。
-
-## 最终包的执行证据
-
-Windows Setup / Portable 已重新生成，ASAR Runtime smoke 全通过。实际 daemon/process 为 alpha.12，Worker constructed handler 在非主线程，session round-trip、历史边界和分页 cursor 有效；integration health=healthy，首次和重启后 exit settlement 均 clean。Windows 沙箱 shell 实际执行，backend=windows-restricted-user；保留 SDK 正常权限回退策略。原始 JSON：`out/kodax-runtime-smoke.json`。
-
-冷启动 smoke 通过：Renderer 8062ms、Runtime 30429ms（含确定性的 20000ms Host test hold），122 条历史 child 记录保留。这里的 Host ready 不代表历史首次读取完成或 Issue 371 已关闭。
-
-打包 wrapper 在最后的 Product 退出验收中暴露旧夹具遗漏：两项读取 accepted exit receipt 仍找 Keychain，实际客户端密钥已经迁入 auth.json 保留绑定。4 项其他验收通过，但该轮 wrapper 因夹具返回 exit 1。现已将独立 receipt reader 改为 SDK 文件凭据接口读取同一客户端绑定，不把密钥打印/返回给 Renderer，并保留退出与回执断言。随后以同一最终包继续执行验收；夹具修改不改变 ASAR 产品代码。完整工作区也因新增生产 config reader 重新验证，不复用之前的 4055 数字作为最终结论。
+Issue 371 历史首次读取性能、Linux/Kylin/macOS/ARM 真机、真实 OAuth/云 principal 和外部服务权益仍未在本机离线验收。当前安装包用于本轮验证，不能据此标记所有专家/Quick Ask 或全部跨平台问题已完成。
