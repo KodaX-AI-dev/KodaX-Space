@@ -104,9 +104,8 @@ async function cleanupIsolatedSpace(
     if (retryDelayMs > 0) await delay(retryDelayMs);
     if (await stopOwnedTestDaemonQuietly(testDataDir)) break;
   }
-  // Runtime client identities use the OS keychain even though the rest of the
-  // profile is isolated. Delete the exact account while its owner evidence is
-  // still present, then remove the temporary filesystem profile.
+  // Retire any legacy test keychain accounts while their owner evidence is
+  // present, then remove the profile including its current auth.json secrets.
   await cleanupRuntimeClientCredentialForTestProfile(testDataDir);
   await fs.rm(testDataDir, { recursive: true, force: true }).catch(() => {});
 }

@@ -530,23 +530,24 @@ export async function readSdkProductView(space: SpaceInstance, sessionId: string
 
 /** A fresh reader scopes the SDK's module-level config home to this profile. */
 export async function readPublicSpaceExit(space: SpaceInstance) {
-  // macOS authorizes this test identity's creator executable. Keep the same
-  // binary for offline recovery rather than requesting Node's GUI consent.
-  const useCreatorBinary = process.platform === 'darwin';
   const { stdout } = await promisify(execFile)(
-    useCreatorBinary ? space.executablePath : process.execPath,
+    process.execPath,
     [
       '--input-type=module',
       '-e',
       `
     import { readFile } from 'node:fs/promises';
+    import { createHash } from 'node:crypto';
     import path from 'node:path';
     const root = process.argv[1];
     const identity = JSON.parse(await readFile(path.join(root, 'space/runtime-client-identity.json'), 'utf8')).exitRecovery;
     if (!identity) throw new Error('Space did not preserve its accepted exit identity.');
-    const imported = await import('@napi-rs/keyring/keytar.js');
-    const keyring = imported.default ?? imported;
-    const secret = await keyring.getPassword('kodax-space-test-runtime', identity.secretAccount);
+    const { createFileProviderCredentialStore } = await import('@kodax-ai/kodax/llm');
+    const credentials = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    await credentials.initialize();
+    const secret = (await credentials.readApiKey({ profile:'space-client-identity', provider:identity.secretAccount,
+      connectionFingerprint:createHash('sha256').update(JSON.stringify(['space-client-secret-v1',identity.secretAccount])).digest('hex'),
+    }))?.key;
     if (!secret) throw new Error('Isolated exit credential is unavailable.');
     const { readKodaXClientExits } = await import('@kodax-ai/kodax/client');
     const receipts = await readKodaXClientExits({profile:identity.profile ?? 'coder', clientInfo:{
@@ -564,7 +565,6 @@ export async function readPublicSpaceExit(space: SpaceInstance) {
       env: {
         ...process.env,
         KODAX_HOME: space.testDataDir,
-        ...(useCreatorBinary ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
       },
     },
   );

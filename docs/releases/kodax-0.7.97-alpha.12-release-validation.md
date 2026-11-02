@@ -7,7 +7,7 @@
 - Root/Desktop 精确依赖及 package-lock 均为 `0.7.97-alpha.12`，来自 `https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-alpha.12.tgz`；无 SDK dev-link、file tarball 或嵌套旧版本。
 - Registry integrity：`sha512-1LlTrz4SxQh77EMoj9E7ZE/jKWIYSBjZJv8+4i8BAfPjcD3R1wMSgtAL0SFKMYZo3uRBa07q4SQ47J/9dfPNug==`，shasum `11862309611d2557c50b5a955b1985e8eb9b3e5a`。该字节与此前本地候选不同，已重新验证完整安装目录，而非只读版本号。
 - 本次 lockfile 仅 SDK 包版本由 alpha.11 升到 alpha.12，并新增其所需的 96 条依赖记录；已有其他包版本未漂移。
-- SDK 源码工作区未修改；不以其 HEAD 或旧 CI 结果代替本次正式字节验收。
+- 本线程未修改 SDK 源码工作区；不以其 HEAD 或旧 CI 结果代替本次正式字节验收。
 
 ## 实际 Host
 
@@ -57,3 +57,17 @@
 - 172 项 Electron 全量正在执行。已发现的重启凭据用例业务断言全部通过、两次退出清理超过单例默认 30 秒，已将该用例预算显式设为 60 秒；另一配置读取失败待复核，不按超时解释或忽略。
 
 配置读取失败在另一真实 SDK 用例再次出现后，保留 trace 并中断首段。新增跨进程持锁截断回归稳定 RED；Space reader 现使用 SDK 公开配置锁同步读取，只对明确锁忙做四次短暂重试。20 项相关凭据/配置用例通过；补充验证锁持续忙时有限等待后明确拒绝、释放后可读，损坏 JSON/目录 IO 拒绝且不暴露原文。未对解析错误做重试或空配置降级。SDK 部分 writer 仍截断重写，另有 [原子性需求和验收交接](kodax-alpha12-config-atomicity-handoff.md)；原 Electron 失败未保留底层错误，受控复现不能代替逐次溯源。Electron 剩余用例及原失败相关场景分段继续执行。
+
+配置 reader 修复提交 ba921570：相关 20 项通过；另补锁持续忙超限与释放恢复通过，typecheck/lint/Main 构建通过。独立 Spec 轴 0 项发现。源码定向 8 项全部通过（2.6 分钟），包含 integrated-workspace 全部四项、两个实际凭据 IPC/重启用例、Coder 内置 Skill 和普通问题 Skip。第一轮两处配置失败相关场景在旧 reader 加分类后重复三轮共 6 项也通过，说明原问题为间歇性；该结果不替代持锁截断的 RED/GREEN 证据。最终 Windows 包正在重打，剩余全量条目将使用该包继续回归。
+
+Standards 两项测试发现已在 3c61dba3 修复：把配置一致性用例从首次凭据并发读取用例独立出来；用显式释放文件信号替代固定 400ms 持锁窗口。拆分后两项通过，新增生产代码未变；最终 Standards/Spec 两轴均为 0 项未解决发现。
+
+构建期间观察到 SDK 工作区出现其他线程的后续未发布改动，包括 session-promotion 和 execution-binding 文件。本次继续以已安装 Registry alpha.12 的公开契约及字节验收，不构建、不安装或修改那些工作区改动，也不以它们关闭正式包接口缺口。
+
+## 最终包的执行证据
+
+Windows Setup / Portable 已重新生成，ASAR Runtime smoke 全通过。实际 daemon/process 为 alpha.12，Worker constructed handler 在非主线程，session round-trip、历史边界和分页 cursor 有效；integration health=healthy，首次和重启后 exit settlement 均 clean。Windows 沙箱 shell 实际执行，backend=windows-restricted-user；保留 SDK 正常权限回退策略。原始 JSON：`out/kodax-runtime-smoke.json`。
+
+冷启动 smoke 通过：Renderer 8062ms、Runtime 30429ms（含确定性的 20000ms Host test hold），122 条历史 child 记录保留。这里的 Host ready 不代表历史首次读取完成或 Issue 371 已关闭。
+
+打包 wrapper 在最后的 Product 退出验收中暴露旧夹具遗漏：两项读取 accepted exit receipt 仍找 Keychain，实际客户端密钥已经迁入 auth.json 保留绑定。4 项其他验收通过，但该轮 wrapper 因夹具返回 exit 1。现已将独立 receipt reader 改为 SDK 文件凭据接口读取同一客户端绑定，不把密钥打印/返回给 Renderer，并保留退出与回执断言。随后以同一最终包继续执行验收；夹具修改不改变 ASAR 产品代码。完整工作区也因新增生产 config reader 重新验证，不复用之前的 4055 数字作为最终结论。

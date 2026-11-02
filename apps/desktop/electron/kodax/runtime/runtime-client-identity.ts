@@ -118,8 +118,8 @@ function identityBytes(identity: StableRuntimeClientIdentity): Buffer {
  *
  * The persistent clientId identifies the installed Space profile. The KodaX
  * daemon contract also requires clientInfo.instanceId and a separate secret to
- * remain stable for the Space installation. The protected file stores only the
- * keychain account name; secret material never enters the Runtime data tree.
+ * remain stable for the Space installation. The protected identity file stores
+ * an account reference; auth.json keeps the secret in a reserved client binding.
  */
 export class RuntimeClientIdentityStore {
   readonly #filePath: string;
