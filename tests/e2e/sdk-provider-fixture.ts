@@ -510,9 +510,8 @@ export async function readSdkProductView(space: SpaceInstance, sessionId: string
           conflicts.push(result.error);
           if (
             result.error.code !== 'HANDLER_ERROR' ||
-            !/^\[session\.productSnapshot\] handler threw: Session data changed during the read boundary: [a-f0-9]{64}\.lock$/.test(
-              result.error.message,
-            )
+            !(/^\[session\.productSnapshot\] handler threw: Session data changed during the read boundary: [a-f0-9]{64}\.lock$/.test(result.error.message) ||
+              result.error.message === `[session.productSnapshot] handler threw: Session location topology changed during the read boundary for ${sessionId}`)
           )
             throw new Error(result.error.message);
           return result.error.message;
