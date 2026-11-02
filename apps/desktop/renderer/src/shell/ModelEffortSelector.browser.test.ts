@@ -15,11 +15,12 @@ test(
 import React from 'react';import {createRoot} from 'react-dom/client';
 import {ModelEffortSelector} from './ModelEffortSelector.tsx';
 import {useAppStore} from '../store/appStore.ts';
-import {replaceProductSessionView} from '../store/productSessionView.ts';
+import {replaceProductSessionView,resetProductSessionViews} from '../store/productSessionView.ts';
 import {I18nProvider} from '../i18n/I18nProvider.tsx';
 window.kodaxSpace={invoke:async channel=>({ok:true,data:channel==='settings.get'?{languageMode:'en-US',effectiveLocale:'en-US'}:{contextWindow:200000,source:'fallback',compactionTriggerPercent:75}})};
 useAppStore.setState({currentSessionId:'s',sessions:[{sessionId:'s',provider:'openai',model:'fixture',reasoningMode:'off',surface:'code'}],providers:[{id:'openai',displayName:'OpenAI',configured:true,models:['fixture'],defaultModel:'fixture'}],eventsBySession:{s:[]}});
 window.report=(kind)=>{const reasoning={provider:kind==='other'?'other':'openai',model:'fixture',requestedEffort:'none',sentEffort:'minimal',verified:false,fallbacks:[{effort:'none',reason:'cached-rejection'}]};
+ if(kind==='viewless'){resetProductSessionViews();useAppStore.setState({eventsBySession:{s:[{kind:'reasoning_resolved',sessionId:'s',resolution:reasoning}]}});return;}
  replaceProductSessionView({sessionId:'s',runtimeId:'rt',revision:window.revision=(window.revision||0)+1,items:[],...(kind==='missing'?{}:{activity:{runId:'r',reasoning}})});
  if(kind==='missing')useAppStore.setState({eventsBySession:{s:[{kind:'reasoning_resolved',sessionId:'s',resolution:reasoning}]}});
 };window.report('current');
@@ -65,6 +66,10 @@ createRoot(document.getElementById('root')).render(<I18nProvider><ModelEffortSel
       'canonical absence must not display a legacy observation',
     );
     assert.match((await picker.textContent()) ?? '', /Off/);
+    await page.evaluate("window.report('current')");
+    await observation.waitFor();
+    await page.evaluate("window.report('viewless')");
+    await observation.waitFor({ state: 'detached' });
     assert.deepEqual(errors, []);
   },
 );

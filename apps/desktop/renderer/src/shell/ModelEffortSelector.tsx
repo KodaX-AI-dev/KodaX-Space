@@ -151,7 +151,10 @@ export function ModelEffortSelector(): JSX.Element {
     kodaxDefaults?.reasoningMode ??
     'auto';
   const activeEffort = sdkEffortToReasoningMode(configuredEffort) ?? 'auto';
-  let resolution = latestReasoningResolution(events, activeProviderId, activeModel, activeEffort);
+  let resolution =
+    session?.provider === 'mock'
+      ? latestReasoningResolution(events, activeProviderId, activeModel, activeEffort)
+      : undefined;
   if (productView) {
     const reported = productView.activity?.reasoning;
     resolution =
