@@ -12,7 +12,10 @@ test('sidebar preserves real SDK message recency across reload instead of creati
       // Seed before the Host can migrate the same session layout during startup.
       const root = await fs.realpath(profileRoot);
       projectRoot = path.join(root, 'workspace');
-      const manager = createSessionManager({ sessionsDir: path.join(root, 'sessions') });
+      const manager = createSessionManager({
+        sessionsDir: path.join(root, 'sessions'),
+        configHome: root,
+      });
       await manager.storage.save('older-continued', {
         title: 'Older session continued recently',
         gitRoot: projectRoot,
@@ -77,25 +80,38 @@ test('sidebar preserves real SDK message recency across reload instead of creati
   }
 });
 
+async function seedEmptyRecords(profileRoot: string) {
+  const root = await fs.realpath(profileRoot);
+  const projectRoot = path.join(root, 'workspace');
+  const manager = createSessionManager({
+    sessionsDir: path.join(root, 'sessions'),
+    configHome: root,
+  });
+  for (const [id, title, messages] of [
+    ['legacy-empty', '', []],
+    ['saved-empty', 'Saved workspace', []],
+    ['unnamed-content', '   ', [{ role: 'user' as const, content: 'Actual retained input' }]],
+  ] as const) {
+    await manager.storage.save(id, {
+      messages: [...messages],
+      title,
+      gitRoot: projectRoot,
+      scope: 'user',
+      runtimeInfo: { workspaceRoot: projectRoot, surface: 'repl' },
+    });
+  }
+  return { manager, projectRoot };
+}
+
 test('old empty records stay on disk while real unnamed sessions display a title across reload', async () => {
-  const space = await launchSpace(`empty-records-${Date.now()}`);
+  let seeded!: Awaited<ReturnType<typeof seedEmptyRecords>>;
+  const space = await launchSpace(`empty-records-${Date.now()}`, {
+    prepareProfile: async (root) => {
+      seeded = await seedEmptyRecords(root);
+    },
+  });
+  const { manager, projectRoot } = seeded;
   try {
-    const root = await fs.realpath(space.testDataDir);
-    const projectRoot = path.join(root, 'workspace');
-    const manager = createSessionManager({ sessionsDir: path.join(root, 'sessions') });
-    for (const [id, title, messages] of [
-      ['legacy-empty', '', []],
-      ['saved-empty', 'Saved workspace', []],
-      ['unnamed-content', '   ', [{ role: 'user' as const, content: 'Actual retained input' }]],
-    ] as const) {
-      await manager.storage.save(id, {
-        messages: [...messages],
-        title,
-        gitRoot: projectRoot,
-        scope: 'user',
-        runtimeInfo: { workspaceRoot: projectRoot, surface: 'repl' },
-      });
-    }
     await space.seedProject(projectRoot);
     for (let round = 0; round < 2; round++) {
       await expect
@@ -112,8 +128,7 @@ test('old empty records stay on disk while real unnamed sessions display a title
             .sort();
         })
         .toEqual(['saved-empty', 'unnamed-content']);
-      // The fixture writes through a separate SDK manager after the first UI load.
-      // Reload once its public list sees those files, as reopening Space would.
+      // All records were seeded before the Host became the sole writer.
       if (round === 0) await space.page.reload();
       await expect(space.page.getByText('Saved workspace', { exact: true })).toBeVisible();
       await expect(space.page.locator('[data-session-id="unnamed-content"]')).toContainText(

@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Read Provider configuration under the SDK's shared lock, retry only short lock conflicts, and preserve explicit errors for corrupt or unreadable files without exposing config values.
+
 - Fix first-session credential conflicts during concurrent startup reads. Reconcile automatic origin pinning once under the original connection and source, preserve tombstones and explicit edit CAS, and keep environment accounts separate from CLI keys. The model picker now consumes canonical SDK reasoning facts while keeping selected effort and unknown observations distinct.
 
 - Pin the published Registry SDK `@kodax-ai/kodax@0.7.97-alpha.12` in root/Desktop and the lockfile, and verify the installed SDK against the complete integrity-pinned Registry tarball. Enable the prepared shared Host integration for both product surfaces, Partner Agent with normal shell capabilities, actual Run facts, model image capabilities, credential source preservation and cursor recovery. Keep the SDK gaps for expert default Skill/dequeue business bindings and Quick Ask promotion explicit; never substitute direct Session file writes.
