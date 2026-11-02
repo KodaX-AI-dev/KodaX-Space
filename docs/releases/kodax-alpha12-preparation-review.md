@@ -15,6 +15,8 @@
 - 旧 Embedded、Partner inline 和 Keychain/内存默认存储文案已同步为共享 Host、auth.json 与明确的迁移/共享规则。
 - Partner Host 注册和 OAuth 凭证读取按职责拆分；包含双工作面的 Session 集合采用通用命名，Coder 保留在公开历史类型/文件名等兼容边界。
 - `c171ca50` 及后续修复提交包含行为、验证和待发布边界的正文。导入的凭证分支历史及旧 `d48bbb67` 空正文作为非运行阻塞的历史规范项保留，不重写其他线程历史。
-- 新增真实 Host 脚本未发现其他可行动 Standards 问题；最终新增修复单独复核；Quick Ask 的候选不可用说明同步到用户手册及应用内帮助。
+- 新增真实 Host 脚本未发现其他可行动 Standards 问题；最终增量 `4233339a` 已由独立 Standards/Spec 两轴复核，最后的 Quick Ask UI 与帮助 finding 均关闭，未发现新增可行动代码问题；候选不可用说明同步到用户手册及应用内帮助。
 
 完整测试数字、候选字节和验证限制见 [准备矩阵](kodax-0.7.97-alpha.12-preparation.md)，需要 SDK 配合的两组需求见 [交接说明](kodax-alpha12-partner-sdk-handoff.md)。源码、候选测试、正式 Registry 发布和 Space 实际启用是不同状态。
+
+最后一轮 typecheck、lint、Renderer/Main 重建与 14 项界面/帮助契约均通过；Host Quick Ask 事实拒绝定向复测通过。源码安全问题关闭不代表 SDK 接口缺口或正式产品验收已关闭。
