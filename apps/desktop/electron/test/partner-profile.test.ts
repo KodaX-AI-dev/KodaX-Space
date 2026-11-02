@@ -24,12 +24,12 @@ test('Partner agent profile steers knowledge work without leaving managed task h
   assert.match(profile.instructions, /evidence-first/);
   assert.match(profile.instructions, /artifact/);
   assert.match(profile.instructions, /checkpointed workspace-file tools/);
-  assert.match(profile.instructions, /lightweight working agent/);
+  assert.match(profile.instructions, /selected permission mode/);
   assert.match(profile.instructions, /small task-local helper tools/);
   assert.match(profile.instructions, /run_partner_helper/);
   assert.match(profile.instructions, /Partner run output workspace/);
   assert.match(profile.instructions, /Partner KB tools/);
-  assert.match(profile.instructions, /heavy execution/);
+  assert.match(profile.instructions, /approvals/);
   assert.match(profile.instructions, /including shell, file writes and child agents/);
   assert.equal(profile.verification.rubricFamily, 'partner-research');
   assert.ok(profile.verification.requiredChecks?.includes('source-faithfulness'));

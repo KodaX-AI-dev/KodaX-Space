@@ -8703,7 +8703,7 @@ export const useAppStore = create<AppState>((setState) => {
         const retiredRuntimeSessionIds = new Set<string>();
         if (replacesKnownRuntime) {
           for (const session of state.sessions) {
-            if (session.provider !== 'mock') {
+            if (session.surface === 'code' || session.provider !== 'mock') {
               retiredRuntimeSessionIds.add(session.sessionId);
             }
           }

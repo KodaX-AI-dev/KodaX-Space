@@ -13,12 +13,6 @@ const manifest = createRequire(import.meta.url)('../../../../package.json') as {
   readonly version: string;
   readonly dependencies: { readonly '@kodax-ai/kodax': string };
 };
-const sdkVersion = (
-  createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as {
-    readonly version: string;
-  }
-).version;
-
 const sdkManual = buildSpaceManual({
   KODAX_UNDERLYING_CAPABILITY_TOPICS,
   MANUAL_REGISTRY,
@@ -39,7 +33,11 @@ test('Space product guidance uses current lifecycle, settings and management cap
 
   assert.match(read('overview'), /Product lifecycle/);
   assert.doesNotMatch(read('overview'), /完整退出使用.*runtimeExitSettlement/);
-  assert.ok(read('runtime-host').includes(`v${manifest.version} 精确锁定 KodaX ${sdkVersion}`));
+  assert.ok(
+    read('runtime-host').includes(
+      `v${manifest.version} 发行依赖声明 KodaX ${manifest.dependencies['@kodax-ai/kodax']}`,
+    ),
+  );
   assert.doesNotMatch(read('ui-map'), /浮层：[^。\n]*Settings/);
   assert.match(read('popouts'), /Learned Skills.*review.*trust.*rollback/);
   assert.doesNotMatch(read('memory-governance'), /依赖声明是精确 0\.7\.97-alpha\.6/);
@@ -165,7 +163,11 @@ test('Space kodax_manual documents the required current KodaX capability boundar
   }
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.45 正式发布.*KodaX 0\.7\.95/);
   assert.ok(
-    topics.get('runtime-host')?.body.includes(`v${manifest.version} 精确锁定 KodaX ${sdkVersion}`),
+    topics
+      .get('runtime-host')
+      ?.body.includes(
+        `v${manifest.version} 发行依赖声明 KodaX ${manifest.dependencies['@kodax-ai/kodax']}`,
+      ),
     'The current manual must match the declared Space and SDK versions',
   );
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.46-alpha\.11 落地 FEATURE_275/);
@@ -208,20 +210,17 @@ test('Space kodax_manual documents the required current KodaX capability boundar
   assert.match(topics.get('skills')?.body ?? '', /allowed-tools.*hook JSON.*诊断/);
 });
 
-test('Space kodax_manual explains the customer runtime-mode switch without replacing SDK facts', () => {
+test('Space manual describes the shared Host and removes the retired recovery switch', () => {
   const topics = new Map(SPACE_MANUAL_TOPICS.map((topic) => [topic.id, topic]));
-  const runtimeHost = topics.get('runtime-host')?.body ?? '';
-  const settings = topics.get('settings')?.body ?? '';
-  const troubleshooting = topics.get('troubleshooting')?.body ?? '';
-
-  assert.match(runtimeHost, /Settings -> Runtime -> Coder runtime mode/);
-  assert.match(runtimeHost, /Daemon 是推荐模式/);
-  assert.match(runtimeHost, /Embedded 是.*兼容回退/);
-  assert.match(runtimeHost, /admission gate/);
-  assert.match(runtimeHost, /KODAX_SPACE_RUNTIME_HOST=.*一次迁移种子/);
-  assert.match(runtimeHost, /version 3.*coderRuntimeMode/);
-  assert.match(settings, /Coder runtime mode/);
-  assert.match(troubleshooting, /选择 Embedded.*切换并重启/);
+  const runtime =
+    topics.get('runtime-host')?.body.split('## Inherited KodaX SDK mechanism')[0] ?? '';
+  const troubleshooting =
+    topics.get('troubleshooting')?.body.split('## Inherited KodaX SDK mechanism')[0] ?? '';
+  assert.match(runtime, /共享 Host/);
+  assert.match(runtime, /不创建私有 Runtime/);
+  assert.doesNotMatch(runtime, /Daemon 是推荐模式.*Embedded/);
+  assert.match(troubleshooting, /修复后重试/);
+  assert.doesNotMatch(troubleshooting, /选择 Embedded.*切换并重启/);
 });
 
 test('Space kodax_manual distinguishes effective context pressure from cumulative session usage', () => {

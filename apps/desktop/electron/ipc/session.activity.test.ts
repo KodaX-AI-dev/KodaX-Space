@@ -218,9 +218,9 @@ test('session.list repairs out-of-page activity and ordering with no additional 
   assert.deepEqual(
     refreshed.map((s) => [s.sessionId, s.lastActivityAt]),
     [
+      ['s_partner', 900],
       ['s_old', 300],
       ['s_new', 200],
-      ['s_partner', 50],
     ],
   );
   assert.equal(listCalls, 1, 'activity changes must reuse the existing summary cache');

@@ -1,3 +1,4 @@
+import { PartnerMethodUnavailableError } from './partner-method-error.js';
 import type { KodaXDaemonRuntime, RuntimeHostToolLease } from '@kodax-ai/kodax/runtime';
 import type { RuntimeExecutionProfileSource } from '@kodax-ai/kodax/client';
 import { getSessionRuntimeStore } from '../session-runtime-store.js';
@@ -73,54 +74,75 @@ export function partnerHostToolDefinitions(): readonly Tool[] {
   ];
 }
 
-/** Only trusted Main state supplies persona and bindings, never Product input fields. */
-export async function registerPartnerHostExecution(
-  runtime: KodaXDaemonRuntime,
-  sessionId: string,
-  resumeLeaseId?: string,
-  input: { readonly explicitMethod?: boolean; readonly query?: string } = {},
-): Promise<{
-  readonly lease: RuntimeHostToolLease;
-  readonly context: RuntimeExecutionProfileSource;
-}> {
+interface PartnerExecutionInput {
+  readonly explicitMethod?: boolean;
+  readonly query?: string;
+  readonly recovery?: {
+    readonly agentProfile?: import('@kodax-ai/kodax/coding').KodaXAgentProfile;
+  };
+}
+
+async function trustedPartnerState(runtime: KodaXDaemonRuntime, sessionId: string) {
   const session = await runtime.sessions.load(sessionId);
-  if (session.surface !== 'partner' && session.profileId !== 'kodax-space.partner')
+  if (
+    session.surface !== 'partner' &&
+    session.profileId !== 'kodax-space.partner' &&
+    session.tag !== 'partner'
+  )
     throw new Error('Partner identity changed.');
   const projectRoot = session.workspaceRoot ?? session.gitRoot;
   if (!projectRoot) throw new Error('Partner Session has no workspace identity.');
   const { kodaxHost } = await import('../host.js');
-  const local = kodaxHost.get(sessionId) ?? (await getSessionRuntimeStore().read(sessionId));
-  const expert = local?.partnerExpert;
-  if (expert) await getSpaceExpertCatalog().requireAvailable(expert);
-  if (
-    !input.explicitMethod &&
-    !resumeLeaseId &&
-    expert?.useSkill !== false &&
-    expert?.expert.skillRef
-  )
-    throw new Error(
-      'The shared Host does not yet expose trusted expert default-Skill admission. Disable this expert method or use an explicit Skill command.',
-    );
-  const bindings = structuredClone(local?.partnerConnectors ?? []);
-  let latestBindings = bindings;
-  const connectorRuntime = await createPartnerConnectorRunRuntime(undefined, {
+  const readSelection = async () =>
+    kodaxHost.get(sessionId) ?? (await getSessionRuntimeStore().read(sessionId));
+  const local = await readSelection();
+  return {
     sessionId,
     projectRoot,
+    expert: local?.partnerExpert,
+    bindings: structuredClone(local?.partnerConnectors ?? []),
+    readSelection,
+    kodaxHost,
+  };
+}
+
+export async function hasExplicitHostSkill(
+  runtime: KodaXDaemonRuntime,
+  projectRoot: string,
+  query: string,
+): Promise<boolean> {
+  const coding = await import('@kodax-ai/kodax/coding');
+  const names = new Set((await runtime.catalog.skills({ projectRoot })).map((skill) => skill.name));
+  return [
+    ...coding.parseInlineSkillReferences(query),
+    ...coding.parseBareInlineSlashReferences(query),
+  ].some((reference) => names.has(reference.name));
+}
+
+async function connectorHostTools(
+  runtime: KodaXDaemonRuntime,
+  state: Awaited<ReturnType<typeof trustedPartnerState>>,
+): Promise<readonly Tool[]> {
+  let latestBindings = state.bindings;
+  const connectorRuntime = await createPartnerConnectorRunRuntime(undefined, {
+    sessionId: state.sessionId,
+    projectRoot: state.projectRoot,
     surface: 'partner',
-    bindings,
+    bindings: state.bindings,
     permissionMode:
-      (await runtime.sessions.getSettings(sessionId)).permissionMode ?? 'accept-edits',
-    getCurrentBindings: () => kodaxHost.get(sessionId)?.partnerConnectors ?? latestBindings,
+      (await runtime.sessions.getSettings(state.sessionId)).permissionMode ?? 'accept-edits',
+    getCurrentBindings: () =>
+      state.kodaxHost.get(state.sessionId)?.partnerConnectors ?? latestBindings,
   });
-  const connectorTools: Tool[] = (connectorRuntime?.listRunTools?.('mcp') ?? []).map((tool) => ({
+  return (connectorRuntime?.listRunTools?.('mcp') ?? []).map((tool) => ({
     ...tool,
     input_schema: tool.inputSchema,
-    sideEffect: tool.sideEffect === 'readonly' ? 'readonly' : 'mutates-state',
+    sideEffect:
+      tool.sideEffect === 'readonly' || tool.sideEffect === 'reads-network'
+        ? tool.sideEffect
+        : 'mutates-state',
     handler: async (toolInput) => {
-      latestBindings = [
-        ...((kodaxHost.get(sessionId) ?? (await getSessionRuntimeStore().read(sessionId)))
-          ?.partnerConnectors ?? []),
-      ];
+      latestBindings = [...((await state.readSelection())?.partnerConnectors ?? [])];
       const result = await connectorRuntime!.executeCapability!(
         'mcp',
         tool.capabilityId,
@@ -129,35 +151,64 @@ export async function registerPartnerHostExecution(
       return typeof result === 'string' ? result : JSON.stringify(result);
     },
   }));
-  const lease = await registerSpaceHostTools(runtime, resumeLeaseId, [
-    ...partnerHostToolDefinitions(),
-    ...connectorTools,
-  ]);
-  const profile = buildPartnerAgentProfile(expert);
-  const sources = await partnerSourceStore.list(sessionId);
+}
+
+async function partnerExecutionContext(
+  runtime: KodaXDaemonRuntime,
+  state: Awaited<ReturnType<typeof trustedPartnerState>>,
+  input: PartnerExecutionInput,
+): Promise<RuntimeExecutionProfileSource> {
+  if (input.recovery)
+    return {
+      ...(input.recovery.agentProfile ? { agentProfile: input.recovery.agentProfile } : {}),
+    };
+  if (state.expert) await getSpaceExpertCatalog().requireAvailable(state.expert);
+  if (
+    !input.explicitMethod &&
+    state.expert?.useSkill !== false &&
+    state.expert?.expert.skillRef &&
+    !(input.query && (await hasExplicitHostSkill(runtime, state.projectRoot, input.query)))
+  )
+    throw new PartnerMethodUnavailableError();
+  const profile = buildPartnerAgentProfile(state.expert);
+  const sources = await partnerSourceStore.list(state.sessionId);
   const evidence = input.query
     ? await retrievePartnerEvidenceForTurn({
         surface: 'partner',
         automaticRecall: partnerKnowledgeFeatures.automaticRecall,
-        sessionId,
-        projectRoot,
+        sessionId: state.sessionId,
+        projectRoot: state.projectRoot,
         query: input.query,
       })
     : null;
   return {
-    lease,
-    context: {
-      agentProfile: {
-        ...profile,
-        instructions: [
-          profile.instructions,
-          buildPartnerSourceSummary(sources),
-          evidence?.overlay,
-          `Additional Space product tools: ${lease.tools.map((tool) => tool.name).join(', ')}`,
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
-      },
+    agentProfile: {
+      ...profile,
+      instructions: [profile.instructions, buildPartnerSourceSummary(sources), evidence?.overlay]
+        .filter(Boolean)
+        .join('\n\n'),
     },
   };
+}
+
+/** Only trusted Main state supplies persona and bindings, never Product input authority. */
+export async function registerPartnerHostExecution(
+  runtime: KodaXDaemonRuntime,
+  sessionId: string,
+  resumeLeaseId?: string,
+  input: PartnerExecutionInput = {},
+): Promise<{
+  readonly lease: RuntimeHostToolLease;
+  readonly context: RuntimeExecutionProfileSource;
+}> {
+  const state = await trustedPartnerState(runtime, sessionId);
+  const context = await partnerExecutionContext(runtime, state, {
+    ...input,
+    ...(resumeLeaseId ? { recovery: input.recovery ?? {} } : {}),
+  });
+  const lease = await registerSpaceHostTools(runtime, resumeLeaseId, [
+    ...partnerHostToolDefinitions(),
+    ...(await connectorHostTools(runtime, state)),
+  ]);
+  return { lease, context };
 }

@@ -220,7 +220,11 @@ function assertSafePagedHistoryMutation(
   historyBoundary: { readonly boundaryId: string; readonly sourceRevision: string } | undefined,
 ): void {
   const session = kodaxHost.get(sessionId);
-  if (session !== undefined && session.provider !== 'mock' && historyBoundary === undefined) {
+  if (
+    session !== undefined &&
+    (session.surface === 'code' || session.provider !== 'mock') &&
+    historyBoundary === undefined
+  ) {
     throw new Error(
       'An exact persisted history boundary is required for a Runtime-backed Session mutation.',
     );

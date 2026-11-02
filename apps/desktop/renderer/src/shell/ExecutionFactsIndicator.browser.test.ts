@@ -20,7 +20,7 @@ import {I18nProvider} from '../i18n/I18nProvider.tsx';
 window.kodaxSpace={invoke:async()=>({ok:true,data:{languageMode:'en-US',effectiveLocale:'en-US'}})};
 window.renderFacts=(actual,other)=>{
  useAppStore.setState({currentSessionId:'s',sessions:[{sessionId:'s',workMode:'coding'}],liveProjectionBySession:{s:{activeRun:{runId:'r',phase:'running',...(actual?{workMode:'agent',effectiveConfig:{workMode:'agent',toolScope:['bash']}}:{})}}}});
- replaceProductSessionView({sessionId:'s',runtimeId:'h',revision:Date.now(),items:[],activity:{runId:other?'other':'r',reasoning:{provider:'p',model:'m',requestedEffort:'high',sentEffort:'low',verified:false,fallbacks:[]}}});
+ replaceProductSessionView({sessionId:'s',runtimeId:'h',revision:(window.revision=(window.revision||0)+1),items:[],activity:{runId:other?'other':'r',reasoning:{provider:'p',model:'m',requestedEffort:'high',sentEffort:'low',verified:false,fallbacks:[]}}});
 }; window.renderFacts(true,false);
 createRoot(document.getElementById('root')).render(<I18nProvider><ExecutionFactsIndicator/></I18nProvider>);`,
         resolveDir: fileURLToPath(new URL('.', import.meta.url)),

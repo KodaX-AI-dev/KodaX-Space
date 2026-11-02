@@ -106,69 +106,13 @@ daemon management health，仅在健康指纹变化时刷新投影；损坏一�
 文件不会让 Coder 断线，修复文件后 Settings 通常会在数秒内自动恢复 healthy。轮询错误
 只保留上一份健康状态并记录一次有界警告，不会把核心 Runtime 标记为不可用。
 
-## 4. Runtime Host 与 Coder 模式选择
+## 4. 共享 Runtime Host
 
-`RuntimeHostAdapter` 仍是 Electron main 内部的 owner/能力边界；客户只选择
-**Daemon** 或 **Embedded**，不会看到 endpoint、token、owner revision、inline fence 或
-内部 `runtime | legacy` 名称：
+alpha.12 候选适配中，Coder 与 Partner 共同使用 SDK 共享 Host，Space 通过公开 Product/Runtime 契约接入。原 Embedded 切换入口已撤下，旧偏好由 SDK 的单向迁移处理；不能删除 owner-policy、锁或建立私有 Runtime 来接管会话。连接失败时保留任务与原始身份，按界面诊断修复后重试，活动任务、其他客户端或所有权未知时保持保护。
 
-```mermaid
-flowchart LR
-    UI["Renderer UI"] --> IPC["zod IPC"]
-    IPC --> Host["Electron main"]
-    Host --> Adapter["RuntimeHostAdapter"]
-    Adapter --> Mode{"Saved Coder mode"}
-    Mode -->|Daemon| Runtime["KodaX Runtime daemon<br/>Coder shared truth"]
-    Mode -->|Embedded| Inline["Electron main inline owner<br/>Coder compatibility"]
-    Host --> Partner["Partner embedded inline"]
-    Host --> Bridges["Space host providers<br/>MCP processes/logs / Workflow library+start+admin<br/>Reference Agent / artifacts"]
-```
+Coder 可在安全空闲时切换 Agent、Coding 和实验性 Script；Partner 默认 Agent，保留通用 shell、写文件和子 Agent，实际操作仍受权限、审批、沙箱和业务绑定约束。选择值与实际 Run 装配结果分开显示。配置“已保存”不表示活跃任务已生效，Settings 展示 Host 报告的 immediate/next_run/extension_reload/restart；缺失保持未知。
 
-v0.1.33 的 Coder daemon 路由包括：
-
-- session/run/transcript/live projection、compact/fork/rewind 与共享设置 CAS；
-- queue、permission grant、AskUser 和 daemon stop preflight；
-- Workflow list/get/event 与 pause/resume/stop；
-- Learning Center 命令、Skill/slash catalog、MCP tool discovery/reload；
-- Runtime 配置 External Agent 的发现、预检和统一 Actor/Turn 任务控制。
-- compaction v3 的 durable-before-evict 边界、精确 checkpoint/recovery-guidance 活动 lineage，以及 revision-bound transcript page/chunk/search；
-- mailbox-driven 模型协调；Space/SDK 的 Actor progress snapshot/replay/long-poll 保持遥测语义，不驱动父模型重复采样；
-- idle-yield 恢复用户提示、未确认 root completion 的一次性恢复，以及 root/child live projection 隔离。
-- PowerShell `-Path` 方括号通配符 fail-closed 升级确认，同时保留 `-LiteralPath`/`-PSPath` 的精确方括号文件名语义；
-- KodaX CLI auto-resume 有界扫描并跳过空 ACP 占位会话；Space 继续使用自己的显式 Session 选择器。
-- 交互式 resume 恢复 workspace runtime、messages、UI history、lineage、artifacts、extensions、title、tag 与 session identity；
-- 权限档位统一为 Plan、Edits、Auto[LLM]、Full Access；旧 Auto Rules/engine/timing 设置只用于迁移并归一为 Auto[LLM]。Auto 沙箱优先，只有可证明的启动前宿主边界才进入固定 LLM reviewer；Full Access 直接执行但仍受 Exec Policy 约束；
-- imperative manual compaction 先把精确 flat Session history 对齐进 lineage；durable interrupt-delivery 持久化失败时输入保持 queued，并只发出不含用户正文的有界 warning。
-- `contextDiagnostics` 只投影根上下文分类 Token 数；Renderer 以最终自动压缩阈值为有效分母，并把模型最大上下文作为独立事实。Provider 根计数优先，budget fallback 会减去 reserved response capacity。
-- KodaX 0.7.77 的完成态 hash-only cache diagnostic 是 Session usage 的权威物理调用源，按 `requestId` 去重并覆盖 root/child、retry、fallback、repair、workflow digest 与 compaction summary；`iteration_end.usage` 仅是旧 Runtime/mock 在诊断激活前的回退。
-
-以下仍由 Space 管理：renderer 投影、Partner profile/tools/policy、Workflow library/start/rerun/save/admin/result/artifact、MCP server 进程与日志、Artifact 和 Space Reference Agent durable store。不要把这些路径写成 Runtime-native。
-
-Coder 缺少必要 Runtime capability 时 fail closed，不会把已接受操作偷偷重放到 inline owner。
-Partner 始终保持 embedded-inline。F141 在 **Settings → Runtime → Coder 运行模式** 提供
-客户可见的 Daemon / Embedded 选择：
-
-- **Daemon（推荐）**：连接共享 Runtime，保留持久任务、重连和多客户端协同能力；
-- **Embedded（兼容模式）**：在 Space 进程内持有 Coder，Daemon 无法正常启动或连接时可切换到此模式继续使用；
-- 切换会同步关闭 Coder admission，等待已经进入的 Session、Slash、Workflow、
-  Runtime External Agent、MCP 和 Runtime-affecting Settings 操作退出，再检查活动状态；
-- 只有 ManagedSession、running/paused Workflow、非终态 External Agent task、待处理
-  permission/AskUser 和待派发 Coder queue 都为空时才能切换；daemon 的 active/queued
-  work 或其他客户端也会阻止切换；通过所有权安全检查后，Space 保存偏好并自动重启；
-- Daemon → Embedded 会先安全停止空闲 daemon 并取得 inline owner；若还有任务、交互、其他客户端或所有权不可确认，切换会被拒绝；
-- Embedded → Daemon 会先释放 inline owner 并恢复 daemon owner policy。中途失败会尝试补偿；如果无法证明任一 owner 仍可用，Space 会保持 Coder 入口关闭并执行恢复重启。
-- 新进程会在 Runtime connect 之前协调持久化偏好和 owner policy：Daemon 偏好遇到
-  unowned inline policy 会先恢复 daemon policy；active/unreadable inline owner 会
-  fail closed，避免崩溃窗口产生双 owner。
-
-偏好保存在 `~/.kodax/space/settings.json`。旧的
-`KODAX_SPACE_RUNTIME_HOST=legacy|runtime` 只在旧版/空设置迁移时作为初始值；一旦
-首次模式选定，Space 会原子创建 version 3 设置；之后 Settings 中的选择就是启动真理，
-不再由环境变量覆盖。
-
-MCP、A2A 或 Extensions 的独立配置文件若校验失败，Space 报告 SDK/Runtime 错误和对应的
-规范路径，不删除、重写或静默重置配置。修复点名文件后执行相应 reload；涉及 inbound
-A2A authentication/authority 的变化仍可能要求 Runtime owner 安全重启。
+专家默认 Skill 与排队消费时点还有公开 SDK 接缝待补，见 [候选交接](releases/kodax-alpha12-partner-sdk-handoff.md)。当前源码准备不代表 SDK 已发布或全部专家已启用；正式依赖锁与安装包验收在发布通知后完成。现有凭证迁移固定原账号来源，迁移失败不切换账号。
 
 ### Windows 后台托盘与跨平台退出
 
@@ -307,7 +251,7 @@ native SQLite load、物理 sandbox helper/doctor、真实 packaged boot 和 Git
 
 提交问题时请包含版本、操作系统、复现步骤、是否使用独立 profile、相关日志和脱敏截图。已知问题见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md)。
 
-`scripts/diagnose-packaged-daemon.cmd` 不改变已保存的 Daemon/Embedded 偏好，会按当前
+`scripts/diagnose-packaged-daemon.cmd` 不创建私有执行 owner，会按当前
 `KODAX_PROFILE_DIR`/`KODAX_HOME` 前台启动与正式包相同的 Electron→Node→KodaX CLI
 链路，并在应用目录生成 `kodax-daemon-bootstrap-diagnostic.log`。该日志可能含本机路径、
 profile 位置和 Runtime 错误；分享前必须人工脱敏。

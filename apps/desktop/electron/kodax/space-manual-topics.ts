@@ -19,7 +19,7 @@ import type { KodaXManualSource, KodaXManualTopicInput } from '@kodax-ai/kodax/c
 export const SPACE_PRODUCT_NAME = 'KodaX Space';
 
 const text = (...lines: string[]) => lines.join('\n');
-const CURRENT_RUNTIME = `v${desktopPackage.version} 精确锁定 KodaX ${desktopPackage.dependencies['@kodax-ai/kodax']}。`;
+const CURRENT_RUNTIME = `v${desktopPackage.version} 发行依赖声明 KodaX ${desktopPackage.dependencies['@kodax-ai/kodax']}。`;
 
 type SdkCodingModule = typeof import('@kodax-ai/kodax/coding');
 type SdkManualModule = Pick<
@@ -84,7 +84,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '核心能力：多 provider/model 切换，本地项目会话，Coder 与 Partner 工作区，权限确认，计划/Diff/任务/终端/预览/MCP/Memory/Workflow popout，图片与文件输入，Artifact/Outputs 产物，repo-intelligence，以及可保存/复跑的 workflow。',
       '',
-      'Coder 默认使用 profile-scoped shared daemon；会话、运行、共享设置和交互由 KodaX Runtime 持有。完整退出使用 SDK Product lifecycle：lifecycle.requestExit 提交请求，lifecycle.readExit 读取同一回执，启动恢复通过 readKodaXClientExits 读取持久回执。只清理本客户端工作，保护其他在线客户端；工作清理与 Host 退出证明分开，unknown 保留恢复身份。Space 不按缓存 PID/PGID 强杀进程，也不为退出启动 replacement daemon；stale inline owner reconciliation 由 SDK 判定。Partner 继续由 Space embedded-inline 持有。',
+      'Coder 默认使用 profile-scoped shared daemon；会话、运行、共享设置和交互由 KodaX Runtime 持有。完整退出使用 SDK Product lifecycle：lifecycle.requestExit 提交请求，lifecycle.readExit 读取同一回执，启动恢复通过 readKodaXClientExits 读取持久回执。只清理本客户端工作，保护其他在线客户端；工作清理与 Host 退出证明分开，unknown 保留恢复身份。Space 不按缓存 PID/PGID 强杀进程，也不为退出启动 replacement daemon；stale inline owner reconciliation 由 SDK 判定。Partner 同样由共享 Host 持有，Space 通过工具 lease 提供业务能力。',
       '',
       'v0.1.44 把未读结果与待处理权限/AskUser 按唯一 Session 计数投影到 Windows 任务栏/托盘、macOS Dock 和受支持 Linux launcher。已准入的 Windows 完整退出可在托盘后台继续，同一进度可重开查看；普通成功退出保持安静，失败恢复窗口。Task Dock、Repointel 与历史页头使用当前 live/canonical 事实，历史 Session 的 External tasks 能区分正常空态与可重试错误。v0.1.45 再把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡：全部待答卡并存可答，composer 上方有带计数与定位闪光的召回停靠条，队首卡支持 1-9/Enter/Esc 键盘操作。',
       '',
@@ -110,7 +110,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '共享 Coder 中，产品使用问题调用只读 Host Tool space_manual；例如“怎么配 provider”“右侧面板是什么”“这个按钮怎么用”。内建 kodax_manual 继续提供 SDK/CLI 机制说明，Space 不覆盖该内建工具。',
       '',
       'Space 以 KodaX SDK 的底层能力主题为基线，再叠加桌面端语境：按钮在哪、面板做什么、快捷键是什么、哪些功能当前可用或受限。对 provider、配置、权限、工具、Skills、Extensions、MCP、A2A、Session、压缩和 SDK 等继承主题，Space 会保留当前安装 SDK 的原始正文与来源，不复制一份容易过期的摘要。',
-      'Partner 和 Embedded 由各自 inline owner 管理，可以把相同的组合主题注入其 kodax_manual；这是该执行范围的手册入口，不改变共享 Coder 的工具路由。',
+      'Partner 同样通过共享 Host 的 space_manual 阅读组合主题；kodax_manual 继续说明 SDK/CLI 机制。',
       '',
       '因此它可以理解为“工具的自说明/自查手册”：AI 用它核对自己对产品能力和 UI 交互的回答。但它不是完整测试用例，也不能替代人工 QA、发布清单或安全评审。',
     ),
@@ -129,10 +129,10 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     id: 'runtime-host',
     title: 'Runtime Host, customer mode switching, and release behavior',
     summary:
-      'Coder 默认使用共享 daemon；Settings 可安全切换 Embedded 兼容模式，Partner 保持 embedded inline。',
+      'Coder 与 Partner 使用同一共享 Host；旧 Embedded 偏好由 SDK 单向迁移，Settings 不再提供模式回退。',
     body: text(
       '当前接入要求 SDK 与 Host 均提供 sessionDrafts v1，普通 Coder 新会话显式作为草稿，首次有效输入被接受后持久化。聊天按 SDK 当前 view 整份替换，历史使用独立窗口；SDK lastMessageAt 决定会话最近消息时间，启动恢复或改设置不会把旧对话提升为新对话。',
-      'Runtime Host 是 Electron main 内部的 owner 适配边界。日常默认选择 Daemon；在 Settings -> Runtime -> Coder runtime mode 提供客户可见的 Daemon / Embedded 双选开关。Daemon 是推荐模式，Embedded 是 daemon 无法可靠启动、连接或协商能力时的兼容回退。',
+      'RuntimeHostAdapter 是可信 Main 的共享 Host 接入边界。连接失败时保留会话和任务身份并提供重试，不创建私有 Runtime 或第二个 Session writer。',
       '',
       CURRENT_RUNTIME +
         '当前构建通过公开 Product 输入、历史、统计和 lifecycle 契约接入共享 Host；SDK alpha.4 移除实时 Sidecar Verifier 与 /verifier-log，主 Agent 在当前 Run 内用工具及渲染证据检查结果，visual-review 提供检查方法；旧 verifier 消息仅作为历史记录读取。SDK alpha.5 修复实时工具图片附件，公开 attachment 读取提供 PNG 字节、尺寸和哈希校验；证据可读取不代表视觉审查通过。守护进程 preflight 在已知 mutation 忙碌时返回 conflict，Space 保留当前会话投影并拒绝把忙碌视为可停止。启动进度沿用 Runtime connection 投影显示本地阶段，SDK ready 不等于 Space 会话已就绪。SDK alpha.9 共享 Host 通过 canonical 元数据检查会话准入，历史正文 EIO 不再阻塞无关 Run/退出检查；活动控制器只有持有 owner fence 时才能复用准入，其他客户端仍受退出保护，受损会话显式打开仍报告读取错误。Artifact SDK 已随主包发布，提供四个 artifacts 子路径；共享 Host 需通过可信扩展注册九个工具并提供真实 Node，安装依赖不会自动启用。浏览器准备是显式操作，DOCX 的 Word/WPS 保真仍未验证。可信 Main 捕获凭据与 Host Tool leases、Provider allowlist 及 Workflow maxAgents/tokenBudget，SDK 管理实际执行、队列、Skill/command/review 准备与子任务权限。队列接收只确认 inputId，不虚构未来 Run；steer 和重连复用原输入授权。退出只清理本客户端工作，保护其他在线客户端；未知清理保留回执和恢复身份，接受不等于精确退出。仍要求 sandboxRuntime v11、runtimeAutoModeGuardrail v6、sharedSessionSettings v2、providerCredentialBroker v2 与 effectiveConfig v1。Space 为手动 compact 绑定并回收 operation-scoped keychain lease；Run 的 allowlist 只包含已知 Provider 身份，fallback、classifier、Stall Sidecar、Agent 与 Workflow 后代仅在实际 wire call 时按 Provider 精确读取凭据，缺失即失败。配置状态读取 daemon effective value/source，不从 Electron 环境猜测。v11 的 Windows native host 使用 wire protocol 10 与 setup generation 11、逐命令私有 Temp、64 端口 broker 范围与真实 target-start doctor 证明；完整 native bundle 会解包到 app.asar.unpacked，并按 manifest SHA-256 在发布 smoke 中校验。',
@@ -168,9 +168,9 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'Space 仍负责 renderer 投影、Partner tools/profile/policy、Artifact、Workflow library/start/admin、MCP server 进程与日志、Reference Agent 执行。这些是明确的 host-provider 边界，不应被描述为 daemon-native。',
       '',
-      'Coder 缺少必要 daemon capability 时 fail closed，不会把已接受操作静默重放到另一 owner。切换只能在 ManagedSession、running/paused Workflow、非终态 External Agent task、permission/AskUser、待派发 Coder queue、daemon 其他客户端和 active/queued work 全部为空时进行；Space 会完成 owner policy 交接、持久化偏好并自动重启。切换期间，Session、Slash、Workflow、Runtime External Agent、MCP 和 Runtime-affecting Settings 操作都被同一 admission gate 串行化。',
+      '必要 Host capability 缺失时明确要求升级；活动任务、其他客户端及所有权未知继续受保护。Space 不删除锁，不把 Stop unknown 强制改成 idle。',
       '',
-      'KODAX_SPACE_RUNTIME_HOST=legacy|runtime 只用于旧 v1/v2 或缺失 settings.json 的一次迁移种子；version 3 的持久化 coderRuntimeMode 一旦存在就成为启动真理。新进程会在 Runtime connect 前协调 owner policy：daemon 偏好遇到 unowned inline policy 会恢复 daemon policy，active/unreadable inline owner 则 fail closed。它不再是日常切换接口，也不迁移 Partner。正式构建继续使用 manifest/lock/安装包一致的精确 Registry 依赖，不增加 KodaX 语义版本门禁。',
+      '旧 Embedded 设置由 SDK 安全迁移；历史环境种子不再选择执行 owner。正式构建仍核对 manifest、lock 与完整安装资源，候选包验证不等于正式升级。',
       'v0.1.45 consumes SDK liveOutputSegments so live rendering, history reconciliation, reconnect hydration, snapshot recovery, and Ctrl+R converge on one transcript; only the effective provider segment is shown. provider.recovery remains a diagnostic event and no longer drives text replacement, content-based deduplication, or host checkpoint replay.',
     ),
     aliases: [
@@ -453,7 +453,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'Extensions：管理已安装插件与连接组件。Diagnostics：导出脱敏诊断包。原有六类操作与权限边界保留。Coder 标题栏的对话/成果切换复用 Artifact 工作区，完整成果和审查页可进入专注再返回；Activity、Transcript view 与 Task Dock 原有入口继续可用。',
       '',
       'Settings 改 UI 偏好和运行时默认值；会话内临时 model/mode 仍可以通过底部控件或 slash command 调整。',
-      'Runtime 页面里的 MCP/Skills 是桌面管理入口；同页的 Coder runtime mode 可在无活动工作时把 Coder 从推荐 Daemon 安全切换到 Embedded 兼容模式，或切回 Daemon，并自动重启。Coder 的目录发现与 MCP reload 会同步 daemon，MCP 子进程与日志仍由 Space MCP Manager 管理。Terminal Shell 选择会让 Space PTY 与 Coder 命令工具共享所选 shell 的登录 PATH，同时剥离常见密钥变量。',
+      'Runtime 页面提供 MCP/Skills 管理、共享 Host 连接诊断、沙箱显式激活与配置生效范围。不存在切换到 Embedded 的恢复入口；修复连接后可重试。',
     ),
     aliases: ['Settings', '设置', '齿轮', 'preferences', 'runtime', 'license', '配置界面'],
     nextTopics: ['providers', 'config', 'runtime-host', 'mcp', 'skills', 'permissions'],
@@ -598,7 +598,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'Artifact 不等于项目文件。它默认是会话产物；需要落到项目里时，用户应明确要求保存到指定路径，之后会走常规写文件权限。',
       '',
-      'Agent 侧生成方式（Coder daemon 会话）：KodaX 0.7.89 的 runBoundHostTools v2 会把 lease 绑定的 Space host tools 物化进该 run 的模型可见工具表，create_artifact / create_office_artifact 在 SA 与 managed-agent 子 Agent 两条路径都可直接调用。同一批工具仍保留 MCP 能力通道：用 mcp_search（server 为 "host"）发现，用 mcp_call 调用，capability id 形如 host:<leaseId>:create_artifact。lease 由 Space 自动绑定到它启动的 Coder run，子 Agent 随父 run 继承同一通道。Embedded 回退模式与 Partner 会话仍使用进程内顶层工具。',
+      'Agent 侧生成方式（Coder daemon 会话）：KodaX 0.7.89 的 runBoundHostTools v2 会把 lease 绑定的 Space host tools 物化进该 run 的模型可见工具表，create_artifact / create_office_artifact 在 SA 与 managed-agent 子 Agent 两条路径都可直接调用。同一批工具仍保留 MCP 能力通道：用 mcp_search（server 为 "host"）发现，用 mcp_call 调用，capability id 形如 host:<leaseId>:create_artifact。lease 由 Space 自动绑定到它启动的 Coder run，子 Agent 随父 run 继承同一通道。Partner 同样使用 Host lease，通用 Agent 工具仍受正常权限约束。',
     ),
     aliases: [
       'Artifact',
@@ -645,7 +645,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '历史持久 Session 没有任何 External Agent task 时显示正常空态，不把 session_not_found 伪造成主 Run 失败。真正的读取失败显示不含底层技术细节的可恢复错误与“重试”；已有任务卡仍保留进度、审计、取消和输入操作。',
       '',
-      'Runtime 配置的 External Agent 通过 KodaX 0.7.89 的独占 Actor owner 与统一 Actor/Turn 控制面执行；Space 显示其只读注册摘要并提供发现、预检、任务事件、补充输入、中断与 reconcile。`worker.configuredA2A` 是 KodaX CLI 的 Worker-hosted embedded 选项，不是 Space Settings 的开关；Space 仍以 daemon 协商到的 A2A 契约为准。MCP Tasks 与受治理 HTTP 仍不作为通用能力承诺。',
+      'External Agent 通过共享 Host 的统一 Actor/Turn 控制面执行；Space 提供发现、预检、事件、补充输入、中断与 reconcile，按实际 Host 的 A2A 能力协商准入，不恢复进程内函数注入。',
       '',
       'Space Reference Agent 的 durable registration/task/event store 仍由 ExternalAgentGateway 持有；Runtime 配置的 Agent 则由 daemon 持有 Actor/Turn。两条路径以任务 ID 和 adapter kind 显式区分。',
     ),
@@ -862,7 +862,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '1. MCP/.mcpb：通过 MCP 面板安装、查看、启动/停止、卸载，能力会以 MCP tools 暴露给 agent。',
       '2. SDK filesystem extensions：默认目录为 ~/.kodax/extensions，受管理路径声明在 ~/.kodax/integrations/extensions.json（version 1 + paths）。通过 /extensions sdk 查看默认目录、受管理 entrypoint、skipped entries 和运行时诊断。旧 config.json#extensions 仅作为迁移兼容；Settings -> Runtime 的 SDK 迁移计划与按钮会连同 MCP 一起处理，也可用 `kodax integrations migrate` 预览和迁移。',
       '',
-      'Space 默认只做发现。只有显式设置 KODAX_SPACE_ENABLE_SDK_EXTENSIONS 后，embedded Space extension runtime 才会把默认目录与 integrations/extensions.json 的路径去重后加载。Extensions 是进程内可信代码；不可信或重量级外部能力应优先使用 MCP。',
+      'SDK Extensions 按 Host 的配置目录发现与加载；Space 不为扩展创建另一个 Session Runtime。PowerShell exec 默认 NoLogo/NoProfile/NonInteractive，依赖个人 profile 函数或 alias 的扩展须显式初始化。',
       '',
       '只从可信来源安装扩展。会改状态或访问外部资源的扩展工具仍应受权限模式、MCP 工具声明和用户确认约束。',
     ),
@@ -1155,7 +1155,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '- AI 读不到文件：确认已打开项目目录，路径引用是否在 workspace 内。',
       '- Partner 不可点：当前构建已启用；检查版本、当前 surface 和本地状态，并查看 DevTools/logs。',
       '- External Agent 不可选：确认 Reference 注册已启用且实时 preflight 通过；Runtime 配置的 A2A 还要求 Coder daemon 能力协商成功，MCP Tasks/受治理 HTTP 当前不会出现。历史 Session 没有任务应显示空态；真实读取错误可点击“重试”。',
-      '- Coder daemon 异常：先记录 Space/KodaX 版本、runId、连接状态和日志。可在 Settings -> Runtime -> Coder runtime mode 选择 Embedded 后点击“切换并重启”；必须先结束 Space 任务，且 daemon 的其他客户端、active/queued work、Workflow、Agent Turn 和 pending interaction 都会安全阻止切换。KODAX_SPACE_RUNTIME_HOST 只作为旧配置的一次迁移种子，不应覆盖 version 3 的用户偏好。若启动遇到 inline owner，不要删除 `~/.kodax`；让 SDK 原子 reconciliation 判定 stale/active/unverifiable。',
+      '- Host 异常：记录 Space/KodaX 版本、runId、连接状态和日志，按诊断修复后重试。不要删除 owner-policy、锁或切换私有 writer；活动任务和其他在线客户端继续受保护，SDK 负责判定 owner 和安全升级。',
       '- 集成配置异常：只检查报错点名的 ~/.kodax/integrations/*.json，不要删除整个 integrations 目录。无效更新会继续使用 last-known-good；修复文件后 Settings -> Runtime 通常会在数秒内自动恢复 healthy。这里也可预览并执行 SDK 的旧配置迁移；迁移不会覆盖已有目标，也不会默认删除旧字段。',
       '- 关闭按钮行为不符合预期：检查 Settings -> Preferences -> Close button behavior。最小化到托盘后应显示 KodaX Space 托盘图标；真正退出先清理当前 Space 的工作；其他在线客户端仍在使用时，共享 Runtime 可以保留。若停止失败，Space 应自动恢复可见窗口；没有托盘/窗口却持续驻留 Space 自动拉起的 daemon 属于故障。',
       '- 完整退出长时间进行中：Windows 可从托盘重开查看同一条退出事务的已用时；普通成功退出不发系统通知，失败会恢复窗口。',

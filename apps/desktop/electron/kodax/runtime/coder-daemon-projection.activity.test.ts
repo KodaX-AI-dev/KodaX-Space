@@ -104,7 +104,7 @@ test('completed out-of-page activity repairs sidebar recency without activating 
   );
 });
 
-test('activity uses the latest valid Run boundary including failure and cancellation, excluding known Partner', () => {
+test('activity uses the latest valid Run boundary including failure and cancellation, including known Partner', () => {
   const runs: RuntimeStatusSnapshot['runs'] = [
     {
       runId: 'run_1',
@@ -163,8 +163,14 @@ test('activity uses the latest valid Run boundary including failure and cancella
     changedAt: 1,
     capabilities: [],
   });
-  assert.deepEqual(projection.sessionActivity, [{ sessionId: 's_old', lastActivityAt: 700 }]);
-  assert.deepEqual(projection.sessions, []);
+  assert.deepEqual(projection.sessionActivity, [
+    { sessionId: 's_partner', lastActivityAt: 900 },
+    { sessionId: 's_old', lastActivityAt: 700 },
+  ]);
+  assert.deepEqual(
+    projection.sessions.map((session) => session.sessionId),
+    ['s_partner'],
+  );
 });
 
 test('activity transport stays bounded and keeps the most recent timestamps', () => {

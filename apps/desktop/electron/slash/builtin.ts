@@ -211,13 +211,12 @@ function learningProposalMatchesFilter(
 
 function usesRuntimeSession(sessionId: string): boolean {
   const session = kodaxHost.get(sessionId);
-  return (
-    session !== undefined && session.provider !== 'mock' && runtimeHostAdapter.isRuntimeSelected()
-  );
+  return session !== undefined && runtimeHostAdapter.isRuntimeSelected();
 }
 
 function usesRuntimeLearning(sessionId: string): boolean {
-  return usesRuntimeSession(sessionId);
+  // Partner proposal approval and KB remain Space product state, independent of the Session writer.
+  return kodaxHost.get(sessionId)?.surface === 'code' && usesRuntimeSession(sessionId);
 }
 
 function runtimeLearningMatchesFilter(

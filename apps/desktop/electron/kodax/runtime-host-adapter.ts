@@ -115,7 +115,7 @@ import { RuntimeClientIdentityStore } from './runtime/runtime-client-identity.js
 import { RuntimeInputAuthorizationStore } from './runtime/runtime-input-authorization-store.js';
 import {
   CoderSessionProjectionReducer,
-  coderRuntimeSessionIds,
+  runtimeSessionIds,
   initializeCoderDaemonProjectionSdk,
   isPartnerRuntimeSessionIdentity,
   projectRuntimeProfile,
@@ -2123,15 +2123,15 @@ export class RuntimeHostAdapter {
   private readonly productViews = new Map<string, SessionProductView>();
   private readonly observationPromises = new Map<string, Promise<void>>();
   private readonly observationOpenQueues = new WeakMap<KodaXDaemonRuntime, Promise<void>>();
-  private readonly persistedOwnershipTokens = new Map<string, string>();
+  private readonly persistedIdentityTokens = new Map<string, string>();
   private readonly sessionSurfaces = new Map<string, RuntimeSessionIdentity['surface']>();
   /** Exact out-of-page Run generations whose persisted Session was verified as Coder. */
-  private readonly verifiedOutOfPageCoderRuns = new Map<string, ReadonlySet<string>>();
+  private readonly verifiedOutOfPageSessionRuns = new Map<string, ReadonlySet<string>>();
   /** Exact out-of-page Run generations rejected by an authoritative Partner identity. */
-  private readonly rejectedOutOfPagePartnerRuns = new Map<string, ReadonlySet<string>>();
-  private readonly outOfPageCoderVerificationWarnings = new Set<string>();
+  private readonly rejectedOutOfPageSessionRuns = new Map<string, ReadonlySet<string>>();
+  private readonly outOfPageVerificationWarnings = new Set<string>();
   /** Recent Coder membership plus independently verified out-of-page active Run Sessions. */
-  private runtimeCoderSessionIds = new Set<string>();
+  private runtimeSessionIds = new Set<string>();
   private readonly liveProjectionRevisions = new Map<
     string,
     { readonly runtimeId: string; readonly revision: number }
@@ -2857,10 +2857,10 @@ export class RuntimeHostAdapter {
     this.conversationPromises.clear();
     this.transcriptGenerations.clear();
     this.runtimeProfileSnapshotPromise = null;
-    this.runtimeCoderSessionIds.clear();
-    this.verifiedOutOfPageCoderRuns.clear();
-    this.rejectedOutOfPagePartnerRuns.clear();
-    this.outOfPageCoderVerificationWarnings.clear();
+    this.runtimeSessionIds.clear();
+    this.verifiedOutOfPageSessionRuns.clear();
+    this.rejectedOutOfPageSessionRuns.clear();
+    this.outOfPageVerificationWarnings.clear();
     this.integrationHealth = undefined;
     this.integrationHealthFingerprint = '';
     this.stopAllActorObservations();
@@ -3195,21 +3195,16 @@ export class RuntimeHostAdapter {
           isPartnerRuntimeSessionIdentity(session) ? 'partner' : 'code',
         );
     }
-    const verifiedOutOfPageCoderSessionIds = await this.verifyOutOfPageCoderSessions(
-      runtime,
-      status,
-    );
+    const verifiedOutOfPageSessionIds = await this.verifyOutOfPageSessions(runtime, status);
     if (this.runtime !== runtime || this.state !== 'ready') return;
-    this.runtimeCoderSessionIds = new Set(
-      coderRuntimeSessionIds(status, verifiedOutOfPageCoderSessionIds),
-    );
+    this.runtimeSessionIds = new Set(runtimeSessionIds(status, verifiedOutOfPageSessionIds));
     this.profileRevision = Math.max(
       this.profileRevision + 1,
       previousProfile.projectionRevision + 1,
     );
     const projected = projectRuntimeProfile({
       status,
-      verifiedOutOfPageCoderSessionIds,
+      verifiedOutOfPageSessionIds,
       sessionSurfaces: this.sessionSurfaces,
       userInputs,
       cursor,
@@ -3232,20 +3227,20 @@ export class RuntimeHostAdapter {
     this.push('runtime.profileChanged', profile);
   }
 
-  private async verifyOutOfPageCoderSessions(
+  private async verifyOutOfPageSessions(
     runtime: KodaXDaemonRuntime,
     status: RuntimeStatusSnapshot,
   ): Promise<ReadonlySet<string>> {
     const liveRunIdsBySession = outOfPageLiveRunIdsBySession(status);
-    for (const sessionId of this.verifiedOutOfPageCoderRuns.keys()) {
-      if (!liveRunIdsBySession.has(sessionId)) this.verifiedOutOfPageCoderRuns.delete(sessionId);
+    for (const sessionId of this.verifiedOutOfPageSessionRuns.keys()) {
+      if (!liveRunIdsBySession.has(sessionId)) this.verifiedOutOfPageSessionRuns.delete(sessionId);
     }
-    for (const sessionId of this.rejectedOutOfPagePartnerRuns.keys()) {
-      if (!liveRunIdsBySession.has(sessionId)) this.rejectedOutOfPagePartnerRuns.delete(sessionId);
+    for (const sessionId of this.rejectedOutOfPageSessionRuns.keys()) {
+      if (!liveRunIdsBySession.has(sessionId)) this.rejectedOutOfPageSessionRuns.delete(sessionId);
     }
     const unresolved = [...liveRunIdsBySession].filter(([sessionId, runIds]) => {
-      const verified = this.verifiedOutOfPageCoderRuns.get(sessionId);
-      const rejected = this.rejectedOutOfPagePartnerRuns.get(sessionId);
+      const verified = this.verifiedOutOfPageSessionRuns.get(sessionId);
+      const rejected = this.rejectedOutOfPageSessionRuns.get(sessionId);
       return [verified, rejected].every(
         (known) => known === undefined || [...runIds].some((runId) => !known.has(runId)),
       );
@@ -3253,21 +3248,21 @@ export class RuntimeHostAdapter {
     if (unresolved.length > 0) await preparePersistedSessionFreshnessTracking();
     await Promise.all(
       unresolved.map(([sessionId, runIds]) =>
-        this.verifyOutOfPageCoderSession(runtime, sessionId, runIds),
+        this.verifyOutOfPageSession(runtime, sessionId, runIds),
       ),
     );
     if (this.runtime !== runtime || this.state !== 'ready') return new Set();
     return new Set(
       [...liveRunIdsBySession]
         .filter(([sessionId, runIds]) => {
-          const verified = this.verifiedOutOfPageCoderRuns.get(sessionId);
+          const verified = this.verifiedOutOfPageSessionRuns.get(sessionId);
           return verified !== undefined && [...runIds].every((runId) => verified.has(runId));
         })
         .map(([sessionId]) => sessionId),
     );
   }
 
-  private async verifyOutOfPageCoderSession(
+  private async verifyOutOfPageSession(
     runtime: KodaXDaemonRuntime,
     sessionId: string,
     runIds: ReadonlySet<string>,
@@ -3276,7 +3271,7 @@ export class RuntimeHostAdapter {
       const persisted = await loadPersistedSessionFresh(sessionId);
       if (this.runtime !== runtime || this.state !== 'ready') return;
       if (persisted === null) {
-        this.verifiedOutOfPageCoderRuns.delete(sessionId);
+        this.verifiedOutOfPageSessionRuns.delete(sessionId);
         return;
       }
       if (
@@ -3284,8 +3279,8 @@ export class RuntimeHostAdapter {
         (this.sessionSurfaces.get(sessionId) ??
           (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code'))
       ) {
-        this.rejectedOutOfPagePartnerRuns.set(sessionId, new Set(runIds));
-        this.verifiedOutOfPageCoderRuns.delete(sessionId);
+        this.rejectedOutOfPageSessionRuns.set(sessionId, new Set(runIds));
+        this.verifiedOutOfPageSessionRuns.delete(sessionId);
         return;
       }
       if (!this.sessionSurfaces.has(sessionId))
@@ -3293,17 +3288,17 @@ export class RuntimeHostAdapter {
           sessionId,
           isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code',
         );
-      this.verifiedOutOfPageCoderRuns.set(sessionId, new Set(runIds));
-      this.rejectedOutOfPagePartnerRuns.delete(sessionId);
-      this.outOfPageCoderVerificationWarnings.delete(sessionId);
+      this.verifiedOutOfPageSessionRuns.set(sessionId, new Set(runIds));
+      this.rejectedOutOfPageSessionRuns.delete(sessionId);
+      this.outOfPageVerificationWarnings.delete(sessionId);
     } catch (error: unknown) {
-      this.verifiedOutOfPageCoderRuns.delete(sessionId);
-      this.rejectedOutOfPagePartnerRuns.delete(sessionId);
-      if (this.outOfPageCoderVerificationWarnings.has(sessionId)) return;
+      this.verifiedOutOfPageSessionRuns.delete(sessionId);
+      this.rejectedOutOfPageSessionRuns.delete(sessionId);
+      if (this.outOfPageVerificationWarnings.has(sessionId)) return;
       console.warn(
         `[runtime] could not verify out-of-page Coder identity for ${sessionId}: ${sanitizeDiagnosticError(error)}`,
       );
-      this.outOfPageCoderVerificationWarnings.add(sessionId);
+      this.outOfPageVerificationWarnings.add(sessionId);
     }
   }
 
@@ -3490,7 +3485,7 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private async assertPersistedCoderOwnership(sessionId: string): Promise<void> {
+  private async assertPersistedSessionIdentity(sessionId: string): Promise<void> {
     await preparePersistedSessionFreshnessTracking();
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const before = persistedSessionFreshnessToken(sessionId);
@@ -3505,7 +3500,7 @@ export class RuntimeHostAdapter {
         persisted !== null &&
         (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code') !== expectedSurface
       ) {
-        this.persistedOwnershipTokens.delete(sessionId);
+        this.persistedIdentityTokens.delete(sessionId);
         this.desiredObservations.delete(sessionId);
         this.activeCompactionsBySession.delete(sessionId);
         this.localCompactionCallsBySession.delete(sessionId);
@@ -3525,15 +3520,15 @@ export class RuntimeHostAdapter {
       // A second concurrent mutation must not make one read spin forever. Retain the older token
       // so the next independent request verifies ownership again instead of certifying an
       // identity read that raced the writer.
-      this.persistedOwnershipTokens.set(sessionId, before === after ? after : before);
+      this.persistedIdentityTokens.set(sessionId, before === after ? after : before);
       return;
     }
   }
 
-  private async assertPersistedCoderOwnershipIfChanged(sessionId: string): Promise<void> {
+  private async assertPersistedSessionIdentityIfChanged(sessionId: string): Promise<void> {
     await preparePersistedSessionFreshnessTracking();
     const before = persistedSessionFreshnessToken(sessionId);
-    if (this.persistedOwnershipTokens.get(sessionId) === before) return;
+    if (this.persistedIdentityTokens.get(sessionId) === before) return;
     // Only positive active/queued Runtime evidence may bypass the mutable JSONL boundary. An idle
     // membership cache can outlive an external Partner retag and is therefore not identity proof.
     if (this.hasActiveRuntimeOwnershipEvidence(sessionId)) {
@@ -3542,11 +3537,11 @@ export class RuntimeHostAdapter {
       // ownership check instead of carrying this bypass into the idle Session.
       return;
     }
-    await this.assertPersistedCoderOwnership(sessionId);
+    await this.assertPersistedSessionIdentity(sessionId);
   }
 
   private hasActiveRuntimeOwnershipEvidence(sessionId: string): boolean {
-    if (!this.runtimeCoderSessionIds.has(sessionId)) return false;
+    if (!this.runtimeSessionIds.has(sessionId)) return false;
     const runtime = this.runtime;
     if (runtime === null || this.state !== 'ready') return false;
     const observed = this.observations.get(sessionId);
@@ -3568,7 +3563,7 @@ export class RuntimeHostAdapter {
     return session !== undefined && Boolean(session.activeRun || session.queuedRuns.length);
   }
 
-  private async assertCoderSession(
+  private async assertHostSession(
     runtime: KodaXDaemonRuntime,
     sessionId: string,
     options?: RuntimeReadOptions,
@@ -3577,7 +3572,7 @@ export class RuntimeHostAdapter {
   ): Promise<RuntimeSession> {
     for (let attempt = 1; ; attempt += 1) {
       try {
-        if (!persistedOwnershipVerified) await this.assertPersistedCoderOwnership(sessionId);
+        if (!persistedOwnershipVerified) await this.assertPersistedSessionIdentity(sessionId);
         const session = await runtime.sessions.load(sessionId, options);
         assertRuntimeSessionIdentity(session, {
           sessionId,
@@ -3707,10 +3702,10 @@ export class RuntimeHostAdapter {
     this.assertSurfaceCapability(runtime, input.surface);
     const profileVerified = this.hasVerifiedProfileSession(runtime, input);
     if (profileVerified && this.hasActiveRuntimeOwnershipEvidence(input.sessionId)) return false;
-    await this.assertPersistedCoderOwnership(input.sessionId);
+    await this.assertPersistedSessionIdentity(input.sessionId);
     if (profileVerified) return false;
     try {
-      await this.assertCoderSession(runtime, input.sessionId, undefined, input.projectRoot, true);
+      await this.assertHostSession(runtime, input.sessionId, undefined, input.projectRoot, true);
       return false;
     } catch (error: unknown) {
       if (!isSessionNotFoundError(error)) throw error;
@@ -3729,7 +3724,7 @@ export class RuntimeHostAdapter {
       });
     } catch (createError: unknown) {
       try {
-        await this.assertCoderSession(runtime, input.sessionId, undefined, input.projectRoot, true);
+        await this.assertHostSession(runtime, input.sessionId, undefined, input.projectRoot, true);
         return false;
       } catch (reloadError: unknown) {
         if (!isSessionNotFoundError(reloadError)) throw reloadError;
@@ -3843,7 +3838,7 @@ export class RuntimeHostAdapter {
     readonly recoveryDeadline?: number;
   }): Promise<RuntimeConversationHistoryPageResult> {
     const runtime = await this.requireRuntime();
-    await this.assertPersistedCoderOwnershipIfChanged(input.sessionId);
+    await this.assertPersistedSessionIdentityIfChanged(input.sessionId);
     const generation = this.transcriptGenerations.get(input.sessionId) ?? 0;
     // Ownership reconciliation uses Runtime status in the normal case and does not materialize the
     // Session body, preserving the bounded first-page guarantee. Runtime then resolves the exact
@@ -3915,7 +3910,7 @@ export class RuntimeHostAdapter {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const generation = this.transcriptGenerations.get(sessionId) ?? 0;
       const runtime = await this.requireRuntime();
-      await this.assertCoderSession(runtime, sessionId, { timeoutMs: RUNTIME_READ_TIMEOUT_MS });
+      await this.assertHostSession(runtime, sessionId, { timeoutMs: RUNTIME_READ_TIMEOUT_MS });
       const conversation = await readPagedRuntimeConversationHistory(runtime, sessionId);
       if (this.runtime !== runtime || this.state !== 'ready') {
         throw new Error('Coder daemon connection changed while reading conversation history.');
@@ -3961,10 +3956,10 @@ export class RuntimeHostAdapter {
           : undefined;
       let transcript: RuntimeTranscript | null;
       if (observationSnapshot) {
-        await this.assertPersistedCoderOwnership(sessionId);
+        await this.assertPersistedSessionIdentity(sessionId);
         transcript = await readPagedRuntimeTranscript(runtime, sessionId, observationSnapshot);
       } else {
-        const loadedSession = await this.assertCoderSession(runtime, sessionId, {
+        const loadedSession = await this.assertHostSession(runtime, sessionId, {
           timeoutMs: RUNTIME_READ_TIMEOUT_MS,
         });
         transcript = await readPagedRuntimeTranscript(runtime, sessionId, undefined, loadedSession);
@@ -3991,7 +3986,7 @@ export class RuntimeHostAdapter {
    */
   async diagnoseSession(input: RuntimeSessionDiagnosticsInput): Promise<RuntimeSessionDiagnostics> {
     const runtime = await this.requireRuntime();
-    await this.assertPersistedCoderOwnership(input.sessionId);
+    await this.assertPersistedSessionIdentity(input.sessionId);
     const diagnostic = await runtime.sessions.diagnostics(input);
     if (
       this.runtime !== runtime ||
@@ -4005,7 +4000,7 @@ export class RuntimeHostAdapter {
 
   async readSessionStatistics(sessionId: string) {
     const runtime = await this.requireRuntime();
-    await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+    await this.assertPersistedSessionIdentityIfChanged(sessionId);
     if (!runtime.statistics) throw new Error('Runtime does not expose productExecutionFacts v1.');
     const summary = await runtime.statistics.read(sessionId);
     if (summary.sessionId !== sessionId || this.runtime !== runtime || this.state !== 'ready') {
@@ -4022,7 +4017,7 @@ export class RuntimeHostAdapter {
     input: import('@kodax-space/space-ipc-schema').ChannelInput<'session.executionFacts'>,
   ) {
     const runtime = await this.requireRuntime();
-    await this.assertPersistedCoderOwnershipIfChanged(input.sessionId);
+    await this.assertPersistedSessionIdentityIfChanged(input.sessionId);
     if (!runtime.statistics) throw new Error('Runtime does not expose productExecutionFacts v1.');
     const options = { cursor: input.cursor, limit: input.limit };
     const page =
@@ -4063,7 +4058,7 @@ export class RuntimeHostAdapter {
 
   async appendNotice(input: RuntimeAppendNoticeInput) {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, input.sessionId);
+    await this.assertHostSession(runtime, input.sessionId);
     const result = await runtime.sessions.appendNotice(input);
     if (result !== null) invalidatePersistedSessionCache(input.sessionId);
     return result;
@@ -4071,7 +4066,7 @@ export class RuntimeHostAdapter {
 
   async compactSession(input: RuntimeCompactSessionInput): Promise<RuntimeCompactSessionResult> {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, input.sessionId);
+    await this.assertHostSession(runtime, input.sessionId);
     // Compaction lifecycle is Runtime-owned. Subscribe before issuing the command so the
     // renderer cannot miss the canonical start/finished/end sequence and the host does not need
     // to synthesize a second, revision-less compatibility sequence.
@@ -4115,7 +4110,7 @@ export class RuntimeHostAdapter {
 
   async forkSession(input: RuntimeForkSessionInput) {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, input.sessionId);
+    await this.assertHostSession(runtime, input.sessionId);
     const result = await runtime.sessions.fork(input);
     if (result !== null) invalidatePersistedSessionCache(result.id);
     return result;
@@ -4123,7 +4118,7 @@ export class RuntimeHostAdapter {
 
   async confirmSessionIdentityAlias(input: RuntimeConfirmIdentityAliasInput): Promise<void> {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, input.sessionId);
+    await this.assertHostSession(runtime, input.sessionId);
     // Never infer aliases or automatically retry CAS conflicts with a newer revision.
     await runtime.sessions.confirmIdentityAlias(input);
     invalidatePersistedSessionCache(input.sessionId);
@@ -4133,7 +4128,7 @@ export class RuntimeHostAdapter {
 
   async rewindSession(input: RuntimeRewindSessionInput) {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, input.sessionId);
+    await this.assertHostSession(runtime, input.sessionId);
     const result = await runtime.sessions.rewind(input);
     if (result !== null) {
       invalidatePersistedSessionCache(input.sessionId);
@@ -4184,7 +4179,7 @@ export class RuntimeHostAdapter {
     const runtime = await this.requireRuntime();
     let outcome: 'deleted' | 'not_found' = 'deleted';
     try {
-      await this.assertCoderSession(runtime, sessionId);
+      await this.assertHostSession(runtime, sessionId);
       await runtime.sessions.delete(sessionId);
     } catch (error) {
       if (!isSessionNotFoundError(error)) throw error;
@@ -4212,8 +4207,8 @@ export class RuntimeHostAdapter {
       .map((binding) => this.revokeCredentialLease(runtime, binding.leaseId));
     await Promise.all(sessionCredentialLeases);
     this.projectionController.removeSessionLive(sessionId);
-    this.persistedOwnershipTokens.delete(sessionId);
-    this.runtimeCoderSessionIds.delete(sessionId);
+    this.persistedIdentityTokens.delete(sessionId);
+    this.runtimeSessionIds.delete(sessionId);
     this.liveProjectionRevisions.delete(sessionId);
     this.productViews.delete(sessionId);
     this.acceptedInputObservationDemands.delete(sessionId);
@@ -4243,7 +4238,7 @@ export class RuntimeHostAdapter {
 
   async getSessionSettingsVersioned(sessionId: string) {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, sessionId);
+    await this.assertHostSession(runtime, sessionId);
     return runtime.sessions.getSettingsVersioned(sessionId);
   }
 
@@ -4265,7 +4260,7 @@ export class RuntimeHostAdapter {
       // IPC/RealSession already owns the project/surface scope. Settings APIs and Runtime apply
       // their own Session identity/revision checks, so a mutable full-history read here is both
       // redundant and capable of rejecting a healthy active Session with data_changed.
-      await this.assertPersistedCoderOwnership(sessionId);
+      await this.assertPersistedSessionIdentity(sessionId);
     }
     let current = hasCurrentObservation
       ? structuredClone(observed.settings)
@@ -4348,7 +4343,7 @@ export class RuntimeHostAdapter {
       return;
     }
     if (!this.hasActiveRuntimeOwnershipEvidence(sessionId)) {
-      await this.assertPersistedCoderOwnership(sessionId);
+      await this.assertPersistedSessionIdentity(sessionId);
     }
     this.desiredObservations.add(sessionId);
     if (this.observations.has(sessionId)) return;
@@ -4422,7 +4417,7 @@ export class RuntimeHostAdapter {
     | { outcome: 'data_changed' }
   > {
     const runtime = await this.requireRuntime();
-    await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+    await this.assertPersistedSessionIdentityIfChanged(sessionId);
     try {
       // First observation can update SDK-owned Session metadata. Establish it before capturing
       // the newest history revision so its continuation cursor is not stale on arrival.
@@ -4458,13 +4453,13 @@ export class RuntimeHostAdapter {
 
   async readWorkMode(sessionId: string) {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, sessionId);
+    await this.assertHostSession(runtime, sessionId);
     return readSessionWorkMode(runtime, sessionId);
   }
 
   async updateWorkMode(input: ChannelInput<'session.setWorkMode'>) {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, input.sessionId);
+    await this.assertHostSession(runtime, input.sessionId);
     const result = await setSessionWorkMode(
       runtime,
       input.sessionId,
@@ -4484,7 +4479,7 @@ export class RuntimeHostAdapter {
     offset: number;
   }) {
     const runtime = await this.requireRuntime();
-    await this.assertPersistedCoderOwnershipIfChanged(input.sessionId);
+    await this.assertPersistedSessionIdentityIfChanged(input.sessionId);
     const options = { part: input.part, offset: input.offset };
     const chunk =
       input.source === 'history'
@@ -4496,7 +4491,7 @@ export class RuntimeHostAdapter {
 
   async searchProductHistory(sessionId: string, query: string): Promise<ClientHistorySearchResult> {
     const runtime = await this.requireRuntime();
-    await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+    await this.assertPersistedSessionIdentityIfChanged(sessionId);
     const result = await runtime.sessions.searchHistory(sessionId, { query });
     if (this.runtime !== runtime)
       throw new Error('Runtime changed while searching Session history.');
@@ -4560,7 +4555,7 @@ export class RuntimeHostAdapter {
     return async (itemId, options) => {
       if (this.runtime !== runtime || this.state !== 'ready')
         throw new Error('Image belongs to a previous Host.');
-      await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+      await this.assertPersistedSessionIdentityIfChanged(sessionId);
       const result =
         source === 'history'
           ? await runtime.sessions.readHistoryEntry(sessionId, itemId, options)
@@ -4574,7 +4569,7 @@ export class RuntimeHostAdapter {
   private async readObservedSessionLiveSnapshot(
     sessionId: string,
   ): Promise<SpaceSessionLiveProjectionT> {
-    await this.assertPersistedCoderOwnershipIfChanged(sessionId);
+    await this.assertPersistedSessionIdentityIfChanged(sessionId);
     const currentObservation = this.observations.get(sessionId);
     if (
       currentObservation !== undefined &&
@@ -4845,12 +4840,12 @@ export class RuntimeHostAdapter {
     sessionId: string,
   ): Promise<AgentActorTreeSnapshotT> {
     let runtime = initialRuntime;
-    await this.assertCoderSession(runtime, sessionId, { timeoutMs: RUNTIME_READ_TIMEOUT_MS });
+    await this.assertHostSession(runtime, sessionId, { timeoutMs: RUNTIME_READ_TIMEOUT_MS });
     await this.ensureObserved(sessionId);
     // ensureObserved may reconnect the daemon. Never attach the Actor cursor to
     // the pre-reconnect client captured above.
     runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, sessionId, { timeoutMs: RUNTIME_READ_TIMEOUT_MS });
+    await this.assertHostSession(runtime, sessionId, { timeoutMs: RUNTIME_READ_TIMEOUT_MS });
     try {
       const state = await this.ensureActorObserved(runtime, sessionId);
       const snapshot = state.observer.current() ?? (await state.observer.refreshNow());
@@ -4926,7 +4921,7 @@ export class RuntimeHostAdapter {
     } = {},
   ): Promise<void> {
     if (!options.trustPersistedOwnership) {
-      await this.assertPersistedCoderOwnership(sessionId);
+      await this.assertPersistedSessionIdentity(sessionId);
     }
     const runtime = options.attachedRuntime ?? (await this.requireRuntime());
     if (
@@ -4957,7 +4952,7 @@ export class RuntimeHostAdapter {
       }
       const session = observation.snapshot.session;
       if (!options.trustPersistedOwnership) {
-        await this.assertPersistedCoderOwnership(sessionId);
+        await this.assertPersistedSessionIdentity(sessionId);
       }
       if (this.runtime !== runtime || this.state !== 'ready') {
         throw new Error('Coder daemon connection changed while validating session observation.');
@@ -6444,16 +6439,20 @@ export class RuntimeHostAdapter {
     const policy = workflowPolicyStore.get();
     await this.syncWorkflowConcurrency(runtime, policy.maxConcurrency);
     const independentActor = request.kind === 'agent_spawn' || request.kind === 'agent_followup';
+    const recovery =
+      request.kind === 'recovery' ? await runtime.runs.get(request.input.runId) : undefined;
+    if (recovery && recovery.sessionId !== sessionId)
+      throw new Error('Recovery belongs to another Session.');
     const partner =
       !independentActor && this.sessionSurfaces.get(sessionId) === 'partner'
         ? await (
             await import('./runtime/partner-host-tools.js')
           ).registerPartnerHostExecution(runtime, sessionId, undefined, {
-            explicitMethod:
-              request.kind === 'command' ||
-              request.kind === 'tool' ||
-              (request.kind === 'input' && /^\/[\w-]+(?:\s|$)/.test(request.input.text)),
+            explicitMethod: request.kind === 'command' || request.kind === 'tool',
             ...(request.kind === 'input' ? { query: request.input.text } : {}),
+            ...(recovery
+              ? { recovery: { agentProfile: recovery.effectiveConfig?.agentProfile } }
+              : {}),
           })
         : undefined;
     if (partner) {
@@ -7787,7 +7786,7 @@ export class RuntimeHostAdapter {
 
   async listRuntimeActorTasks(sessionId: string, agentId?: string): Promise<ExternalAgentTaskT[]> {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, sessionId);
+    await this.assertHostSession(runtime, sessionId);
     const tree = await runtime.agents.tree(sessionId);
     const details = await Promise.all(
       tree.actors
@@ -7814,7 +7813,7 @@ export class RuntimeHostAdapter {
     readonly expectedConfigurationRevision?: string;
   }): Promise<ExternalAgentTaskT> {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, input.sessionId);
+    await this.assertHostSession(runtime, input.sessionId);
     const preflight = await runtime.agents.preflight({
       agentId: input.agentId,
       query: {
@@ -7883,7 +7882,7 @@ export class RuntimeHostAdapter {
 
   private async runtimeActorTaskContext(sessionId: string, taskId: string) {
     const runtime = await this.requireRuntime();
-    await this.assertCoderSession(runtime, sessionId);
+    await this.assertHostSession(runtime, sessionId);
     const identity = decodeRuntimeActorTaskId(taskId);
     const detail = await runtime.agents.detail(sessionId, identity.actorPath);
     const turn = detail.turns.find((item) => item.turnId === identity.turnId);
@@ -8409,11 +8408,11 @@ export class RuntimeHostAdapter {
     this.credentialLeases.clear();
     this.continuationPrompts.clear();
     this.profileCursors.clear();
-    this.persistedOwnershipTokens.clear();
-    this.runtimeCoderSessionIds.clear();
-    this.verifiedOutOfPageCoderRuns.clear();
-    this.rejectedOutOfPagePartnerRuns.clear();
-    this.outOfPageCoderVerificationWarnings.clear();
+    this.persistedIdentityTokens.clear();
+    this.runtimeSessionIds.clear();
+    this.verifiedOutOfPageSessionRuns.clear();
+    this.rejectedOutOfPageSessionRuns.clear();
+    this.outOfPageVerificationWarnings.clear();
     this.liveProjectionRevisions.clear();
     this.productViews.clear();
     this.acceptedInputObservationDemands.clear();

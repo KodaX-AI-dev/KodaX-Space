@@ -129,7 +129,6 @@ identity regressions remain included. Windows file ACL behavior is supplied and 
 this run does not establish macOS/Linux OS-vault migration or real provider subscription entitlement.
 Final combined acceptance and exact counts are recorded in the FEATURE_302 test guide after freeze.
 
-
 ## Historical T12-E/F/G acceptance — 2026-10-31
 
 These counts cover the earlier accepted baseline, not the additional H changes above. The H
@@ -227,3 +226,7 @@ Space remains independent: product code is still `da531f0a`; J updates only thes
 The I counts above are historical and do not certify a newly paired Space build. Integrate and
 validate with the responsible Space chat later, preserving source selection/proof/epoch/owner
 and actual Host profile/catalog contracts. SDK dependency pins and production gates stay intact.
+
+## alpha.12 source preparation (2026-11-02)
+
+The combined preparation branch now routes both Coder and Partner through the shared Host. Historical inline-library fixtures above are not product migration evidence. Partner leases preserve read-only connector Plan eligibility, and OAuth request context preserves the trusted grant identity without replaying generation POSTs. Source credentials migration is reused unchanged in its account-selection/CAS/tombstone boundaries; combined verification is recorded separately in `docs/releases/kodax-0.7.97-alpha.12-preparation.md`. Expert default methods and queued binding timing remain an explicit SDK seam. Registry installation and final byte qualification are pending the user’s publication notice.

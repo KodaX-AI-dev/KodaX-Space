@@ -174,7 +174,7 @@ test('forced exit never applies a Session-wide Stop to daemon-backed Coder work'
   );
   assert.equal(
     shouldCancelSessionWideOnForcedExit({ surface: 'partner', runtimeSelected: true }),
-    true,
+    false,
   );
 });
 
@@ -187,8 +187,15 @@ test('authoritative daemon idle ignores only stale local daemon Coder activity',
     }),
     false,
   );
+  assert.equal(
+    shouldCountLocalSessionExitBlocker({
+      surface: 'partner',
+      runtimeSelected: true,
+      runtimeAuthorityReady: true,
+    }),
+    false,
+  );
   for (const input of [
-    { surface: 'partner' as const, runtimeSelected: true, runtimeAuthorityReady: true },
     { surface: 'code' as const, runtimeSelected: false, runtimeAuthorityReady: true },
     { surface: 'code' as const, runtimeSelected: true, runtimeAuthorityReady: false },
   ]) {

@@ -50,5 +50,5 @@ test('Partner verifies connector results and does not reward silent local fallba
     PARTNER_PROFILE_VERIFICATION.instructions?.join('\n') ?? '',
     /creation status.*content verification/i,
   );
-  assert.equal(PARTNER_AGENT_PROFILE.version, '2026-09-03');
+  assert.equal(PARTNER_AGENT_PROFILE.version, '2026-11-02');
 });

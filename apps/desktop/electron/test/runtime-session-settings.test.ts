@@ -75,8 +75,8 @@ test('renderer drops the previous provider model when a daemon provider change o
   assert.equal(updated?.model, undefined);
 });
 
-test('renderer never applies Coder daemon settings to Partner sessions', () => {
+test('renderer applies shared Host settings to the matching Partner session', () => {
   const partner = { ...session, surface: 'partner' as const };
   const result = mergeRuntimeSettingsIntoSessions([partner], projection({ provider: 'openai' }));
-  assert.equal(result[0], partner);
+  assert.equal(result[0]?.provider, 'openai');
 });

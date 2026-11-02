@@ -69,6 +69,21 @@ test('unknown client cleanup retains recovery even after Host success', () => {
   );
 });
 
+test('verified exit of the old Host cannot authorize installation over its replacement', () => {
+  const settlement = projectClientExitReceipt({
+    ...receipt,
+    host: { ...receipt.host, state: 'succeeded', replacementRunning: true },
+    recovery: {
+      state: 'ready',
+      checkedAt: '2026-11-02T00:00:00Z',
+      reason: 'host_shutdown_verified',
+      nextAction: 'start_or_connect',
+    },
+  });
+  assert.equal(settlement.status, 'clean');
+  assert.equal(runtimeExitConfirmsHostStopped(settlement), false);
+});
+
 test('fresh SDK readiness releases startup without rewriting unknown historical cleanup', () => {
   const historical: ClientExitReceipt = {
     ...receipt,

@@ -500,7 +500,10 @@ class KodaXHost {
         restore();
         return 'session-not-found';
       }
-      if (session instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
+      if (
+        (session.surface === 'code' || session instanceof RealKodaXSession) &&
+        runtimeHostAdapter.hasReadyRuntime()
+      ) {
         // A newly-created Space session is intentionally admitted to the daemon
         // lazily. Settings can be changed before the first send, so admit it here
         // as well and seed the complete settings snapshot instead of applying only
@@ -528,7 +531,10 @@ class KodaXHost {
       if (await this.persistRuntime(sessionId)) {
         return 'ok';
       }
-      if (session instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
+      if (
+        (session.surface === 'code' || session instanceof RealKodaXSession) &&
+        runtimeHostAdapter.hasReadyRuntime()
+      ) {
         const reasoningContextChanged =
           before.provider !== session.provider ||
           before.model !== session.model ||
@@ -1105,7 +1111,7 @@ class KodaXHost {
     if (!src) return null;
 
     const forkTitle = src.title !== undefined ? `${stripForkSuffix(src.title)} (fork)` : undefined;
-    const usesRuntime = src instanceof RealKodaXSession;
+    const usesRuntime = src.surface === 'code' || src instanceof RealKodaXSession;
     if (usesRuntime && !runtimeHostAdapter.hasReadyRuntime()) {
       throw new Error('Runtime is unavailable for an exact Coder Session fork.');
     }
@@ -1149,7 +1155,10 @@ class KodaXHost {
     try {
       await cloneClipboardAttachmentsForFork(sourceSessionId, sessionId);
     } catch (error) {
-      if (src instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
+      if (
+        (src.surface === 'code' || src instanceof RealKodaXSession) &&
+        runtimeHostAdapter.hasReadyRuntime()
+      ) {
         await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
       } else {
         await deletePersistedSession({ sessionId }).catch(() => undefined);
@@ -1197,7 +1206,10 @@ class KodaXHost {
       });
     } catch (err) {
       // best-effort 回滚：擦掉刚写盘的 fork——失败也无所谓，下一次 list/cleanup 会发现
-      if (src instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
+      if (
+        (src.surface === 'code' || src instanceof RealKodaXSession) &&
+        runtimeHostAdapter.hasReadyRuntime()
+      ) {
         await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
       } else {
         await deletePersistedSession({ sessionId }).catch(() => undefined);
@@ -1211,7 +1223,10 @@ class KodaXHost {
     if (!(await this.persistRuntime(sessionId))) {
       await session.dispose().catch(() => undefined);
       this.sessions.delete(sessionId);
-      if (src instanceof RealKodaXSession && runtimeHostAdapter.hasReadyRuntime()) {
+      if (
+        (src.surface === 'code' || src instanceof RealKodaXSession) &&
+        runtimeHostAdapter.hasReadyRuntime()
+      ) {
         await runtimeHostAdapter.deleteSession(sessionId).catch(() => undefined);
       } else {
         await deletePersistedSession({ sessionId }).catch(() => undefined);
@@ -1256,7 +1271,7 @@ class KodaXHost {
   }> {
     const s = this.sessions.get(sessionId);
     if (!s) return { ok: false, reason: 'session_not_found' };
-    const usesRuntime = s instanceof RealKodaXSession;
+    const usesRuntime = s.surface === 'code' || s instanceof RealKodaXSession;
     if (usesRuntime && !runtimeHostAdapter.hasReadyRuntime()) {
       throw new Error('Runtime is unavailable for an exact Coder Session rewind.');
     }

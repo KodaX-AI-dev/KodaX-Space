@@ -150,6 +150,47 @@ test('Partner shared Host authorizes persona and product tools without a blanket
   }
 });
 
+test('Provider probes use operation authority without a Session and revoke it after the read', async () => {
+  const fake = createFakeRuntime();
+  Object.assign(fake.runtime.capabilities!, { providerProbeAuthorization: { version: 1 } });
+  fake.runtime.catalog.probeReasoningEfforts = async () => {
+    const broker = fake.calls.scopedCredentialBrokers.at(-1)!;
+    const request = {
+      requestId: 'request',
+      leaseId: 'scoped_credential_1',
+      provider: 'anthropic',
+      sessionId: 'probe',
+      target: {
+        kind: 'operation' as const,
+        operation: 'provider.reasoning.probe' as const,
+        operationId: 'probe',
+      },
+      purpose: 'utility' as const,
+    };
+    assert.equal(await broker(request), 'probe-fixture-key');
+    assert.equal(await broker({ ...request, purpose: 'primary' }), undefined);
+    assert.equal(await broker({ ...request, sessionId: 'a-session' }), undefined);
+    assert.equal(await broker({ ...request, provider: 'other' }), undefined);
+    return [];
+  };
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    credentialResolver: async () => 'probe-fixture-key',
+  });
+  try {
+    assert.deepEqual(
+      await adapter.probeReasoningEfforts({ provider: 'anthropic', efforts: ['high'] }),
+      [],
+    );
+    assert.deepEqual(fake.calls.loaded, []);
+    assert.deepEqual(fake.calls.credentialRevokes, ['scoped_credential_1']);
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('Space creates Coder drafts when the SDK advertises draft admission', async () => {
   const fake = createFakeRuntime();
   assert.ok(fake.runtime.capabilities);

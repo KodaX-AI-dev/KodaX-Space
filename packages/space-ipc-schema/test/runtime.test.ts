@@ -63,7 +63,7 @@ test('runtime projection channels are registered in schema-derived allowlists', 
   assert.equal(sessionLiveInvalidatedChannel.name, 'session.liveInvalidated');
 });
 
-test('profile projection is bounded and accepts only trusted Coder session ownership', () => {
+test('profile projection is bounded and accepts only trusted session ownership on both surfaces', () => {
   const valid = {
     connection,
     projectionRevision: 3,
@@ -112,7 +112,7 @@ test('profile projection is bounded and accepts only trusted Coder session owner
       ...valid,
       sessions: [{ ...valid.sessions[0], surface: 'partner' }],
     }).success,
-    false,
+    true,
   );
   assert.equal(
     spaceRuntimeProfileProjectionSchema.safeParse({

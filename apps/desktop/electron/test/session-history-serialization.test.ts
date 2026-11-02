@@ -67,9 +67,9 @@ test('a failed history operation releases the same-Session writer queue', async 
   assert.equal(await successor, 'success');
 });
 
-test('Embedded Coder history restores from persisted conversation instead of waiting for daemon', () => {
+test('shared Host history never falls back to a private Partner reader', () => {
   assert.equal(resolveSessionHistoryBackend('code', 'legacy', false), 'persisted');
   assert.equal(resolveSessionHistoryBackend('code', 'runtime', false), 'runtime-unavailable');
   assert.equal(resolveSessionHistoryBackend('code', 'runtime', true), 'runtime');
-  assert.equal(resolveSessionHistoryBackend('partner', 'runtime', true), 'persisted');
+  assert.equal(resolveSessionHistoryBackend('partner', 'runtime', true), 'runtime');
 });

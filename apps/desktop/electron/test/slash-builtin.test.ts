@@ -411,7 +411,7 @@ test('daemon observability commands do not infer shared daemon state from Electr
   assert.deepEqual(patches, [{ stallLog: true }]);
 });
 
-test('Partner config commands stay on the embedded process when Runtime is selected', async (t) => {
+test('Partner configuration uses the same shared Host without changing Electron defaults', async (t) => {
   const originalFallback = process.env.KODAX_FALLBACK_PROVIDERS;
   const originalStall = process.env.KODAX_STALL_LOG;
   process.env.KODAX_FALLBACK_PROVIDERS = 'partner-old';
@@ -427,11 +427,16 @@ test('Partner config commands stay on the embedded process when Runtime is selec
     patchRuntimeConfig: adapter.patchRuntimeConfig,
   };
   adapter.isRuntimeSelected = () => true;
-  adapter.readEffectiveRuntimeConfig = async () => {
-    throw new Error('Partner command must not read Runtime config');
-  };
-  adapter.patchRuntimeConfig = async () => {
-    throw new Error('Partner command must not patch Runtime config');
+  const patches: Record<string, unknown>[] = [];
+  adapter.readEffectiveRuntimeConfig = async () =>
+    effectiveRuntimeConfig(
+      { fallbackProviders: ['host-selected'], stallLog: true },
+      'persisted',
+      true,
+    );
+  adapter.patchRuntimeConfig = async (patch) => {
+    patches.push(patch);
+    return {};
   };
   t.after(() => {
     Object.assign(adapter, originals);
@@ -450,11 +455,12 @@ test('Partner config commands stay on the embedded process when Runtime is selec
   const fallbackUpdate = await runCmd('fallback', sessionId, ['partner-new']);
   const stallUpdate = await runCmd('stall-log', sessionId, ['off']);
 
-  assert.match(fallbackStatus.message ?? '', /partner-old/);
-  assert.match(fallbackUpdate.message ?? '', /current Space process/i);
+  assert.match(fallbackStatus.message ?? '', /host-selected/);
+  assert.match(fallbackUpdate.message ?? '', /saved/i);
   assert.equal(stallUpdate.ok, true);
-  assert.equal(process.env.KODAX_FALLBACK_PROVIDERS, 'partner-new');
-  assert.equal(process.env.KODAX_STALL_LOG, undefined);
+  assert.equal(process.env.KODAX_FALLBACK_PROVIDERS, 'partner-old');
+  assert.deepEqual(patches, [{ fallbackProviders: ['partner-new'] }, { stallLog: false }]);
+  assert.equal(process.env.KODAX_STALL_LOG, '1');
 });
 
 test('/mode full-access switches to the canonical direct-host profile', async () => {

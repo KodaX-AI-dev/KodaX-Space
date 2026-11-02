@@ -29,6 +29,7 @@ export type SpaceToolDefinition = {
   readonly name: string;
   readonly description: string;
   readonly sideEffect: 'readonly' | 'reads-network' | 'mutates-state';
+  readonly planModeAllowed?: boolean;
   readonly input_schema: Readonly<Record<string, unknown>>;
 };
 
@@ -42,7 +43,11 @@ function descriptor(definition: SpaceToolDefinition): RuntimeHostToolDescriptor 
     name: definition.name,
     description: definition.description,
     inputSchema: definition.input_schema,
-    sideEffect: definition.sideEffect === 'readonly' ? 'none' : 'non_idempotent',
+    sideEffect:
+      definition.sideEffect === 'readonly' ||
+      (definition.sideEffect === 'reads-network' && definition.planModeAllowed === true)
+        ? 'none'
+        : 'non_idempotent',
   };
 }
 

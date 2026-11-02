@@ -151,3 +151,9 @@ F146 <- PF001, PF002, PF003
 2026-09-07 增量：PF007 专家组合能力与共享连接器引导完成本地验收，`Completed / Local`。岗位/任务共用机制，飞书平台预设退役兼容历史会话；产品管理与深度研究具备独立方法 Skill 及交付标准。全量 4,022 PASS / 4 跳过，实际 macOS arm64 隔离应用验证通过，双轴评审无未处理发现。未发布或合入 Space，Space F-ID 待集成时确认。见 [PF007 验收记录](features/PF007-expert-workflows-validation.md)。
 
 2026-09-07 增量：PF008 会话专家持续绑定完成本地验收，`Completed / Local`。专家复用同一 Partner Agent、上下文、每轮方法加载和连接器权限；输入框与详情明确持续使用及不可用状态。两个实际样板的多轮、Host/SDK 恢复、切换/移除和会话隔离通过；全量 4,027 PASS / 4 跳过，评审修复后 22 项 UI 回归及 macOS arm64 隔离桌面通过。未发布或合入 Space。见 [PF008 验收记录](features/PF008-persistent-expert-validation.md)。
+
+## 2026-11-02：alpha.12 共享 Host 候选接入
+
+这是源码准备，不能视作 Partner 已正式集成。普通 Partner/prompt-only 专家以 Agent 工作模式通过共享 Host 执行，Space 以 lease 提供 persona/验证、KB/来源、连接器、交付与 Artifact。用户已明确通用 shell/write/subagent 不按 Partner 身份禁用，正常权限、审批、沙箱、工作区、管理员及连接器绑定继续约束实际操作。Partner KB 与产品提案审批保留原业务入口，不等同于另一个 Session writer。
+
+专家默认 Skill 与 after-turn 消费时读取最新已提交业务绑定还有 SDK 缺口，见 [交接段落](../releases/kodax-alpha12-partner-sdk-handoff.md)。现有 PF 状态不因本地库测试或 SDK CI 通过而改为集成完成。真实 Host、正式包、账户/外部服务和跨平台结果分别按 [候选清单](../releases/kodax-0.7.97-alpha.12-preparation.md) 与 F121 测试指南验收。

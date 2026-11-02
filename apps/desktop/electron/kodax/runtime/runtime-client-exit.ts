@@ -53,6 +53,7 @@ export function runtimeExitConfirmsHostStopped(settlement: RuntimeExitSettlement
     settlement.status !== 'blocked' &&
     receipt?.accepted === true &&
     receipt.host.state === 'succeeded' &&
+    receipt.host.replacementRunning !== true &&
     receipt.host.owner?.runtimeId === receipt.runtimeId &&
     (receipt.recovery === undefined ||
       (receipt.recovery.state === 'ready' && receipt.recovery.reason === 'host_shutdown_verified'))

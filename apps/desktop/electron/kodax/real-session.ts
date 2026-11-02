@@ -1,3 +1,4 @@
+import { PartnerMethodUnavailableError } from './runtime/partner-method-error.js';
 // RealKodaXSession — F011-real / alpha.1 KodaX 0.7.40 full surface
 //
 // 实接 @kodax-ai/kodax 内核。镜像 ManagedSession 接口。Mock 与 Real 同 shape。
@@ -143,7 +144,7 @@ interface RuntimeAdmissionState {
   readonly restoreDraftOnBoundaryConflict: boolean;
   phase: 'preparing' | 'starting' | RuntimeAdmissionOutcome;
   runId?: string;
-  rejectionReason?: 'session_data_changed';
+  rejectionReason?: 'session_data_changed' | 'unsupported_capability';
   readonly promise: Promise<RuntimeAdmissionOutcome>;
   readonly resolve: (outcome: RuntimeAdmissionOutcome) => void;
 }
@@ -1424,6 +1425,15 @@ export class RealKodaXSession implements ManagedSession {
       }
       return runtimeTerminalFailure(await handle.result);
     } catch (error) {
+      if (
+        error instanceof PartnerMethodUnavailableError &&
+        admission &&
+        admission.phase !== 'admitted'
+      ) {
+        admission.rejectionReason = 'unsupported_capability';
+        this.settleRuntimeAdmission(admission, 'not_admitted');
+        return error;
+      }
       if (signal.aborted || this.disposed) {
         this.settleRuntimeAdmission(admission, 'not_admitted', signal.aborted && !this.disposed);
         return error instanceof Error ? error : new Error(String(error));

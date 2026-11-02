@@ -118,12 +118,11 @@ async function retireOAuthSource(providerId: string): Promise<void> {
   previous.unsubscribe();
   await invalidateProviderCredential(providerId);
 }
-async function readOAuthCredential(
+async function selectOAuthSource(
   providerId: string,
   connection: KodaXCustomProviderConfig,
-  proof?: string,
-  context?: RuntimeCredentialContext,
-): Promise<string> {
+  fingerprint: string,
+): Promise<OAuthSource> {
   const { oauth: service, oauthRegistration: registrationId } = connection;
   if (!service || !registrationId)
     throw new Error('OAuth connection has no approved registration.');
@@ -131,9 +130,6 @@ async function readOAuthCredential(
     import('@kodax-ai/kodax/runtime'),
     import('@kodax-ai/kodax/llm'),
   ]);
-  const fingerprint = llm.createCustomProvider(connection).getCredentialConnectionFingerprint();
-  if (proof !== undefined && proof !== fingerprint)
-    throw new Error('Provider credential connection does not match.');
   const configPath = path.join(getKodaxRuntimeDir(), 'config.json'),
     key = JSON.stringify([configPath, registrationId, fingerprint]);
   let selected = oauthSessions.get(providerId);
@@ -169,6 +165,21 @@ async function readOAuthCredential(
     oauthSessions.set(providerId, created);
     selected = created;
   }
+  return selected;
+}
+
+async function readOAuthCredential(
+  providerId: string,
+  connection: KodaXCustomProviderConfig,
+  proof?: string,
+  context?: RuntimeCredentialContext,
+): Promise<string> {
+  const llm = await import('@kodax-ai/kodax/llm');
+  const fingerprint = llm.createCustomProvider(connection).getCredentialConnectionFingerprint();
+  if (proof !== undefined && proof !== fingerprint)
+    throw new Error('Provider credential connection does not match.');
+  const selected = await selectOAuthSource(providerId, connection, fingerprint);
+  const service = connection.oauth;
   const session = await selected.session;
   if (
     (session.profile ?? 'default') !== 'default' ||

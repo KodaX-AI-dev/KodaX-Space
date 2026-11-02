@@ -161,17 +161,16 @@ export function isPartnerRuntimeSessionIdentity(value: unknown): boolean {
  * out-of-page Run has no surface identity, so include it only after main has independently verified
  * the persisted Session as Coder. Unknown identities fail closed at the Coder/Partner boundary.
  */
-export function coderRuntimeSessionIds(
+export function runtimeSessionIds(
   status: RuntimeStatusSnapshot,
-  verifiedOutOfPageCoderSessionIds: ReadonlySet<string> = new Set(),
+  verifiedOutOfPageSessionIds: ReadonlySet<string> = new Set(),
 ): ReadonlySet<string> {
   const sessionById = new Map(status.sessions.map((session) => [session.id, session]));
   const sessionIds = new Set(status.sessions.map((session) => session.id));
   for (const run of status.runs) {
     if (run.phase !== 'queued' && !ACTIVE_PHASES.has(run.phase as never)) continue;
     const knownSession = sessionById.get(run.sessionId);
-    if (knownSession === undefined && !verifiedOutOfPageCoderSessionIds.has(run.sessionId))
-      continue;
+    if (knownSession === undefined && !verifiedOutOfPageSessionIds.has(run.sessionId)) continue;
     sessionIds.add(run.sessionId);
   }
   return sessionIds;
@@ -1158,7 +1157,7 @@ function projectSessionActivity(status: RuntimeStatusSnapshot) {
 
 export function projectRuntimeProfile(input: {
   readonly status: RuntimeStatusSnapshot;
-  readonly verifiedOutOfPageCoderSessionIds?: ReadonlySet<string>;
+  readonly verifiedOutOfPageSessionIds?: ReadonlySet<string>;
   readonly sessionSurfaces?: ReadonlyMap<string, 'code' | 'partner'>;
   readonly userInputs: readonly RuntimeUserInputRequest[];
   readonly cursor: number;
@@ -1169,16 +1168,13 @@ export function projectRuntimeProfile(input: {
   readonly connectionState?: 'ready' | 'degraded';
   readonly reason?: string;
 }): SpaceRuntimeProfileProjectionT {
-  const codeSessions = input.status.sessions;
-  const codeSessionIds = coderRuntimeSessionIds(
-    input.status,
-    input.verifiedOutOfPageCoderSessionIds,
-  );
-  const recentCodeSessionIds = new Set(codeSessions.map((session) => session.id));
+  const sessions = input.status.sessions;
+  const codeSessionIds = runtimeSessionIds(input.status, input.verifiedOutOfPageSessionIds);
+  const recentSessionIds = new Set(sessions.map((session) => session.id));
   const activeSessionIdsOutsideRecentPage = [...codeSessionIds].filter(
-    (sessionId) => !recentCodeSessionIds.has(sessionId),
+    (sessionId) => !recentSessionIds.has(sessionId),
   );
-  const retainedRecentSessions = codeSessions.slice(
+  const retainedRecentSessions = sessions.slice(
     0,
     Math.max(0, MAX_PROFILE_SESSIONS - activeSessionIdsOutsideRecentPage.length),
   );

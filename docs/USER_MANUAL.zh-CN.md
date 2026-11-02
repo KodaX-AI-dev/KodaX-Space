@@ -41,11 +41,11 @@ flowchart TD
     T -->|否| Coder
 ```
 
-| 入口          | 适合任务                                                       | 当前边界                                                                 |
-| ------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Coder**     | 阅读代码、改文件、运行命令、排查问题、评审 Diff、长任务        | 主要软件研发工作面                                                       |
-| **Partner**   | 研究、文档、需求、数据分析、演示、知识库、workspace-first 交付 | 已启用；连接组件按账号授权与服务能力提供读写，通用浏览器与远程自动化未提供                |
-| **Quick Ask** | 临时解释、快速确认、短问题                                     | 当前使用临时 Plan session；可提升到 Coder，不是真正无 session side query |
+| 入口          | 适合任务                                                       | 当前边界                                                                   |
+| ------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Coder**     | 阅读代码、改文件、运行命令、排查问题、评审 Diff、长任务        | 主要软件研发工作面                                                         |
+| **Partner**   | 研究、文档、需求、数据分析、演示、知识库、workspace-first 交付 | 已启用；连接组件按账号授权与服务能力提供读写，通用浏览器与远程自动化未提供 |
+| **Quick Ask** | 临时解释、快速确认、短问题                                     | 当前使用临时 Plan session；可提升到 Coder，不是真正无 session side query   |
 
 ## 3. 安装与首次启动
 
@@ -211,54 +211,23 @@ v0.1.44 还把需要注意的**唯一 Session 数**同步到操作系统原生�
 
 <a id="runtime-host"></a>
 
-### Coder 的 Daemon / Embedded 运行模式（v0.1.44）
+### 共享 Host 与候选升级
 
-打开 **Settings → Runtime → Coder 运行模式**，可以选择：
+Coder 与 Partner 共同使用独立共享 Host 管理会话、Run、队列、交互、历史和恢复。Space 提供桌面界面和通过 lease 授权的工具。原 Embedded 设置已退役；旧偏好由 SDK 安全迁移，连接失败时保留会话并提供重试，不在后台创建第二个写入者，也不删除 owner-policy 或锁。
 
-- **Daemon（推荐）**：Coder 连接当前 profile 的共享 daemon，支持持久任务、断线重连和多客户端协同；
-- **Embedded（兼容模式）**：Coder 在 KodaX Space 进程内运行。
-
-如果 Daemon 模式无法正常启动、连接不稳定或出现兼容问题，可以切换到
-**Embedded** 模式继续使用 Coder。选择新模式后点击 **切换并重启**；安全检查通过后，
-KodaX Space 会保存选择并自动重启。切换前需要先完成或停止正在运行的 Space 任务。
-如果还有 ManagedSession、running/paused Workflow、非终态 External Agent task、
-待处理 permission/AskUser、待派发 Coder queue、daemon active/queued work、其他客户端，
-或当前所有权状态无法确认，Space
-会拒绝切换，不会强制停止工作，也不会启动第二个竞争 owner。
-
-点击切换后，Space 会立即关闭新的 Coder admission，并等待已经进入的 Session、Slash、
-Workflow、Runtime External Agent、MCP 和 Runtime-affecting Settings 操作完成。成功
-交接后 admission 保持关闭直到新进程启动，避免安全检查与另一个入口同时触碰 owner。
-新进程会先按持久化模式协调 owner policy：Daemon 偏好遇到 unowned inline policy 会
-恢复 daemon policy；active/unreadable inline owner 会 fail closed。旧
-`KODAX_SPACE_RUNTIME_HOST=legacy|runtime` 只为 v1/v2 或缺失设置提供一次迁移种子；
-`~/.kodax/space/settings.json` 写入 version 3 后，`coderRuntimeMode` 是启动真理。
-
-Partner 继续在 Space 内 embedded-inline 运行，不受这个 Coder 开关影响。
+Coder 可在安全空闲时选择 Agent、Coding 或实验性 Script；Partner 默认 Agent。Partner 身份本身不禁止 shell、文件写入或子 Agent；具体操作仍受所选权限、审批、工作区、沙箱、连接器与管理员策略限制。
 
 ```mermaid
 flowchart LR
-    UI["Renderer UI"] --> IPC["受校验的 Space IPC"]
-    IPC --> Host["RuntimeHostAdapter"]
-    Host --> Mode{"已保存 Coder 模式"}
-    Mode -->|Daemon| RT["KodaX Runtime daemon<br/>Coder shared truth"]
-    Mode -->|Embedded| Inline["Electron main inline owner<br/>Coder compatibility"]
-    RT --> Run["session/run/settings/interactions<br/>Workflow observe/control<br/>Learning/catalog/Agent Actor-Turn"]
-    Bridge["Space host providers"] --> Host
-    Bridge --- P["Partner inline / MCP processes+logs<br/>Workflow library+start+admin / Reference Agent / Artifacts"]
+    C[Coder] --> M[Space Main 授权与工具 lease]
+    P[Partner Agent] --> M
+    M --> H[共享 SDK Host
+唯一会话执行与历史写入者]
 ```
 
-共享 Coder 的会话、Run、队列、交互和设置由 SDK Host 管理，Space 通过公开 Product 输入、view、历史、统计与 lifecycle 接口访问。候选要求 SDK 与 Host 的实际能力，包括 `productClient:1`、`sessionDrafts:1`、`conversationHistory:2`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1`；Host 还要求 `providerCredentialBroker:2`。能力不足时失败关闭，不在背后重放到 inline owner，不删除锁、不按错误文本改用 native shell，也不把 Stop unknown 强制改成 idle。Partner 保留自己的 inline owner。
+当前 alpha.12 仍为源码适配候选，正式安装版本以发布后的依赖锁及安装包为准。普通 Partner 与 prompt-only 专家已准备 Host 路径；专家默认 Skill 与排队采用最新已提交绑定还需 SDK 补公开接缝，不能据此宣称全部专家已迁移。详见 [交接说明](releases/kodax-alpha12-partner-sdk-handoff.md)。
 
-Daemon 模式还会核对 daemon 的实际能力，而不只看已经安装的 npm 包版本：缺少必需契约的长驻 daemon 会被拒绝并提示安全重启。当前源码要求 `sandboxRuntime:11`、`runtimeAutoModeGuardrail:6` 与 `sharedSessionSettings:2`。当前源码的 Windows native host 使用 wire protocol 10 与 setup generation 11（beta.5 对齐 Codex 的 profile/SSH 依赖 ACL 排除，旧 generation-10 SSH ACE 清理只在 setup 中进行）：宽 profile ACL 只在显式 setup 中收敛，逐命令 Temp 相互隔离，64 端口范围支持最多 32 个精确网络 authority，explicit doctor/setup 必须证明一次无副作用的 target start/exit。空闲旧 daemon 可安全替换，繁忙、未知或更新版本保持不动。当前共享 Coder 使用 SDK Product view 与历史 API，不再消费 journal/replay 来重建正文；compaction v3 与 revision-bound page/chunk/search 继续保护 root/child 历史边界。
-
-权限档位统一为 Plan、Edits、Auto[LLM]、Full Access。旧 `auto-in-project`、Auto Rules、engine、timeout 和 speculative window 只作为迁移输入，归一为 Auto[LLM] 后不再持久化或暴露。Auto 先尝试 sandbox；只有可证明命令尚未启动的宿主边界才进入 Exec Policy 与固定 LLM reviewer，已启动或结果不确定的命令绝不重放。Full Access 跳过 sandbox 与 Auto review，直接在宿主执行，但管理员和用户 Exec Policy 仍然生效。沙箱默认继承宿主环境，固定执行控制变量继续禁止；旧 `sandbox.envPass` 已失效，Space 不再编辑或投影它。
-
-沙箱 readiness 请在 Settings → Runtime 中刷新，或在宿主终端直接运行 `kodax sandbox doctor`。不要要求 Agent 通过 Bash 工具运行该命令：Windows 受限账号按设计不能读取宿主持有的 ASRT 控制状态，嵌套 doctor 会产生误导结果。Space 不会在普通启动、后台检查或工具执行期间自动提升权限；只有用户明确点击并确认 Sandbox Setup 时才调用 activation，随后由真实 target-start probe 验证完成状态。
-
-如果 daemon 启动时发现 inline owner，Space 不删除 `~/.kodax` 试图恢复；它把可读的 owner 状态交给 KodaX 的原子 daemon-enable reconciliation。只有 SDK 证明 owner 已废弃时才允许恢复，活动、不可读或不可验证 owner 继续 fail closed。Space 关闭时保留 inline owner handle，短暂 close 失败会重试；重试耗尽会报告清理错误，而不是把 ownership fence 静默遗留。
-
-> **历史 v0.1.38-v0.1.45 说明**：旧版 classifier timeout/engine/window 配置不再适用于当前源码。KodaX 0.7.96 使用固定的 90 秒 reviewer deadline 和一次 180 秒重试；Space 不再暴露或转发这些旧设置。
+Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 
 ### Runtime 失败详情
 
@@ -377,7 +346,7 @@ SDK 设置指引。刷新只运行 doctor，不会安装任何内容。Windows �
 
 同一 Runtime 页面还提供“沙箱环境变量透传”。这里填写的是变量名 allow-list，而不是
 变量值；值只在模型命令实际执行的 host 上读取，不会写入 `config.json` 或发送给
-renderer。Space 会把这份显式列表（包括空列表）传给 Daemon/Embedded Coder、Partner、
+renderer。Space 会把这份显式列表（包括空列表）传给 共享 Host 的 Coder、Partner、
 legacy 与独立 Workflow Run。KodaX 始终阻止 `NODE_OPTIONS`、`BASH_ENV`、
 `RIPGREP_CONFIG_PATH` 和导入的 Bash 函数，即使把这些名字加入列表也不会透传。修改
 host 中的变量值后，需要安全重启已连接的长驻 daemon。CLI 可写入比 Space 编辑器更大的
@@ -626,7 +595,7 @@ watcher、最近 reload 和诊断状态。`Dedicated integration file` 表示已
 重试，不会覆盖新数据；inbound A2A authentication/authority 变化仍可能要求安全重启
 Runtime owner。
 
-共享 Coder 中，AI 使用只读 Host Tool `space_manual` 回答 Space 操作问题；内建 `kodax_manual` 继续说明 SDK/CLI 机制，不被 Space 覆盖。Partner/Embedded 由自己的 inline owner 注入组合主题。Space 以当前安装 SDK 的 `KODAX_UNDERLYING_CAPABILITY_TOPICS` 为基线；若 Space 覆盖同名主题，会把准确的 SDK 原始正文、aliases 和 sources 与桌面操作说明动态合成。这样 Provider、custom Provider、配置、权限、工具、Skills、Extensions、MCP、A2A、仓库智能、Sessions、压缩和 SDK 等原始有价值内容不会因白标说明而丢失。
+共享 Coder 中，AI 使用只读 Host Tool `space_manual` 回答 Space 操作问题；内建 `kodax_manual` 继续说明 SDK/CLI 机制，不被 Space 覆盖。Partner 同样通过共享 Host 的 Space 工具读取组合主题。Space 以当前安装 SDK 的 `KODAX_UNDERLYING_CAPABILITY_TOPICS` 为基线；若 Space 覆盖同名主题，会把准确的 SDK 原始正文、aliases 和 sources 与桌面操作说明动态合成。这样 Provider、custom Provider、配置、权限、工具、Skills、Extensions、MCP、A2A、仓库智能、Sessions、压缩和 SDK 等原始有价值内容不会因白标说明而丢失。
 
 ### Skills 与 Markdown Agents
 
@@ -663,7 +632,7 @@ Settings → Runtime → External Agents 同时展示 Space Reference Agent 与 
 | `/mode`                                     | 查看或切换权限模式            |
 | `/provider`、`/model`                       | 切换 Provider/Model           |
 | `/reasoning`、`/thinking`                   | 调整 Effort/Thinking          |
-| `/agent-mode`                               | 查看或使用 AMA                   |
+| `/agent-mode`                               | 查看或使用 AMA                |
 | `/workflow`                                 | 启动或查看 Workflow           |
 | `/compact`                                  | 立即压缩当前持久会话上下文    |
 | `/tree`、`/history`                         | 查看 lineage 或用户消息历史   |
@@ -676,27 +645,27 @@ Settings → Runtime → External Agents 同时展示 Space Reference Agent 与 
 
 `Mod` 表示 macOS 的 `Cmd`、Windows/Linux 的 `Ctrl`。
 
-| 快捷键                    | 作用                   |
-| ------------------------- | ---------------------- |
-| `Mod+K`                   | Quick Ask              |
-| `Mod+Shift+P`             | 命令面板               |
-| `Mod+N`                   | 新建会话               |
-| `Mod+O`                   | 打开文件夹             |
-| `Mod+,`                   | Settings               |
-| `Shift+Tab`               | 循环权限模式           |
-| `Ctrl+M`                  | 权限模式选择器         |
-| `Ctrl+I`                  | 模型与推理选择器       |
-| `Ctrl+Shift+E`            | Reasoning Effort       |
-| `Alt+M`                   | Agent Mode             |
-| `Mod+F`                   | Transcript 搜索        |
-| `Ctrl+Shift+O`            | Transcript 视图菜单    |
-| `Ctrl+\`                  | Coder 专注模式         |
-| `Ctrl+Shift+V`            | Preview                |
-| `Ctrl+Shift+D`            | Diff                   |
-| Ctrl + 反引号（`）        | Terminal               |
-| `Ctrl+Shift+T`            | 循环主题               |
-| `Ctrl+滚轮`、`Ctrl+=/-/0` | 全局缩放               |
-| `?`                       | 帮助                   |
+| 快捷键                    | 作用                |
+| ------------------------- | ------------------- |
+| `Mod+K`                   | Quick Ask           |
+| `Mod+Shift+P`             | 命令面板            |
+| `Mod+N`                   | 新建会话            |
+| `Mod+O`                   | 打开文件夹          |
+| `Mod+,`                   | Settings            |
+| `Shift+Tab`               | 循环权限模式        |
+| `Ctrl+M`                  | 权限模式选择器      |
+| `Ctrl+I`                  | 模型与推理选择器    |
+| `Ctrl+Shift+E`            | Reasoning Effort    |
+| `Alt+M`                   | Agent Mode          |
+| `Mod+F`                   | Transcript 搜索     |
+| `Ctrl+Shift+O`            | Transcript 视图菜单 |
+| `Ctrl+\`                  | Coder 专注模式      |
+| `Ctrl+Shift+V`            | Preview             |
+| `Ctrl+Shift+D`            | Diff                |
+| Ctrl + 反引号（`）        | Terminal            |
+| `Ctrl+Shift+T`            | 循环主题            |
+| `Ctrl+滚轮`、`Ctrl+=/-/0` | 全局缩放            |
+| `?`                       | 帮助                |
 
 Preview、Diff 和 Terminal 的快捷键在工作面可交互且焦点不在输入框、文本框或可编辑区域时生效；也可从顶部“活动视图”菜单打开，Diff 还可从变更列表打开。
 
@@ -721,48 +690,48 @@ flowchart TD
 - 系统文件管理器定位只允许已登记项目、KodaX 数据目录和 Space 数据目录；授权范围外、文件不存在和系统定位失败会显示不同提示，但不会借此开放任意路径探测。
 - Terminal 会剥离常见 `*_KEY`、`*_TOKEN` 环境变量。
 - 第三方 Provider 会收到你实际提交给模型的内容；敏感代码仍应遵循组织政策。
-- Worker isolation 不是 OS sandbox；本版本的 Coder 由独立 shared daemon 持有，Partner 仍由 Electron main 中的 embedded-inline Runtime 持有。
+- Worker isolation 不是 OS sandbox；本版本的 Coder 由独立 shared daemon 持有，Partner 同样由共享 Host 持有。
 
 ## 19. 常见问题
 
-| 问题                        | 建议检查                                                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Provider 显示 No key        | Settings → Providers、环境变量名、Keychain 可用性                                                           |
-| Test connection 失败        | Base URL、协议、模型名、网络代理、服务端鉴权                                                                |
-| AI 看不到文件               | 是否已打开正确项目、路径是否在 workspace、是否正确使用 `@path`                                              |
-| 为什么一直弹权限            | 当前 Mode、工具风险、Allow always 的 scope、项目是否可信                                                    |
-| 停止后仍看到旧输出          | 等待取消终态；若持续出现，记录 session、时间和日志报告问题                                                  |
-| 排队气泡一直不消失          | 核对 transcript 是否已有对应用户消息或“未送达”状态；记录 session/run/inputId                                |
-| 子 Agent 进度反复唤醒父模型 | 普通 progress 不应结束 `wait_agent`；记录 actorPath/turnId 和 Runtime 日志                                  |
-| 子 Agent 正文混入父回复     | 检查 Agents/Workflow 活动面；主 transcript 只应显示 root 内容                                               |
-| 上下文百分比与 1M 对不上    | 百分比按当前自动压缩阈值计算；弹窗中的模型最大上下文与阈值是两个独立事实                                    |
-| 上下文构成为空              | 先完成一次模型请求；只有收到当前 Provider/Model 的根上下文诊断后才显示分类                                  |
-| 会话 Token 与上下文不同     | 正常：会话用量累计根/子 Agent 的全部物理调用，上下文窗口只看当前主 Agent 活动输入                           |
-| 历史看起来不完整            | 重开 session；检查是否 compact/rewind；确认 CLI 是否同时改写                                                |
-| 文件存在但无法定位          | 若提示“不在 KodaX 已授权目录”，请打开正确项目或先把文件纳入受支持的项目/Delivery 边界；不要把它当成文件丢失 |
-| PowerShell 方括号路径被确认 | `-Path` 的 `[]` 是通配符；精确文件名改用 `-LiteralPath`/`-PSPath`                                           |
-| CLI 自动恢复到了空会话      | 新版会跳过空 ACP 占位；核对实际包 SHA256、版本和是否仍有旧进程                                              |
-| 普通 query 会闪出多个 cmd   | 0.7.77 保留非交互子进程隐藏；若仍出现，请记录 Space/KodaX 版本、进程名和触发操作，按回归问题报告            |
-| MCP 工具不可见              | MCP 面板 Refresh/Reload、server 状态、PATH、`integrations/mcp.json` 来源和 diagnostics                      |
-| 旧 MCP/Extension 配置未生效 | Settings → Runtime 查看 SDK 迁移计划并点击“迁移集成配置”；也可用 CLI dry-run/`--apply` 迁移                 |
-| 集成配置校验失败            | 只修复错误点名的 `integrations/*.json`；不要删除整个目录，修复后 reload 或安全重启 Runtime owner            |
-| Daemon 模式无法使用         | 可在无活动工作时从 Settings → Runtime 切到 Embedded；若安全门拒绝，先处理任务/其他客户端                    |
-| 关闭按钮行为不符合预期      | Settings → Preferences → Close button behavior；退出仅清理本客户端工作；共享 daemon 可为其他客户端保留，失败时 Space 会恢复界面              |
-| 完整退出长时间进行中        | Windows 可从托盘重开查看同一条已用时；普通成功退出不弹通知，失败会恢复窗口并显示诊断                        |
-| 启动被 Windows ACL 阻断     | 先按阻断页重启；仍失败时打开诊断目录并提交脱敏日志，不要删锁、手工改 ACL、触发 Setup 或 UAC                 |
-| 原生数字角标没有清除        | 打开对应 Session；未读结果会清除，权限/AskUser 必须实际解决或取消；部分 Linux 桌面不支持数字角标            |
-| macOS/Linux 留下 daemon     | 先用 `kodax daemon stop --profile coder --timeout-ms 10000 --json`；无法确认时保留恢复票据，按完整退出指引处理；不要按缓存 PID/PGID 强杀       |
-| Terminal 找不到命令         | Settings → Preferences → Terminal Shell；确认所选 shell 的登录环境包含该命令                                |
-| Partner 没有浏览器/邮件发送 | 通用浏览器未提供；服务操作需在连接组件中核对支持能力与账号授权                                                                                    |
-| External Agent 不可选       | Reference 注册需 enabled 且 preflight 通过；A2A 还需显式配置及 daemon 能力协商                                          |
-| External Agent 任务区报错   | 无历史任务应显示空态；真正读取失败可点“重试”，主 Run 结果不因此变成失败                                     |
-| Quick Ask 不能打开          | 先打开项目；使用 `Mod+K`，不要与命令面板混淆                                                                |
-| 语言切换后仍有英文          | 模型输出、工具日志、文件内容和第三方数据不会被强制翻译                                                      |
-| UI 白屏或状态异常           | 记录版本、打开 DevTools、查看 `~/.kodax/space/logs`，不要直接删除整个 `~/.kodax`                            |
+| 问题                        | 建议检查                                                                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider 显示 No key        | Settings → Providers、环境变量名、Keychain 可用性                                                                                        |
+| Test connection 失败        | Base URL、协议、模型名、网络代理、服务端鉴权                                                                                             |
+| AI 看不到文件               | 是否已打开正确项目、路径是否在 workspace、是否正确使用 `@path`                                                                           |
+| 为什么一直弹权限            | 当前 Mode、工具风险、Allow always 的 scope、项目是否可信                                                                                 |
+| 停止后仍看到旧输出          | 等待取消终态；若持续出现，记录 session、时间和日志报告问题                                                                               |
+| 排队气泡一直不消失          | 核对 transcript 是否已有对应用户消息或“未送达”状态；记录 session/run/inputId                                                             |
+| 子 Agent 进度反复唤醒父模型 | 普通 progress 不应结束 `wait_agent`；记录 actorPath/turnId 和 Runtime 日志                                                               |
+| 子 Agent 正文混入父回复     | 检查 Agents/Workflow 活动面；主 transcript 只应显示 root 内容                                                                            |
+| 上下文百分比与 1M 对不上    | 百分比按当前自动压缩阈值计算；弹窗中的模型最大上下文与阈值是两个独立事实                                                                 |
+| 上下文构成为空              | 先完成一次模型请求；只有收到当前 Provider/Model 的根上下文诊断后才显示分类                                                               |
+| 会话 Token 与上下文不同     | 正常：会话用量累计根/子 Agent 的全部物理调用，上下文窗口只看当前主 Agent 活动输入                                                        |
+| 历史看起来不完整            | 重开 session；检查是否 compact/rewind；确认 CLI 是否同时改写                                                                             |
+| 文件存在但无法定位          | 若提示“不在 KodaX 已授权目录”，请打开正确项目或先把文件纳入受支持的项目/Delivery 边界；不要把它当成文件丢失                              |
+| PowerShell 方括号路径被确认 | `-Path` 的 `[]` 是通配符；精确文件名改用 `-LiteralPath`/`-PSPath`                                                                        |
+| CLI 自动恢复到了空会话      | 新版会跳过空 ACP 占位；核对实际包 SHA256、版本和是否仍有旧进程                                                                           |
+| 普通 query 会闪出多个 cmd   | 0.7.77 保留非交互子进程隐藏；若仍出现，请记录 Space/KodaX 版本、进程名和触发操作，按回归问题报告                                         |
+| MCP 工具不可见              | MCP 面板 Refresh/Reload、server 状态、PATH、`integrations/mcp.json` 来源和 diagnostics                                                   |
+| 旧 MCP/Extension 配置未生效 | Settings → Runtime 查看 SDK 迁移计划并点击“迁移集成配置”；也可用 CLI dry-run/`--apply` 迁移                                              |
+| 集成配置校验失败            | 只修复错误点名的 `integrations/*.json`；不要删除整个目录，修复后 reload 或安全重启 Runtime owner                                         |
+| Daemon 模式无法使用         | 查看 Runtime 诊断并修复后重试；保留原任务身份，尊重其他客户端与所有权保护                                                                |
+| 关闭按钮行为不符合预期      | Settings → Preferences → Close button behavior；退出仅清理本客户端工作；共享 daemon 可为其他客户端保留，失败时 Space 会恢复界面          |
+| 完整退出长时间进行中        | Windows 可从托盘重开查看同一条已用时；普通成功退出不弹通知，失败会恢复窗口并显示诊断                                                     |
+| 启动被 Windows ACL 阻断     | 先按阻断页重启；仍失败时打开诊断目录并提交脱敏日志，不要删锁、手工改 ACL、触发 Setup 或 UAC                                              |
+| 原生数字角标没有清除        | 打开对应 Session；未读结果会清除，权限/AskUser 必须实际解决或取消；部分 Linux 桌面不支持数字角标                                         |
+| macOS/Linux 留下 daemon     | 先用 `kodax daemon stop --profile coder --timeout-ms 10000 --json`；无法确认时保留恢复票据，按完整退出指引处理；不要按缓存 PID/PGID 强杀 |
+| Terminal 找不到命令         | Settings → Preferences → Terminal Shell；确认所选 shell 的登录环境包含该命令                                                             |
+| Partner 没有浏览器/邮件发送 | 通用浏览器未提供；服务操作需在连接组件中核对支持能力与账号授权                                                                           |
+| External Agent 不可选       | Reference 注册需 enabled 且 preflight 通过；A2A 还需显式配置及 daemon 能力协商                                                           |
+| External Agent 任务区报错   | 无历史任务应显示空态；真正读取失败可点“重试”，主 Run 结果不因此变成失败                                                                  |
+| Quick Ask 不能打开          | 先打开项目；使用 `Mod+K`，不要与命令面板混淆                                                                                             |
+| 语言切换后仍有英文          | 模型输出、工具日志、文件内容和第三方数据不会被强制翻译                                                                                   |
+| UI 白屏或状态异常           | 记录版本、打开 DevTools、查看 `~/.kodax/space/logs`，不要直接删除整个 `~/.kodax`                                                         |
 
 ## 20. 当前限制与诚实边界
 
-- 当前构建默认让 Coder 连接 profile-scoped shared daemon；Partner、其工具、权限、知识与交付仍由 Space embedded inline owner 管理，不会迁入 Coder daemon。
+- 当前构建默认让 Coder 连接 profile-scoped shared daemon；Partner 同样连接共享 Host，Space 以 lease 提供知识、连接器和交付工具；专家默认方法及排队绑定仍有候选接缝待验收。
 - 右侧 Task Dock 已提供 Learned Skills 管理：查看不可变修订、来源、canary 和诊断；根据记录状态提供 review、trust、reject、disable、rollback 与通知确认。该区域需 Runtime 能力协商通过；旧记录或策略禁写时只读，`SPACE_DISABLE_LEARNING_MUTATIONS=1` 禁用管理写操作。这不等于完整 Memory Episodes/Activity/纠正/清除界面已交付。
 - `daemonOrphanExit:1` 只证明当前 daemon host 启用了 orphan idle-exit，不证明异步 host cleanup 失败后一定重试成功；正式包 macOS/Linux process-level 验收和上游 cleanup retry/verification 缺口继续由 Issue 133 跟踪。
 - 当前 sandboxRuntime v11、已打包 helper 与显式 setup/readiness UI 提供受支持命令的隔离；Runtime Shell 在 sandbox 不可用时使用普通权限策略，且不会重放可能已启动的命令。普通权限执行仍取得同一 filesystem-effect fence。其边界未覆盖全部文档 staging、凭据与 native-resource 访问，不能视为整个应用的跨平台 OS 隔离。

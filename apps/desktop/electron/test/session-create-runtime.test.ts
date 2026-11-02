@@ -21,7 +21,7 @@ const { settingsStore } = await import('../settings/store.js');
 const { setUserConfigImpl } = await import('../kodax/user-config.js');
 registerSessionChannels();
 
-test('session.create uses daemon allocation for a real Coder without trusting a renderer ID', async (t) => {
+test('session.create uses daemon allocation for both real surfaces without trusting a renderer ID', async (t) => {
   setUserConfigImpl({
     loadConfig: (() => ({ provider: 'anthropic' })) as never,
     registerCustomProviders: (() => undefined) as never,
@@ -63,10 +63,13 @@ test('session.create uses daemon allocation for a real Coder without trusting a 
   assert.equal(result.data.sessionId, 's_daemon_allocated');
   assert.deepEqual(created, [{ projectRoot: process.cwd(), surface: 'code', ephemeral: true }]);
 
-  for (const localInput of [
-    { ...input, surface: 'partner' },
-    { ...input, provider: 'mock' },
-  ]) {
+  const partner = (await invoke(
+    {},
+    { ...input, surface: 'partner', sessionId: 'renderer_untrusted' },
+  )) as IpcResult<ChannelOutput<'session.create'>>;
+  assert.equal(partner.ok, true);
+  if (partner.ok) assert.equal(partner.data.sessionId, 's_daemon_allocated');
+  for (const localInput of [{ ...input, provider: 'mock' }]) {
     const localResult = (await invoke({}, localInput)) as IpcResult<
       ChannelOutput<'session.create'>
     >;
@@ -77,5 +80,9 @@ test('session.create uses daemon allocation for a real Coder without trusting a 
   const embeddedResult = (await invoke({}, input)) as IpcResult<ChannelOutput<'session.create'>>;
   assert.equal(embeddedResult.ok, true);
   if (embeddedResult.ok) assert.notEqual(embeddedResult.data.sessionId, 's_daemon_allocated');
-  assert.equal(created.length, 1, 'Partner, mock and embedded creation must not enter the daemon');
+  assert.equal(
+    created.length,
+    2,
+    'Both product surfaces allocate through Host; mock and injected legacy fixtures stay local',
+  );
 });

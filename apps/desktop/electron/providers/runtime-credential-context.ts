@@ -1,3 +1,4 @@
+import { rememberProviderSecret } from './managed-env.js';
 import type { RuntimeScopedCredentialRequest } from '@kodax-ai/kodax/runtime';
 import type { OAuthCredentialSession } from '@kodax-ai/kodax/llm';
 export type RuntimeCredentialContext = Pick<
@@ -20,7 +21,7 @@ export async function acquireRuntimeOAuthCredential(
       throw new Error('OAuth recovery requires a negotiated credential context.');
     await session.recoverRejectedCredential(context.rejectedCredentialFingerprint);
   }
-  const token = await session.acquire();
+  const token = rememberProviderSecret(await session.acquire());
   if (context?.credentialContextVersion !== 1) return token;
   const { serializeProviderCredentialGrant } = await import('@kodax-ai/kodax/llm');
   return serializeProviderCredentialGrant({

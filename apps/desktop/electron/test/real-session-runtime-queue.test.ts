@@ -1,8 +1,9 @@
+import { PartnerMethodUnavailableError } from '../kodax/runtime/partner-method-error.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 
 import {
   projectEmbeddedMidTurnUserMessages,
@@ -10,6 +11,18 @@ import {
   RealKodaXSession,
 } from '../kodax/real-session.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
+
+// Independent /coding Skill preparation fixtures. Production preparation belongs to Host.
+function useIndependentCodingFixture(t: TestContext): void {
+  const selected = runtimeHostAdapter.isRuntimeSelected;
+  const owner = runtimeHostAdapter.ensureLegacyOwner;
+  runtimeHostAdapter.isRuntimeSelected = () => false;
+  runtimeHostAdapter.ensureLegacyOwner = async () => undefined;
+  t.after(() => {
+    runtimeHostAdapter.isRuntimeSelected = selected;
+    runtimeHostAdapter.ensureLegacyOwner = owner;
+  });
+}
 
 test('embedded reasoning observations keep root ownership', () => {
   const resolution = {
@@ -117,7 +130,8 @@ test('embedded Coder send rejects before acceptance when the inline owner is una
   assert.deepEqual(events, []);
 });
 
-test('an explicit Skill is rejected factually while any run is active', async () => {
+test('an explicit Skill is rejected factually while any run is active', async (t) => {
+  useIndependentCodingFixture(t);
   const session = new RealKodaXSession({
     sessionId: 'session_busy_skill',
     projectRoot: process.cwd(),
@@ -155,7 +169,8 @@ test('an explicit Skill is rejected factually while any run is active', async ()
   );
 });
 
-test('a fresh explicit Skill is prepared once before the run starts', async () => {
+test('a fresh explicit Skill is prepared once before the run starts', async (t) => {
+  useIndependentCodingFixture(t);
   const session = new RealKodaXSession({
     sessionId: 'session_fresh_skill',
     projectRoot: process.cwd(),
@@ -223,7 +238,8 @@ test('a fresh explicit Skill is prepared once before the run starts', async () =
   assert.equal(startedWith, prepared);
 });
 
-test('distinct sends cannot cross the same fresh-run preparation boundary', async () => {
+test('distinct sends cannot cross the same fresh-run preparation boundary', async (t) => {
+  useIndependentCodingFixture(t);
   const session = new RealKodaXSession({
     sessionId: 'session_concurrent_skill_preparation',
     projectRoot: process.cwd(),
@@ -295,7 +311,8 @@ test('distinct sends cannot cross the same fresh-run preparation boundary', asyn
 });
 
 for (const action of ['cancel', 'dispose'] as const) {
-  test(`${action} during explicit Skill preparation prevents a ghost Run and finalizes once`, async () => {
+  test(`${action} during explicit Skill preparation prevents a ghost Run and finalizes once`, async (t) => {
+    useIndependentCodingFixture(t);
     const session = new RealKodaXSession({
       sessionId: `session_skill_${action}_during_preparation`,
       projectRoot: process.cwd(),
@@ -556,7 +573,8 @@ test('explicit Skill resolution supports a middle token and preserves its exact 
   await preparation.prepared?.finalize();
 });
 
-test('an admitted explicit Skill finalizes once even when stream preflight fails', async () => {
+test('an admitted explicit Skill finalizes once even when stream preflight fails', async (t) => {
+  useIndependentCodingFixture(t);
   const session = new RealKodaXSession({
     sessionId: 'session_skill_finalize',
     projectRoot: process.cwd(),
@@ -603,7 +621,8 @@ test('an admitted explicit Skill finalizes once even when stream preflight fails
   assert.equal(finalizationError, 'preflight exploded');
 });
 
-test('an admitted explicit Skill finalizes with a fulfilled embedded terminal failure', async () => {
+test('an admitted explicit Skill finalizes with a fulfilled embedded terminal failure', async (t) => {
+  useIndependentCodingFixture(t);
   const session = new RealKodaXSession({
     sessionId: 'session_skill_embedded_terminal_failure',
     projectRoot: process.cwd(),
@@ -646,6 +665,60 @@ test('an admitted explicit Skill finalizes with a fulfilled embedded terminal fa
   await waitForTest(() => !session.isRunning());
   assert.equal(finalizations, 1);
   assert.equal(finalizationError, 'embedded terminal failed');
+});
+
+test('an unsupported Partner default method rejects before acceptance and preserves the unsent input', async (t) => {
+  const adapter = runtimeHostAdapter as unknown as Record<string, unknown>;
+  const keys = [
+    'isRuntimeSelected',
+    'initialize',
+    'ensureSession',
+    'ensureObserved',
+    'resolveToolInvocation',
+    'activeRunId',
+    'findActiveRunId',
+    'updateSessionSettings',
+    'startManagedRun',
+  ];
+  const original = Object.fromEntries(keys.map((key) => [key, adapter[key]]));
+  t.after(() => {
+    Object.assign(adapter, original);
+  });
+  let starts = 0;
+  const events: unknown[] = [];
+  Object.assign(adapter, {
+    isRuntimeSelected: () => true,
+    initialize: async () => undefined,
+    ensureSession: async () => false,
+    ensureObserved: async () => undefined,
+    resolveToolInvocation: async () => undefined,
+    activeRunId: () => undefined,
+    findActiveRunId: async () => undefined,
+    updateSessionSettings: async () => undefined,
+    startManagedRun: async () => {
+      starts++;
+      throw new PartnerMethodUnavailableError();
+    },
+  });
+  const session = new RealKodaXSession({
+    sessionId: 'unsupported-expert',
+    projectRoot: process.cwd(),
+    provider: 'fixture',
+    reasoningMode: 'auto',
+    permissionMode: 'accept-edits',
+    surface: 'partner',
+    emit: (event) => events.push(event),
+    requestPermission: async () => 'allow_once',
+  });
+  assert.deepEqual(await session.send('Keep this draft'), {
+    accepted: false,
+    reason: 'unsupported_capability',
+    queueMode: 'interrupt',
+  });
+  await waitForTest(() => !session.isRunning());
+  assert.equal(starts, 1);
+  assert.deepEqual(events, []);
+  await session.dispose({ abortRuntimeRun: false });
 });
 
 test('daemon Coder restores the draft when the persisted boundary changes before admission', async (t) => {
@@ -1256,7 +1329,8 @@ test('embedded Coder snapshots permission mode before waiting for the inline own
   assert.equal(observedRunMode, 'auto');
 });
 
-test('fire-and-forget stream preflight failures emit one terminal error instead of rejecting unhandled', async () => {
+test('fire-and-forget stream preflight failures emit one terminal error instead of rejecting unhandled', async (t) => {
+  useIndependentCodingFixture(t);
   const events: Array<{ readonly kind?: string }> = [];
   const session = new RealKodaXSession({
     sessionId: 'session_stream_preflight_failure',
@@ -1310,8 +1384,7 @@ test('active daemon run preserves interrupt intent and requires explicit after-t
 
   let submittedInput: Record<string, unknown> | undefined;
   let settingsUpdate:
-    | { readonly sessionId: string; readonly patch: Record<string, unknown> }
-    | undefined;
+    { readonly sessionId: string; readonly patch: Record<string, unknown> } | undefined;
   const settingsUpdates: Array<{
     readonly sessionId: string;
     readonly patch: Record<string, unknown>;
@@ -1509,8 +1582,7 @@ test('daemon run refreshes settings and leaves raw Skill preparation to Host', a
   });
 
   let settingsUpdate:
-    | { readonly sessionId: string; readonly patch: Record<string, unknown> }
-    | undefined;
+    { readonly sessionId: string; readonly patch: Record<string, unknown> } | undefined;
   let managedRunInput: Record<string, unknown> | undefined;
   let managedRunCalls = 0;
   patchMethod('initialize', async () => undefined);

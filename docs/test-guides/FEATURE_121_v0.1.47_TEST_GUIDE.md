@@ -19,3 +19,20 @@
 13. 在配置好的 Gemini 路由发送简短文本并允许 SDK 提供完整工具表。不得再出现 `relationship_scan.depth` 数字枚举的 TYPE_STRING 错误；该字段继续接受整数 1–3，不在 Space 改写工具 schema。此项真实 Provider 验收与隔离 HTTP E2E 分别记录。
 
 自动化入口：`sdk-product-output.spec.ts`、`sdk-unified-contract.spec.ts`；Mock 图片兼容与启动分别见 `file-attachments.spec.ts`、`renderer-boot.spec.ts`。单元回归涵盖输入缺 turnId、附件正文不同、同 outputId 多块、历史冻结、缓存删除、旧游标失效、正文读取超时、错误诊断连接，以及快照捕获后到达的新 observer 帧不能被旧快照覆盖。
+
+## alpha.12 候选适配（2026-11-02，未正式升级）
+
+候选固定点、实际测试及未完成边界见 [适配清单](../releases/kodax-0.7.97-alpha.12-preparation.md)。此前 Alpha 版本验证记录保持历史含义。
+
+1. 真实 Host：`node --import tsx e2e/alpha12-partner-host-acceptance.mjs`。隔离数据根，验证 builtin/.agents Skill、Partner Agent、实际 shell scope、无模型请求的交付工具及文件字节；只在精确独占 owner 与可停 preflight 后停止该测试 Host，并验证 shutdown receipt。
+2. Coder 创建后切换 Agent/Coding/Script；空闲才允许，以 Host revision CAS 写入。其他窗口改设置或切换会话时拒绝旧选择，不把它重试覆盖新值。Partner 创建/恢复后的下一 Run 必须为 Agent。
+3. 当前 Run 的模式、toolScope/modelToolScope、reasoning requested/sent 与会话选择分别观察；缺字段保持未知，子请求/旧 Run 不覆盖；verified:false 不是失败，缓存拒绝不逐轮 toast。
+4. Partner 读/搜连接器在 Plan 可用；写入仍按权限和绑定检查。Root generic shell/write/subagent 保留；独立 Actor 不继承根专家连接器授权。连接器删除/撤销后不从旧 snapshot 复活。
+5. 旧凭证 source 固定、环境变量消失、私有/共享冲突、存储临时失败、删除墓碑、改名和 CAS 冲突均不换账号；OAuth 拒绝 token 仅刷新同注册，不重放 generation POST。真实账户验证另记。
+6. 修改配置后观察 application；活跃 Run 不被“已保存”说明覆盖。损坏配置、auth 或 pending input 保留原件并可重试，未知执行不重新提交。
+7. 统计换代 cursor conflict 返回 reset，先替换第一页再按 ID/revision 更新；partial/issues 不隐藏。没有费用报价时不显示零价或账单金额。
+8. 历史 Fork/Rewind/Retry 保留 canonical/nativeHistory 与原图/工具块；模型切到 text-only 后只拒绝新图片，不改旧历史；原件缺失不以 preview 冒充。首次历史加载独立于 Host ready，Issue 371 保持开放。
+9. 两客户端同 profile/同存储根：A 退出保护 B；更新安装在 preflight 后出现新 Peer 时，个人清理成功不能当 Host 已停，不得继续替换程序文件。丢失退出响应查询原 requestId；不按锁年龄解除 fence。
+10. 正式发布后安装 Registry 包并锁完整 integrity，再跑真实 Electron/ASAR 启动、手动更新、退出、沙箱显式激活和 Linux 自动回退。保留 Node/Electron ABI 串行检查。真实 Kylin/macOS/ARM 与外部服务不算当前离线通过项。
+
+专家默认方法及消费时绑定的验收按 [SDK 交接](../releases/kodax-alpha12-partner-sdk-handoff.md) 执行，当前不能勾选完成；不以测试专用 `/coding` 进程内 fixtures 替代正式产品路径。

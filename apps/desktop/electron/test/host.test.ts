@@ -25,7 +25,11 @@ import { askUserBroker } from '../permission/ask-user-broker.js';
 import { installSessionStoreMock, type MockSessionState } from './_helpers/session-store-mock.js';
 import { setSessionStoreImpl } from '../kodax/session-store.js';
 import { _resetMemoryStoreForTesting, setKey } from '../providers/keychain.js';
-import { getScopedProviderCredential, getProvider, withProviderRequestCredential } from '@kodax-ai/kodax/llm';
+import {
+  getScopedProviderCredential,
+  getProvider,
+  withProviderRequestCredential,
+} from '@kodax-ai/kodax/llm';
 
 // Stub webContents：捕获所有 session.event payload 到数组里
 type CapturedSend = { channel: string; payload: unknown };
@@ -98,7 +102,12 @@ test('retired SA preferences create and update Space sessions as AMA', () => {
   assert.equal(kodaxHost.get(created.sessionId)?.agentMode, 'ama');
 });
 
-test('embedded manual compact receives the exact Space keychain credential', async () => {
+test('independent SDK compact fixture receives the exact Space keychain credential', async (t) => {
+  const selected = runtimeHostAdapter.isRuntimeSelected;
+  runtimeHostAdapter.isRuntimeSelected = () => false;
+  t.after(() => {
+    runtimeHostAdapter.isRuntimeSelected = selected;
+  });
   _resetMemoryStoreForTesting();
   await setKey('anthropic', 'compact-credential');
   let scopedCredential: string | undefined;
@@ -110,7 +119,12 @@ test('embedded manual compact receives the exact Space keychain credential', asy
     loadSession: async () => null,
     watchSessions: () => ({ close: () => undefined }),
     compactSession: async () => {
-      scopedCredential = await withProviderRequestCredential(getProvider('anthropic'), 'compaction', undefined, async () => getScopedProviderCredential('anthropic'));
+      scopedCredential = await withProviderRequestCredential(
+        getProvider('anthropic'),
+        'compaction',
+        undefined,
+        async () => getScopedProviderCredential('anthropic'),
+      );
       return {
         compacted: true,
         tokensBefore: 100,
@@ -131,45 +145,46 @@ test('embedded manual compact receives the exact Space keychain credential', asy
   assert.equal(scopedCredential, 'compact-credential');
 });
 
-test('daemon manual compact delegates Space keychain credentials to the Runtime adapter', async (t) => {
-  _resetMemoryStoreForTesting();
-  const originalEnv = process.env.ANTHROPIC_API_KEY;
-  delete process.env.ANTHROPIC_API_KEY;
-  await setKey('anthropic', 'compact-credential');
-  let compactInput: unknown;
-  const adapter = runtimeHostAdapter as unknown as {
-    compactSession(input: unknown): Promise<{
-      compacted: boolean;
-      tokensBefore: number;
-      tokensAfter: number;
-    }>;
-  };
-  const originalCompactSession = adapter.compactSession;
-  adapter.compactSession = async (input) => {
-    compactInput = input;
-    return { compacted: true, tokensBefore: 100, tokensAfter: 40 };
-  };
-  t.after(() => {
-    adapter.compactSession = originalCompactSession;
-    if (originalEnv === undefined) delete process.env.ANTHROPIC_API_KEY;
-    else process.env.ANTHROPIC_API_KEY = originalEnv;
-  });
-  const { sessionId } = kodaxHost.createSession({
-    projectRoot: '/r',
-    provider: 'anthropic',
-    surface: 'code',
-  });
+for (const surface of ['code', 'partner'] as const)
+  test(`shared Host manual compact delegates ${surface} credentials to the Runtime adapter`, async (t) => {
+    _resetMemoryStoreForTesting();
+    const originalEnv = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    await setKey('anthropic', 'compact-credential');
+    let compactInput: unknown;
+    const adapter = runtimeHostAdapter as unknown as {
+      compactSession(input: unknown): Promise<{
+        compacted: boolean;
+        tokensBefore: number;
+        tokensAfter: number;
+      }>;
+    };
+    const originalCompactSession = adapter.compactSession;
+    adapter.compactSession = async (input) => {
+      compactInput = input;
+      return { compacted: true, tokensBefore: 100, tokensAfter: 40 };
+    };
+    t.after(() => {
+      adapter.compactSession = originalCompactSession;
+      if (originalEnv === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = originalEnv;
+    });
+    const { sessionId } = kodaxHost.createSession({
+      projectRoot: '/r',
+      provider: 'anthropic',
+      surface,
+    });
 
-  const result = await kodaxHost.requestCompact(sessionId);
+    const result = await kodaxHost.requestCompact(sessionId);
 
-  assert.equal(result.ok, true);
-  assert.equal(result.compacted, true);
-  assert.deepEqual(compactInput, {
-    sessionId,
-    provider: 'anthropic',
-    model: 'claude-sonnet-4-6',
+    assert.equal(result.ok, true);
+    assert.equal(result.compacted, true);
+    assert.deepEqual(compactInput, {
+      sessionId,
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+    });
   });
-});
 
 test('daemon manual compact surfaces a missing exact credential from the Runtime adapter', async (t) => {
   _resetMemoryStoreForTesting();
@@ -422,24 +437,22 @@ test('cancel mid-stream emits session_error("cancelled") and aborts further even
 
 test('cancel returns and emits cancelled fallback when adapter cancel never resolves', async () => {
   const never = new Promise<void>(() => {});
-  kodaxHost.setFactory(
-    (opts): ManagedSession => ({
-      sessionId: opts.sessionId,
-      projectRoot: opts.projectRoot,
-      provider: opts.provider,
-      reasoningMode: opts.reasoningMode,
-      permissionMode: opts.permissionMode,
-      agentMode: opts.agentMode ?? 'ama',
-      surface: opts.surface ?? 'code',
-      createdAt: Date.now(),
-      lastActivityAt: Date.now(),
-      title: undefined,
-      isRunning: () => true,
-      send: async () => ({ accepted: true, queued: false }),
-      cancel: () => never,
-      dispose: async () => {},
-    }),
-  );
+  kodaxHost.setFactory((opts): ManagedSession => ({
+    sessionId: opts.sessionId,
+    projectRoot: opts.projectRoot,
+    provider: opts.provider,
+    reasoningMode: opts.reasoningMode,
+    permissionMode: opts.permissionMode,
+    agentMode: opts.agentMode ?? 'ama',
+    surface: opts.surface ?? 'code',
+    createdAt: Date.now(),
+    lastActivityAt: Date.now(),
+    title: undefined,
+    isRunning: () => true,
+    send: async () => ({ accepted: true, queued: false }),
+    cancel: () => never,
+    dispose: async () => {},
+  }));
   try {
     const { sessionId } = kodaxHost.createSession({ projectRoot: '/r', provider: 'mock' });
     const result = await Promise.race([

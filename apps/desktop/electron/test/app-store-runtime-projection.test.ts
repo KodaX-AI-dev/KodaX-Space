@@ -811,13 +811,11 @@ test('a late live snapshot cannot rebuild derived state under stale degraded aut
   assert.deepEqual(state.askUserQueue, []);
 });
 
-test('replacing the Runtime clears Coder interactions without dropping Partner prompts', () => {
-  useAppStore
-    .getState()
-    .setSessions([
-      sidebarSession,
-      { ...sidebarSession, sessionId: 'partner_1', surface: 'partner' },
-    ]);
+test('replacing the Runtime clears obsolete shared Host interactions on both surfaces', () => {
+  useAppStore.getState().setSessions([
+    { ...sidebarSession, provider: 'anthropic' },
+    { ...sidebarSession, sessionId: 'partner_1', surface: 'partner', provider: 'anthropic' },
+  ]);
   useAppStore.getState().setCoderRuntimeConnection({
     ...profile.connection,
     runtimeId: 'rt_old',
@@ -865,11 +863,11 @@ test('replacing the Runtime clears Coder interactions without dropping Partner p
 
   assert.deepEqual(
     useAppStore.getState().permissionQueue.map((request) => request.reqId),
-    ['permission_partner'],
+    [],
   );
   assert.deepEqual(
     useAppStore.getState().askUserQueue.map((request) => request.reqId),
-    ['ask_partner'],
+    [],
   );
 });
 

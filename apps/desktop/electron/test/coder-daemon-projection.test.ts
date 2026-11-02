@@ -1403,7 +1403,7 @@ test('permission projection omits non-object previews and marks truncated object
   }
 });
 
-test('profile projection excludes Partner and attributes active/queued runs', () => {
+test('profile projection preserves both surfaces and attributes active/queued runs', () => {
   const status = {
     runtimeId: 'rt_shared',
     mode: 'daemon',
@@ -1475,17 +1475,17 @@ test('profile projection excludes Partner and attributes active/queued runs', ()
 
   assert.deepEqual(
     projection.sessions.map((session) => session.sessionId),
-    ['s_code'],
+    ['s_code', 's_partner', 's_tag_only_partner', 's_profile_partner'],
   );
   assert.equal(projection.sessions[0]?.activeRun?.runId, 'run_active');
   assert.deepEqual(
     projection.sessions[0]?.queuedRuns.map((run) => run.runId),
     ['run_queued'],
   );
-  assert.equal(projection.interactions.length, 2);
+  assert.equal(projection.interactions.length, 4);
   assert.deepEqual(
     projection.interactions.map((interaction) => interaction.request.sessionId),
-    ['s_code', 's_code'],
+    ['s_code', 's_tag_only_partner', 's_code', 's_profile_partner'],
   );
   assert.deepEqual(projection.connection.integrations, {
     state: 'degraded',
@@ -1534,7 +1534,7 @@ test('profile projection retains verified Coder activity omitted from the bounde
 
   const projection = projectRuntimeProfile({
     status,
-    verifiedOutOfPageCoderSessionIds: new Set(['s_omitted_active']),
+    verifiedOutOfPageSessionIds: new Set(['s_omitted_active']),
     userInputs: [],
     cursor: 42,
     projectionRevision: 8,

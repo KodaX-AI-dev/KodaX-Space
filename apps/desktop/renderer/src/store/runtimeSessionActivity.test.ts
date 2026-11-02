@@ -166,7 +166,7 @@ test('list refreshes preserve activity after its Run leaves the bounded Runtime 
   assert.deepEqual(useAppStore.getState().sessions, [], 'removed Sessions must not be resurrected');
 });
 
-test('activity arriving before the list only updates known Coder rows', () => {
+test('activity arriving before the list updates known rows on both surfaces', () => {
   const store = useAppStore.getState();
   store.replaceRuntimeProfileProjection({
     ...profile,
@@ -180,7 +180,7 @@ test('activity arriving before the list only updates known Coder rows', () => {
   store.setSessions([session, { ...session, sessionId: 's_partner', surface: 'partner' }]);
   assert.deepEqual(
     useAppStore.getState().sessions.map((s) => s.lastActivityAt),
-    [300, 100],
+    [300, 900],
   );
 });
 
