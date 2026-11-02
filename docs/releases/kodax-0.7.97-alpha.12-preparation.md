@@ -39,6 +39,6 @@
 
 组合回归启动于固定提交 `c171ca50`：Desktop 4057 项中 4041 通过、13 跳过、3 失败；IPC schema 371 项全部通过。失败中的两项是正式依赖/安装字节一致性门禁：正式声明 alpha.11，而本隔离工作区装的是 alpha.12 候选，保留门禁等正式发布后验收。另一项在首个 loopback 假 Provider 请求阶段出现 network failure；同一用例定向重跑通过（`migration-revoked-recheck.log`），没有放宽断言或超时，也未把复跑当成全量一次通过。
 
-之后的共享 writer/Quick Ask 保护及 Partner 不兼容 Host 停止重试修复，相关 7 个测试文件共 176 项全部通过；新增边界先 RED 6 项失败，再 GREEN 7 项通过。最终生产源码的 typecheck、lint 与 Renderer/Main 构建通过（构建保留既有 chunk-size 提示）。上述日志和真实 Host 能力报告均在本准备工作区 `artifacts/diagnostics/alpha12/`，正式资源/安装门禁仍未运行通过。整库覆盖率本轮未重新测量。
+之后的共享 writer/Quick Ask 保护及 Partner 不兼容 Host 停止重试修复，相关 7 个测试文件共 176 项全部通过；Quick Ask 浏览器回归另验证拒绝、promoted:false、异常均不切页且回答保留，只有确认成功才 handoff；新增边界先 RED 6 项失败，再 GREEN 7 项通过。最终生产源码的 typecheck、lint 与 Renderer/Main 构建通过（构建保留既有 chunk-size 提示）。上述日志和真实 Host 能力报告均在本准备工作区 `artifacts/diagnostics/alpha12/`，正式资源/安装门禁仍未运行通过。整库覆盖率本轮未重新测量。
 
 复核及未关闭项见 [双轴复核记录](kodax-alpha12-preparation-review.md)。正式 Registry 安装、lockfile、最终完整字节/ASAR 包、客户历史首次加载性能、真实 OAuth/云账户、外部服务和跨平台交付仍单独验收，不把 SDK CI 或旧分支的通过数字算成本次结果。

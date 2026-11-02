@@ -45,7 +45,7 @@ flowchart TD
 | ------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | **Coder**     | 阅读代码、改文件、运行命令、排查问题、评审 Diff、长任务        | 主要软件研发工作面                                                         |
 | **Partner**   | 研究、文档、需求、数据分析、演示、知识库、workspace-first 交付 | 已启用；连接组件按账号授权与服务能力提供读写，通用浏览器与远程自动化未提供 |
-| **Quick Ask** | 临时解释、快速确认、短问题                                     | 当前使用临时 Plan session；可提升到 Coder，不是真正无 session side query   |
+| **Quick Ask** | 临时解释、快速确认、短问题                                     | 当前使用临时 Plan session；候选暂不支持转 Coder，回答保留                  |
 
 ## 3. 安装与首次启动
 
@@ -468,7 +468,7 @@ v0.1.46-alpha.11 起使用 KodaX 0.7.96-rc.1 并把权限 authority 门禁升到
 
 Space 与 KodaX CLI/REPL 共用 `~/.kodax/sessions/`。KodaX CLI 的 `-c`/auto-resume 会在最近 1000 个候选中跳过空 ACP 占位，只选择最近的非空会话；全部为空时不创建虚假的恢复结果，显式 session ID 始终优先。交互式恢复会在下一轮前恢复保存的 workspace runtime、messages、UI history、lineage、artifacts、extensions、title、tag 和 session identity。Space 左侧栏仍使用自己的显式项目/会话选择入口。如果 CLI 改写了正在显示的同一 session，Space 不保证实时文件级同步；切换会话或重启可重新读取。
 
-Quick Ask 的临时 session 会尽力在关闭时清理；选择 Continue in Coder 后会提升为正常 Coder 会话。
+Quick Ask 的临时 session 会尽力在关闭时清理。alpha.12 候选暂不支持转为正式 Coder 会话，正在等待 SDK 的公开提升接口；点击 Continue in Coder 会显示原因并保留回答，不会切换页面或伪造侧栏记录。只有后台明确确认提升成功后才可转入 Coder。
 
 ## 11. Task Dock 与常用 Popout
 
@@ -619,7 +619,7 @@ Settings → Runtime → External Agents 同时展示 Space Reference Agent 与 
 
 - `Ctrl/Cmd+K` 打开 Quick Ask。
 - `Ctrl/Cmd+Shift+P` 打开命令面板，两者不是同一个功能。
-- Quick Ask 需要项目上下文，当前使用临时 Plan session；有价值的回答可 Continue in Coder。
+- Quick Ask 需要项目上下文，当前使用临时 Plan session。alpha.12 候选的 Continue in Coder 暂不可用，等待 SDK 提升接口；失败时回答保留在 Quick Ask。
 - Handoff inbox 读取 `~/.kodax/handoffs/*.json`；Accept 前会验证目标 session，Dismiss 会移除 descriptor。
 - 当前 Space 已实现 handoff receiver；CLI writer 是否可用取决于 KodaX 的公开契约。
 

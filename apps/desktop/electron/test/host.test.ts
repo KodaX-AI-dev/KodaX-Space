@@ -714,7 +714,7 @@ test('Quick Ask promotion preserves the session when the Host has no metadata co
     persistenceCalls++;
     return true;
   });
-  await assert.rejects(kodaxHost.promoteEphemeral(sessionId), /Host cannot promote/);
+  await assert.rejects(kodaxHost.promoteEphemeral(sessionId), /cannot move Quick Ask/);
   assert.equal(kodaxHost.get(sessionId)?.ephemeral, true);
   assert.equal(persistenceCalls, 0, 'no mutation before capability admission');
 });

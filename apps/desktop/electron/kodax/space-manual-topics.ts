@@ -977,11 +977,11 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'quick-ask',
     title: 'Quick Ask',
-    summary: 'Ctrl/Cmd+K 打开临时 plan-mode 问答；可 Continue in Coder 提升为正常会话。',
+    summary: 'Ctrl/Cmd+K 打开临时 plan-mode 问答；候选暂不支持转为正常会话。',
     body: text(
       'Quick Ask 适合临时问一句，不想打断当前主会话时使用。它需要已打开项目，会创建临时 plan-mode code session，流式回答后关闭时会清理临时 session。',
       '',
-      '如果答案值得继续推进，点击 Continue in Coder 会把内容提升/接入正常 Coder session 并选中它。',
+      'alpha.12 候选暂缺公开的会话提升接口，Continue in Coder 会显示不可用原因并保留回答，不切换页面、不加入侧栏。后台确认提升成功后才可转入 Coder。',
       '',
       '注意：Quick Ask 不是完全无 session 的 side query；它是受限制的临时 session，默认偏只读。',
     ),

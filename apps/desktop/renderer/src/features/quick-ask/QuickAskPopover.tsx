@@ -37,6 +37,8 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
   const { t } = useI18n();
   const [prompt, setPrompt] = useState('');
   const [state, setState] = useState<AskState>({ kind: 'idle' });
+  const [promotionError, setPromotionError] = useState<string | null>(null);
+  const [promoting, setPromoting] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const runSeqRef = useRef(0);
@@ -64,6 +66,7 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
     if (!open) return;
     setPrompt('');
     setState({ kind: 'idle' });
+    setPromotionError(null);
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, [open]);
 
@@ -141,6 +144,7 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
   async function handleSend(): Promise<void> {
     const trimmed = prompt.trim();
     if (!trimmed || !window.kodaxSpace) return;
+    setPromotionError(null);
     if (!currentProjectPath) {
       setState({ kind: 'error', message: t('quickAsk.openProjectFirst') });
       return;
@@ -288,21 +292,33 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
   }
 
   async function continueInCoder(): Promise<void> {
-    if (state.kind !== 'done') return;
-    const title = state.prompt.replace(/\s+/g, ' ').slice(0, 80) || t('quickAsk.title');
-    preservedSessionIdsRef.current.add(state.sessionId);
-    if (window.kodaxSpace) {
-      try {
-        await window.kodaxSpace.invoke('session.promoteEphemeral', {
-          sessionId: state.sessionId,
-        });
-      } catch {
-        // The in-memory handoff should still work even if disk promotion is best-effort.
-      }
+    if (state.kind !== 'done' || promoting) return;
+    setPromotionError(null);
+    if (!window.kodaxSpace) {
+      setPromotionError(t('quickAsk.promotionFailed'));
+      return;
     }
-    upsertSession({ ...state.session, title, lastActivityAt: Date.now() });
-    setCurrentSession(state.sessionId);
-    onClose();
+    setPromoting(true);
+    const promotionSeq = runSeqRef.current;
+    try {
+      const result = await window.kodaxSpace.invoke('session.promoteEphemeral', {
+        sessionId: state.sessionId,
+      });
+      if (promotionSeq !== runSeqRef.current) return;
+      if (!result.ok || !result.data.promoted) {
+        setPromotionError(!result.ok ? result.error.message : t('quickAsk.promotionFailed'));
+        return;
+      }
+      const title = state.prompt.replace(/\s+/g, ' ').slice(0, 80) || t('quickAsk.title');
+      preservedSessionIdsRef.current.add(state.sessionId);
+      upsertSession({ ...state.session, title, lastActivityAt: Date.now() });
+      setCurrentSession(state.sessionId);
+      onClose();
+    } catch (error: unknown) {
+      setPromotionError(error instanceof Error ? error.message : t('quickAsk.promotionFailed'));
+    } finally {
+      setPromoting(false);
+    }
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
@@ -369,7 +385,7 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={onKeyDown}
-              disabled={isAsking}
+              disabled={isAsking || promoting}
               rows={3}
               placeholder={
                 currentProjectPath
@@ -418,6 +434,12 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
             </div>
           )}
 
+          {promotionError && (
+            <div className="mt-3 text-xs text-danger" role="alert">
+              {promotionError}
+            </div>
+          )}
+
           {state.kind === 'error' && (
             <div className="mt-3 border-t border-danger/60 pt-3 text-xs text-danger" role="alert">
               <div className="mb-1 flex items-center gap-2 font-mono text-[11px]">
@@ -442,6 +464,7 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
             {state.kind === 'done' && (
               <button
                 type="button"
+                disabled={promoting}
                 onClick={() => void continueInCoder()}
                 className="inline-flex h-7 items-center gap-1.5 rounded-md border border-info/50 bg-info/15 px-2.5 text-info hover:bg-info/20"
               >
@@ -451,7 +474,7 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
             )}
             <button
               type="button"
-              disabled={isAsking || !prompt.trim() || !currentProjectPath}
+              disabled={isAsking || promoting || !prompt.trim() || !currentProjectPath}
               onClick={() => void handleSend()}
               className="inline-flex h-7 min-w-[86px] items-center justify-center gap-1.5 rounded-md border border-ok/50 bg-ok/15 px-2.5 text-ok hover:bg-ok/20 disabled:cursor-not-allowed disabled:opacity-50"
             >

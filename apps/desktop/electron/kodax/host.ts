@@ -772,7 +772,7 @@ class KodaXHost {
     if (s.ephemeral !== true) return true;
     if (s instanceof RealKodaXSession && runtimeHostAdapter.isRuntimeSelected()) {
       throw new Error(
-        'Shared Host cannot promote Quick Ask sessions yet. Keep this session open until SDK promotion support is available.',
+        'This version cannot move Quick Ask into a full session yet. Your answer remains available here.',
       );
     }
     if (!(await this.persistRuntime(sessionId))) return false;
