@@ -83,6 +83,43 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     onPageError: (error) => pageErrors.push(error.message),
   });
   const { page } = space;
+  await page.exposeFunction('installPartnerClickProbe', async () => {
+    const frame = page.frames().find((item) => item.parentFrame() === page.mainFrame());
+    if (!frame) throw new Error('Partner frame unavailable at ready');
+    await frame.evaluate(() => {
+      const events: unknown[] = [];
+      Object.assign(window, {
+        partnerClickProbe: events,
+        partnerProbeDocument: performance.timeOrigin,
+      });
+      for (const type of ['pointerdown', 'pointerup', 'click']) {
+        document.addEventListener(
+          type,
+          (event) => {
+            const pointer = event as MouseEvent;
+            events.push({
+              type,
+              target: (event.target as Element).outerHTML.slice(0, 200),
+              x: pointer.clientX,
+              y: pointer.clientY,
+            });
+          },
+          true,
+        );
+      }
+    });
+  });
+  await page.evaluate(() => {
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'space-extension.ready.v1') {
+        void (window as unknown as { installPartnerClickProbe(): Promise<void> })
+          .installPartnerClickProbe()
+          .catch((error: unknown) => {
+            document.body.dataset.probeError = String(error);
+          });
+      }
+    });
+  });
   try {
     const installed = await page.evaluate(async () => {
       const result = await window.kodaxSpace!.invoke('space.extensions.list', {});
@@ -107,25 +144,6 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     await expect(page.getByTestId('sidebar-session-row')).toHaveCount(0);
     await page.getByTestId('partner-plugins-nav').click();
     const library = page.frameLocator('[data-testid="space-extension-frame"]');
-    await library
-      .getByRole('button', { name: '查看 营销文案 详情', exact: true })
-      .evaluate((button) => {
-        document.body.dataset.probeDocument = String(performance.timeOrigin);
-        button.setAttribute('data-probe-click', 'armed');
-        button.addEventListener('click', () => button.setAttribute('data-probe-click', 'received'));
-        for (const type of ['pointerdown', 'pointerup', 'click']) {
-          document.addEventListener(
-            type,
-            (event) => {
-              document.body.dataset[`probe${type}`] = (event.target as Element).outerHTML.slice(
-                0,
-                200,
-              );
-            },
-            true,
-          );
-        }
-      });
     await library.getByRole('button', { name: '查看 营销文案 详情', exact: true }).click();
     try {
       await expect(library.getByRole('checkbox', { name: '使用默认方法' })).toBeChecked();
