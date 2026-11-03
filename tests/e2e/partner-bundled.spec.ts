@@ -76,9 +76,11 @@ test('bundled Partner is available with the default Coder runtime', async () => 
 });
 
 test('a fresh Space profile can select and use the bundled Partner expert', async () => {
+  const pageErrors: string[] = [];
   const space = await launchSpace(`partner-bundled-${Date.now()}`, {
     executablePath: process.env.SPACE_BUNDLED_TEST_EXECUTABLE,
     env: { KODAX_SPACE_RUNTIME_HOST: 'legacy' },
+    onPageError: (error) => pageErrors.push(error.message),
   });
   const { page } = space;
   try {
@@ -105,8 +107,45 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     await expect(page.getByTestId('sidebar-session-row')).toHaveCount(0);
     await page.getByTestId('partner-plugins-nav').click();
     const library = page.frameLocator('[data-testid="space-extension-frame"]');
+    await library
+      .getByRole('button', { name: '查看 营销文案 详情', exact: true })
+      .evaluate((button) => {
+        document.body.dataset.probeDocument = String(performance.timeOrigin);
+        button.setAttribute('data-probe-click', 'armed');
+        button.addEventListener('click', () => button.setAttribute('data-probe-click', 'received'));
+        for (const type of ['pointerdown', 'pointerup', 'click']) {
+          document.addEventListener(
+            type,
+            (event) => {
+              document.body.dataset[`probe${type}`] = (event.target as Element).outerHTML.slice(
+                0,
+                200,
+              );
+            },
+            true,
+          );
+        }
+      });
     await library.getByRole('button', { name: '查看 营销文案 详情', exact: true }).click();
-    await expect(library.getByRole('checkbox', { name: '使用默认方法' })).toBeChecked();
+    try {
+      await expect(library.getByRole('checkbox', { name: '使用默认方法' })).toBeChecked();
+    } finally {
+      await test.info().attach('partner-click-probe', {
+        body: JSON.stringify({
+          pageErrors,
+          snapshot: await page
+            .frameLocator('[data-testid="space-extension-frame"]')
+            .locator('body')
+            .evaluate((body) => ({
+              dataset: { ...body.dataset },
+              button: document.querySelector('.expert-open')?.getAttribute('data-probe-click'),
+              open: document.querySelector('dialog')?.open,
+            }))
+            .catch((error: unknown) => String(error)),
+        }),
+        contentType: 'application/json',
+      });
+    }
     await library.getByRole('button', { name: '使用专家', exact: true }).click();
     await expect(page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
     await expect(composer).toHaveValue(starterDraft);
