@@ -51,6 +51,10 @@ jobs:
           tests/e2e/artifact-file-preview.spec.ts
           --grep='notification settings|boot overlay|update installation|loads and switches local animation'
           --repeat-each=2 --retries=0 --max-failures=1
+      - name: Verify first Partner frame pointer across eight fresh processes
+        run: >-
+          xvfb-run -a npm run e2e:run -- tests/e2e/partner-bundled.spec.ts
+          --grep='a fresh Space profile' --repeat-each=8 --retries=0 --max-failures=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
