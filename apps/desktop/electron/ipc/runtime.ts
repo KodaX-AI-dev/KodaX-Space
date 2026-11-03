@@ -41,6 +41,9 @@ export function registerRuntimeStatisticsChannels(): void {
       ? runtimeHostAdapter.readSessionProductView(sessionId)
       : null,
   );
+  registerChannel('session.withdrawInput', (input) =>
+    runtimeHostAdapter.withdrawProductInput(input),
+  );
   registerChannel('session.workMode', ({ sessionId }) =>
     runtimeHostAdapter.readWorkMode(sessionId),
   );

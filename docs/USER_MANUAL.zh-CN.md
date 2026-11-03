@@ -45,7 +45,7 @@ flowchart TD
 | ------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | **Coder**     | 阅读代码、改文件、运行命令、排查问题、评审 Diff、长任务        | 主要软件研发工作面                                                         |
 | **Partner**   | 研究、文档、需求、数据分析、演示、知识库、workspace-first 交付 | 已启用；连接组件按账号授权与服务能力提供读写，通用浏览器与远程自动化未提供 |
-| **Quick Ask** | 临时解释、快速确认、短问题                                     | 当前使用临时 Plan session；候选暂不支持转 Coder，回答保留                  |
+| **Quick Ask** | 临时解释、快速确认、短问题                                     | 使用临时 Plan session；确认转为正式会话后保留原 ID 与回答                  |
 
 ## 3. 安装与首次启动
 
@@ -225,7 +225,7 @@ flowchart LR
 唯一会话执行与历史写入者]
 ```
 
-当前 alpha.12 仍为源码适配候选，正式安装版本以发布后的依赖锁及安装包为准。普通 Partner 与 prompt-only 专家已准备 Host 路径；专家默认 Skill 与排队采用最新已提交绑定还需 SDK 补公开接缝，不能据此宣称全部专家已迁移。详见 [交接说明](releases/kodax-alpha12-partner-sdk-handoff.md)。
+Space 锁定 KodaX SDK 0.7.97-beta.1。Partner 与专家使用共享 Host 的 Agent 模式；默认 Skill 由 Host 准备，排队输入在真正消费时采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。实际验收与限制见 [beta.1 接入记录](releases/kodax-0.7.97-beta.1-integration.md)。
 
 Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 
@@ -468,7 +468,7 @@ v0.1.46-alpha.11 起使用 KodaX 0.7.96-rc.1 并把权限 authority 门禁升到
 
 Space 与 KodaX CLI/REPL 共用 `~/.kodax/sessions/`。KodaX CLI 的 `-c`/auto-resume 会在最近 1000 个候选中跳过空 ACP 占位，只选择最近的非空会话；全部为空时不创建虚假的恢复结果，显式 session ID 始终优先。交互式恢复会在下一轮前恢复保存的 workspace runtime、messages、UI history、lineage、artifacts、extensions、title、tag 和 session identity。Space 左侧栏仍使用自己的显式项目/会话选择入口。如果 CLI 改写了正在显示的同一 session，Space 不保证实时文件级同步；切换会话或重启可重新读取。
 
-Quick Ask 的临时 session 会尽力在关闭时清理。alpha.12 候选暂不支持转为正式 Coder 会话，正在等待 SDK 的公开提升接口；点击 Continue in Coder 会显示原因并保留回答，不会切换页面或伪造侧栏记录。只有后台明确确认提升成功后才可转入 Coder。
+Quick Ask 的临时 session 会尽力在关闭时清理。点击 Continue in Coder 后，由 Host 把同一个 Session 转为正式会话；确认成功后才切换页面并加入侧栏，保留原 ID、历史和附件。忙碌、冲突或断线时回答保留，可在状态恢复后重试同一操作。旧 Host 需先安全升级。
 
 ## 11. Task Dock 与常用 Popout
 
@@ -619,7 +619,7 @@ Settings → Runtime → External Agents 同时展示 Space Reference Agent 与 
 
 - `Ctrl/Cmd+K` 打开 Quick Ask。
 - `Ctrl/Cmd+Shift+P` 打开命令面板，两者不是同一个功能。
-- Quick Ask 需要项目上下文，当前使用临时 Plan session。alpha.12 候选的 Continue in Coder 暂不可用，等待 SDK 提升接口；失败时回答保留在 Quick Ask。
+- Quick Ask 需要项目上下文，当前使用临时 Plan session。Continue in Coder 经 Host 确认后保留原会话继续工作；失败时回答保留在 Quick Ask。
 - Handoff inbox 读取 `~/.kodax/handoffs/*.json`；Accept 前会验证目标 session，Dismiss 会移除 descriptor。
 - 当前 Space 已实现 handoff receiver；CLI writer 是否可用取决于 KodaX 的公开契约。
 

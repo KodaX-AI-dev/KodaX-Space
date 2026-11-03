@@ -157,3 +157,7 @@ F146 <- PF001, PF002, PF003
 这是源码准备，不能视作 Partner 已正式集成。普通 Partner/prompt-only 专家以 Agent 工作模式通过共享 Host 执行，Space 以 lease 提供 persona/验证、KB/来源、连接器、交付与 Artifact。用户已明确通用 shell/write/subagent 不按 Partner 身份禁用，正常权限、审批、沙箱、工作区、管理员及连接器绑定继续约束实际操作。Partner KB 与产品提案审批保留原业务入口，不等同于另一个 Session writer。
 
 专家默认 Skill 与 after-turn 消费时读取最新已提交业务绑定还有 SDK 缺口，见 [交接段落](../releases/kodax-alpha12-partner-sdk-handoff.md)。现有 PF 状态不因本地库测试或 SDK CI 通过而改为集成完成。真实 Host、正式包、账户/外部服务和跨平台结果分别按 [候选清单](../releases/kodax-0.7.97-alpha.12-preparation.md) 与 F121 测试指南验收。
+
+## 2026-11-03：正式 SDK beta.1 接入
+
+Space 已锁定 Registry `@kodax-ai/kodax@0.7.97-beta.1`。默认 Skill、真实消费时业务绑定和 Host promotion 接缝已进入产品实现；主流程与队列不在 Main 展开 Skill。恢复使用原业务快照，无法证明旧范围则明确拒绝；Partner 不增加 shell/write/子 Agent 禁用名单。源码、正式包及实际测试结果以 [beta.1 验收](../releases/kodax-0.7.97-beta.1-integration.md) 为准，历史 PF 验收不替代本次共享 Host 验收，外部服务与跨平台验证仍分别记录。

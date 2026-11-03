@@ -1,5 +1,7 @@
 # alpha.12 候选：Partner 与 Session 管理接缝待补齐
 
+> 2026-11-03 后续：Space 已锁定正式 SDK beta.1，并适配默认方法/消费绑定、Quick Ask 与配置接口。当前验证、成品和剩余边界见 [beta.1 接入记录](kodax-0.7.97-beta.1-integration.md)。下方保留 alpha 阶段的历史检查点。
+
 核对 SDK `f24a922c117e0ece5d26224a133a69973b313ab6` 的公开 Product input 与 RuntimeExecutionAuthorization。persona/验证/工具元数据和通用 Agent 能力已经可接，但还不能等价迁移 Space 的专家默认方法与排队时点。
 
 可直接转交 SDK 的说明：

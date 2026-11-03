@@ -2797,6 +2797,9 @@ export const messages = {
     'message.queue.sending': 'Sending to queue',
     'message.queue.waitingTurn': 'Waiting for current turn',
     'message.queue.waitingSafePoint': 'Waiting for safe point',
+    'message.queue.bindingBlocked':
+      'Not sent: the selected role, method or authorization is unavailable. Take back the full message to review and send again.',
+    'message.queue.takeBack': 'Take back message',
     'message.queue.failed': 'Not delivered',
     'message.queue.failedDetail': 'The run ended before insertion. Copy this message and retry.',
     'message.thinkingSummary': 'Thinking (~{tokens} tokens)',
@@ -5649,6 +5652,9 @@ export const messages = {
     'message.queue.sending': '正在加入队列',
     'message.queue.waitingTurn': '等待当前轮次结束',
     'message.queue.waitingSafePoint': '等待安全插入点',
+    'message.queue.bindingBlocked':
+      '尚未发送：所选专家、技能或授权不可用。可取回完整消息，检查后重新发送。',
+    'message.queue.takeBack': '取回消息',
     'message.queue.failed': '未送达',
     'message.queue.failedDetail': '任务在插入前已结束；请复制这条消息后重试。',
     'message.thinkingSummary': '思考（约 {tokens} token）',

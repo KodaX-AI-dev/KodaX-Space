@@ -1,5 +1,7 @@
 # Space 接入 KodaX 0.7.97-alpha.9
 
+> 2026-11-03 后续：Space 已锁定正式 SDK beta.1，并适配默认方法/消费绑定、Quick Ask 与配置接口。当前验证、成品和剩余边界见 [beta.1 接入记录](../releases/kodax-0.7.97-beta.1-integration.md)。下方保留 alpha 阶段的历史检查点。
+
 > 2026-10-20 后续：10-18 审计保留其历史结论；A–H 的产品接入随后已在 `c83ca0f5` 落地。本轮补队列独立授权恢复、Artifact 生产注册与真实发布 SDK 验收，见[迁移收口记录](../releases/space-sdk-migration-closeout-2026-10-20.md)。不能用较早的 alpha.9 主链资格结果代替本轮接入的验证。
 
 当前源码为未发布的 Space `0.1.47-alpha.3`，精确安装 Registry SDK `0.7.97-alpha.9`。根目录、Desktop、lockfile、物理安装及 Registry 原生文件校验已对齐，没有开发链接。当前验收见 [alpha.9 接入](../releases/kodax-0.7.97-alpha.9-integration.md)，alpha.8/alpha.7 记录保留原验证范围。下方早期记录保留历史时点，不代表当前依赖或发布状态。

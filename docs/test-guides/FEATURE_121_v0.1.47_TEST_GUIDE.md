@@ -44,3 +44,16 @@
 - 旧 Host 不兼容时，Partner/Coder 历史均终止轮询、显示实际原因；Host ready 后可重新获取历史，不以 ready 代替历史加载完成。
 - 退出回执报告 replacementRunning 时不得安装更新。仅旧 owner 退出不代表替代 Host 已停止。
 - Quick Ask 转正式会话暂缺 Host 公共 promotion/tag 接口：候选应提示不可用且保留会话，不能 saveSession 直写。SDK 补接口后需按 SDK 交接文档再验收，此项当前未通过产品闭环。
+
+## Registry beta.1 专项（2026-11-03）
+
+上方 alpha.12 记录保留原时点；默认方法、消费绑定和 Quick Ask 不再等待接口，当前验收见 [beta.1 记录](../releases/kodax-0.7.97-beta.1-integration.md)。
+
+1. 核对 Root/Desktop/lockfile、物理安装与 ASAR 全部为正式 `0.7.97-beta.1`，无开发链接；实际 Host 声明 productExecutionBinding:1/sessionPromotion:1，旧 Host 遵守安全升级边界。
+2. 普通 Partner 和全部 16 位当前专家走同一 Host Agent；第一次/连续输入默认 Skill、角色及原问题保留。显式 Skill 只改本轮方法，关闭默认方法只关方法；下一轮按保存的偏好工作，shell/write/子 Agent 继续受正常权限约束。
+3. 保持一个 Run 活动，after-turn 排队后成功切换/移除专家或连接器；实际消费采用最后成功提交值。失败/未确认保存不改变 authority。禁用包、卸载 Skill 或撤销连接器后，失败队列保留 inputId 与原文，不自动删除、重试或切换账号。
+4. 队列卡片显示阻断原因；显式取回返回完整长文本和附件。注入 Host→Main、Main→Renderer 响应丢失并重试，应读相同 withdrawn 事实且返回完整原文，不再次提交模型。旧队列缺完整恢复记录时原样保留并提示限制，不拿预览充当原文。
+5. 重连/冷恢复保留原业务快照、persona、方法回执与 principal，重绑当前 lease 并收紧工具。新选专家不替换原 Run；无原证明旧 checkpoint 拒绝自动恢复。独立 Actor 不借用根专家连接器授权，同授权 steer 留在原 AMA Run，变化的授权拒绝。
+6. Quick Ask 回答后 Continue in Coder：原 Session ID、历史/原生记录、附件、lineage 和统计保留，确认后才关闭浮层并加入侧栏。忙碌、冲突、丢响应和重启查询原 requestId；metadataRevision 变化后刷新分页边界，不能断言旧 history item ID 恒定。
+7. Provider 配置并发改名/无关字段更新只见完整旧或新文件；锁忙保留 conflict/lock_busy 并有限重试，损坏保留 read_failed/原字节。磁盘/Windows 占用不重置账号、凭证或 CAS。原配置与 API_KEY 入口、私有/共享选择和撤销墓碑不变。
+8. 复验 Agent/Coding/实验性 Script 的首次选择与安全空闲 CAS、普通问题等待/Skip、权限审批、估算进度、报告中性展示、工具原文分页、长历史滚动、手动更新/稳定通道、启动和退出恢复；SDK schema JSON 必须在成品中。Issue 371、真实外部账号与其他平台实机分别保留验证范围。

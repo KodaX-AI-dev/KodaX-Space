@@ -771,9 +771,9 @@ class KodaXHost {
     if (!s) return false;
     if (s.ephemeral !== true) return true;
     if (s instanceof RealKodaXSession && runtimeHostAdapter.isRuntimeSelected()) {
-      throw new Error(
-        'This version cannot move Quick Ask into a full session yet. Your answer remains available here.',
-      );
+      await runtimeHostAdapter.promoteSession(sessionId, s.surface);
+      s.ephemeral = false;
+      return true;
     }
     if (!(await this.persistRuntime(sessionId))) return false;
     if (!(await retagPersistedSession({ sessionId, tag: s.surface }))) return false;

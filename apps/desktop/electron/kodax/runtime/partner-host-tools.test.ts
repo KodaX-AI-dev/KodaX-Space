@@ -4,6 +4,43 @@ import type { KodaXDaemonRuntime } from '@kodax-ai/kodax/runtime';
 import { getSessionRuntimeStore } from '../session-runtime-store.js';
 import { hasExplicitHostSkill, registerPartnerHostExecution } from './partner-host-tools.js';
 import { registerSpaceHostTools } from './space-host-tools.js';
+import { getSpaceExpertCatalog } from '../../space-extensions/runtime.js';
+import { capturePartnerBusinessBinding } from './partner-business-binding.js';
+
+test('a committed expert declares its default method without rewriting the question or restricting Agent tools', async (t) => {
+  const store = getSessionRuntimeStore();
+  const catalog = getSpaceExpertCatalog();
+  t.mock.method(store, 'read', async () => ({
+    partnerExpert: {
+      extensionId: 'partner.library',
+      extensionVersion: '1.0.0',
+      expert: {
+        id: 'writer',
+        revision: 1,
+        name: 'Writer',
+        description: 'Draft replies',
+        prompt: 'Preserve the evidence.',
+        starterTasks: [],
+        skillRef: 'draft-response',
+      },
+    },
+  }));
+  t.mock.method(catalog, 'requireAvailable', async () => undefined);
+  const runtime = {
+    sessions: {
+      load: async () => ({ id: 'default-method', surface: 'partner', workspaceRoot: '/workspace' }),
+      getSettings: async () => ({ permissionMode: 'accept-edits' }),
+    },
+    hostTools: { register: async (tools: unknown) => ({ id: 'lease', tools }) },
+    catalog: { skills: async () => [{ name: 'draft-response' }] },
+  } as unknown as KodaXDaemonRuntime;
+  const binding = await registerPartnerHostExecution(runtime, 'default-method', undefined, {
+    query: 'Answer this customer',
+  });
+  assert.deepEqual(binding.context.defaultSkill, { name: 'draft-response' });
+  assert.match(binding.context.agentProfile!.instructions!, /Preserve the evidence/);
+  assert.equal(binding.context.excludeTools, undefined);
+});
 
 test('explicit methods resolve through the Host catalog in all supported Skill syntaxes', async () => {
   const runtime = {
@@ -86,7 +123,25 @@ test('checkpoint rebinding keeps admitted persona and does not prepare the newly
     instructions: 'The admitted method remains fixed.',
   };
   const binding = await registerPartnerHostExecution(runtime, 'recovery', undefined, {
-    recovery: { agentProfile: admitted },
+    recovery: {
+      agentProfile: admitted,
+      binding: {
+        businessBinding: await capturePartnerBusinessBinding({
+          sessionId: 'recovery',
+          projectRoot: '/workspace',
+          bindings: [],
+        }),
+      },
+    },
   });
   assert.deepEqual(binding.context.agentProfile, admitted);
+});
+
+test('an older Partner checkpoint without a proven business snapshot never adopts the current expert or connector scope', async () => {
+  await assert.rejects(
+    registerPartnerHostExecution({} as KodaXDaemonRuntime, 'legacy', undefined, {
+      recovery: { agentProfile: { surface: 'partner', name: 'Original role' } },
+    }),
+    { code: 'execution_binding_unavailable' },
+  );
 });

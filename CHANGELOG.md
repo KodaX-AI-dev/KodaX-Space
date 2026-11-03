@@ -14,15 +14,17 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Pin Registry KodaX `0.7.97-beta.1`; enable Host-owned expert default Skills, consumption-time Partner business bindings and same-Session Quick Ask promotion. Preserve original recovery scopes, normal Partner shell/write/subagent capabilities, typed configuration errors and atomic Provider rename commits. Surface blocked queued inputs and retain complete new input recovery records for explicit take-back after response loss. Keep legacy queue/read and cross-platform limitations explicit in the [beta.1 acceptance record](docs/releases/kodax-0.7.97-beta.1-integration.md).
+
 - Resolve custom Providers when checking image input, while preserving model-specific text-only restrictions and unsent drafts on rejection.
 
 - Read Provider configuration under the SDK's shared lock, retry only short lock conflicts, and preserve explicit errors for corrupt or unreadable files without exposing config values.
 
 - Fix first-session credential conflicts during concurrent startup reads. Reconcile automatic origin pinning once under the original connection and source, preserve tombstones and explicit edit CAS, and keep environment accounts separate from CLI keys. The model picker now consumes canonical SDK reasoning facts while keeping selected effort and unknown observations distinct.
 
-- Pin the published Registry SDK `@kodax-ai/kodax@0.7.97-alpha.12` in root/Desktop and the lockfile, and verify the installed SDK against the complete integrity-pinned Registry tarball. Enable the prepared shared Host integration for both product surfaces, Partner Agent with normal shell capabilities, actual Run facts, model image capabilities, credential source preservation and cursor recovery. Keep the SDK gaps for expert default Skill/dequeue business bindings and Quick Ask promotion explicit; never substitute direct Session file writes.
+- Pin the published Registry SDK `@kodax-ai/kodax@0.7.97-alpha.12` in root/Desktop and the lockfile, and verify the installed SDK against the complete integrity-pinned Registry tarball. Enable the prepared shared Host integration for both product surfaces, Partner Agent with normal shell capabilities, actual Run facts, model image capabilities, credential source preservation and cursor recovery. This alpha.12 historical checkpoint kept expert/default-method and promotion gaps explicit; the beta.1 entry above supersedes those SDK availability limits. Never substitute direct Session file writes.
 
-- Allow choosing the Host work mode before the first Coder input, block sending until the setting is confirmed, and implement `/work-mode` through the same Host setting boundary. Document mode semantics and original-result reads; add Script, MCP-original, Skill lifecycle and long-report regressions. Partner Agent/profile composition remains an SDK follow-up.
+- Allow choosing the Host work mode before the first Coder input, block sending until the setting is confirmed, and implement `/work-mode` through the same Host setting boundary. Document mode semantics and original-result reads; add Script, MCP-original, Skill lifecycle and long-report regressions. Partner Agent/profile composition is enabled by the subsequent beta.1 integration above.
 
 - Upgrade the exact Registry SDK to 0.7.97-alpha.11. Add Host-owned Agent/Coding/experimental Script work modes, Host streaming token estimates, explicit saved tool-original reads, structured task reports and non-interactive question outcomes; retain the earlier history, manual-update and recovery fixes.
 

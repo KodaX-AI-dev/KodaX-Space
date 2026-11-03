@@ -855,6 +855,7 @@ async function checkAsarContents(asarPath) {
     // trusted CLI entry in Electron's Node mode after releasing Space's client.
     '/node_modules/@kodax-ai/kodax/dist/kodax_cli.js',
     '/node_modules/@kodax-ai/kodax/dist/provider-capabilities.json',
+    '/node_modules/@kodax-ai/kodax/dist/runtime-daemon-schema.json',
     '/node_modules/@kodax-ai/kodax/scripts/kodax-bin.cjs',
   ];
   for (const req of kodaxRuntimeRequired) {

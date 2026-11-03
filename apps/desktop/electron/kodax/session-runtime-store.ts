@@ -37,6 +37,14 @@ const sessionRuntimeSchema = z
     agentMode: persistedAgentModeSchema.optional(),
     partnerExpert: partnerExpertSnapshotSchema.optional(),
     partnerConnectors: partnerConnectorSnapshotsSchema.optional(),
+    promotion: z
+      .object({
+        requestId: z.string().min(1).max(256),
+        expectedRevision: z.string().min(1),
+        tag: z.enum(['code', 'partner']),
+      })
+      .strict()
+      .optional(),
     updatedAt: z.string().min(1),
   })
   .strict();
@@ -50,6 +58,11 @@ export interface SessionRuntimeSettings {
   readonly agentMode?: AgentMode;
   readonly partnerExpert?: PartnerExpertSnapshotT;
   readonly partnerConnectors?: readonly PartnerConnectorSnapshotT[];
+  readonly promotion?: {
+    readonly requestId: string;
+    readonly expectedRevision: string;
+    readonly tag: 'code' | 'partner';
+  };
 }
 
 interface SessionRuntimeFile extends SessionRuntimeSettings {
@@ -89,6 +102,7 @@ function settingsFromParsed(parsed: z.infer<typeof sessionRuntimeSchema>): Sessi
     ...(parsed.partnerConnectors !== undefined
       ? { partnerConnectors: parsed.partnerConnectors }
       : {}),
+    ...(parsed.promotion ? { promotion: parsed.promotion } : {}),
   };
 }
 
@@ -125,6 +139,7 @@ function buildSessionRuntimeFile(
     ...(settings.partnerConnectors !== undefined
       ? { partnerConnectors: settings.partnerConnectors }
       : {}),
+    ...(settings.promotion ? { promotion: settings.promotion } : {}),
     updatedAt,
   };
 }

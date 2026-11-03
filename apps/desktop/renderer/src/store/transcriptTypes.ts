@@ -100,6 +100,7 @@ export interface UserMessage {
 }
 
 export interface QueuedUserMessage {
+  readonly admissionError?: SpaceQueueAdmissionError;
   readonly id: string;
   readonly queueId?: string;
   /** Exact session.send operation identity, available before the queue ACK returns. */
@@ -118,3 +119,6 @@ export interface QueuedUserMessage {
 export interface SendOperationReservation {
   readonly requestGeneration: number;
 }
+
+export type SpaceQueueAdmissionError =
+  import('@kodax-space/space-ipc-schema').SpaceSessionLiveProjectionT['queuedInputs'][number]['admissionError'];

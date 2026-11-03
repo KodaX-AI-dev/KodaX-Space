@@ -275,14 +275,16 @@ for (const revokeQueuedLease of [false, true])
           queuedFact = await attached!.runs.getInput(sessionId, 'queued-space-input');
           queuedRun = queuedFact?.runId ? await attached!.runs.get(queuedFact.runId) : undefined;
           if (
-            revokeQueuedLease ? queuedFact?.state === 'withdrawn' : queuedRun?.phase === 'completed'
+            revokeQueuedLease
+              ? queuedFact?.state === 'queued' && !queuedRun
+              : queuedRun?.phase === 'completed'
           )
             break;
           await new Promise((resolve) => setTimeout(resolve, 50));
         } while (Date.now() < queuedDeadline);
         assert.equal(
           revokeQueuedLease ? queuedFact?.state : queuedRun?.phase,
-          revokeQueuedLease ? 'withdrawn' : 'completed',
+          revokeQueuedLease ? 'queued' : 'completed',
           `queued authority must not be regenerated or resubmitted: ${JSON.stringify({ queuedFact, queuedRun })}`,
         );
         assert.equal(
@@ -291,22 +293,23 @@ for (const revokeQueuedLease of [false, true])
           ).length,
           revokeQueuedLease ? 0 : 1,
         );
-        if (revokeQueuedLease)
-          assert.deepEqual(
-            pushed.find(
-              ({ channel, payload }) =>
-                channel === 'session.event' &&
-                (payload as { reason?: unknown } | null)?.reason === 'authorization_unavailable',
-            )?.payload,
-            {
-              kind: 'queued_user_prompt_failed',
-              sessionId,
-              queueId: 'queued-space-input',
-              queueMode: 'after-turn',
-              content: 'Queued query',
-              reason: 'authorization_unavailable',
-            },
+        if (revokeQueuedLease) {
+          assert.equal(
+            queuedFact?.runId,
+            undefined,
+            'revoked queue never acquires replacement authority',
           );
+          const original = await adapter.withdrawProductInput({
+            sessionId,
+            inputId: 'queued-space-input',
+          });
+          assert.equal(original.text, 'Queued query');
+          assert.equal(
+            (await attached!.runs.getInput(sessionId, 'queued-space-input'))?.state,
+            'withdrawn',
+            'only the explicit user take-back removes a blocked intent',
+          );
+        }
         const clientSdk = await import('@kodax-ai/kodax/client');
         const peerInfo = {
           name: 'space-peer-fixture',

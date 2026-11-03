@@ -24,6 +24,25 @@ import {
 
 await initializeCoderDaemonProjectionSdk();
 
+test('a blocked queued intent keeps its Host failure without inventing a Run or dropping the original input', () => {
+  const reducer = new CoderSessionProjectionReducer(
+    projectRuntimeSessionSnapshot(observation, []),
+    observation.runs,
+  );
+  const admissionError = {
+    code: 'default_skill_unavailable' as const,
+    message: 'Selected method is unavailable.',
+  };
+  reducer.replaceProductQueue([
+    { inputId: 'blocked-method', text: 'Original question', enqueuedAt: 1, admissionError },
+  ]);
+  const queued = reducer.snapshot().queuedInputs[0]!;
+  assert.deepEqual(queued.admissionError, admissionError);
+  assert.equal(queued.state, 'queued');
+  assert.equal(queued.runId, undefined);
+  assert.equal(queued.contentPreview, 'Original question');
+});
+
 test('profile refresh classification excludes transcript hot-path events', () => {
   for (const type of [
     'assistant.delta',

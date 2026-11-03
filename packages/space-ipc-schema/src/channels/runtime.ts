@@ -871,6 +871,18 @@ export const spaceRuntimeQueuedInputSchema = z
     /** Exact Session-journal position of run.input.delivered when Space observed it. */
     deliverySeq: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
     contentPreview: z.string().max(4096).optional(),
+    admissionError: z
+      .object({
+        code: z.enum([
+          'execution_binding_unavailable',
+          'execution_binding_rejected',
+          'execution_binding_changed',
+          'default_skill_unavailable',
+        ]),
+        message: z.string().max(512),
+      })
+      .strict()
+      .optional(),
     entryId: z.string().min(1).max(256).optional(),
     turnId: z.string().min(1).max(256).optional(),
     turnUserOrdinal: z.number().int().nonnegative().max(1_000_000).optional(),

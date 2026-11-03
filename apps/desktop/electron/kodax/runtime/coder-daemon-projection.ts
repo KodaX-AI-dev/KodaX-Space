@@ -1022,7 +1022,10 @@ function settingsProjection(
       ...(typeof value.permissionMode === 'string' && PERMISSION_MODES.has(value.permissionMode)
         ? {
             permissionMode: value.permissionMode as
-              'plan' | 'accept-edits' | 'auto' | 'full-access',
+              | 'plan'
+              | 'accept-edits'
+              | 'auto'
+              | 'full-access',
           }
         : {}),
       ...(text(value.executionCwd, 4_096)
@@ -1275,6 +1278,14 @@ export class CoderSessionProjectionReducer {
       readonly inputId: string;
       readonly text: string;
       readonly enqueuedAt: number;
+      readonly admissionError?: {
+        readonly code:
+          | 'execution_binding_unavailable'
+          | 'execution_binding_rejected'
+          | 'execution_binding_changed'
+          | 'default_skill_unavailable';
+        readonly message: string;
+      };
     }[],
   ): SpaceSessionLiveChangedT | undefined {
     const next = queue.map((item, index) => ({
@@ -1285,6 +1296,7 @@ export class CoderSessionProjectionReducer {
       state: 'queued' as const,
       createdAt: item.enqueuedAt,
       contentPreview: item.text.slice(0, 4096),
+      ...(item.admissionError ? { admissionError: item.admissionError } : {}),
       position: index + 1,
     }));
     if (isDeepStrictEqual(next, this.#productQueue)) return undefined;

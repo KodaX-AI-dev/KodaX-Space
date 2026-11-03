@@ -57,6 +57,47 @@ import { encodeRuntimeActorTaskId } from '../kodax/runtime/runtime-agent-project
 
 await initializeCoderDaemonProjectionSdk();
 
+test('a promoted Quick Ask displays the unchanged SDK items only after authoritative Host metadata confirms its formal tag', async () => {
+  const fake = createFakeRuntime();
+  const sessionId = 's_promoted_view';
+  fake.sessions.add(sessionId);
+  const load = fake.runtime.sessions.load;
+  let formal = false;
+  fake.runtime.sessions.load = async (...args) => ({
+    ...(await load(...args)),
+    tag: formal ? 'code' : 'space-ephemeral',
+  });
+  const sdkView: ClientSessionView = {
+    session: { id: sessionId, tag: 'space-ephemeral', title: 'Quick answer' },
+    items: [{ id: 'original-answer', type: 'assistant', text: 'Original saved answer' }],
+    queue: [],
+    interactions: [],
+    runs: [],
+    settings: {},
+  };
+  fake.runtime.sessions.observeView = async (_id, listener) => {
+    listener(sdkView);
+    return { close() {} };
+  };
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  try {
+    await assert.rejects(adapter.readSessionProductView(sessionId), /did not supply/);
+    formal = true;
+    const visible = await adapter.readSessionProductView(sessionId);
+    assert.deepEqual(
+      visible.items.map((item) => [item.id, item.text]),
+      [['original-answer', 'Original saved answer']],
+    );
+    assert.equal(sdkView.session.tag, 'space-ephemeral', 'Space does not rewrite the SDK frame');
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('Partner drafts belong to the shared Host and select Agent without creating a private writer', async () => {
   const fake = createFakeRuntime();
   Object.assign(fake.runtime.capabilities!, {
@@ -103,52 +144,94 @@ test('Partner drafts belong to the shared Host and select Agent without creating
   }
 });
 
-test('Partner shared Host authorizes persona and product tools without a blanket generic-tool ceiling', async () => {
-  const fake = createFakeRuntime();
-  Object.assign(fake.runtime.capabilities!, {
-    productExecutionProfile: { version: 2 },
-    sessionAdmission: { version: 1, surfaces: ['space-desktop', 'partner'] },
-  });
-  fake.runtime.catalog.executionTools = async () => [
-    { name: 'bash', sideEffect: 'mutates-shell', planModeAllowed: false },
-    { name: 'spawn_agent', sideEffect: 'mutates-state', planModeAllowed: false },
-  ];
-  const adapter = new RuntimeHostAdapter({
-    runtimeFactory: async () => fake.runtime,
-    identityStore: testIdentityStore,
-    runtimeEventParser: testRuntimeEventParser,
-    credentialResolver: async () => 'test-key',
-    credentialProvidersResolver: async () => ['anthropic'],
-  });
-  try {
-    const sessionId = await adapter.createSession({
-      projectRoot: 'C:\\repo',
-      surface: 'partner',
-      ephemeral: false,
+for (const failAudit of [false, true])
+  test(`Partner shared Host retains accepted execution and generic tools (audit failure=${failAudit})`, async (t) => {
+    const fake = createFakeRuntime();
+    Object.assign(fake.runtime.capabilities!, {
+      productExecutionProfile: { version: 2 },
+      productExecutionBinding: { version: 1 },
+      sessionAdmission: { version: 1, surfaces: ['space-desktop', 'partner'] },
     });
-    const run = await adapter.startManagedRun({ sessionId, prompt: 'research' });
-    const started = fake.calls.started[0] as Parameters<KodaXDaemonRuntime['runs']['start']>[0];
-    assert.equal(started.authorization?.profile?.agentProfile?.surface, 'partner');
-    assert.equal(
-      started.authorization?.profile?.agentProfile?.verification?.rubricFamily,
-      'partner-research',
-    );
-    assert.equal(started.authorization?.profile?.tools, undefined);
-    assert.ok(
-      !started.authorization?.profile?.agentProfile?.instructions?.includes(
-        'Do not request unrestricted shell',
-      ),
-    );
-    const tools = fake.calls.hostToolRegistrations.at(-1) as {
-      descriptors: readonly { name: string }[];
+    fake.runtime.catalog.executionTools = async () => [
+      { name: 'bash', sideEffect: 'mutates-shell', planModeAllowed: false },
+      { name: 'spawn_agent', sideEffect: 'mutates-state', planModeAllowed: false },
+    ];
+    let resolver: import('@kodax-ai/kodax/client').RuntimeExecutionBindingResolver | undefined;
+    Object.assign(fake.runtime, {
+      executionBindings: {
+        register: async (
+          callback: import('@kodax-ai/kodax/client').RuntimeExecutionBindingResolver,
+        ) => {
+          resolver = callback;
+          return { id: 'binding_1' };
+        },
+        revoke: async () => true,
+      },
+    });
+    const accept = fake.runtime.runs.acceptInput;
+    fake.runtime.runs.acceptInput = async (input) => {
+      const { createExecutionProfile } = await import('@kodax-ai/kodax/client');
+      const authorization = await resolver!(
+        { phase: 'admission', sessionId: input.sessionId, input },
+        {
+          identity: fake.runtime.identity,
+          credentials: fake.runtime.credentials,
+          hostTools: fake.runtime.hostTools,
+          executionBindings: fake.runtime.executionBindings,
+          createExecutionProfile: async (context) =>
+            createExecutionProfile(
+              context,
+              await fake.runtime.catalog.executionTools!(input.sessionId),
+            ),
+        },
+        new AbortController().signal,
+      );
+      return accept({ ...input, authorization });
     };
-    assert.ok(tools.descriptors.some((tool) => tool.name === 'write_partner_deliverable'));
-    fake.pending.get(run.runId)?.resolve({ runId: run.runId, sessionId, phase: 'completed' });
-    await run.result;
-  } finally {
-    await adapter.close();
-  }
-});
+    const { RuntimeInputAuthorizationStore } =
+      await import('../kodax/runtime/runtime-input-authorization-store.js');
+    const inputAuthorizationStore = new RuntimeInputAuthorizationStore();
+    if (failAudit)
+      t.mock.method(inputAuthorizationStore, 'capture', async () => {
+        throw new Error('Local audit disk unavailable');
+      });
+    const adapter = new RuntimeHostAdapter({
+      inputAuthorizationStore,
+      runtimeFactory: async () => fake.runtime,
+      identityStore: testIdentityStore,
+      runtimeEventParser: testRuntimeEventParser,
+      credentialResolver: async () => 'test-key',
+      credentialProvidersResolver: async () => ['anthropic'],
+    });
+    try {
+      const sessionId = await adapter.createSession({
+        projectRoot: 'C:\\repo',
+        surface: 'partner',
+        ephemeral: false,
+      });
+      const run = await adapter.startManagedRun({ sessionId, prompt: 'research' });
+      const started = fake.calls.started[0] as Parameters<KodaXDaemonRuntime['runs']['start']>[0];
+      assert.equal(started.authorization?.profile?.agentProfile?.surface, 'partner');
+      assert.equal(
+        started.authorization?.profile?.agentProfile?.verification?.rubricFamily,
+        'partner-research',
+      );
+      assert.equal(started.authorization?.profile?.tools, undefined);
+      assert.ok(
+        !started.authorization?.profile?.agentProfile?.instructions?.includes(
+          'Do not request unrestricted shell',
+        ),
+      );
+      const tools = fake.calls.hostToolRegistrations.at(-1) as {
+        descriptors: readonly { name: string }[];
+      };
+      assert.ok(tools.descriptors.some((tool) => tool.name === 'write_partner_deliverable'));
+      fake.pending.get(run.runId)?.resolve({ runId: run.runId, sessionId, phase: 'completed' });
+      await run.result;
+    } finally {
+      await adapter.close();
+    }
+  });
 
 test('Provider probes use operation authority without a Session and revoke it after the read', async () => {
   const fake = createFakeRuntime();
@@ -3047,7 +3130,8 @@ test('complete exit cancels pending startup, and cancelling exit permits a fresh
 
 test('closing while client identity opens never starts a late Host', async () => {
   let releaseIdentity:
-    ((identity: Awaited<ReturnType<typeof testIdentityStore.openInstance>>) => void) | undefined;
+    | ((identity: Awaited<ReturnType<typeof testIdentityStore.openInstance>>) => void)
+    | undefined;
   let factoryCalls = 0;
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
@@ -7875,7 +7959,8 @@ test('cached idle snapshot ownership rejects an external retag without a profile
     ['s_cached_retag', { title: '', messages: [], gitRoot: 'C:\\repo', tag: 'code' }],
   ]);
   let notifySessionChange:
-    ((event: { kind: 'change' | 'add' | 'remove'; sessionId: string }) => void) | undefined;
+    | ((event: { kind: 'change' | 'add' | 'remove'; sessionId: string }) => void)
+    | undefined;
   setSessionStoreImpl({
     listSessions: async () => [],
     forkSession: async () => null,

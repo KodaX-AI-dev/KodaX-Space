@@ -546,6 +546,20 @@ const sessionSendRejectionReasonSchema = z.enum([
 export type SessionSendRejectionReason = z.infer<typeof sessionSendRejectionReasonSchema>;
 
 // ---- Invoke: session.send ----
+export const sessionWithdrawInputChannel = {
+  name: 'session.withdrawInput',
+  direction: 'invoke',
+  input: z
+    .object({ sessionId: z.string().min(1).max(128), inputId: z.string().min(1).max(256) })
+    .strict(),
+  output: z
+    .object({
+      text: z.string().max(16 * 1024 * 1024),
+      attachments: z.array(sessionImageAttachmentSchema).max(32),
+    })
+    .strict(),
+} as const;
+
 export const sessionSendChannel = {
   name: 'session.send',
   direction: 'invoke',

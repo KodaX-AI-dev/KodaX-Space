@@ -8,7 +8,12 @@ import os from 'node:os';
 import path from 'node:path';
 
 function startLockedWriter(file: string, release: string) {
-  return promisify(execFile)(process.execPath, ['--input-type=module', '-e', `
+  return promisify(execFile)(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
     import { withCoreConfigWriteLock } from '@kodax-ai/kodax/repl';
     import { existsSync, readFileSync, writeFileSync } from 'node:fs';
     const file = ${JSON.stringify(file)}, release = ${JSON.stringify(release)};
@@ -20,7 +25,10 @@ function startLockedWriter(file: string, release: string) {
         while (!existsSync(release)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
       } finally { writeFileSync(file, original); }
     });
-  `], { windowsHide: true, timeout: 15_000 });
+  `,
+    ],
+    { windowsHide: true, timeout: 15_000 },
+  );
 }
 
 test('provider configuration rejects a live partial writer and reads its complete result after release', async (t) => {
@@ -33,9 +41,15 @@ test('provider configuration rejects a live partial writer and reads its complet
     await rm(root, { recursive: true, force: true });
   });
   await mkdir(root, { recursive: true });
-  const file = path.join(root, 'config.json'), release = path.join(root, 'release-writer');
-  const connection = { name: 'coherent-read-fixture', protocol: 'openai',
-    baseUrl: 'https://coherent.invalid/v1', apiKeyEnv: 'COHERENT_FIXTURE_KEY', model: 'fixture' };
+  const file = path.join(root, 'config.json'),
+    release = path.join(root, 'release-writer');
+  const connection = {
+    name: 'coherent-read-fixture',
+    protocol: 'openai',
+    baseUrl: 'https://coherent.invalid/v1',
+    apiKeyEnv: 'COHERENT_FIXTURE_KEY',
+    model: 'fixture',
+  };
   await writeFile(file, JSON.stringify({ customProviders: [connection] }));
   const storage = await import('./provider-storage.js');
   const writer = startLockedWriter(file, release);
@@ -44,10 +58,24 @@ test('provider configuration rejects a live partial writer and reads its complet
       writer.child.stdout!.once('data', () => resolve());
       writer.then(() => reject(new Error('Writer exited before readiness')), reject);
     });
-    await assert.rejects(storage.configuredConnection(connection.name), /configuration busy/);
+    await assert.rejects(storage.configuredConnection(connection.name), {
+      code: 'conflict',
+      data: { source: 'configuration', reason: 'lock_busy' },
+    });
   } finally {
     await writeFile(release, 'release');
     await writer;
   }
   assert.deepEqual(await storage.configuredConnection(connection.name), connection);
+  await writeFile(file, '{"secret":"fixture-only",');
+  const { CoreConfigReadError } = await import('@kodax-ai/kodax/repl');
+  await assert.rejects(storage.configuredConnection(connection.name), (error: unknown) => {
+    assert.ok(error instanceof CoreConfigReadError);
+    assert.equal(JSON.stringify(error).includes('fixture-only'), false);
+    return true;
+  });
+  assert.equal(
+    await (await import('node:fs/promises')).readFile(file, 'utf8'),
+    '{"secret":"fixture-only",',
+  );
 });

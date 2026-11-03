@@ -1695,7 +1695,12 @@ function transcriptTurnSnapshots(
 }
 
 type CanonicalTranscriptRecordKind =
-  'user' | 'assistant' | 'tool' | 'sidecar' | 'lineage' | 'workflow';
+  | 'user'
+  | 'assistant'
+  | 'tool'
+  | 'sidecar'
+  | 'lineage'
+  | 'workflow';
 
 interface CanonicalTranscriptRecord {
   readonly kind: CanonicalTranscriptRecordKind;
@@ -5592,6 +5597,7 @@ function reconcileRuntimeQueuedMessages(
           : input.originOperationId !== undefined
             ? { operationId: input.originOperationId }
             : {}),
+        admissionError: input.admissionError,
         status: failed ? 'failed' : 'queued',
         ...(failed?.failureReason !== undefined ? { failureReason: failed.failureReason } : {}),
       };
@@ -5609,6 +5615,7 @@ function reconcileRuntimeQueuedMessages(
       ...(input.originOperationId !== undefined ? { operationId: input.originOperationId } : {}),
       content,
       matchContent: content,
+      ...(input.admissionError ? { admissionError: input.admissionError } : {}),
       queueMode,
       status: 'queued',
       sentAt: input.createdAt,

@@ -1,5 +1,7 @@
 # Registry alpha.12 升级验收
 
+> 2026-11-03 后续：Space 已锁定正式 SDK beta.1，并适配默认方法/消费绑定、Quick Ask 与配置接口。当前验证、成品和剩余边界见 [beta.1 接入记录](kodax-0.7.97-beta.1-integration.md)。下方保留 alpha 阶段的历史检查点。
+
 2026-11-02。正式 `@kodax-ai/kodax@0.7.97-alpha.12` 已安装，Space 适配及本次可独立完成的修复已提交，Windows Setup/Portable 已重打并验证。仍需 SDK 补齐的产品接口列在下方，当前候选包不能据此宣称所有问题已闭环。
 
 工作区：`C:/Users/ADMIN/.codex/worktrees/sdk-alpha12-preparation/KodaX-Space`，分支 `codex/sdk-alpha12-preparation`。Space 版本保持 `0.1.47-alpha.3`；没有发布 Space Release，也没有改写原 Space 主工作区的 fixture/research 文件。
@@ -16,15 +18,15 @@
 
 完整契约矩阵见 [源码准备记录](kodax-0.7.97-alpha.12-preparation.md)，其中候选字节/旧版本声明属于历史检查点，本次正式安装以本记录为准。
 
-| 范围 | 当前处理与验证边界 |
-| --- | --- |
-| 共享 Host、Session、Actor | 真实 Coder/Partner 统一使用 Product/Host；不新增 Runtime 或 Session writer。恢复、命令、历史、Fork/Rewind、Workflow 和工具 lease 继续走 Host。 |
-| 工作模式 | Coder 可在首次输入前选择 Agent/Coding/实验性 Script，安全空闲时通过 Host CAS 修改；Partner 使用 Agent，并保留正常 shell/write/子 Agent 能力。模式与模型、权限独立，旧 Host/冲突不伪造本地状态。SA 隐藏和 AMA 迁移继续保留。 |
-| 流式事实、模型、图片 | 消费 Host estimatedTokenCount 和 canonical reasoning 事实；缺事实保持未知。模型级 text-only 优先；修复自定义 Provider 图片检查使用 built-in-only getter 的遗漏，改用统一 resolver。 |
-| 历史与报告 | 保留 canonical/native 字段、taskResult 多报告/未知状态，按具体工具 ID 分页读取 original。中性通知、长历史 React 185 的同帧通知合并，以及双向浏览后同一个底部按钮回最新的修复继续保留。 |
-| 交互与凭据 | 普通问题无客户端默认超时，skipped/non_interactive 保持区别；审批独立。文件凭据来源固定、CAS、墓碑、显式共享/采用、OAuth context 和恢复不放宽。真实云账户/订阅权益未由离线测试替代。 |
-| 配置与生命周期 | 读取 Host application 及其生效时机；Host ready 与历史加载完成分开。手动检查更新、分别确认下载/安装，稳定版过滤预发布；退出保护其他客户端与活跃任务。 |
-| 平台与沙箱 | 保留 SDK 自动回退和正常权限策略，不增加 Node 安装 gate。Linux 自绘窗口按钮继续使用原生窗口控制。Windows 成品已实测；其他平台真机仍待验证。 |
+| 范围                      | 当前处理与验证边界                                                                                                                                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 共享 Host、Session、Actor | 真实 Coder/Partner 统一使用 Product/Host；不新增 Runtime 或 Session writer。恢复、命令、历史、Fork/Rewind、Workflow 和工具 lease 继续走 Host。                                                                              |
+| 工作模式                  | Coder 可在首次输入前选择 Agent/Coding/实验性 Script，安全空闲时通过 Host CAS 修改；Partner 使用 Agent，并保留正常 shell/write/子 Agent 能力。模式与模型、权限独立，旧 Host/冲突不伪造本地状态。SA 隐藏和 AMA 迁移继续保留。 |
+| 流式事实、模型、图片      | 消费 Host estimatedTokenCount 和 canonical reasoning 事实；缺事实保持未知。模型级 text-only 优先；修复自定义 Provider 图片检查使用 built-in-only getter 的遗漏，改用统一 resolver。                                         |
+| 历史与报告                | 保留 canonical/native 字段、taskResult 多报告/未知状态，按具体工具 ID 分页读取 original。中性通知、长历史 React 185 的同帧通知合并，以及双向浏览后同一个底部按钮回最新的修复继续保留。                                      |
+| 交互与凭据                | 普通问题无客户端默认超时，skipped/non_interactive 保持区别；审批独立。文件凭据来源固定、CAS、墓碑、显式共享/采用、OAuth context 和恢复不放宽。真实云账户/订阅权益未由离线测试替代。                                         |
+| 配置与生命周期            | 读取 Host application 及其生效时机；Host ready 与历史加载完成分开。手动检查更新、分别确认下载/安装，稳定版过滤预发布；退出保护其他客户端与活跃任务。                                                                        |
+| 平台与沙箱                | 保留 SDK 自动回退和正常权限策略，不增加 Node 安装 gate。Linux 自绘窗口按钮继续使用原生窗口控制。Windows 成品已实测；其他平台真机仍待验证。                                                                                  |
 
 ## 此轮补齐的遗漏
 
@@ -36,18 +38,18 @@
 
 ## 验证结果
 
-| 检查点 | 实际结果 |
-| --- | --- |
-| 正式版本/完整 Registry 字节 | 通过；依赖版本要求先 RED 后 GREEN，2 项通过。 |
-| 工作区完整回归（配置 reader 修复后） | Desktop 4069 项：4056 通过、13 跳过、0 失败；IPC schema 371 全通过。830.7s。 |
-| 随后图片小修复 | 两项真实 SDK RED/GREEN，最新 typecheck、lint 和 Main 构建通过；没有冒称整库又跑一遍。Renderer 无后续生产改动，已有最终构建通过。 |
-| release 与探针契约 | test:release 137 项：130 通过、7 跳过；打包探针相关 8 项通过。 |
-| 凭据/配置专项 | 21 项通过；两文件合计行覆盖率 87.57%、分支 81.52%、函数 90.00%。file-credentials 行 91.77%，provider-storage 行 84.12%。此前 27 项较宽集合的旧覆盖数字不合并。 |
-| 源码定向 Electron | 8 项通过：工作面四项、凭据 IPC/重启、Coder builtin Skill、问题 Skip。 |
-| 扩展包内回归 | 99 项：93 通过、3 跳过、3 失败、0 flaky，1631.8s。三个失败分别为 snapshot topology 旧夹具、Host 后 seed 旧夹具、自定义 Provider 图片 getter，证据保留。不能写成一次全绿。 |
-| 最新 Windows 完整打包流程 | build:pack -- --win --x64 返回 0；Runtime/资源/Worker/SQLite/Artifact 完整 smoke 通过，最终 Product 生命周期 6 项全通过。 |
-| 最新包失败项复验 | 4 项全通过、0 跳过/失败/重试，68.5s：流式估算、用户图片及两项空记录/侧栏历史。对应前轮三个失败均已复验。 |
-| 代码复核 | 各生产/夹具增量分别经独立 Standards/Spec 双轴复核。测试职责分离、去掉固定持锁窗口两项 finding 已修复，最终无未解决发现。 |
+| 检查点                               | 实际结果                                                                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 正式版本/完整 Registry 字节          | 通过；依赖版本要求先 RED 后 GREEN，2 项通过。                                                                                                                             |
+| 工作区完整回归（配置 reader 修复后） | Desktop 4069 项：4056 通过、13 跳过、0 失败；IPC schema 371 全通过。830.7s。                                                                                              |
+| 随后图片小修复                       | 两项真实 SDK RED/GREEN，最新 typecheck、lint 和 Main 构建通过；没有冒称整库又跑一遍。Renderer 无后续生产改动，已有最终构建通过。                                          |
+| release 与探针契约                   | test:release 137 项：130 通过、7 跳过；打包探针相关 8 项通过。                                                                                                            |
+| 凭据/配置专项                        | 21 项通过；两文件合计行覆盖率 87.57%、分支 81.52%、函数 90.00%。file-credentials 行 91.77%，provider-storage 行 84.12%。此前 27 项较宽集合的旧覆盖数字不合并。            |
+| 源码定向 Electron                    | 8 项通过：工作面四项、凭据 IPC/重启、Coder builtin Skill、问题 Skip。                                                                                                     |
+| 扩展包内回归                         | 99 项：93 通过、3 跳过、3 失败、0 flaky，1631.8s。三个失败分别为 snapshot topology 旧夹具、Host 后 seed 旧夹具、自定义 Provider 图片 getter，证据保留。不能写成一次全绿。 |
+| 最新 Windows 完整打包流程            | build:pack -- --win --x64 返回 0；Runtime/资源/Worker/SQLite/Artifact 完整 smoke 通过，最终 Product 生命周期 6 项全通过。                                                 |
+| 最新包失败项复验                     | 4 项全通过、0 跳过/失败/重试，68.5s：流式估算、用户图片及两项空记录/侧栏历史。对应前轮三个失败均已复验。                                                                  |
+| 代码复核                             | 各生产/夹具增量分别经独立 Standards/Spec 双轴复核。测试职责分离、去掉固定持锁窗口两项 finding 已修复，最终无未解决发现。                                                  |
 
 172 项 Electron 用例分段执行，早段源码回归、扩展成品及定向复验分别留证；没有宣称最新成品一次执行整套 172 项全绿。Node 与成品 Electron 并行期间使用独立 SQLite 二进制，前后 hash/inode 不变；其余切换 ABI 的构建/源码阶段串行进行。
 

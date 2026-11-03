@@ -108,7 +108,7 @@ daemon management health，仅在健康指纹变化时刷新投影；损坏一�
 
 ## 4. 共享 Runtime Host
 
-alpha.12 候选适配中，Coder 与 Partner 共同使用 SDK 共享 Host，Space 通过公开 Product/Runtime 契约接入。原 Embedded 切换入口已撤下，旧偏好由 SDK 的单向迁移处理；不能删除 owner-policy、锁或建立私有 Runtime 来接管会话。连接失败时保留任务与原始身份，按界面诊断修复后重试，活动任务、其他客户端或所有权未知时保持保护。
+SDK beta.1 接入后，Coder 与 Partner 共同使用 SDK 共享 Host，Space 通过公开 Product/Runtime 契约接入。原 Embedded 切换入口已撤下，旧偏好由 SDK 的单向迁移处理；不能删除 owner-policy、锁或建立私有 Runtime 来接管会话。连接失败时保留任务与原始身份，按界面诊断修复后重试，活动任务、其他客户端或所有权未知时保持保护。
 
 Coder 可在安全空闲时切换 Agent、Coding 和实验性 Script；Partner 默认 Agent，保留通用 shell、写文件和子 Agent，实际操作仍受权限、审批、沙箱和业务绑定约束。选择值与实际 Run 装配结果分开显示。配置“已保存”不表示活跃任务已生效，Settings 展示 Host 报告的 immediate/next_run/extension_reload/restart；缺失保持未知。
 

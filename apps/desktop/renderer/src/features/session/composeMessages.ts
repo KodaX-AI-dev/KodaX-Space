@@ -50,6 +50,8 @@ export type ConversationMessage =
     }
   | {
       kind: 'queued_user';
+      queueId?: string;
+      admissionError?: QueuedUserMessage['admissionError'];
       id: string;
       content: string;
       attachments?: QueuedUserMessage['attachments'];
@@ -515,6 +517,8 @@ function toQueuedConversationMessage(
 ): Extract<ConversationMessage, { kind: 'queued_user' }> {
   return {
     kind: 'queued_user',
+    ...(queued.queueId ? { queueId: queued.queueId } : {}),
+    ...(queued.admissionError ? { admissionError: queued.admissionError } : {}),
     id: queued.id,
     content: queued.content,
     ...(queued.attachments !== undefined ? { attachments: queued.attachments } : {}),

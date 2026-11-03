@@ -1,3 +1,4 @@
+import { QueuedInputRecovery } from './QueuedInputRecovery.js';
 import { ProductToolOriginal } from './ProductToolOriginal.js';
 // Bubble + ToolCallCard + SystemNotice 组件集合。
 // 单文件聚合：每个组件 < 80 行，共享 ConversationMessage 类型，拆分反而提高复杂度。
@@ -512,6 +513,9 @@ export function LocalNoticeBubble({
 // ---- Assistant Bubble (markdown + 可选 thinking) ----
 
 export function QueuedUserBubble({
+  id,
+  queueId,
+  admissionError,
   content,
   attachments = [],
   queueMode,
@@ -525,13 +529,15 @@ export function QueuedUserBubble({
     : queueMode === 'after-turn'
       ? t('message.queue.afterTurn')
       : t('message.queue.interrupt');
-  const detail = failed
-    ? t('message.queue.failedDetail')
-    : status === 'pending-ack'
-      ? t('message.queue.sending')
-      : queueMode === 'after-turn'
-        ? t('message.queue.waitingTurn')
-        : t('message.queue.waitingSafePoint');
+  const detail = admissionError
+    ? t('message.queue.bindingBlocked')
+    : failed
+      ? t('message.queue.failedDetail')
+      : status === 'pending-ack'
+        ? t('message.queue.sending')
+        : queueMode === 'after-turn'
+          ? t('message.queue.waitingTurn')
+          : t('message.queue.waitingSafePoint');
   const visibleContent = attachments.length > 0 && content.trim() === '(image)' ? '' : content;
   return (
     <div
@@ -564,6 +570,12 @@ export function QueuedUserBubble({
         {attachments.length > 0 && (
           <div className={visibleContent.length > 0 ? 'mt-2' : undefined}>
             <UserImageAttachments attachments={attachments} />
+          </div>
+        )}
+        {admissionError && (
+          <div className="mt-2 text-xs text-danger">
+            {admissionError.code}
+            {queueId && <QueuedInputRecovery localId={id} inputId={queueId} />}
           </div>
         )}
       </div>

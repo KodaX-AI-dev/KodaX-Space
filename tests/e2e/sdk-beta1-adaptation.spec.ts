@@ -1,0 +1,172 @@
+import { expect, test } from '@playwright/test';
+import {
+  createLocalSdkProvider,
+  currentSdkSession,
+  launchRealSdkSpace,
+  readSdkHistory,
+  sendSdkPrompt,
+  waitSdkIdle,
+} from './sdk-provider-fixture.js';
+
+test.setTimeout(150_000);
+
+test('Partner uses its selected expert default in Agent mode and retains shell through the shared Host', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space } = await launchRealSdkSpace(`beta1-expert-${Date.now()}`, provider.url);
+  try {
+    await space.page.getByRole('button', { name: 'Partner', exact: true }).click();
+    await space.page
+      .getByTestId('partner-starter-tasks')
+      .getByRole('button', { name: /Polish your writing/ })
+      .click();
+    await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await sendSdkPrompt(space, 'BETA1_DEFAULT_EXPERT');
+    await expect
+      .poll(() => provider.requests.some((text) => text.includes('BETA1_DEFAULT_EXPERT')), {
+        timeout: 30_000,
+      })
+      .toBe(true);
+    const id = await currentSdkSession(space);
+    await waitSdkIdle(space, id);
+    const state = await space.page.evaluate(async (sessionId) => {
+      const mode = await window.kodaxSpace!.invoke('session.workMode', { sessionId });
+      const live = await window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId });
+      return { mode, live };
+    }, id);
+    expect(state.mode).toMatchObject({ ok: true, data: { workMode: 'agent' } });
+    expect(state.live.ok).toBe(true);
+    if (state.live.ok) {
+      expect(state.live.data.lastTerminalRun?.effectiveConfig?.agentProfile?.name).toBe('营销文案');
+      expect(state.live.data.lastTerminalRun?.effectiveConfig?.toolScope).toContain('bash');
+    }
+    const history = await readSdkHistory(space, id);
+    expect(history.items.filter((item) => item.type === 'user').map((item) => item.text)).toContain(
+      'BETA1_DEFAULT_EXPERT',
+    );
+    await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    expect(provider.requests.some((text) => text.includes('BETA1_DEFAULT_EXPERT'))).toBe(true);
+  } finally {
+    await provider.close();
+    await space.close();
+  }
+});
+
+test('blocked queued input is visible and taking it back preserves text beyond the Host preview', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space } = await launchRealSdkSpace(`beta1-blocked-${Date.now()}`, provider.url);
+  try {
+    await space.page.getByRole('button', { name: 'Partner', exact: true }).click();
+    await sendSdkPrompt(space, 'HOLD_QUEUE');
+    await expect.poll(() => provider.requests).toContain('HOLD_QUEUE');
+    const id = await currentSdkSession(space);
+    const selected = await space.page.evaluate(async (sessionId) => {
+      const catalog = await window.kodaxSpace!.invoke('space.extensions.catalog', {
+        extensionId: 'kodax.partner-library',
+      });
+      if (!catalog.ok) throw new Error(catalog.error.message);
+      const expert = catalog.data.experts.find((item) => item.id === 'writing-mentor')!;
+      return window.kodaxSpace!.invoke('session.partnerExpert.set', {
+        sessionId,
+        expert: {
+          extensionId: 'kodax.partner-library',
+          expertId: expert.id,
+          revision: expert.revision,
+        },
+      });
+    }, id);
+    expect(selected.ok).toBe(true);
+    const original = `BETA1_BLOCKED_${'complete input '.repeat(800)}_END`;
+    const composer = space.page.locator('textarea').first();
+    await composer.fill(original);
+    await composer.press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter');
+    await expect(space.page.getByTestId('queued-user-message-bubble')).toBeVisible();
+    const disabled = await space.page.evaluate(() =>
+      window.kodaxSpace!.invoke('space.extensions.setEnabled', {
+        extensionId: 'kodax.partner-library',
+        enabled: false,
+      }),
+    );
+    expect(disabled.ok).toBe(true);
+    provider.release('HOLD_QUEUE');
+    const takeBack = space.page.getByRole('button', { name: 'Take back message', exact: true });
+    await expect(takeBack).toBeVisible({ timeout: 30_000 });
+    await expect(space.page.getByTestId('queued-user-message-bubble')).toContainText(
+      'execution_binding_rejected',
+    );
+    await space.page.reload();
+    await space.page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: 'HOLD_QUEUE' })
+      .first()
+      .click();
+    expect(await currentSdkSession(space)).toBe(id);
+    await expect(takeBack).toBeVisible({ timeout: 30_000 });
+    await expect(space.page.getByTestId('queued-user-message-bubble')).not.toContainText('_END');
+    await takeBack.scrollIntoViewIfNeeded();
+    await expect(takeBack).toBeInViewport();
+    await space.page.screenshot({ path: test.info().outputPath('blocked-queue.png') });
+    await takeBack.click();
+    await expect(takeBack).toHaveCount(0);
+    const retained = space.page.getByTestId('queued-user-message-bubble');
+    await expect(retained).toHaveAttribute('data-status', 'failed');
+    await expect(retained).toContainText('_END');
+    expect(provider.requests.some((text) => text.includes('BETA1_BLOCKED_'))).toBe(false);
+  } finally {
+    provider.release('HOLD_QUEUE');
+    await provider.close();
+    await space.close();
+  }
+});
+
+test('Quick Ask continues in Coder with its original Session and answer after Host promotion', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space } = await launchRealSdkSpace(`beta1-promotion-${Date.now()}`, provider.url);
+  try {
+    await space.page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
+    const quick = space.page.getByRole('dialog', { name: 'Quick Ask' });
+    await space.page.evaluate(() => {
+      const probe = window as unknown as { __beta1QuickSessions: string[] };
+      probe.__beta1QuickSessions = [];
+      window.kodaxSpace!.on('session.event', (event) => {
+        if (event.kind === 'session_start') probe.__beta1QuickSessions.push(event.sessionId);
+      });
+    });
+    await quick.locator('textarea').fill('BETA1_QUICK_PROMOTION');
+    await quick.getByRole('button', { name: 'Ask', exact: true }).click();
+    await expect(quick).toContainText('SDK_REPLY:BETA1_QUICK_PROMOTION', { timeout: 30_000 });
+    const original = await space.page.evaluate(async () => {
+      const listed = await window.kodaxSpace!.invoke('session.list', { surface: 'code' });
+      if (!listed.ok) throw new Error(listed.error.message);
+      return listed.data.sessions.map((session) => session.sessionId);
+    });
+    await quick.getByRole('button', { name: /Continue in Coder/ }).click();
+    await expect(quick).toHaveCount(0, { timeout: 20_000 });
+    const id = await currentSdkSession(space);
+    expect(original).not.toContain(id);
+    const quickSessionIds = await space.page.evaluate(
+      () => (window as unknown as { __beta1QuickSessions: string[] }).__beta1QuickSessions,
+    );
+    expect(quickSessionIds).toContain(id);
+    await expect(space.page.getByTestId('conversation-stream')).toContainText(
+      'BETA1_QUICK_PROMOTION',
+    );
+    await expect(space.page.getByTestId('conversation-stream')).toContainText(
+      'SDK_REPLY:BETA1_QUICK_PROMOTION',
+    );
+    await space.page.reload();
+    await space.page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: 'BETA1_QUICK_PROMOTION' })
+      .first()
+      .click();
+    await expect(space.page.getByTestId('conversation-stream')).toContainText(
+      'SDK_REPLY:BETA1_QUICK_PROMOTION',
+      { timeout: 30_000 },
+    );
+    expect(await currentSdkSession(space)).toBe(id);
+    await space.page.screenshot({ path: test.info().outputPath('promoted-session.png') });
+  } finally {
+    await provider.close();
+    await space.close();
+  }
+});

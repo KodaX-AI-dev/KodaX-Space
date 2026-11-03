@@ -1,3 +1,4 @@
+import { captureProductInput, takeBackProductInput } from './runtime/product-input-intents.js';
 import { readExecutionFactsPage } from './runtime/execution-facts-page.js';
 import {
   providerCredentialEpoch,
@@ -58,6 +59,8 @@ import type {
 import type { KodaXOutputSegmentProjection } from '@kodax-ai/kodax/coding';
 import type {
   KodaXClientHostAuthorization,
+  RuntimeExecutionBindingRequest,
+  RuntimeExecutionAuthorization,
   ClientObservation,
   ClientStartupProgress,
   ClientSessionView,
@@ -183,7 +186,12 @@ import { createScopedRuntimeCredentialBroker } from '../providers/runtime-creden
 
 export type RuntimeHostMode = 'legacy' | 'runtime';
 export type RuntimeHostState =
-  'uninitialized' | 'initializing' | 'legacy' | 'ready' | 'failed' | 'closed';
+  | 'uninitialized'
+  | 'initializing'
+  | 'legacy'
+  | 'ready'
+  | 'failed'
+  | 'closed';
 export type RuntimeCapabilityOwner = 'runtime' | 'space-bridge' | 'legacy' | 'unavailable';
 export type RuntimeCapabilitySupport = 'supported' | 'partial' | 'unavailable';
 
@@ -2082,7 +2090,8 @@ export class RuntimeHostAdapter {
     Awaited<ReturnType<KodaXClientHostAuthorization>>
   >();
   private workflowConcurrency:
-    { readonly runtimeId: string; readonly maxConcurrency: number } | undefined;
+    | { readonly runtimeId: string; readonly maxConcurrency: number }
+    | undefined;
   private readonly productLeaseAttachments = new WeakMap<object, Set<string>>();
   private mode: RuntimeHostMode;
   private readonly profileRoot: string;
@@ -2121,6 +2130,7 @@ export class RuntimeHostAdapter {
   private readonly activeRuns = new Map<string, string>();
   private readonly observations = new Map<string, RuntimeSessionObservationState>();
   private readonly productViews = new Map<string, SessionProductView>();
+  private readonly confirmedPromotedViews = new WeakMap<KodaXDaemonRuntime, Set<string>>();
   private readonly observationPromises = new Map<string, Promise<void>>();
   private readonly observationOpenQueues = new WeakMap<KodaXDaemonRuntime, Promise<void>>();
   private readonly persistedIdentityTokens = new Map<string, string>();
@@ -2457,6 +2467,8 @@ export class RuntimeHostAdapter {
         productClient: 1,
         sessionDrafts: 1,
         productExecutionAuthorization: 2,
+        productExecutionBinding: 1,
+        sessionPromotion: 1,
         productActorAuthorization: 1,
         productHistoryBoundaries: 1,
         productExitControl: 1,
@@ -4078,7 +4090,8 @@ export class RuntimeHostAdapter {
     );
     let completedCompaction = false;
     let registeredCredential:
-      { readonly binding: RuntimeCredentialBinding; readonly leaseId: string } | undefined;
+      | { readonly binding: RuntimeCredentialBinding; readonly leaseId: string }
+      | undefined;
     try {
       registeredCredential =
         !input.credential && input.provider && input.provider !== 'mock'
@@ -4124,6 +4137,50 @@ export class RuntimeHostAdapter {
     invalidatePersistedSessionCache(input.sessionId);
     this.invalidateTranscriptBoundary(input.sessionId);
     this.scheduleProfileRefresh(this.currentProfileCursor());
+  }
+
+  async withdrawProductInput(input: { sessionId: string; inputId: string }) {
+    const runtime = await this.requireRuntime();
+    await this.assertHostSession(runtime, input.sessionId);
+    if (!this.productClientInstanceId) throw new Error('Main client identity is unavailable.');
+    const original = await takeBackProductInput(runtime.runs, this.productClientInstanceId, input);
+    const { issueSessionImageAttachment } =
+      await import('../window/session-attachment-protocol.js');
+    const attachments = await Promise.all(
+      (original.inputArtifacts ?? [])
+        .filter((item) => item.kind === 'image')
+        .map((item, ordinal) =>
+          issueSessionImageAttachment({
+            sessionId: input.sessionId,
+            artifactPath: item.path,
+            ordinal,
+          }),
+        ),
+    );
+    return { text: original.text, attachments };
+  }
+
+  async promoteSession(sessionId: string, tag: 'code' | 'partner'): Promise<void> {
+    const runtime = await this.requireRuntime();
+    const { promoteHostSession } = await import('./runtime/session-promotion.js');
+    await promoteHostSession(runtime, sessionId, tag);
+    invalidatePersistedSessionCache(sessionId);
+    this.invalidateTranscriptBoundary(sessionId);
+    this.scheduleProfileRefresh(this.currentProfileCursor());
+    try {
+      await this.readSessionProductView(sessionId);
+    } catch (error) {
+      console.warn(
+        '[runtime] Display refresh after committed promotion failed:',
+        sanitizeDiagnosticError(error),
+      );
+      this.push('session.liveInvalidated', {
+        sessionId,
+        runtimeId: runtime.identity.runtimeId,
+        reason: 'delivery_failed',
+        message: 'Session promoted; refresh its display.',
+      });
+    }
   }
 
   async rewindSession(input: RuntimeRewindSessionInput) {
@@ -4388,6 +4445,7 @@ export class RuntimeHostAdapter {
     if (state) {
       const readCurrent = async (): Promise<void> => {
         const current = await readRuntimeSessionView(state.runtime.sessions, sessionId);
+        await this.confirmPromotedViewMetadata(state, current);
         await this.replaceProductView(state, current);
       };
       const read = state.productViewQueue.then(readCurrent, readCurrent);
@@ -4498,13 +4556,36 @@ export class RuntimeHostAdapter {
     return result;
   }
 
+  /** beta.1 may retain the old tag in its view; only a formal read can confirm promotion. */
+  private async confirmPromotedViewMetadata(
+    state: RuntimeSessionObservationState,
+    view: ClientSessionView,
+  ): Promise<void> {
+    if (
+      view.session.tag !== SPACE_EPHEMERAL_SESSION_TAG ||
+      this.confirmedPromotedViews.get(state.runtime)?.has(state.sessionId)
+    )
+      return;
+    const metadata = await state.runtime.sessions.load(state.sessionId);
+    if (metadata.id !== state.sessionId)
+      throw new Error('Host returned another Session metadata record.');
+    if (metadata.tag !== 'code' && metadata.tag !== 'partner') return;
+    const confirmed = this.confirmedPromotedViews.get(state.runtime) ?? new Set<string>();
+    confirmed.add(state.sessionId);
+    this.confirmedPromotedViews.set(state.runtime, confirmed);
+  }
+
   private async replaceProductView(
     state: RuntimeSessionObservationState,
     view: ClientSessionView,
   ): Promise<void> {
     if (view.session.id !== state.sessionId)
       throw new Error('SDK view belongs to another Session.');
-    if (view.session.tag === SPACE_EPHEMERAL_SESSION_TAG) return;
+    if (
+      view.session.tag === SPACE_EPHEMERAL_SESSION_TAG &&
+      !this.confirmedPromotedViews.get(state.runtime)?.has(state.sessionId)
+    )
+      return;
     const previous = this.productViews.get(state.sessionId);
     const activity =
       view.activity && (view.activity.streaming || view.activity.reasoning)
@@ -5331,8 +5412,6 @@ export class RuntimeHostAdapter {
           `[runtime] queued input binding recovery failed for ${input.inputId}:`,
           sanitizeDiagnosticError(error),
         );
-        if (runtimeEventRecord(error)?.code === 'credential_unavailable')
-          await this.withdrawUnauthorizedQueuedInput(runtime, state, input.inputId);
       }
     }
     for (const run of snapshot.runs) {
@@ -5418,27 +5497,27 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private async withdrawUnauthorizedQueuedInput(
+  private async captureResolvedRunAuthorization(
     runtime: KodaXDaemonRuntime,
-    state: RuntimeSessionObservationState,
-    inputId: string,
+    runId: string,
+    identity?: { readonly sessionId: string; readonly inputId: string },
   ): Promise<void> {
+    if (this.resolvedProductInputs.size === 0) return;
+    const run = identity ? undefined : await runtime.runs.get(runId);
+    const sessionId = identity?.sessionId ?? run?.sessionId;
+    const inputId = identity?.inputId ?? run?.productInput?.inputId;
+    const resolved =
+      sessionId && inputId
+        ? this.resolvedProductInputs.get(this.resolvedInputKey(runtime, sessionId, inputId))
+        : undefined;
+    if (!sessionId || !inputId || !resolved || this.runtime !== runtime) return;
+    this.productRunAuthorizations.set(runId, resolved);
     try {
-      const input = await runtime.runs.withdrawInput(state.sessionId, inputId);
-      if (this.runtime !== runtime || this.observations.get(state.sessionId) !== state) return;
-      this.push('session.event', {
-        kind: 'queued_user_prompt_failed',
-        sessionId: state.sessionId,
-        queueId: inputId,
-        queueMode: input.delivery === 'after_turn' ? 'after-turn' : 'interrupt',
-        content: input.text,
-        reason: 'authorization_unavailable',
-      });
+      await this.captureInputAuthorization(runtime, sessionId, inputId, resolved);
     } catch (error) {
-      // A raced delivery/withdrawal remains SDK-owned. Never re-admit the input
-      // or prevent the other accepted inputs from recovering their bindings.
+      // Host acceptance already committed. Losing a local recovery record must not imply "not sent".
       console.warn(
-        `[runtime] queued input withdrawal failed for ${inputId}:`,
+        '[runtime] Admitted Partner authorization could not be saved:',
         sanitizeDiagnosticError(error),
       );
     }
@@ -5449,6 +5528,15 @@ export class RuntimeHostAdapter {
     event: RuntimeTypedEvent,
   ): void {
     if (event.type === 'run.started') {
+      if (this.sessionSurfaces.get(event.sessionId) === 'partner')
+        void this.captureResolvedRunAuthorization(state.runtime, event.runId).catch(
+          (error: unknown) => {
+            console.warn(
+              '[runtime] Admitted Partner authorization could not be saved:',
+              sanitizeDiagnosticError(error),
+            );
+          },
+        );
       state.activeRunId = event.runId;
       state.bindingRunIds.add(event.runId);
     } else if (event.type === 'run.queued') {
@@ -6334,6 +6422,14 @@ export class RuntimeHostAdapter {
       readonly inputId: string;
       readonly text: string;
       readonly enqueuedAt: number;
+      readonly admissionError?: {
+        readonly code:
+          | 'execution_binding_unavailable'
+          | 'execution_binding_rejected'
+          | 'execution_binding_changed'
+          | 'default_skill_unavailable';
+        readonly message: string;
+      };
     }[],
   ): void {
     const change = state.reducer.replaceProductQueue(queue);
@@ -6345,9 +6441,68 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private readonly authorizeProductExecution = async (
+  private resolvedInputKey(
+    runtime: KodaXDaemonRuntime,
+    sessionId: string,
+    inputId: string,
+  ): string {
+    return JSON.stringify([runtime.identity.runtimeId, sessionId, inputId]);
+  }
+
+  private readonly productBindingLeases = new WeakMap<object, Promise<{ readonly id: string }>>();
+  private readonly resolvedProductInputs = new Map<string, RuntimeExecutionAuthorization>();
+
+  private readonly authorizeProductExecution: KodaXClientHostAuthorization = async (
+    request,
+    services,
+  ) => {
+    const sessionId = 'sessionId' in request.input ? request.input.sessionId : undefined;
+    if (
+      sessionId &&
+      this.sessionSurfaces.get(sessionId) === 'partner' &&
+      (request.kind === 'recovery' ||
+        (request.kind === 'input' && request.input.delivery !== 'steer'))
+    ) {
+      const runtime = await this.requireRuntime();
+      if (runtimeCapabilityVersion(runtime, 'productExecutionBinding') !== 1)
+        throw Object.assign(new Error('Partner execution requires an upgraded Host.'), {
+          code: 'daemon_upgrade_required',
+        });
+      let pending = this.productBindingLeases.get(runtime.executionBindings);
+      if (!pending) {
+        pending = runtime.executionBindings.register(async (binding, scoped, signal) => {
+          signal.throwIfAborted();
+          const execution =
+            binding.phase === 'recovery'
+              ? {
+                  kind: 'recovery' as const,
+                  input: { sessionId: binding.sessionId, runId: binding.recovery!.runId },
+                }
+              : { kind: 'input' as const, input: binding.input! };
+          const authorization = await this.resolveProductExecution(execution, scoped, binding);
+          signal.throwIfAborted();
+          if (!authorization) throw new Error('Partner execution authorization is unavailable.');
+          if (binding.input)
+            this.resolvedProductInputs.set(
+              this.resolvedInputKey(runtime, binding.sessionId, binding.input.inputId),
+              authorization,
+            );
+          if (binding.recovery)
+            this.productRunAuthorizations.set(binding.recovery.runId, authorization);
+          return authorization;
+        });
+        this.productBindingLeases.set(runtime.executionBindings, pending);
+        void pending.catch(() => this.productBindingLeases.delete(runtime.executionBindings));
+      }
+      return { binding: { leaseId: (await pending).id } };
+    }
+    return this.resolveProductExecution(request, services);
+  };
+
+  private readonly resolveProductExecution = async (
     request: Parameters<KodaXClientHostAuthorization>[0],
     services: Parameters<KodaXClientHostAuthorization>[1],
+    bindingRequest?: RuntimeExecutionBindingRequest,
   ): ReturnType<KodaXClientHostAuthorization> => {
     const runtime = await this.requireRuntime();
     if (
@@ -6362,7 +6517,7 @@ export class RuntimeHostAdapter {
     await this.ensureObserved(sessionId);
     if (request.kind === 'agent_spawn' && request.input.agent.kind === 'external') return undefined;
     const inputId = 'inputId' in request.input ? request.input.inputId : undefined;
-    if (inputId) {
+    if (inputId && !bindingRequest) {
       const captured = await this.readCapturedInputAuthorization(runtime, sessionId, inputId);
       if (captured) {
         await this.restoreProductAuthorization(runtime, sessionId, captured);
@@ -6378,7 +6533,14 @@ export class RuntimeHostAdapter {
       if (target.sessionId !== sessionId)
         throw new Error('Steer target belongs to a different Session.');
       const captured =
-        this.productRunAuthorizations.get(target.runId) ??
+        (target.productInput
+          ? this.resolvedProductInputs.get(
+              this.resolvedInputKey(runtime, sessionId, target.productInput.inputId),
+            )
+          : undefined) ??
+        (this.productRunAuthorizations.get(target.runId)?.binding
+          ? undefined
+          : this.productRunAuthorizations.get(target.runId)) ??
         (target.productInput
           ? await this.readCapturedInputAuthorization(
               runtime,
@@ -6394,8 +6556,12 @@ export class RuntimeHostAdapter {
       await this.captureInputAuthorization(runtime, sessionId, request.input.inputId, captured);
       return captured;
     }
+    const recovery =
+      request.kind === 'recovery' ? await runtime.runs.get(request.input.runId) : undefined;
+    if (recovery && recovery.sessionId !== sessionId)
+      throw new Error('Recovery belongs to another Session.');
     const view = await readRuntimeSessionView(runtime.sessions, sessionId);
-    const selectedProvider = view.settings.provider;
+    const selectedProvider = recovery ? recovery.provider : view.settings.provider;
     if (!selectedProvider)
       throw new Error('Host did not supply an effective Provider for execution.');
     const providers = await resolveCredentialProviderIds(
@@ -6439,10 +6605,6 @@ export class RuntimeHostAdapter {
     const policy = workflowPolicyStore.get();
     await this.syncWorkflowConcurrency(runtime, policy.maxConcurrency);
     const independentActor = request.kind === 'agent_spawn' || request.kind === 'agent_followup';
-    const recovery =
-      request.kind === 'recovery' ? await runtime.runs.get(request.input.runId) : undefined;
-    if (recovery && recovery.sessionId !== sessionId)
-      throw new Error('Recovery belongs to another Session.');
     const partner =
       !independentActor && this.sessionSurfaces.get(sessionId) === 'partner'
         ? await (
@@ -6451,7 +6613,19 @@ export class RuntimeHostAdapter {
             explicitMethod: request.kind === 'command' || request.kind === 'tool',
             ...(request.kind === 'input' ? { query: request.input.text } : {}),
             ...(recovery
-              ? { recovery: { agentProfile: recovery.effectiveConfig?.agentProfile } }
+              ? {
+                  recovery: {
+                    agentProfile:
+                      bindingRequest?.recovery?.profile.agentProfile ??
+                      recovery.effectiveConfig?.agentProfile,
+                    ...(bindingRequest?.recovery
+                      ? {
+                          binding: bindingRequest.recovery.snapshot,
+                          profile: bindingRequest.recovery.profile,
+                        }
+                      : {}),
+                  },
+                }
               : {}),
           })
         : undefined;
@@ -6461,7 +6635,10 @@ export class RuntimeHostAdapter {
     }
     const authorization = {
       ...(partner
-        ? { profile: await services.createExecutionProfile(partner.context, partner.lease.tools) }
+        ? {
+            profile: await services.createExecutionProfile(partner.context, partner.lease.tools),
+            businessBinding: partner.businessBinding,
+          }
         : {}),
       credential: { leaseId: credential.id, mode: 'scoped' as const, providers },
       hostTools: { leaseId: partner?.lease.id ?? this.hostToolLeaseId },
@@ -6469,7 +6646,8 @@ export class RuntimeHostAdapter {
         ? { workflowHostPolicy: { maxAgents: policy.maxAgents, tokenBudget: policy.tokenBudget } }
         : {}),
     };
-    if (inputId) await this.captureInputAuthorization(runtime, sessionId, inputId, authorization);
+    if (inputId && !bindingRequest)
+      await this.captureInputAuthorization(runtime, sessionId, inputId, authorization);
     return authorization;
   };
 
@@ -6481,6 +6659,7 @@ export class RuntimeHostAdapter {
       identity: runtime.identity,
       credentials: runtime.credentials,
       hostTools: runtime.hostTools,
+      executionBindings: runtime.executionBindings,
       createExecutionProfile: async (context, hostTools = []) => {
         if (runtimeCapabilityVersion(runtime, 'productExecutionProfile') !== 2)
           throw Object.assign(new Error('Execution profiles require an upgraded Host.'), {
@@ -6634,7 +6813,22 @@ export class RuntimeHostAdapter {
           ? (
               await (
                 await import('./runtime/partner-host-tools.js')
-              ).registerPartnerHostExecution(runtime, sessionId, authorization.hostTools.leaseId)
+              ).registerPartnerHostExecution(runtime, sessionId, authorization.hostTools.leaseId, {
+                recovery: {
+                  agentProfile: authorization.profile?.agentProfile,
+                  profile: authorization.profile,
+                  ...(authorization.businessBinding
+                    ? {
+                        binding: {
+                          businessBinding: authorization.businessBinding,
+                          ...(authorization.profile?.defaultSkill
+                            ? { defaultSkill: authorization.profile.defaultSkill }
+                            : {}),
+                        },
+                      }
+                    : {}),
+                },
+              })
             ).lease
           : await registerSpaceHostTools(runtime, authorization.hostTools.leaseId);
       this.hostToolLeaseIds.add(lease.id);
@@ -6754,7 +6948,15 @@ export class RuntimeHostAdapter {
           })
         : await runtime.runs.acceptInput({ ...request.input, authorization });
     if (!accepted.runId) throw new Error('Immediate product input did not return an admitted Run.');
-    this.productRunAuthorizations.set(accepted.runId, authorization);
+    this.productRunAuthorizations.set(
+      accepted.runId,
+      this.resolvedProductInputs.get(this.resolvedInputKey(runtime, input.sessionId, inputId)) ??
+        authorization,
+    );
+    await this.captureResolvedRunAuthorization(runtime, accepted.runId, {
+      sessionId: input.sessionId,
+      inputId,
+    });
     const handle: RuntimeRunHandle = {
       runId: accepted.runId,
       sessionId: input.sessionId,
@@ -7363,6 +7565,8 @@ export class RuntimeHostAdapter {
         }),
       },
     };
+    if (!this.productClientInstanceId) throw new Error('Main client identity is unavailable.');
+    await captureProductInput(this.productClientInstanceId, request.input);
     const authorization = await this.authorizeProductExecution(
       request,
       this.authorizationServices(runtime, request.input),
@@ -7386,7 +7590,15 @@ export class RuntimeHostAdapter {
     }
     if (accepted.runId) {
       this.spaceOwnedRunIds.add(accepted.runId);
-      this.productRunAuthorizations.set(accepted.runId, authorization);
+      this.productRunAuthorizations.set(
+        accepted.runId,
+        this.resolvedProductInputs.get(this.resolvedInputKey(runtime, input.sessionId, inputId)) ??
+          authorization,
+      );
+      await this.captureResolvedRunAuthorization(runtime, accepted.runId, {
+        sessionId: input.sessionId,
+        inputId,
+      });
     }
     return {
       accepted: true,

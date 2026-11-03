@@ -1,6 +1,14 @@
-import { PartnerMethodUnavailableError } from './partner-method-error.js';
 import type { KodaXDaemonRuntime, RuntimeHostToolLease } from '@kodax-ai/kodax/runtime';
-import type { RuntimeExecutionProfileSource } from '@kodax-ai/kodax/client';
+import type {
+  RuntimeExecutionProfileSource,
+  RuntimeExecutionBindingSnapshot,
+  RuntimeExecutionProfile,
+  RuntimeBusinessBinding,
+} from '@kodax-ai/kodax/client';
+import {
+  capturePartnerBusinessBinding,
+  readPartnerBusinessBinding,
+} from './partner-business-binding.js';
 import { getSessionRuntimeStore } from '../session-runtime-store.js';
 import { buildPartnerAgentProfile, buildPartnerSourceSummary } from '../partner-profile.js';
 import { retrievePartnerEvidenceForTurn } from '../partner-context-broker.js';
@@ -79,6 +87,8 @@ interface PartnerExecutionInput {
   readonly query?: string;
   readonly recovery?: {
     readonly agentProfile?: import('@kodax-ai/kodax/coding').KodaXAgentProfile;
+    readonly binding?: RuntimeExecutionBindingSnapshot;
+    readonly profile?: RuntimeExecutionProfile;
   };
 }
 
@@ -154,22 +164,17 @@ async function connectorHostTools(
 }
 
 async function partnerExecutionContext(
-  runtime: KodaXDaemonRuntime,
   state: Awaited<ReturnType<typeof trustedPartnerState>>,
   input: PartnerExecutionInput,
 ): Promise<RuntimeExecutionProfileSource> {
+  if (state.expert) await getSpaceExpertCatalog().requireAvailable(state.expert);
   if (input.recovery)
     return {
+      ...(input.recovery.binding?.defaultSkill
+        ? { defaultSkill: input.recovery.binding.defaultSkill }
+        : {}),
       ...(input.recovery.agentProfile ? { agentProfile: input.recovery.agentProfile } : {}),
     };
-  if (state.expert) await getSpaceExpertCatalog().requireAvailable(state.expert);
-  if (
-    !input.explicitMethod &&
-    state.expert?.useSkill !== false &&
-    state.expert?.expert.skillRef &&
-    !(input.query && (await hasExplicitHostSkill(runtime, state.projectRoot, input.query)))
-  )
-    throw new PartnerMethodUnavailableError();
   const profile = buildPartnerAgentProfile(state.expert);
   const sources = await partnerSourceStore.list(state.sessionId);
   const evidence = input.query
@@ -182,6 +187,9 @@ async function partnerExecutionContext(
       })
     : null;
   return {
+    ...(!input.explicitMethod && state.expert?.useSkill !== false && state.expert?.expert.skillRef
+      ? { defaultSkill: { name: state.expert.expert.skillRef } }
+      : {}),
     agentProfile: {
       ...profile,
       instructions: [profile.instructions, buildPartnerSourceSummary(sources), evidence?.overlay]
@@ -200,9 +208,31 @@ export async function registerPartnerHostExecution(
 ): Promise<{
   readonly lease: RuntimeHostToolLease;
   readonly context: RuntimeExecutionProfileSource;
+  readonly businessBinding: RuntimeBusinessBinding;
 }> {
-  const state = await trustedPartnerState(runtime, sessionId);
-  const context = await partnerExecutionContext(runtime, state, {
+  if ((input.recovery || resumeLeaseId) && !input.recovery?.binding)
+    throw Object.assign(
+      new Error(
+        'The original Partner business scope cannot be verified. Start a new input after reviewing the selection.',
+      ),
+      { code: 'execution_binding_unavailable' },
+    );
+  let state = await trustedPartnerState(runtime, sessionId);
+  if (input.recovery?.binding) {
+    const original = await readPartnerBusinessBinding(
+      input.recovery.binding.businessBinding,
+      sessionId,
+      state.projectRoot,
+    );
+    state = { ...state, expert: original.expert, bindings: original.bindings };
+  }
+  const businessBinding = await capturePartnerBusinessBinding({
+    sessionId,
+    projectRoot: state.projectRoot,
+    expert: state.expert,
+    bindings: [...state.bindings],
+  });
+  const context = await partnerExecutionContext(state, {
     ...input,
     ...(resumeLeaseId ? { recovery: input.recovery ?? {} } : {}),
   });
@@ -210,5 +240,5 @@ export async function registerPartnerHostExecution(
     ...partnerHostToolDefinitions(),
     ...(await connectorHostTools(runtime, state)),
   ]);
-  return { lease, context };
+  return { lease, context, businessBinding };
 }

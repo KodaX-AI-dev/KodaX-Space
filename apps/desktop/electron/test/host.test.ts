@@ -437,22 +437,24 @@ test('cancel mid-stream emits session_error("cancelled") and aborts further even
 
 test('cancel returns and emits cancelled fallback when adapter cancel never resolves', async () => {
   const never = new Promise<void>(() => {});
-  kodaxHost.setFactory((opts): ManagedSession => ({
-    sessionId: opts.sessionId,
-    projectRoot: opts.projectRoot,
-    provider: opts.provider,
-    reasoningMode: opts.reasoningMode,
-    permissionMode: opts.permissionMode,
-    agentMode: opts.agentMode ?? 'ama',
-    surface: opts.surface ?? 'code',
-    createdAt: Date.now(),
-    lastActivityAt: Date.now(),
-    title: undefined,
-    isRunning: () => true,
-    send: async () => ({ accepted: true, queued: false }),
-    cancel: () => never,
-    dispose: async () => {},
-  }));
+  kodaxHost.setFactory(
+    (opts): ManagedSession => ({
+      sessionId: opts.sessionId,
+      projectRoot: opts.projectRoot,
+      provider: opts.provider,
+      reasoningMode: opts.reasoningMode,
+      permissionMode: opts.permissionMode,
+      agentMode: opts.agentMode ?? 'ama',
+      surface: opts.surface ?? 'code',
+      createdAt: Date.now(),
+      lastActivityAt: Date.now(),
+      title: undefined,
+      isRunning: () => true,
+      send: async () => ({ accepted: true, queued: false }),
+      cancel: () => never,
+      dispose: async () => {},
+    }),
+  );
   try {
     const { sessionId } = kodaxHost.createSession({ projectRoot: '/r', provider: 'mock' });
     const result = await Promise.race([
@@ -714,7 +716,10 @@ test('Quick Ask promotion preserves the session when the Host has no metadata co
     persistenceCalls++;
     return true;
   });
-  await assert.rejects(kodaxHost.promoteEphemeral(sessionId), /cannot move Quick Ask/);
+  t.mock.method(runtimeHostAdapter, 'promoteSession', async () => {
+    throw Object.assign(new Error('Upgrade Host'), { code: 'daemon_upgrade_required' });
+  });
+  await assert.rejects(kodaxHost.promoteEphemeral(sessionId), { code: 'daemon_upgrade_required' });
   assert.equal(kodaxHost.get(sessionId)?.ephemeral, true);
   assert.equal(persistenceCalls, 0, 'no mutation before capability admission');
 });

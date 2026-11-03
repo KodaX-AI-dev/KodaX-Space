@@ -66,6 +66,7 @@ const verificationSchema = z
   .strict();
 const profileSchema = z
   .object({
+    defaultSkill: z.object({ name: id }).strict().optional(),
     agentProfile: z
       .object({
         surface: id.optional(),
@@ -102,6 +103,7 @@ const profileSchema = z
   .strict();
 const authorizationSchema = z
   .object({
+    businessBinding: z.object({ id, revision: id }).strict().optional(),
     profile: profileSchema.optional(),
     credential: z
       .object({ leaseId: id, mode: z.literal('scoped'), providers: z.array(id).max(256) })

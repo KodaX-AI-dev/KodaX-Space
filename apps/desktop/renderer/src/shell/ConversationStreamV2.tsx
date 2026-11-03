@@ -408,6 +408,8 @@ function viewMessagesShareProjection(previous: ViewMessage, next: ViewMessage): 
         previous.queueMode === next.queueMode &&
         previous.status === next.status &&
         previous.failureReason === next.failureReason &&
+        previous.admissionError?.code === next.admissionError?.code &&
+        previous.queueId === next.queueId &&
         previous.sentAt === next.sentAt
       );
     case 'assistant_text':
@@ -2728,7 +2730,14 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
 });
 
 type MarkerTone =
-  'user' | 'queued' | 'assistant' | 'system' | 'info' | 'tool' | 'artifact' | 'thinking';
+  | 'user'
+  | 'queued'
+  | 'assistant'
+  | 'system'
+  | 'info'
+  | 'tool'
+  | 'artifact'
+  | 'thinking';
 
 const MARKER_TONE_CLASS: Record<MarkerTone, string> = {
   user: 'bg-run',
