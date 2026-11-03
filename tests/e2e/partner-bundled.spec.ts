@@ -110,6 +110,18 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     });
   });
   await page.evaluate(() => {
+    document.addEventListener(
+      'click',
+      (event) => {
+        const pointer = event as MouseEvent;
+        document.body.dataset.probeParentClick = JSON.stringify({
+          target: (event.target as Element).outerHTML.slice(0, 150),
+          x: pointer.clientX,
+          y: pointer.clientY,
+        });
+      },
+      true,
+    );
     window.addEventListener('message', (event) => {
       if (event.data?.type === 'space-extension.ready.v1') {
         void (window as unknown as { installPartnerClickProbe(): Promise<void> })
@@ -151,12 +163,15 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
       await test.info().attach('partner-click-probe', {
         body: JSON.stringify({
           pageErrors,
+          parent: await page.locator('body').evaluate((body) => ({ ...body.dataset })),
           snapshot: await page
             .frameLocator('[data-testid="space-extension-frame"]')
             .locator('body')
             .evaluate((body) => ({
               dataset: { ...body.dataset },
-              button: document.querySelector('.expert-open')?.getAttribute('data-probe-click'),
+              probe: (window as unknown as { partnerClickProbe?: unknown[] }).partnerClickProbe,
+              identity: (window as unknown as { partnerProbeDocument?: number })
+                .partnerProbeDocument,
               open: document.querySelector('dialog')?.open,
             }))
             .catch((error: unknown) => String(error)),
