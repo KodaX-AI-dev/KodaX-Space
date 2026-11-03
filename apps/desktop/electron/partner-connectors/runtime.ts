@@ -18,12 +18,16 @@ import {
   createOfficialRemoteConnectorBundle,
   createVerifiedCredentialStore,
 } from './official-remote-runtime.js';
-import { getKey, setKey, deleteKey } from '../providers/keychain.js';
+import { getKey, setPersistentKey, deleteKey } from '../providers/keychain.js';
 import { createTencentDocsConnector } from './tencent-docs-connector.js';
 import { createMailConnector } from './mail-connector.js';
 import { ReadConnectorError } from './read-connector.js';
 import type { FeishuOnboardingInput } from './feishu-onboarding-cli.js';
-const credentials = createVerifiedCredentialStore({ get: getKey, set: setKey, delete: deleteKey });
+const credentials = createVerifiedCredentialStore({
+  get: getKey,
+  set: setPersistentKey,
+  delete: deleteKey,
+});
 async function requestMailCredentials(input: FeishuOnboardingInput) {
   const value = await input.requestInput?.('mail_credentials');
   if (!value || !('email' in value)) throw new ReadConnectorError('authorization_failed');

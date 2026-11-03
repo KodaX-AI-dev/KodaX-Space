@@ -36,6 +36,7 @@ export function registerRuntimeProjectionChannels(
 }
 
 export function registerRuntimeStatisticsChannels(): void {
+  registerChannel('runtime.extensionHealth', () => runtimeHostAdapter.extensionHealth());
   registerChannel('session.productSnapshot', ({ sessionId }) =>
     runtimeHostAdapter.selectedHost() === 'runtime'
       ? runtimeHostAdapter.readSessionProductView(sessionId)

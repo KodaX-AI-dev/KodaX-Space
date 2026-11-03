@@ -47,9 +47,10 @@ export function ProviderCard({
   const [test, setTest] = useState<TestState>({ kind: 'idle' });
   const [err, setErr] = useState<string | null>(null);
   const credentialSource: CredentialSource =
-    provider.configuredSource ?? (provider.configured ? 'keychain' : 'none');
+    provider.configuredSource ?? (provider.configured ? 'unknown' : 'none');
   const canSetDefault = provider.configured && !provider.isDefault;
-  const canRemoveKey = credentialSource === 'keychain' || credentialSource === 'file' || credentialSource === 'both';
+  const canRemoveKey =
+    credentialSource === 'keychain' || credentialSource === 'file' || credentialSource === 'both';
 
   async function handleSave(): Promise<void> {
     if (!window.kodaxSpace) return;
@@ -106,15 +107,62 @@ export function ProviderCard({
 
   async function handleShare(mode: 'publish' | 'adopt'): Promise<void> {
     if (!window.kodaxSpace || !provider.credentialState) return;
-    setBusy(true); setErr(null);
+    setBusy(true);
+    setErr(null);
     try {
       const result = await window.kodaxSpace.invoke('provider.shareKey', {
-        providerId: provider.id, expected: provider.credentialState, mode,
+        providerId: provider.id,
+        expected: provider.credentialState,
+        mode,
       });
-      if (!result.ok) { setErr(`${result.error.code}: ${result.error.message}`); return; }
-      setTest({ kind: 'idle' }); await onChanged();
-    } catch (error) { setErr(error instanceof Error ? error.message : String(error)); }
-    finally { setBusy(false); }
+      if (!result.ok) {
+        setErr(`${result.error.code}: ${result.error.message}`);
+        return;
+      }
+      setTest({ kind: 'idle' });
+      await onChanged();
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRetryCredential(): Promise<void> {
+    if (!window.kodaxSpace || !provider.credentialState || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const result = await window.kodaxSpace.invoke('provider.retryCredential', {
+        providerId: provider.id,
+        expected: provider.credentialState,
+      });
+      if (!result.ok) throw new Error(result.error.message);
+      await onChanged();
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleEnvironment(): Promise<void> {
+    if (!window.kodaxSpace || !provider.credentialState || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const result = await window.kodaxSpace.invoke('provider.useEnvironment', {
+        providerId: provider.id,
+        expected: provider.credentialState,
+      });
+      if (!result.ok) throw new Error(result.error.message);
+      setTest({ kind: 'idle' });
+      await onChanged();
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleTest(): Promise<void> {
@@ -249,34 +297,111 @@ export function ProviderCard({
         <MetaRow label={t('provider.meta.env')} value={provider.apiKeyEnv} />
         <MetaRow
           label={t('provider.meta.key')}
-          value={provider.credentialState?.scope === 'space' && provider.credentialState.configured ? t('provider.keySource.space') : credentialSourceLabel(credentialSource, t)}
+          value={
+            provider.credentialState?.scope === 'space' && provider.credentialState.configured
+              ? t('provider.keySource.space')
+              : credentialSourceLabel(credentialSource, t)
+          }
         />
         <MetaRow label={t('provider.meta.model')} value={provider.defaultModel} />
         {provider.baseUrl && <MetaRow label="URL" value={provider.baseUrl} />}
       </dl>
 
-      {provider.credentialState?.migration !== undefined && provider.credentialState.migration !== 'none' && (
-        <p className="mt-3 text-xs text-warning">{t(provider.credentialState.migration === 'connection-changed'
-          ? 'provider.credentialConnectionChanged' : provider.credentialState.migration === 'unavailable'
-          ? 'provider.credentialUnavailable' : provider.credentialState.migration === 'pending'
-            ? 'provider.credentialPending' : 'provider.credentialMigration')}</p>
-      )}
+      {provider.credentialState?.migration !== undefined &&
+        provider.credentialState.migration !== 'none' && (
+          <p className="mt-3 text-xs text-warning">
+            {t(
+              provider.credentialState.migration === 'connection-changed'
+                ? 'provider.credentialConnectionChanged'
+                : provider.credentialState.migration === 'source-required'
+                  ? 'provider.credentialSourceRequired'
+                  : provider.credentialState.migration === 'unavailable'
+                    ? 'provider.credentialUnavailable'
+                    : provider.credentialState.migration === 'pending'
+                      ? 'provider.credentialPending'
+                      : 'provider.credentialMigration',
+            )}
+          </p>
+        )}
 
-      {provider.credentialState?.scope === 'space' && credentialSource !== 'oauth' && credentialSource !== 'external' && (
-        <div className="mt-3 text-xs text-fg-muted">
-          <p>{t('provider.spaceCredential')}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {provider.credentialState.configured && <button type="button" disabled={busy} onClick={() => void handleShare('publish')}
-              className="rounded border border-border-default px-2 py-1 disabled:opacity-50">
-              {t(provider.credentialState.sharedConfigured ? 'provider.replaceShared' : 'provider.publishShared')}
-            </button>}
-            {provider.credentialState.sharedConfigured && <button type="button" disabled={busy} onClick={() => void handleShare('adopt')}
-              className="rounded border border-border-default px-2 py-1 disabled:opacity-50">{t('provider.adoptShared')}</button>}
+      {provider.credentialState?.scope === 'space' &&
+        credentialSource !== 'oauth' &&
+        credentialSource !== 'external' && (
+          <div className="mt-3 text-xs text-fg-muted">
+            <p>{t('provider.spaceCredential')}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {provider.credentialState.configured && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleShare('publish')}
+                  className="rounded border border-border-default px-2 py-1 disabled:opacity-50"
+                >
+                  {t(
+                    provider.credentialState.sharedConfigured
+                      ? 'provider.replaceShared'
+                      : 'provider.publishShared',
+                  )}
+                </button>
+              )}
+              {provider.credentialState.sharedConfigured && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleShare('adopt')}
+                  className="rounded border border-border-default px-2 py-1 disabled:opacity-50"
+                >
+                  {t('provider.adoptShared')}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+      {provider.credentialState?.scope === 'shared' && (
+        <p className="mt-3 text-xs text-fg-muted">{t('provider.sharedCredential')}</p>
       )}
-      {provider.credentialState?.scope === 'shared' && <p className="mt-3 text-xs text-fg-muted">{t('provider.sharedCredential')}</p>}
-      {credentialSource === 'both' && <p className="mt-2 text-xs text-fg-muted">{t('provider.removeUsesEnvironment')}</p>}
+      {(provider.credentialState?.migration === 'pending' ||
+        provider.credentialState?.migration === 'unavailable') && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void handleRetryCredential()}
+          className="mt-3 underline disabled:opacity-50"
+        >
+          {t('provider.retryCredential')}
+        </button>
+      )}
+      {provider.credentialState?.origin === 'env' &&
+        !provider.credentialState.environmentAvailable && (
+          <p className="mt-2 text-xs text-warn">
+            {t('provider.environmentUnavailable', {
+              name: provider.credentialState.environmentName ?? provider.apiKeyEnv,
+            })}
+          </p>
+        )}
+      {provider.credentialState?.origin === 'file' &&
+        !provider.credentialState.configured &&
+        provider.credentialState.revision !== null &&
+        !provider.credentialState.authentication && (
+          <p className="mt-2 text-xs text-warn">{t('provider.fileUnavailable')}</p>
+        )}
+      {provider.credentialState?.environmentAvailable &&
+        provider.credentialState.origin !== 'env' &&
+        !provider.credentialState.authentication && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleEnvironment()}
+            className="mt-3 rounded border border-border-default px-2 py-1 text-xs disabled:opacity-50"
+          >
+            {t('provider.useEnvironment', {
+              name: provider.credentialState.environmentName ?? provider.apiKeyEnv,
+            })}
+          </button>
+        )}
+      {credentialSource === 'both' && (
+        <p className="mt-2 text-xs text-fg-muted">{t('provider.removeUsesEnvironment')}</p>
+      )}
 
       {editing ? (
         <div className="mt-4 rounded-lg border border-info/40 bg-info/10 p-3">
@@ -367,24 +492,25 @@ export function ProviderCard({
         </div>
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
-          {provider.isCustom && (provider.protocol === 'openai' || provider.protocol === 'anthropic') && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false);
-                setDraft('');
-                setReveal(false);
-                setTest({ kind: 'idle' });
-                setErr(null);
-                onEditCustom(provider);
-              }}
-              disabled={busy || externallyEditing}
-              className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-3 px-3 text-xs font-medium text-fg-primary hover:bg-hover-bg disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden />
-              {t('provider.edit')}
-            </button>
-          )}
+          {provider.isCustom &&
+            (provider.protocol === 'openai' || provider.protocol === 'anthropic') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setDraft('');
+                  setReveal(false);
+                  setTest({ kind: 'idle' });
+                  setErr(null);
+                  onEditCustom(provider);
+                }}
+                disabled={busy || externallyEditing}
+                className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-3 px-3 text-xs font-medium text-fg-primary hover:bg-hover-bg disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden />
+                {t('provider.edit')}
+              </button>
+            )}
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -483,6 +609,7 @@ function MetaRow({
 }
 
 function credentialSourceLabel(source: CredentialSource, t: Translate): string {
+  if (source === 'unknown') return t('provider.keySource.unknown');
   if (source === 'both') return t('provider.keySource.both');
   if (source === 'file') return t('provider.keySource.file');
   if (source === 'oauth') return 'OAuth';

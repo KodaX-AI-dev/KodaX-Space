@@ -47,7 +47,7 @@ KodaX Space 不是新 agent，而是**复用 KodaX 内核的 Electron 桌面客�
 │            │ Electron IPC    │  • Native modules only by profile│ │
 │            │ (contextBridge) │                                  │ │
 │            ▼                 │                                  │ │
-│  │ Preload (sandbox)    │    │  • Keychain / auto-update        │ │
+│  │ Preload (sandbox)    │    │  • Credentials / manual update        │ │
 │  └──────────────────────┘    └────────────┬─────────────────────┘ │
 └──────────────────────────────────────────┬─┴─────────────────────┘
                                            │ local authenticated Runtime transport
@@ -60,7 +60,7 @@ KodaX Space 不是新 agent，而是**复用 KodaX 内核的 Electron 桌面客�
                                       LLM / Coder MCP
 
 Space main separately owns Partner inline Runtime, Partner tools/MCP,
-Space Artifact/Control handlers, keychain, BrowserWindow and OS integration.
+Space Artifact/Control handlers, credential broker, BrowserWindow and OS integration.
 ```
 
 ### 1.2 三条不可破坏约束
@@ -125,7 +125,7 @@ KodaX-Space/
 │       │   │   ├── permission.ts
 │       │   │   ├── mcp.ts
 │       │   │   └── provider.ts
-│       │   ├── providers/keychain.ts← OS keychain (@napi-rs/keyring)
+│       │   ├── providers/provider-storage.ts← SDK auth.json + legacy migration
 │       │   ├── auto-update.ts
 │       │   └── menus.ts
 │       └── renderer/                ← React renderer
@@ -438,7 +438,7 @@ type Project = {
 
 1. **KodaX 内核层**（Auto[LLM] classifier、Auto[Rules]、Accept-edits fallback 与权限 grant）
 2. **Space UI 层**（弹窗与录入；F121 的 Coder `Always allow` 仅回传 Runtime 给出的不透明精确 grant suggestion，绝不由 UI 扩大工具或 shell 范围；Partner 保留 inline policy path）
-3. **OS 层**（写入 keychain、利用 Win Credential Manager / macOS Keychain）
+3. **Credentials**: Provider API keys use SDK permission-protected plaintext auth.json with atomic CAS; Main brokers scoped access. Legacy migration and remaining connectors retain OS-protected storage.
 
 唯一真理面在 KodaX。Space 是显示器 + 录入器。
 
@@ -692,7 +692,7 @@ Space-owned stores use their declared schemas/migrators. KodaX integration files
 | Spoofing               | 假 MCP/Connector/Agent 冒充可信能力 | 显式 catalog/source/capability/preflight；签名与 distribution trust 由 F101/后续 adapter policy 管理 |
 | Tampering              | 恶意 skill 改用户文件               | Skill sandbox / Permission gating                                                                    |
 | Repudiation            | 用户否认操作                        | Tamper-evident audit log + signed transcript                                                         |
-| Information disclosure | API key 泄露                        | OS keychain + redact in logs                                                                         |
+| Information disclosure | API key 泄露                        | Permission-protected auth.json + explicit source + Main broker + redacted logs                       |
 | DoS                    | MCP fork bomb                       | child_process resource limits + watchdog                                                             |
 | Privilege escalation   | 利用 IPC 突破 sandbox               | contextIsolation + zod schema 校验                                                                   |
 
@@ -786,17 +786,17 @@ NAPI crate 独立 Rust 单测 + 与 TS wrapper 的集成测。
 
 ## 17. 与 KodaX 内核 HLD 的对照
 
-| KodaX 内核 HLD 概念       | KodaX Space 中的体现                                                                                            |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Surfaces                  | Space 是 KodaX 的 first-party 桌面 surface；不挪用任务逻辑                                                      |
-| Intent Gate / Direct Path | 在对应 KodaX Runtime owner 内；UI 仅看 Space main 的 sanitized projection                                       |
-| Scout / AMA Control Plane | 仅以"模式徽标 + Round"体现；不绘制内部图                                                                        |
-| Coding Runtime            | F121 起 Coder 在 profile daemon；Partner 保留 main inline                                                       |
-| Durable Task State        | 写盘真理面在 KodaX runtime（`~/.kodax/sessions/`）；Space 是读视图                                              |
-| Skill 集成                | 通过 public Skill registry/catalog；F135 以 SDK plugin API 注册审定的 Space builtin root                        |
-| 证据分层                  | UI 在 verdict 卡片浏览，不重新组织                                                                              |
+| KodaX 内核 HLD 概念       | KodaX Space 中的体现                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Surfaces                  | Space 是 KodaX 的 first-party 桌面 surface；不挪用任务逻辑                                                    |
+| Intent Gate / Direct Path | 在对应 KodaX Runtime owner 内；UI 仅看 Space main 的 sanitized projection                                     |
+| Scout / AMA Control Plane | 仅以"模式徽标 + Round"体现；不绘制内部图                                                                      |
+| Coding Runtime            | F121 起 Coder 在 profile daemon；Partner 保留 main inline                                                     |
+| Durable Task State        | 写盘真理面在 KodaX runtime（`~/.kodax/sessions/`）；Space 是读视图                                            |
+| Skill 集成                | 通过 public Skill registry/catalog；F135 以 SDK plugin API 注册审定的 Space builtin root                      |
+| 证据分层                  | UI 在 verdict 卡片浏览，不重新组织                                                                            |
 | Project + SA / AMA        | UI 区分 Coder / Partner surface；Space 统一 AMA，不提供 SA 选择；Quick Ask 仍是 plan 权限的 transient session |
-| npm 发布 scoped 包        | Space 把 `@kodax-ai/{coding,llm,agent,skills}` 作为 dependency 按需拉                                           |
+| npm 发布 scoped 包        | Space 把 `@kodax-ai/{coding,llm,agent,skills}` 作为 dependency 按需拉                                         |
 
 ---
 

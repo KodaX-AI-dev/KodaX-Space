@@ -336,7 +336,7 @@ Repointel 的核心调用契约（`status / warm / preturn / context-pack / impa
 
 - 内置 12 provider 的开箱可用展示（已配 key 才亮起）
 - 自定义 provider（OpenAI/Anthropic-compatible）的图形化表单
-- API key 写入 OS keychain（Windows Credential Manager / macOS Keychain），不落 plain text
+- 模型 API Key 使用 SDK 权限保护的 `auth.json`（明文、原子写入），来源由用户明确选择；普通 settings/config、Renderer 和日志不保存秘密。OS 加密存储保留用于旧凭证迁移和仍依赖它的连接器。
 - 每 provider 卡片显示：模型清单 / capability matrix / 最近一次延迟
 - 一键"测试连接"
 
@@ -669,7 +669,7 @@ Worker/独立子进程、私有 staging、超时取消、禁宏/链接更新和�
 | Electron RAM/启动慢                | 用户体验差                             | 紧凑首屏 + KodaX 内核懒加载（见 [ADR-001](ADR/ADR-001-shell-electron.md) 重审条件）                |
 | KodaX runtime 崩溃拖累 Space       | 用户丢失未保存对话                     | 监控崩溃工单，>5% 时切 utilityProcess（见 [ADR-003](ADR/ADR-003-kodax-integration-in-process.md)） |
 | Repointel 安装失败                 | "premium-native" 永远 fallback OSS     | 安装引导带 doctor 自检；trace 显式                                                                 |
-| Provider key 误存 plain text       | 安全事故                               | 必须走 OS keychain；CI 静态扫描禁字符串持久化                                                      |
+| Provider key 泄露或错误切换账号    | 安全事故                               | Key 仅存权限保护的 auth.json，固定已批准来源、绑定与 CAS；不得进入普通配置、Renderer 或日志        |
 | MCP 第三方扩展恶意行为             | 用户机器被破坏                         | 默认拒绝、显式 allow-list、扩展签名验证（M2）                                                      |
 | 与 Claude Desktop `.mcpb` 标准漂移 | 生态隔离                               | 紧跟上游格式；不为"差异化"而魔改                                                                   |
 | Anthropic 法务对"Cowork-like"宣传  | 合规风险                               | 不使用 "Cowork" 商标；术语用 "Partner" 或 "Knowledge Work"                                         |

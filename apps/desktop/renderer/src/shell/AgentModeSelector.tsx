@@ -30,6 +30,39 @@ export function AgentModeSelector(props: WorkModeControlProps): JSX.Element {
   );
 }
 
+/** Partner's intended Agent mode must never masquerade as current Host state. */
+export function PartnerWorkModeIndicator(): JSX.Element {
+  const sessionId = useAppStore((state) => state.currentSessionId);
+  const runtimeId = useAppStore((state) => state.runtimeConnection.runtimeId);
+  const revision = useAppStore((state) =>
+    sessionId ? state.liveProjectionBySession[sessionId]?.settings?.revision : undefined,
+  );
+  return (
+    <PartnerWorkModeFact
+      key={JSON.stringify([sessionId, runtimeId, revision])}
+      sessionId={sessionId}
+    />
+  );
+}
+
+function PartnerWorkModeFact({ sessionId }: { sessionId: string | null }): JSX.Element {
+  const { t } = useI18n();
+  const { state, connection } = useWorkModeState(sessionId);
+  const actual = connection === 'ready' ? state?.workMode : undefined;
+  const label = !sessionId
+    ? t('workMode.partnerDefault')
+    : actual === 'agent'
+      ? 'Agent'
+      : actual
+        ? t('workMode.partnerPending', { mode: actual })
+        : t('workMode.unknown');
+  return (
+    <span data-testid="partner-work-mode" className="text-xs text-fg-secondary">
+      {label}
+    </span>
+  );
+}
+
 function useWorkModeState(sessionId: string | null) {
   const revision = useAppStore((s) =>
     sessionId ? s.liveProjectionBySession[sessionId]?.settings?.revision : undefined,

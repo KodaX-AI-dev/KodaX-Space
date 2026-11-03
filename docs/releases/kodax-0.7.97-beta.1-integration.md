@@ -1,5 +1,7 @@
 # Registry beta.1 接入验收
 
+> 后续扩展审计：本记录保存 `64fcfed3` 的实际测试与打包结果，不代表所有 SDK 契约组合已完成验收。凭证来源、存储 UI、Partner 冷队列重绑与模式边界等新增待办，统一见 [完整适配方案](kodax-beta1-space-adaptation-plan.md)。
+
 2026-11-03。Space 保持 `0.1.47-alpha.3`，Root/Desktop/lockfile 精确锁定正式 Registry `@kodax-ai/kodax@0.7.97-beta.1`。本轮不修改 SDK 源码，不发布 Space Release。
 
 ## 依赖与 Host

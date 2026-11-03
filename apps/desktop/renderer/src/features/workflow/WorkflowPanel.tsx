@@ -179,6 +179,7 @@ export function WorkflowPanel({
   defaultResultOpen,
 }: WorkflowPanelProps): JSX.Element {
   const { t } = useI18n();
+  const recovering = useAppStore((state) => state.workflowObservationStatus === 'recovering');
   if (runs.length === 0) {
     return <div className="text-xs text-fg-muted px-1 py-2">{t('workflow.noRuns')}</div>;
   }
@@ -186,6 +187,11 @@ export function WorkflowPanel({
   const overflow = runs.length - visibleRuns.length;
   return (
     <div className="space-y-2">
+      {recovering && (
+        <p role="status" className="text-xs text-warn">
+          {t('workflow.observationRecovering')}
+        </p>
+      )}
       {visibleRuns.map((run) => (
         <WorkflowRunCard
           key={run.runId}

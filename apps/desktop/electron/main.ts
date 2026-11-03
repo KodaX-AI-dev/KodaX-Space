@@ -456,9 +456,14 @@ function createWindowsTrayBadgeImage(count: number): NativeImage {
 }
 let mainWindowBootOverlay: BootSplashOverlay<WebContentsView> | null = null;
 type BootRecoveryActionMode =
-  'none' | 'renderer-retry' | 'app-restart' | 'runtime-exit-recovery' | 'close-only';
+  | 'none'
+  | 'renderer-retry'
+  | 'app-restart'
+  | 'runtime-exit-recovery'
+  | 'close-only';
 let mainWindowBootStatusUpdater:
-  ((message: string, action: BootRecoveryActionMode) => void) | null = null;
+  | ((message: string, action: BootRecoveryActionMode) => void)
+  | null = null;
 let mainWindowAwaitingInitialReveal = false;
 let pendingMainWindowActivation = false;
 let queueWatchShutdown: (() => void) | null = null;
@@ -2627,10 +2632,8 @@ const startupPromise = app
     // 预加载 always-allow 规则 — broker.request 走 matches() 是同步路径，必须事先 load。
     // 失败不阻塞启动（registry.load 内部 catch 后 cached 落为 []）。
     void permissionRegistry.load();
-    // FEATURE_004 启动期把 keychain 里的 key 注入 process.env，
-    // 让 KodaX SDK（getProvider）从 env 读到。失败不阻塞启动——provider 配置 UI 仍能用
-    // KX-I-01：injectAllKeysToEnv 后 process.env 是最新状态，autoActivate 检测 shell-set
-    // 的 env key 并在 defaultProviderId 为 null 时自动选首个匹配的 built-in 为默认。
+    // Initialize public Provider metadata and environment eligibility. Model secrets stay
+    // in SDK auth.json or the selected environment source, behind the Main broker.
     void providerConfigStore
       .load()
       .then(() => injectAllKeysToEnv())
@@ -2638,7 +2641,7 @@ const startupPromise = app
       .then(() => injectAllKeysToEnv())
       .catch((err) => {
         console.error(
-          '[main] inject keychain keys / auto-activate failed:',
+          '[main] Provider source initialization / auto-activate failed:',
           err instanceof Error ? err.message : err,
         );
       });

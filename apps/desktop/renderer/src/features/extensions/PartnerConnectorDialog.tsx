@@ -328,6 +328,16 @@ export function PartnerConnectorDialog({
         {!feishu && (
           <p className="mt-2 text-xs leading-5 text-fg-muted">{t(presentation.requirementsKey)}</p>
         )}
+        {!['feishu-cli', 'wecom-cli', 'dingtalk-cli', 'tencent-meeting-cli'].includes(
+          connector.adapter,
+        ) && (
+          <p className="mt-2 text-xs leading-5 text-fg-muted">
+            {t('connector.storageRequirement')}
+          </p>
+        )}
+        {connector.adapter === 'dingtalk-cli' && (
+          <p className="mt-2 text-xs leading-5 text-fg-muted">{t('connector.dingtalkStorage')}</p>
+        )}
         {configurationRequired && (
           <p role="status" className="mt-4 rounded-xl bg-surface-2 p-4 text-sm text-fg-secondary">
             {t('connectors.productAppRequiredHint')}

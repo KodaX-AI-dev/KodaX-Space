@@ -2,7 +2,7 @@
 //
 // 数据流：
 //   - 列出 catalog（built-in + custom） : provider.list
-//   - 写 API key（renderer → main → keychain，**永不**回传 key）: provider.setKey
+//   - 写 API key（renderer → main → SDK auth.json，**永不**回传 key）: provider.setKey
 //   - 删 key                                                  : provider.removeKey
 //   - 测连接（main 自己用 key 试调，renderer 只看结果）       : provider.test
 //   - 设默认 provider                                         : provider.setDefault
@@ -55,7 +55,17 @@ const credentialStateSchema = z.object({
   }),
   revision: z.string().nullable(),
   configured: z.boolean(),
-  migration: z.enum(['none', 'pending', 'conflict', 'unavailable', 'connection-changed']),
+  migration: z.enum([
+    'none',
+    'pending',
+    'conflict',
+    'unavailable',
+    'connection-changed',
+    'source-required',
+  ]),
+  origin: z.enum(['file', 'env', 'legacy', 'unresolved']).optional(),
+  environmentName: z.string().max(128).optional(),
+  environmentAvailable: z.boolean().optional(),
   scope: z.enum(['shared', 'space']).optional(),
   sharedRevision: z.string().nullable().optional(),
   selectionRevision: z.string().nullable().optional(),
@@ -82,6 +92,7 @@ const providerInfoSchema = z.object({
   configured: z.boolean(),
   configuredSource: z.enum([
     'none',
+    'unknown',
     'keychain',
     'file',
     'env',
@@ -106,11 +117,9 @@ const providerInfoSchema = z.object({
 
 // --- Invoke: provider.list ---
 //
-// keychainBackend：
-//   'keychain' — OS 原生 keychain（macOS Keychain / Win CredMgr / Linux libsecret）
-//   'memory'   — fallback（keytar 没装 / Linux 没 libsecret）；key 仅本进程有效，
-//                进程重启后丢失。UI 应当显示明显告警，避免"我配了 key 重启就没了"
-//                的 UX 完整性问题（review M1-sec）
+// keychainBackend is a retained IPC field name. Current Provider storage is 'file':
+// permission-protected plaintext SDK auth.json. Legacy values are compatibility facts,
+// not a statement about connector storage or whole-application Keychain independence.
 export const providerListChannel = {
   name: 'provider.list',
   direction: 'invoke',
@@ -160,6 +169,20 @@ export const providerShareKeyChannel = {
     expected: credentialStateSchema,
     mode: z.enum(['publish', 'adopt']),
   }),
+  output: z.object({ ok: z.boolean() }),
+} as const;
+
+export const providerRetryCredentialChannel = {
+  name: 'provider.retryCredential',
+  direction: 'invoke',
+  input: z.object({ providerId: z.string().min(1).max(64), expected: credentialStateSchema }),
+  output: z.object({ ok: z.boolean() }),
+} as const;
+
+export const providerUseEnvironmentChannel = {
+  name: 'provider.useEnvironment',
+  direction: 'invoke',
+  input: z.object({ providerId: z.string().min(1).max(64), expected: credentialStateSchema }),
   output: z.object({ ok: z.boolean() }),
 } as const;
 

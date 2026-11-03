@@ -26,6 +26,12 @@ test('real Main storage shares CLI keys, survives restart and fences a revoked O
     await mkdir(root, { recursive: true });
     const configPath = path.join(root, 'config.json');
     await writeFile(configPath, '{}');
+    const legacy = await import('./keychain.js');
+    await legacy.setKey('deepseek', 'original-retry-fixture');
+    const retryState = await storage.describeProviderCredential('deepseek');
+    assert.equal(retryState.migration, 'pending');
+    await storage.retryProviderCredential('deepseek', retryState);
+    assert.equal(await storage.getKey('deepseek'), 'original-retry-fixture');
     const state = await storage.describeProviderCredential('anthropic');
     await storage.setKey('anthropic', 'space-fixture', state);
     const proof = (await storage.providerStorageBinding('anthropic')).connectionFingerprint;
@@ -60,6 +66,19 @@ test('real Main storage shares CLI keys, survives restart and fences a revoked O
       { windowsHide: true, timeout: 15000 },
     );
     assert.equal(child.stdout, 'ok');
+    await manager.removeApiKey('anthropic', await manager.describe('anthropic'));
+    process.env.ANTHROPIC_API_KEY = 'later-unapproved-env-account';
+    assert.equal(
+      await credentials.readProviderCredential('anthropic', proof),
+      undefined,
+      'external removal of the selected file account must not approve an environment account',
+    );
+    await storage.setKey(
+      'anthropic',
+      'cli-next-fixture',
+      await storage.describeProviderCredential('anthropic'),
+    );
+    process.env.ANTHROPIC_API_KEY = 'external-fixture';
     const connection = {
       ...sdk.createOAuthProviderConfig({
         service: 'openrouter',

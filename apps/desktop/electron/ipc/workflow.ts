@@ -63,7 +63,7 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
           '[workflow.list] Coder daemon workflows unavailable:',
           error instanceof Error ? error.message : error,
         );
-        return { runs: localRuns };
+        return { runs: localRuns, stale: true };
       }
     }),
   );

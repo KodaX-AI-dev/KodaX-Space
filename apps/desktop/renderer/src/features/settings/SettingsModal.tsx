@@ -1,3 +1,4 @@
+import { ExtensionHealth } from './ExtensionHealth.js';
 import {
   useCallback,
   useEffect,
@@ -75,7 +76,12 @@ import { AppearanceSettings } from './AppearanceSettings.js';
 import { UpdateSettings } from '../updater/UpdateSettings.js';
 
 export type SettingsTab =
-  'providers' | 'preferences' | 'runtime' | 'diagnostics' | 'license' | 'extensions';
+  | 'providers'
+  | 'preferences'
+  | 'runtime'
+  | 'diagnostics'
+  | 'license'
+  | 'extensions';
 
 interface SettingsModalProps {
   readonly initialTab?: SettingsTab;
@@ -1104,6 +1110,7 @@ function RuntimePanel(): JSX.Element {
       </SettingsSection>
 
       <RuntimeHostSection />
+      <ExtensionHealth />
 
       <SandboxReadinessSection />
 
@@ -2820,14 +2827,22 @@ function ProvidersPanel(): JSX.Element {
           <ProviderStat
             label={t('settings.providers.keyStorage')}
             value={
-              keychainBackend === 'memory'
-                ? t('settings.providers.keyStorage.memory')
-                : t('settings.providers.keyStorage.keychain')
+              keychainBackend === 'file'
+                ? t('settings.providers.keyStorage.file')
+                : keychainBackend === 'unknown'
+                  ? t('provider.keySource.unknown')
+                  : keychainBackend === 'memory'
+                    ? t('settings.providers.keyStorage.memory')
+                    : t('settings.providers.keyStorage.keychain')
             }
             detail={
-              keychainBackend === 'memory'
-                ? t('settings.providers.keyStorage.memoryDetail')
-                : t('settings.providers.keyStorage.keychainDetail')
+              keychainBackend === 'file'
+                ? t('settings.providers.keyStorage.fileDetail')
+                : keychainBackend === 'unknown'
+                  ? t('settings.providers.keyStorage.unknownDetail')
+                  : keychainBackend === 'memory'
+                    ? t('settings.providers.keyStorage.memoryDetail')
+                    : t('settings.providers.keyStorage.keychainDetail')
             }
           />
         </div>
@@ -2872,18 +2887,6 @@ function ProvidersPanel(): JSX.Element {
       {err && (
         <div className="rounded-lg border border-danger/40 bg-danger/12 px-3 py-2 text-xs text-danger">
           {err}
-        </div>
-      )}
-
-      {keychainBackend === 'memory' && (
-        <div className="flex gap-3 rounded-lg border border-warn/45 bg-warn/12 px-3 py-3 text-xs text-warn">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden />
-          <div className="leading-5">
-            <div className="font-semibold">{t('settings.providers.keychainUnavailable.title')}</div>
-            <div className="text-warn/90">
-              {t('settings.providers.keychainUnavailable.description')}
-            </div>
-          </div>
         </div>
       )}
 
@@ -2970,7 +2973,7 @@ function ProvidersPanel(): JSX.Element {
           {t('settings.providers.storage.title')}
         </h3>
         <div className="grid gap-2 text-xs leading-5 text-fg-muted sm:grid-cols-2">
-          <div>{t('settings.providers.storage.keychain')}</div>
+          <div>{t('settings.providers.storage.file')}</div>
           <div>{t('settings.providers.storage.customProviders')}</div>
           <div>{t('settings.providers.storage.rendererState')}</div>
           <div>{t('settings.providers.storage.defaultProvider')}</div>

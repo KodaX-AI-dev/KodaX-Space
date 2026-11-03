@@ -109,6 +109,15 @@ export async function readProductInput(principal: string, sessionId: string, inp
   return (await readProductRecord(principal, sessionId, inputId))?.input;
 }
 
+export async function readPendingProductInput(
+  principal: string,
+  sessionId: string,
+  inputId: string,
+) {
+  const record = await readProductRecord(principal, sessionId, inputId);
+  return record?.withdrawn ? undefined : record?.input;
+}
+
 export async function takeBackProductInput(
   runs: Pick<KodaXDaemonRuntime['runs'], 'getInput' | 'withdrawInput'>,
   principal: string,

@@ -169,6 +169,16 @@ export const workflowEventChannel = {
     projectRoot: z.string().max(4096).optional(),
   }),
 } as const;
+/** A recovered snapshot is observation state; it must not synthesize workflow events. */
+export const workflowObservationChannel = {
+  name: 'workflow.observation',
+  direction: 'push',
+  payload: z.object({
+    status: z.enum(['recovering', 'ready']),
+    runs: z.array(workflowRunSchema).max(500).optional(),
+  }),
+} as const;
+
 export type WorkflowEventPayload = z.infer<typeof workflowEventChannel.payload>;
 
 const workflowTaskVerificationResultSchema = z.object({
@@ -212,7 +222,7 @@ export const workflowListChannel = {
     .optional(),
   // .max 上限与 WorkflowController.list 的 limit / renderer MAX_WORKFLOW_RUNS 对齐,
   // 防一次 list 返回过大 payload 阻塞 IPC。
-  output: z.object({ runs: z.array(workflowRunSchema).max(500) }),
+  output: z.object({ runs: z.array(workflowRunSchema).max(500), stale: z.boolean().optional() }),
 } as const;
 
 // ---- Invoke: workflow.get(按 runId 取单个) ----

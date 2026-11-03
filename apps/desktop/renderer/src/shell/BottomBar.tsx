@@ -47,7 +47,7 @@ import {
 } from './attachmentFiles.js';
 import { useActivityState } from './ActivitySpinner.js';
 import { ExecutionFactsIndicator } from './ExecutionFactsIndicator.js';
-import { AgentModeSelector } from './AgentModeSelector.js';
+import { AgentModeSelector, PartnerWorkModeIndicator } from './AgentModeSelector.js';
 // Retired StashNotice; file changes now live in RightSidebar.ChangesSection.
 import { RetryBanner } from './RetryBanner.js';
 import { AskUserDockBar } from '../features/ask-user/AskUserInline.js';
@@ -1616,7 +1616,7 @@ export function BottomBar(): JSX.Element {
       const probeById = new Map(probeResults.map((x) => [x.id, x]));
 
       const lines: string[] = [
-        `[doctor] ${providers.length} provider(s), default = ${r.data.defaultProviderId ?? '(none)'}, keychain = ${r.data.keychainBackend}`,
+        `[doctor] ${providers.length} provider(s), default = ${r.data.defaultProviderId ?? '(none)'}, credential storage = ${r.data.keychainBackend}`,
       ];
       for (const p of providers) {
         const isDefault = p.id === r.data.defaultProviderId ? ' [default]' : '';
@@ -1680,28 +1680,25 @@ export function BottomBar(): JSX.Element {
         appendUserMessage(sessionId, '[extensions] no project / IPC unavailable');
         return;
       }
-      const r = await invokeComposerIpc('mcp.discover', { projectRoot: currentProjectPath });
+      const r = await invokeComposerIpc('runtime.extensionHealth', undefined);
       if (!r.ok) {
-        appendUserMessage(
-          sessionId,
-          `[extensions] discover failed: ${r.error?.message ?? 'unknown'}`,
-        );
+        appendUserMessage(sessionId, `[extensions] Host catalog unavailable: ${r.error.message}`);
         return;
       }
-      const lines = [`[extensions] ${r.data.servers.length} MCP extension/server(s):`];
-      if (r.data.servers.length === 0) lines.push('  none configured');
-      for (const server of r.data.servers.slice(0, 30)) {
-        const target =
-          server.transport === 'http'
-            ? (server.url ?? '(no url)')
-            : [server.command, ...(server.args ?? [])].filter(Boolean).join(' ');
-        lines.push(`  ${server.name}  ${server.source}  ${server.transport}  ${target}`);
-      }
-      if (r.data.servers.length > 30) lines.push(`  ... ${r.data.servers.length - 30} more`);
-      if (r.data.errors.length > 0) {
-        lines.push('Errors:');
-        lines.push(...r.data.errors.slice(0, 8).map((e) => `  ${e.path}: ${e.error}`));
-      }
+      const lines = [
+        `[extensions] shared Host: ${r.data.state}`,
+        ...r.data.extensions.map((entry) => `  ${entry.name}: loaded`),
+        `Skills: ${r.data.builtins.skills}; Artifact tools: ${r.data.builtins.artifacts}`,
+        `Tools: ${r.data.tools.join(', ') || '(none reported)'}`,
+      ];
+      if (r.data.failures.length)
+        lines.push(
+          'Failure history (does not replace current catalog):',
+          ...r.data.failures.map(
+            (failure) =>
+              `  ${failure.occurredAt} ${failure.stage}: ${failure.target}: ${failure.message}`,
+          ),
+        );
       appendUserMessage(sessionId, lines.join('\n'));
       return;
     }
@@ -2900,9 +2897,7 @@ export function BottomBar(): JSX.Element {
               {currentSurface !== 'partner' && <AgentPicker insertAtCaret={insertAtCaret} />}
               <ModeSelector />
               <ExecutionFactsIndicator />
-              {currentSurface === 'partner' && (
-                <span className="text-xs text-fg-secondary">Agent</span>
-              )}
+              {currentSurface === 'partner' && <PartnerWorkModeIndicator />}
               {currentSurface !== 'partner' && (
                 <AgentModeSelector
                   ensureSession={ensureSession}

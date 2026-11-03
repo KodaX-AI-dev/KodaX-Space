@@ -98,11 +98,269 @@ test('a promoted Quick Ask displays the unchanged SDK items only after authorita
   }
 });
 
+test('a rejected cold identity request cannot poison the following Partner admission', async () => {
+  const fake = createFakeRuntime();
+  Object.assign(fake.runtime.capabilities!, {
+    productExecutionProfile: { version: 2 },
+    sessionAdmission: { version: 1, surfaces: ['space-desktop', 'partner'], partnerDenied: false },
+  });
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  try {
+    await adapter.initialize();
+    const sessionId = 's_cold_partner_identity';
+    fake.sessions.add(sessionId);
+    const record = {
+      id: sessionId,
+      title: 'Original Partner',
+      surface: 'partner',
+      tag: 'partner',
+      workspaceRoot: 'C:\\repo',
+      gitRoot: 'C:\\repo',
+    };
+    installPersistedSessionLookup(new Map([[sessionId, record]]));
+    fake.runtime.sessions.load = async () => record;
+    await assert.rejects(
+      adapter.ensureSession({
+        sessionId,
+        projectRoot: 'C:\\repo',
+        surface: 'code',
+        ephemeral: false,
+      }),
+      /surface|identity/i,
+    );
+    assert.equal(
+      await adapter.ensureSession({
+        sessionId,
+        projectRoot: 'C:\\repo',
+        surface: 'partner',
+        ephemeral: false,
+      }),
+      false,
+    );
+    assert.equal((await adapter.getSessionSettingsVersioned(sessionId)).revision, 0);
+    assert.equal(fake.calls.created.length, 0, 'a rejected identity never creates a replacement');
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('a workflow resolves an older Partner outside the initial profile before its first operation', async () => {
+  const fake = createFakeRuntime();
+  fake.runtime.catalog.executionTools = async () => [
+    { name: 'bash', sideEffect: 'mutates-shell', planModeAllowed: false },
+  ];
+  Object.assign(fake.runtime.capabilities!, {
+    productExecutionProfile: { version: 2 },
+    sessionAdmission: { version: 1, surfaces: ['space-desktop', 'partner'], partnerDenied: false },
+    sharedSessionSettings: { version: 2, keys: ['workMode'] },
+  });
+  fake.runtime.workflows.start = async (input) => {
+    assert.equal(
+      (await fake.runtime.sessions.getSettingsVersioned(input.sessionId!)).value.workMode,
+      'agent',
+    );
+    return { kind: 'started', runId: 'wf_cold_partner' };
+  };
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  try {
+    await adapter.initialize();
+    const sessionId = 's_unlisted_partner_workflow';
+    fake.sessions.add(sessionId);
+    const record = {
+      id: sessionId,
+      title: 'Older Partner',
+      surface: 'partner',
+      tag: 'partner',
+      workspaceRoot: 'C:\\repo',
+      gitRoot: 'C:\\repo',
+    };
+    installPersistedSessionLookup(new Map([[sessionId, record]]));
+    fake.runtime.sessions.load = async () => record;
+    assert.deepEqual(
+      await adapter.startWorkflow({
+        sessionId,
+        projectRoot: 'C:\\repo',
+        source: { kind: 'name', name: 'fixture' },
+      }),
+      { runId: 'wf_cold_partner' },
+    );
+    assert.equal(
+      await adapter.ensureSession({
+        sessionId,
+        projectRoot: 'C:\\repo',
+        surface: 'partner',
+        ephemeral: false,
+      }),
+      false,
+    );
+    assert.equal(fake.calls.created.length, 0);
+  } finally {
+    await adapter.close();
+  }
+});
+
+for (const invalidate of [false, true])
+  test(`cold queued Partner inputs rebind once using only the original owned complete intent (invalidate=${invalidate})`, async () => {
+    const fake = createFakeRuntime('rt_cold_queue');
+    Object.assign(fake.runtime.capabilities!, {
+      productExecutionProfile: { version: 2 },
+      productExecutionBinding: { version: 1 },
+      sessionAdmission: { version: 1, surfaces: ['partner'], partnerDenied: false },
+      sharedSessionSettings: { version: 2, keys: ['workMode'] },
+    });
+    Object.assign(fake.runtime, {
+      executionBindings: {
+        register: async () => ({ id: 'fresh-binding' }),
+        revoke: async () => true,
+      },
+    });
+    const sessionId = 's_cold_owned_queue';
+    fake.sessions.add(sessionId);
+    const record = {
+      id: sessionId,
+      title: 'Queue',
+      surface: 'partner',
+      tag: 'partner',
+      workspaceRoot: 'C:\\repo',
+      gitRoot: 'C:\\repo',
+    };
+    installPersistedSessionLookup(new Map([[sessionId, record]]));
+    fake.runtime.sessions.load = async () => record;
+    const observe = fake.runtime.sessions.observe;
+    fake.runtime.sessions.observe = async (...args) => {
+      const value = await observe(...args);
+      return { ...value, snapshot: { ...value.snapshot, session: record } };
+    };
+    const original = {
+      sessionId,
+      inputId: 'owned-queue',
+      text: 'original '.repeat(700) + 'END',
+      delivery: 'after_turn' as const,
+      inputArtifacts: [
+        { kind: 'file' as const, path: 'C:\\repo\\original.txt', name: 'original.txt' },
+      ],
+    };
+    const { captureProductInput } = await import('../kodax/runtime/product-input-intents.js');
+    await captureProductInput('space_instance_stable', original);
+    await captureProductInput('space_instance_stable', { ...original, inputId: 'blocked-owned' });
+    await captureProductInput('another-principal', {
+      ...original,
+      inputId: 'foreign-queue',
+      text: 'Other account text',
+    });
+    fake.runtime.sessions.observeView = async (_id, listener) => {
+      listener({
+        session: record,
+        items: [],
+        interactions: [],
+        runs: [],
+        settings: { workMode: 'agent' },
+        queue: [
+          'owned-queue',
+          'foreign-queue',
+          'settled-queue',
+          'blocked-owned',
+          'blocked-missing',
+        ].map((inputId) => ({
+          inputId,
+          text: 'bounded preview',
+          enqueuedAt: 1,
+          ...(inputId.startsWith('blocked')
+            ? {
+                admissionError: {
+                  code: 'default_skill_unavailable' as const,
+                  message: 'Unavailable method',
+                },
+              }
+            : {}),
+        })),
+      });
+      return { close() {} };
+    };
+    let releaseRead = () => {};
+    let waiting = false;
+    const readGate = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    let reads = 0;
+    fake.runtime.runs.getInput = async (_sid, inputId) => {
+      if (invalidate && inputId === 'owned-queue' && reads++ === 0) {
+        waiting = true;
+        await readGate;
+      }
+      return {
+        sessionId,
+        inputId,
+        state: inputId === 'settled-queue' ? 'submitted' : 'queued',
+        ...(inputId === 'settled-queue' ? { runId: 'already-started' } : {}),
+      };
+    };
+    const accepted: Parameters<KodaXDaemonRuntime['runs']['acceptInput']>[0][] = [];
+    fake.runtime.runs.acceptInput = async (input) => {
+      accepted.push(input);
+      return { sessionId, inputId: input.inputId, state: 'queued' };
+    };
+    const adapter = new RuntimeHostAdapter({
+      runtimeFactory: async () => fake.runtime,
+      identityStore: testIdentityStore,
+      runtimeEventParser: testRuntimeEventParser,
+    });
+    try {
+      await adapter.readSessionProductView(sessionId);
+      if (invalidate) {
+        await waitForTest(() => waiting);
+        fake.invalidateObservation(sessionId);
+        await waitForTest(() => fake.calls.observed.length >= 2);
+      }
+      await waitForTest(() => accepted.length === 1);
+      releaseRead();
+      assert.deepEqual(accepted[0], {
+        ...original,
+        authorization: { binding: { leaseId: 'fresh-binding' } },
+      });
+      assert.equal(
+        (await fake.runtime.sessions.getSettingsVersioned(sessionId)).value.workMode,
+        'agent',
+      );
+      await adapter.readSessionProductView(sessionId);
+      assert.equal(accepted.length, 1, 'view reads do not rebind or replay the same input again');
+      let queue = (await adapter.readSessionLiveSnapshot(sessionId)).queuedInputs;
+      for (
+        let attempt = 0;
+        attempt < 50 &&
+        queue.find((item) => item.inputId === 'blocked-missing')?.recovery !== 'unavailable';
+        attempt++
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        queue = (await adapter.readSessionLiveSnapshot(sessionId)).queuedInputs;
+      }
+      assert.equal(queue.find((item) => item.inputId === 'owned-queue')?.recovery, 'ready');
+      assert.equal(queue.find((item) => item.inputId === 'foreign-queue')?.recovery, 'unavailable');
+      assert.equal(queue.find((item) => item.inputId === 'blocked-owned')?.recovery, 'blocked');
+      assert.equal(
+        queue.find((item) => item.inputId === 'blocked-missing')?.recovery,
+        'unavailable',
+      );
+    } finally {
+      releaseRead();
+      await adapter.close();
+    }
+  });
+
 test('Partner drafts belong to the shared Host and select Agent without creating a private writer', async () => {
   const fake = createFakeRuntime();
   Object.assign(fake.runtime.capabilities!, {
     productExecutionProfile: { version: 2 },
     sessionAdmission: { version: 1, surfaces: ['space-desktop', 'partner'], partnerDenied: false },
+    sharedSessionSettings: { version: 2, keys: ['workMode'] },
   });
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
@@ -121,6 +379,15 @@ test('Partner drafts belong to the shared Host and select Agent without creating
     const session = await fake.runtime.sessions.load(id);
     assert.equal(session.surface, 'partner');
     assert.equal((await fake.runtime.sessions.getSettingsVersioned(id)).value.workMode, 'agent');
+    const settings = await fake.runtime.sessions.getSettingsVersioned(id);
+    await assert.rejects(
+      adapter.updateWorkMode({
+        sessionId: id,
+        workMode: 'coding',
+        expectedRevision: settings.revision,
+      }),
+      /Partner.*Agent/i,
+    );
     assert.equal(
       await adapter.ensureSession({
         sessionId: id,
@@ -14640,6 +14907,54 @@ test('Runtime persistent permission responses fail closed without a persistent s
   await adapter.close();
 });
 
+test('workflow-only subscription errors recover a ready snapshot without replaying events', async () => {
+  const fake = createFakeRuntime();
+  let onError: ((error: unknown) => void) | undefined;
+  let subscriptions = 0;
+  let closed = 0;
+  let reads = 0;
+  fake.runtime.workflows.subscribe = (_filter, _listener, error) => {
+    subscriptions++;
+    onError = error;
+    return {
+      ready: Promise.resolve(),
+      close() {
+        closed++;
+      },
+    };
+  };
+  fake.runtime.workflows.list = async () => {
+    reads++;
+    return [];
+  };
+  const updates: { channel: string; payload: unknown }[] = [];
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    push: (channel, payload) => updates.push({ channel, payload }),
+  });
+  try {
+    await adapter.initialize();
+    assert.ok(onError, 'the workflow watcher must handle its own subscription.error');
+    onError(new Error('workflow subscription closed while transport is connected'));
+    await waitForTest(() => subscriptions === 2 && reads > 0);
+    await waitForTest(() =>
+      updates.some(
+        (item) =>
+          item.channel === 'workflow.observation' &&
+          (item.payload as { status: string }).status === 'ready',
+      ),
+    );
+    assert.equal(closed, 1);
+    assert.equal(updates.filter((item) => item.channel === 'workflow.event').length, 0);
+    onError?.(new Error('another local failure'));
+  } finally {
+    await adapter.close();
+  }
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.equal(subscriptions, 2, 'closing cancels a pending local reconnect');
+});
+
 test('Runtime workflow reads and lifecycle controls use the daemon service', async () => {
   const fake = createFakeRuntime();
   const snapshot = {
@@ -14662,7 +14977,11 @@ test('Runtime workflow reads and lifecycle controls use the daemon service', asy
   fake.runtime.workflows.list = async () => [snapshot] as never;
   fake.runtime.workflows.get = async (runId: string) =>
     (runId === snapshot.runId ? snapshot : undefined) as never;
+  const snapshots: unknown[] = [];
   const adapter = new RuntimeHostAdapter({
+    push: (channel, payload) => {
+      if (channel === 'workflow.observation') snapshots.push(payload);
+    },
     mode: 'runtime',
     profileRoot: path.resolve('C:\\isolated-profile'),
     runtimeFactory: async () => fake.runtime,
@@ -14673,6 +14992,11 @@ test('Runtime workflow reads and lifecycle controls use the daemon service', asy
   assert.equal((await adapter.getWorkflow('workflow_1'))?.projectRoot, 'C:\\repo');
   assert.equal(await adapter.controlWorkflow('pause', 'workflow_1'), true);
   assert.deepEqual(fake.calls.workflowControls, [{ action: 'pause', runId: 'workflow_1' }]);
+  await waitForTest(() =>
+    snapshots.some((value) =>
+      (value as { runs?: { runId: string }[] }).runs?.some((run) => run.runId === 'workflow_1'),
+    ),
+  );
   await adapter.close();
 });
 

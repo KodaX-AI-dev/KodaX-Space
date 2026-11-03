@@ -98,9 +98,12 @@ export const FROZEN_V0131_CODER_ENTRYPOINTS = [
   'provider.setDefault',
   'provider.setKey',
   'provider.shareKey',
+  'provider.useEnvironment',
+  'provider.retryCredential',
   'provider.test',
   'provider.updateCustom',
   'runtime.profileSnapshot',
+  'runtime.extensionHealth',
   'session.agentsMd',
   'session.agentsMd.save',
   'session.cancel',
@@ -183,6 +186,7 @@ export const CODER_DAEMON_ROUTED_ENTRYPOINTS = [
   'permission.list',
   'permission.revoke',
   'runtime.profileSnapshot',
+  'runtime.extensionHealth',
   'session.cancel',
   'session.create',
   'session.delete',
@@ -246,6 +250,7 @@ function targetOwnerFor(entrypoint: InvokeChannelName): CoderActionTargetOwner {
 function capabilityFor(entrypoint: InvokeChannelName): string | undefined {
   const targetOwner = targetOwnerFor(entrypoint);
   if (targetOwner !== 'coder-daemon') return undefined;
+  if (entrypoint === 'runtime.extensionHealth') return 'runtime.catalog';
   if (entrypoint === 'runtime.profileSnapshot' || entrypoint === 'session.liveSnapshot') {
     return 'runtime.live.observe';
   }

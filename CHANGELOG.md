@@ -14,6 +14,9 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Preserve explicitly selected Provider credential sources across external key removal, environment changes, rename and legacy migration; add explicit environment adoption and original-credential retry with revision checks. Report permission-protected plaintext auth.json accurately in settings and current documentation.
+- Recover owned complete queued inputs after Host restart; expose take-back independently of admission errors and explain missing original material. Guard Partner identities and Agent-only Space setters, and display actual Host mode drift. Restore Workflow observation with ready/snapshot reconciliation, publish builtin/Artifact health separately from integration configuration, and require verified persistent connector credential saves. Keep the live-Host rebinding, durable queue receipts, promotion-view and atomic admission SDK limits explicit in the [repair record](docs/releases/kodax-beta1-space-fixes.md).
+
 - Pin Registry KodaX `0.7.97-beta.1`; enable Host-owned expert default Skills, consumption-time Partner business bindings and same-Session Quick Ask promotion. Preserve original recovery scopes, normal Partner shell/write/subagent capabilities, typed configuration errors and atomic Provider rename commits. Surface blocked queued inputs and retain complete new input recovery records for explicit take-back after response loss. Keep legacy queue/read and cross-platform limitations explicit in the [beta.1 acceptance record](docs/releases/kodax-0.7.97-beta.1-integration.md).
 
 - Resolve custom Providers when checking image input, while preserving model-specific text-only restrictions and unsent drafts on rejection.

@@ -8,7 +8,11 @@ import { loadKodaxCustomProviders } from '../kodax/user-config.js';
 import { BUILTIN_PROVIDERS, getBuiltin, isBuiltinId } from './catalog.js';
 import { providerConfigStore } from './config.js';
 import { validateApiKeyEnv } from './env-guard.js';
-import { getKey, configuredConnection, describeProviderCredential } from './provider-storage.js';
+import {
+  configuredConnection,
+  describeProviderCredential,
+  resolveProviderCredentialSource,
+} from './provider-storage.js';
 import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import path from 'node:path';
 import { invalidateProviderCredential } from './credential-invalidation.js';
@@ -208,7 +212,9 @@ export async function readProviderCredential(
   if (context?.rejectedCredentialFingerprint !== undefined)
     throw new Error('The approved credential source does not support OAuth recovery.');
   await retireOAuthSource(providerId);
-  const stored = await getKey(providerId, connectionFingerprint);
+  const source = await resolveProviderCredentialSource(providerId, connectionFingerprint);
+  const stored = source.key;
+  if (source.origin === 'file' && stored === undefined) return undefined;
   if (connection?.cloud) {
     const [runtime, llm] = await Promise.all([
       import('@kodax-ai/kodax/runtime'),
@@ -223,10 +229,10 @@ export async function readProviderCredential(
       if (typeof value === 'string') rememberProviderSecret(value);
     return rememberProviderSecret(llm.serializeCloudCredential(providerId, credential));
   }
-  const info = await resolveProviderCredentialInfo(providerId);
-  if (!info) return undefined;
   if (hasNonEmptyValue(stored)) return stored;
-  return externalProviderEnvValue(info.apiKeyEnv);
+  return source.environmentName === undefined
+    ? undefined
+    : externalProviderEnvValue(source.environmentName);
 }
 
 export async function ensureProviderKeyInjected(providerId: string): Promise<boolean> {

@@ -57,6 +57,7 @@ export {
 
 export {
   runtimeProfileSnapshotChannel,
+  runtimeExtensionHealthChannel,
   runtimeProfileChangedChannel,
   runtimeConnectionChangedChannel,
   sessionLiveSnapshotChannel,
@@ -715,6 +716,7 @@ export {
   workflowListChannel,
   workflowGetChannel,
   workflowEventChannel,
+  workflowObservationChannel,
   workflowRerunChannel,
   workflowSaveChannel,
   workflowSavedRenameChannel,

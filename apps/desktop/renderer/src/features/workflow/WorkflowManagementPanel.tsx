@@ -239,8 +239,14 @@ export function WorkflowManagementPanel(): JSX.Element {
     setRenameDraft('');
   }, []);
 
+  const observationStatus = useAppStore((state) => state.workflowObservationStatus);
   return (
     <div className="h-full min-h-0 flex flex-col" data-testid="workflow-management-panel">
+      {observationStatus === 'recovering' && (
+        <p role="status" className="px-3 py-2 text-xs text-warn">
+          {t('workflow.observationRecovering')}
+        </p>
+      )}
       <div className="flex items-center gap-3 border-b border-border-default/60 px-3 py-2 flex-shrink-0">
         <Workflow className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden />
         <div className="min-w-0">

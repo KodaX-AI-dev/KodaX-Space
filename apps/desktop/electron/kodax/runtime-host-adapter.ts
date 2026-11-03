@@ -1,4 +1,9 @@
-import { captureProductInput, takeBackProductInput } from './runtime/product-input-intents.js';
+import { projectExtensionHealth } from './runtime/runtime-extension-health.js';
+import {
+  captureProductInput,
+  takeBackProductInput,
+  readPendingProductInput,
+} from './runtime/product-input-intents.js';
 import { readExecutionFactsPage } from './runtime/execution-facts-page.js';
 import {
   providerCredentialEpoch,
@@ -68,6 +73,7 @@ import type {
   ClientHistorySearchResult,
   ClientWorkflowStartInput,
   ClientCommandResult,
+  ClientSubmitInput,
 } from '@kodax-ai/kodax/client';
 import type {
   ChannelInput,
@@ -1335,6 +1341,10 @@ interface RuntimeProjectionPush {
   (channel: 'workflow.activity', payload: WorkflowActivityPayload): void;
   (channel: 'workflow.event', payload: WorkflowEventPayload): void;
   (
+    channel: 'workflow.observation',
+    payload: { status: 'recovering' | 'ready'; runs?: WorkflowRunT[] },
+  ): void;
+  (
     channel: 'session.statisticsChanged',
     payload: import('@kodax-space/space-ipc-schema').SpaceSessionStatisticsT,
   ): void;
@@ -1415,6 +1425,8 @@ export type RuntimeExitSettler = (
 ) => Promise<RuntimeExitSettlement>;
 
 interface RuntimeSessionObservationState {
+  productQueue?: Parameters<CoderSessionProjectionReducer['replaceProductQueue']>[0];
+  inputRecovery?: Map<string, 'restoring' | 'ready' | 'unavailable' | 'blocked'>;
   productObservation?: ClientObservation;
   productViewQueue: Promise<void>;
   readonly sessionId: string;
@@ -1909,7 +1921,12 @@ function capabilitiesFor(mode: RuntimeHostMode, state: RuntimeHostState): Runtim
       'space-bridge',
       'Runtime catalog is available, while existing Space provider and command projections remain authoritative.',
     ),
-    capability('runtime.mcp', 'partial', 'space-bridge', 'Space owns server processes and logs.'),
+    capability(
+      'runtime.mcp',
+      'partial',
+      'runtime',
+      'The shared Host owns MCP activation, processes and logs.',
+    ),
     capability(
       'runtime.artifacts',
       'partial',
@@ -2130,6 +2147,16 @@ export class RuntimeHostAdapter {
   private readonly activeRuns = new Map<string, string>();
   private readonly observations = new Map<string, RuntimeSessionObservationState>();
   private readonly productViews = new Map<string, SessionProductView>();
+  private readonly queueRebindAttempts = new WeakMap<RuntimeSessionObservationState, Set<string>>();
+  private readonly queueRebindTasks = new Map<
+    string,
+    {
+      readonly runtime: KodaXDaemonRuntime;
+      readonly state: RuntimeSessionObservationState;
+      dirty: boolean;
+      task: Promise<void>;
+    }
+  >();
   private readonly confirmedPromotedViews = new WeakMap<KodaXDaemonRuntime, Set<string>>();
   private readonly observationPromises = new Map<string, Promise<void>>();
   private readonly observationOpenQueues = new WeakMap<KodaXDaemonRuntime, Promise<void>>();
@@ -2213,6 +2240,10 @@ export class RuntimeHostAdapter {
   >();
   private connectionSubscription: RuntimeSubscription | undefined;
   private workflowSubscription: RuntimeSubscription | undefined;
+  private workflowRetryTimer: ReturnType<typeof setTimeout> | undefined;
+  private workflowWatchGeneration = 0;
+  private workflowEventRevision = 0;
+  private workflowRetryAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly runRecoveryWaiters = new Set<{
     readonly resolve: () => void;
@@ -2641,26 +2672,14 @@ export class RuntimeHostAdapter {
         timing.mark(activeStage, 'complete');
         this.workflowSubscription?.close();
         activeStage = 'workflow_subscription_ready';
-        this.workflowSubscription = runtime.workflows.subscribe({}, (event) => {
-          const snapshot = projectRuntimeWorkflow(event.snapshot);
-          if (!snapshot) {
-            console.warn('[runtime] ignored malformed workflow snapshot from Coder daemon');
-            return;
-          }
-          const { sessionId, surface, projectRoot, ...processSnapshot } = snapshot;
-          const message = 'message' in event ? event.message : undefined;
-          this.push('workflow.event', {
-            type: event.type,
-            snapshot: processSnapshot,
-            ...(message !== undefined ? { message: message.slice(0, 8_192) } : {}),
-            ...(sessionId !== undefined ? { sessionId } : {}),
-            ...(surface !== undefined ? { surface } : {}),
-            ...(projectRoot !== undefined ? { projectRoot } : {}),
-          });
-        });
-        await this.workflowSubscription.ready;
+        await this.openWorkflowObservation(runtime);
         timing.mark(activeStage, 'complete');
         this.state = 'ready';
+        const workflowGeneration = this.workflowWatchGeneration;
+        void this.synchronizeWorkflowObservation(runtime, workflowGeneration).catch((error) => {
+          if (this.workflowWatchGeneration === workflowGeneration)
+            this.retryWorkflowObservation(runtime, error);
+        });
         this.lastError = undefined;
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         this.reconnectTimer = undefined;
@@ -2856,8 +2875,12 @@ export class RuntimeHostAdapter {
     if (this.state === 'closed' || this.runtime !== attached) return;
     const initializationInProgress = this.initializePromise !== null;
     this.stopIntegrationHealthPolling();
+    if (this.runtime) this.productBindingLeases.delete(this.runtime.executionBindings);
     this.connectionSubscription?.close();
     this.connectionSubscription = undefined;
+    this.workflowWatchGeneration++;
+    if (this.workflowRetryTimer) clearTimeout(this.workflowRetryTimer);
+    this.workflowRetryTimer = undefined;
     this.workflowSubscription?.close();
     this.workflowSubscription = undefined;
     this.lastError = sanitizeDiagnosticError(error);
@@ -3497,7 +3520,10 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private async assertPersistedSessionIdentity(sessionId: string): Promise<void> {
+  private async assertPersistedSessionIdentity(
+    sessionId: string,
+    requestedSurface?: RuntimeSessionIdentity['surface'],
+  ): Promise<void> {
     await preparePersistedSessionFreshnessTracking();
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const before = persistedSessionFreshnessToken(sessionId);
@@ -3505,9 +3531,9 @@ export class RuntimeHostAdapter {
       const after = persistedSessionFreshnessToken(sessionId);
       if (before !== after && attempt === 0) continue;
       const expectedSurface =
+        requestedSurface ??
         this.sessionSurfaces.get(sessionId) ??
         (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code');
-      this.sessionSurfaces.set(sessionId, expectedSurface);
       if (
         persisted !== null &&
         (isPartnerRuntimeSessionIdentity(persisted) ? 'partner' : 'code') !== expectedSurface
@@ -3532,6 +3558,7 @@ export class RuntimeHostAdapter {
       // A second concurrent mutation must not make one read spin forever. Retain the older token
       // so the next independent request verifies ownership again instead of certifying an
       // identity read that raced the writer.
+      if (persisted !== null) this.sessionSurfaces.set(sessionId, expectedSurface);
       this.persistedIdentityTokens.set(sessionId, before === after ? after : before);
       return;
     }
@@ -3581,6 +3608,7 @@ export class RuntimeHostAdapter {
     options?: RuntimeReadOptions,
     expectedProjectRoot?: string,
     persistedOwnershipVerified = false,
+    requestedSurface?: RuntimeSessionIdentity['surface'],
   ): Promise<RuntimeSession> {
     for (let attempt = 1; ; attempt += 1) {
       try {
@@ -3588,9 +3616,16 @@ export class RuntimeHostAdapter {
         const session = await runtime.sessions.load(sessionId, options);
         assertRuntimeSessionIdentity(session, {
           sessionId,
-          surface: this.sessionSurfaces.get(sessionId) ?? 'code',
+          surface:
+            requestedSurface ??
+            this.sessionSurfaces.get(sessionId) ??
+            (isPartnerRuntimeSessionIdentity(session) ? 'partner' : 'code'),
           ...(expectedProjectRoot !== undefined ? { projectRoot: expectedProjectRoot } : {}),
         });
+        this.sessionSurfaces.set(
+          sessionId,
+          requestedSurface ?? (isPartnerRuntimeSessionIdentity(session) ? 'partner' : 'code'),
+        );
         return session;
       } catch (error: unknown) {
         if (
@@ -3699,7 +3734,6 @@ export class RuntimeHostAdapter {
     const knownSurface = this.sessionSurfaces.get(input.sessionId);
     if (knownSurface !== undefined && knownSurface !== input.surface)
       throw new RuntimeSessionIdentityConflictError(input.sessionId, 'Session surface changed.');
-    this.sessionSurfaces.set(input.sessionId, input.surface);
     const pending = this.ensureSessionUnlocked(input).finally(() => {
       if (this.ensureSessionPromises.get(input.sessionId)?.promise === pending) {
         this.ensureSessionPromises.delete(input.sessionId);
@@ -3714,10 +3748,17 @@ export class RuntimeHostAdapter {
     this.assertSurfaceCapability(runtime, input.surface);
     const profileVerified = this.hasVerifiedProfileSession(runtime, input);
     if (profileVerified && this.hasActiveRuntimeOwnershipEvidence(input.sessionId)) return false;
-    await this.assertPersistedSessionIdentity(input.sessionId);
+    await this.assertPersistedSessionIdentity(input.sessionId, input.surface);
     if (profileVerified) return false;
     try {
-      await this.assertHostSession(runtime, input.sessionId, undefined, input.projectRoot, true);
+      await this.assertHostSession(
+        runtime,
+        input.sessionId,
+        undefined,
+        input.projectRoot,
+        true,
+        input.surface,
+      );
       return false;
     } catch (error: unknown) {
       if (!isSessionNotFoundError(error)) throw error;
@@ -3733,10 +3774,19 @@ export class RuntimeHostAdapter {
       assertRuntimeSessionIdentity(created, {
         sessionId: input.sessionId,
         projectRoot: input.projectRoot,
+        surface: input.surface,
       });
+      this.sessionSurfaces.set(input.sessionId, input.surface);
     } catch (createError: unknown) {
       try {
-        await this.assertHostSession(runtime, input.sessionId, undefined, input.projectRoot, true);
+        await this.assertHostSession(
+          runtime,
+          input.sessionId,
+          undefined,
+          input.projectRoot,
+          true,
+          input.surface,
+        );
         return false;
       } catch (reloadError: unknown) {
         if (!isSessionNotFoundError(reloadError)) throw reloadError;
@@ -4319,6 +4369,7 @@ export class RuntimeHostAdapter {
       // redundant and capable of rejecting a healthy active Session with data_changed.
       await this.assertPersistedSessionIdentity(sessionId);
     }
+    this.assertPartnerWorkMode(sessionId, patch.workMode);
     let current = hasCurrentObservation
       ? structuredClone(observed.settings)
       : await runtime.sessions.getSettingsVersioned(sessionId);
@@ -4518,6 +4569,7 @@ export class RuntimeHostAdapter {
   async updateWorkMode(input: ChannelInput<'session.setWorkMode'>) {
     const runtime = await this.requireRuntime();
     await this.assertHostSession(runtime, input.sessionId);
+    this.assertPartnerWorkMode(input.sessionId, input.workMode);
     const result = await setSessionWorkMode(
       runtime,
       input.sessionId,
@@ -4527,6 +4579,20 @@ export class RuntimeHostAdapter {
     if (this.runtime !== runtime)
       throw new Error('Host changed while setting work mode; refresh the Session.');
     return result;
+  }
+
+  private assertPartnerWorkMode(
+    sessionId: string,
+    workMode: RuntimeSessionSettingsPatch['workMode'],
+  ): void {
+    if (
+      this.sessionSurfaces.get(sessionId) === 'partner' &&
+      workMode !== undefined &&
+      workMode !== 'agent'
+    )
+      throw Object.assign(new Error('Partner Sessions use Agent work mode.'), {
+        code: 'invalid_input',
+      });
   }
 
   async readProductItem(input: {
@@ -6432,12 +6498,127 @@ export class RuntimeHostAdapter {
       };
     }[],
   ): void {
-    const change = state.reducer.replaceProductQueue(queue);
+    state.productQueue = queue;
+    const enriched = queue.map((item) => ({
+      ...item,
+      recovery: state.inputRecovery?.get(item.inputId),
+    }));
+    const change = state.reducer.replaceProductQueue(enriched);
     if (!change) return;
     const projection = state.reducer.snapshot();
     if (this.projectionController.replaceSessionLive(projection)) {
       this.recordLiveProjectionRevision(projection);
       this.push('session.liveChanged', change);
+    }
+    this.scheduleQueuedInputRecovery(state);
+  }
+
+  private setInputRecovery(
+    state: RuntimeSessionObservationState,
+    inputId: string,
+    status: 'restoring' | 'ready' | 'unavailable' | 'blocked',
+  ): void {
+    if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
+    state.inputRecovery ??= new Map();
+    state.inputRecovery.set(inputId, status);
+    this.updateProductQueue(state, state.productQueue ?? []);
+  }
+
+  private queueRebindKey(sessionId: string, inputId: string, reason = 'initial'): string {
+    return JSON.stringify([sessionId, inputId, reason]);
+  }
+
+  private markQueueRebindAttempt(state: RuntimeSessionObservationState, key: string): boolean {
+    const attempts = this.queueRebindAttempts.get(state) ?? new Set<string>();
+    if (attempts.has(key)) return false;
+    attempts.add(key);
+    this.queueRebindAttempts.set(state, attempts);
+    if (attempts.size > 512) attempts.delete(attempts.values().next().value!);
+    return true;
+  }
+
+  private scheduleQueuedInputRecovery(state: RuntimeSessionObservationState): void {
+    if (
+      this.runtime !== state.runtime ||
+      this.state !== 'ready' ||
+      this.observations.get(state.sessionId) !== state
+    )
+      return;
+    const existing = this.queueRebindTasks.get(state.sessionId);
+    if (existing?.state === state) {
+      existing.dirty = true;
+      return;
+    }
+    const queue = state.productQueue ?? [];
+    const pending = queue.filter(
+      (input) =>
+        !this.queueRebindAttempts
+          .get(state)
+          ?.has(this.queueRebindKey(state.sessionId, input.inputId, input.admissionError?.code)),
+    );
+    if (!pending.length) return;
+    const job = { runtime: state.runtime, state, dirty: false, task: Promise.resolve() };
+    this.queueRebindTasks.set(state.sessionId, job);
+    job.task = (async () => {
+      for (const input of pending)
+        await this.recoverQueuedProductInput(state, input.inputId, input.admissionError?.code);
+    })()
+      .catch((error) =>
+        console.warn('[runtime] queued recovery stopped:', sanitizeDiagnosticError(error)),
+      )
+      .finally(() => {
+        if (this.queueRebindTasks.get(state.sessionId) !== job) return;
+        this.queueRebindTasks.delete(state.sessionId);
+        if (job.dirty) this.scheduleQueuedInputRecovery(state);
+      });
+  }
+
+  private async recoverQueuedProductInput(
+    state: RuntimeSessionObservationState,
+    inputId: string,
+    reason?: string,
+  ): Promise<void> {
+    const runtime = state.runtime;
+    const current = () =>
+      this.runtime === runtime &&
+      this.state === 'ready' &&
+      this.observations.get(state.sessionId) === state;
+    if (
+      !current() ||
+      !this.productClientInstanceId ||
+      !this.markQueueRebindAttempt(state, this.queueRebindKey(state.sessionId, inputId, reason))
+    )
+      return;
+    this.setInputRecovery(state, inputId, 'restoring');
+    try {
+      const fact = await runtime.runs.getInput(state.sessionId, inputId);
+      if (!current() || fact?.state !== 'queued' || fact.runId) return;
+      const original = await readPendingProductInput(
+        this.productClientInstanceId,
+        state.sessionId,
+        inputId,
+      );
+      if (!current()) return;
+      if (!original) {
+        this.setInputRecovery(state, inputId, 'unavailable');
+        return;
+      }
+      if (reason !== undefined && reason !== 'execution_binding_unavailable') {
+        this.setInputRecovery(state, inputId, 'blocked');
+        return;
+      }
+      const session = await this.assertHostSession(runtime, state.sessionId);
+      const projectRoot = session.workspaceRoot ?? session.gitRoot;
+      if (!current() || !projectRoot) return;
+      await this.ensureExecutionSession(state.sessionId, projectRoot);
+      if (!current()) return;
+      await this.acceptProductIntent(runtime, original, true, current);
+      if (current()) this.setInputRecovery(state, inputId, 'ready');
+    } catch (error) {
+      if (current()) {
+        this.setInputRecovery(state, inputId, 'blocked');
+        console.warn('[runtime] queued input remains pending:', sanitizeDiagnosticError(error));
+      }
     }
   }
 
@@ -6463,7 +6644,9 @@ export class RuntimeHostAdapter {
       (request.kind === 'recovery' ||
         (request.kind === 'input' && request.input.delivery !== 'steer'))
     ) {
-      const runtime = await this.requireRuntime();
+      const runtime = this.runtime;
+      if (!runtime || this.state !== 'ready')
+        throw new Error('Main authorization Host is unavailable.');
       if (runtimeCapabilityVersion(runtime, 'productExecutionBinding') !== 1)
         throw Object.assign(new Error('Partner execution requires an upgraded Host.'), {
           code: 'daemon_upgrade_required',
@@ -6472,6 +6655,8 @@ export class RuntimeHostAdapter {
       if (!pending) {
         pending = runtime.executionBindings.register(async (binding, scoped, signal) => {
           signal.throwIfAborted();
+          if (this.runtime !== runtime || this.state !== 'ready')
+            throw new Error('Main authorization Host retired.');
           const execution =
             binding.phase === 'recovery'
               ? {
@@ -6481,6 +6666,8 @@ export class RuntimeHostAdapter {
               : { kind: 'input' as const, input: binding.input! };
           const authorization = await this.resolveProductExecution(execution, scoped, binding);
           signal.throwIfAborted();
+          if (this.runtime !== runtime || this.state !== 'ready')
+            throw new Error('Main authorization Host retired.');
           if (!authorization) throw new Error('Partner execution authorization is unavailable.');
           if (binding.input)
             this.resolvedProductInputs.set(
@@ -6504,7 +6691,9 @@ export class RuntimeHostAdapter {
     services: Parameters<KodaXClientHostAuthorization>[1],
     bindingRequest?: RuntimeExecutionBindingRequest,
   ): ReturnType<KodaXClientHostAuthorization> => {
-    const runtime = await this.requireRuntime();
+    const runtime = this.runtime;
+    if (!runtime || this.state !== 'ready')
+      throw new Error('Main authorization Host is unavailable.');
     if (
       services.identity.runtimeId !== runtime.identity.runtimeId ||
       services.identity.profile !== runtime.identity.profile
@@ -7567,17 +7756,7 @@ export class RuntimeHostAdapter {
     };
     if (!this.productClientInstanceId) throw new Error('Main client identity is unavailable.');
     await captureProductInput(this.productClientInstanceId, request.input);
-    const authorization = await this.authorizeProductExecution(
-      request,
-      this.authorizationServices(runtime, request.input),
-    );
-    // An acceptance reply can precede the SDK view notification. Keep this
-    // input's observer until its canonical queue/user identity has arrived.
-    const pending =
-      this.acceptedInputObservationDemands.get(input.sessionId) ?? new Map<string, string>();
-    pending.set(inputId, runtime.identity.runtimeId);
-    this.acceptedInputObservationDemands.set(input.sessionId, pending);
-    const accepted = await runtime.runs.acceptInput({ ...request.input, authorization });
+    const accepted = await this.acceptProductIntent(runtime, request.input);
     if (accepted.state === 'dropped' || accepted.state === 'withdrawn') {
       this.releaseInputObservationDemand(input.sessionId, inputId);
       return {
@@ -7588,18 +7767,6 @@ export class RuntimeHostAdapter {
         reason: 'stale_run',
       };
     }
-    if (accepted.runId) {
-      this.spaceOwnedRunIds.add(accepted.runId);
-      this.productRunAuthorizations.set(
-        accepted.runId,
-        this.resolvedProductInputs.get(this.resolvedInputKey(runtime, input.sessionId, inputId)) ??
-          authorization,
-      );
-      await this.captureResolvedRunAuthorization(runtime, accepted.runId, {
-        sessionId: input.sessionId,
-        inputId,
-      });
-    }
     return {
       accepted: true,
       delivery: input.delivery,
@@ -7608,6 +7775,52 @@ export class RuntimeHostAdapter {
       inputId: accepted.inputId,
       ...(accepted.runId ? { runId: accepted.runId } : {}),
     };
+  }
+
+  private async acceptProductIntent(
+    runtime: KodaXDaemonRuntime,
+    input: ClientSubmitInput,
+    rebinding = false,
+    observationCurrent: () => boolean = () => true,
+  ) {
+    const current = () =>
+      this.runtime === runtime && this.state === 'ready' && observationCurrent();
+    if (!current()) throw new Error('The input belongs to a retired Host attachment.');
+    const authorization = await this.authorizeProductExecution(
+      { kind: 'input', input },
+      this.authorizationServices(runtime, input),
+    );
+    if (!current()) throw new Error('Host changed while authorizing the input.');
+    if (rebinding) {
+      const fact = await runtime.runs.getInput(input.sessionId, input.inputId);
+      if (!current()) throw new Error('Host changed while checking the queued input.');
+      if (!fact) throw new Error('The Host no longer confirms this queued input.');
+      if (fact.state !== 'queued' || fact.runId) return fact;
+    }
+    const pending =
+      this.acceptedInputObservationDemands.get(input.sessionId) ?? new Map<string, string>();
+    pending.set(input.inputId, runtime.identity.runtimeId);
+    this.acceptedInputObservationDemands.set(input.sessionId, pending);
+    const observed = this.observations.get(input.sessionId);
+    if (observed?.runtime === runtime)
+      this.markQueueRebindAttempt(observed, this.queueRebindKey(input.sessionId, input.inputId));
+    const accepted = await runtime.runs.acceptInput({ ...input, authorization });
+    if (accepted.runId) {
+      this.spaceOwnedRunIds.add(accepted.runId);
+      this.productRunAuthorizations.set(
+        accepted.runId,
+        this.resolvedProductInputs.get(
+          this.resolvedInputKey(runtime, input.sessionId, input.inputId),
+        ) ?? authorization,
+      );
+      await this.captureResolvedRunAuthorization(runtime, accepted.runId, {
+        sessionId: input.sessionId,
+        inputId: input.inputId,
+      });
+    }
+    if (accepted.state === 'dropped' || accepted.state === 'withdrawn')
+      this.releaseInputObservationDemand(input.sessionId, input.inputId);
+    return accepted;
   }
 
   hasPendingPermission(requestId: string): boolean {
@@ -7661,6 +7874,45 @@ export class RuntimeHostAdapter {
     return { ...command, promptCommand: prepared.kind === 'prepared' };
   }
 
+  private async ensureExecutionSession(sessionId: string, projectRoot: string): Promise<void> {
+    let surface = this.sessionSurfaces.get(sessionId);
+    if (surface === undefined) {
+      const { kodaxHost } = await import('./host.js');
+      surface = kodaxHost.get(sessionId)?.surface;
+    }
+    if (surface === undefined) {
+      await this.assertPersistedSessionIdentity(sessionId);
+      surface = this.sessionSurfaces.get(sessionId);
+    }
+    if (surface === undefined) {
+      try {
+        const session = await this.assertHostSession(
+          await this.requireRuntime(),
+          sessionId,
+          undefined,
+          projectRoot,
+        );
+        surface = isPartnerRuntimeSessionIdentity(session) ? 'partner' : 'code';
+      } catch (error) {
+        if (!isSessionNotFoundError(error)) throw error;
+        surface = 'code';
+      }
+    }
+    await this.ensureSession({ sessionId, projectRoot, surface, ephemeral: false });
+    if (surface === 'partner') {
+      const runtime = await this.requireRuntime();
+      const mode = await readSessionWorkMode(runtime, sessionId);
+      if (!mode.supported)
+        throw Object.assign(new Error('Partner Agent mode requires an upgraded Host.'), {
+          code: 'daemon_upgrade_required',
+        });
+      if (mode.workMode !== 'agent')
+        await setSessionWorkMode(runtime, sessionId, 'agent', mode.revision);
+      if (runtime !== this.runtime)
+        throw new Error('Host changed while preparing Partner Agent mode.');
+    }
+  }
+
   async executeProductCommand(input: {
     sessionId: string;
     projectRoot: string;
@@ -7668,12 +7920,7 @@ export class RuntimeHostAdapter {
     args: readonly string[];
     inputId: string;
   }): Promise<ClientCommandResult> {
-    await this.ensureSession({
-      sessionId: input.sessionId,
-      projectRoot: input.projectRoot,
-      surface: this.sessionSurfaces.get(input.sessionId) ?? 'code',
-      ephemeral: false,
-    });
+    await this.ensureExecutionSession(input.sessionId, input.projectRoot);
     const runtime = await this.requireRuntime();
     await this.ensureObserved(input.sessionId);
     const command = {
@@ -7723,12 +7970,7 @@ export class RuntimeHostAdapter {
     input: ClientWorkflowStartInput,
   ): Promise<{ runId: string } | { error: string }> {
     if (!input.sessionId) throw new Error('A Coder Session is required for workflow execution.');
-    await this.ensureSession({
-      sessionId: input.sessionId,
-      projectRoot: input.projectRoot,
-      surface: this.sessionSurfaces.get(input.sessionId) ?? 'code',
-      ephemeral: false,
-    });
+    await this.ensureExecutionSession(input.sessionId, input.projectRoot);
     const runtime = await this.requireRuntime();
     const authorization = await this.authorizeProductExecution(
       { kind: 'workflow', input },
@@ -7749,6 +7991,103 @@ export class RuntimeHostAdapter {
     );
     if (!run) throw new Error('Workflow is not owned by the current Host.');
     return run.runDir;
+  }
+
+  private async openWorkflowObservation(
+    runtime: KodaXDaemonRuntime,
+    reconcile = false,
+  ): Promise<void> {
+    const generation = ++this.workflowWatchGeneration;
+    const current = () =>
+      this.runtime === runtime &&
+      this.state !== 'closed' &&
+      generation === this.workflowWatchGeneration;
+    this.workflowEventRevision = 0;
+    const subscription = runtime.workflows.subscribe(
+      {},
+      (event) => {
+        if (!current()) return;
+        this.workflowEventRevision++;
+        const snapshot = projectRuntimeWorkflow(event.snapshot);
+        if (!snapshot) {
+          console.warn('[runtime] ignored malformed workflow snapshot');
+          return;
+        }
+        const { sessionId, surface, projectRoot, ...processSnapshot } = snapshot;
+        const message = 'message' in event ? event.message : undefined;
+        this.push('workflow.event', {
+          type: event.type,
+          snapshot: processSnapshot,
+          ...(message !== undefined ? { message: message.slice(0, 8192) } : {}),
+          ...(sessionId !== undefined ? { sessionId } : {}),
+          ...(surface !== undefined ? { surface } : {}),
+          ...(projectRoot !== undefined ? { projectRoot } : {}),
+        });
+      },
+      (error) => {
+        if (current()) this.retryWorkflowObservation(runtime, error);
+      },
+    );
+    if (!current()) {
+      subscription.close();
+      return;
+    }
+    this.workflowSubscription = subscription;
+    await subscription.ready;
+    if (!current()) {
+      subscription.close();
+      return;
+    }
+    if (reconcile) await this.synchronizeWorkflowObservation(runtime, generation);
+  }
+
+  private async synchronizeWorkflowObservation(
+    runtime: KodaXDaemonRuntime,
+    generation: number,
+  ): Promise<void> {
+    const current = () =>
+      this.runtime === runtime &&
+      this.state === 'ready' &&
+      this.workflowWatchGeneration === generation;
+    if (!current()) return;
+    for (let pass = 0; pass < 3; pass++) {
+      const before = this.workflowEventRevision;
+      const runs = await this.listWorkflows();
+      if (!current()) return;
+      if (before !== this.workflowEventRevision) continue;
+      this.push('workflow.observation', { status: 'ready', runs });
+      this.workflowRetryAttempt = 0;
+      return;
+    }
+    throw new Error('Workflow snapshot changed during reconciliation.');
+  }
+
+  private retryWorkflowObservation(runtime: KodaXDaemonRuntime, error: unknown): void {
+    if (this.runtime !== runtime || this.state === 'closed' || this.workflowRetryTimer) return;
+    this.workflowWatchGeneration++;
+    this.workflowSubscription?.close();
+    this.workflowSubscription = undefined;
+    this.push('workflow.observation', { status: 'recovering' });
+    console.warn('[runtime] workflow observation recovering:', sanitizeDiagnosticError(error));
+    const delay = Math.min(30_000, 100 * 2 ** Math.min(this.workflowRetryAttempt++, 9));
+    this.workflowRetryTimer = setTimeout(() => {
+      this.workflowRetryTimer = undefined;
+      if (this.runtime !== runtime || this.state !== 'ready') return;
+      const generation = this.workflowWatchGeneration + 1;
+      void this.openWorkflowObservation(runtime, true).catch((failure) => {
+        if (this.workflowWatchGeneration === generation)
+          this.retryWorkflowObservation(runtime, failure);
+      });
+    }, delay);
+    this.workflowRetryTimer.unref?.();
+  }
+
+  async extensionHealth() {
+    const runtime = await this.requireRuntime();
+    const catalog = await runtime.catalog.extensions();
+    if (this.runtime !== runtime || this.state !== 'ready')
+      throw new Error('Extension catalog Host changed.');
+    return projectExtensionHealth(catalog);
   }
 
   async listWorkflows(input?: { readonly sessionId?: string }): Promise<WorkflowRunT[]> {
@@ -8595,8 +8934,12 @@ export class RuntimeHostAdapter {
     if (runtime !== null) this.closingRuntime = runtime;
     const initializing = this.initializePromise;
     this.unsubscribeCredentialInvalidation();
+    if (this.runtime) this.productBindingLeases.delete(this.runtime.executionBindings);
     this.connectionSubscription?.close();
     this.connectionSubscription = undefined;
+    this.workflowWatchGeneration++;
+    if (this.workflowRetryTimer) clearTimeout(this.workflowRetryTimer);
+    this.workflowRetryTimer = undefined;
     this.workflowSubscription?.close();
     this.workflowSubscription = undefined;
     this.stopIntegrationHealthPolling();

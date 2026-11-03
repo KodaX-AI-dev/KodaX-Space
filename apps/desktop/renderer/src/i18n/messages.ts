@@ -447,6 +447,9 @@ export const messages = {
     'message.originalLoading': 'Loading original result…',
     'message.originalFailed': 'Could not read the original result.',
     'activity.receivingTool': 'Receiving {tool}…',
+    'workMode.partnerDefault': 'Agent (default)',
+    'workMode.partnerPending': '{mode} · Agent will be restored before execution',
+    'workMode.unknown': 'Work mode unavailable',
     'workMode.label': 'Work mode',
     'workMode.wait': 'Wait for the current run to settle before changing work mode.',
     'workMode.upgrade': 'Upgrade the Host to change work mode.',
@@ -671,6 +674,20 @@ export const messages = {
       'The selected Agent applies only to child spawns without an explicit target; authored targets keep precedence.',
     'workflow.externalAgentPreflightFailed': 'External Agent preflight failed: {reason}',
     'workflow.refreshList': 'Refresh list',
+    'workflow.observationRecovering':
+      'Workflow updates are reconnecting. The displayed state may be out of date.',
+    'settings.extensionHealth.refresh': 'Refresh Host extension capabilities',
+    'settings.extensionHealth.ready': 'Builtin capabilities are available.',
+    'settings.extensionHealth.degraded':
+      'Some builtin capabilities are unavailable. Conversation and history remain available.',
+    'settings.extensionHealth.unavailable': 'Host extension capabilities are unavailable.',
+    'settings.extensionHealth.builtins': 'Skills: {skills}; Artifact tools: {artifacts}',
+    'settings.extensionHealth.history':
+      'Failure history and current tools (a past failure may coexist with a working or last known good extension)',
+    'connector.storageRequirement':
+      'Connection completes only after credentials are saved persistently in OS-protected storage. If saving fails, restore storage access before trying again.',
+    'connector.dingtalkStorage':
+      'DingTalk manages its own credentials and currently requires system Keychain.',
     'workflow.refreshListAria': 'Refresh workflow list',
     'workflow.builtin': 'Built-in',
     'workflow.saved': 'Saved',
@@ -2072,6 +2089,22 @@ export const messages = {
     'settings.providers.custom': 'Custom',
     'settings.providers.custom.detail': 'User-added endpoints',
     'settings.providers.keyStorage': 'Key storage',
+    'settings.providers.keyStorage.file': 'Credential file (auth.json)',
+    'settings.providers.keyStorage.fileDetail':
+      'Permission-protected plaintext file; secrets are never returned to the renderer',
+    'settings.providers.keyStorage.unknownDetail':
+      'Waiting for the actual credential storage state',
+    'settings.providers.storage.file':
+      'Provider keys use the permission-protected auth.json beside the active SDK config. Existing encrypted backups are retained for migration.',
+    'provider.keySource.unknown': 'Unknown source',
+    'provider.credentialSourceRequired':
+      'The previous source cannot be determined. Choose the current environment or save a key explicitly; existing records are retained.',
+    'provider.retryCredential': 'Retry original credential',
+    'provider.useEnvironment': 'Use environment: {name}',
+    'provider.environmentUnavailable':
+      'The selected environment variable {name} is unavailable. Other saved accounts will not be selected automatically.',
+    'provider.fileUnavailable':
+      'The selected saved key is no longer available. Explicitly choose a source or save a key; other accounts will not be used automatically.',
     'settings.providers.keyStorage.memory': 'Memory',
     'settings.providers.keyStorage.keychain': 'Keychain',
     'settings.providers.keyStorage.memoryDetail': 'Not persistent after restart',
@@ -2203,10 +2236,10 @@ export const messages = {
     'customProvider.reasoning.default.placeholder': 'default (e.g. medium)',
     'customProvider.apiKey.label': 'API key',
     'customProvider.apiKey.hint':
-      'Protected by OS credential storage. The key is cleared from form state on submit.',
+      'Saved in the permission-protected auth.json. The key is cleared from form state on submit.',
     'customProvider.apiKey.editHint': 'Optional. Leave blank to keep the existing key.',
     'customProvider.apiKey.storageHint':
-      'Space protects this key with OS credential storage and injects it into SDK runtime as {env}; it does not edit your shell environment.',
+      'Space saves this key in auth.json and authorizes each SDK request through Main. The optional environment source is {env}; saved keys are not injected into your shell.',
     'customProvider.apiKey.placeholder': 'Paste API key',
     'customProvider.showApiKey': 'Show API key',
     'customProvider.hideApiKey': 'Hide API key',
@@ -2799,6 +2832,11 @@ export const messages = {
     'message.queue.waitingSafePoint': 'Waiting for safe point',
     'message.queue.bindingBlocked':
       'Not sent: the selected role, method or authorization is unavailable. Take back the full message to review and send again.',
+    'message.queue.recovery.restoring': 'Restoring this queued input…',
+    'message.queue.recovery.unavailable':
+      'This client has no complete original input. A preview cannot be taken back or resubmitted.',
+    'message.queue.recovery.blocked':
+      'Restoration did not complete. Take back the original input to review and send it again.',
     'message.queue.takeBack': 'Take back message',
     'message.queue.failed': 'Not delivered',
     'message.queue.failedDetail': 'The run ended before insertion. Copy this message and retry.',
@@ -3630,6 +3668,9 @@ export const messages = {
     'message.originalLoading': '正在读取原文…',
     'message.originalFailed': '无法读取原文。',
     'activity.receivingTool': '正在接收 {tool} 参数…',
+    'workMode.partnerDefault': 'Agent（默认）',
+    'workMode.partnerPending': '{mode} · 执行前恢复 Agent',
+    'workMode.unknown': '工作模式暂不可用',
     'workMode.label': '工作模式',
     'workMode.wait': '当前任务结束后可切换工作模式。',
     'workMode.upgrade': '请升级 Host 后切换工作模式。',
@@ -4960,6 +5001,19 @@ export const messages = {
     'settings.providers.custom': '自定义',
     'settings.providers.custom.detail': '用户添加的端点',
     'settings.providers.keyStorage': '密钥存储',
+    'settings.providers.keyStorage.file': '凭证文件（auth.json）',
+    'settings.providers.keyStorage.fileDetail': '受权限保护的明文文件；秘密不会回传给渲染进程',
+    'settings.providers.keyStorage.unknownDetail': '正在读取实际凭证存储状态',
+    'settings.providers.storage.file':
+      '服务商 Key 保存在当前 SDK 配置旁受权限保护的 auth.json 中。旧加密备份保留用于原账号迁移。',
+    'provider.keySource.unknown': '来源未知',
+    'provider.credentialSourceRequired':
+      '无法确定之前的凭证来源。请明确选择现有环境变量或保存 Key，原记录会保留。',
+    'provider.retryCredential': '重试原凭证',
+    'provider.useEnvironment': '使用环境变量：{name}',
+    'provider.environmentUnavailable': '已选环境变量 {name} 不可用，不会自动使用其他已保存账号。',
+    'provider.fileUnavailable':
+      '已选文件凭证不可用。请明确选择来源或保存 Key，不会自动使用其他账号。',
     'settings.providers.keyStorage.memory': '内存',
     'settings.providers.keyStorage.keychain': 'Keychain',
     'settings.providers.keyStorage.memoryDetail': '重启后不会保留',
@@ -5077,10 +5131,10 @@ export const messages = {
     'customProvider.reasoning.default.label': '默认档',
     'customProvider.reasoning.default.placeholder': '默认档（如 medium）',
     'customProvider.apiKey.label': 'API Key',
-    'customProvider.apiKey.hint': '由系统凭据存储保护。提交后会从表单状态中清除。',
+    'customProvider.apiKey.hint': '保存在受权限保护的 auth.json 中。提交后会从表单状态中清除。',
     'customProvider.apiKey.editHint': '可选。留空表示保留现有密钥。',
     'customProvider.apiKey.storageHint':
-      'Space 会用系统凭据存储保护该密钥，并在 SDK 运行时以内置槽位 {env} 注入；不会修改你的 shell 环境变量。',
+      'Space 将 Key 保存到 auth.json，并由 Main 为每次 SDK 请求授权。可选环境来源为 {env}，保存的 Key 不会注入 shell。',
     'customProvider.apiKey.placeholder': '粘贴 API Key',
     'customProvider.showApiKey': '显示 API Key',
     'customProvider.hideApiKey': '隐藏 API Key',
@@ -5654,6 +5708,20 @@ export const messages = {
     'message.queue.waitingSafePoint': '等待安全插入点',
     'message.queue.bindingBlocked':
       '尚未发送：所选专家、技能或授权不可用。可取回完整消息，检查后重新发送。',
+    'workflow.observationRecovering': '工作流状态正在重新连接，当前显示可能已过期。',
+    'settings.extensionHealth.refresh': '刷新 Host 扩展能力',
+    'settings.extensionHealth.ready': '内置能力已就绪。',
+    'settings.extensionHealth.degraded': '部分内置能力不可用，对话和历史仍可使用。',
+    'settings.extensionHealth.unavailable': 'Host 扩展能力不可用。',
+    'settings.extensionHealth.builtins': '技能：{skills}；Artifact 工具：{artifacts}',
+    'settings.extensionHealth.history':
+      '历史失败与当前工具（过去失败可能与当前可用或保留的上次有效扩展并存）',
+    'connector.storageRequirement':
+      '凭证持久保存到系统保护存储后才会完成连接。保存失败时，请恢复存储访问后重试。',
+    'connector.dingtalkStorage': '钉钉自行管理凭证，目前仍依赖系统 Keychain。',
+    'message.queue.recovery.restoring': '正在恢复此排队输入…',
+    'message.queue.recovery.unavailable': '当前客户端没有完整原始输入，不能用预览取回或重新提交。',
+    'message.queue.recovery.blocked': '恢复未完成。可取回原始输入，检查后重新发送。',
     'message.queue.takeBack': '取回消息',
     'message.queue.failed': '未送达',
     'message.queue.failedDetail': '任务在插入前已结束；请复制这条消息后重试。',

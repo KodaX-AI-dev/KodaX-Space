@@ -1,25 +1,142 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createFileProviderCredentialStore, createCustomProvider } from '@kodax-ai/kodax/llm';
 import { createSpaceFileCredentials } from './file-credentials.js';
 
+test('renaming an environment-bound provider keeps its approved source when the environment later disappears', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-env-alias-'));
+  try {
+    const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    let available = true;
+    const context = {
+      store,
+      resolve: async (provider: string) => ({
+        profile: 'default',
+        provider,
+        connectionFingerprint: 'a'.repeat(64),
+      }),
+      hasEnvironment: async () => available,
+      environmentName: async () => 'FIXTURE_ORIGINAL_KEY',
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    };
+    const api = createSpaceFileCredentials(context);
+    await api.read('before', []);
+    const original = await api.describe('before', []);
+    const destination = await context.resolve('after');
+    await store.setApiKey(destination, 'different-cli-account', null);
+    await api.move('after', original, original.binding.connectionFingerprint, []);
+    available = false;
+    const restarted = createSpaceFileCredentials(context);
+    assert.deepEqual(await restarted.resolve('after', []), {
+      origin: 'env',
+      environmentName: 'FIXTURE_ORIGINAL_KEY',
+    });
+    assert.equal((await store.readApiKey(destination))?.key, 'different-cli-account');
+    assert.equal(
+      (await restarted.describe('before', [])).origin,
+      'file',
+      'retired alias cannot revive its old environment choice',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a selected file credential does not inspect unrelated environment sources on each request', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-file-source-hot-read-'));
+  try {
+    const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
+    let requestStarted = false;
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async () => binding,
+      hasEnvironment: async () => {
+        assert.equal(requestStarted, false, 'file requests must not rediscover environment');
+        return false;
+      },
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    });
+    await api.set('a', 'selected-file-account', await api.describe('a', []));
+    requestStarted = true;
+    assert.equal(await api.read('a', []), 'selected-file-account');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('an upgraded profile with an unavailable legacy backend can explicitly choose its current environment', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-explicit-env-'));
+  try {
+    const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
+    await store.setApiKey(binding, 'unselected-cli-account', null);
+    let oldReads = 0;
+    const context = {
+      store,
+      resolve: async () => binding,
+      hasEnvironment: async () => true,
+      environmentName: async () => 'FIXTURE_API_KEY',
+      legacy: {
+        has: async () => {
+          throw new Error('libsecret unavailable');
+        },
+        read: async () => {
+          oldReads++;
+          return 'unknown-old-account';
+        },
+        remove: async () => false,
+      },
+    };
+    const api = createSpaceFileCredentials(context);
+    const before = await api.describe('a', ['a']);
+    assert.equal(before.migration, 'unavailable');
+    await assert.rejects(api.read('a', ['a']), /migration is unavailable/);
+    await api.useEnvironment('a', before, ['a']);
+    const restarted = createSpaceFileCredentials(context);
+    assert.deepEqual(await restarted.resolve('a', ['a']), {
+      origin: 'env',
+      environmentName: 'FIXTURE_API_KEY',
+    });
+    assert.equal(oldReads, 0);
+    assert.equal((await store.readApiKey(binding))?.key, 'unselected-cli-account');
+    await assert.rejects(restarted.useEnvironment('a', before, ['a']), /conflict/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('a late initial environment read converges after another read pins the same origin', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-env-pin-convergence-'));
   let release!: () => void;
   let entered!: () => void;
-  const gate = new Promise<void>(resolve => { release = resolve; });
-  const delayed = new Promise<void>(resolve => { entered = resolve; });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const delayed = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
   try {
     const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
     await store.setApiKey(binding, 'different-cli-account', null);
     let reads = 0;
-    const api = createSpaceFileCredentials({ store, resolve: async () => binding,
-      hasEnvironment: async () => { if (++reads === 1) { entered(); await gate; } return true; },
-      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } });
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async () => binding,
+      hasEnvironment: async () => {
+        if (++reads === 1) {
+          entered();
+          await gate;
+        }
+        return true;
+      },
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    });
     const first = api.read('a', ['a']);
     await delayed;
     assert.equal(await api.read('a', ['a']), undefined);
@@ -27,31 +144,54 @@ test('a late initial environment read converges after another read pins the same
     assert.equal(await first, undefined);
     assert.equal((await api.describe('a', ['a'])).scope, 'space');
     assert.equal((await store.readApiKey(binding))?.key, 'different-cli-account');
-  } finally { release(); await rm(root, { recursive: true, force: true }); }
+  } finally {
+    release();
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('an initial environment read cannot adopt a different source after a concurrent selection', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-env-pin-source-conflict-'));
   let release!: () => void;
   let entered!: () => void;
-  const gate = new Promise<void>(resolve => { release = resolve; });
-  const delayed = new Promise<void>(resolve => { entered = resolve; });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const delayed = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
   try {
     const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
     await store.setApiKey(binding, 'different-cli-account', null);
     let reads = 0;
-    const api = createSpaceFileCredentials({ store, resolve: async () => binding,
-      hasEnvironment: async () => { if (++reads === 1) { entered(); await gate; } return true; },
-      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } });
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async () => binding,
+      hasEnvironment: async () => {
+        if (++reads === 1) {
+          entered();
+          await gate;
+        }
+        return true;
+      },
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    });
     const first = api.read('a', ['a']);
     await delayed;
     await api.set('a', 'new-space-key', await api.describe('a', ['a']), ['a']);
     await api.share('a', await api.describe('a', ['a']), 'adopt', ['a']);
     release();
     await assert.rejects(first, /conflict/i);
-    assert.equal(await api.read('a', ['a']), 'different-cli-account', 'subsequent reads honor the explicit choice');
-  } finally { release(); await rm(root, { recursive: true, force: true }); }
+    assert.equal(
+      await api.read('a', ['a']),
+      'different-cli-account',
+      'subsequent reads honor the explicit choice',
+    );
+  } finally {
+    release();
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('first shared use is pinned before a previously absent legacy backend recovers', async () => {
@@ -61,12 +201,21 @@ test('first shared use is pinned before a previously absent legacy backend recov
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
     await store.setApiKey(binding, 'selected-shared-account', null);
     let present = false;
-    const api = createSpaceFileCredentials({ store, resolve: async () => binding,
-      legacy: { has: async () => present, read: async () => 'different-legacy-account', remove: async () => false } });
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async () => binding,
+      legacy: {
+        has: async () => present,
+        read: async () => 'different-legacy-account',
+        remove: async () => false,
+      },
+    });
     assert.equal(await api.read('a', ['a']), 'selected-shared-account');
     present = true;
     assert.equal(await api.read('a', ['a']), 'selected-shared-account');
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('an unpersisted first env selection is refused and a deleted Space key cannot be published from backup', async () => {
@@ -75,17 +224,33 @@ test('an unpersisted first env selection is refused and a deleted Space key cann
     const file = createFileProviderCredentialStore(path.join(root, 'auth.json'));
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
     await file.setApiKey(binding, 'cli-account', null);
-    const unavailable = createSpaceFileCredentials({ store: { ...file, updateApiKeys: async () => { throw new Error('Fixture read only'); } },
-      resolve: async () => binding, hasEnvironment: async () => true,
-      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } });
+    const unavailable = createSpaceFileCredentials({
+      store: {
+        ...file,
+        updateApiKeys: async () => {
+          throw new Error('Fixture read only');
+        },
+      },
+      resolve: async () => binding,
+      hasEnvironment: async () => true,
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    });
     await assert.rejects(unavailable.read('a', ['a']), /read only/);
-    const api = createSpaceFileCredentials({ store: file, resolve: async () => binding,
-      legacy: { has: async () => true, read: async () => 'old-account', remove: async () => false } });
+    const api = createSpaceFileCredentials({
+      store: file,
+      resolve: async () => binding,
+      legacy: { has: async () => true, read: async () => 'old-account', remove: async () => false },
+    });
     assert.equal(await api.read('a', ['a']), 'old-account');
     await api.remove('a', await api.describe('a', ['a']), ['a']);
-    await assert.rejects(api.share('a', await api.describe('a', ['a']), 'publish', ['a']), /not available/);
+    await assert.rejects(
+      api.share('a', await api.describe('a', ['a']), 'publish', ['a']),
+      /not available/,
+    );
     assert.equal((await file.readApiKey(binding))?.key, 'cli-account');
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('retained legacy backups cannot be imported into a changed connection', async () => {
@@ -93,8 +258,19 @@ test('retained legacy backups cannot be imported into a changed connection', asy
   try {
     const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
     let fingerprint = 'a'.repeat(64);
-    const api = createSpaceFileCredentials({ store, resolve: async provider => ({ profile: 'default', provider, connectionFingerprint: fingerprint }),
-      legacy: { has: async () => true, read: async () => 'original-account', remove: async () => false } });
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async (provider) => ({
+        profile: 'default',
+        provider,
+        connectionFingerprint: fingerprint,
+      }),
+      legacy: {
+        has: async () => true,
+        read: async () => 'original-account',
+        remove: async () => false,
+      },
+    });
     assert.equal(await api.read('a', ['a']), 'original-account');
     fingerprint = 'b'.repeat(64);
     await assert.rejects(api.read('a', ['a']), /connection changed/i);
@@ -102,7 +278,9 @@ test('retained legacy backups cannot be imported into a changed connection', asy
     assert.equal(changed.migration, 'connection-changed');
     await api.set('a', 'new-approved-account', changed, ['a']);
     assert.equal(await api.read('a', ['a']), 'new-approved-account');
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('an existing Space environment selection cannot silently become the CLI account when its env is removed', async () => {
@@ -112,17 +290,31 @@ test('an existing Space environment selection cannot silently become the CLI acc
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
     await store.setApiKey(binding, 'cli-account', null);
     let environment = true;
-    const dependencies = { store, resolve: async () => binding, hasEnvironment: async () => environment,
-      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } };
+    const dependencies = {
+      store,
+      resolve: async () => binding,
+      hasEnvironment: async () => environment,
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    };
     const api = createSpaceFileCredentials(dependencies);
-    assert.equal(await api.read('a', ['a']), undefined, 'undefined deliberately leaves the approved Space env in control');
+    assert.equal(
+      await api.read('a', ['a']),
+      undefined,
+      'undefined deliberately leaves the approved Space env in control',
+    );
     environment = false;
     const restarted = createSpaceFileCredentials(dependencies);
-    assert.equal(await restarted.read('a', ['a']), undefined, 'removing env must not select a different saved account');
+    assert.equal(
+      await restarted.read('a', ['a']),
+      undefined,
+      'removing env must not select a different saved account',
+    );
     assert.equal((await store.readApiKey(binding))?.key, 'cli-account');
     await restarted.share('a', await restarted.describe('a', []), 'adopt', []);
     assert.equal(await restarted.read('a', ['a']), 'cli-account');
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('an automatic Space upgrade preserves its old account without changing CLI shared credentials', async () => {
@@ -131,9 +323,19 @@ test('an automatic Space upgrade preserves its old account without changing CLI 
     const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
     await store.setApiKey(binding, 'cli-account-b', null);
-    let unavailable = false, removed = 0;
-    const legacy = { has: async () => { if (unavailable) throw new Error('old backend unavailable'); return true; },
-      read: async () => 'space-account-a', remove: async () => { removed++; throw new Error('cleanup unavailable'); } };
+    let unavailable = false,
+      removed = 0;
+    const legacy = {
+      has: async () => {
+        if (unavailable) throw new Error('old backend unavailable');
+        return true;
+      },
+      read: async () => 'space-account-a',
+      remove: async () => {
+        removed++;
+        throw new Error('cleanup unavailable');
+      },
+    };
     const api = createSpaceFileCredentials({ store, resolve: async () => binding, legacy });
     assert.equal(await api.read('a', ['a']), 'space-account-a');
     assert.equal((await store.readApiKey(binding))?.key, 'cli-account-b');
@@ -142,7 +344,9 @@ test('an automatic Space upgrade preserves its old account without changing CLI 
     const restarted = createSpaceFileCredentials({ store, resolve: async () => binding, legacy });
     assert.equal(await restarted.read('a', ['a']), 'space-account-a');
     assert.equal(removed, 0);
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('a failed migration write keeps the approved old credential usable and retries without restart', async () => {
@@ -150,31 +354,57 @@ test('a failed migration write keeps the approved old credential usable and retr
   try {
     const file = createFileProviderCredentialStore(path.join(root, 'auth.json'));
     let fail = true;
-    const store = { ...file, updateApiKeys: async (...args: Parameters<typeof file.updateApiKeys>) => {
-      if (fail && args[0].length > 1) throw new Error('Fixture disk full'); return file.updateApiKeys(...args);
-    } };
+    const store = {
+      ...file,
+      updateApiKeys: async (...args: Parameters<typeof file.updateApiKeys>) => {
+        if (fail && args[0].length > 1) throw new Error('Fixture disk full');
+        return file.updateApiKeys(...args);
+      },
+    };
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
-    const api = createSpaceFileCredentials({ store, resolve: async () => binding,
-      legacy: { has: async () => true, read: async () => 'old-account', remove: async () => { throw new Error('must retain backup'); } } });
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async () => binding,
+      legacy: {
+        has: async () => true,
+        read: async () => 'old-account',
+        remove: async () => {
+          throw new Error('must retain backup');
+        },
+      },
+    });
     assert.equal(await api.read('a', ['a']), 'old-account');
     assert.equal((await api.describe('a', ['a'])).migration, 'pending');
     fail = false;
     assert.equal(await api.read('a', ['a']), 'old-account');
     assert.equal((await api.describe('a', ['a'])).configured, true);
     assert.equal(await file.readApiKey(binding), undefined);
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('migrates only the approved Space account, requires explicit sharing and preserves deletion fences', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-file-credentials-'));
   try {
     const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
-    const legacy = new Map([['alias-a', 'old-a'], ['partner', 'unrelated']]);
+    const legacy = new Map([
+      ['alias-a', 'old-a'],
+      ['partner', 'unrelated'],
+    ]);
     const binding = { profile: 'default', provider: 'a', connectionFingerprint: 'a'.repeat(64) };
-    const api = createSpaceFileCredentials({ store, resolve: async () => binding,
-      legacy: { has: async id => legacy.has(id), read: async id => legacy.get(id), remove: async id => legacy.delete(id) } });
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async () => binding,
+      legacy: {
+        has: async (id) => legacy.has(id),
+        read: async (id) => legacy.get(id),
+        remove: async (id) => legacy.delete(id),
+      },
+    });
     assert.equal(await api.read('a', ['alias-a']), 'old-a');
-    assert.equal(legacy.get('alias-a'), 'old-a'); assert.equal(legacy.get('partner'), 'unrelated');
+    assert.equal(legacy.get('alias-a'), 'old-a');
+    assert.equal(legacy.get('partner'), 'unrelated');
     const status = await api.describe('a', []);
     await store.setApiKey(binding, 'cli-next', null);
     assert.equal(await api.read('a', []), 'old-a');
@@ -186,69 +416,261 @@ test('migrates only the approved Space account, requires explicit sharing and pr
     assert.equal(await api.read('a', ['alias-a']), 'cli-next');
     assert.equal((await api.describe('a', ['alias-a'])).migration, 'none');
     assert.equal(legacy.get('alias-a'), 'different');
-    const current = await api.describe('a', []); await api.remove('a', current, ['alias-a']);
-    legacy.set('alias-a', 'late-old'); assert.equal(await api.read('a', ['alias-a']), undefined);
+    const current = await api.describe('a', []);
+    await api.remove('a', current, ['alias-a']);
+    legacy.set('alias-a', 'late-old');
+    assert.equal(await api.read('a', ['alias-a']), undefined);
     assert.equal(legacy.get('alias-a'), 'late-old');
     await writeFile(store.filePath, '{broken');
     await assert.rejects(api.read('a', ['alias-a']));
     assert.equal(legacy.get('alias-a'), 'late-old');
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('rejects connection changes and unknown proof without reading legacy secrets', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-file-binding-'));
   try {
-    let fingerprint = 'a'.repeat(64), reads = 0;
-    const api = createSpaceFileCredentials({ store: createFileProviderCredentialStore(path.join(root, 'auth.json')),
-      resolve: async provider => ({ profile: 'default', provider, connectionFingerprint: fingerprint }),
-      legacy: { has: async () => false, read: async () => { reads++; return 'old'; }, remove: async () => false } });
-    const status = await api.describe('a', []); fingerprint = 'b'.repeat(64);
+    let fingerprint = 'a'.repeat(64),
+      reads = 0;
+    const api = createSpaceFileCredentials({
+      store: createFileProviderCredentialStore(path.join(root, 'auth.json')),
+      resolve: async (provider) => ({
+        profile: 'default',
+        provider,
+        connectionFingerprint: fingerprint,
+      }),
+      legacy: {
+        has: async () => false,
+        read: async () => {
+          reads++;
+          return 'old';
+        },
+        remove: async () => false,
+      },
+    });
+    const status = await api.describe('a', []);
+    fingerprint = 'b'.repeat(64);
     await assert.rejects(api.set('a', 'secret', status), /changed/i);
     await assert.rejects(api.read('a', ['a'], 'c'.repeat(64)), /connection/i);
     assert.equal(reads, 0);
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('moves an approved alias only on the same route and never overwrites its destination', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-file-alias-'));
   try {
     const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
-    const fingerprint = (name: string) => createCustomProvider({ name, protocol: 'openai', model: 'm', baseUrl: 'https://same.invalid/v1', apiKeyEnv: 'FIXTURE' }).getCredentialConnectionFingerprint();
-    const api = createSpaceFileCredentials({ store, resolve: async provider => ({ profile: 'default', provider, connectionFingerprint: fingerprint(provider) }),
-      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } });
+    const fingerprint = (name: string) =>
+      createCustomProvider({
+        name,
+        protocol: 'openai',
+        model: 'm',
+        baseUrl: 'https://same.invalid/v1',
+        apiKeyEnv: 'FIXTURE',
+      }).getCredentialConnectionFingerprint();
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async (provider) => ({
+        profile: 'default',
+        provider,
+        connectionFingerprint: fingerprint(provider),
+      }),
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    });
     await api.set('before', 'original', await api.describe('before', []));
     assert.notEqual(fingerprint('before'), fingerprint('after'));
     await api.move('after', await api.describe('before', []), fingerprint('before'));
-    assert.equal(await api.read('after', []), 'original'); assert.equal(await api.read('before', []), undefined);
+    assert.equal(await api.read('after', []), 'original');
+    assert.equal(await api.read('before', []), undefined);
     await api.set('before', 'other', await api.describe('before', []));
-    await assert.rejects(api.move('after', await api.describe('before', []), fingerprint('before')), /conflict/i);
-    assert.equal(await api.read('after', []), 'original'); assert.equal(await api.read('before', []), 'other');
-  } finally { await rm(root, { recursive: true, force: true }); }
+    await assert.rejects(
+      api.move('after', await api.describe('before', []), fingerprint('before')),
+      /conflict/i,
+    );
+    assert.equal(await api.read('after', []), 'original');
+    assert.equal(await api.read('before', []), 'other');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('an unavailable legacy vault cannot replace a valid file or cause env fallback for a missing file', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-legacy-failure-'));
   try {
     const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
-    const api = createSpaceFileCredentials({ store, resolve: async provider => ({ profile: 'default', provider, connectionFingerprint: 'a'.repeat(64) }),
-      legacy: { has: async () => { throw new Error('raw old secret'); }, read: async () => undefined, remove: async () => false } });
+    const api = createSpaceFileCredentials({
+      store,
+      resolve: async (provider) => ({
+        profile: 'default',
+        provider,
+        connectionFingerprint: 'a'.repeat(64),
+      }),
+      legacy: {
+        has: async () => {
+          throw new Error('raw old secret');
+        },
+        read: async () => undefined,
+        remove: async () => false,
+      },
+    });
     await api.set('saved', 'current', await api.describe('saved', []));
     assert.equal(await api.read('saved', ['saved']), 'current');
     assert.equal((await api.describe('saved', ['saved'])).migration, 'none');
-    await assert.rejects(api.read('missing', ['missing']), error => error instanceof Error && /unavailable/.test(error.message) && !error.message.includes('raw old secret'));
-  } finally { await rm(root, { recursive: true, force: true }); }
+    await assert.rejects(
+      api.read('missing', ['missing']),
+      (error) =>
+        error instanceof Error &&
+        /unavailable/.test(error.message) &&
+        !error.message.includes('raw old secret'),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('deleting configuration uses a captured binding and restores the old key on configuration failure', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-file-delete-config-'));
   try {
     let known = true;
-    const api = createSpaceFileCredentials({ store: createFileProviderCredentialStore(path.join(root, 'auth.json')),
-      resolve: async provider => { if (!known) throw new Error('Unknown provider'); return { profile: 'default', provider, connectionFingerprint: 'a'.repeat(64) }; },
-      legacy: { has: async () => false, read: async () => undefined, remove: async () => false } });
+    const api = createSpaceFileCredentials({
+      store: createFileProviderCredentialStore(path.join(root, 'auth.json')),
+      resolve: async (provider) => {
+        if (!known) throw new Error('Unknown provider');
+        return { profile: 'default', provider, connectionFingerprint: 'a'.repeat(64) };
+      },
+      legacy: { has: async () => false, read: async () => undefined, remove: async () => false },
+    });
     await api.set('p', 'original', await api.describe('p', []));
-    await assert.rejects(api.removeWithConfig('p', await api.describe('p', []), async () => { throw new Error('config write failed'); }, []), /config write failed/);
+    await assert.rejects(
+      api.removeWithConfig(
+        'p',
+        await api.describe('p', []),
+        async () => {
+          throw new Error('config write failed');
+        },
+        [],
+      ),
+      /config write failed/,
+    );
     assert.equal(await api.read('p', []), 'original');
-    assert.equal(await api.removeWithConfig('p', await api.describe('p', []), async () => { known = false; return true; }, []), true);
-  } finally { await rm(root, { recursive: true, force: true }); }
+    assert.equal(
+      await api.removeWithConfig(
+        'p',
+        await api.describe('p', []),
+        async () => {
+          known = false;
+          return true;
+        },
+        [],
+      ),
+      true,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('explicit retry recovers only the original legacy identity and persists its approved file source', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-legacy-retry-'));
+  try {
+    let available = false;
+    const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    const context = {
+      store,
+      resolve: async () => ({
+        profile: 'default',
+        provider: 'fixture',
+        connectionFingerprint: 'a'.repeat(64),
+      }),
+      legacy: {
+        has: async () => {
+          if (!available) throw new Error('backend unavailable');
+          return true;
+        },
+        read: async () => 'original-legacy-identity',
+        remove: async () => false,
+      },
+    };
+    const api = createSpaceFileCredentials(context);
+    const before = await api.describe('fixture', ['fixture']);
+    assert.equal(before.migration, 'unavailable');
+    available = true;
+    await api.retry('fixture', before, ['fixture']);
+    assert.equal(
+      await createSpaceFileCredentials(context).read('fixture', ['fixture']),
+      'original-legacy-identity',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('historical v1 private source without a key requires an explicit choice and cannot revive a legacy or env account', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-v1-source-'));
+  try {
+    const store = createFileProviderCredentialStore(path.join(root, 'auth.json'));
+    for (const tombstone of [false, true]) {
+      const binding = {
+        profile: 'default',
+        provider: tombstone ? 'old-deleted' : 'old-empty',
+        connectionFingerprint: 'a'.repeat(64),
+      };
+      // Historical v1 bytes, written through the public SDK store, independent of the current serializer.
+      const selectionBinding = {
+        ...binding,
+        profile: 'space-provider-selection:default',
+        connectionFingerprint: createHash('sha256')
+          .update(JSON.stringify(['space-provider-selection-v1', 'default', binding.provider, '']))
+          .digest('hex'),
+      };
+      await store.setApiKey(
+        selectionBinding,
+        JSON.stringify({
+          version: 1,
+          scope: 'space',
+          connectionFingerprint: binding.connectionFingerprint,
+        }),
+        null,
+      );
+      if (tombstone) {
+        const privateBinding = { ...binding, profile: 'space-legacy-provider:default' };
+        const saved = await store.setApiKey(privateBinding, 'retired-account', null);
+        await store.removeApiKey(privateBinding, saved.revision);
+      }
+      let oldReads = 0;
+      const api = createSpaceFileCredentials({
+        store,
+        resolve: async () => binding,
+        hasEnvironment: async () => true,
+        environmentName: async () => 'V1_CURRENT_ENV',
+        legacy: {
+          has: async () => true,
+          read: async () => {
+            oldReads++;
+            return 'different-backup-account';
+          },
+          remove: async () => false,
+        },
+      });
+      const before = await api.describe(binding.provider, [binding.provider]);
+      assert.equal(before.migration, 'source-required');
+      await assert.rejects(
+        api.read(binding.provider, [binding.provider]),
+        /source.*ambiguous|explicit/i,
+      );
+      assert.equal(oldReads, 0);
+      await api.useEnvironment(binding.provider, before, [binding.provider]);
+      assert.deepEqual(await api.resolve(binding.provider, [binding.provider]), {
+        origin: 'env',
+        environmentName: 'V1_CURRENT_ENV',
+      });
+      assert.equal(oldReads, 0);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

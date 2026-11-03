@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
 import {
   createLocalSdkProvider,
@@ -44,6 +46,36 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       'BETA1_DEFAULT_EXPERT',
     );
     await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await expect(space.page.getByTestId('partner-work-mode')).toHaveText('Agent');
+    // A second public SDK client changes the idle Host setting, bypassing Space's setter guard.
+    await promisify(execFile)(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `
+      const {connectKodaXRuntime} = await import('@kodax-ai/kodax/runtime');
+      const path = await import('node:path');
+      const client = await connectKodaXRuntime({profile:'coder', sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
+      try {
+        const current = await client.sessions.getSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION);
+        await client.sessions.updateSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION,{workMode:'coding'},{expectedRevision:current.revision});
+      } finally { await client.close(); }
+    `,
+      ],
+      {
+        windowsHide: true,
+        timeout: 15_000,
+        env: { ...process.env, KODAX_HOME: space.testDataDir, SPACE_E2E_MODE_SESSION: id },
+      },
+    );
+    await expect(space.page.getByTestId('partner-work-mode')).toContainText('coding');
+    await sendSdkPrompt(space, 'BETA1_AGENT_RESTORED');
+    await expect
+      .poll(() => provider.requests.some((text) => text.includes('BETA1_AGENT_RESTORED')))
+      .toBe(true);
+    await waitSdkIdle(space, id);
+    await expect(space.page.getByTestId('partner-work-mode')).toHaveText('Agent');
     expect(provider.requests.some((text) => text.includes('BETA1_DEFAULT_EXPERT'))).toBe(true);
   } finally {
     await provider.close();

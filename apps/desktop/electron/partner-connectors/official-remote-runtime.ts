@@ -2,7 +2,7 @@ import { createSlackConnector } from './slack-api.js';
 import { createZoomConnector } from './zoom-api.js';
 import { createGithubConnector } from './github-api.js';
 import path from 'node:path';
-import { deleteKey, getKey, setKey } from '../providers/keychain.js';
+import { deleteKey, getKey, setPersistentKey } from '../providers/keychain.js';
 import {
   createAirtableConnector,
   createAtlassianConnector,
@@ -200,7 +200,12 @@ export interface CredentialPersistence {
 export function createVerifiedCredentialStore(persistence: CredentialPersistence): CredentialStore {
   return {
     get: (key) => persistence.get(key),
-    set: (key, value) => persistence.set(key, value),
+    set: async (key, value) => {
+      // Production composes the throwing persistent setter, never a memory fallback.
+      await persistence.set(key, value);
+      if ((await persistence.get(key)) !== value)
+        throw new Error('Connector credential save could not be verified.');
+    },
     delete: async (key) => {
       // Prime the backend/cache so an adapter that swallows delete errors cannot hide a retained key.
       await persistence.get(key);
@@ -213,7 +218,7 @@ export function createVerifiedCredentialStore(persistence: CredentialPersistence
 
 const keychainCredentials = createVerifiedCredentialStore({
   get: getKey,
-  set: setKey,
+  set: setPersistentKey,
   delete: deleteKey,
 });
 

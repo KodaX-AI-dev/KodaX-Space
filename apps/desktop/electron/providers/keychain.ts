@@ -1,3 +1,4 @@
+// Legacy migration and remaining connector OS storage. New model Provider keys use SDK auth.json.
 // Keychain 封装 — FEATURE_004
 //
 // Windows/macOS 使用 Electron safeStorage 加密的本地 vault；旧 keyring 按账号迁移：
@@ -115,7 +116,10 @@ function loadVault(): Promise<EncryptedCredentialVault | null> {
       console.warn('[keychain] encrypted credential vault unavailable', err);
       return null;
     }
-  })().then(vault => { if (!vault) vaultPromise = null; return vault; });
+  })().then((vault) => {
+    if (!vault) vaultPromise = null;
+    return vault;
+  });
   return vaultPromise;
 }
 
@@ -183,7 +187,8 @@ function cancelledMacosRead(error: unknown): boolean {
   while (error instanceof Error && !seen.has(error)) {
     seen.add(error);
     const description = `${'code' in error ? String(error.code) : ''} ${error.message}`;
-    if (/(?:^|[\s(])-(?:128|25293)(?=$|[\s).,:;])|\b(?:cancell?ed|denied)\b/i.test(description)) return true;
+    if (/(?:^|[\s(])-(?:128|25293)(?=$|[\s).,:;])|\b(?:cancell?ed|denied)\b/i.test(description))
+      return true;
     error = error.cause;
   }
   return false;
@@ -194,11 +199,18 @@ export async function getPersistentKey(
   verifyRecoverySecret?: (candidate: string) => Promise<boolean>,
 ): Promise<string | undefined> {
   if (backendStatus === 'memory' && !process.env.KODAX_TEST_ONBOARDING) backendStatus = 'unknown';
-  if (process.platform === 'darwin' && skippedMacosReads.has(account)) throw new Error('Credential access was cancelled or denied; retry after relaunch or an explicit save.');
+  if (process.platform === 'darwin' && skippedMacosReads.has(account))
+    throw new Error(
+      'Credential access was cancelled or denied; retry after relaunch or an explicit save.',
+    );
   const queued = persistentReadQueue.get(account);
   if (queued) return queued;
   const pending = readPersistentKey(account, verifyRecoverySecret)
-    .catch((error: unknown) => { if (process.platform === 'darwin' && cancelledMacosRead(error)) skippedMacosReads.add(account); throw error; })
+    .catch((error: unknown) => {
+      if (process.platform === 'darwin' && cancelledMacosRead(error))
+        skippedMacosReads.add(account);
+      throw error;
+    })
     .finally(() => persistentReadQueue.delete(account));
   persistentReadQueue.set(account, pending);
   return pending;
@@ -569,6 +581,11 @@ export async function hasKey(account: string): Promise<boolean> {
 }
 
 /** Strict, account-scoped migration discovery; never treat a damaged vault as absent. */
+export function retryMigrationAccess(account: string): void {
+  skippedMacosReads.delete(account);
+  if (backendStatus === 'memory') backendStatus = 'unknown';
+}
+
 export async function hasMigrationKey(account: string): Promise<boolean> {
   if (process.env.KODAX_TEST_ONBOARDING) return memoryStore.has(account);
   if (process.platform === 'win32' || process.platform === 'darwin') {
@@ -583,8 +600,11 @@ export async function hasMigrationKey(account: string): Promise<boolean> {
   }
   const keyring = await loadKeyring();
   if (!keyring) throw new Error('Legacy credential metadata is unavailable.');
-  try { return (await keyring.getPassword(SERVICE_NAME, account)) !== null; }
-  catch { throw new Error('Legacy credential metadata is unavailable.'); }
+  try {
+    return (await keyring.getPassword(SERVICE_NAME, account)) !== null;
+  } catch {
+    throw new Error('Legacy credential metadata is unavailable.');
+  }
 }
 
 export async function listConfiguredAccounts(

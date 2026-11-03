@@ -8,7 +8,7 @@
 //   - 用户首次启动 → store 给 fallback ~/kodax_workspace + 自动 mkdir -p
 //   - 用户改默认 → 通过 Settings UI 写回这里
 //
-// 这里**只**写标量配置 — secrets / API keys 走 keychain，永远不进 settings.json。
+// Scalar settings only. Model secrets use SDK auth.json through the Main credential broker.
 
 import { promises as fs } from 'node:fs';
 import { createHash } from 'node:crypto';

@@ -3,7 +3,15 @@ import { useAppStore } from '../../../store/appStore.js';
 import { useI18n } from '../../../i18n/I18nProvider.js';
 
 /** Taking back an input is explicit; a failed binding never submits a new model request. */
-export function QueuedInputRecovery({ localId, inputId }: { localId: string; inputId: string }) {
+export function QueuedInputRecovery({
+  localId,
+  inputId,
+  recovery,
+}: {
+  localId: string;
+  inputId: string;
+  recovery?: 'restoring' | 'ready' | 'unavailable' | 'blocked';
+}) {
   const sessionId = useAppStore((state) => state.currentSessionId);
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -44,9 +52,10 @@ export function QueuedInputRecovery({ localId, inputId }: { localId: string; inp
   }
   return (
     <div className="mt-2 text-xs">
+      {recovery && recovery !== 'ready' && <div>{t(`message.queue.recovery.${recovery}`)}</div>}
       <button
         type="button"
-        disabled={busy}
+        disabled={busy || recovery === 'unavailable' || recovery === 'restoring'}
         onClick={() => void takeBack()}
         className="underline disabled:opacity-50"
       >

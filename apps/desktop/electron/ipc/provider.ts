@@ -2,7 +2,7 @@
 //
 // 7 个 invoke channel：
 //   provider.list           列出 built-in + custom providers + configured 状态
-//   provider.setKey         写 key（main → keychain；renderer 永不持有 key）
+//   provider.setKey         写 key（main → SDK auth.json；renderer 永不持有 key）
 //   provider.removeKey      删 key
 //   provider.test           HTTP probe 测连接
 //   provider.setDefault     设默认 provider
@@ -40,6 +40,8 @@ import {
   assertProviderCredentialState,
   removeProviderWithCredentials,
   shareProviderCredential,
+  useProviderEnvironment,
+  retryProviderCredential,
 } from '../providers/provider-storage.js';
 import { testProvider } from '../providers/test-connection.js';
 import { validateBaseUrl } from '../providers/url-guard.js';
@@ -111,22 +113,8 @@ function validateApiKey(key: string): string | null {
   return null;
 }
 
-/**
- * 把 keychain 中的 key 注入 process.env。
- *   - main 启动后调一次（载入所有已配置的 key）
- *   - setKey / removeKey 后实时增量更新 env
- *   - 注入策略：按 provider 的 apiKeyEnv（如 ANTHROPIC_API_KEY）。
- *     多个 provider 共享同一 apiKeyEnv（e.g. codex-cli + openai 都用 OPENAI_API_KEY）时，
- *     仅进程环境兼容层由默认 provider 胜出；Space-owned LLM 调用仍按 Provider identity
- *     解析并 exact-scope，绝不把这个全局值视为另一个 Provider 的授权。
- *
- * review H4-code（2026-05-17）：原本只 set，不 unset。删 key 后 env 残留——
- * UI 显示 NOT SET 但 SDK 仍能用旧 key 直到进程重启。修复：构造"本次该出现的
- * apiKeyEnv 集合"，把所有由 Space 管的 apiKeyEnv 先清空，再按集合重新填回。
- * 这样多 provider 共享 env 时也能正确处理：删了 codex-cli 但 openai 还在 → OPENAI_API_KEY 保留 openai 的 key
- *
- * review M4-sec：未知 account（旧版本残留、provider 被改名等）现在会 log warn
- * 而不是静默 drop——便于排查"我配了 key 但 SDK 看不见"
+/** Compatibility name: restore previously managed env values and initialize file storage.
+ * New secrets are resolved by the Main broker, never injected into process.env.
  */
 export function injectAllKeysToEnv(): Promise<void> {
   const next = injectAllKeysToEnvQueue
@@ -237,14 +225,34 @@ export function registerProviderChannels(): void {
     const detailed = await Promise.all(
       list.map(async (p) => {
         const credentialState = await describeProviderCredential(p.id);
-        if (credentialState.migration === 'connection-changed' && !credentialState.authentication) {
+        if (
+          ['connection-changed', 'source-required', 'unavailable'].includes(
+            credentialState.migration,
+          ) &&
+          !credentialState.authentication
+        ) {
           return { ...p, credentialState, configured: false, configuredSource: 'none' as const };
         }
+        const environment = credentialState.environmentAvailable === true;
+        const source: ProviderInfo['configuredSource'] =
+          credentialState.authentication ??
+          (credentialState.configured || credentialState.migration === 'pending'
+            ? environment
+              ? 'both'
+              : 'file'
+            : environment &&
+                (credentialState.origin === 'env' || credentialState.origin === undefined)
+              ? 'env'
+              : credentialState.origin === undefined && p.configuredSource === 'runtime'
+                ? 'runtime'
+                : 'none');
         return {
           ...p,
           credentialState,
-          configured: p.configured || credentialState.authenticationConfigured === true,
-          configuredSource: credentialState.authentication ?? p.configuredSource,
+          configured: credentialState.authentication
+            ? credentialState.authenticationConfigured === true
+            : source !== 'none',
+          configuredSource: source,
         };
       }),
     );
@@ -283,6 +291,16 @@ export function registerProviderChannels(): void {
     if (!(await resolveKnownProvider(input.providerId))) throw new Error('unknown providerId');
     await shareProviderCredential(input.providerId, input.expected, input.mode);
     await injectAllKeysToEnv();
+    return { ok: true };
+  });
+  registerChannel('provider.retryCredential', async (input) => {
+    if (!(await resolveKnownProvider(input.providerId))) throw new Error('unknown providerId');
+    await retryProviderCredential(input.providerId, input.expected);
+    return { ok: true };
+  });
+  registerChannel('provider.useEnvironment', async (input) => {
+    if (!(await resolveKnownProvider(input.providerId))) throw new Error('unknown providerId');
+    await useProviderEnvironment(input.providerId, input.expected);
     return { ok: true };
   });
 
@@ -418,9 +436,10 @@ export function registerProviderChannels(): void {
 
         const existingKey =
           nextProviderIdCandidate !== input.providerId ? await getKey(input.providerId) : undefined;
-        const previousCredential = existingKey
-          ? await describeProviderCredential(input.providerId)
-          : undefined;
+        const previousCredential =
+          existingKey || beforeCredential.origin === 'env'
+            ? await describeProviderCredential(input.providerId)
+            : undefined;
 
         const updated = await updateKodaxConfigCustomProvider(
           input.providerId,

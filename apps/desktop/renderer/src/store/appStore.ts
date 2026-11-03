@@ -708,6 +708,7 @@ interface AppState {
    * 视图（F061）按 currentSession 过滤。
    */
   workflowRuns: Readonly<Record<string, WorkflowRunT>>;
+  workflowObservationStatus: 'ready' | 'recovering';
   /** F060：消费 push workflow.event，按 runId 覆盖式 upsert。*/
   upsertWorkflowRun: (payload: WorkflowEventPayload) => void;
   /** F060：workflow.list 播种已知 run（覆盖式合并进 workflowRuns）。*/
@@ -5598,6 +5599,9 @@ function reconcileRuntimeQueuedMessages(
             ? { operationId: input.originOperationId }
             : {}),
         admissionError: input.admissionError,
+        ...('recovery' in existing || input.recovery !== undefined
+          ? { recovery: input.recovery }
+          : {}),
         status: failed ? 'failed' : 'queued',
         ...(failed?.failureReason !== undefined ? { failureReason: failed.failureReason } : {}),
       };
@@ -5616,6 +5620,7 @@ function reconcileRuntimeQueuedMessages(
       content,
       matchContent: content,
       ...(input.admissionError ? { admissionError: input.admissionError } : {}),
+      ...(input.recovery !== undefined ? { recovery: input.recovery } : {}),
       queueMode,
       status: 'queued',
       sentAt: input.createdAt,
@@ -6370,6 +6375,7 @@ export const useAppStore = create<AppState>((setState) => {
     managedTaskStatusBySession: {},
     agentActorSnapshotBySession: {},
     workflowRuns: {},
+    workflowObservationStatus: 'ready',
     workflowActivityByRun: {},
     lastDiffPath: null,
     pendingToolPaths: {},

@@ -94,6 +94,12 @@ async function initializeStorage() {
     store: file,
     scopeId: discovery.scopeId,
     resolve: providerStorageBinding,
+    environmentName: async (provider) => {
+      const preset = (await sdk()).KODAX_PROVIDER_SNAPSHOTS[
+        provider as keyof typeof import('@kodax-ai/kodax/llm').KODAX_PROVIDER_SNAPSHOTS
+      ];
+      return preset?.apiKeyEnv ?? (await configuredConnection(provider))?.apiKeyEnv ?? '';
+    },
     hasEnvironment: async (provider) => {
       const module = await sdk(),
         preset = Object.entries(module.KODAX_PROVIDER_SNAPSHOTS).find(
@@ -177,6 +183,22 @@ export async function getKey(provider: string, proof?: string): Promise<string |
   }
   return key === undefined ? undefined : rememberProviderSecret(key);
 }
+/** Main-only selection result: absence of a file value never grants ambient credentials. */
+export async function resolveProviderCredentialSource(provider: string, proof?: string) {
+  const store = await storage();
+  const selected = await store.resolve(provider, legacyAccounts(provider), proof);
+  if (selected.key !== undefined) return { ...selected, key: rememberProviderSecret(selected.key) };
+  if (selected.environmentName !== undefined) return selected;
+  // Retain the reviewed OpenAI/Codex saved-account alias only for an unconfigured binding.
+  if (provider === 'openai' || provider === 'codex-cli') {
+    const state = await store.describe(provider, []);
+    if (state.scope === 'shared' && state.revision === null) {
+      const key = await store.read(provider === 'openai' ? 'codex-cli' : 'openai', [], undefined);
+      if (key !== undefined) return { origin: 'file' as const, key: rememberProviderSecret(key) };
+    }
+  }
+  return selected;
+}
 export async function assertProviderCredentialState(
   provider: string,
   expected: SpaceCredentialState | undefined,
@@ -231,6 +253,25 @@ export async function shareProviderCredential(
   if ((await configuredConnection(provider))?.oauth)
     throw new Error('Use OAuth login for this connection.');
   await (await storage()).share(provider, expected, mode, legacyAccounts(provider));
+  await fencePreviousCredentials(provider);
+}
+export async function retryProviderCredential(
+  provider: string,
+  expected: SpaceCredentialState,
+): Promise<void> {
+  const pinned = await assertProviderCredentialState(provider, expected);
+  for (const account of legacyAccounts(provider)) legacy.retryMigrationAccess(account);
+  await (await storage()).retry(provider, pinned, legacyAccounts(provider));
+  await fencePreviousCredentials(provider);
+}
+export async function useProviderEnvironment(
+  provider: string,
+  expected: SpaceCredentialState,
+): Promise<void> {
+  const connection = await configuredConnection(provider);
+  if (connection?.oauth || connection?.cloud)
+    throw new Error('Use the configured native authentication for this connection.');
+  await (await storage()).useEnvironment(provider, expected, legacyAccounts(provider));
   await fencePreviousCredentials(provider);
 }
 export async function removeProviderWithCredentials(

@@ -100,6 +100,7 @@ export interface UserMessage {
 }
 
 export interface QueuedUserMessage {
+  readonly recovery?: import('@kodax-space/space-ipc-schema').SpaceSessionLiveProjectionT['queuedInputs'][number]['recovery'];
   readonly admissionError?: SpaceQueueAdmissionError;
   readonly id: string;
   readonly queueId?: string;

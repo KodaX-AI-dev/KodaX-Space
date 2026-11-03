@@ -227,3 +227,12 @@ test('disconnect fails closed when credential deletion is unverified and can be 
   assert.equal(attempts, 2);
   assert.equal(persisted.has(credentialKey), false);
 });
+
+test('connector credential writes cannot report success when the store discards the secret', async () => {
+  const store = createVerifiedCredentialStore({
+    get: async () => undefined,
+    set: async () => {},
+    delete: async () => {},
+  });
+  await assert.rejects(store.set('fixture-account', 'private-secret'), /credential.*sav|persist/i);
+});

@@ -1278,6 +1278,7 @@ export class CoderSessionProjectionReducer {
       readonly inputId: string;
       readonly text: string;
       readonly enqueuedAt: number;
+      readonly recovery?: 'restoring' | 'ready' | 'unavailable' | 'blocked';
       readonly admissionError?: {
         readonly code:
           | 'execution_binding_unavailable'
@@ -1296,6 +1297,7 @@ export class CoderSessionProjectionReducer {
       state: 'queued' as const,
       createdAt: item.enqueuedAt,
       contentPreview: item.text.slice(0, 4096),
+      ...(item.recovery ? { recovery: item.recovery } : {}),
       ...(item.admissionError ? { admissionError: item.admissionError } : {}),
       position: index + 1,
     }));

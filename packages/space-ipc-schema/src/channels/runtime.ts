@@ -871,6 +871,8 @@ export const spaceRuntimeQueuedInputSchema = z
     /** Exact Session-journal position of run.input.delivered when Space observed it. */
     deliverySeq: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
     contentPreview: z.string().max(4096).optional(),
+    /** Main-owned recovery progress, independent of Host admission errors. */
+    recovery: z.enum(['restoring', 'ready', 'unavailable', 'blocked']).optional(),
     admissionError: z
       .object({
         code: z.enum([
@@ -1118,6 +1120,29 @@ export const spaceSessionLiveChangedSchema = z
         break;
     }
   });
+
+export const runtimeExtensionHealthChannel = {
+  name: 'runtime.extensionHealth',
+  direction: 'invoke',
+  input: z.undefined(),
+  output: z.object({
+    state: z.enum(['ready', 'degraded', 'unavailable']),
+    active: z.boolean(),
+    builtins: z.object({ skills: z.boolean(), artifacts: z.boolean() }),
+    extensions: z.array(z.object({ name: z.string().max(160), loaded: z.boolean() })).max(128),
+    tools: z.array(z.string().max(160)).max(256),
+    failures: z
+      .array(
+        z.object({
+          stage: z.string().max(32),
+          message: z.string().max(280),
+          target: z.string().max(160),
+          occurredAt: z.string().max(64),
+        }),
+      )
+      .max(16),
+  }),
+} as const;
 
 export const runtimeProfileSnapshotChannel = {
   name: 'runtime.profileSnapshot',

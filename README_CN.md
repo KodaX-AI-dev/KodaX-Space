@@ -79,7 +79,7 @@ npm run dev
     </td>
     <td valign="top">
       <h3>受治理的自动化</h3>
-      Permission mode、对话流内联提问卡、系统 Keychain、可信 IPC schema 与本地 license gate，让 agent 工作可见、可审、可控。
+      Permission mode、对话流内联提问卡、SDK auth.json、可信 IPC schema 与本地 license gate，让 agent 工作可见、可审、可控。
     </td>
     <td valign="top">
       <h3>丰富的项目上下文</h3>
@@ -187,7 +187,7 @@ KodaX Space 会尽量复用 KodaX 生态状态；桌面 UI 特有状态则由 Sp
 | `~/.kodax/sessions/`                     | 与 KodaX CLI/REPL 共享 session 历史。                                                                                     |
 | `~/.kodax/handoffs/`                     | 桌面 handoff inbox，用于 session continuity。                                                                             |
 | `~/.kodax/skills/` 和项目 skills         | 由 KodaX skills runtime 发现。                                                                                            |
-| API keys                                 | 优先进入系统 Keychain；仍支持环境变量。                                                                                   |
+| API keys                                 | 模型 Key 使用权限保护的明文 auth.json，或用户明确选择的环境变量。旧凭证迁移和部分连接器/外部 CLI 仍依赖系统保护存储。     |
 | `~/.kodax/space/`                        | Space 自有偏好、项目、UI 状态和桌面元数据。                                                                               |
 | `<profile-root>/runtime/`                | Shared Runtime daemon 状态与 run/event journal；默认 profile 下实际为 `~/.kodax/runtime/`。                               |
 

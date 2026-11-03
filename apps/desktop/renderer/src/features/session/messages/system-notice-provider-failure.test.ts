@@ -4,9 +4,32 @@ import { createElement, type ComponentType, type PropsWithChildren } from 'react
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { I18nProvider } from '../../../i18n/I18nProvider.js';
-import { AssistantBubble, SystemNotice } from './bubbles.js';
+import { AssistantBubble, SystemNotice, QueuedUserBubble } from './bubbles.js';
 
 const TestI18nProvider = I18nProvider as ComponentType<PropsWithChildren<Record<string, never>>>;
+
+test('a Host-confirmed queued input can be taken back even without an admission error', () => {
+  withEnglishLocale(() => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        TestI18nProvider,
+        null,
+        createElement(QueuedUserBubble, {
+          kind: 'queued_user',
+          id: 'local-input',
+          queueId: 'host-input',
+          content: 'Original question',
+          queueMode: 'after-turn',
+          status: 'queued',
+          sentAt: 0,
+        }),
+      ),
+    );
+    assert.match(markup, /Take back message/);
+    assert.match(markup, /Original question/);
+    assert.doesNotMatch(markup, /execution_binding_rejected/);
+  });
+});
 
 test('thinking text without a Host estimate does not invent a token count', () => {
   withEnglishLocale(() => {

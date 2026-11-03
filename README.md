@@ -79,7 +79,7 @@ npm run dev
     </td>
     <td valign="top">
       <h3>Governed automation</h3>
-      Permission modes, inline ask-user cards in the conversation stream, keychain-backed credentials, trusted IPC schemas, and local license gates keep agent work visible and reviewable.
+      Permission modes, inline ask-user cards in the conversation stream, permission-protected credential files and explicit source selection, trusted IPC schemas, and local license gates keep agent work visible and reviewable.
     </td>
     <td valign="top">
       <h3>Rich project context</h3>
@@ -200,7 +200,7 @@ KodaX Space intentionally reuses KodaX ecosystem state where it should, and owns
 | `~/.kodax/sessions/`                     | Shared session history with KodaX CLI/REPL.                                                                                                                                                                                                           |
 | `~/.kodax/handoffs/`                     | Desktop handoff inbox for session continuity.                                                                                                                                                                                                         |
 | `~/.kodax/skills/` and project skills    | Discovered by the KodaX skills runtime.                                                                                                                                                                                                               |
-| API keys                                 | Stored through OS keychain when available; environment variables remain supported.                                                                                                                                                                    |
+| API keys                                 | Model keys use permission-protected plaintext SDK auth.json and explicitly selected environment sources. OS storage remains for legacy migration and some connectors/external CLIs.                                                                   |
 | `~/.kodax/space/`                        | Space-owned preferences, projects, UI state, and desktop-specific metadata.                                                                                                                                                                           |
 | `<profile-root>/runtime/`                | Shared Runtime daemon state and run/event journal; with the default profile this resolves to `~/.kodax/runtime/`.                                                                                                                                     |
 

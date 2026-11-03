@@ -1,5 +1,7 @@
 # F121 v0.1.47：SDK 聊天输出迁移回归
 
+当前 Registry beta.1 的完整能力补审、修复及未关闭范围见 [2026-11-03 执行记录](../releases/kodax-beta1-space-fixes.md)。除下面既有输出回归，还需核对：文件/env 原来源与重启、Partner 实际 Agent 模式及其他客户端更改、所有 queue error 的完整材料分类和显式取回、Main/Host 换代恢复、Workflow 局部/全重连快照、Artifact 缺失但 Skill/聊天可用、连接器保存失败不得误报连接成功。SDK live Host 重绑、旧原文/回执、promotion view 与锁内模式准入仍按该记录单独验收。
+
 使用真实 Provider 的 Coder 会话，核对 [ADR-010](../ADR/ADR-010-sdk-product-output.md)。自动回归用已安装 SDK 与隔离的本地 HTTP Provider，不使用个人历史或外部模型账号。
 
 2026-10-14 的 16 项自动 E2E 是本地补丁 SDK 的历史验证。2026-10-15 已安装真实 Registry `0.7.97-alpha.6`，包含 accepted-user 图片恢复和草稿修复，开发链接已撤下。SDK 接入时的回归及包体记录见 [alpha.6 接入记录](../releases/kodax-0.7.97-alpha.6-integration.md)，当前 Space `0.1.47-alpha.2` 候选的新构建与验证见 [alpha.2 发布准备](../releases/v0.1.47-alpha.2-release-readiness.md)。本地构建通过不等于 Space 安装包已对外发布。

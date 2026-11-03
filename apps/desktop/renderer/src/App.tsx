@@ -733,7 +733,7 @@ export default function App(): JSX.Element {
     window.addEventListener(SPACE_VERSION_REFRESH_EVENT, refreshSpaceVersion);
     refreshSpaceVersion();
 
-    // FEATURE_004 启动时拉一次 provider 列表（main 已经把 keychain 中的 key 注入 env）
+    // Main projects approved credential sources; secrets remain behind its broker.
     bridge.invoke('provider.list', undefined).then((result) => {
       if (result.ok) {
         setProviders(
@@ -915,6 +915,10 @@ export default function App(): JSX.Element {
         /* best-effort 播种；失败由后续实时事件补齐 */
       });
     unsubsRef.current.push(
+      bridge.on('workflow.observation', (payload) => {
+        useAppStore.setState({ workflowObservationStatus: payload.status });
+        if (payload.runs) seedWorkflowRuns(payload.runs);
+      }),
       bridge.on('workflow.event', (payload) => {
         upsertWorkflowRun(payload);
         if (payload.sessionId !== undefined && payload.surface !== 'partner') {

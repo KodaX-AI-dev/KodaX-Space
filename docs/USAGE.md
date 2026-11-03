@@ -239,7 +239,7 @@ native SQLite load、物理 sandbox helper/doctor、真实 packaged boot 和 Git
 
 | 现象                          | 首先检查                                                                                                                 |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 没有 Provider / API key       | Settings → Providers；环境变量；OS Keychain 状态                                                                         |
+| 没有 Provider / API key       | Settings → Providers，检查已选来源、auth.json 权限和迁移状态；需要时明确选择环境变量或重试原凭证，不会自动换账号         |
 | 会话或配置出现在错误 profile  | 启动前的 `KODAX_HOME`、`KODAX_PROFILE_DIR`；不要在 SDK import 后修改                                                     |
 | Runtime run 失败              | 版本信息、runId、`~/.kodax/space/logs`、Runtime status/capability snapshot                                               |
 | Packaged daemon 启动即退出    | `~/.kodax/space/logs`；必要时把 `scripts/diagnose-packaged-daemon.cmd` 复制到 extracted app 目录前台复现                 |

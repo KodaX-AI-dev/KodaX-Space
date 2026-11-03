@@ -159,10 +159,36 @@ test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () 
       process.stdout.write(`Expert ${expert.id}...\n`);
       const id = await create();
       assert.equal(await store.set(id, { partnerExpert: await role(expert) }), true);
+      const requestStart = requests.length;
       const run = await ask(id, `Evidence for ${expert.id}`);
       assert.equal((await run.result).phase, 'completed');
       const status = await attached.runs.get(run.runId);
       assert.equal(status.workMode, 'agent');
+      assert.equal(status.effectiveConfig.workMode, 'agent');
+      const payloads = requests.slice(requestStart).map((body) => JSON.parse(body));
+      const system = payloads
+        .flatMap((body) => body.messages ?? [])
+        .filter((message) => ['system', 'developer'].includes(message.role));
+      assert.ok(
+        system.some((message) => JSON.stringify(message.content).includes(expert.prompt)),
+        'actual system instructions retain the chosen expert',
+      );
+      const wireTools = new Set(
+        payloads
+          .flatMap((body) => body.tools ?? [])
+          .map((tool) => tool.function?.name ?? tool.name),
+      );
+      for (const tool of ['bash', 'write', 'spawn_agent']) {
+        assert.ok(
+          status.effectiveConfig.toolScope.includes(tool),
+          `execution surface retains ${tool}`,
+        );
+        assert.ok(
+          status.effectiveConfig.modelToolScope.includes(tool),
+          `model surface retains ${tool}`,
+        );
+        assert.ok(wireTools.has(tool), `actual provider schema retains ${tool}`);
+      }
       assert.equal(status.effectiveConfig.agentProfile.name, expert.name);
       assert.ok(status.effectiveConfig.toolScope.includes('bash'));
       assert.equal(status.executionBinding?.defaultSkill?.name, expert.skillRef);

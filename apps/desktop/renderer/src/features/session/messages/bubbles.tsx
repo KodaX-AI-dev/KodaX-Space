@@ -515,6 +515,7 @@ export function LocalNoticeBubble({
 export function QueuedUserBubble({
   id,
   queueId,
+  recovery,
   admissionError,
   content,
   attachments = [],
@@ -572,11 +573,9 @@ export function QueuedUserBubble({
             <UserImageAttachments attachments={attachments} />
           </div>
         )}
-        {admissionError && (
-          <div className="mt-2 text-xs text-danger">
-            {admissionError.code}
-            {queueId && <QueuedInputRecovery localId={id} inputId={queueId} />}
-          </div>
+        {admissionError && <div className="mt-2 text-xs text-danger">{admissionError.code}</div>}
+        {queueId && status === 'queued' && (
+          <QueuedInputRecovery localId={id} inputId={queueId} recovery={recovery} />
         )}
       </div>
       <MessageFooter text={visibleContent} sentAt={sentAt} />
