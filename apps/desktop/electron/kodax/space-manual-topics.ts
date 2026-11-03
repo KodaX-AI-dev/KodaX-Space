@@ -204,6 +204,9 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     summary:
       'Windows 可保留可见托盘；彻底退出优先安全停止 Runtime，遇到任务时可保持开启或只终止当前 Space 的工作后强退。',
     body: text(
+      '设置中的“测试通知”会主动检查系统原生接收结果，不会自动开启后台完成通知，也不调用模型。只有运行至少一分钟、且完成时应用不在前台的实时任务才触发完成通知；历史重放和取消不产生新提醒。系统接收不保证出现横幅或声音，仍取决于系统通知权限和专注模式。',
+      'macOS 请在“系统设置 → 通知 → KodaX Space”中允许通知并开启应用角标；首次授权可先点“测试通知”。成功后会恢复已有的待关注计数，即使授权晚于等待确认的时间。alpha.4 使用 ad-hoc 应用签名支持 Electron 42 通知，不提供 Apple Developer ID 信任或公证；首次打开按系统提示处理。',
+      '',
       'Windows 点击右上角关闭时，F140 默认询问“最小化到托盘并保留 Runtime”还是“彻底退出”，并可记住选择。Settings -> Preferences -> Close button behavior 可改为每次询问、直接最小化到托盘，或直接进入安全彻底退出；取消不关闭窗口也不修改偏好，重复点击不会打开多个对话框。',
       '',
       '最小化到托盘会销毁主 BrowserWindow 和 React renderer，但保留轻量 Electron main、托盘图标和 Coder Runtime 客户端连接。单击托盘或选择“打开 KodaX Space”会重建主窗口。显式托盘“关闭窗口”只关闭界面，不读取主窗口偏好；托盘不再提供会让 Runtime 失去可见控制面的“退出 Space，保留 Runtime”。',

@@ -133,6 +133,14 @@ jobs:
           # 关闭 native rebuild 在 CI（keytar 在 v0.1.0 是 optional + memory fallback）
           npm_config_build_from_source: 'false'
 
+      - name: Verify macOS application signature
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app="out/${{ matrix.unpacked }}/KodaX Space.app"
+          codesign --verify --deep --strict "$app"
+          codesign --display --verbose=2 "$app"
+
       - name: Create Windows zip fallback downloads
         if: runner.os == 'Windows'
         shell: pwsh
@@ -250,7 +258,7 @@ jobs:
         env:
           SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
         run: |
-          specs=(tests/e2e/renderer-boot.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts tests/e2e/sdk-migration-gaps.spec.ts)
+          specs=(tests/e2e/renderer-boot.spec.ts tests/e2e/native-notifications.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts tests/e2e/sdk-migration-gaps.spec.ts)
           if [[ "$RUNNER_OS" == Linux ]]; then
             dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c '
               printf "%s\n" "kodax-space-ci" |

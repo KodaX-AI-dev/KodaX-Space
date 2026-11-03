@@ -30,9 +30,9 @@ export const notificationShowChannel = {
     silent: z.boolean().optional(),
   }),
   output: z.object({
-    /** false 表示 OS 没创建通知（少数 Linux 桌面无 libnotify、或 quiet hours）；
-     *  失败原因不暴露给 renderer，仅作 UI fallback 决策（如继续 NotificationsSurface） */
+    /** True confirms native acceptance, not a visible banner: OS permissions and Focus apply. */
     shown: z.boolean(),
+    reason: z.enum(['unsupported', 'failed', 'not_confirmed']).optional(),
   }),
 } as const;
 

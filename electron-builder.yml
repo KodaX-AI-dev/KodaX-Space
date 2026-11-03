@@ -228,8 +228,13 @@ mac:
   target:
     - target: dmg
     - target: zip
-  # 不签名（FEATURE_027 已 drop）
-  identity: null
+  # Electron 42 UNNotification requires a valid code signature. Ad-hoc signing
+  # needs no certificate and does not provide Developer ID trust or notarization.
+  identity: '-'
+  # SDK native artifacts are hash-pinned. Seal resources in the outer bundle
+  # without rewriting their existing signatures or vendor bytes.
+  signIgnore:
+    - 'Contents/Resources/'
   hardenedRuntime: false
   icon: resources/icon.png # electron-builder 自动从 PNG 生成 icns
   artifactName: 'KodaX-Space-${version}-${arch}.${ext}'

@@ -13,6 +13,7 @@
 // OS 把通知放收纳中心，不响铃；这是用户期望的行为。
 
 import { Notification, type BrowserWindow } from 'electron';
+import type { ChannelOutput } from '@kodax-space/space-ipc-schema';
 import { registerChannel } from './register.js';
 import { pushToRenderer } from './push.js';
 
@@ -26,17 +27,22 @@ export function setNotificationWindowGetter(getter: () => BrowserWindow | null):
   getMainWindow = getter;
 }
 
-export function registerNotificationChannels(): void {
+export function registerNotificationChannels(onShown: () => void = () => {}): void {
   registerChannel('notification.show', async (input) => {
     if (!Notification.isSupported()) {
       // Linux 没装 libnotify / headless / etc. — UI 退化到 in-app NotificationsSurface
-      return { shown: false };
+      return { shown: false, reason: 'unsupported' as const };
     }
-    const notif = new Notification({
-      title: input.title,
-      body: input.body,
-      silent: input.silent ?? false,
-    });
+    let notif: Notification;
+    try {
+      notif = new Notification({
+        title: input.title,
+        body: input.body,
+        silent: input.silent ?? false,
+      });
+    } catch {
+      return { shown: false, reason: 'failed' as const };
+    }
     notif.on('click', () => {
       // 拉窗口前台 + 推 click event 让 renderer 切到对应 session
       const win = getMainWindow?.();
@@ -49,7 +55,44 @@ export function registerNotificationChannels(): void {
         ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
       });
     });
-    notif.show();
-    return { shown: true };
+    return showNativeNotification(notif, onShown);
+  });
+}
+
+function showNativeNotification(
+  notification: Notification,
+  onShown: () => void,
+): Promise<ChannelOutput<'notification.show'>> {
+  // Permission dialogs can outlive the bounded IPC confirmation. A later native
+  // success still grants the opportunity to restore the cached macOS badge.
+  notification.once('show', onShown);
+  const forgetShown = () => notification.removeListener('show', onShown);
+  notification.once('failed', forgetShown);
+  notification.once('close', forgetShown);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: ChannelOutput<'notification.show'>): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      notification.removeListener('show', onShow);
+      notification.removeListener('failed', onFailed);
+      notification.removeListener('close', onClosed);
+      resolve(result);
+    };
+    const onShow = () => finish({ shown: true });
+    const onFailed = () => finish({ shown: false, reason: 'failed' });
+    const onClosed = () => finish({ shown: false, reason: 'not_confirmed' });
+    const timer = setTimeout(onClosed, 10_000);
+    timer.unref?.();
+    notification.once('show', onShow);
+    notification.once('failed', onFailed);
+    notification.once('close', onClosed);
+    try {
+      notification.show();
+    } catch {
+      forgetShown();
+      onFailed();
+    }
   });
 }

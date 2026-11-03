@@ -1,4 +1,5 @@
 import { ExtensionHealth } from './ExtensionHealth.js';
+import { NativeCompletionNotificationSettings } from './NativeCompletionNotificationSettings.js';
 import {
   useCallback,
   useEffect,
@@ -607,7 +608,7 @@ function PreferencesPanel(): JSX.Element {
       >
         <div className="space-y-3">
           <SmartPopoutToggle />
-          <NativeCompletionNotificationToggle />
+          <NativeCompletionNotificationSettings />
         </div>
       </SettingsSection>
 
@@ -2448,30 +2449,6 @@ function SmartPopoutToggle(): JSX.Element {
         </span>
         <span className="mt-1 block text-xs leading-5 text-fg-muted">
           {t('settings.smartPopout.description')}
-        </span>
-      </span>
-    </label>
-  );
-}
-
-function NativeCompletionNotificationToggle(): JSX.Element {
-  const { t } = useI18n();
-  const enabled = useAppStore((s) => s.nativeCompletionNotificationsEnabled);
-  const setEnabled = useAppStore((s) => s.setNativeCompletionNotificationsEnabled);
-  return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border-default bg-surface px-3 py-3">
-      <input
-        type="checkbox"
-        checked={enabled}
-        onChange={(e) => setEnabled(e.target.checked)}
-        className="mt-1 h-4 w-4 accent-ok"
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium text-fg-primary">
-          {t('settings.notifications.title')}
-        </span>
-        <span className="mt-1 block text-xs leading-5 text-fg-muted">
-          {t('settings.notifications.description')}
         </span>
       </span>
     </label>

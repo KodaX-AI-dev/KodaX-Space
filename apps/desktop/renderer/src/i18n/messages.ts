@@ -2089,6 +2089,14 @@ export const messages = {
     'settings.smartPopout.description':
       'Space focuses the Task Dock when a plan is drafted or file changes begin. Disable this when you want task surfaces to stay strictly manual.',
     'settings.notifications.title': 'System notifications for background session completion',
+    'settings.notifications.test': 'Test notification',
+    'settings.notifications.testBody': 'This is a test notification from KodaX Space.',
+    'settings.notifications.systemHelp':
+      'Notifications and icon badges require system permission. On macOS, allow KodaX Space in System Settings → Notifications, enable badges and check Focus settings.',
+    'settings.notifications.accepted':
+      'The system accepted the notification. Banner and sound follow your system settings.',
+    'settings.notifications.notConfirmed':
+      'Native notification delivery was not confirmed. Check system notification permissions and try again.',
     'settings.notifications.description':
       'Space sends an OS notification only for live sessions that run longer than a minute and finish while the app is not active. Completion notices still appear inside Space and can be dismissed there.',
     'settings.providers.configured': 'Configured',
@@ -5008,6 +5016,12 @@ export const messages = {
     'settings.smartPopout.description':
       '当计划生成或文件开始变更时，Space 会自动打开并聚焦右侧任务栏或变更区。想完全手动控制时可以关闭。',
     'settings.notifications.title': '后台会话完成时发送系统通知',
+    'settings.notifications.test': '测试通知',
+    'settings.notifications.testBody': '这是一条来自 KodaX Space 的测试通知。',
+    'settings.notifications.systemHelp':
+      '系统通知和图标角标需要系统权限。macOS 请在“系统设置 → 通知”中允许 KodaX Space、开启角标，并检查专注模式。',
+    'settings.notifications.accepted': '系统已接收通知，横幅和声音按你的系统设置显示。',
+    'settings.notifications.notConfirmed': '未能确认系统通知已发出，请检查系统通知权限后重试。',
     'settings.notifications.description':
       '只有运行超过一分钟、且完成时应用不在前台的 live session 会触发系统通知。完成提示仍会在 Space 内显示并可关闭。',
     'settings.providers.configured': '已配置',

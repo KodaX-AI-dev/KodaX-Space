@@ -118,3 +118,33 @@ test('native badge controller isolates a failing Windows target', () => {
   assert.equal(trayImages.at(-1), 'tray:1');
   assert.equal(errors.length, 1);
 });
+
+test('macOS retains its attention count until notification permission is granted', () => {
+  let allowed = false;
+  const counts: number[] = [];
+  const controller = new AppBadgeController<string>({
+    platform: 'darwin',
+    setApplicationBadgeCount: (count) => {
+      counts.push(count);
+      return allowed;
+    },
+    getWindow: () => null,
+    getTray: () => null,
+    baseTrayImage: 'base',
+    createWindowsOverlayImage: () => {
+      throw Error('Windows-only');
+    },
+    createWindowsTrayImage: () => {
+      throw Error('Windows-only');
+    },
+    onError: (error) => {
+      throw error;
+    },
+  });
+  assert.equal(controller.setCount(3), false);
+  allowed = true;
+  assert.equal(controller.refresh(), true);
+  assert.deepEqual(counts, [3, 3]);
+  assert.equal(controller.setCount(0), true);
+  assert.deepEqual(counts, [3, 3, 0]);
+});

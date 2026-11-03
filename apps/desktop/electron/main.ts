@@ -2521,7 +2521,11 @@ const startupPromise = app
     });
     registerLicenseChannels();
     // F020 native OS notification — renderer 调 notification.show 弹 OS 原生通知
-    registerNotificationChannels();
+    registerNotificationChannels(() => {
+      // First delivery can grant macOS notification/badge permission. Reapply
+      // the existing attention count even when no new Session event arrives.
+      if (process.platform === 'darwin') appBadgeController.refresh();
+    });
     setNotificationWindowGetter(() =>
       mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
     );
