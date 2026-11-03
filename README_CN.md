@@ -268,7 +268,7 @@ npm run e2e:headed
 | [README.md](README.md)                                                                                           | 英文 README。                                                              |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                                                                               | 贡献边界、验证要求和文档同步规则。                                         |
 | [docs/README.md](docs/README.md)                                                                                 | 文档中心，以及当前文档/历史文档索引。                                      |
-| [docs/USER_MANUAL.zh-CN.md](docs/USER_MANUAL.zh-CN.md)                                                           | 面向 v0.1.45 发布基线的图解中文手册。                                      |
+| [docs/USER_MANUAL.zh-CN.md](docs/USER_MANUAL.zh-CN.md)                                                           | 当前版本的图解中文手册；旧截图仅辅助定位。                                |
 | [docs/USAGE.md](docs/USAGE.md)                                                                                   | 源码启动、profile、Runtime Host、测试、打包与排障。                        |
 | [docs/BUILTIN_SKILLS.md](docs/BUILTIN_SKILLS.md)                                                                 | builtin skill 的来源、许可、更新、补丁和打包完整性流程。                   |
 | [docs/releases/v0.1.34-release-readiness.md](docs/releases/v0.1.34-release-readiness.md)                         | v0.1.34 的发布门禁、产物摘要、已知风险与发布证据。                         |
