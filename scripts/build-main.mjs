@@ -40,7 +40,16 @@ fs.renameSync(
 // 此时 require('electron') 仅返回 electron.exe 路径字符串而非 API 模块。
 fs.writeFileSync(
   path.join(outDir, 'package.json'),
-  JSON.stringify({ name: 'kodax-space-main', type: 'commonjs', main: 'main.js' }, null, 2) + '\n',
+  JSON.stringify(
+    {
+      name: 'kodax-space-main',
+      version: JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version,
+      type: 'commonjs',
+      main: 'main.js',
+    },
+    null,
+    2,
+  ) + '\n',
 );
 
 const watch = process.argv.includes('--watch');

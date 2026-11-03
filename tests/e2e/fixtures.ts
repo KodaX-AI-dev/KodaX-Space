@@ -222,15 +222,6 @@ export async function launchSpace(
   }
 
   try {
-    // Native confirmations must never require a human during isolated tests.
-    // Cancel instead of forcing success; a genuine lifecycle failure stays red.
-    await app.evaluate(({ dialog }) => {
-      dialog.showMessageBox = async (...args: unknown[]) => {
-        const options = args.at(-1) as Electron.MessageBoxOptions;
-        return { response: options.cancelId ?? 0, checkboxChecked: false };
-      };
-    });
-    await opts?.onLaunched?.(app);
     // 调试 hook：把 main process console + renderer console 都打到 test stdout，
     // 方便 30s 超时时定位卡在哪一步。CI 上可以静默掉。
     if (process.env.E2E_DEBUG === '1') {
@@ -260,6 +251,18 @@ export async function launchSpace(
     };
     app.on('window', instrumentPage);
     for (const candidate of app.windows()) instrumentPage(candidate);
+    // Electron's bootstrap execution context may be replaced before its first
+    // window exists. Keep early page instrumentation, but wait before Main eval.
+    await app.firstWindow();
+    // Cancel native confirmations; never force success or replace the real
+    // Runtime shutdown checks. The boot overlay may still cover the renderer.
+    await app.evaluate(({ dialog }) => {
+      dialog.showMessageBox = async (...args: unknown[]) => {
+        const options = args.at(-1) as Electron.MessageBoxOptions;
+        return { response: options.cancelId ?? 0, checkboxChecked: false };
+      };
+    });
+    await opts?.onLaunched?.(app);
     const page = await waitForMainRendererPage(app);
     app.off('window', instrumentPage);
     // 关键顺序：先挂 spec 传入的 listeners，再等 domcontentloaded。

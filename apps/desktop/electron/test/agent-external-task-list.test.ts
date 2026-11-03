@@ -60,3 +60,25 @@ test('agent.external.task.list does not disguise a Host failure as a local-only 
     /Host unavailable/,
   );
 });
+
+for (const forced of [false, true]) {
+  test(`agent.external.task.list keeps an unsaved mock Session local (forced=${forced})`, async (t) => {
+    const previous = process.env.KODAX_FORCE_MOCK;
+    if (forced) process.env.KODAX_FORCE_MOCK = '1';
+    else delete process.env.KODAX_FORCE_MOCK;
+    t.after(() => {
+      if (previous === undefined) delete process.env.KODAX_FORCE_MOCK;
+      else process.env.KODAX_FORCE_MOCK = previous;
+    });
+    t.mock.method(kodaxHost, 'get', () => ({ provider: forced ? 'anthropic' : 'mock' }));
+    t.mock.method(externalAgentGateway, 'listTasks', async () => []);
+    t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+    const runtimeList = t.mock.method(runtimeHostAdapter, 'listRuntimeActorTasks', async () => {
+      throw new Error('mock Sessions have no Host record');
+    });
+    assert.deepEqual(await listExternalAgentTasksForIpc({ sessionId: 's_mock_draft' }), {
+      tasks: [],
+    });
+    assert.equal(runtimeList.mock.callCount(), 0);
+  });
+}

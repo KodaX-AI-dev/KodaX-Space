@@ -196,7 +196,7 @@ test('Task Dock continues input-required tasks and preserves independent cancell
       'agent.external.task.list',
       { sessionId: secondSession.data.sessionId },
     );
-    expect(crossSessionList.ok).toBe(true);
+    expect(crossSessionList.ok, JSON.stringify(crossSessionList)).toBe(true);
     expect(crossSessionList.data.tasks).toHaveLength(0);
     const crossSessionEvents = await invoke(page, 'agent.external.task.events', {
       sessionId: secondSession.data.sessionId,

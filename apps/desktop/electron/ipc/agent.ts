@@ -64,7 +64,11 @@ export async function listExternalAgentTasksForIpc(
     parentTaskId: input.sessionId,
     ...(input.agentId ? { agentId: input.agentId } : {}),
   });
-  if (!runtimeHostAdapter.isRuntimeSelected()) {
+  if (
+    !runtimeHostAdapter.isRuntimeSelected() ||
+    liveSession?.provider === 'mock' ||
+    process.env.KODAX_FORCE_MOCK === '1'
+  ) {
     return { tasks: localTasks };
   }
 
