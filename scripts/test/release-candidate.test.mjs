@@ -54,6 +54,34 @@ test('a rebuilt candidate cannot borrow an earlier acceptance receipt', async (t
   await assert.rejects(verifyAcceptedCandidate(root, identity), /acceptance receipt/);
 });
 
+test('candidate fingerprints match uploaded installers and latest manifests without builder diagnostics', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'space-candidate-upload-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const installers = [
+    'setup.exe',
+    'app.dmg',
+    'app.AppImage',
+    'app.deb',
+    'app.zip',
+    'app.blockmap',
+    'latest.yml',
+    'latest-mac.yml',
+    'latest-linux.yml',
+  ].sort();
+  await writeFile(path.join(root, 'app.tgz'), 'packaged bytes');
+  for (const name of [...installers, 'builder-debug.yml', 'builder-effective-config.yaml'])
+    await writeFile(path.join(root, name), name);
+  await recordCandidate(root, identity);
+  const manifest = JSON.parse(await readFile(path.join(root, 'candidate.json'), 'utf8'));
+  assert.deepEqual(
+    manifest.installers.map((file) => file.name),
+    installers,
+  );
+  await rm(path.join(root, 'builder-debug.yml'));
+  await rm(path.join(root, 'builder-effective-config.yaml'));
+  await verifyCandidate(root, identity, 'installers');
+});
+
 test('candidate validation rejects an empty installer list and unsafe manifest paths', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'space-candidate-'));
   t.after(() => rm(root, { recursive: true, force: true }));
