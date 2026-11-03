@@ -777,6 +777,30 @@ test('an older rejected live snapshot cannot roll back settings or interactions'
   );
 });
 
+test('a Host-confirmed model clear removes the picker override while an initial omitted model preserves a pending selection', () => {
+  const state = useAppStore.getState();
+  state.setSessions([{ ...sidebarSession, model: 'explicit' }]);
+  state.replaceRuntimeProfileProjection(profile);
+  state.replaceSessionLiveProjection({
+    ...live,
+    settings: { revision: 0, value: { provider: 'mock' } },
+  });
+  assert.equal(useAppStore.getState().sessions[0]?.model, 'explicit');
+  state.replaceSessionLiveProjection({
+    ...live,
+    projectionRevision: 2,
+    cursor: { runtimeId: 'rt_1', seq: 2 },
+    settings: { revision: 1, value: { provider: 'mock', model: 'explicit' } },
+  });
+  state.replaceSessionLiveProjection({
+    ...live,
+    projectionRevision: 3,
+    cursor: { runtimeId: 'rt_1', seq: 3 },
+    settings: { revision: 2, value: { provider: 'mock' } },
+  });
+  assert.equal(useAppStore.getState().sessions[0]?.model, undefined);
+});
+
 test('a late live snapshot cannot rebuild derived state under stale degraded authority', () => {
   useAppStore.getState().setSessions([sidebarSession]);
   useAppStore.getState().replaceRuntimeProfileProjection(profile);

@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 import type { McpbExtensionT } from '@kodax-space/space-ipc-schema';
-import { getKodaxDir } from '../kodax/data-paths.js';
+import { getKodaxDir, getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import { replaceFileWithoutFollowingAliases } from '../kodax/atomic-file.js';
 import type { ManifestT } from './manifest.js';
 
@@ -589,7 +589,7 @@ export function toKodaxMcpServerConfig(entry: InternalMcpbEntry): KodaxMcpServer
 
 export async function syncEntryToKodaxMcp(
   entry: InternalMcpbEntry,
-  opts: { overwrite: boolean; deps?: McpbKodaxMcpSyncDeps },
+  opts: { overwrite: boolean; previousEntry?: InternalMcpbEntry; deps?: McpbKodaxMcpSyncDeps },
 ): Promise<SyncEntryResult> {
   try {
     const deps = opts.deps ?? (await loadDefaultSyncDeps());
@@ -598,7 +598,13 @@ export async function syncEntryToKodaxMcp(
     if (current && mcpConfigMatchesEntry(current, entry)) {
       return { kind: 'already-current' };
     }
-    if (current && !opts.overwrite) {
+    if (
+      current &&
+      (!opts.overwrite ||
+        !opts.previousEntry ||
+        opts.previousEntry.name !== entry.name ||
+        !mcpConfigMatchesEntry(current, opts.previousEntry))
+    ) {
       return { kind: 'skipped-existing' };
     }
     deps.upsertMcpServer(entry.name, next);
@@ -625,10 +631,33 @@ export async function removeEntryFromKodaxMcp(
 
 async function loadDefaultSyncDeps(): Promise<McpbKodaxMcpSyncDeps> {
   const repl = await import('@kodax-ai/kodax/repl');
+  const configHome = getKodaxRuntimeDir();
+  const snapshot = repl.readMcpIntegration(configHome);
+  const servers = structuredClone(snapshot.document.servers);
+  const write = () =>
+    repl.writeIntegrationDocument({
+      domain: 'mcp',
+      configHome,
+      document: { version: 1, servers },
+      expectedRevision: snapshot.source === 'user' ? snapshot.revision : null,
+      validate: repl.parseMcpIntegrationDocument,
+    });
   return {
-    getMcpServerConfig: repl.getMcpServerConfig,
-    upsertMcpServer: repl.upsertMcpServer,
-    removeMcpServer: repl.removeMcpServer,
+    getMcpServerConfig: (name) => servers[name],
+    upsertMcpServer: (name, config) => {
+      servers[name] = repl.parseMcpIntegrationDocument({
+        version: 1,
+        servers: { [name]: config },
+      }).servers[name]!;
+      write();
+      return config;
+    },
+    removeMcpServer: (name) => {
+      if (!servers[name]) return false;
+      delete servers[name];
+      write();
+      return true;
+    },
   };
 }
 

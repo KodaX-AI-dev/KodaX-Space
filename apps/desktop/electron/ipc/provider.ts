@@ -33,7 +33,6 @@ import {
   setKey,
   deleteKey,
   getKey,
-  listConfiguredAccounts,
   getBackendStatus,
   describeProviderCredential,
   moveProviderCredential,
@@ -43,6 +42,7 @@ import {
   useProviderEnvironment,
   retryProviderCredential,
 } from '../providers/provider-storage.js';
+import { describeProviderList } from '../providers/credential-presentation.js';
 import { testProvider } from '../providers/test-connection.js';
 import { validateBaseUrl } from '../providers/url-guard.js';
 import { validateApiKeyEnv } from '../providers/env-guard.js';
@@ -146,7 +146,7 @@ export function registerProviderChannels(): void {
   // provider.list
   registerChannel('provider.list', async () => {
     await providerConfigStore.load();
-    const keychainAccounts = new Set(await listConfiguredAccounts(await listKnownProviderIds()));
+    const keychainAccounts = new Set<string>();
     const defaultId = providerConfigStore.getDefaultProviderId();
 
     // v0.1.6：configured 同时认两种来源——
@@ -222,44 +222,11 @@ export function registerProviderChannels(): void {
       });
     }
 
-    const detailed = await Promise.all(
-      list.map(async (p) => {
-        const credentialState = await describeProviderCredential(p.id);
-        if (
-          ['connection-changed', 'source-required', 'unavailable'].includes(
-            credentialState.migration,
-          ) &&
-          !credentialState.authentication
-        ) {
-          return { ...p, credentialState, configured: false, configuredSource: 'none' as const };
-        }
-        const environment = credentialState.environmentAvailable === true;
-        const source: ProviderInfo['configuredSource'] =
-          credentialState.authentication ??
-          (credentialState.configured || credentialState.migration === 'pending'
-            ? environment
-              ? 'both'
-              : 'file'
-            : environment &&
-                (credentialState.origin === 'env' || credentialState.origin === undefined)
-              ? 'env'
-              : credentialState.origin === undefined && p.configuredSource === 'runtime'
-                ? 'runtime'
-                : 'none');
-        return {
-          ...p,
-          credentialState,
-          configured: credentialState.authentication
-            ? credentialState.authenticationConfigured === true
-            : source !== 'none',
-          configuredSource: source,
-        };
-      }),
-    );
+    const detailed = await describeProviderList(list);
     const effectiveDefaultId =
       defaultId && detailed.some((p) => p.id === defaultId && p.configured) ? defaultId : null;
     const providers = detailed.map((p) => ({ ...p, isDefault: p.id === effectiveDefaultId }));
-    const keychainBackend = await getBackendStatus();
+    const keychainBackend = 'file' as const;
     return { providers, defaultProviderId: effectiveDefaultId, keychainBackend };
   });
 

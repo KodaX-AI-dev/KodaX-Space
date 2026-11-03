@@ -96,11 +96,19 @@ export async function loadPartnerContext(input: ContextLoadInput): Promise<Conte
         projectRoot: input.projectRoot,
       })
     : Promise.resolve(null);
-  const [sources, artifacts, deliveries, remote] = await Promise.allSettled([
+  const proposalRequest = input.sessionId
+    ? input.bridge.invoke('partner.fileProposals.list', {
+        projectRoot: input.projectRoot,
+        sessionId: input.sessionId,
+        status: 'pending',
+      })
+    : Promise.resolve(null);
+  const [sources, artifacts, deliveries, remote, proposals] = await Promise.allSettled([
     sourceRequest,
     artifactRequest,
     deliveryRequest,
     remoteRequest,
+    proposalRequest,
   ]);
   const sourceRecords =
     sources.status === 'fulfilled' && sources.value.ok
@@ -114,6 +122,8 @@ export async function loadPartnerContext(input: ContextLoadInput): Promise<Conte
       : [];
   const remoteRecords =
     remote.status === 'fulfilled' && remote.value?.ok ? remote.value.data : null;
+  const localReviews =
+    proposals.status === 'fulfilled' && proposals.value?.ok ? proposals.value.data.proposals : [];
   const materials = materialItems(
     sourceRecords,
     input.pendingSources,
@@ -144,8 +154,13 @@ export async function loadPartnerContext(input: ContextLoadInput): Promise<Conte
     }),
     materials,
     artifacts: artifactsList,
-    reviews:
-      remoteRecords?.proposals
+    reviews: [
+      ...localReviews
+        .filter((proposal) => proposal.status === 'pending')
+        .map((proposal) =>
+          detailItem(`file-proposal:${proposal.id}`, proposal.targetPath, { kind: 'fileReviews' }),
+        ),
+      ...(remoteRecords?.proposals
         .filter((proposal) => proposal.operation === 'append' && proposal.status === 'pending')
         .map((proposal) =>
           detailItem(`remote-proposal:${proposal.id}`, proposal.title, {
@@ -153,8 +168,12 @@ export async function loadPartnerContext(input: ContextLoadInput): Promise<Conte
             proposalId: proposal.id,
             title: proposal.title,
           }),
-        ) ?? [],
-    failed: contextLoadFailed(input.sessionId, sources, artifacts, deliveries, remote),
+        ) ?? []),
+    ],
+    failed:
+      contextLoadFailed(input.sessionId, sources, artifacts, deliveries, remote) ||
+      (input.sessionId !== null &&
+        (proposals.status !== 'fulfilled' || proposals.value?.ok !== true)),
   };
 }
 
@@ -534,6 +553,9 @@ function subscribeToContextChanges(
   const offDeliveries = bridge.on('partner.deliveries.changed', (payload) =>
     sameSession(payload.sessionId),
   );
+  const offProposals = bridge.on('partner.fileProposals.changed', (payload) =>
+    sameSession(payload.sessionId),
+  );
   const offRemote = bridge.on('partner.connectors.changed', (payload) => {
     if (
       (!payload.sessionId || payload.sessionId === sessionId) &&
@@ -544,6 +566,7 @@ function subscribeToContextChanges(
   return () => {
     offArtifacts();
     offDeliveries();
+    offProposals();
     offRemote();
   };
 }

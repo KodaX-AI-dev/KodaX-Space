@@ -2,6 +2,13 @@ import type { SupportedLocaleT } from '@kodax-space/space-ipc-schema';
 
 export const messages = {
   'en-US': {
+    'modelPicker.applyEffortFailed':
+      'Could not apply effort to this session. Refresh it and retry.',
+    'provider.credentialReadFailed':
+      'Could not read these credentials. Retry after resolving the storage problem; existing credentials have been preserved.',
+    'message.queue.withdrawn': 'Withdrawn',
+    'message.queue.withdrawnDetail': 'You took back this message before delivery.',
+
     'components.title': 'Connector components',
     'components.description':
       'Install connection components when needed. Installation does not connect an account or grant access to a conversation.',
@@ -1477,7 +1484,7 @@ export const messages = {
       'MCP, A2A, and Extension configuration fail independently, retain last-known-good state, and recover after a valid edit.',
     'settings.integrationHealth.healthy': 'Healthy',
     'settings.integrationHealth.degraded': 'Degraded',
-    'settings.integrationHealth.unavailable': 'Waiting for Runtime',
+    'settings.integrationHealth.unavailable': 'Unavailable',
     'settings.integrationHealth.pending':
       'Integration health becomes available after the KodaX daemon connects.',
     'settings.integrationHealth.source': 'Source: {source}',
@@ -3256,6 +3263,11 @@ export const messages = {
       'Auto is sandbox-first. Full access runs directly on the host; connector scopes and reviewed writes still apply.',
   },
   'zh-CN': {
+    'modelPicker.applyEffortFailed': '无法将思考强度应用到此会话，请刷新后重试。',
+    'provider.credentialReadFailed': '凭证读取失败，请解决存储问题后重试，现有凭证已保留。',
+    'message.queue.withdrawn': '已撤回',
+    'message.queue.withdrawnDetail': '你在消息送达前撤回了它。',
+
     'components.title': '连接器组件',
     'components.description': '按需安装连接组件。安装不会连接账号，也不会授予会话访问权限。',
     'components.feishu-cli': '飞书',
@@ -6166,7 +6178,7 @@ export const messages = {
       'MCP、A2A 与 Extension 配置独立降级，保留最近有效状态，并在修复后自动恢复。',
     'settings.integrationHealth.healthy': '健康',
     'settings.integrationHealth.degraded': '已降级',
-    'settings.integrationHealth.unavailable': '等待 Runtime',
+    'settings.integrationHealth.unavailable': '当前不可用',
     'settings.integrationHealth.pending': 'KodaX daemon 连接后会显示集成健康状态。',
     'settings.integrationHealth.source': '来源：{source}',
     'settings.integrationHealth.watching': '正在监听变更',

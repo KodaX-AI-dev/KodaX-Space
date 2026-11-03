@@ -4,7 +4,7 @@
 // 写后立即 ensure 目录存在，让 setDefaultWorkspace 返回后 renderer 直接拿来当
 // currentProjectPath 用，不会撞 ENOENT。
 
-import { createRequire } from 'node:module';
+import { preferredSystemLanguages as getPreferredSystemLanguages } from '../settings/locale.js';
 import { registerChannel } from './register.js';
 import { settingsStore, type SpaceSettings } from '../settings/store.js';
 import { validateProjectRoot } from './validate.js';
@@ -19,18 +19,6 @@ import {
   runWithCoderAdmission,
   type CoderAdmissionOptions,
 } from '../kodax/coder-runtime-mode-switch.js';
-
-function getPreferredSystemLanguages(): string[] {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const meta = typeof require !== 'undefined' ? null : (import.meta as any);
-    const req = meta ? createRequire(meta.url) : require;
-    const electron = req('electron') as typeof import('electron');
-    return electron.app.getPreferredSystemLanguages();
-  } catch {
-    return [];
-  }
-}
 
 function toSettingsOutput(settings: {
   readonly defaultWorkspace: string;

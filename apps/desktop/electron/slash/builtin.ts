@@ -1566,7 +1566,12 @@ function parseGoalCreateArgs(args: readonly string[]):
   return objective ? { objective, tokenBudget } : { error: 'objective is required' };
 }
 
-function formatGoalStatus(goal: SlashGoalState | undefined): string {
+function formatGoalStatus(
+  goal:
+    | { objective: string; status: string; tokenBudget: number | null; tokensUsed: number }
+    | null
+    | undefined,
+): string {
   if (!goal) return 'No goal set. Use /goal <objective> [--tokens N] to create one.';
   const lines = [
     `Goal: ${goal.objective}`,
@@ -1589,6 +1594,35 @@ function goalHelp(): string {
     '  /goal clear',
     '  /goal help',
   ].join('\n');
+}
+
+async function handleHostGoal(ctx: SlashHandlerContext): Promise<SlashHandlerResult> {
+  const action = ctx.args[0]?.toLowerCase();
+  if (action === 'help' || action === '--help' || action === '-h')
+    return { ok: true, echo: true, message: goalHelp() };
+  if (action === 'complete' || action === 'blocked')
+    return {
+      ok: false,
+      message: 'The Host manages goal completion and blocking. Use /goal pause to suspend it.',
+    };
+  if (action === 'clear') {
+    await runtimeHostAdapter.sessionGoal(ctx.sessionId, { action: 'clear' });
+    return { ok: true, echo: true, message: 'Goal cleared.' };
+  }
+  if (!action || action === 'status' || action === 'pause' || action === 'resume') {
+    const goal = await runtimeHostAdapter.sessionGoal(ctx.sessionId, {
+      action: action === 'pause' || action === 'resume' ? action : 'read',
+    });
+    return { ok: true, echo: true, message: formatGoalStatus(goal) };
+  }
+  const parsed = parseGoalCreateArgs(ctx.args);
+  if ('error' in parsed) return { ok: false, message: `${goalHelp()}\n${parsed.error}` };
+  const goal = await runtimeHostAdapter.sessionGoal(ctx.sessionId, {
+    action: 'create',
+    objective: parsed.objective,
+    ...(parsed.tokenBudget === null ? {} : { tokenBudget: parsed.tokenBudget }),
+  });
+  return { ok: true, echo: true, message: formatGoalStatus(goal) };
 }
 
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
@@ -1819,13 +1853,9 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       // 'default' 清除 override
       const isClear = target === 'default';
       if (isClear) {
-        const defaultModel = providerDescriptor(
-          providerId,
-          await loadKodaxCustomProviders(),
-        )?.defaultModel;
         return commitRuntimeSlashMutation(
           ctx.sessionId,
-          () => kodaxHost.setModel(ctx.sessionId, defaultModel),
+          () => kodaxHost.setModel(ctx.sessionId, undefined),
           'model -> provider default (cleared override)',
         );
       }
@@ -2572,6 +2602,12 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
         return { ok: true, message: '__action__:show-repointel-trace', echo: false };
       }
       if (detailMode === 'warm') {
+        if (runtimeHostAdapter.isRuntimeSelected())
+          return {
+            ok: false,
+            message:
+              '[repointel] This Host does not expose prewarm. Runtime traces remain available; upgrade the SDK when Host prewarm support is published.',
+          };
         // Repo-intelligence is a licensed capability — don't prewarm the built-in engine
         // without an active license (matches the run gate + chip lock). Fail-closed via
         // repo-intel-gate.ts.
@@ -2784,13 +2820,14 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
 
   {
     name: 'goal',
-    description: 'Track a lightweight active goal for the current session',
-    argsHint: '[status|pause|resume|complete|blocked|clear|help|<objective> [--tokens N]]',
+    description: 'Manage the Host-persisted goal and measured usage for this session',
+    argsHint: '[status|pause|resume|clear|help|<objective> [--tokens N]]',
     source: 'builtin',
     handler: async (ctx) => {
       if (!kodaxHost.get(ctx.sessionId)) {
         return { ok: false, message: `session not found: ${ctx.sessionId}` };
       }
+      if (kodaxHost.get(ctx.sessionId)?.provider !== 'mock') return handleHostGoal(ctx);
       const sub = ctx.args[0]?.toLowerCase();
       const current = goalBySession.get(ctx.sessionId);
       if (!sub || sub === 'status') {

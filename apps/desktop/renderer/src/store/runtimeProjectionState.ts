@@ -241,7 +241,13 @@ export function runtimeProfileSessionHasActivity(
 export function sessionLiveProjectionHasActivity(
   projection: SpaceSessionLiveProjectionT | undefined,
 ): boolean {
-  return projection?.activeRun !== undefined || (projection?.queuedRuns.length ?? 0) > 0;
+  return (
+    projection?.activeRun !== undefined ||
+    (projection?.queuedRuns.length ?? 0) > 0 ||
+    projection?.queuedInputs.some(
+      (input) => input.state === 'queued' || input.state === 'delivering',
+    ) === true
+  );
 }
 
 export function runtimeProfileActivityOutranksLive(
@@ -374,6 +380,7 @@ export function runtimeSessionNeedsObservation(
   state: Pick<RuntimeProjectionState, 'profile' | 'snapshotRequiredBySession'> &
     Partial<Pick<RuntimeProjectionState, 'liveBySession'>>,
   sessionId: string,
+  surface?: 'code' | 'partner',
 ): boolean {
   if (state.snapshotRequiredBySession[sessionId] === true) return true;
   if (sessionLiveProjectionHasActivity(state.liveBySession?.[sessionId])) return true;
@@ -382,6 +389,9 @@ export function runtimeSessionNeedsObservation(
   // has no positive reason to open an expensive live observation; existing live activity above
   // remains fail-open until exact terminal evidence arrives.
   if (state.profile === null) return false;
+  // Partner product inputs can remain blocked before a Run exists, so the Run-only
+  // profile cannot prove its queue empty. Seed the selected view once, after history.
+  if (surface === 'partner' && state.liveBySession?.[sessionId] === undefined) return true;
   const session = state.profile?.sessions.find((candidate) => candidate.sessionId === sessionId);
   if (session === undefined) return false;
   if (runtimeProfileSessionHasActivity(session)) return true;

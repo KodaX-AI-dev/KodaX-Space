@@ -521,24 +521,29 @@ export function QueuedUserBubble({
   attachments = [],
   queueMode,
   status,
+  withdrawn,
   sentAt,
 }: Extract<ConversationMessage, { kind: 'queued_user' }>): JSX.Element {
   const { t } = useI18n();
   const failed = status === 'failed';
-  const label = failed
-    ? t('message.queue.failed')
-    : queueMode === 'after-turn'
-      ? t('message.queue.afterTurn')
-      : t('message.queue.interrupt');
-  const detail = admissionError
-    ? t('message.queue.bindingBlocked')
+  const label = withdrawn
+    ? t('message.queue.withdrawn')
     : failed
-      ? t('message.queue.failedDetail')
-      : status === 'pending-ack'
-        ? t('message.queue.sending')
-        : queueMode === 'after-turn'
-          ? t('message.queue.waitingTurn')
-          : t('message.queue.waitingSafePoint');
+      ? t('message.queue.failed')
+      : queueMode === 'after-turn'
+        ? t('message.queue.afterTurn')
+        : t('message.queue.interrupt');
+  const detail = withdrawn
+    ? t('message.queue.withdrawnDetail')
+    : admissionError
+      ? t('message.queue.bindingBlocked')
+      : failed
+        ? t('message.queue.failedDetail')
+        : status === 'pending-ack'
+          ? t('message.queue.sending')
+          : queueMode === 'after-turn'
+            ? t('message.queue.waitingTurn')
+            : t('message.queue.waitingSafePoint');
   const visibleContent = attachments.length > 0 && content.trim() === '(image)' ? '' : content;
   return (
     <div

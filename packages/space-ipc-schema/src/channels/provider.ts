@@ -103,6 +103,7 @@ const providerInfoSchema = z.object({
     'external',
   ]),
   credentialState: credentialStateSchema.optional(),
+  credentialError: z.literal('unavailable').optional(),
   isDefault: z.boolean(),
   isCustom: z.boolean(),
   // 自定义 provider 才有；built-in 走 SDK 内置 baseUrl

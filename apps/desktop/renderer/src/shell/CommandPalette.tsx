@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore.js';
+import { useSurfaceStore } from '../store/surface.js';
 import { createMatcher, type FuzzyMatcher } from '../lib/fuzzy.js';
 import { requestInsert } from './inputBridge.js';
 import { pushToast } from '../store/toastStore.js';
@@ -62,6 +63,7 @@ function CommandPalette({ open, onClose }: CommandPaletteProps): JSX.Element | n
   const { t, effectiveLocale } = useI18n();
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const surface = useSurfaceStore((state) => state.currentSurface);
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<readonly CommandItem[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -108,6 +110,7 @@ function CommandPalette({ open, onClose }: CommandPaletteProps): JSX.Element | n
     const ctx: CommandContext = {
       projectPath: currentProjectPath,
       sessionId: currentSessionId,
+      surface,
       close: onClose,
       t,
       locale: effectiveLocale,
@@ -121,7 +124,7 @@ function CommandPalette({ open, onClose }: CommandPaletteProps): JSX.Element | n
     return () => {
       cancelled = true;
     };
-  }, [open, currentProjectPath, currentSessionId, onClose, effectiveLocale, t]);
+  }, [open, currentProjectPath, currentSessionId, surface, onClose, effectiveLocale, t]);
 
   // Fuzzy filter — items 或 query 变化时重算
   const filtered = useMemo((): readonly { item: CommandItem; score: number }[] => {
@@ -229,14 +232,10 @@ function CommandPalette({ open, onClose }: CommandPaletteProps): JSX.Element | n
         </div>
         <ul ref={listRef} className="overflow-y-auto flex-1 text-[13px]">
           {loading && filtered.length === 0 && (
-            <li className="px-3 py-4 text-fg-muted text-center">
-              {t('commandPalette.loading')}
-            </li>
+            <li className="px-3 py-4 text-fg-muted text-center">{t('commandPalette.loading')}</li>
           )}
           {!loading && filtered.length === 0 && (
-            <li className="px-3 py-4 text-fg-muted text-center">
-              {t('commandPalette.noMatches')}
-            </li>
+            <li className="px-3 py-4 text-fg-muted text-center">{t('commandPalette.noMatches')}</li>
           )}
           {GROUP_ORDER.flatMap((kind) => {
             const arr = grouped.get(kind);

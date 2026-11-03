@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
-import { FileText, Plus, X } from 'lucide-react';
+import { ArchiveRestore, FileCheck2, FileText, Plus, X } from 'lucide-react';
+import { FileProposalsPanel } from './FileProposalsPanel.js';
+import { DeliveriesPanel } from './DeliveriesPanel.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
+import { useAppStore } from '../../store/appStore.js';
+import { useSurfaceStore } from '../../store/surface.js';
 import { FilesPanel } from '../../shell/popouts/FilesPanel.js';
 import { ArtifactPanel } from './ArtifactPanel.js';
 import { openExternalUrl } from '../../lib/openPath.js';
@@ -55,6 +59,8 @@ export function PartnerRightSidebar({
   onConsumeOpenRequest,
 }: PartnerRightSidebarProps): JSX.Element {
   const { t } = useI18n();
+  const sessionId = useAppStore((state) => state.currentSessionId);
+  const surface = useSurfaceStore((state) => state.currentSurface);
   const { records: remoteRecords } = usePartnerRemoteRecords();
   const nextUniqueIdRef = useRef(openRequest?.revision ?? 0);
   const initialTab = openRequest
@@ -133,7 +139,7 @@ export function PartnerRightSidebar({
       tab: createPartnerDetailTab(target, detailTitle(target.kind, t), nextUniqueIdRef.current),
     });
   };
-  const launch = (kind: 'files'): void => openLocalDetail({ kind });
+  const launch = (kind: 'files' | 'fileReviews' | 'deliveries'): void => openLocalDetail({ kind });
 
   const closeTab = (id: string): void => {
     focusAfterStateChangeRef.current = true;
@@ -330,6 +336,21 @@ export function PartnerRightSidebar({
           ))}
 
         {state.tabs
+          .filter((tab) => tab.kind === 'fileReviews' || tab.kind === 'deliveries')
+          .map((tab) => (
+            <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
+              {open &&
+                surface === 'partner' &&
+                activeTab?.id === tab.id &&
+                (tab.kind === 'fileReviews' ? (
+                  <FileProposalsPanel key={sessionId} />
+                ) : (
+                  <DeliveriesPanel key={sessionId} />
+                ))}
+            </DetailTabPanel>
+          ))}
+
+        {state.tabs
           .filter((tab) => tab.kind === 'artifact' && tab.artifactId)
           .map((tab) => (
             <DetailTabPanel key={tab.id} tab={tab} active={activeTab?.id === tab.id}>
@@ -430,6 +451,8 @@ function detailTitle(kind: PartnerDetailTabKind, t: ReturnType<typeof useI18n>['
   if (kind === 'connector') return t('connectors.setup');
   if (kind === 'expert') return t('extensions.expertDetails');
   if (kind === 'materials') return t('partner.taskCards.materials');
+  if (kind === 'fileReviews') return t('partner.fileProposals.title');
+  if (kind === 'deliveries') return t('partner.deliveries.title');
   if (kind === 'outputs' || kind === 'artifact') return t('partner.taskCards.artifacts');
   if (kind === 'collaboration') return t('partner.taskCards.collaboration');
   if (kind === 'files' || kind === 'file') return t('files.title');
@@ -442,7 +465,7 @@ function detailTitle(kind: PartnerDetailTabKind, t: ReturnType<typeof useI18n>['
 function PartnerDetailLauncher({
   onLaunch,
 }: {
-  readonly onLaunch: (kind: 'files') => void;
+  readonly onLaunch: (kind: 'files' | 'fileReviews' | 'deliveries') => void;
 }): JSX.Element {
   const { t } = useI18n();
   return (
@@ -464,6 +487,18 @@ function PartnerDetailLauncher({
           label={t('partner.detail.files')}
           onClick={() => onLaunch('files')}
           testId="partner-detail-open-files"
+        />
+        <LauncherButton
+          icon={<FileCheck2 className="h-5 w-5" aria-hidden />}
+          label={t('partner.fileProposals.title')}
+          onClick={() => onLaunch('fileReviews')}
+          testId="partner-detail-open-file-reviews"
+        />
+        <LauncherButton
+          icon={<ArchiveRestore className="h-5 w-5" aria-hidden />}
+          label={t('partner.deliveries.title')}
+          onClick={() => onLaunch('deliveries')}
+          testId="partner-detail-open-deliveries"
         />
       </div>
     </div>

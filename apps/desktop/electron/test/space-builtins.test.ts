@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createServer } from 'node:http';
+import { syncBuiltinESMExports } from 'node:module';
 import {
   _resetSpaceBuiltinSkillsForTests,
   isSpaceBuiltinSkillPath,
@@ -98,6 +99,97 @@ test('Host registration preserves existing extensions and is idempotent per atta
     path.join(temporaryRoot, 'space-artifacts.mjs'),
   ]);
   assert.equal(reads, 1);
+});
+
+test('Host builtin registration retries transient atomic replacement without losing user extensions', async (t) => {
+  await registerSpaceBuiltinSkills(builtinRoot);
+  const entry = path.join(temporaryRoot, 'space-builtins.mjs');
+  fs.writeFileSync(entry, 'export default()=>{}');
+  const sdk = await import('@kodax-ai/kodax/repl');
+  sdk.writeIntegrationDocument({
+    domain: 'extensions',
+    configHome: temporaryRoot,
+    document: { version: 1, paths: ['user-extension.mjs'] },
+    validate: sdk.parseExtensionsIntegrationDocument,
+    expectedRevision: null,
+  });
+  const rename = fs.renameSync;
+  let occupied = 2;
+  const mocked = t.mock.method(
+    fs,
+    'renameSync',
+    (source: Parameters<typeof rename>[0], destination: Parameters<typeof rename>[1]) => {
+      if (
+        String(destination) === path.join(temporaryRoot, 'integrations', 'extensions.json') &&
+        occupied > 0
+      ) {
+        occupied--;
+        throw Object.assign(new Error('File temporarily occupied'), { code: 'EBUSY' });
+      }
+      return rename(source, destination);
+    },
+  );
+  syncBuiltinESMExports();
+  t.after(() => {
+    mocked.mock.restore();
+    syncBuiltinESMExports();
+  });
+  await ensureSpaceBuiltinSkillsOnHost(
+    { catalog: { extensions: async () => ({ extensions: [{ path: entry }] }) } },
+    temporaryRoot,
+  );
+  assert.equal(occupied, 0);
+  assert.deepEqual(sdk.readExtensionsIntegration(temporaryRoot).document.paths, [
+    'user-extension.mjs',
+    entry,
+    path.join(temporaryRoot, 'space-artifacts.mjs'),
+  ]);
+});
+
+test('exhausted file occupation preserves configuration and a later admission can repair registration', async (t) => {
+  await registerSpaceBuiltinSkills(builtinRoot);
+  const entry = path.join(temporaryRoot, 'space-builtins.mjs');
+  fs.writeFileSync(entry, 'export default()=>{}');
+  const sdk = await import('@kodax-ai/kodax/repl');
+  sdk.writeIntegrationDocument({
+    domain: 'extensions',
+    configHome: temporaryRoot,
+    document: { version: 1, paths: ['user-extension.mjs'] },
+    validate: sdk.parseExtensionsIntegrationDocument,
+    expectedRevision: null,
+  });
+  const rename = fs.renameSync;
+  let attempts = 0;
+  let occupied = true;
+  const mocked = t.mock.method(
+    fs,
+    'renameSync',
+    (source: Parameters<typeof rename>[0], destination: Parameters<typeof rename>[1]) => {
+      if (
+        occupied &&
+        String(destination) === path.join(temporaryRoot, 'integrations', 'extensions.json')
+      ) {
+        attempts++;
+        throw Object.assign(new Error('Still occupied'), { code: 'EBUSY' });
+      }
+      return rename(source, destination);
+    },
+  );
+  syncBuiltinESMExports();
+  t.after(() => {
+    mocked.mock.restore();
+    syncBuiltinESMExports();
+  });
+  const host = { catalog: { extensions: async () => ({ extensions: [{ path: entry }] }) } };
+  await ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot);
+  assert.equal(attempts, 4);
+  assert.deepEqual(sdk.readExtensionsIntegration(temporaryRoot).document.paths, [
+    'user-extension.mjs',
+  ]);
+  occupied = false;
+  await ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot);
+  assert.equal(attempts, 4);
+  assert.ok(sdk.readExtensionsIntegration(temporaryRoot).document.paths.includes(entry));
 });
 
 test('optional Artifact registration preserves user paths without gating builtin activation', async () => {

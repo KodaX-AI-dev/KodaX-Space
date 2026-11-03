@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
+import type { PushPayload } from '@kodax-space/space-ipc-schema';
 import {
   createLocalSdkProvider,
   currentSdkSession,
@@ -108,6 +109,13 @@ test('blocked queued input is visible and taking it back preserves text beyond t
     }, id);
     expect(selected.ok).toBe(true);
     const original = `BETA1_BLOCKED_${'complete input '.repeat(800)}_END`;
+    await space.page.evaluate((sessionId) => {
+      const probe = window as unknown as { __queueChanges: PushPayload<'session.liveChanged'>[] };
+      probe.__queueChanges = [];
+      window.kodaxSpace!.on('session.liveChanged', (change) => {
+        if (change.sessionId === sessionId) probe.__queueChanges.push(change);
+      });
+    }, id);
     const composer = space.page.locator('textarea').first();
     await composer.fill(original);
     await composer.press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter');
@@ -125,6 +133,11 @@ test('blocked queued input is visible and taking it back preserves text beyond t
     await expect(space.page.getByTestId('queued-user-message-bubble')).toContainText(
       'execution_binding_rejected',
     );
+    const before = await space.page.evaluate(
+      () =>
+        (window as unknown as { __queueChanges: PushPayload<'session.liveChanged'>[] })
+          .__queueChanges,
+    );
     await space.page.reload();
     await space.page
       .getByTestId('sidebar-session-row')
@@ -132,7 +145,60 @@ test('blocked queued input is visible and taking it back preserves text beyond t
       .first()
       .click();
     expect(await currentSdkSession(space)).toBe(id);
-    await expect(takeBack).toBeVisible({ timeout: 30_000 });
+    try {
+      await expect(takeBack).toBeVisible({ timeout: 30_000 });
+    } catch (error) {
+      const main = await space.page.evaluate(
+        async (sessionId) => ({
+          live: await window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId }),
+          product: await window.kodaxSpace!.invoke('session.productSnapshot', { sessionId }),
+        }),
+        id,
+      );
+      const ids = [
+        ...new Set(
+          before.flatMap((event) =>
+            'queuedInputs' in event.change
+              ? (event.change.queuedInputs?.map((input) => input.inputId) ?? [])
+              : [],
+          ),
+        ),
+      ];
+      await test.info().attach('queue-reload-main.json', {
+        body: JSON.stringify({ before, main, ids }),
+        contentType: 'application/json',
+      });
+      const sdk = await promisify(execFile)(
+        process.execPath,
+        [
+          '--input-type=module',
+          '-e',
+          `
+        const {connectKodaXRuntime}=await import('@kodax-ai/kodax/runtime');const path=await import('node:path');
+        const runtime=await connectKodaXRuntime({profile:'coder',sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
+        let view;let subscription;
+        try{const sessionId=process.env.QUEUE_SESSION;subscription=await runtime.sessions.observeView(sessionId,value=>view=structuredClone(value));
+          const inputs=await Promise.all(JSON.parse(process.env.QUEUE_IDS).map(id=>runtime.runs.getInput(sessionId,id)));
+          process.stdout.write(JSON.stringify({view,inputs}));
+        }finally{subscription?.close();await runtime.close();}`,
+        ],
+        {
+          windowsHide: true,
+          timeout: 20000,
+          env: {
+            ...process.env,
+            KODAX_HOME: space.testDataDir,
+            QUEUE_SESSION: id,
+            QUEUE_IDS: JSON.stringify(ids),
+          },
+        },
+      );
+      await test.info().attach('queue-reload-independent.json', {
+        body: sdk.stdout,
+        contentType: 'application/json',
+      });
+      throw error;
+    }
     await expect(space.page.getByTestId('queued-user-message-bubble')).not.toContainText('_END');
     await takeBack.scrollIntoViewIfNeeded();
     await expect(takeBack).toBeInViewport();
@@ -141,6 +207,8 @@ test('blocked queued input is visible and taking it back preserves text beyond t
     await expect(takeBack).toHaveCount(0);
     const retained = space.page.getByTestId('queued-user-message-bubble');
     await expect(retained).toHaveAttribute('data-status', 'failed');
+    await expect(retained).toContainText('Withdrawn');
+    await expect(retained).not.toContainText('Not delivered');
     await expect(retained).toContainText('_END');
     expect(provider.requests.some((text) => text.includes('BETA1_BLOCKED_'))).toBe(false);
   } finally {

@@ -293,6 +293,11 @@ export function ProviderCard({
         <StatusBadge configured={provider.configured} source={credentialSource} />
       </div>
 
+      {provider.credentialError && (
+        <p role="alert" className="mt-3 text-xs text-danger">
+          {t('provider.credentialReadFailed')}
+        </p>
+      )}
       <dl className="mt-4 grid gap-2 rounded-lg border border-border-default bg-surface px-3 py-3 text-xs">
         <MetaRow label={t('provider.meta.env')} value={provider.apiKeyEnv} />
         <MetaRow

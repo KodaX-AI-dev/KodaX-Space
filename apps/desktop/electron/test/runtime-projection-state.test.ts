@@ -242,6 +242,59 @@ test('Runtime activity evidence is positive-only for active and queued work', ()
   );
 });
 
+test('a blocked product input remains live activity without an admitted Run', () => {
+  const queued: SpaceSessionLiveProjectionT = {
+    ...live('rt_1', 1),
+    queuedInputs: [
+      {
+        sessionId: 's_1',
+        inputId: 'blocked',
+        state: 'queued',
+        delivery: 'after-turn',
+        createdAt: 1,
+        contentPreview: 'Retain this input',
+        recovery: 'blocked',
+        admissionError: { code: 'execution_binding_rejected', message: 'Extension disabled' },
+      },
+    ],
+  };
+  const state = {
+    ...replaceRuntimeProfile(createRuntimeProjectionState(), profile('rt_1', 1)),
+    liveBySession: { s_1: queued },
+  };
+  assert.equal(sessionLiveProjectionHasActivity(queued), true);
+  assert.equal(runtimeSessionRequiresImmediateObservation(state, 's_1'), true);
+  assert.equal(runtimeSessionNeedsPeriodicReconciliation(state, 's_1'), true);
+  assert.equal(
+    sessionLiveProjectionHasActivity({
+      ...queued,
+      queuedInputs: queued.queuedInputs.map((input) => ({ ...input, state: 'cancelled' })),
+    }),
+    false,
+  );
+});
+
+test('a selected Partner restores its first Host view after history even without a queued Run', () => {
+  const initial = createRuntimeProjectionState();
+  const ready = replaceRuntimeProfile(initial, profile('rt_1', 1));
+  assert.equal(runtimeSessionNeedsObservation(initial, 's_1', 'partner'), false);
+  assert.equal(runtimeSessionNeedsObservation(ready, 's_1', 'partner'), true);
+  assert.equal(runtimeSessionNeedsObservation(ready, 's_1', 'code'), false);
+  const hydrated = { ...ready, liveBySession: { s_1: live('rt_1', 1) } };
+  assert.equal(runtimeSessionNeedsObservation(hydrated, 's_1', 'partner'), false);
+  assert.equal(runtimeSessionNeedsPeriodicReconciliation(hydrated, 's_1'), false);
+  assert.equal(
+    shouldBootstrapSelectedSessionLive({
+      runtimeReady: true,
+      needsObservation: true,
+      hasImmediateActivity: false,
+      historyAllowsObservation: false,
+      hasLiveProjection: false,
+    }),
+    false,
+  );
+});
+
 test('active selected Sessions bootstrap live state before history and despite a stale projection', () => {
   assert.equal(
     shouldBootstrapSelectedSessionLive({

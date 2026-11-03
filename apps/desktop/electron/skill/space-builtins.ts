@@ -35,23 +35,7 @@ export async function ensureSpaceBuiltinSkillsOnHost(
     // disable builtin Skills, input admission or history. Host diagnostics own
     // any Artifact extension load error.
     const entries = [entry, path.join(path.dirname(entry), 'space-artifacts.mjs')];
-    const sdk = await import('@kodax-ai/kodax/repl');
-    const snapshot = sdk.readExtensionsIntegration(configHome);
-    const missing = entries.filter(
-      (candidate) =>
-        !snapshot.document.paths.some(
-          (value) => comparablePath(path.resolve(configHome, value)) === comparablePath(candidate),
-        ),
-    );
-    if (missing.length) {
-      sdk.writeIntegrationDocument({
-        domain: 'extensions',
-        configHome,
-        document: { version: 1, paths: [...snapshot.document.paths, ...missing] },
-        validate: sdk.parseExtensionsIntegrationDocument,
-        expectedRevision: snapshot.source === 'user' ? snapshot.revision : null,
-      });
-    }
+    await mergeBuiltinExtensionPaths(configHome, entries);
     const deadline = Date.now() + 5_000;
     while (Date.now() < deadline) {
       if (
@@ -74,6 +58,51 @@ export async function ensureSpaceBuiltinSkillsOnHost(
   });
   hostRegistrations.set(host, registration);
   await registration;
+}
+
+async function mergeBuiltinExtensionPaths(
+  configHome: string,
+  entries: readonly string[],
+): Promise<void> {
+  const sdk = await import('@kodax-ai/kodax/repl');
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const snapshot = sdk.readExtensionsIntegration(configHome);
+      const missing = entries.filter(
+        (candidate) =>
+          !snapshot.document.paths.some(
+            (value) =>
+              comparablePath(path.resolve(configHome, value)) === comparablePath(candidate),
+          ),
+      );
+      if (missing.length === 0) return;
+      sdk.writeIntegrationDocument({
+        domain: 'extensions',
+        configHome,
+        document: { version: 1, paths: [...snapshot.document.paths, ...missing] },
+        validate: sdk.parseExtensionsIntegrationDocument,
+        expectedRevision: snapshot.source === 'user' ? snapshot.revision : null,
+      });
+      return;
+    } catch (error) {
+      if (
+        attempt >= 3 ||
+        !(error instanceof sdk.IntegrationConfigConflictError || transientWriteFailure(error))
+      )
+        throw error;
+      await new Promise<void>((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+    }
+  }
+}
+
+function transientWriteFailure(error: unknown): boolean {
+  let cause: unknown = error;
+  for (let depth = 0; depth < 4 && cause !== null && typeof cause === 'object'; depth++) {
+    if ('code' in cause && ['EBUSY', 'EACCES', 'EPERM', 'EAGAIN'].includes(String(cause.code)))
+      return true;
+    cause = 'cause' in cause ? cause.cause : undefined;
+  }
+  return false;
 }
 
 export function resolveSpaceBuiltinSkillsPath(context: SpaceBuiltinPathContext): string {

@@ -268,13 +268,13 @@ export class SettingsStore {
         }
         return { ...this.cached, runtimeDefaults: { ...this.cached.runtimeDefaults } };
       }
-      console.warn(`[SettingsStore] ${this.filePath} schema invalid, falling back to defaults`);
+      throw new Error('Space settings are invalid; the original file has been preserved.');
     } catch (err) {
       const e = err as NodeJS.ErrnoException;
       if (e.code === 'ENOENT') {
         settingsFileMissing = true;
       } else {
-        console.warn(`[SettingsStore] read failed (${e.code}), falling back to defaults`);
+        throw err;
       }
     }
     // Fallback

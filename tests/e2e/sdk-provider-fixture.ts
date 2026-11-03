@@ -97,6 +97,7 @@ async function probeIndependentHistory(space: SpaceInstance, sessionId: string):
 
 export async function createLocalSdkProvider() {
   const requests: string[] = [];
+  const requestModels: string[] = [];
   const questionResults: unknown[] = [];
   let preparedCommandRequests = 0;
   const pending = new Map<string, ServerResponse>();
@@ -129,6 +130,7 @@ export async function createLocalSdkProvider() {
     let body = '';
     for await (const chunk of request) body += String(chunk);
     const parsed = JSON.parse(body) as {
+      model?: string;
       messages: WireMessage[];
       tools?: { function?: { name?: string } }[];
     };
@@ -136,6 +138,7 @@ export async function createLocalSdkProvider() {
       parsed.messages.findLast((message) => message.role === 'user')?.content ?? '',
     );
     requests.push(prompt);
+    requestModels.push(parsed.model ?? '<missing>');
     if (JSON.stringify(parsed.messages).includes('HOST_COMMAND_BODY')) preparedCommandRequests++;
     if (request.headers.authorization !== 'Bearer space-e2e-fixture')
       throw new Error('Main credential was not authorized');
@@ -154,6 +157,40 @@ export async function createLocalSdkProvider() {
     }
     if (prompt === 'LONG_PRODUCT_BODY') {
       reply(response, `SDK_LONG_HEAD\n\n${'x'.repeat(100_000)}\n\nSDK_LONG_TAIL`);
+      return;
+    }
+    if (prompt === 'FOLLOWUP_LARGE_HISTORY') {
+      reply(response, `FOLLOWUP_LARGE_HEAD\n${'中🙂abcdef'.repeat(30_000)}\nFOLLOWUP_LARGE_TAIL`);
+      return;
+    }
+    if (
+      [
+        'FOLLOWUP_PROPOSE_APPLY',
+        'FOLLOWUP_PROPOSE_REJECT',
+        'FOLLOWUP_CHECKPOINT',
+        'FOLLOWUP_CHECKPOINT_ALLOWED',
+      ].includes(prompt) &&
+      parsed.messages.at(-1)?.role !== 'tool'
+    ) {
+      const checkpoint = prompt.startsWith('FOLLOWUP_CHECKPOINT');
+      reply(response, '', [
+        {
+          index: 0,
+          id: `followup-${prompt}`,
+          type: 'function',
+          function: {
+            name: checkpoint ? 'write_partner_workspace_file' : 'create_file_proposal',
+            arguments: JSON.stringify(
+              checkpoint
+                ? { relativePath: 'reviewed.md', content: 'CHECKPOINT_REPLACEMENT' }
+                : {
+                    targetPath: prompt === 'FOLLOWUP_PROPOSE_APPLY' ? 'reviewed.md' : 'rejected.md',
+                    content: 'REVIEWED_CONTENT',
+                  },
+            ),
+          },
+        },
+      ]);
       return;
     }
     if (prompt === 'SDK_QUESTION') {
@@ -333,6 +370,7 @@ export async function createLocalSdkProvider() {
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Local Provider did not bind');
   return {
+    requestModels,
     questionResults,
     url: `http://127.0.0.1:${address.port}/v1`,
     requests,

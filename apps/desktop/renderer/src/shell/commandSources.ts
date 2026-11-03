@@ -32,6 +32,7 @@ export interface CommandItem {
 export interface CommandContext {
   readonly projectPath: string | null;
   readonly sessionId: string | null;
+  readonly surface: 'code' | 'partner';
   /** 关闭命令面板回调 — onPick 内部用，关 modal 之后再触发可能的异步 IPC */
   readonly close: () => void;
   readonly t: Translate;
@@ -110,12 +111,16 @@ function themeLabel(theme: 'dark' | 'light' | 'system', t: Translate): string {
 /** Session 候选 — 当前项目下最近 N 个 */
 async function sessionCommands(ctx: CommandContext): Promise<readonly CommandItem[]> {
   if (!window.kodaxSpace || !ctx.projectPath) return [];
-  const r = await window.kodaxSpace.invoke('session.list', { projectRoot: ctx.projectPath });
+  const r = await window.kodaxSpace.invoke('session.list', {
+    projectRoot: ctx.projectPath,
+    surface: ctx.surface,
+  });
   // 防御 IPC schema 漂移：r.ok=true 但 payload 形状异常时静默退到空列表，避免崩溃
   if (!r.ok || !Array.isArray(r.data?.sessions)) return [];
   // 按 lastActivityAt 倒序，cap 30 — 命令面板需要"最近"语义
   // 缺失字段用 0 兜底（NaN 比较会让 sort 不稳）
   const sessions = [...r.data.sessions]
+    .filter((session) => session.surface === ctx.surface)
     .sort((a, b) => (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0))
     .slice(0, 30);
   return sessions.map((s) => ({

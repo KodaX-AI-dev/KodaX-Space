@@ -94,10 +94,15 @@ interface PartnerExecutionInput {
 
 async function trustedPartnerState(runtime: KodaXDaemonRuntime, sessionId: string) {
   const session = await runtime.sessions.load(sessionId);
+  const markers = [
+    session.surface,
+    session.tag,
+    session.profileId === 'kodax-space.partner' ? 'partner' : session.profileId,
+  ];
   if (
-    session.surface !== 'partner' &&
-    session.profileId !== 'kodax-space.partner' &&
-    session.tag !== 'partner'
+    session.id !== sessionId ||
+    !markers.includes('partner') ||
+    markers.some((marker) => marker !== undefined && marker !== 'partner')
   )
     throw new Error('Partner identity changed.');
   const projectRoot = session.workspaceRoot ?? session.gitRoot;

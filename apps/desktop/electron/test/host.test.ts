@@ -210,8 +210,8 @@ test('daemon manual compact surfaces a missing exact credential from the Runtime
 
   const result = await kodaxHost.requestCompact(sessionId);
 
-  assert.equal(result.ok, true);
-  assert.equal(result.compacted, false);
+  assert.equal(result.ok, false);
+  assert.equal(result.compacted, undefined);
   assert.match(result.reason ?? '', /no exact Space credential/i);
 });
 
@@ -305,8 +305,8 @@ test('Runtime-owned manual compact cannot fall back to embedded storage while Ru
 
   const result = await kodaxHost.requestCompact(sessionId);
 
-  assert.equal(result.ok, true);
-  assert.equal(result.compacted, false);
+  assert.equal(result.ok, false);
+  assert.equal(result.compacted, undefined);
   assert.match(result.reason ?? '', /Runtime unavailable while reconnecting/i);
   assert.equal(embeddedCompactCalled, false);
   assert.equal(runtimeCompactCalled, true);

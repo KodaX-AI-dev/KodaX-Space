@@ -66,7 +66,7 @@ async function installFromPath(filePath: string): Promise<InternalMcpbEntry> {
   const installed = await installMcpb(filePath, getExtractBase(), getTmpBase());
   const entry = buildExtensionFromManifest(installed.manifest, installed.installDir);
   const { displacedInstallDir, displacedEntry } = await addOrReplace(entry);
-  const sync = await syncEntryToKodaxMcp(entry, { overwrite: true });
+  const sync = await syncEntryToKodaxMcp(entry, { overwrite: true, previousEntry: displacedEntry });
   if (sync.kind !== 'registered' && sync.kind !== 'already-current') {
     let rolledBackRegistry = false;
     if (displacedEntry) {
@@ -253,26 +253,23 @@ export function registerMcpbChannels(): void {
   });
 
   registerChannel('mcpb.uninstall', async (input) => {
+    const entry = (await readRegistry()).extensions.find(
+      (candidate) => candidate.extensionId === input.extensionId,
+    );
+    if (!entry) return { ok: false };
+    const removedMcp = await removeEntryFromKodaxMcp(entry);
+    if (removedMcp.kind === 'error') throw new Error(removedMcp.message);
+    if (removedMcp.kind === 'skipped-changed')
+      throw new Error(
+        'The MCP server was modified. Remove its configuration before uninstalling this bundle; its files have been preserved.',
+      );
+    // Also reload on a retry after config removal succeeded but owner refresh failed.
+    await refreshMcpOwner();
     const res = await removeByExtensionId(input.extensionId);
-    if (!res.removed) return { ok: false };
-    if (res.entry) {
-      const removedMcp = await removeEntryFromKodaxMcp(res.entry);
-      if (removedMcp.kind === 'removed') {
-        await refreshMcpOwner();
-      } else if (removedMcp.kind === 'skipped-changed') {
-        console.warn(
-          '[mcpb] leaving ~/.kodax/integrations/mcp.json server because it no longer matches the installed bundle',
-        );
-      } else if (removedMcp.kind === 'error') {
-        console.warn(
-          `[mcpb] failed to remove MCP server from ~/.kodax/integrations/mcp.json: ${removedMcp.message}`,
-        );
-      }
-    }
     if (res.installDir) {
       await safeRmInstallDir(res.installDir, 'uninstall');
     }
-    void pushChanged();
+    await pushChanged();
     return { ok: true };
   });
 

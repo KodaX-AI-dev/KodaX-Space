@@ -110,6 +110,7 @@ export default function App(): JSX.Element {
             snapshotRequiredBySession: state.runtimeSnapshotRequiredBySession,
           },
           currentSessionId,
+          state.sessions.find((session) => session.sessionId === currentSessionId)?.surface,
         )
       : false,
   );
@@ -136,7 +137,7 @@ export default function App(): JSX.Element {
   );
   const setSessionFlag = useAppStore((s) => s.setSessionFlag);
   const unsubsRef = useRef<Array<() => void>>([]);
-  const requestCoderLiveSnapshotRef = useRef<
+  const requestSessionLiveSnapshotRef = useRef<
     (sessionId: string, options?: LiveSnapshotRequestOptions) => void
   >(() => {});
 
@@ -405,15 +406,14 @@ export default function App(): JSX.Element {
           }
         });
     };
-    requestCoderLiveSnapshotRef.current = requestLiveSnapshot;
-    const requestCurrentCoderLiveSnapshot = (
+    requestSessionLiveSnapshotRef.current = requestLiveSnapshot;
+    const requestCurrentSessionLiveSnapshot = (
       options: Pick<LiveSnapshotRequestOptions, 'rerunIfInFlight'> = {},
     ): void => {
       const state = useAppStore.getState();
       const sessionId = state.currentSessionId;
       if (!sessionId) return;
       const selected = state.sessions.find((session) => session.sessionId === sessionId);
-      if (selected?.surface === 'partner') return;
       if (
         !runtimeSessionNeedsObservation(
           {
@@ -422,6 +422,7 @@ export default function App(): JSX.Element {
             snapshotRequiredBySession: state.runtimeSnapshotRequiredBySession,
           },
           sessionId,
+          selected?.surface,
         )
       ) {
         return;
@@ -449,8 +450,6 @@ export default function App(): JSX.Element {
       const state = useAppStore.getState();
       const sessionId = state.currentSessionId;
       if (!sessionId) return;
-      const selected = state.sessions.find((session) => session.sessionId === sessionId);
-      if (selected?.surface === 'partner') return;
       const immediate = runtimeSessionRequiresImmediateObservation(
         {
           connection: state.runtimeConnection,
@@ -465,7 +464,7 @@ export default function App(): JSX.Element {
           console.error('[session.history] Runtime-ready wake failed', { sessionId, error });
         });
       }
-      requestCurrentCoderLiveSnapshot(options);
+      requestCurrentSessionLiveSnapshot(options);
     };
     const requestObservedActiveLiveSnapshots = (
       options: {
@@ -483,8 +482,7 @@ export default function App(): JSX.Element {
           sessionLiveProjectionHasActivity(projection) &&
           projection.cursor.runtimeId === state.runtimeConnection.runtimeId &&
           sessionId !== options.excludeSessionId &&
-          !liveSnapshotRequests.has(sessionId) &&
-          state.sessions.find((session) => session.sessionId === sessionId)?.surface !== 'partner',
+          !liveSnapshotRequests.has(sessionId),
       );
       const start =
         candidates.length === 0 ? 0 : backgroundReconciliationCursor % candidates.length;
@@ -501,12 +499,10 @@ export default function App(): JSX.Element {
       }
       return requested;
     };
-    const requestPeriodicCurrentCoderLiveSnapshot = (): string | undefined => {
+    const requestPeriodicCurrentSessionLiveSnapshot = (): string | undefined => {
       const state = useAppStore.getState();
       const sessionId = state.currentSessionId;
       if (!sessionId || liveSnapshotRequests.has(sessionId)) return undefined;
-      const selected = state.sessions.find((session) => session.sessionId === sessionId);
-      if (selected?.surface === 'partner') return undefined;
       if (
         !runtimeSessionNeedsPeriodicReconciliation(
           {
@@ -656,7 +652,7 @@ export default function App(): JSX.Element {
     const liveReconciliationTimer = setInterval(() => {
       if (document.hidden) return;
       requestRuntimeProfileSnapshot();
-      const current = requestPeriodicCurrentCoderLiveSnapshot();
+      const current = requestPeriodicCurrentSessionLiveSnapshot();
       requestObservedActiveLiveSnapshots({
         visibleOnly: true,
         ...(current !== undefined ? { excludeSessionId: current } : {}),
@@ -975,7 +971,7 @@ export default function App(): JSX.Element {
       liveSnapshotRetryAttempts.clear();
       clearRuntimeProfileRetry();
       clearInterval(liveReconciliationTimer);
-      requestCoderLiveSnapshotRef.current = () => {};
+      requestSessionLiveSnapshotRef.current = () => {};
       window.removeEventListener('focus', reconcileWindowActivation);
       window.removeEventListener('blur', reconcileWindowActivation);
       window.removeEventListener(SPACE_VERSION_REFRESH_EVENT, refreshSpaceVersion);
@@ -1025,11 +1021,7 @@ export default function App(): JSX.Element {
     ) {
       return;
     }
-    const selected = useAppStore
-      .getState()
-      .sessions.find((session) => session.sessionId === currentSessionId);
-    if (selected?.surface === 'partner') return;
-    requestCoderLiveSnapshotRef.current(currentSessionId, {
+    requestSessionLiveSnapshotRef.current(currentSessionId, {
       allowEqualHydration: true,
       rerunIfInFlight: false,
     });
@@ -1056,11 +1048,7 @@ export default function App(): JSX.Element {
     ) {
       return;
     }
-    const selected = useAppStore
-      .getState()
-      .sessions.find((session) => session.sessionId === currentSessionId);
-    if (selected?.surface === 'partner') return;
-    requestCoderLiveSnapshotRef.current(currentSessionId, {
+    requestSessionLiveSnapshotRef.current(currentSessionId, {
       allowEqualHydration: true,
       rerunIfInFlight: false,
     });

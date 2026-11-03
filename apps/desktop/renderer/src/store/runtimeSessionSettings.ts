@@ -17,6 +17,7 @@ import { sessionMatchesScope } from '../lib/sessionScope.js';
 export function mergeRuntimeSettingsIntoSessions(
   sessions: readonly SessionMeta[],
   projection: SpaceSessionLiveProjectionT,
+  previous?: SpaceSessionLiveProjectionT,
 ): readonly SessionMeta[] {
   const settings = projection.settings?.value;
   if (!settings) return sessions;
@@ -39,10 +40,12 @@ export function mergeRuntimeSettingsIntoSessions(
     };
     if (settings.model) {
       next.model = settings.model;
-    } else if (settings.provider && settings.provider !== session.provider) {
-      // An omitted model is not a request to erase the effective model on an
-      // unrelated partial settings update. Only discard the previous model
-      // when the provider itself changed, so the new provider default can win.
+    } else if (
+      previous?.settings?.value.model !== undefined ||
+      (settings.provider && settings.provider !== session.provider)
+    ) {
+      // Preserve a pending create-time selection until Host settings confirm it.
+      // Once confirmed, a later absent model is an authoritative clear.
       delete next.model;
     }
     return next;

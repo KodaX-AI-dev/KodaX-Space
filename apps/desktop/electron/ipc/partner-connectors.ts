@@ -9,6 +9,7 @@ import {
 import type { PartnerConnectorContext } from '../partner-connectors/service.js';
 import { assertSpaceExtensionSender } from './space-extensions.js';
 import { registerChannelWithEvent } from './register.js';
+import { localizedSpaceMessage } from '../settings/locale.js';
 
 async function context(input: {
   sessionId: string;
@@ -23,7 +24,12 @@ async function context(input: {
     canonProjectRoot(session.projectRoot, process.platform === 'win32') !==
       canonProjectRoot(root, process.platform === 'win32')
   )
-    throw new Error('连接器会话与项目不匹配');
+    throw new Error(
+      await localizedSpaceMessage(
+        '连接器会话与项目不匹配',
+        'Connector session and project do not match.',
+      ),
+    );
   return {
     sessionId: session.sessionId,
     projectRoot: session.projectRoot,
@@ -45,9 +51,15 @@ export function registerPartnerConnectorChannels(
     assertSpaceExtensionSender(event);
     return { components: await getComponents().list(input.refresh) };
   });
-  register('partner.components.install', (input, event) => {
+  register('partner.components.install', async (input, event) => {
     assertSpaceExtensionSender(event);
-    if (getTasks().hasActiveTask()) throw new Error('请先完成或取消账号连接，再安装连接组件。');
+    if (getTasks().hasActiveTask())
+      throw new Error(
+        await localizedSpaceMessage(
+          '请先完成或取消账号连接，再安装连接组件。',
+          'Finish or cancel account connection before installing a component.',
+        ),
+      );
     return { component: getComponents().install(input.id) };
   });
   register('partner.components.cancel', async (input, event) => {
@@ -63,9 +75,15 @@ export function registerPartnerConnectorChannels(
       ),
     };
   });
-  register('partner.connectors.onboarding.start', (input, event) => {
+  register('partner.connectors.onboarding.start', async (input, event) => {
     assertSpaceExtensionSender(event);
-    if (getComponents().isInstalling()) throw new Error('请先完成或取消组件安装，再连接账号。');
+    if (getComponents().isInstalling())
+      throw new Error(
+        await localizedSpaceMessage(
+          '请先完成或取消组件安装，再连接账号。',
+          'Finish or cancel component installation before connecting an account.',
+        ),
+      );
     return { job: getTasks().start(input) };
   });
   register('partner.connectors.onboarding.get', (input, event) => {

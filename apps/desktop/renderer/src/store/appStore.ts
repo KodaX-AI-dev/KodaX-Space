@@ -9143,7 +9143,7 @@ export const useAppStore = create<AppState>((setState) => {
           )
           .map((interaction) => interaction.request);
         return {
-          sessions: mergeRuntimeSettingsIntoSessions(state.sessions, projection),
+          sessions: mergeRuntimeSettingsIntoSessions(state.sessions, projection, currentProjection),
           liveProjectionBySession,
           runtimeSnapshotRequiredBySession: next.snapshotRequiredBySession,
           ...(snapshotRun
@@ -9360,7 +9360,13 @@ export const useAppStore = create<AppState>((setState) => {
             : {};
         const settingsPatch =
           change.change.domain === 'settings' && projection
-            ? { sessions: mergeRuntimeSettingsIntoSessions(state.sessions, projection) }
+            ? {
+                sessions: mergeRuntimeSettingsIntoSessions(
+                  state.sessions,
+                  projection,
+                  currentProjection,
+                ),
+              }
             : {};
         const queuePatch =
           result.status === 'applied' &&

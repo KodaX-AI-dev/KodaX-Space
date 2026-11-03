@@ -14,6 +14,7 @@
 
 import { isLicenseActive } from '@kodax-space/space-ipc-schema';
 import type { KodaXContextOptions } from '@kodax-ai/kodax/coding';
+import type { RuntimeSessionSettingsPatch } from '@kodax-ai/kodax/runtime';
 import { licenseManager } from '../license/manager.js';
 
 /**
@@ -52,6 +53,14 @@ export async function repoIntelContextFields(): Promise<RepoIntelContextFields> 
   return (await isRepoIntelEntitled())
     ? { repoIntelligenceTrace: true }
     : { repoIntelligenceMode: 'off' };
+}
+
+/** Host-owned Session overrides; an unlocked Session inherits the configured engine. */
+export async function repoIntelSessionFields(): Promise<
+  Pick<RuntimeSessionSettingsPatch, 'repoIntelligenceMode' | 'repoIntelligenceTrace'>
+> {
+  const entitled = await isRepoIntelEntitled();
+  return { repoIntelligenceMode: entitled ? null : 'off', repoIntelligenceTrace: entitled };
 }
 
 /** Test-only: override the entitlement check (affects every gate site at once). */

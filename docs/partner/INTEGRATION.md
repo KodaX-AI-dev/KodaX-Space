@@ -1,5 +1,7 @@
 # Partner 与 Space/Coder 集成契约
 
+2026-11-03 补审：本地文件提案重新进入任务卡与按需详情审核，详情启动器提供审核、交付与 checkpoint 历史/回滚入口；不恢复旧永久 Workbench。详情按当前 Partner Session 挂载，切面或切会话不沿用旧审核状态。Host 工具注册拒绝明确矛盾的 Session 标记，仍兼容缺失旧字段，正常 shell/write/子 Agent 能力保留。验证状态及 SDK 外部缺口见 [补审记录](../releases/kodax-beta1-claude-followup.md)。
+
 ## 1. 文档职责与权威来源
 
 本文记录 Partner 与 Space/Coder 的共享接缝、Feature 映射、上游差异和集成证据。

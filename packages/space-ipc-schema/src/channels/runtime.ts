@@ -1181,6 +1181,7 @@ export const spaceSessionLiveInvalidatedSchema = z
     sessionId: idSchema,
     runtimeId: idSchema,
     reason: z.enum([
+      'settings_changed',
       'event_overflow',
       'event_order',
       'delivery_failed',

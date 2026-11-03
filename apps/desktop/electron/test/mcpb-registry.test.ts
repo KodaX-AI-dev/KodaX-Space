@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   migrateLegacyMcpbStorage,
+  syncEntryToKodaxMcp,
+  toKodaxMcpServerConfig,
   getMcpbStoragePaths,
   mcpConfigMatchesEntry,
   type InternalMcpbEntry,
@@ -68,6 +70,33 @@ function fakeSync(initial: Record<string, KodaxMcpServerConfig> = {}): {
   };
 }
 
+test('bundle replacement never overwrites a same-name user server', async () => {
+  const old = makeEntry(path.join(kodaxDir, 'old'));
+  const next = makeEntry(path.join(kodaxDir, 'next'));
+  const user = { type: 'stdio' as const, command: 'user-server' };
+  const sync = fakeSync({ filesystem: user });
+  const result = await syncEntryToKodaxMcp(next, {
+    overwrite: true,
+    previousEntry: old,
+    deps: sync.deps,
+  });
+  assert.equal(result.kind, 'skipped-existing');
+  assert.deepEqual(sync.store.filesystem, user);
+});
+
+test('bundle replacement upgrades only its matching previous server', async () => {
+  const old = makeEntry(path.join(kodaxDir, 'old'));
+  const next = makeEntry(path.join(kodaxDir, 'next'));
+  const sync = fakeSync({ filesystem: toKodaxMcpServerConfig(old) });
+  const result = await syncEntryToKodaxMcp(next, {
+    overwrite: true,
+    previousEntry: old,
+    deps: sync.deps,
+  });
+  assert.equal(result.kind, 'registered');
+  assert.ok(mcpConfigMatchesEntry(sync.store.filesystem, next));
+});
+
 test('test onboarding mode keeps legacy path inside the isolated KodaX dir', () => {
   const previous = process.env.KODAX_TEST_ONBOARDING;
   process.env.KODAX_TEST_ONBOARDING = 'fixture';
@@ -102,7 +131,10 @@ test('migrates legacy ~/.kodax-space registry into ~/.kodax/mcpb and registers M
   }
 
   const newInstallDir = path.join(kodaxDir, 'mcpb', 'extensions', 'filesystem@1.0.0');
-  assert.equal(await fs.readFile(path.join(newInstallDir, 'index.js'), 'utf8'), 'console.log("ok");');
+  assert.equal(
+    await fs.readFile(path.join(newInstallDir, 'index.js'), 'utf8'),
+    'console.log("ok");',
+  );
 
   const registry = JSON.parse(
     await fs.readFile(path.join(kodaxDir, 'mcpb', 'registry.json'), 'utf8'),
@@ -141,7 +173,10 @@ test('migration replaces stale target install directory atomically', async () =>
   const result = await migrateLegacyMcpbStorage({ legacyHome, kodaxDir, syncDeps: sync.deps });
 
   assert.equal(result.kind, 'migrated');
-  assert.equal(await fs.readFile(path.join(newInstallDir, 'index.js'), 'utf8'), 'console.log("ok");');
+  assert.equal(
+    await fs.readFile(path.join(newInstallDir, 'index.js'), 'utf8'),
+    'console.log("ok");',
+  );
   await assert.rejects(fs.stat(path.join(newInstallDir, 'stale.txt')));
 });
 
@@ -193,7 +228,10 @@ test('migration keeps legacy storage when MCP registration errors', async () => 
     assert.equal(result.skippedRegistration, 1);
     assert.equal(result.legacyCleanup, 'kept-error');
   }
-  assert.equal(await fs.readFile(path.join(oldInstallDir, 'index.js'), 'utf8'), 'console.log("ok");');
+  assert.equal(
+    await fs.readFile(path.join(oldInstallDir, 'index.js'), 'utf8'),
+    'console.log("ok");',
+  );
   assert.deepEqual(sync.store, {});
 });
 
@@ -232,7 +270,10 @@ test('missing legacy registry does not remove non-empty legacy storage', async (
   const result = await migrateLegacyMcpbStorage({ legacyHome, kodaxDir, syncDeps: sync.deps });
 
   assert.equal(result.kind, 'not-found');
-  assert.equal(await fs.readFile(path.join(orphanDir, 'index.js'), 'utf8'), 'console.log("orphan");');
+  assert.equal(
+    await fs.readFile(path.join(orphanDir, 'index.js'), 'utf8'),
+    'console.log("orphan");',
+  );
   assert.deepEqual(sync.store, {});
 });
 
@@ -256,7 +297,10 @@ test('migration skips entries whose legacy install directory is missing', async 
   }
   assert.deepEqual(sync.store, {});
   await assert.rejects(fs.stat(path.join(kodaxDir, 'mcpb', 'registry.json')));
-  assert.equal(await fs.readFile(path.join(legacyHome, 'mcpb-extensions.json'), 'utf8'), JSON.stringify({ version: 1, extensions: [entry] }, null, 2));
+  assert.equal(
+    await fs.readFile(path.join(legacyHome, 'mcpb-extensions.json'), 'utf8'),
+    JSON.stringify({ version: 1, extensions: [entry] }, null, 2),
+  );
 });
 
 test('migration keeps legacy storage when any legacy registry entry is dropped', async () => {
@@ -284,6 +328,9 @@ test('migration keeps legacy storage when any legacy registry entry is dropped',
     assert.equal(result.droppedInvalid, 1);
     assert.equal(result.legacyCleanup, 'kept-error');
   }
-  assert.equal(await fs.readFile(path.join(oldInstallDir, 'index.js'), 'utf8'), 'console.log("ok");');
+  assert.equal(
+    await fs.readFile(path.join(oldInstallDir, 'index.js'), 'utf8'),
+    'console.log("ok");',
+  );
   assert.ok(sync.store.filesystem);
 });

@@ -11,6 +11,8 @@ import { partnerDeliveryPreviewVersion } from '../../lib/generatedResourceRef.js
 export type PartnerDetailTabKind =
   | 'materials'
   | 'outputs'
+  | 'fileReviews'
+  | 'deliveries'
   | 'collaboration'
   | 'files'
   | 'file'
@@ -49,6 +51,8 @@ export interface PartnerDetailWorkspaceState {
 export type PartnerDetailOpenTarget =
   | { readonly kind: 'materials'; readonly openPicker?: boolean }
   | { readonly kind: 'outputs' }
+  | { readonly kind: 'fileReviews' }
+  | { readonly kind: 'deliveries' }
   | { readonly kind: 'collaboration' }
   | { readonly kind: 'files' }
   | { readonly kind: 'file'; readonly snapshot: TransientArtifactSnapshot }
@@ -138,6 +142,8 @@ export function createPartnerDetailTab(
   const staticId =
     target.kind === 'materials' ||
     target.kind === 'outputs' ||
+    target.kind === 'fileReviews' ||
+    target.kind === 'deliveries' ||
     target.kind === 'collaboration' ||
     target.kind === 'files'
       ? `partner-detail-${target.kind}`

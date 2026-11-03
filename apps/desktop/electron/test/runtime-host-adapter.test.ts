@@ -37,6 +37,7 @@ import {
   withDarwinRuntimeDaemonTmpdir,
 } from '../kodax/runtime-host-adapter.js';
 import { kodaxHost } from '../kodax/host.js';
+import { _setRepoIntelEntitlementForTesting } from '../kodax/repo-intel-gate.js';
 import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import {
   SessionRuntimeStore,
@@ -56,6 +57,130 @@ import {
 import { encodeRuntimeActorTaskId } from '../kodax/runtime/runtime-agent-projection.js';
 
 await initializeCoderDaemonProjectionSdk();
+
+test('work-mode changes invalidate idle UI only after a successful Host CAS', async (t) => {
+  const fake = createFakeRuntime();
+  const observe = fake.runtime.sessions.observe;
+  fake.runtime.sessions.observe = async (...args) => {
+    const observation = await observe(...args);
+    return {
+      ...observation,
+      snapshot: {
+        ...observation.snapshot,
+        settings: await fake.runtime.sessions.getSettingsVersioned(args[0]),
+      },
+    };
+  };
+  Object.assign(fake.runtime.capabilities!, {
+    sharedSessionSettings: { version: 2, keys: ['workMode'] },
+  });
+  const invalidations: unknown[] = [];
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    push: (channel, value) => {
+      if (channel === 'session.liveInvalidated') invalidations.push(value);
+    },
+  });
+  t.after(() => adapter.close());
+  const id = await adapter.createSession({
+    projectRoot: 'C:\\repo',
+    surface: 'code',
+    ephemeral: false,
+  });
+  const before = await adapter.readWorkMode(id);
+  await adapter.readSessionLiveSnapshot(id);
+  const observedBeforeChange = fake.calls.observed.length;
+  const result = await adapter.updateWorkMode({
+    sessionId: id,
+    workMode: 'agent',
+    expectedRevision: before.revision,
+  });
+  assert.equal(result.workMode, 'agent');
+  assert.deepEqual(invalidations, [
+    {
+      sessionId: id,
+      runtimeId: fake.runtime.identity.runtimeId,
+      reason: 'settings_changed',
+      message: 'Session work mode changed; refresh the Host settings.',
+    },
+  ]);
+  await assert.rejects(
+    adapter.updateWorkMode({
+      sessionId: id,
+      workMode: 'script',
+      expectedRevision: before.revision,
+    }),
+    /revision conflict/,
+  );
+  assert.equal(invalidations.length, 1);
+  assert.equal((await adapter.readWorkMode(id)).workMode, 'agent');
+  assert.equal(fake.calls.observed.length, observedBeforeChange);
+  assert.equal((await adapter.readSessionLiveSnapshot(id)).settings?.value.workMode, 'agent');
+});
+
+test('an unsent trusted Session reaches the Host goal API without bypassing its conversation requirement', async (t) => {
+  installPersistedSessionLookup();
+  const fake = createFakeRuntime();
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  const { sessionId } = kodaxHost.createSession({ projectRoot: 'C:\\repo', provider: 'anthropic' });
+  t.after(async () => {
+    await kodaxHost.disposeAll();
+    await adapter.close();
+  });
+  let created = 0;
+  fake.runtime.sessions.createGoal = async (input) => {
+    created += 1;
+    assert.ok(fake.sessions.has(input.sessionId));
+    throw Object.assign(
+      new Error('Session has no conversation entries yet; send an input before setting a goal.'),
+      { code: 'conflict' },
+    );
+  };
+  await assert.rejects(
+    adapter.sessionGoal(sessionId, { action: 'create', objective: 'Before first message' }),
+    /send an input before setting a goal/,
+  );
+  assert.equal(created, 1);
+});
+
+test('shared Host admissions apply the current repo-intelligence entitlement and trace policy', async (t) => {
+  installPersistedSessionLookup();
+  const fake = createFakeRuntime();
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  t.after(async () => {
+    _setRepoIntelEntitlementForTesting(null);
+    await adapter.close();
+  });
+  await adapter.ensureSession({
+    sessionId: 's_1',
+    projectRoot: 'C:\\repo',
+    surface: 'code',
+    ephemeral: false,
+  });
+  for (const entitled of [false, true, false]) {
+    _setRepoIntelEntitlementForTesting(async () => entitled);
+    const handle = await adapter.startManagedRun({
+      sessionId: 's_1',
+      prompt: 'Read repository',
+      options: { provider: 'mock' },
+    });
+    const settings = (await fake.runtime.sessions.getSettingsVersioned('s_1')).value;
+    assert.equal(settings.repoIntelligenceMode, entitled ? undefined : 'off');
+    assert.equal(settings.repoIntelligenceTrace, entitled);
+    await adapter.abortSessionRun('s_1');
+    await handle.result;
+  }
+});
 
 test('a promoted Quick Ask displays the unchanged SDK items only after authoritative Host metadata confirms its formal tag', async () => {
   const fake = createFakeRuntime();
@@ -14939,7 +15064,7 @@ test('deleting a Runtime-missing session is idempotent and allows legacy cleanup
   await adapter.close();
 });
 
-test('observation with an omitted model keeps a concrete provider default for Auto LLM', async (t) => {
+test('observation with an omitted model retains inheritance instead of pinning a provider default', async (t) => {
   class NoopRuntimeStore extends SessionRuntimeStore {
     override async set(): Promise<boolean> {
       return true;
@@ -14980,7 +15105,7 @@ test('observation with an omitted model keeps a concrete provider default for Au
   await adapter.ensureObserved('s_auto_default_model');
   await waitForTest(() => kodaxHost.get('s_auto_default_model')?.reasoningMode === 'high');
 
-  assert.equal(kodaxHost.get('s_auto_default_model')?.model, 'glm-5.3');
+  assert.equal(kodaxHost.get('s_auto_default_model')?.model, undefined);
   assert.equal(kodaxHost.get('s_auto_default_model')?.reasoningMode, 'high');
   await adapter.close();
 });

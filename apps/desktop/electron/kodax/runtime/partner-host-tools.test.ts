@@ -7,6 +7,21 @@ import { registerSpaceHostTools } from './space-host-tools.js';
 import { getSpaceExpertCatalog } from '../../space-extensions/runtime.js';
 import { capturePartnerBusinessBinding } from './partner-business-binding.js';
 
+test('a contradictory persisted Coder identity cannot receive Partner authority', async () => {
+  for (const identity of [
+    { surface: 'code', profileId: 'kodax-space.partner', tag: 'partner' },
+    { surface: 'partner', profileId: 'kodax-space.coder', tag: 'partner' },
+    { surface: 'partner', tag: 'code' },
+  ]) {
+    const runtime = {
+      sessions: {
+        load: async () => ({ id: 'conflict', workspaceRoot: '/workspace', ...identity }),
+      },
+    } as unknown as KodaXDaemonRuntime;
+    await assert.rejects(registerPartnerHostExecution(runtime, 'conflict'), /identity changed/);
+  }
+});
+
 test('a committed expert declares its default method without rewriting the question or restricting Agent tools', async (t) => {
   const store = getSessionRuntimeStore();
   const catalog = getSpaceExpertCatalog();

@@ -46,3 +46,17 @@ test('agent.external.task.list preserves real task-store failures', async (t) =>
     /task store unavailable/,
   );
 });
+
+test('agent.external.task.list does not disguise a Host failure as a local-only list', async (t) => {
+  t.mock.method(kodaxHost, 'get', () => undefined);
+  t.mock.method(kodaxHost, 'hasSession', async () => true);
+  t.mock.method(externalAgentGateway, 'listTasks', async () => []);
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  t.mock.method(runtimeHostAdapter, 'listRuntimeActorTasks', async () => {
+    throw new Error('Host unavailable');
+  });
+  await assert.rejects(
+    listExternalAgentTasksForIpc({ sessionId: 's_host_failure' }),
+    /Host unavailable/,
+  );
+});

@@ -8,6 +8,28 @@ import { AssistantBubble, SystemNotice, QueuedUserBubble } from './bubbles.js';
 
 const TestI18nProvider = I18nProvider as ComponentType<PropsWithChildren<Record<string, never>>>;
 
+test('a user-withdrawn queued input is distinct from failed delivery', () => {
+  withEnglishLocale(() => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        TestI18nProvider,
+        null,
+        createElement(QueuedUserBubble, {
+          kind: 'queued_user',
+          id: 'withdrawn',
+          content: 'question',
+          queueMode: 'after-turn',
+          status: 'failed',
+          withdrawn: true,
+          sentAt: 0,
+        }),
+      ),
+    );
+    assert.match(markup, /Withdrawn/);
+    assert.doesNotMatch(markup, /Not delivered|run ended before insertion/);
+  });
+});
+
 test('a Host-confirmed queued input can be taken back even without an admission error', () => {
   withEnglishLocale(() => {
     const markup = renderToStaticMarkup(

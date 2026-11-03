@@ -8,6 +8,40 @@ import {
   PartnerContextRail,
 } from './PartnerContextRail.js';
 
+test('pending local file proposals expose the existing review workspace', async () => {
+  const bridge = {
+    invoke: async (channel: string) => ({
+      ok: true,
+      data: {
+        sources: [],
+        artifacts: [],
+        deliveries: [],
+        receipts: [],
+        baseTasks: [],
+        documentTasks: [],
+        proposals:
+          channel === 'partner.fileProposals.list'
+            ? [{ id: 'local-review', targetPath: 'report.md', status: 'pending' }]
+            : [],
+      },
+    }),
+  } as unknown as KodaXSpaceBridge;
+  const loaded = await loadPartnerContext({
+    bridge,
+    projectRoot: '/project',
+    sessionId: 'partner',
+    transientArtifacts: [],
+    pendingSources: [],
+  });
+  assert.deepEqual(loaded.reviews, [
+    {
+      id: 'file-proposal:local-review',
+      label: 'report.md',
+      action: { kind: 'detail', target: { kind: 'fileReviews' } },
+    },
+  ]);
+});
+
 test('proposal history stays outside the task rail while direct tasks become browser artifacts', async () => {
   const invokedChannels: string[] = [];
   const createProposal = {
@@ -82,7 +116,7 @@ test('proposal history stays outside the task rail while direct tasks become bro
     transientArtifacts: [],
     pendingSources: [],
   });
-  assert.doesNotMatch(invokedChannels.join('\n'), /partner\.fileProposals/u);
+  assert.match(invokedChannels.join('\n'), /partner\.fileProposals/u);
   assert.equal(loaded.summary.artifacts.count, 1);
   assert.equal(loaded.artifacts[0]?.label, '项目备忘');
   assert.deepEqual(loaded.artifacts[0]?.action, {

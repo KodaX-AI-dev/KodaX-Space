@@ -68,9 +68,10 @@ export async function listExternalAgentTasksForIpc(
     return { tasks: localTasks };
   }
 
-  const runtimeTasks = await runtimeHostAdapter
-    .listRuntimeActorTasks(input.sessionId, input.agentId)
-    .catch(() => []);
+  const runtimeTasks = await runtimeHostAdapter.listRuntimeActorTasks(
+    input.sessionId,
+    input.agentId,
+  );
   return {
     tasks: [...runtimeTasks, ...localTasks]
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
@@ -171,18 +172,14 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
       assertPrimaryRenderer(event);
       const local = await externalAgentGateway.listRegistrations();
       if (!runtimeHostAdapter.isRuntimeSelected()) return { registrations: local };
-      try {
-        const runtime = await runtimeHostAdapter.listRuntimeAgentRegistrations();
-        const runtimeIds = new Set(runtime.map((item) => item.agentId));
-        return {
-          registrations: [
-            ...runtime,
-            ...local.filter((item) => !runtimeIds.has(item.agentId)),
-          ].slice(0, 256),
-        };
-      } catch {
-        return { registrations: local };
-      }
+      const runtime = await runtimeHostAdapter.listRuntimeAgentRegistrations();
+      const runtimeIds = new Set(runtime.map((item) => item.agentId));
+      return {
+        registrations: [...runtime, ...local.filter((item) => !runtimeIds.has(item.agentId))].slice(
+          0,
+          256,
+        ),
+      };
     }),
   );
 
@@ -201,18 +198,14 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
       assertPrimaryRenderer(event);
       const local = await externalAgentGateway.listDispatchable(input);
       if (!runtimeHostAdapter.isRuntimeSelected()) return { agents: local };
-      try {
-        const runtime = await runtimeHostAdapter.listRuntimeDispatchableAgents(input);
-        const runtimeIds = new Set(runtime.map((item) => item.descriptor.agentId));
-        return {
-          agents: [
-            ...runtime,
-            ...local.filter((item) => !runtimeIds.has(item.descriptor.agentId)),
-          ].slice(0, 256),
-        };
-      } catch {
-        return { agents: local };
-      }
+      const runtime = await runtimeHostAdapter.listRuntimeDispatchableAgents(input);
+      const runtimeIds = new Set(runtime.map((item) => item.descriptor.agentId));
+      return {
+        agents: [
+          ...runtime,
+          ...local.filter((item) => !runtimeIds.has(item.descriptor.agentId)),
+        ].slice(0, 256),
+      };
     }),
   );
 
@@ -220,13 +213,9 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
     runWithCoderAdmission(options, async () => {
       assertPrimaryRenderer(event);
       if (runtimeHostAdapter.isRuntimeSelected()) {
-        try {
-          const runtimeAgents = await runtimeHostAdapter.listRuntimeDispatchableAgents(input);
-          if (runtimeAgents.some((item) => item.descriptor.agentId === input.agentId)) {
-            return runtimeHostAdapter.preflightRuntimeAgent(input);
-          }
-        } catch {
-          // Reference host-provider registrations remain available below.
+        const runtimeAgents = await runtimeHostAdapter.listRuntimeDispatchableAgents(input);
+        if (runtimeAgents.some((item) => item.descriptor.agentId === input.agentId)) {
+          return runtimeHostAdapter.preflightRuntimeAgent(input);
         }
       }
       return externalAgentGateway.preflight(input);
@@ -245,12 +234,10 @@ export function registerAgentChannels(options: CoderAdmissionOptions = {}): void
       assertPrimaryRenderer(event);
       const session = requireSession(input.sessionId);
       if (runtimeHostAdapter.isRuntimeSelected()) {
-        const runtimeAgents = await runtimeHostAdapter
-          .listRuntimeDispatchableAgents({
-            projectRoot: session.projectRoot,
-            readOnly: input.readOnly,
-          })
-          .catch(() => []);
+        const runtimeAgents = await runtimeHostAdapter.listRuntimeDispatchableAgents({
+          projectRoot: session.projectRoot,
+          readOnly: input.readOnly,
+        });
         if (runtimeAgents.some((item) => item.descriptor.agentId === input.agentId)) {
           return runtimeHostAdapter.startRuntimeActorTask({
             sessionId: input.sessionId,

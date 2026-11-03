@@ -83,13 +83,13 @@ test('Settings component IPC never authorizes accounts and excludes concurrent o
   await assert.rejects(
     async () =>
       routes.get('partner.connectors.onboarding.start')!({ ...owner, installCli: false }, event),
-    /组件安装/,
+    /组件安装|component installation/,
   );
   await routes.get('partner.components.cancel')!({ id: 'feishu-cli' }, event);
   const job = tasks.start(owner);
   await assert.rejects(
     async () => routes.get('partner.components.install')!({ id: 'feishu-cli' }, event),
-    /账号连接/,
+    /账号连接|account connection/,
   );
   await tasks.cancel(job);
 });
@@ -187,7 +187,7 @@ test('first records request resumes a disk-only Partner session and still reject
   ]) {
     await assert.rejects(
       async () => handlers.get('partner.connectors.records')!(input, event),
-      /会话与项目不匹配/,
+      /会话与项目不匹配|session and project do not match/,
     );
   }
 });

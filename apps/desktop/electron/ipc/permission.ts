@@ -70,27 +70,19 @@ export function registerPermissionChannels(): void {
       origin: 'space' as const,
     }));
     if (!runtimeHostAdapter.isRuntimeSelected()) return { rules: localRules };
-    try {
-      const grants = await runtimeHostAdapter.listPermissionGrants();
-      const runtimeRules = grants.value.map((grant) => ({
-        pattern:
-          grant.label ??
-          `${grant.scope.toolName ?? 'all tools'}${grant.scope.sessionId ? ` (session ${grant.scope.sessionId})` : ''}`,
-        createdAt: Math.max(0, Date.parse(grant.createdAt) || 0),
-        origin: 'runtime' as const,
-        grantId: grant.id,
-        revision: grants.revision,
-        ...(grant.scope.toolName ? { toolName: grant.scope.toolName } : {}),
-        ...(grant.scope.sessionId ? { sessionId: grant.scope.sessionId } : {}),
-      }));
-      return { rules: [...runtimeRules, ...localRules] };
-    } catch (error) {
-      console.warn(
-        '[permission.list] Runtime grants unavailable:',
-        error instanceof Error ? error.message : error,
-      );
-      return { rules: localRules };
-    }
+    const grants = await runtimeHostAdapter.listPermissionGrants();
+    const runtimeRules = grants.value.map((grant) => ({
+      pattern:
+        grant.label ??
+        `${grant.scope.toolName ?? 'all tools'}${grant.scope.sessionId ? ` (session ${grant.scope.sessionId})` : ''}`,
+      createdAt: Math.max(0, Date.parse(grant.createdAt) || 0),
+      origin: 'runtime' as const,
+      grantId: grant.id,
+      revision: grants.revision,
+      ...(grant.scope.toolName ? { toolName: grant.scope.toolName } : {}),
+      ...(grant.scope.sessionId ? { sessionId: grant.scope.sessionId } : {}),
+    }));
+    return { rules: [...runtimeRules, ...localRules] };
   });
 
   // permission.revoke

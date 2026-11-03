@@ -38,6 +38,36 @@ afterEach(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
 });
 
+test('a temporary read failure cannot replace persisted settings with defaults', async (t) => {
+  const original = JSON.stringify({
+    version: 3,
+    defaultWorkspace: tmpDir,
+    languageMode: 'zh-CN',
+    terminalShell: 'auto',
+    windowCloseBehavior: 'ask',
+    coderRuntimeMode: 'daemon',
+    runtimeDefaults: { reasoningMode: 'high' },
+  });
+  await fs.writeFile(settingsFile, original);
+  const store = new SettingsStore(settingsFile, tmpDir);
+  const read = t.mock.method(fs, 'readFile', async () => {
+    throw Object.assign(new Error('Temporary settings read failure'), { code: 'EBUSY' });
+  });
+  await assert.rejects(store.load(), /read failure/);
+  await assert.rejects(store.setLanguageMode('en-US'), /read failure/);
+  read.mock.restore();
+  assert.equal(await fs.readFile(settingsFile, 'utf8'), original);
+  assert.equal((await store.load()).languageMode, 'zh-CN');
+});
+
+test('invalid settings remain intact and cannot be overwritten by a default-based edit', async () => {
+  await fs.writeFile(settingsFile, '{invalid settings');
+  const store = new SettingsStore(settingsFile, tmpDir);
+  await assert.rejects(store.load());
+  await assert.rejects(store.setLanguageMode('en-US'));
+  assert.equal(await fs.readFile(settingsFile, 'utf8'), '{invalid settings');
+});
+
 test('load backfills languageMode for older settings files', async () => {
   await fs.mkdir(tmpDir, { recursive: true });
   await fs.writeFile(
@@ -446,9 +476,10 @@ test('settings updates recover from Windows EPERM while replacing the existing f
 });
 
 test('Windows replacement fallback retains a directory at the settings path', async (t) => {
-  await fs.mkdir(settingsFile);
   const store = new SettingsStore(settingsFile, tmpDir);
   await store.load();
+  await fs.unlink(settingsFile);
+  await fs.mkdir(settingsFile);
 
   const renameDescriptor = Object.getOwnPropertyDescriptor(fs, 'rename');
   assert.ok(renameDescriptor);

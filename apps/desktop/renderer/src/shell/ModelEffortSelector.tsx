@@ -269,16 +269,17 @@ export function ModelEffortSelector(): JSX.Element {
   async function pickEffort(mode: ReasoningMode): Promise<void> {
     if (busy) return;
     setBusy(true);
-    // Always update pending as the user's next-session preference.
-    setPendingReasoningMode(mode);
     try {
       if (session && window.kodaxSpace) {
         const r = await window.kodaxSpace.invoke('session.setReasoningMode', {
           sessionId: session.sessionId,
           mode,
         });
-        if (r.ok) upsertSession({ ...session, reasoningMode: mode });
+        if (!r.ok) throw new Error(r.error.message);
+        if (!r.data.ok) throw new Error(t('modelPicker.applyEffortFailed'));
+        upsertSession({ ...session, reasoningMode: mode });
       }
+      setPendingReasoningMode(mode);
       if (!(await setSpaceReasoningDefault(mode))) {
         pushToast(t('modelPicker.saveDefaultsFailed'), 'error');
       } else {

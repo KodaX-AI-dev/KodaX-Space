@@ -4,6 +4,7 @@ import { registerChannel } from './register.js';
 import type { RepointelStatusItemT, RepointelStatusOutput } from '@kodax-space/space-ipc-schema';
 import { loadSpaceSdkCoding } from '../kodax/sdk-extensions.js';
 import { isRepoIntelEntitled } from '../kodax/repo-intel-gate.js';
+import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 
 const WARM_SUPPORTED_REASON =
   'KodaX SDK exposes built-in best-effort repo-intelligence prewarm; use /repointel warm to start it for the current project.';
@@ -52,6 +53,24 @@ async function sdkDiagnostics(
   readonly diagnostics: readonly RepointelStatusItemT[];
 }> {
   try {
+    if (runtimeHostAdapter.isRuntimeSelected()) {
+      const config = await runtimeHostAdapter.readEffectiveRuntimeConfig();
+      const mode = config.entries.repoIntelligenceMode?.value;
+      return {
+        warmSupported: false,
+        warmReason:
+          'This Host has no public repo-intelligence inspection/prewarm API. Run-time traces remain available.',
+        effectiveEngine: mode === 'off' ? 'off' : null,
+        engineStatus: mode === 'off' ? 'disabled' : null,
+        diagnostics: [
+          item(
+            'repo-intelligence',
+            'warn',
+            `Host configuration mode=${typeof mode === 'string' ? mode : 'inherited'}; effective worker health is unavailable through this SDK.`,
+          ),
+        ],
+      };
+    }
     const sdk = await loadSpaceSdkCoding();
     const inspection = await sdk.inspectRepoIntelligenceRuntime({
       probe,
@@ -168,8 +187,8 @@ async function buildStatus(
     warmSupported: sdk.warmSupported,
     warmReason: sdk.warmReason,
     entitled,
-    effectiveEngine: sdk.effectiveEngine,
-    engineStatus: sdk.engineStatus,
+    effectiveEngine: entitled ? sdk.effectiveEngine : 'off',
+    engineStatus: entitled ? sdk.engineStatus : 'disabled',
     diagnostics,
   };
 }
@@ -183,6 +202,7 @@ async function buildStatus(
  * soon as the warm is kicked off.
  */
 async function prewarmProject(projectRoot: string): Promise<{ readonly started: boolean }> {
+  if (runtimeHostAdapter.isRuntimeSelected()) return { started: false };
   try {
     if (!(await isRepoIntelEntitled())) return { started: false };
     const normalized = path.resolve(projectRoot);

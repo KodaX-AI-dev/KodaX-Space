@@ -9,9 +9,11 @@ const fixture = `
 import React from 'react';import{createRoot}from'react-dom/client';
 import{ModelEffortSelector}from'./ModelEffortSelector.tsx';
 import{useAppStore}from'../store/appStore.ts';
+import{useToastStore}from'../store/toastStore.ts';
 import{I18nProvider}from'../i18n/I18nProvider.tsx';
-window.writes=[];
+window.writes=[];window.effortFailure='transport';
 window.kodaxSpace={invoke:async(channel,input)=>{
+ if(channel==='session.setReasoningMode')return window.effortFailure==='transport'?{ok:false,error:{code:'BUSY',message:'Session is busy'}}:{ok:true,data:{ok:false}};
  if(channel==='provider.setDefault'||channel==='settings.setRuntimeDefaults'){
   window.writes.push({channel,input});await new Promise(resolve=>window.finishWrite=resolve);
   return {ok:true,data:channel==='provider.setDefault'?{ok:true}:{runtimeDefaults:input.runtimeDefaults}};
@@ -23,6 +25,9 @@ useAppStore.setState({currentSessionId:null,sessions:[],defaultProviderId:'opena
  {id:'other',displayName:'Other',configured:true,models:['new'],defaultModel:'new'}
 ]});
 window.preference=()=>useAppStore.getState().pendingReasoningMode;
+window.toasts=()=>useToastStore.getState().toasts;
+window.rejectBusiness=()=>{window.effortFailure='business';useToastStore.getState().clear();};
+window.selectExisting=()=>useAppStore.setState({currentSessionId:'existing',sessions:[{sessionId:'existing',surface:'code',provider:'other',projectRoot:'C:/test',reasoningMode:'max',status:'idle'}]});
 createRoot(document.getElementById('root')).render(<I18nProvider><ModelEffortSelector/></I18nProvider>);
 `;
 
@@ -92,6 +97,18 @@ test(
     await page.waitForFunction('window.writes.length === 3');
     await page.evaluate('window.finishWrite()');
     await waitForPickerReady(page);
+    assert.equal(await page.evaluate('window.preference()'), 'max');
+    await page.evaluate('window.selectExisting()');
+    await picker.click();
+    await page.getByRole('button', { name: 'Off', exact: true }).click();
+    await page.waitForFunction('window.toasts().some(toast=>toast.message === "Session is busy")');
+    assert.equal(await page.evaluate('window.writes.length'), 3);
+    assert.equal(await page.evaluate('window.preference()'), 'max');
+    await waitForPickerReady(page);
+    await page.evaluate('window.rejectBusiness()');
+    await page.getByRole('button', { name: 'Off', exact: true }).click();
+    await page.waitForFunction('window.toasts().length === 1');
+    assert.equal(await page.evaluate('window.writes.length'), 3);
     assert.equal(await page.evaluate('window.preference()'), 'max');
     assert.deepEqual(errors, []);
   },

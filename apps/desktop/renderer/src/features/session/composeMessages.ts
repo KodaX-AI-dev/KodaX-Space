@@ -59,6 +59,7 @@ export type ConversationMessage =
       queueMode: 'interrupt' | 'after-turn';
       status: 'pending-ack' | 'queued' | 'failed';
       failureReason?: QueuedUserMessage['failureReason'];
+      withdrawn?: true;
       sentAt: number;
     }
   | {
@@ -526,6 +527,7 @@ function toQueuedConversationMessage(
     ...(queued.attachments !== undefined ? { attachments: queued.attachments } : {}),
     queueMode: queued.queueMode,
     status: queued.status,
+    ...(queued.withdrawn ? { withdrawn: true as const } : {}),
     ...(queued.failureReason !== undefined ? { failureReason: queued.failureReason } : {}),
     sentAt: queued.sentAt,
   };

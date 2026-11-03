@@ -1014,12 +1014,14 @@ export class RealKodaXSession implements ManagedSession {
   ): readonly RuntimeInput[] {
     return [
       { type: 'text', text: prompt },
-      ...(artifacts ?? []).map((artifact): RuntimeInput => ({
-        type: 'image',
-        path: artifact.path,
-        mediaType: artifact.mediaType,
-        source: artifact.source,
-      })),
+      ...(artifacts ?? []).map(
+        (artifact): RuntimeInput => ({
+          type: 'image',
+          path: artifact.path,
+          mediaType: artifact.mediaType,
+          source: artifact.source,
+        }),
+      ),
     ];
   }
 
@@ -2409,10 +2411,14 @@ export class RealKodaXSession implements ManagedSession {
         return new Error('Session run cancelled before embedded admission');
       }
       try {
+        const defaultModel =
+          this.model === undefined
+            ? (await loadSdkLlm())?.getProvider(this.provider).getModel()
+            : undefined;
         const bootstrap = await bootstrapAutoMode({
           projectRoot: this.projectRoot,
           getCurrentProviderName: () => this.provider,
-          getCurrentModel: () => this.model ?? '',
+          getCurrentModel: () => this.model ?? defaultModel ?? '',
           log: (level, msg) =>
             level === 'warn'
               ? console.warn(`[auto-mode ${sid}] ${msg}`)

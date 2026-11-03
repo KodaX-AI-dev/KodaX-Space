@@ -20,7 +20,7 @@ window.handoffs=[];window.closeCalls=0;window.promotion='rejected';const listene
 window.kodaxSpace={on:(channel,listener)=>{listeners.push(listener);return()=>{}},invoke:async(channel)=>{
  if(channel==='settings.get')return{ok:true,data:{languageMode:'en-US',effectiveLocale:'en-US'}};
  if(channel==='session.create')return{ok:true,data:{sessionId:'quick',createdAt:1,permissionMode:'plan',reasoningMode:'auto',agentMode:'ama'}};
- if(channel==='session.send'){for(const l of listeners){l({sessionId:'quick',kind:'text_delta',text:'Answer stays visible'});l({sessionId:'quick',kind:'session_complete'});}return{ok:true,data:{accepted:true}};}
+ if(channel==='session.send'){for(const l of listeners)l({sessionId:'quick',kind:'text_delta',text:'Answer stays visible'});window.finishAnswer=()=>{for(const l of listeners)l({sessionId:'quick',kind:'session_complete'})};return{ok:true,data:{accepted:true}};}
  if(channel==='session.promoteEphemeral'){
   if(window.promotion==='throw')throw Error('Connection lost');
   if(window.promotion==='rejected')return{ok:false,error:{message:'Host cannot promote Quick Ask'}};
@@ -51,10 +51,16 @@ createRoot(document.getElementById('root')).render(<I18nProvider><QuickAskPopove
       route.fulfill({ contentType: 'text/html', body: '<div id="root"></div>' }),
     );
     await page.goto('http://localhost/');
+    await page.clock.install();
     await page.addScriptTag({ content: bundle.outputFiles[0].text });
     await page.getByRole('textbox').fill('Question');
     await page.getByRole('button', { name: 'Ask', exact: true }).click();
     const continueButton = page.getByRole('button', { name: 'Continue in Coder' });
+    await page.clock.fastForward(61_000);
+    await page.getByText('Answer stays visible', { exact: true }).waitFor();
+    assert.equal(await continueButton.count(), 0, 'elapsed time is not a terminal Run fact');
+    await page.evaluate('window.finishAnswer()');
+    await page.clock.runFor(160);
     await continueButton.waitFor().catch(async (error) => {
       throw new Error(
         String(error) + '\n' + (await page.locator('body').innerText()) + '\n' + errors.join('\n'),

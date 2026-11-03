@@ -30,6 +30,7 @@ import {
   setSessionRuntimeStoreForTesting,
 } from '../kodax/session-runtime-store.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
+import { installSessionStoreMock } from './_helpers/session-store-mock.js';
 
 let captured: Array<{ channel: string; payload: unknown }>;
 let tempProjectRoots: string[];
@@ -689,7 +690,7 @@ test('/model default clears the override', async () => {
   assert.equal((await runtimeStore.read(sessionId))?.model, undefined);
 });
 
-test('/model default materializes a real provider default for Runtime side services', async () => {
+test('/model default clears the persisted real-provider override for the Host to resolve', async () => {
   const { sessionId } = kodaxHost.createSession({
     projectRoot: 'C:\\tmp\\proj',
     provider: 'anthropic',
@@ -697,8 +698,24 @@ test('/model default materializes a real provider default for Runtime side servi
   });
   const result = await runCmd('model', sessionId, ['default']);
   assert.equal(result.ok, true);
-  assert.equal(kodaxHost.get(sessionId)?.model, 'claude-sonnet-4-6');
-  assert.equal((await runtimeStore.read(sessionId))?.model, 'claude-sonnet-4-6');
+  assert.equal(kodaxHost.get(sessionId)?.model, undefined);
+  assert.equal((await runtimeStore.read(sessionId))?.model, undefined);
+});
+
+test('/model default remains cleared when Main resumes the persisted Session', async (t) => {
+  const persisted = installSessionStoreMock();
+  t.after(() => persisted.reset());
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: 'C:\\tmp\\project',
+    provider: 'anthropic',
+    model: 'claude-opus-4-7',
+  });
+  persisted.seedTagged(sessionId, 'C:\\tmp\\project', 'code');
+  await runCmd('model', sessionId, ['default']);
+  await kodaxHost.disposeAll();
+  assert.equal(await kodaxHost.tryResume(sessionId), true);
+  assert.equal(kodaxHost.get(sessionId)?.model, undefined);
+  assert.equal((await runtimeStore.read(sessionId))?.model, undefined);
 });
 
 test('/model without arg returns usage', async () => {
@@ -734,6 +751,41 @@ test('/goal creates and reports an in-session goal', async () => {
   const status = await runCmd('goal', sessionId, ['status']);
   assert.equal(status.ok, true);
   assert.ok(status.message?.includes('ship workflow'));
+});
+
+test('/goal status reads the Host objective and measured usage instead of a process-local map', async (t) => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: 'C:\\tmp\\proj',
+    provider: 'anthropic',
+  });
+  t.mock.method(runtimeHostAdapter, 'sessionGoal', async () => ({
+    version: 1 as const,
+    id: 'host-goal',
+    objective: 'Persisted Host goal',
+    status: 'active' as const,
+    tokenBudget: 100,
+    tokensUsed: 73,
+    timeUsedSeconds: 2,
+    blockerTurnCount: 0,
+    lastBlockerKind: null,
+    createdAt: 1,
+    updatedAt: 2,
+  }));
+  const status = await runCmd('goal', sessionId, ['status']);
+  assert.equal(status.ok, true);
+  assert.match(status.message ?? '', /Persisted Host goal/);
+  assert.match(status.message ?? '', /Tokens used: 73/);
+});
+
+test('/model default clears the override instead of pinning the current provider default', async () => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: 'C:\\tmp\\proj',
+    provider: 'anthropic',
+  });
+  kodaxHost.setModel(sessionId, 'explicit-model');
+  const result = await runCmd('model', sessionId, ['default']);
+  assert.equal(result.ok, true);
+  assert.equal(kodaxHost.get(sessionId)?.model, undefined);
 });
 
 test('clearSlashGoalForSession drops per-session goal state', async () => {

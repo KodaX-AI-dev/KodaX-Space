@@ -116,10 +116,8 @@ export function providerDescriptor(
 }
 
 /**
- * Resolve the concrete model Space must persist and pass to Runtime-owned
- * services. The main provider can tolerate an omitted model by applying its
- * own default, but side services such as the Auto LLM classifier require the
- * effective model to be explicit.
+ * Resolve a concrete selection or legacy fallback. A cleared Session override
+ * stays absent; services resolve their effective model when executing.
  */
 export function resolveEffectiveProviderModel(
   providerId: string,
@@ -307,7 +305,10 @@ class KodaXHost {
     if (this.sessions.has(sessionId)) {
       throw new Error(`Session already exists in Space: ${sessionId}`);
     }
-    const effectiveModel = resolveEffectiveProviderModel(opts.provider, opts.model);
+    const effectiveModel =
+      opts.existingSessionId !== undefined && opts.model === undefined
+        ? undefined
+        : resolveEffectiveProviderModel(opts.provider, opts.model);
     const session = this.factory({
       sessionId,
       projectRoot: opts.projectRoot,
@@ -356,16 +357,9 @@ class KodaXHost {
   async persistRuntime(sessionId: string): Promise<boolean> {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
-    await providerConfigStore.load().catch(() => undefined);
-    const kodaxCustomProviders = await loadKodaxCustomProviders().catch(() => []);
-    const effectiveModel = resolveEffectiveProviderModel(
-      session.provider,
-      session.model,
-      kodaxCustomProviders,
-    );
     return getSessionRuntimeStore().set(sessionId, {
       provider: session.provider,
-      model: effectiveModel,
+      model: session.model,
       thinking: session.thinking,
       reasoningMode: session.reasoningMode,
       permissionMode: session.permissionMode,
@@ -666,15 +660,15 @@ class KodaXHost {
       sessionId,
       includeSessionSidecar: true,
     });
-    const requestedModel = usePersistedIdentity
-      ? (persistedRuntime?.model ??
-        providerDescriptor(provider, kodaxCustomProviders)?.defaultModel)
-      : configuredModel;
-    const model =
-      requestedModel && modelBelongsToProvider(provider, requestedModel, kodaxCustomProviders)
-        ? requestedModel
+    const requestedModel = usePersistedIdentity ? persistedRuntime?.model : configuredModel;
+    const validModel =
+      requestedModel && modelBelongsToProvider(provider, requestedModel, kodaxCustomProviders);
+    const model = validModel
+      ? requestedModel
+      : requestedModel
+        ? resolveEffectiveProviderModel(provider, undefined, kodaxCustomProviders)
         : undefined;
-    if (requestedModel && model === undefined) {
+    if (requestedModel && !validModel) {
       console.warn(
         `[host.tryResume] ignoring model "${requestedModel}" because it does not belong to provider "${provider}"`,
       );
@@ -963,15 +957,12 @@ class KodaXHost {
 
   /**
    * v0.7.42 wired (P0): 切 model 覆盖 provider 默认。不重启 session——下一条 prompt
-   * 通过 runKodaX options.model 生效。传 undefined 清除 override 时立即物化 provider
-   * 默认模型，避免 Runtime-owned side services 把“没有 override”误读成空模型。
+   * 通过 runKodaX options.model 生效。undefined 清除 override，由 Host 解析实际默认值。
    */
   setModel(sessionId: string, model: string | undefined): boolean {
     const s = this.sessions.get(sessionId);
     if (!s) return false;
-    const effectiveModel = resolveEffectiveProviderModel(s.provider, model);
-    s.model =
-      effectiveModel ?? (model === undefined && s.provider !== 'mock' ? s.model : undefined);
+    s.model = model === undefined ? undefined : resolveEffectiveProviderModel(s.provider, model);
     return true;
   }
 
@@ -1020,14 +1011,7 @@ class KodaXHost {
         ...(customInstructions?.trim() ? { customInstructions: customInstructions.trim() } : {}),
       };
       const result = usesRuntime
-        ? await runtimeHostAdapter
-            .compactSession({ sessionId, ...compactInput })
-            .catch((err: unknown) => ({
-              compacted: false,
-              tokensBefore: 0,
-              tokensAfter: 0,
-              reason: err instanceof Error ? err.message : String(err),
-            }))
+        ? await runtimeHostAdapter.compactSession({ sessionId, ...compactInput })
         : await runWithExactProviderCredential(s.provider, () =>
             compactPersistedSession(sessionId, compactInput),
           );
@@ -1055,6 +1039,8 @@ class KodaXHost {
         tokensAfter: result.tokensAfter,
         ...(result.reason ? { reason: result.reason } : {}),
       };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) };
     } finally {
       if (!usesRuntime) pushToRenderer('session.event', { kind: 'compact_end', sessionId });
     }

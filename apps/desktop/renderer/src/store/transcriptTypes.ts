@@ -114,6 +114,7 @@ export interface QueuedUserMessage {
   readonly queueMode: 'interrupt' | 'after-turn';
   readonly status: 'pending-ack' | 'queued' | 'failed';
   readonly failureReason?: Extract<SessionEvent, { kind: 'queued_user_prompt_failed' }>['reason'];
+  readonly withdrawn?: true;
   readonly sentAt: number;
 }
 

@@ -440,6 +440,8 @@ Workflow 只在显式 Workflow 强信号、`/workflow`、命名 Workflow 或 SDK
 - 主 transcript 与 root live draft 只显示 root 的正文、thinking、工具和 Todo。Child 活动保留在 Agents/Workflow 专用面；子正文不应看起来像父 Agent 的回复。
 - `get_goal`、`create_goal`、`update_goal` 保持完整常驻工具契约。Goal 必须由用户显式请求创建；完成仍需证据验证，blocked 仍要求连续三轮同类 blocker。
 
+`/goal <目标> [--tokens N]` 使用共享 Host 保存目标（会话至少已有一条对话记录，空会话须先发送消息）；`/goal status` 显示 Host 的实际状态和累计用量，重启后保留。可用 `pause`、`resume`、`clear` 管理目标，完成与阻塞由 Host 管理。普通问题没有客户端等待时限；Quick Ask 也会等待真实执行终态，关闭窗口只停止界面观察。`/model default` 清除当前会话的模型覆盖，恢复会话后继续由 Host 解析默认模型。
+
 ## 10. 会话历史、Fork、Rewind 与 Compact
 
 中断后，尚未保存的回复、思考和工具回执可从运行日志恢复展示，并标明中断；完整日志不会写回正式对话。继续任务时，SDK 会按需给模型补充临时恢复摘要，其中未确认的回复以引用形式标注，工具操作优先保留，模型需核实操作结果。
@@ -509,6 +511,8 @@ flowchart LR
 ```
 
 Partner 已支持 Sources、KB、workspace-first Outputs、checkpointed writes、基础 Office/PDF 便利写入和本地 policy/audit。它不会自动获得 Coder 的全部工具，也不应被当成浏览器、邮件发送器或远程办公自动化平台。
+
+本地文件提案会出现在左侧任务卡，点击可在详情区查看差异并应用或拒绝；应用前不会写入项目。详情区的“＋”还提供文件审核和交付历史入口。进入交付历史的“历史”页，可查看 checkpoint 差异并回滚；文件若已被后续修改，回滚会拒绝覆盖。主工作区保持现有任务卡与按需详情布局。
 
 ### 12.1 使用内置专家
 

@@ -245,12 +245,10 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
       return;
     }
 
-    const startTime = Date.now();
     const pollIntervalMs = 80;
-    const timeoutMs = 60_000;
 
     try {
-      while (Date.now() - startTime < timeoutMs) {
+      while (isActiveRun()) {
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
         reply = '';
         let terminal: 'complete' | 'error' | null = null;
@@ -277,15 +275,6 @@ export function QuickAskPopover({ open, onClose }: QuickAskPopoverProps): JSX.El
           return;
         }
       }
-
-      setActiveState({
-        kind: 'done',
-        sessionId,
-        prompt: trimmed,
-        reply: reply || t('quickAsk.timedOut'),
-        session,
-        events: capturedEvents.slice(),
-      });
     } finally {
       unsubscribe();
     }

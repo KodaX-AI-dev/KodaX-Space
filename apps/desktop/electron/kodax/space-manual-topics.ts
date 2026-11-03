@@ -463,6 +463,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     title: 'Projects and sessions',
     summary: '左侧栏管理项目、会话、归档、最近会话和 session 级操作。',
     body: text(
+      '/goal <objective> [--tokens N] stores a goal in the shared Host, after the Session has a conversation entry. Empty Sessions must receive an input before a goal can be created; Space preserves that Host restriction. status reads actual Host state/usage; pause/resume/clear are persisted. Goal completion/blocking is Host-managed. /model default clears the Session override and stays cleared after Main resumes the Session. Quick Ask waits for the real Run terminal state, with no local 60-second completion.',
       'Project 是本地工作目录；Session 是围绕某个 project 的连续对话。',
       '普通 Coder 新会话在首个有效输入进入 canonical 历史后才持久化；只新建、切换设置而未发送就退出，不会留下新的空历史记录。Quick Ask 保持自己的临时生命周期。',
       '旧空记录只有经完整 SDK 历史确认没有可恢复内容后才隐藏，原文件不删除；有旧分支、通知、Artifact、扩展、错误或恢复状态的会话仍保留。空白标题使用当前语言的默认名称。',
@@ -1020,6 +1021,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     summary:
       'Partner provides workspace-first delivery, a bundled expert library, and explicitly authorized service connectors.',
     body: text(
+      '本地文件提案显示在左侧任务卡；点击进入详情审核差异、应用或拒绝，应用前不写项目。详情区＋提供文件审核与交付历史入口；交付历史的 History/历史页支持 checkpoint diff 和有条件回滚。Review local file proposals from the task card or detail launcher; apply/reject explicitly. The deliveries History tab exposes checkpoint diffs and rollback, refusing to overwrite later edits.',
       'Space 有 Coder 与 Partner 两个 surface 概念。Coder 是当前可用的主要工作区。',
       '',
       'Partner includes Sources, Conversation, Artifact/Knowledge Base, Outputs, checkpointed workspace-session writes, generated Office/PDF convenience artifacts, reviewed strict fallbacks, and local policy/audit controls.',

@@ -1,4 +1,5 @@
 import { projectExtensionHealth } from './runtime/runtime-extension-health.js';
+import { repoIntelSessionFields } from './repo-intel-gate.js';
 import {
   captureProductInput,
   takeBackProductInput,
@@ -4593,6 +4594,42 @@ export class RuntimeHostAdapter {
       : null;
   }
 
+  async sessionGoal(
+    sessionId: string,
+    command:
+      | { readonly action: 'read' | 'pause' | 'resume' | 'clear' }
+      | { readonly action: 'create'; readonly objective: string; readonly tokenBudget?: number },
+  ) {
+    const { kodaxHost } = await import('./host.js');
+    const local = kodaxHost.get(sessionId);
+    if (local)
+      await this.ensureSession({
+        sessionId,
+        projectRoot: local.projectRoot,
+        surface: local.surface,
+        ephemeral: local.ephemeral ?? false,
+      });
+    const runtime = await this.requireRuntime();
+    await this.assertHostSession(runtime, sessionId);
+    switch (command.action) {
+      case 'read':
+        return runtime.sessions.readGoal(sessionId);
+      case 'pause':
+        return runtime.sessions.pauseGoal(sessionId);
+      case 'resume':
+        return runtime.sessions.resumeGoal(sessionId);
+      case 'clear':
+        await runtime.sessions.clearGoal(sessionId);
+        return null;
+      case 'create':
+        return runtime.sessions.createGoal({
+          sessionId,
+          objective: command.objective,
+          ...(command.tokenBudget !== undefined ? { tokenBudget: command.tokenBudget } : {}),
+        });
+    }
+  }
+
   async readWorkMode(sessionId: string) {
     const runtime = await this.requireRuntime();
     await this.assertHostSession(runtime, sessionId);
@@ -4611,6 +4648,15 @@ export class RuntimeHostAdapter {
     );
     if (this.runtime !== runtime)
       throw new Error('Host changed while setting work mode; refresh the Session.');
+    if (!this.observations.has(input.sessionId))
+      this.projectionController.removeSessionLive(input.sessionId);
+    // Idle observations may already be retired; commands must still refresh every client UI.
+    this.push('session.liveInvalidated', {
+      sessionId: input.sessionId,
+      runtimeId: runtime.identity.runtimeId,
+      reason: 'settings_changed',
+      message: 'Session work mode changed; refresh the Host settings.',
+    });
     return result;
   }
 
@@ -5810,8 +5856,6 @@ export class RuntimeHostAdapter {
       session.model = resolveEffectiveProviderModel(session.provider, settings.model);
     } else if (session.provider !== previousProvider) {
       session.model = resolveEffectiveProviderModel(session.provider, undefined);
-    } else {
-      session.model = session.model ?? resolveEffectiveProviderModel(session.provider, undefined);
     }
     session.thinking = settings.thinking;
     const effortMode = effortToReasoningMode(settings.effort);
@@ -7103,6 +7147,12 @@ export class RuntimeHostAdapter {
     }
   }
 
+  private async syncRepoIntelligencePolicy(sessionId: string): Promise<void> {
+    const fields = await repoIntelSessionFields();
+    await this.ensureObserved(sessionId);
+    await this.updateSessionSettings(sessionId, fields);
+  }
+
   private async admitManagedRun(input: RuntimeDaemonStartRunInput): Promise<RuntimeRunHandle> {
     const runtime = await this.requireRuntime();
     if (
@@ -7120,6 +7170,7 @@ export class RuntimeHostAdapter {
     await this.ensureObserved(input.sessionId);
     const items =
       input.input === undefined ? [] : Array.isArray(input.input) ? input.input : [input.input];
+    await this.syncRepoIntelligencePolicy(input.sessionId);
     const text =
       input.options?.context?.rawUserInput ??
       input.prompt ??
@@ -7819,6 +7870,7 @@ export class RuntimeHostAdapter {
     const current = () =>
       this.runtime === runtime && this.state === 'ready' && observationCurrent();
     if (!current()) throw new Error('The input belongs to a retired Host attachment.');
+    await this.syncRepoIntelligencePolicy(input.sessionId);
     const authorization = await this.authorizeProductExecution(
       { kind: 'input', input },
       this.authorizationServices(runtime, input),
@@ -7932,6 +7984,7 @@ export class RuntimeHostAdapter {
       }
     }
     await this.ensureSession({ sessionId, projectRoot, surface, ephemeral: false });
+    await this.syncRepoIntelligencePolicy(sessionId);
     if (surface === 'partner') {
       const runtime = await this.requireRuntime();
       const mode = await readSessionWorkMode(runtime, sessionId);

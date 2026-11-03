@@ -1,0 +1,5 @@
+# SDK 共享 Host 诊断与 integration 写入交接
+
+另一个 SDK 文件写入边界：全量回归遇到一次 `extensions.json` 原子替换失败；正式 beta.1 的 `writeIntegrationDocument` 使用单次 `renameSync`，目前没有核心配置写入已有的 Windows 短暂占用恢复。请 SDK 对 split integration 配置统一补上按原始类型识别的有界重试，重读并保留 expectedRevision/CAS，非瞬态和耗尽仍明确失败、保留原文件。Space 已为内置扩展注册补 25/50/75ms 的有界兼容，故障注入使用真实 SDK writer，验证两次 EBUSY 后保留用户扩展并注册 builtin/Artifact；MCPB 失败保留目录与注册。此记录不能证明那一次中间失败的具体系统错误码，原日志只有外层原子替换错误。验收还需涵盖 SDK 原始 cause 的 EBUSY/EACCES/EPERM、并发写入冲突、重试耗尽后原配置不变，及健康写入不增加等待。
+
+当前 Space 使用正式 `@kodax-ai/kodax@0.7.97-beta.1` 的共享 Host 执行，但公开 Runtime/Product Client 没有与进程内 `inspectRepoIntelligenceRuntime`、`prewarmRepoIntelligenceCaches` 对等的 Host 接口；在 Space Main 调用它们只能检查或预热另一个进程，不能证明实际 Host 的引擎状态，还可能重复启动工作。请 SDK 在现有 Product Client/Host 契约上提供只读诊断和可取消/有界的 best-effort 项目预热：由实际执行 Host 返回配置来源、请求模式、有效引擎、工作状态及明确的不可用原因，并在同一 Host 内预热已有缓存；保持正常任务按需初始化和失败自动回退，不要求用户额外配置，也不把预热失败变成任务或 Provider 失败。请随能力版本和客户端文档发布，Space 再接入。验收需覆盖共享 daemon 下 Main 与 Host 环境不同时仍报告 Host 事实、并发预热去重、无许可/关闭模式不启动工作、启用后的有效 trace、Host 重连/不可用明确失败，以及 Linux 原有沙箱自动回退和冷启动性能不回归。目前 Space 已通过 Session 设置提交许可/trace，状态显示未知事实并明确说明不支持预热；不能据此宣称 Host 诊断与预热已完成。

@@ -38,7 +38,8 @@ export function QueuedInputRecovery({
                   attachments: result.data.attachments,
                   admissionError: undefined,
                   status: 'failed' as const,
-                  failureReason: 'authorization_unavailable' as const,
+                  failureReason: undefined,
+                  withdrawn: true as const,
                 }
               : item,
           ),
