@@ -156,6 +156,7 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     await expect(page.getByTestId('sidebar-session-row')).toHaveCount(0);
     await page.getByTestId('partner-plugins-nav').click();
     const library = page.frameLocator('[data-testid="space-extension-frame"]');
+    await library.getByRole('button', { name: '查看 营销文案 详情', exact: true }).hover();
     await library.getByRole('button', { name: '查看 营销文案 详情', exact: true }).click();
     try {
       await expect(library.getByRole('checkbox', { name: '使用默认方法' })).toBeChecked();

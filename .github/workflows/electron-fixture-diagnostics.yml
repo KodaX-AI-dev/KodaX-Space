@@ -6,8 +6,40 @@ on: workflow_dispatch
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
+  asset-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installer-*
+          run-id: 41702886035
+          github-token: ${{ github.token }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: accepted-*
+          run-id: 41702886035
+          github-token: ${{ github.token }}
+          path: artifacts
+      - name: Verify actual candidate receipts and stage assets without publishing
+        run: |
+          node --input-type=module <<'NODE'
+          import {verifyAcceptedCandidate} from './scripts/release-candidate.mjs';
+          for (const platform of ['windows-latest','ubuntu-latest','macos-latest','macos-15-intel']) {
+            await verifyAcceptedCandidate('artifacts', {repository:process.env.GITHUB_REPOSITORY,sha:'bf61dc7029cd77ad6ab23eb45ecd9f0edb7fac26',runId:'41702886035',version:'0.1.47-alpha.4',platform});
+          }
+          NODE
+          node scripts/prepare-release-files.mjs artifacts release v0.1.47-alpha.4
   mac-runtime:
     runs-on: macos-latest
     timeout-minutes: 20
