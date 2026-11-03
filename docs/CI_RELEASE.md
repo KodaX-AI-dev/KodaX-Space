@@ -1,5 +1,9 @@
 # CI 与发布候选验证
 
+## alpha.4 通知与签名门
+
+macOS arm64/Intel 在安装包构建后、候选归档前执行 `codesign --verify --deep --strict`；ad-hoc 签名不依赖 Developer ID，Resources 不重签以保留 Registry SDK native manifest 字节。既有打包 smoke 继续验证哈希。四个平台的成品验收增加通知设置 UI→IPC 的原生成功/失败事件测试；真实系统授权、横幅、声音与 Focus 仍按 Issue 236 手工指引验证，不能由模拟事件代替。
+
 ## 执行结构
 
 同一提交的三个 workflow 并行推进：

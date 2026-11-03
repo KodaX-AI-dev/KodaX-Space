@@ -1,5 +1,7 @@
 # Space 接入 KodaX 0.7.97-alpha.9
 
+> 2026-11-04 版本基线：Space `0.1.47-alpha.4` / Registry SDK `0.7.97-beta.1`。本轮发布状态、验收与未关闭边界见 [alpha.4 发布记录](../releases/v0.1.47-alpha.4-release-readiness.md)；下方带日期的旧记录保留历史语境。
+
 > 2026-11-03 后续：Space 已锁定正式 SDK beta.1，并适配默认方法/消费绑定、Quick Ask 与配置接口。当前验证、成品和剩余边界见 [beta.1 接入记录](../releases/kodax-0.7.97-beta.1-integration.md)。下方保留 alpha 阶段的历史检查点。
 
 > 2026-10-20 后续：10-18 审计保留其历史结论；A–H 的产品接入随后已在 `c83ca0f5` 落地。本轮补队列独立授权恢复、Artifact 生产注册与真实发布 SDK 验收，见[迁移收口记录](../releases/space-sdk-migration-closeout-2026-10-20.md)。不能用较早的 alpha.9 主链资格结果代替本轮接入的验证。

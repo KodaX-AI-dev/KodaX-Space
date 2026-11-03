@@ -1,12 +1,18 @@
 # KodaX Space 详细设计
 
-Issues 230/232（2026-10-28，源码未发布）：Linux 与 Windows 共用自绘窗口操作按钮。更新设置通过只读 `updater.getState` 获取本地状态；`updater.check` 才联网，`updater.download` 与 `updater.install` 各携带用户确认的版本。Main 关闭自动下载/退出安装，独立校验稳定及预发布通道。安装回调在现有完全退出链路确认 Runtime 停止、本地清理及诊断刷新完成后执行；任务、对等客户端、超时或恢复不能绕过该屏障。详见 [排查与验证记录](research/kylin-window-sandbox-and-manual-updates-2026-10-28.md)。
+Issues 230/232（纳入 alpha.4）：Linux 与 Windows 共用自绘窗口操作按钮。更新设置通过只读 `updater.getState` 获取本地状态；`updater.check` 才联网，`updater.download` 与 `updater.install` 各携带用户确认的版本。Main 关闭自动下载/退出安装，独立校验稳定及预发布通道。安装回调在现有完全退出链路确认 Runtime 停止、本地清理及诊断刷新完成后执行；任务、对等客户端、超时或恢复不能绕过该屏障。详见 [排查与验证记录](research/kylin-window-sandbox-and-manual-updates-2026-10-28.md)。
 
-F147（2026-10-16，源码未发布）：Shell 内设置工作面复用全部六分类面板，保留面板 tab ID 与语义控制接口；后台 workspace 保持挂载并隐藏/inert，Portal 详情通过 `FloatingSurfaceHost.suspended` 暂停可见性、焦点与键盘捕获而保留子组件。外观直接共用原 appStore 主题/质量键；正文连续实色、局部 chrome 玻璃。功能映射与回归边界见 [实施清单](design/space-ui-integration.md)。
+F147（工作区与设置集成纳入 alpha.4）：Shell 内设置工作面复用全部六分类面板，保留面板 tab ID 与语义控制接口；后台 workspace 保持挂载并隐藏/inert，Portal 详情通过 `FloatingSurfaceHost.suspended` 暂停可见性、焦点与键盘捕获而保留子组件。外观直接共用原 appStore 主题/质量键；正文连续实色、局部 chrome 玻璃。功能映射与回归边界见 [实施清单](design/space-ui-integration.md)。
 
-更新日期：2026-10-28。当前工作区保留 Space `0.1.47-alpha.3` 版本号，精确依赖 npm Registry 已发布的 KodaX `0.7.97-alpha.10`；本轮集成尚未发布，见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。已发布的 Space alpha.3 安装器仍使用 SDK alpha.9。
+更新日期：2026-11-04。版本基线为 Space `0.1.47-alpha.4` / npm Registry `@kodax-ai/kodax@0.7.97-beta.1`。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；发布门与验证状态见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)，SDK 接缝和外部验证限制单独保留。
 
 本文描述当前公共边界。高层结构见 [HLD](HLD.md)，共享输出的决策见 [ADR-010](ADR/ADR-010-sdk-product-output.md)，完整迁移清单见 [SDK 迁移](features/SDK_0.7.97_MIGRATION.md)。
+
+## alpha.4 产品边界
+
+真实 Coder 与 Partner 使用同一 SDK Host；Partner 使用 Agent 画像与消费时业务绑定，正常 shell/write/子 Agent 能力保留。工作模式、模型、权限独立；Host 的 safe-idle 与 revision/CAS 控制切换。
+
+Provider 与稳定客户端凭据使用 SDK 权限受限的 auth.json，不依赖系统 Keychain；显式来源、迁移和连接身份校验保留。Mac 使用 ad-hoc 应用签名支持 Electron 42 通知，SDK 原生资源不重签以保留哈希；OS 接收事件与系统横幅/声音分开。
 
 ## 输入与执行
 
@@ -18,7 +24,7 @@ SDK 决定执行、权限协商、队列交付、工具调用与 canonical 历�
 
 ## 当前输出与历史
 
-共享 Coder 的正文入口是 SDK `sessions.observeView` 的完整有序快照。Main 将公开显示项投影为 IPC 数据，Renderer 按 opaque item ID 和 SDK 顺序显示正文、思考、工具、用户图片与 Artifact；不从普通 delta 或私有 journal 重建正文。
+共享 Coder/Partner 的正文入口是 SDK `sessions.observeView` 的完整有序快照。Main 将公开显示项投影为 IPC 数据，Renderer 按 opaque item ID 和 SDK 顺序显示正文、思考、工具、用户图片与 Artifact；不从普通 delta 或私有 journal 重建正文。
 
 初始读取、实时 observer 帧及终态刷新共用有序写入队列。长正文补读校验 item 身份、revision、offset、长度与期限，过期结果不能覆盖更新快照。
 
@@ -32,9 +38,9 @@ SDK 提供真实用户/助手消息时间 `lastMessageAt`；Main 转为 IPC 毫�
 
 ## 产品手册与宿主工具
 
-共享 Coder 通过只读 Host Tool `space_manual` 获取 Space UI、Provider、Settings、Workflow 和快捷键说明。`buildSpaceManual` 保留安装 SDK 的原始机制主题、aliases 和 sources，再合成 Space 操作说明。
+共享 Coder/Partner 通过只读 Host Tool `space_manual` 获取 Space UI、Provider、Settings、Workflow 和快捷键说明。`buildSpaceManual` 保留安装 SDK 的原始机制主题、aliases 和 sources，再合成 Space 操作说明。
 
-SDK 内建 `kodax_manual` 保持 SDK/CLI 机制职责；共享 Host 不覆盖该工具。Partner/Embedded inline owner 可将同一组合主题注入自己的手册入口。Artifact 和其他 Host Tools 继续使用按 Run 绑定的 lease 与权限作用域。
+SDK 内建 `kodax_manual` 保持 SDK/CLI 机制职责；共享 Host 不覆盖该工具。Coder/Partner 通过同一 Space 扩展使用组合主题；真实产品路径不依赖历史 inline owner。Artifact 和其他 Host Tools 继续使用按 Run 绑定的 lease 与权限作用域。
 
 ## 失败、统计与退出
 
@@ -48,7 +54,7 @@ Space 保留 SDK 的结构化失败分类、原显示项身份与重试信息；
 
 根目录、Desktop、共享 IPC 和 UI 包统一版本，root/Desktop/lockfile 与安装包必须包含相同 Registry SDK。依赖门校验 tarball integrity、公开能力及完整 native bundle，安装包 smoke 校验解包字节并启动真实应用。
 
-当前候选的验证和待完成门见 [alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)。历史 release/research 记录保留原版本和文件指纹；局部测试或 Windows 构建不代表跨平台、外部账号或完整 F121/F141 人工验收完成。
+当前候选的验证和待完成门见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)。历史 release/research 记录保留原版本和文件指纹；局部测试或 Windows 构建不代表跨平台、外部账号或完整 F121/F141 人工验收完成。
 
 ## 共享 Host 恢复（Issue 222 / SDK alpha.7）
 

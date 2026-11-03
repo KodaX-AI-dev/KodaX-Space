@@ -1,8 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-10-30
+Last Updated: 2026-11-04
 
-> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96. This unpublished working tree retains Space 0.1.47-alpha.3 and pins Registry SDK 0.7.97-alpha.11; the published alpha.3 installers still use SDK alpha.9. Start from the [documentation hub](README.md) and [alpha.11 integration](releases/kodax-0.7.97-alpha.11-integration.md) for current behavior, qualification and remaining investigations.
+> Historical issue details retain their dated evidence. Current source/release baseline is Space 0.1.47-alpha.4 / Registry SDK 0.7.97-beta.1; stable remains v0.1.46. See [alpha.4 release status](releases/v0.1.47-alpha.4-release-readiness.md). Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
 ## Issue Index
 
@@ -231,6 +231,7 @@ Last Updated: 2026-10-30
 | 233 | High | Resolved in source | Cold Session history hydration can show React 185 when full-body reads complete together | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
 | 234 | Medium | Resolved in source | Ordinary child reports appear as yellow warnings with raw SDK transport markup | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
 | 235 | Medium | Resolved in source | Downward history scrolling and the bottom arrow stop at a frozen older window | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
+| 236 | Medium | Resolved | macOS notifications require signed sender, delivery confirmation and permission-aware badge refresh | Electron 42 upgrade | 2026-11-04 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16041,17 +16042,24 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 - **Changed files / tests**: `productConversation.ts`, `composeMessages.ts`, `messages/bubbles.tsx`, `i18n/messages.ts`, `sessionHistoryPaging.ts`, `ConversationStreamV2.tsx`, `runtime-host-adapter.ts`; colocated projection/notice/paging/Adapter tests, `conversationHistoryNavigation.browser.test.ts`, and packaged `sdk-history-navigation.spec.ts`. The first newest read now establishes SDK observation before capturing a history cursor, preventing immediate source invalidation. Validation: 107 related tests and the full Adapter suite pass; final package cold-load replay passes 3/3. Installer, Portable and final package results/hashes are in the [investigation](research/renderer-185-agent-notices-and-history-navigation-2026-10-28.md).
 - **Resolution date**: 2026-10-28. See [regression guide](test-guides/ISSUE_234_0.1.47-alpha.3_REGRESSION_GUIDE.md).
 
+## Issue 236 — macOS native notifications and Dock badge permissions
+
+- Created / fixed: 2026-11-04; priority Medium, resolved in source and included in alpha.4.
+- Customer reports no macOS notice/badge. Electron 42 requires signed macOS notification senders, while packaging disabled signing; IPC previously returned success before a native event. Badge count also needs OS authorization and was not refreshed when permission arrived without a count change. The customer’s actual OS settings/version are still unverified.
+- Use ad-hoc bundle signing while preserving SDK native resource bytes; gate both Mac architectures with deep signature and packaged native-hash checks. Report native show/failed/bounded-unconfirmed outcomes, add an explicit settings test action, and refresh the held badge count on native show even after a late permission grant. Keep existing opt-in, one-minute/background/live-task conditions.
+- Local full suite: 4,667 tests, 4,647 passed / 20 conditional skips / 0 failures. Native IPC RED/GREEN, permission refresh and UI→IPC outcomes passed. Automated native events do not prove a visible OS banner/sound or customer permission. [Regression guide](test-guides/ISSUE_236_0.1.47-alpha.4_REGRESSION_GUIDE.md); platform publication evidence follows [alpha.4 qualification](releases/v0.1.47-alpha.4-release-readiness.md).
+
 ## Summary
 
 
-- Total: 222
+- Total: 223
 - Open: 1
 - Ready: 3
 - Needs info: 1
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 206
+- Resolved (including source-only fixes): 207
 - High: 116
-- Medium: 94
+- Medium: 95
 - Low: 12
 - Next ready to resolve: 222

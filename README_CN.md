@@ -32,7 +32,7 @@
 
 ### 下载安装包
 
-稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，当前为 `v0.1.46`。已发布的最新预发布版为 [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3)。预发布版不替代默认稳定下载。
+稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，仍为 `v0.1.46`；本轮预发布目标为 [`v0.1.47-alpha.4`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.4)，实际发布与验收状态以[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)为准，源码就绪不代表已发布。预发布不替代稳定版更新。
 
 | 平台    | 安装包                                            |
 | ------- | ------------------------------------------------- |
@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前工作区仍为 Space `0.1.47-alpha.3`，精确依赖已发布的 Registry SDK `0.7.97-alpha.11`，本轮集成尚未发布。** 已发布的 `v0.1.47-alpha.3` 安装器仍使用 SDK alpha.9。根目录、Desktop、共享 IPC 与 UI 包统一 Space 版本，lockfile 校验 Registry 包完整性。AMA、提问、退出恢复与 Skill 改动见 [alpha.11 接入记录](docs/releases/kodax-0.7.97-alpha.11-integration.md)；已发布安装器的历史基线见[上一轮发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)。
+**Space `0.1.47-alpha.4` 精确依赖 Registry SDK `0.7.97-beta.1`。** Root、Desktop、IPC schema 和 UI kit 统一版本，lockfile 与打包门禁校验 Registry 字节。发布状态与验证见 [alpha.4 发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)、[beta.1 接入](docs/releases/kodax-0.7.97-beta.1-integration.md)及[补审修复](docs/releases/kodax-beta1-claude-followup.md)。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。
@@ -98,13 +98,13 @@ npm run dev
 - Space 产品问题使用 `space_manual`；`kodax_manual` 保留 SDK/CLI 机制手册。SDK 内置 `relationship_scan.depth` 已使用整数范围，Gemini 兼容请求不需要客户端 schema 补丁。
 - 实时 Sidecar Verifier 与 `/verifier-log` 已移除；保留 Stall logging 和历史记录，结果检查使用工具证据与 `visual-review`。可选 `@kodax-ai/artifacts` 尚未发布，不宣称新增 PPT 工具。
 
-Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS 未签名构建仍需手动下载 DMG 更新。Partner 保留自己的 inline owner、现有内置库与外部账号验收边界。
+Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS ad-hoc 构建没有 Developer ID 或公证，仍需手动下载 DMG 更新。Partner 经共享 Host 使用 Agent 模式，保留内置库、shell/write/子 Agent 和外部账号验收边界。
 
-见[本次发布准备](docs/releases/v0.1.47-alpha.3-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
+见[本次发布准备](docs/releases/v0.1.47-alpha.4-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
 
 ## 当前正式版本
 
-最新稳定版为 [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46)（2026-10-06），精确依赖稳定 KodaX `0.7.96`。已发布的最新预发布版为 [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3)，使用 SDK `0.7.97-alpha.9`。
+最新稳定版为 [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46)（2026-10-06），精确依赖稳定 KodaX `0.7.96`。本轮 alpha.4 预发布使用 SDK beta.1；稳定版仍为 v0.1.46。
 
 先前 Partner beta.3 的 Release 已撤回，tag 和原验收记录保留为历史；后续稳定版与本候选继续包含现有 Partner 集成。完整版本变化见 [CHANGELOG](CHANGELOG.md)。
 
@@ -217,7 +217,7 @@ KodaX-Space/
 | Shell           | Electron 42                                                                                                                                                         |
 | Renderer        | React 19、Vite、TypeScript、Zustand                                                                                                                                 |
 | UI/runtime 分离 | Renderer 不直接执行 LLM/tool；特权工作留在 Electron main。                                                                                                          |
-| KodaX 集成      | Electron main 使用公开 owner 契约；Coder 默认连接 profile daemon，也可使用 Settings 选择的 Embedded 回退；Partner 与明确的 host-provider 服务保持 embedded inline。 |
+| KodaX 集成      | Coder 与 Partner 经公共 Product Client 使用共享 Host；Coder 默认 Coding，Partner 使用 Agent 和可信业务绑定。Main 提供产品工具与授权，不创建第二个 Session writer。 |
 | IPC             | 来自 `@kodax-space/space-ipc-schema` 的 zod-validated contracts。                                                                                                   |
 | Terminal        | xterm.js + node-pty。                                                                                                                                               |
 | Preview         | Monaco、pdfjs、mammoth/docx、SheetJS/xlsx。                                                                                                                         |

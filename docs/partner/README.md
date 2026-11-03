@@ -1,5 +1,7 @@
 # KodaX Space Partner 文档中心
 
+> 2026-11-04 版本基线：Space `0.1.47-alpha.4` / Registry SDK `0.7.97-beta.1`。本轮发布状态、验收与未关闭边界见 [alpha.4 发布记录](../releases/v0.1.47-alpha.4-release-readiness.md)；下方带日期的旧记录保留历史语境。
+
 Partner 是 KodaX Space 中面向知识工作的产品 Surface。它与 Coder 共享 Space/KodaX 底座，但拥有自己的工作区、专家、连接器、成果和安全授权语义。
 
 本目录是 Partner 产品线的文档中心，由 Partner 负责人主要维护。Partner 不是独立 Runtime，也不是脱离 Space 的第二个应用；独立的是产品线文档、功能管理和实现责任边界。

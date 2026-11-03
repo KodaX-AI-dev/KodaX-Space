@@ -14,45 +14,30 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
-- Restore Partner local file review and checkpoint rollback in the detail workspace, and recover blocked queued inputs after Renderer reload without resubmitting them. Use Host-persisted goals and retain cleared model overrides after resume; wait for actual Quick Ask completion. Enforce shared-Host repo-intelligence entitlement, preserve settings on read failure, isolate Provider credential failures, protect user-owned MCP configurations and retain bundles on failed uninstall. Keep Host grant/agent failures visible, reject contradictory Partner identities, and align effort, surface-scoped session commands and withdrawn-message feedback. See the [Claude follow-up verification](docs/releases/kodax-beta1-claude-followup.md).
-
-- Preserve file search through settings and responsive navigation changes, and pause hidden file-panel queries. Prevent stale Workflow lists or recovery snapshots from rolling back results or reviving explicitly removed records. Explain unavailable shared-Host workflow management without delegating writes to the legacy local controller. Recover the newest history boundary through bounded public Host reads after cold Script cancellation; retain the SDK observation/history root-cause handoff and existing cursor safety. Prevent delayed model/default saves from closing a newly opened picker or ignoring a subsequent effort selection. Full UI/IPC acceptance and limits: [acceptance record](docs/releases/kodax-beta1-full-acceptance.md).
-
-- Preserve explicitly selected Provider credential sources across external key removal, environment changes, rename and legacy migration; add explicit environment adoption and original-credential retry with revision checks. Report permission-protected plaintext auth.json accurately in settings and current documentation.
-- Recover owned complete queued inputs after Host restart; expose take-back independently of admission errors and explain missing original material. Guard Partner identities and Agent-only Space setters, and display actual Host mode drift. Restore Workflow observation with ready/snapshot reconciliation, publish builtin/Artifact health separately from integration configuration, and require verified persistent connector credential saves. Keep the live-Host rebinding, durable queue receipts, promotion-view and atomic admission SDK limits explicit in the [repair record](docs/releases/kodax-beta1-space-fixes.md).
-
-- Pin Registry KodaX `0.7.97-beta.1`; enable Host-owned expert default Skills, consumption-time Partner business bindings and same-Session Quick Ask promotion. Preserve original recovery scopes, normal Partner shell/write/subagent capabilities, typed configuration errors and atomic Provider rename commits. Surface blocked queued inputs and retain complete new input recovery records for explicit take-back after response loss. Keep legacy queue/read and cross-platform limitations explicit in the [beta.1 acceptance record](docs/releases/kodax-0.7.97-beta.1-integration.md).
-
-- Resolve custom Providers when checking image input, while preserving model-specific text-only restrictions and unsent drafts on rejection.
-
-- Read Provider configuration under the SDK's shared lock, retry only short lock conflicts, and preserve explicit errors for corrupt or unreadable files without exposing config values.
-
-- Fix first-session credential conflicts during concurrent startup reads. Reconcile automatic origin pinning once under the original connection and source, preserve tombstones and explicit edit CAS, and keep environment accounts separate from CLI keys. The model picker now consumes canonical SDK reasoning facts while keeping selected effort and unknown observations distinct.
-
-- Pin the published Registry SDK `@kodax-ai/kodax@0.7.97-alpha.12` in root/Desktop and the lockfile, and verify the installed SDK against the complete integrity-pinned Registry tarball. Enable the prepared shared Host integration for both product surfaces, Partner Agent with normal shell capabilities, actual Run facts, model image capabilities, credential source preservation and cursor recovery. This alpha.12 historical checkpoint kept expert/default-method and promotion gaps explicit; the beta.1 entry above supersedes those SDK availability limits. Never substitute direct Session file writes.
-
-- Allow choosing the Host work mode before the first Coder input, block sending until the setting is confirmed, and implement `/work-mode` through the same Host setting boundary. Document mode semantics and original-result reads; add Script, MCP-original, Skill lifecycle and long-report regressions. Partner Agent/profile composition is enabled by the subsequent beta.1 integration above.
-
-- Upgrade the exact Registry SDK to 0.7.97-alpha.11. Add Host-owned Agent/Coding/experimental Script work modes, Host streaming token estimates, explicit saved tool-original reads, structured task reports and non-interactive question outcomes; retain the earlier history, manual-update and recovery fixes.
-
-- 普通 SDK 信息改用中性通知；旧版子任务报告折叠展示并还原传输转义，保留可读 Markdown 详情，避免把任务报告误画成黄色告警。
-- 修复历史浏览停在旧页底部的问题：向下继续读取相邻新页，并统一为一个可回到真实最新消息的向下按钮；迟到分页不能覆盖用户已选择的最新窗口。
-- 修复冷启动首次加载长历史时，集中完成的正文补读触发密集同步重绘并出现 React 185；正文缓存仍即时完整可读，仅合并同帧界面通知。
-- 软件更新改为设置中手动检查，分别确认下载和重启安装；启动、退出均不自动更新，正式版拒绝 alpha/beta/rc 候选，确认动作绑定所选版本。
-- 修复银河麒麟等 Linux 桌面在隐藏原生标题栏后缺少最小化、最大化和关闭按钮；复用现有窗口控制与退出流程。
+## [0.1.47-alpha.4] - 2026-11-04
 
 ### Changed
 
-- Upgrade the exact Registry SDK dependency to `@kodax-ai/kodax@0.7.97-alpha.10`. Space uses AMA and migrates retired SA preferences; ordinary question dismissal becomes explicit skip. Forward actual Host initialization phases and bounded context-capacity wait facts.
-
-- Refine Space's builtin Skills for natural-language selection and task-sized delivery. Reuse supplied context, honor direct-work and file-format requests, and remove unconditional design variants and repeated approval steps. Update Huashu Design to the 3.0 source, copywriting to 2.3.1, customer research to 2.0.4, and call preparation to its reviewed upstream revision while preserving Space adaptations and source integrity.
+- Pin Registry KodaX SDK `0.7.97-beta.1` exactly. Coder and Partner use the shared Host; Coder defaults to Coding with independent Agent / experimental Script selection, while Partner uses Agent injection and keeps normal shell, write and subagent capabilities. Host-owned expert Skills, consumption-time business bindings and same-Session Quick Ask promotion are integrated.
+- Use SDK permission-protected `auth.json` for Provider and stable client credentials without requiring Keychain. Preserve explicit credential sources, account identity, revision checks and atomic rename; expose environment adoption and original-source retry safely.
+- Consume SDK token estimates, statistics, saved full tool originals and structured task reports. Keep skipped/non-interactive outcomes distinct and ordinary questions pending without a client default-answer timeout. Retire Space SA selection in favor of AMA.
+- Refine builtin Skills for natural-language selection and task-sized delivery, reuse provided context and honor direct work/file-format requests. Update reviewed upstream Huashu Design, copywriting, customer research and call preparation while retaining Space adaptations.
 
 ### Fixed
 
-- Consume fresh SDK exit-recovery assessments without rewriting historical unknown outcomes, preserve verified personal cleanup when an online peer protects its Host, retain typed local Skill errors through IPC, and resume checkpointed original Runs after Host replacement with trusted Main authorization and no input resubmission. See the [alpha.10 integration record](docs/releases/kodax-0.7.97-alpha.10-integration.md).
+- Restore macOS notification compatibility with ad-hoc bundle signing; confirm actual native delivery events, offer a settings test notification and refresh Dock badges after permission, including late authorization. OS permission, Focus, banner and sound settings still apply.
+- Make updates user initiated in Settings with separate version-bound download and install confirmations. Disable automatic startup/download/install-on-quit behavior and prevent stable builds from selecting prereleases. Add Linux custom window controls for desktops such as Kylin.
+- Fix cold-history React 185, neutral child-task reports and bidirectional history browsing with one return-to-latest action. Preserve complete bodies, public SDK cursor revisions and newer selected windows.
+- Register builtin Skills in the independent Host, retain typed local policy failures, and reconcile fresh exit-recovery evidence without rewriting historical unknown outcomes or replaying inputs.
+- Restore Partner file review/checkpoint rollback and queued-input recovery after reload. Preserve Host goals, cleared model overrides, actual Quick Ask completion, work-mode selector synchronization and safe Workflow observation.
+- Harden Provider/settings failure handling, integration credential persistence, user-owned MCP protection, Host grant/agent error visibility and repo-intelligence entitlement. Keep file search across settings/navigation changes and reject stale asynchronous picker, history and Workflow responses.
 
-- Restore queued input credential leases independently after Main reconstruction, including a queued input whose captured provider allowlist differs from the active Run. Preserve the original input identity and authorization without resubmitting it.
-- Enable the published Artifact tools through a separate trusted Host extension, resolving Space's installed SDK and a real Node worker. Optional extension failures remain diagnosable without disabling builtin Skills or historical conversations. Include the migration-gap suite in packaged release acceptance; see the [qualification record](docs/releases/space-sdk-migration-closeout-2026-10-20.md).
+### Documentation and qualification
+
+- Align READMEs, PRD/HLD/DD, current SDK capability/credential records, user manual and in-app `space_manual` with alpha.4 / beta.1. Preserve historical release evidence and the SDK's own `kodax_manual` mechanisms.
+- Qualify the exact source SHA, all four platform packages, native signatures/hashes and packaged consumer UI before publishing. This is a prerelease; stable remains v0.1.46. SDK Repo-intelligence Host gaps, durable queue/promotion seams, Issue 371 history latency and external account/model-quality or customer-OS acceptance remain explicit limitations, not silently closed items.
+
+See [alpha.4 release qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md), [full beta.1 acceptance](docs/releases/kodax-beta1-full-acceptance.md) and [follow-up fixes](docs/releases/kodax-beta1-claude-followup.md).
 
 ## [0.1.47-alpha.3] - 2026-10-20
 

@@ -32,7 +32,7 @@
 
 ### Download a release
 
-Download installers from the [latest stable release](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest), currently `v0.1.46`. The latest published prerelease is [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3). Prereleases do not replace the stable download.
+Preview target and release status: [`v0.1.47-alpha.4`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.4), subject to the [qualification record](docs/releases/v0.1.47-alpha.4-release-readiness.md). Stable downloads remain [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest); prereleases do not replace stable updates.
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |
@@ -40,7 +40,7 @@ Download installers from the [latest stable release](https://github.com/KodaX-AI
 | macOS    | Intel / Apple Silicon `.dmg`                            |
 | Linux    | `AppImage` and `.deb`                                   |
 
-Current public builds are unsigned. On first launch, Windows SmartScreen or macOS Gatekeeper may ask for manual confirmation. Only install builds from a trusted KodaX-AI distribution channel.
+Windows builds remain unsigned; macOS alpha.4 bundles use ad-hoc signing without Developer ID or notarization. On first launch, Windows SmartScreen or macOS Gatekeeper may ask for manual confirmation. Only install builds from a trusted KodaX-AI distribution channel.
 
 ### Run from source
 
@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**This working tree retains Space `0.1.47-alpha.3` and pins the published Registry SDK `0.7.97-alpha.11` exactly.** Its integration is unpublished; the existing `v0.1.47-alpha.3` installers still contain SDK alpha.9. Root, Desktop, IPC schema and UI kit share the Space version; the lockfile verifies Registry integrity. See the [alpha.11 integration](docs/releases/kodax-0.7.97-alpha.11-integration.md) for the AMA, question, exit-recovery and Skill changes, and the [previous release readiness](docs/releases/v0.1.47-alpha.3-release-readiness.md) for the published installer baseline.
+**Space `0.1.47-alpha.4` pins Registry SDK `0.7.97-beta.1` exactly.** Root, Desktop, IPC schema and UI kit share one Space version; the lockfile and packaged dependency gate verify Registry integrity. See [alpha.4 qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md), [beta.1 integration](docs/releases/kodax-0.7.97-beta.1-integration.md) and [repair evidence](docs/releases/kodax-beta1-claude-followup.md).
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.
@@ -98,13 +98,13 @@ npm run dev
 - Space product questions use `space_manual`; `kodax_manual` retains SDK/CLI mechanisms. The SDK now declares `relationship_scan.depth` as an integer range, fixing the Gemini tool-schema incompatibility without a client patch.
 - Live Sidecar Verifier and `/verifier-log` are retired. Stall logging and historical records remain; evidence-based checks use tools and `visual-review`. The optional `@kodax-ai/artifacts` package remains unpublished; this release does not claim a new PPT tool.
 
-Existing sandbox, credential and exit boundaries remain in effect. Unsigned macOS builds require a manual DMG update. Partner retains its inline owner, bundled library and explicit external-account acceptance limits.
+Existing sandbox, credential and exit boundaries remain in effect. macOS ad-hoc builds remain unnotarized and require a manual DMG update. Partner uses the shared Host in Agent mode, bundled library and explicit external-account acceptance limits.
 
-See [release preparation](docs/releases/v0.1.47-alpha.3-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
+See [release preparation](docs/releases/v0.1.47-alpha.4-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
 
 ## Current Release
 
-The latest stable release is [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46), published on 2026-10-06 with stable KodaX `0.7.96`. The latest published prerelease is [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3) with SDK `0.7.97-alpha.9`.
+The latest stable release is [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46), published on 2026-10-06 with stable KodaX `0.7.96`. The alpha.4 target's qualification and publication status are tracked in the links above; source readiness alone does not establish publication.
 
 The earlier Partner beta.3 Release was withdrawn; its tag and acceptance records remain historical. Later stable builds and this candidate retain the existing Partner integration. See [CHANGELOG](CHANGELOG.md) for the version history.
 
@@ -230,7 +230,7 @@ Key technical choices:
 | Shell                 | Electron 42                                                                                                                                                                                                       |
 | Renderer              | React 19, Vite, TypeScript, Zustand                                                                                                                                                                               |
 | UI/runtime separation | Renderer has no direct LLM/tool execution; privileged work stays in Electron main.                                                                                                                                |
-| KodaX integration     | Electron main uses published owner contracts; Coder defaults to the profile daemon and can use the Settings-selected Embedded fallback, while Partner and explicit host-provider services remain embedded inline. |
+| KodaX integration     | Coder and Partner use the SDK shared Host through public Product Client contracts. Coder defaults to Coding; Partner uses Agent with trusted business bindings. Electron main owns product tools and authorization, not a second Session writer. |
 | IPC                   | zod-validated contracts from `@kodax-space/space-ipc-schema`.                                                                                                                                                     |
 | Terminal              | xterm.js + node-pty.                                                                                                                                                                                              |
 | Preview               | Monaco, pdfjs, mammoth/docx, SheetJS/xlsx.                                                                                                                                                                        |

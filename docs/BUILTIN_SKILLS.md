@@ -1,5 +1,7 @@
 # Space builtin skill maintenance
 
+> 2026-11-04 版本基线：Space `0.1.47-alpha.4` / Registry SDK `0.7.97-beta.1`。本轮发布状态、验收与未关闭边界见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)；下方带日期的旧记录保留历史语境。
+
 KodaX Space ships its own vetted skills from `resources/builtin-skills`. They are
 installed with the application under `resources/builtin-skills`, registered
 automatically at startup, and presented by Space as `builtin`.

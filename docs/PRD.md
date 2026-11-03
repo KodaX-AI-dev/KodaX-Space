@@ -1,15 +1,15 @@
 # KodaX Space 产品需求文档（PRD）
 
-> 更新日期：2026-10-28。当前工作区保留 Space `0.1.47-alpha.3` 版本号，精确依赖已发布的 Registry SDK `0.7.97-alpha.10`，本轮集成尚未发布，见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。已发布的 Space alpha.3 安装器仍使用 SDK alpha.9；最新稳定版为 v0.1.46 / KodaX 0.7.96。
-> 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，当前 SDK 与 Issue 222 恢复验收见[alpha.7 接入](releases/kodax-0.7.97-alpha.7-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
+> 更新日期：2026-11-04。版本基线为 Space `0.1.47-alpha.4` / npm Registry `@kodax-ai/kodax@0.7.97-beta.1`。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；发布门与验证状态见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)，SDK 接缝和外部验证限制单独保留。
+> 当前公共接口以 [beta.1 接入](releases/kodax-0.7.97-beta.1-integration.md)、[完整验收](releases/kodax-beta1-full-acceptance.md)和[补审修复](releases/kodax-beta1-claude-followup.md)为准。带日期的旧版本设计保留历史语境。
 
-共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
+Coder 与 Partner 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
 
-SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；已有凭据、权限、退出恢复和 Partner inline owner 边界保持。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
+SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；保留已有凭据、权限和退出恢复；Partner 经同一共享 Host 使用 Agent 模式、消费时业务绑定和正常 shell/write/子 Agent 能力。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
 
 ## 0. 中文导读（一页摘要）
 
-2026-10-16 F147（当前源码，未发布）：用户已批准连续工作区与完整设置页面的融合方向。全部现有 Coder/Partner 功能、多项目并行、深浅/系统主题和三档视觉质量默认保留；任何功能删除须先对齐。正文、代码与长表格保持连续画布，玻璃和动效集中于局部 chrome，兼顾减少动态效果及后台/流式降载。参见 [功能保留清单](design/space-ui-integration.md) 与 [F147 设计](features/v0.1.47.md#feature_147-integrated-workspace-and-full-settings-surface)。
+2026-10-16 F147（本轮 alpha.4 集成）：用户已批准连续工作区与完整设置页面的融合方向。全部现有 Coder/Partner 功能、多项目并行、深浅/系统主题和三档视觉质量默认保留；任何功能删除须先对齐。正文、代码与长表格保持连续画布，玻璃和动效集中于局部 chrome，兼顾减少动态效果及后台/流式降载。参见 [功能保留清单](design/space-ui-integration.md) 与 [F147 设计](features/v0.1.47.md#feature_147-integrated-workspace-and-full-settings-surface)。
 
 KodaX Space 是 KodaX 生态的**桌面客户端**——不是另一个 IDE，也不是另一个 Chatbot，而是把 KodaX 已有的能力以**桌面级体验**重新组织，并扩展到非终端用户。
 

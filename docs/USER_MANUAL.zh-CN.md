@@ -4,9 +4,9 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文对应已发布预发布版 Space `v0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`。稳定版下载仍是 Space v0.1.46 / KodaX 0.7.96。旧版截图用于界面定位，以实际界面为准；本次变化与已验证范围见[发布准备记录](releases/v0.1.47-alpha.2-release-readiness.md)。
+> 本文对应 Space `v0.1.47-alpha.4` / Registry `@kodax-ai/kodax@0.7.97-beta.1`。稳定版仍是 Space v0.1.46 / KodaX 0.7.96。旧截图仅用于定位，以实际界面为准；[发布与验证记录](releases/v0.1.47-alpha.4-release-readiness.md)列出已验证范围。
 
-> 当前工作区仍为 Space `0.1.47-alpha.3`，已接入 npm Registry SDK `0.7.97-alpha.10`，尚未发布新的 Space 安装器。新增提问等待/跳过、退出恢复、内置 Skill 本地错误及初始化进度适配；保留 alpha.9 的 EIO 会话隔离和其他客户端退出保护。能力与验证范围见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。
+> Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
 共享 Coder 当前聊天与历史浏览分开；新建但未发送的会话不会留下新空记录；侧栏按真实消息时间排序。当前版本恢复 SDK 提供的用户图片、长正文、工具与 Artifact 记录，结果检查使用工具证据和 visual-review，旧的 /verifier-log 已移除。Windows 首次迁移如需 Sandbox Setup，应在 Settings → Runtime 显式执行；普通启动和工具调用不会隐式提权。旧会话文件与凭据不会因本轮文档或版本同步被删除。
 
@@ -190,13 +190,13 @@ macOS 请在“系统设置 → 通知 → KodaX Space”允许通知并开启�
 点击旁边带环形分类图标的 Token 数字，会看到整个 Session 的累计用量：
 
 - **会话总量 = 累计输入 + 累计输出**，来源是 Provider 对每次物理模型调用返回的 usage。
-- 在当前 0.7.77 源码中，Space 按完成态诊断的 `requestId` 去重，覆盖根/子 Agent、重试、fallback、结构化修复、工作流摘要和压缩摘要请求；旧 Runtime/mock 才在诊断出现前回退到 `iteration_end`。
+- 当前共享 Host 路径使用 SDK statistics 提供的累计用量，涵盖 SDK 归集的根/子 Agent、重试、fallback、工作流和压缩调用；Space 不再通过显示事件重复累加。
 - 根 Agent 和子 Agent 都计入会话总量；弹窗同时给出 root/child Provider 调用次数，便于理解多 Agent 任务为什么比当前主上下文数字大。
 - 弹窗先显示输入总量；Provider 有报告时，再分成未缓存输入、缓存命中输入和缓存创建输入。缓存命中与缓存创建都是输入子集，不会在会话总量之外再加一次。
 - 不同 Provider 的 tokenizer 与缓存字段口径可能不同。跨模型应比较输入总量和输出；缓存拆分只反映 Provider 实际返回的字段。
 - 累计与最近一次缓存命中率是诊断信息，不等于节省金额。不同 Provider 可能不提供全部缓存字段，缺失时显示 `—`。
 - `/cost` 使用同一份累计 usage。当前只展示 Token，不根据不稳定的价格表推算货币金额。
-- 会话累计量保存在 Space 本地状态中，重开应用不会因为 UI 重建而归零；删除 Session 时会一并清理。它不是 Provider 账单真理源，最终计费仍以 Provider 账单为准。
+- 恢复会话时从 Host 读取累计量，Space 缓存仅是展示副本。它不是 Provider 账单，最终计费仍以 Provider 账单为准。
 
 两个弹窗及其标签已同时配置英文和简体中文，跟随 Settings → Preferences 的界面语言切换。模型输出、Provider 名称和第三方日志不会因此被强制翻译。
 
@@ -402,7 +402,7 @@ Coder 输入框底部的“工作模式”控制本会话向模型提供的工�
 
 Settings 有六个主标签：Preferences、Providers、Runtime、Extensions、License、Diagnostics。
 
-当前开发版（F147，尚未发布）的设置是完整工作页面，设置分类替代左侧项目导航。返回工作区、关闭按钮或 Escape 可回到原会话并恢复项目导航；后台任务和输入草稿保持。设置内编辑器或确认框优先处理 Escape。原有设置项全部保留。
+alpha.4 的 F147 工作区的设置是完整工作页面，设置分类替代左侧项目导航。返回工作区、关闭按钮或 Escape 可回到原会话并恢复项目导航；后台任务和输入草稿保持。设置内编辑器或确认框优先处理 Escape。原有设置项全部保留。
 
 顶部“对话视图”（`Ctrl+Shift+O`）中的“对话字号”提供小、中、大三档，只调整消息正文。菜单内有实时预览，新对话空页也可查看选择效果；选择在刷新或重启后保留。需要调整侧栏及整个界面的大小时，使用同一菜单下方的“缩放”，或 `Ctrl+滚轮`、`Ctrl+=/-/0`。
 

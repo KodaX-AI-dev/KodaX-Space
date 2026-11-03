@@ -1,6 +1,6 @@
 # KodaX Capability Ledger
 
-> 2026-10-29：工作区已精确接入官方 Registry alpha.11，本轮 Space 改动尚未发布。AMA、提问与 Skip、退出恢复、Skill 本地错误，以及启动阶段、检查点恢复和容量提示的实施与验收见 [alpha.11 接入](releases/kodax-0.7.97-alpha.11-integration.md)。18 项 Space builtin 内容改进保持；不复制 SDK 执行引擎。
+> 2026-11-04：Space `0.1.47-alpha.4` 精确接入 Registry SDK `0.7.97-beta.1`，覆盖共享 Host 双 Surface、工作模式、SDK 原文/报告/用量及凭据文件。当前验证和 SDK/外部限制见 [alpha.4](releases/v0.1.47-alpha.4-release-readiness.md)与[补审记录](releases/kodax-beta1-claude-followup.md)。
 
 > 2026-10-20 历史记录：alpha.9 的 EIO 元数据准入及持有 owner fence 的活动控制器准入修复已随 npm 发布接入。Artifact 四入口与资源继续保留，启用边界不变。验收见 [alpha.9 接入](releases/kodax-0.7.97-alpha.9-integration.md)。
 
@@ -8,11 +8,11 @@
 
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
-> Last reviewed: 2026-10-28
-> Published Space baseline: prerelease [`v0.1.47-alpha.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.3) / SDK `0.7.97-alpha.9`; latest stable [v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) / KodaX 0.7.96. The alpha.10 working-tree integration is unpublished.
-> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-alpha.11` (`sha512-Fo4qL6qvA/1ViL8sElvXB+X0+xP6c23GGJ5iJY10wDUDLXokIiVXY8+4bXx3r8OYFyiqUyBJ7+9v2UnCc5cNHg==`).
+> Last reviewed: 2026-11-04
+> Release baseline: Space `0.1.47-alpha.4` / SDK `0.7.97-beta.1`; latest stable stays v0.1.46 / KodaX 0.7.96. See [release status](releases/v0.1.47-alpha.4-release-readiness.md).
+> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-beta.1` (`sha512-rQWEvPm8EnoGqgB4aCBtAUGcOaPsnZwqWq5TGgu6jgGWnKIgBbUU2GJSATTlnW+KSUxWduYsJhLkU314553qBA==`).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
-> Workspace dependency: root/Desktop/lockfile pin published 0.7.97-alpha.11 while retaining Space 0.1.47-alpha.3. Current qualification is recorded in [alpha.11 integration](releases/kodax-0.7.97-alpha.11-integration.md); previous release and SDK integration evidence retain their original source fingerprints.
+> Workspace dependency: Root/Desktop/lockfile pin one Registry beta.1; Space workspaces share alpha.4. Package, source and actual Host capabilities are checked separately. Earlier release evidence retains its original fingerprints.
 > Package/source evidence: a formal release requires both workspaces to resolve one deduplicated exact Registry package whose root/desktop manifests, lock views, installed package, tarball URL, and integrity agree. Release acceptance also imports every public KodaX facade, verifies ancestor-aware transitive dependencies, loads packaged `better-sqlite3`from unpacked native bytes, and boots the packaged application.
 > Published KodaX review: all earlier compaction/history/Actor/usage/learning/external-agent contracts plus 0.7.78 ownership/integration/sandbox contracts, 0.7.80`managedRunDurability:1`, 0.7.81 canonical delivered-interrupt `entryId`, 0.7.83 active-run/session-recovery and exact-shutdown fixes, 0.7.84 same-owner Actor settlement recovery, 0.7.85 `actorSettlementConvergence:1`plus`sessionEventJournal:1`, 0.7.87 `sandboxRuntime:3`, 0.7.88 `actorSettlementConvergence:2`, 0.7.89 `runBoundHostTools:2`plus`materializedAgentTools`, and 0.7.91 `runtimeExitSettlement:1`plus`liveOutputSegments:1`have been reviewed. F118 is released; broader F117/F138 work remains planned.
 > Published 0.7.94 adds`conversationHistory:2`, typed daemon disconnect facts, credential-safe Run failure classification, fail-closed Run/sandbox finalization hardening, and the explicit-Skill contract in which legacy `user-invocable`no longer gates execution while`disable-model-invocation`gates only model discovery/tool use. Space treats lifecycle support as capability contracts, not SemVer inference.
@@ -83,7 +83,9 @@ This is the Space-side source of truth for SDK-dependent capability planning. A 
 
 ## Runtime and session capabilities
 
-### Current SDK baseline: KodaX 0.7.97-alpha.7
+### Historical SDK checkpoint: KodaX 0.7.97-alpha.7
+
+The following dated alpha checkpoint retains its original package and capability evidence. Current Space alpha.4 / SDK beta.1 qualification is linked at the top of this document.
 
 Alpha.7 adds shared Session owner recovery and bounded discovery, including
 Linux zombie-owner classification. Space requests `daemonLifecycle: interactive`
@@ -121,8 +123,8 @@ daemon admission requirements and connected Runtime checks additionally require
 `commandLifetimeFilesystemLease:false`. The release dependency gate requires the
 complete universal native bundle. Electron packaging unpacks the whole
 `dist/native` directory, and packaged smoke validates each manifest-pinned file
-before running the real sandbox path. Space uses package version 0.1.47-alpha.3
-for this unpublished source candidate. Alpha.6/alpha.7 move Windows readiness to protected-cache
+before running the real sandbox path. At this historical checkpoint Space used package version 0.1.47-alpha.3
+for the then-unpublished source candidate. Alpha.6/alpha.7 move Windows readiness to protected-cache
 generation 10, keep broad ACL repair inside explicit Setup, extend exact-authority
 proxy capacity, isolate each command's temporary leaf, and require real no-side-effect
 target probes in explicit doctor and Setup/onboarding; beta.5 advances the

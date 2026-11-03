@@ -372,7 +372,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '会话 Token 用量累计当前 Session 的全部物理 Provider 调用，包含根 Agent 和所有子 Agent。会话总量等于累计输入加累计输出；弹窗先显示输入总量，Provider 有报告时再把输入区分为未缓存输入、缓存命中输入和缓存创建输入。缓存命中与缓存创建都是输入子集，不在总量之外重复相加。不同 Provider 的 tokenizer 与缓存字段口径可能不同，跨模型应比较输入总量和输出，拆分项只反映 Provider 实际返回的字段。弹窗还显示 root/child 调用次数、累计与最近一次缓存命中率；缺失字段显示破折号。/cost 使用同一累计 usage，但最终账单仍以 Provider 为准。',
       '',
-      '会话累计量保存在 Space 本地状态中，重开应用不会因 renderer 重建而归零，删除 Session 时会清理。上下文构成事件只含分类 Token 数；Prompt cache 诊断只含哈希、计数、Provider/Model 与 usage，不含系统提示词、消息、工具输入或工具输出正文。',
+      '当前共享 Host 的会话累计量来自 SDK statistics，恢复时从 Host 重读；Space 缓存仅为展示副本，不通过显示事件重复累加。上下文构成事件只含分类 Token 数；Prompt cache 诊断只含哈希、计数、Provider/Model 与 usage，不含系统提示词、消息、工具输入或工具输出正文。',
       '',
       '这两个弹窗的 en-US 与 zh-CN 标签都已配置，跟随 Settings -> Preferences 的界面语言切换。模型输出、Provider 名称和第三方日志不会被强制翻译。',
     ),

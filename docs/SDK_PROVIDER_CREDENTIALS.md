@@ -1,9 +1,10 @@
 # Provider upgrade and account preservation — FEATURE_302 T12-H
 
-Implementation baseline: Space `065cc39c` and KodaX parity `22e7bc708`, 2026-10-31.
-This is unpublished work. The locked Registry SDK remains unchanged; local development uses
-the existing `link:kodax` workflow. Production packaging must keep rejecting development links.
-A release must first publish and pin the accepted SDK bytes and verify its capabilities.
+Release baseline: Space `0.1.47-alpha.4` / Registry KodaX `0.7.97-beta.1`, 2026-11-04.
+Provider and stable client/exit-recovery credentials use SDK permission-protected auth.json.
+Production packaging verifies exact Registry bytes and rejects development links.
+Earlier implementation references below retain their dated evidence; current qualification and
+remaining SDK seams are recorded in [alpha.4 readiness](releases/v0.1.47-alpha.4-release-readiness.md).
 
 ## Accepted contract
 

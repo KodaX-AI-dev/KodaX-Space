@@ -1,11 +1,11 @@
 # KodaX Space 高层设计（HLD）
 
-> 更新日期：2026-10-28。当前工作区保留 Space `0.1.47-alpha.3` 版本号，精确依赖已发布的 Registry SDK `0.7.97-alpha.10`，本轮集成尚未发布，见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。已发布的 Space alpha.3 安装器仍使用 SDK alpha.9；最新稳定版为 v0.1.46 / KodaX 0.7.96。
-> 本次范围与发布门见[alpha.2 发布准备](releases/v0.1.47-alpha.2-release-readiness.md)，当前 SDK 与 Issue 222 恢复验收见[alpha.7 接入](releases/kodax-0.7.97-alpha.7-integration.md)。文内带日期的旧版本方案保留历史语境；当前实现以[ADR-010](ADR/ADR-010-sdk-product-output.md)、[详细设计](DD.md)和[能力台账](KODAX_CAPABILITY_LEDGER.md)为准。
+> 更新日期：2026-11-04。版本基线为 Space `0.1.47-alpha.4` / npm Registry `@kodax-ai/kodax@0.7.97-beta.1`。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；发布门与验证状态见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)，SDK 接缝和外部验证限制单独保留。
+> 当前公共接口以 [beta.1 接入](releases/kodax-0.7.97-beta.1-integration.md)、[完整验收](releases/kodax-beta1-full-acceptance.md)和[补审修复](releases/kodax-beta1-claude-followup.md)为准。带日期的旧版本设计保留历史语境。
 
-共享 Coder 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
+Coder 与 Partner 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
 
-SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；已有凭据、权限、退出恢复和 Partner inline owner 边界保持。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
+SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；保留已有凭据、权限和退出恢复；Partner 经同一共享 Host 使用 Agent 模式、消费时业务绑定和正常 shell/write/子 Agent 能力。可选 Artifact 包尚未发布，不把底层渲染支持当成新增桌面 PPT 能力。
 
 共享 Session 目录以实际 Host 为唯一 writer；`default` / `coder` 是连接 profile，不是两个独立 writer 域。SDK 负责发现、认证和安全替换 owner。新建 Host 使用交互式生命周期；已有同安装兼容 Host 保留其 persistent/service 生命周期。Space 连接失败保持可见并自动恢复所选 SDK view，不能从本地正文文件拼造历史。
 
@@ -13,13 +13,13 @@ SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntim
 
 KodaX Space 不是新 agent，而是**复用 KodaX 内核的 Electron 桌面客户端**。架构 7 条核心判断：
 
-1. **进程模型** = Electron 标准（main / preload / renderer）加 profile-scoped KodaX Runtime daemon；`v0.1.34` 的 Coder owner 默认位于 daemon，Partner owner 保留在 Electron main embedded inline。
-2. **与 KodaX 的边界** = **TypeScript Runtime/SDK public contracts**（不是 ACP）。Main 以 `@kodax-ai/kodax/runtime` 作为长期 host facade；Coder 使用 transport-safe observe/control/services，Partner 使用 embedded inline adapter；Space-owned zod IPC 仍是 renderer 唯一边界。决策基线见 [ADR-003](ADR/ADR-003-kodax-integration-in-process.md)、[v0.1.31](features/v0.1.31.md) 和 [v0.1.32](features/v0.1.32.md)。
+1. **进程模型** = Electron main / preload / renderer + SDK 共享 Runtime Host。真实 Coder 与 Partner 使用同一 Host owner；Main 提供可信凭据、产品工具与授权绑定，不创建第二个 Session writer。
+2. **与 KodaX 的边界** = SDK 公共 Product Client / Runtime 契约，不通过 ACP。Coder 默认 Coding，可在 Host 安全空闲时选择 Agent / 实验性 Script；Partner 使用 Agent 注入，保留正常 shell/write/子 Agent 能力。Renderer 仅通过 Space 的类型化 IPC 访问 Main。
 3. **Shell 选择** = Electron。理由见 [ADR-001](ADR/ADR-001-shell-electron.md)（含 OpenCode 反向迁移实证）。
 4. **Native 集成** = 仅在 profile 证明 JS/Worker 路径存在实质热瓶颈时引入 NAPI-RS；历史 native-helper 提案已移入 watchlist。见 [ADR-002](ADR/ADR-002-rust-integration-napi.md)。
 5. **面板模型** = 双面板（Code / Partner）+ Quick Ask popover。无独立 Chat 面板。见 [ADR-004](ADR/ADR-004-panel-model.md)。
-6. **数据持久层** = 复用 KodaX 已有的 `~/.kodax/`，Space UI 偏好位于 `~/.kodax/space/`；v0.1.32 shared daemon 状态/journal 位于 `<profile-root>/runtime/`（默认 `~/.kodax/runtime/`）。v0.1.31 embedded Runtime 的历史 journal 可能仍位于 `<profile-root>/.kodax/runtime/`，但不是当前 daemon 真理源。Quick Ask 的最终目标是不落盘；当前仍使用临时 plan-mode session，并在关闭时 best-effort 清理。
-7. **CLI ↔ Space session 协同** = Coder 通过 shared daemon 的 atomic live snapshot + ordered events 实时协同；handoff 仍用于显式上下文连续性。两者都不走 ACP，Partner 不进入该共享路径。
+6. **数据持久层** = SDK 拥有 canonical Session、输入、配置与权限受限的 auth.json；Space 保留界面偏好、产品材料与明确的用户恢复副本。Quick Ask 使用临时 SDK Session，确认 promotion 后原 Session 转为正式会话，不复制消息另造一份。
+7. **CLI ↔ Space session 协同** = 经共享 Host 的认证、当前 view、独立历史窗口与版本化设置协同；handoff 仅用于显式上下文连续性。历史/原文读取使用 SDK 项目身份和修订，不读取 Renderer 任意 outputPath。
 
 **ACP 在 KodaX 生态的定位**：KodaX 内核继续维护 ACP server，服务**第三方 host**（Zed / Claude Code Desktop / 未来 IDE）。Space 是 KodaX 的 first-party UI，**不通过 ACP 接 KodaX**。
 
@@ -29,7 +29,7 @@ KodaX Space 不是新 agent，而是**复用 KodaX 内核的 Electron 桌面客�
 
 ### 1.1 全景图
 
-下图保留 `v0.1.33` F121 的历史拓扑；当前共享 Coder 输出以 ADR-010 为准；`v0.1.31` 的双 surface inline owner 仅作为历史兼容基线保留。
+下图保留 `v0.1.33` F121 的历史拓扑；当前 Coder/Partner 的共享 Host 和输出以本页版本基线及 ADR-010 为准；`v0.1.31` 的双 surface inline owner 仅作为历史兼容基线保留。
 
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
@@ -67,7 +67,7 @@ Space Artifact/Control handlers, credential broker, BrowserWindow and OS integra
 
 1. **No-LLM-in-renderer**：renderer 进程绝不直接调 LLM SDK 或任何 KodaX runtime；renderer 只 import 类型/常量
 2. **No-tool-execution-in-renderer**：工具只在受信任的 Coder daemon 或 Space main（Partner/Space host tool）执行
-3. **No-duplicate-session-truth**：Coder live truth 只在 daemon；Partner live truth 只在 Space inline owner。session 持久化仍由 KodaX 内核负责，Space 仅追加 UI 偏好与 Space-owned data
+3. **No-duplicate-session-truth**：Coder 与 Partner 的 live truth 只在共享 Host。session 持久化仍由 KodaX 内核负责，Space 仅追加 UI 偏好与 Space-owned data
 
 ---
 
@@ -77,7 +77,7 @@ Space Artifact/Control handlers, credential broker, BrowserWindow and OS integra
 
 | 进程                 | 角色                   | 持久                  | 内含                                                                         |
 | -------------------- | ---------------------- | --------------------- | ---------------------------------------------------------------------------- |
-| `space-main`         | Electron main（Node）  | 应用/Windows 托盘周期 | IPC、Coder daemon client、Partner inline Runtime、Space host tools、后台托盘 |
+| `space-main`         | Electron main（Node）  | 应用/Windows 托盘周期 | IPC、Coder/Partner Product Client、Space host tools、后台托盘 |
 | `space-preload`      | Electron preload       | 每窗口                | 安全桥（contextBridge）                                                      |
 | `space-renderer`     | React UI               | 每窗口                | UI only，无 KodaX runtime                                                    |
 | `quick-ask-window`   | 独立 BrowserWindow     | 按需                  | Quick Ask renderer；Coder session 由 daemon 拥有                             |
@@ -437,7 +437,7 @@ type Project = {
 ### 8.1 三层权限
 
 1. **KodaX 内核层**（Auto[LLM] classifier、Auto[Rules]、Accept-edits fallback 与权限 grant）
-2. **Space UI 层**（弹窗与录入；F121 的 Coder `Always allow` 仅回传 Runtime 给出的不透明精确 grant suggestion，绝不由 UI 扩大工具或 shell 范围；Partner 保留 inline policy path）
+2. **Space UI 层**（弹窗与录入；F121 的 Coder `Always allow` 仅回传 Runtime 给出的不透明精确 grant suggestion，绝不由 UI 扩大工具或 shell 范围；Partner 同样通过共享 Host 的权限与业务绑定）
 3. **Credentials**: Provider API keys use SDK permission-protected plaintext auth.json with atomic CAS; Main brokers scoped access. Legacy migration and remaining connectors retain OS-protected storage.
 
 唯一真理面在 KodaX。Space 是显示器 + 录入器。
@@ -572,7 +572,7 @@ type QuickAskParams = {
 
 ### 9.6 共享按钮交互层
 
-2026-10-16 F147（当前源码，未发布）：工作区改为连续中央画布与分栏，设置作为 Shell 内完整工作面；原会话、输入框及详情工作区保持挂载，隐藏区 inert，Portal 工作面可 suspended 暂停显示/焦点/快捷键而不销毁终端。玻璃仅保留于静态 chrome；深浅/系统主题、三档视觉质量共用已有 store/持久化。全部能力映射与性能边界见 [F147 清单](design/space-ui-integration.md)。不改 SDK、IPC 或执行 owner。
+2026-10-16 F147（本轮 alpha.4 集成）：工作区改为连续中央画布与分栏，设置作为 Shell 内完整工作面；原会话、输入框及详情工作区保持挂载，隐藏区 inert，Portal 工作面可 suspended 暂停显示/焦点/快捷键而不销毁终端。玻璃仅保留于静态 chrome；深浅/系统主题、三档视觉质量共用已有 store/持久化。全部能力映射与性能边界见 [F147 清单](design/space-ui-integration.md)。不改 SDK、IPC 或执行 owner。
 
 - `styles.css` 在应用 `body` 上为 enabled `<button>` 提供统一反馈；F147 的 `workspace.css` 在连续工作面中进一步统一材质与焦点，密集导航不移动命中目标。设置位于 Shell 内，Quick Ask/确认弹层继续使用 Portal。
 - 交互色由现有 `--accent`、`--ok`、`--info`、`--thinking`、`--warn`、`--danger` token 派生；组件原有背景、阴影、尺寸、圆角和文案仍是 owner。
@@ -628,7 +628,7 @@ Space → CLI:
 | Renderer    | **React 19 + Vite 6 + TypeScript + Zustand 5 + Tailwind + shadcn-derived UI**                                                              |
 | Editor 组件 | Monaco（只读 + diff）                                                                                                                      |
 | 终端组件    | xterm.js + node-pty                                                                                                                        |
-| KodaX 集成  | **双 owner**：Coder 通过 Runtime facade 连接 profile daemon；Partner 在 Electron main inline；均不走 ACP（[v0.1.32](features/v0.1.32.md)） |
+| KodaX 集成  | Coder/Partner 经 Runtime facade 使用共享 Host；均不走 ACP（[v0.1.32](features/v0.1.32.md)） |
 | Native 加速 | 仅按 profile 引入 NAPI-RS 热路径；无已承诺 native-helper feature ([ADR-002](ADR/ADR-002-rust-integration-napi.md))                         |
 | IPC schema  | zod，验证所有 renderer↔main channel                                                                                                        |
 | Keychain    | `@napi-rs/keyring`（Win Credential Manager / macOS Keychain / Linux Secret Service）                                                       |
@@ -673,7 +673,7 @@ Space → CLI:
 ### 12.1 写入策略
 
 - `~/.kodax/space/*` 由 Space main 写，atomic rename (tmp → 目标)
-- `~/.kodax/<其他>` 由对应 KodaX owner 写：Coder 域由 daemon，Partner session 域由 main inline；跨 surface mutation 被拒绝
+- `~/.kodax/<其他>` 由对应 KodaX owner 写：Coder/Partner Session 域由共享 Host；跨 surface mutation 被拒绝
 - 不在 renderer 进程写盘
 - 备份/retention is store-specific. New global backup behavior requires an explicit feature with content, secret, quota, restore, and deletion semantics.
 
@@ -791,7 +791,7 @@ NAPI crate 独立 Rust 单测 + 与 TS wrapper 的集成测。
 | Surfaces                  | Space 是 KodaX 的 first-party 桌面 surface；不挪用任务逻辑                                                    |
 | Intent Gate / Direct Path | 在对应 KodaX Runtime owner 内；UI 仅看 Space main 的 sanitized projection                                     |
 | Scout / AMA Control Plane | 仅以"模式徽标 + Round"体现；不绘制内部图                                                                      |
-| Coding Runtime            | F121 起 Coder 在 profile daemon；Partner 保留 main inline                                                     |
+| Coding Runtime            | Coder/Partner 共用 SDK Host；Partner 使用 Agent 业务绑定                                                     |
 | Durable Task State        | 写盘真理面在 KodaX runtime（`~/.kodax/sessions/`）；Space 是读视图                                            |
 | Skill 集成                | 通过 public Skill registry/catalog；F135 以 SDK plugin API 注册审定的 Space builtin root                      |
 | 证据分层                  | UI 在 verdict 卡片浏览，不重新组织                                                                            |
