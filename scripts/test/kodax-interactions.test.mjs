@@ -19,7 +19,28 @@ async function resultWithinDeadline(run) {
   }
 }
 
-async function fixture(t, userInputTimeoutMs) {
+function startQuestionRun(runtime, sessionId) {
+  return runtime.runs.start({
+    sessionId,
+    prompt: 'Ask before continuing',
+    options: {
+      agentMode: 'ama',
+      toolInvocation: {
+        name: 'ask_user_question',
+        input: {
+          question: 'Choose a direction',
+          default: 'first',
+          options: [
+            { label: 'First', value: 'first' },
+            { label: 'Second', value: 'second' },
+          ],
+        },
+      },
+    },
+  });
+}
+
+async function fixture(t, userInputTimeoutMs, pendingReadDelayMs = 0) {
   const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'space-sdk-questions-')));
   const runtime = await createOwnedTestRuntime({
     homeDir: root,
@@ -39,32 +60,32 @@ async function fixture(t, userInputTimeoutMs) {
     agentMode: 'ama',
     permissionMode: 'full-access',
   });
-  const run = await runtime.runs.start({
-    sessionId: session.id,
-    prompt: 'Ask before continuing',
-    options: {
-      agentMode: 'ama',
-      toolInvocation: {
-        name: 'ask_user_question',
-        input: {
-          question: 'Choose a direction',
-          default: 'first',
-          options: [
-            { label: 'First', value: 'first' },
-            { label: 'Second', value: 'second' },
-          ],
-        },
-      },
-    },
+  let requestedQuestion;
+  const subscription = runtime.events.subscribe({ sessionId: session.id }, (event) => {
+    if (event.type === 'user_input.requested') requestedQuestion = event.payload;
   });
+  t.after(() => subscription.close());
+  await subscription.ready;
+  const run = await startQuestionRun(runtime, session.id);
   let question;
+  if (pendingReadDelayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, pendingReadDelayMs));
+  }
   const deadline = Date.now() + 5_000;
-  while (!question && Date.now() < deadline) {
+  while (
+    !(userInputTimeoutMs === undefined ? question : requestedQuestion) &&
+    Date.now() < deadline
+  ) {
     question = (await runtime.interactions.list({ sessionId: session.id }))[0];
+    // A finite Host deadline may expire before a loaded CI runner polls the list.
+    // Keep the actual creation event; do not require an expired request to stay pending.
     if (!question) await new Promise((resolve) => setTimeout(resolve, 5));
   }
-  assert.ok(question, 'the installed Runtime must expose its pending question');
-  return { runtime, session, run, question };
+  assert.ok(
+    userInputTimeoutMs === undefined ? question : requestedQuestion,
+    'the installed Runtime must expose its question',
+  );
+  return { runtime, session, run, question, requestedQuestion };
 }
 
 test('published questions have no default deadline and skip completes without choosing the default', async (t) => {
@@ -85,8 +106,8 @@ test('published questions have no default deadline and skip completes without ch
 });
 
 test('published question timeout is unanswered and does not interrupt its Run', async (t) => {
-  const { run, question } = await fixture(t, 250);
-  assert.ok(question.expiresAt);
+  const { run, requestedQuestion } = await fixture(t, 250, 350);
+  assert.ok(requestedQuestion.expiresAt);
   const result = await resultWithinDeadline(run);
   assert.equal(result.phase, 'completed');
   assert.match(result.result?.lastText ?? '', /"reason":"timeout"/);

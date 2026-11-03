@@ -1741,7 +1741,9 @@ try {
   if (KODAX_RUNTIME_SDK_CAPABILITIES?.sharedSessionSettings !== 2) {
     throw new Error('packaged SDK does not advertise sharedSessionSettings v2 before auto-start');
   }
-  const providerBaseUrl = sandboxDoctor.ready ? await startProviderServer() : undefined;
+  // Ordinary Bash must also execute through the SDK permission fallback when
+  // doctor is unavailable; a direct sandbox probe is the only readiness-gated path.
+  const providerBaseUrl = await startProviderServer();
   daemonRuntime = await createDaemonProbeRuntime('kodax-space-pack-lifecycle-smoke');
   const cancellation = daemonRuntime.capabilities?.sessionCancellation;
   if (cancellation?.version !== 1 || cancellation.durableFrontier !== true) {
@@ -1818,14 +1820,11 @@ try {
       'packaged daemon returned an invalid Session cursor: ' + JSON.stringify(journalCursor),
     );
   }
-  let firstDaemonShellBackend;
-  if (providerBaseUrl) {
-    await configureProbeProvider(daemonRuntime, providerBaseUrl);
-    firstDaemonShellBackend = await runDaemonShellProbe(
-      daemonRuntime,
-      'KODAX_DAEMON_SHELL_PROBE_1=ok',
-    );
-  }
+  await configureProbeProvider(daemonRuntime, providerBaseUrl);
+  const firstDaemonShellBackend = await runDaemonShellProbe(
+    daemonRuntime,
+    'KODAX_DAEMON_SHELL_PROBE_1=ok',
+  );
   const management = await daemonRuntime.daemon.inspect();
   if (
     management.integrations?.state !== 'healthy' ||
@@ -1854,16 +1853,13 @@ try {
     );
   }
   daemonRuntime = undefined;
-  let restartedDaemonShellBackend;
   let restartedRuntimeExitSettlement;
   daemonRuntime = await createDaemonProbeRuntime('kodax-space-pack-restart-smoke');
-  if (providerBaseUrl) {
-    await configureProbeProvider(daemonRuntime, providerBaseUrl);
-    restartedDaemonShellBackend = await runDaemonShellProbe(
-      daemonRuntime,
-      'KODAX_DAEMON_SHELL_PROBE_2=ok',
-    );
-  }
+  await configureProbeProvider(daemonRuntime, providerBaseUrl);
+  const restartedDaemonShellBackend = await runDaemonShellProbe(
+    daemonRuntime,
+    'KODAX_DAEMON_SHELL_PROBE_2=ok',
+  );
   const restartedManagement = await daemonRuntime.daemon.inspect();
   if (!restartedManagement.preflight.canStop) {
     throw new Error(
