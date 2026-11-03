@@ -792,6 +792,7 @@ try {
     let callbackErrors = 0;
     let callbackCompletes = 0;
     try {
+      await subscription.ready;
       const handle = await inlineRuntime.runs.start({
         sessionId: inlineSession.id,
         prompt: 'exercise managed runtime failure normalization',
@@ -803,6 +804,12 @@ try {
         },
       });
       const result = await handle.result;
+      // The result RPC and event subscription use independent deliveries.
+      // Require the actual terminal event before taking the evidence snapshot.
+      const eventDeadline = Date.now() + 5_000;
+      while (failedEvents.length === 0 && Date.now() < eventDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
       sharedManagedResult = {
         phase: result.phase,
         error: result.error?.message,
