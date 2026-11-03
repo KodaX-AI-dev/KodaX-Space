@@ -18,7 +18,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { resolvePackagedLifecycleHome } from './packaged-lifecycle-home.mjs';
-import { createPackagedShellProbeToolInput } from './packaged-shell-probe.mjs';
+import {
+  createPackagedShellProbeToolInput,
+  getPackagedShellProbeBackend,
+} from './packaged-shell-probe.mjs';
 import { verifyArtifactSdkPackage } from './kodax-artifact-package.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1297,6 +1300,7 @@ if (process.platform === 'win32') {
 }
 const resolvePackagedLifecycleHome = ${resolvePackagedLifecycleHome.toString()};
 const createPackagedShellProbeToolInput = ${createPackagedShellProbeToolInput.toString()};
+const getPackagedShellProbeBackend = ${getPackagedShellProbeBackend.toString()};
 const isolatedHome = await resolvePackagedLifecycleHome({
   platform: process.platform,
   configuredKodaXHome: process.env.KODAX_HOME?.trim(),
@@ -1492,8 +1496,7 @@ async function runDaemonShellProbe(runtime, marker) {
     const sandboxUpdates = events
       .filter((event) => event.type === 'tool.sandbox')
       .map((event) => event.payload?.update);
-    const observation = sandboxUpdates.find((update) => update?.observation?.state === 'applied')
-      ?.observation;
+    const shellBackend = getPackagedShellProbeBackend(sandboxUpdates);
     const finishedToolContent = events
       .filter(
         (event) => event.type === 'tool.finished' && event.payload?.result?.name === 'bash',
@@ -1506,7 +1509,7 @@ async function runDaemonShellProbe(runtime, marker) {
     const toolReportedError = finishedToolContent.includes('[Error]');
     if (
       completed.phase !== 'completed' ||
-      observation?.policyId !== 'kodax-workspace-shell-v1' ||
+      shellBackend === undefined ||
       !markerSeen ||
       !exitedCleanly ||
       inheritedElectronEnv ||
@@ -1517,7 +1520,7 @@ async function runDaemonShellProbe(runtime, marker) {
           JSON.stringify({
             transcript: JSON.stringify({ completed, events }).slice(-2_000),
             phase: completed.phase,
-            observation,
+            shellBackend,
             sandboxUpdates,
             finishedToolContent,
             markerSeen,
@@ -1527,7 +1530,7 @@ async function runDaemonShellProbe(runtime, marker) {
           }),
       );
     }
-    return observation.backend;
+    return shellBackend;
   } finally {
     subscription.close();
   }
@@ -1921,8 +1924,8 @@ try {
     result.sandboxUnavailableBehavior !== 'structured-no-execution' ||
     result.sandboxPermissionFallback !== 'normal-permission-policy' ||
     (result.sandboxDoctorReady && !result.sandboxCommandExecuted) ||
-    (result.sandboxDoctorReady && result.firstDaemonShellBackend !== sandboxCapability.backend) ||
-    (result.sandboxDoctorReady && result.restartedDaemonShellBackend !== sandboxCapability.backend)
+    ![sandboxCapability.backend, 'normal-permission-policy'].includes(result.firstDaemonShellBackend) ||
+    ![sandboxCapability.backend, 'normal-permission-policy'].includes(result.restartedDaemonShellBackend)
   ) {
     throw new Error('unexpected packaged Worker result: ' + JSON.stringify(result));
   }

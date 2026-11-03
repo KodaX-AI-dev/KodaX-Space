@@ -900,6 +900,7 @@ export default function App(): JSX.Element {
     );
 
     // F060 Workflow Harness — 启动期播种已知 run，然后订阅 SDK 进程事件实时流（按 runId 覆盖式 upsert）。
+    const workflowReadRevision = useAppStore.getState().workflowObservationRevision;
     bridge
       .invoke('workflow.list', undefined)
       .then((r) => {
@@ -908,16 +909,20 @@ export default function App(): JSX.Element {
           // transcript —— 改由 session.history 从 transcript 里 SDK 存的 `<task-completed>` 合成
           // 消息**原位**还原(见 ipc/session.ts)。原来那套侧存储重排在 SDK 压缩把 transcript
           // 时间戳压平后会乱序/置顶(治本待 SDK 逐条时间戳,见转交需求)。live 通知仍走 workflow.event。
-          seedWorkflowRuns(r.data.runs);
+          seedWorkflowRuns(r.data.runs, {
+            stale: r.data.stale,
+            expectedRevision: workflowReadRevision,
+          });
+        } else {
+          seedWorkflowRuns([], { stale: true, expectedRevision: workflowReadRevision });
         }
       })
       .catch(() => {
-        /* best-effort 播种；失败由后续实时事件补齐 */
+        seedWorkflowRuns([], { stale: true, expectedRevision: workflowReadRevision });
       });
     unsubsRef.current.push(
       bridge.on('workflow.observation', (payload) => {
-        useAppStore.setState({ workflowObservationStatus: payload.status });
-        if (payload.runs) seedWorkflowRuns(payload.runs);
+        seedWorkflowRuns(payload.runs ?? [], { observationStatus: payload.status });
       }),
       bridge.on('workflow.event', (payload) => {
         upsertWorkflowRun(payload);

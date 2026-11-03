@@ -762,6 +762,222 @@ test('newest history returns a usable cursor after initial SDK observation updat
   }
 });
 
+test('a cold newest-history topology conflict reloads through the Host once without replaying input', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_cold_history');
+  let conflict = false;
+  let reloads = 0;
+  let reads = 0;
+  const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+  fake.runtime.sessions.load = async (id) => {
+    if (conflict) reloads++;
+    return load(id);
+  };
+  fake.runtime.sessions.readHistory = async () => {
+    reads++;
+    if (reloads === 0) {
+      conflict = true;
+      throw Object.assign(
+        new Error('Session location topology changed during the read boundary for s_cold_history'),
+        { code: 'resync_required' },
+      );
+    }
+    return {
+      revision: 'cold-source',
+      sourceRevision: 'cold-source',
+      status: 'resolved',
+      issues: [],
+      items: [],
+      oversized: [],
+    };
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    const result = await adapter.readProductHistory('s_cold_history');
+    assert.equal(result.outcome === 'ready' && result.page?.sourceRevision, 'cold-source');
+    assert.equal(reads, 2);
+    assert.equal(reloads, 1);
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('a recovered newest history boundary is read without reopening an invalidating view observation', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_view_history');
+  let fresh = false;
+  let conflict = false;
+  const observe = fake.runtime.sessions.observeView!.bind(fake.runtime.sessions);
+  fake.runtime.sessions.observeView = async (id, listener) => {
+    fresh = false;
+    return observe(id, listener);
+  };
+  const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+  fake.runtime.sessions.load = async (id) => {
+    const result = await load(id);
+    if (conflict) fresh = true;
+    return result;
+  };
+  fake.runtime.sessions.readHistory = async () => {
+    if (!fresh) {
+      conflict = true;
+      throw Object.assign(
+        new Error('Session location topology changed during the read boundary for s_view_history'),
+        { code: 'resync_required' },
+      );
+    }
+    return {
+      revision: 'usable',
+      sourceRevision: 'usable',
+      status: 'resolved',
+      issues: [],
+      items: [],
+      oversized: [],
+    };
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    const result = await adapter.readProductHistory('s_view_history');
+    assert.equal(result.outcome === 'ready' && result.page?.sourceRevision, 'usable');
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('cold history recovers a lock conflict followed by a topology conflict through bounded Host loads', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_history_cascade');
+  let reads = 0;
+  let reloads = 0;
+  const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+  fake.runtime.sessions.load = async (id) => {
+    if (reads > 0) reloads++;
+    return load(id);
+  };
+  fake.runtime.sessions.readHistory = async () => {
+    reads++;
+    if (reads < 3)
+      throw Object.assign(
+        new Error(
+          reads === 1
+            ? `Session data changed during the read boundary: ${'a'.repeat(64)}.lock`
+            : 'Session location topology changed during the read boundary for s_history_cascade',
+        ),
+        { code: 'resync_required' },
+      );
+    return {
+      revision: 'restored',
+      sourceRevision: 'restored',
+      status: 'resolved',
+      issues: [],
+      items: [],
+      oversized: [],
+    };
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    const result = await adapter.readProductHistory('s_history_cascade');
+    assert.equal(result.outcome === 'ready' && result.page?.sourceRevision, 'restored');
+    assert.equal(reads, 3);
+    assert.equal(reloads, 2);
+  } finally {
+    await adapter.close();
+  }
+});
+
+for (const message of [
+  'Session data changed during the read boundary: invalid.lock',
+  'Session location topology changed during the read boundary for another-session',
+]) {
+  test(`unknown history boundaries do not trigger a Host load: ${message}`, async () => {
+    const fake = createFakeRuntime();
+    fake.sessions.add('s_unknown_history');
+    let conflict = false;
+    let reloads = 0;
+    const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+    fake.runtime.sessions.load = async (id) => {
+      if (conflict) reloads++;
+      return load(id);
+    };
+    fake.runtime.sessions.readHistory = async () => {
+      conflict = true;
+      throw Object.assign(new Error(message), { code: 'resync_required' });
+    };
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      profileRoot: path.resolve('C:/isolated-profile'),
+      runtimeFactory: async () => fake.runtime,
+      identityStore: testIdentityStore,
+    });
+    try {
+      assert.deepEqual(await adapter.readProductHistory('s_unknown_history'), {
+        outcome: 'data_changed',
+      });
+      assert.equal(reloads, 0);
+    } finally {
+      await adapter.close();
+    }
+  });
+}
+
+for (const boundary of [
+  { cursor: undefined, reads: 3, reloads: 2 },
+  { cursor: 'continuation', reads: 1, reloads: 0 },
+]) {
+  test(`topology recovery is bounded and preserves cursor identity (${boundary.cursor ?? 'newest'})`, async () => {
+    const fake = createFakeRuntime();
+    fake.sessions.add('s_topology_bound');
+    let conflict = false;
+    let reads = 0;
+    let reloads = 0;
+    const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+    fake.runtime.sessions.load = async (id) => {
+      if (conflict) reloads++;
+      return load(id);
+    };
+    fake.runtime.sessions.readHistory = async () => {
+      conflict = true;
+      reads++;
+      throw Object.assign(
+        new Error(
+          'Session location topology changed during the read boundary for s_topology_bound',
+        ),
+        { code: 'resync_required' },
+      );
+    };
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      profileRoot: path.resolve('C:/isolated-profile'),
+      runtimeFactory: async () => fake.runtime,
+      identityStore: testIdentityStore,
+    });
+    try {
+      assert.deepEqual(await adapter.readProductHistory('s_topology_bound', boundary.cursor), {
+        outcome: 'data_changed',
+      });
+      assert.equal(reads, boundary.reads);
+      assert.equal(reloads, boundary.reloads);
+    } finally {
+      await adapter.close();
+    }
+  });
+}
+
 test('newest history refreshes the SDK view after a quiescent observer has retired', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_mutated');

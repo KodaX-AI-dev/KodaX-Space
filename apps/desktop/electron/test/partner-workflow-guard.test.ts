@@ -29,6 +29,7 @@ test('Partner Workflow launch uses the same Host and preserves its trusted surfa
   const calls: unknown[] = [];
   controller.setHostOwner({
     enabled: () => true,
+    ownsRun: async () => false,
     runDirectory: async () => '/isolated',
     start: async (input) => {
       calls.push(input);

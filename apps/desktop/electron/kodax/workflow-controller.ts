@@ -1082,6 +1082,7 @@ export class WorkflowController {
   private hostOwner:
     | {
         enabled(): boolean;
+        ownsRun(runId: string): Promise<boolean>;
         start(input: ClientWorkflowStartInput): Promise<WorkflowStartResult>;
         runDirectory(runId: string): Promise<string>;
       }
@@ -1315,11 +1316,15 @@ export class WorkflowController {
 
   /** 改 run 显示名(不改 runId)。 */
   async rename(runId: string, displayName: string): Promise<boolean> {
+    if (this.hostOwner?.enabled() && (await this.hostOwner.ownsRun(runId)))
+      throw new Error('The current Host SDK does not support rename for shared workflows.');
     return (await this.lifecycle?.renameWorkflowRun(runId, displayName)) ?? false;
   }
 
   /** 删终态 run(活跃 run 被 SDK 拒,除非 force)。删后清本地归属。 */
   async deleteRun(runId: string, force?: boolean): Promise<boolean> {
+    if (this.hostOwner?.enabled() && (await this.hostOwner.ownsRun(runId)))
+      throw new Error('The current Host SDK does not support delete for shared workflows.');
     const ok =
       (await this.lifecycle?.deleteWorkflowRun(runId, force ? { force } : undefined)) ?? false;
     if (ok) {

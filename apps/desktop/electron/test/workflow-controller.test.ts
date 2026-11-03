@@ -24,6 +24,7 @@ test('explicit Coder workflow starts and generated requests have one Host execut
   const inputs: ClientWorkflowStartInput[] = [];
   controller.setHostOwner({
     enabled: () => true,
+    ownsRun: async () => false,
     start: async (input) => {
       inputs.push(input);
       return { runId: 'host-run' };

@@ -148,12 +148,19 @@ export function WorkflowManagementPanel(): JSX.Element {
     if (!currentProjectPath) return;
     let cancelled = false;
     setLoadingRuns(true);
+    const expectedRevision = useAppStore.getState().workflowObservationRevision;
     void window.kodaxSpace
       ?.invoke('workflow.list', undefined)
       .then((result) => {
-        if (!cancelled && result.ok) seedWorkflowRuns(result.data.runs);
+        if (cancelled) return;
+        seedWorkflowRuns(result.ok ? result.data.runs : [], {
+          stale: !result.ok || result.data.stale,
+          expectedRevision,
+        });
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) seedWorkflowRuns([], { stale: true, expectedRevision });
+      })
       .finally(() => {
         if (!cancelled) setLoadingRuns(false);
       });
@@ -240,11 +247,16 @@ export function WorkflowManagementPanel(): JSX.Element {
   }, []);
 
   const observationStatus = useAppStore((state) => state.workflowObservationStatus);
+  const listStale = useAppStore((state) => state.workflowListStale);
   return (
     <div className="h-full min-h-0 flex flex-col" data-testid="workflow-management-panel">
-      {observationStatus === 'recovering' && (
+      {(observationStatus === 'recovering' || listStale) && (
         <p role="status" className="px-3 py-2 text-xs text-warn">
-          {t('workflow.observationRecovering')}
+          {t(
+            observationStatus === 'recovering'
+              ? 'workflow.observationRecovering'
+              : 'workflow.listStale',
+          )}
         </p>
       )}
       <div className="flex items-center gap-3 border-b border-border-default/60 px-3 py-2 flex-shrink-0">
@@ -450,6 +462,7 @@ function SavedListItem({
             : 'border-border-default/40 bg-surface-2/50 hover:bg-hover-bg'
         }`}
         title={saved.path}
+        data-testid="workflow-saved-list-item"
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <FileCode2
@@ -799,7 +812,15 @@ function RunActions({
           <Square size={13} />
         </ActionButton>
       )}
-      <ActionButton label={t('workflow.rename')} onClick={onStartRename}>
+      <ActionButton
+        label={t('workflow.rename')}
+        onClick={onStartRename}
+        disabledReason={
+          run.managementCapabilities?.rename === false
+            ? t('workflow.hostManagementUnavailable')
+            : undefined
+        }
+      >
         <Pencil size={13} />
       </ActionButton>
       {run.status === 'completed' && (
@@ -811,6 +832,11 @@ function RunActions({
         <ActionButton
           label={t('workflow.delete')}
           danger
+          disabledReason={
+            run.managementCapabilities?.delete === false
+              ? t('workflow.hostManagementUnavailable')
+              : undefined
+          }
           onClick={() => void deleteWorkflowRun(run, t)}
         >
           <Trash2 size={13} />
@@ -857,11 +883,13 @@ function SavedActions({
 function ActionButton({
   label,
   danger,
+  disabledReason,
   onClick,
   children,
 }: {
   readonly label: string;
   readonly danger?: boolean;
+  readonly disabledReason?: string;
   readonly onClick: () => void;
   readonly children: React.ReactNode;
 }): JSX.Element {
@@ -869,9 +897,10 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      title={label}
+      title={disabledReason ?? label}
+      disabled={disabledReason !== undefined}
       aria-label={label}
-      className={`h-7 w-7 inline-flex items-center justify-center rounded-md border border-border-default/50 text-fg-muted hover:bg-surface-3 ${
+      className={`h-7 w-7 inline-flex items-center justify-center rounded-md border border-border-default/50 text-fg-muted hover:bg-surface-3 disabled:opacity-50 disabled:cursor-not-allowed ${
         danger ? 'hover:text-danger' : 'hover:text-fg-primary'
       }`}
     >

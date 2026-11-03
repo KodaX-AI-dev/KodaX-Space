@@ -2572,6 +2572,7 @@ const startupPromise = app
     });
     workflowController.setHostOwner({
       enabled: () => runtimeHostAdapter.isRuntimeSelected(),
+      ownsRun: async (runId) => (await runtimeHostAdapter.getWorkflow(runId)) !== undefined,
       start: async (input) => {
         if (
           !input.sessionId ||

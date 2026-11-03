@@ -17,6 +17,7 @@ interface FileMenuState {
 }
 
 interface FilesPanelProps {
+  readonly active?: boolean;
   readonly width?: number;
   readonly asSidebar?: boolean;
   readonly onBack?: () => void;
@@ -24,6 +25,7 @@ interface FilesPanelProps {
 }
 
 export function FilesPanel({
+  active = true,
   width,
   asSidebar = false,
   onBack,
@@ -67,13 +69,13 @@ export function FilesPanel({
   }, []);
 
   useEffect(() => {
-    if (!projectRoot || lastFileMutationMarker === null) return;
+    if (!active || !projectRoot || lastFileMutationMarker === null) return;
     const timer = window.setTimeout(refreshTree, 600);
     return () => window.clearTimeout(timer);
-  }, [lastFileMutationMarker, projectRoot, refreshTree]);
+  }, [active, lastFileMutationMarker, projectRoot, refreshTree]);
 
   useEffect(() => {
-    if (!projectRoot) return;
+    if (!active || !projectRoot) return;
     const refreshWhenVisible = (): void => {
       if (document.visibilityState === 'visible') refreshTree();
     };
@@ -85,9 +87,10 @@ export function FilesPanel({
       document.removeEventListener('visibilitychange', refreshWhenVisible);
       window.clearInterval(interval);
     };
-  }, [projectRoot, refreshTree]);
+  }, [active, projectRoot, refreshTree]);
 
   useEffect(() => {
+    if (!active) return;
     let cancelled = false;
     const bridge = window.kodaxSpace;
     if (!projectRoot || !bridge || trimmedQuery.length === 0) {
@@ -117,7 +120,7 @@ export function FilesPanel({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [projectRoot, treeRefreshToken, trimmedQuery]);
+  }, [active, projectRoot, treeRefreshToken, trimmedQuery]);
 
   function selectFile(path: string): void {
     setSelectedPath(path);

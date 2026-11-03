@@ -180,17 +180,18 @@ export function WorkflowPanel({
 }: WorkflowPanelProps): JSX.Element {
   const { t } = useI18n();
   const recovering = useAppStore((state) => state.workflowObservationStatus === 'recovering');
-  if (runs.length === 0) {
-    return <div className="text-xs text-fg-muted px-1 py-2">{t('workflow.noRuns')}</div>;
-  }
+  const listStale = useAppStore((state) => state.workflowListStale);
   const visibleRuns = variant === 'compact' ? runs.slice(0, 3) : runs;
   const overflow = runs.length - visibleRuns.length;
   return (
     <div className="space-y-2">
-      {recovering && (
+      {(recovering || listStale) && (
         <p role="status" className="text-xs text-warn">
-          {t('workflow.observationRecovering')}
+          {t(recovering ? 'workflow.observationRecovering' : 'workflow.listStale')}
         </p>
+      )}
+      {runs.length === 0 && (
+        <div className="text-xs text-fg-muted px-1 py-2">{t('workflow.noRuns')}</div>
       )}
       {visibleRuns.map((run) => (
         <WorkflowRunCard
@@ -307,12 +308,29 @@ function WorkflowControls({
         </CtlBtn>
       )}
       {variant === 'full' && (
-        <CtlBtn label={t('workflow.rename')} onClick={onRename}>
+        <CtlBtn
+          label={t('workflow.rename')}
+          onClick={onRename}
+          disabledReason={
+            run.managementCapabilities?.rename === false
+              ? t('workflow.hostManagementUnavailable')
+              : undefined
+          }
+        >
           <Pencil size={11} />
         </CtlBtn>
       )}
       {variant === 'full' && isTerminal && (
-        <CtlBtn label={t('workflow.delete')} danger onClick={() => void handleDelete()}>
+        <CtlBtn
+          label={t('workflow.delete')}
+          danger
+          onClick={() => void handleDelete()}
+          disabledReason={
+            run.managementCapabilities?.delete === false
+              ? t('workflow.hostManagementUnavailable')
+              : undefined
+          }
+        >
           <Trash2 size={11} />
         </CtlBtn>
       )}
@@ -323,11 +341,13 @@ function WorkflowControls({
 function CtlBtn({
   label,
   danger,
+  disabledReason,
   onClick,
   children,
 }: {
   label: string;
   danger?: boolean;
+  disabledReason?: string;
   onClick: () => void;
   children: React.ReactNode;
 }): JSX.Element {
@@ -335,9 +355,10 @@ function CtlBtn({
     <button
       type="button"
       onClick={onClick}
-      title={label}
+      title={disabledReason ?? label}
+      disabled={disabledReason !== undefined}
       aria-label={label}
-      className={`w-5 h-5 inline-flex items-center justify-center rounded text-fg-muted hover:bg-surface-3 ${
+      className={`w-5 h-5 inline-flex items-center justify-center rounded text-fg-muted hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-50 ${
         danger ? 'hover:text-danger' : 'hover:text-fg-primary'
       }`}
     >
@@ -392,7 +413,10 @@ function WorkflowRunCard({
   }
 
   return (
-    <div className="rounded-lg border border-border-default/70 bg-surface-2 p-2">
+    <div
+      data-testid="workflow-run-card"
+      className="rounded-lg border border-border-default/70 bg-surface-2 p-2"
+    >
       {/* 头部：状态图标 + 名称（可改名）+ phase 进度 + 控制 */}
       {!hideHeader && (
         <div className="flex items-center gap-1.5 min-w-0">

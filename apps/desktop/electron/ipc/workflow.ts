@@ -119,13 +119,23 @@ export function registerWorkflowChannels(options: CoderAdmissionOptions = {}): v
     });
   });
 
-  registerChannel('workflow.rename', async (input) => ({
-    ok: await workflowController.rename(input.runId, input.displayName),
-  }));
+  registerChannel('workflow.rename', async (input) => {
+    if (
+      runtimeHostAdapter.isRuntimeSelected() &&
+      (await runtimeHostAdapter.getWorkflow(input.runId))
+    )
+      return { ok: false, unavailableReason: 'host-management-unavailable' as const };
+    return { ok: await workflowController.rename(input.runId, input.displayName) };
+  });
 
-  registerChannel('workflow.delete', async (input) => ({
-    ok: await workflowController.deleteRun(input.runId, input.force),
-  }));
+  registerChannel('workflow.delete', async (input) => {
+    if (
+      runtimeHostAdapter.isRuntimeSelected() &&
+      (await runtimeHostAdapter.getWorkflow(input.runId))
+    )
+      return { ok: false, unavailableReason: 'host-management-unavailable' as const };
+    return { ok: await workflowController.deleteRun(input.runId, input.force) };
+  });
 
   registerChannel('workflow.rerun', async (input) => {
     return runWithCoderAdmission(options, async () => {

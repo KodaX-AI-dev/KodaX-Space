@@ -1,5 +1,7 @@
 # beta.1 Space 修复执行记录
 
+后续全面界面验收、追加修复及新增 SDK 反例见 [全面验收记录](kodax-beta1-full-acceptance.md)；本文件保留该轮交付时点。
+
 2026-11-03；实施基线 `64fcfed3`。Space 保持 `0.1.47-alpha.3`，Root、Desktop 与 lockfile 继续精确使用 Registry `@kodax-ai/kodax@0.7.97-beta.1`，未修改或发布 SDK，也未发布 Space Release。本记录对应 [完整方案](kodax-beta1-space-adaptation-plan.md)，不能用前一轮的 27 项验收代替本轮结果。
 
 ## 已实施的生产路径

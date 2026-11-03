@@ -116,6 +116,8 @@ export const workflowProcessSnapshotSchema = z.object({
   workflowName: z.string().max(SHORT),
   displayName: z.string().max(SHORT).optional(),
   status: workflowProcessStatusSchema,
+  /** Space admission facts: absent for legacy local runs; never inferred from a UI action. */
+  managementCapabilities: z.object({ rename: z.boolean(), delete: z.boolean() }).optional(),
   startedAt: z.string().max(SHORT),
   updatedAt: z.string().max(SHORT),
   elapsedMs: z.number().nonnegative().optional(),
@@ -273,14 +275,18 @@ export const workflowRenameChannel = {
     runId: z.string().min(1).max(SHORT),
     displayName: z.string().min(1).max(SHORT),
   }),
-  output: okResult,
+  output: okResult.extend({
+    unavailableReason: z.literal('host-management-unavailable').optional(),
+  }),
 } as const;
 
 export const workflowDeleteChannel = {
   name: 'workflow.delete',
   direction: 'invoke',
   input: z.object({ runId: z.string().min(1).max(SHORT), force: z.boolean().optional() }),
-  output: okResult,
+  output: okResult.extend({
+    unavailableReason: z.literal('host-management-unavailable').optional(),
+  }),
 } as const;
 
 export const workflowRerunChannel = {

@@ -500,6 +500,15 @@ function isRuntimeResyncRequired(error: unknown): boolean {
   return code === 'resync_required' || code === 'data_changed';
 }
 
+function isHistoryReadBoundaryConflict(error: unknown, sessionId: string): boolean {
+  if (!isRuntimeResyncRequired(error) || !(error instanceof Error)) return false;
+  return (
+    error.message ===
+      `Session location topology changed during the read boundary for ${sessionId}` ||
+    /^Session data changed during the read boundary: [a-f0-9]{64}\.lock$/.test(error.message)
+  );
+}
+
 function isSessionIdentityReadConflict(error: unknown): boolean {
   const code = runtimeErrorCode(error);
   return code === 'data_changed' || code === 'resync_required';
@@ -1732,6 +1741,8 @@ function projectRuntimeWorkflow(snapshot: unknown): WorkflowRunT | undefined {
   const metadata = base.data.hostMetadata;
   const candidate = {
     ...base.data,
+    // The published Product Client exposes pause/resume/stop, but no Host rename/delete.
+    managementCapabilities: { rename: false, delete: false },
     ...(metadata?.sessionId ? { sessionId: metadata.sessionId } : {}),
     ...(metadata?.surface === 'code' || metadata?.surface === 'partner'
       ? { surface: metadata.surface }
@@ -4527,37 +4538,59 @@ export class RuntimeHostAdapter {
   > {
     const runtime = await this.requireRuntime();
     await this.assertPersistedSessionIdentityIfChanged(sessionId);
-    try {
-      // First observation can update SDK-owned Session metadata. Establish it before capturing
-      // the newest history revision so its continuation cursor is not stale on arrival.
-      if (cursor === undefined) await this.readSessionProductView(sessionId);
-      const page = await runtime.sessions.readHistory(sessionId, {
-        ...(cursor ? { cursor } : {}),
-        limit: 150,
-      });
-      if (this.runtime !== runtime)
-        throw new Error('Runtime changed while reading Session history.');
-      return {
-        outcome: 'ready',
-        page: page
-          ? {
-              ...page,
-              items: await projectProductItems(
-                sessionId,
-                page.items,
-                [],
-                this.productImageReader(runtime, sessionId, 'history'),
-              ),
-            }
-          : null,
-      };
-    } catch (error) {
-      if (this.runtime !== runtime)
-        throw new Error('Runtime changed while reading Session history.');
-      if (isRuntimeResyncRequired(error)) return { outcome: 'data_changed' };
-      if (isSessionNotFoundError(error)) return { outcome: 'ready', page: null };
-      throw error;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const page = await this.readProductHistoryPage(runtime, sessionId, cursor, attempt === 0);
+        if (this.runtime !== runtime)
+          throw new Error('Runtime changed while reading Session history.');
+        return { outcome: 'ready', page };
+      } catch (error) {
+        if (this.runtime !== runtime)
+          throw new Error('Runtime changed while reading Session history.');
+        if (
+          attempt < 2 &&
+          cursor === undefined &&
+          isHistoryReadBoundaryConflict(error, sessionId)
+        ) {
+          // A lock conflict can precede a topology conflict after cold recovery. Both
+          // refreshes stay bounded and use public reads; input and Runs are never replayed.
+          await runtime.sessions.load(sessionId);
+          if (this.runtime !== runtime)
+            throw new Error('Runtime changed while refreshing Session history.');
+          continue;
+        }
+        if (isRuntimeResyncRequired(error)) return { outcome: 'data_changed' };
+        if (isSessionNotFoundError(error)) return { outcome: 'ready', page: null };
+        throw error;
+      }
     }
+    return { outcome: 'data_changed' };
+  }
+
+  private async readProductHistoryPage(
+    runtime: KodaXDaemonRuntime,
+    sessionId: string,
+    cursor?: string,
+    refreshView = true,
+  ): Promise<(Omit<ClientHistoryPage, 'items'> & { items: SessionProductItem[] }) | null> {
+    // First observation can update SDK-owned Session metadata. Establish it before capturing
+    // the newest history revision so its continuation cursor is not stale on arrival.
+    if (cursor === undefined && refreshView) await this.readSessionProductView(sessionId);
+    const page = await runtime.sessions.readHistory(sessionId, {
+      ...(cursor ? { cursor } : {}),
+      limit: 150,
+    });
+    return page
+      ? {
+          ...page,
+          items: await projectProductItems(
+            sessionId,
+            page.items,
+            [],
+            this.productImageReader(runtime, sessionId, 'history'),
+          ),
+        }
+      : null;
   }
 
   async readWorkMode(sessionId: string) {

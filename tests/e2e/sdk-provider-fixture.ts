@@ -32,6 +32,69 @@ async function attachSdkEvidence(name: string, value: unknown): Promise<void> {
   await test.info().attach(name, { path: file, contentType: 'application/json' });
 }
 
+const HISTORY_PROBE_PROGRAM = `
+  import path from 'node:path';
+  import {connectKodaXRuntime} from '@kodax-ai/kodax/runtime';
+  const client = await connectKodaXRuntime({profile:'coder', sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
+  const id = process.env.SPACE_HISTORY_PROBE_SESSION;
+  async function read() {
+    try {
+      const p = await client.sessions.readHistory(id,{limit:150});
+      return {ok:true,revision:p.revision,sourceRevision:p.sourceRevision,itemCount:p.items.length};
+    } catch(e) { return {ok:false,code:e.code,message:e.message}; }
+  }
+  try {
+    const before = await read();
+    const refreshes = [];
+    for (let i = 0; i < 3; i++) {
+      let load;
+      try { await client.sessions.load(id); load = 'loaded'; } catch(e) {load = {code:e.code,message:e.message};}
+      const after = await read();
+      refreshes.push({load,after});
+      if (after.ok) break;
+    }
+    const observation = await client.sessions.observeView(id,()=>{});
+    observation.close();
+    process.stdout.write(JSON.stringify({before,refreshes,afterObservation:await read()}));
+  } finally { await client.close(); }
+`;
+
+async function probeIndependentHistory(space: SpaceInstance, sessionId: string): Promise<void> {
+  await attachSdkEvidence(
+    'space-product-before-history-probe.json',
+    await space.page.evaluate(
+      (sessionId) => window.kodaxSpace!.invoke('session.productSnapshot', { sessionId }),
+      sessionId,
+    ),
+  );
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    ['--input-type=module', '-e', HISTORY_PROBE_PROGRAM],
+    {
+      windowsHide: true,
+      timeout: 20_000,
+      env: {
+        ...process.env,
+        KODAX_HOME: space.testDataDir,
+        SPACE_HISTORY_PROBE_SESSION: sessionId,
+      },
+    },
+  );
+  await attachSdkEvidence('independent-history-probe.json', JSON.parse(stdout));
+  await attachSdkEvidence(
+    'space-history-after-independent-load.json',
+    await space.page.evaluate(
+      (sessionId) =>
+        window.kodaxSpace!.invoke('session.history', {
+          sessionId,
+          requestId: crypto.randomUUID(),
+          expectedSurface: 'code',
+        }),
+      sessionId,
+    ),
+  );
+}
+
 export async function createLocalSdkProvider() {
   const requests: string[] = [];
   const questionResults: unknown[] = [];
@@ -433,6 +496,13 @@ export async function readSdkHistoryPage(
   } finally {
     if (outcomes.some((value) => value.ok && value.data.page?.outcome === 'data_changed')) {
       await attachSdkEvidence('history-read-boundaries.json', { sessionId, outcomes });
+      if (!history && previous === undefined) {
+        await probeIndependentHistory(space, sessionId).catch((error: unknown) =>
+          attachSdkEvidence('independent-history-probe-error.json', {
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        );
+      }
     }
   }
   if (history?.page?.outcome !== 'ready') throw new Error('SDK supplied no ready history page');
@@ -469,6 +539,8 @@ export async function readSdkHistory(space: SpaceInstance, sessionId: string) {
 }
 
 export async function waitSdkIdle(space: SpaceInstance, sessionId: string) {
+  // An empty Session is also idle before admission. Callers must first observe the
+  // intended Run/input or its actual reply; a local user bubble is not admission evidence.
   await expect
     .poll(
       async () => {

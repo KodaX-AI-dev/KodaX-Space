@@ -1504,15 +1504,17 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
       {/* F060: 面板区。Liquid Glass —— 立体感来自光影材质（光向描边 + 光标 specular + 分层柔影），
           不靠运动；模态/命令面板放在面板区之外保持 position:fixed 正常。 */}
       <div className="workspace-layout relative z-10 flex flex-1 min-h-0">
-        {(settingsOpen ? settingsNavigationMountedRef.current : leftSidebarVisible) && (
+        {(leftSidebarMode === 'files' ||
+          (settingsOpen ? settingsNavigationMountedRef.current : leftSidebarVisible)) && (
           <div
             className="workspace-project-navigation contents"
-            style={settingsOpen ? { display: 'none' } : undefined}
-            inert={settingsOpen || undefined}
-            aria-hidden={settingsOpen || undefined}
+            style={settingsOpen || !leftSidebarVisible ? { display: 'none' } : undefined}
+            inert={settingsOpen || !leftSidebarVisible || undefined}
+            aria-hidden={settingsOpen || !leftSidebarVisible || undefined}
           >
             {leftSidebarMode === 'files' ? (
               <FilesPanel
+                active={!settingsOpen && leftSidebarVisible}
                 width={leftWidth}
                 asSidebar
                 onBack={() => setLeftSidebarMode('navigation')}

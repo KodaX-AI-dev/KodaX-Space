@@ -1,5 +1,22 @@
 # F121 v0.1.47：SDK 聊天输出迁移回归
 
+## 2026-11-03 全面界面验收补充
+
+本次产品面矩阵、真实包体及结果见 [全面验收记录](../releases/kodax-beta1-full-acceptance.md)。以下是新增缺陷的复验入口，既有各版本记录保持原时点含义。
+
+1. 工作流完成后模拟列表读取失败及迟到的 running 快照：终态不回退，静默历史仍能补齐；显示刷新失败并在成功读取后恢复。订阅状态单独恢复，不能伪造完成通知。删除后迟到快照不能复活原记录。
+2. 共享 Host 工作流在管理页和保存定义内的任务卡中均不能显示可用的重命名/删除；Main 返回具体不可用原因，不能冒充成功。旧本地记录及保存定义仍按原能力管理。SDK 补公共管理接口后再验收真正操作成功，当前仅是能力门禁。
+3. Files 输入搜索后往返 Settings、收窄/恢复视口：查询和选择保留；面板隐藏期间暂停搜索和周期刷新。重复显示不叠加定时器。
+4. Script 部分输出后 Stop 并冷重启 Host：保留已保存正文，历史新首读对明确 typed 锁/拓扑冲突最多两次公开 load 后收敛；旧 cursor 和未知错误不自动恢复或重放 Run。不能把 Host ready 当作正文已加载。
+5. 首次模型调用内置 Skill 不打开 discovery；扩展加载失败应在 Settings 健康页可见，同时正常聊天/Skills 仍可用。普通问题重载后保持 pending，Skip 只回答一次，不提交本地超时/默认答案。Responses 设置编辑保留 SDK-only 路由及模型元数据。
+6. 原始 Session 回归用 `SPACE_E2E_REPLAY_SESSION` 指定已获授权的样本，运行 `session-corpus-replay.spec.ts`：复制到隔离 profile，等待用户及助手正文补读/渲染，重载重选后再次检查 React 错误和模型请求为零。源文件只读，原始会话内容和截图不提交仓库。该样本成功不关闭全部 Issue 371 性能场景。
+7. 成品 sandbox gate 同时验证实际命令 marker、Exit 0、完整退出和明确 SDK observation。接受 SDK 有效的正常权限策略自动回退；doctor ready 时另保留直接 native 执行证明，不把 fallback 冒充原生 sandbox。
+8. 模型/Provider 默认配置保存未完成时，选择立即应用，菜单同步收起；保存期间点击及 Ctrl+I 不重开，迟到结果不能关闭后来打开的菜单。思考强度保存期间禁止重复提交，完成后继续选择 Off/Max，保持未知能力和实际 wire facts 独立。`ModelEffortSelector.pending.browser.test.ts` 用控制 Promise 验证，成品用 `model-picker.spec.ts` 再验。
+
+SDK 剩余五项分别见全面验收记录：promotion 视图、旧队列原文/撤回回执与 live Host 重绑、锁内 Agent 准入、共享工作流管理、观测/历史一致性。真实 Kylin/macOS/ARM、外部账号/模型及安装覆盖仍需各自环境验收。
+
+## 既有回归要求
+
 当前 Registry beta.1 的完整能力补审、修复及未关闭范围见 [2026-11-03 执行记录](../releases/kodax-beta1-space-fixes.md)。除下面既有输出回归，还需核对：文件/env 原来源与重启、Partner 实际 Agent 模式及其他客户端更改、所有 queue error 的完整材料分类和显式取回、Main/Host 换代恢复、Workflow 局部/全重连快照、Artifact 缺失但 Skill/聊天可用、连接器保存失败不得误报连接成功。SDK live Host 重绑、旧原文/回执、promotion view 与锁内模式准入仍按该记录单独验收。
 
 使用真实 Provider 的 Coder 会话，核对 [ADR-010](../ADR/ADR-010-sdk-product-output.md)。自动回归用已安装 SDK 与隔离的本地 HTTP Provider，不使用个人历史或外部模型账号。

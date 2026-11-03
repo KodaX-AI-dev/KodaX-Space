@@ -326,7 +326,7 @@ test('Settings language switch localizes provider settings and custom form', asy
     await expect(page.getByRole('heading', { name: '添加自定义服务商' })).toBeVisible();
     await expect(page.getByText('凭证来源', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '粘贴 API Key' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '使用环境变量' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '使用环境变量', exact: true })).toBeVisible();
     await expect(page.getByText('默认模型', { exact: true })).toBeVisible();
     await expect(page.getByText('模型列表', { exact: true })).toBeVisible();
     await expect(page.getByText('Model aliases')).toHaveCount(0);

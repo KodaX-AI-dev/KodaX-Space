@@ -118,12 +118,12 @@ export function ModelEffortSelector(): JSX.Element {
       }
       if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'i') {
         e.preventDefault();
-        setOpen((v) => !v);
+        if (!busy) setOpen((v) => !v);
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, busy]);
 
   // 当前 active provider/model/effort（用 session > pending > defaults）
   const activeProviderId =
@@ -201,6 +201,7 @@ export function ModelEffortSelector(): JSX.Element {
   async function commitProviderAndModel(providerId: string, model: string): Promise<void> {
     if (busy) return;
     setBusy(true);
+    setOpen(false);
     try {
       if (session && window.kodaxSpace) {
         const providerChanged = providerId !== session.provider;
@@ -262,7 +263,6 @@ export function ModelEffortSelector(): JSX.Element {
       }
     } finally {
       setBusy(false);
-      setOpen(false);
     }
   }
 
@@ -367,11 +367,12 @@ export function ModelEffortSelector(): JSX.Element {
   }
 
   return (
-    <div ref={rootRef} className="relative min-w-0">
+    <div ref={rootRef} className="relative min-w-0" aria-busy={busy}>
       <button
         type="button"
         data-testid="model-effort-selector"
         onClick={openPicker}
+        disabled={busy}
         aria-expanded={open}
         className={[
           'composer-control composer-model-control h-7 max-w-[240px] min-w-0 px-2 rounded-md border border-border-default',
@@ -475,7 +476,7 @@ export function ModelEffortSelector(): JSX.Element {
                         key={m}
                         type="button"
                         onClick={() => void commitProviderAndModel(previewProvider?.id ?? '', m)}
-                        disabled={!previewProvider}
+                        disabled={busy || !previewProvider}
                         className={`w-full text-left px-3 py-1 hover:bg-hover-bg flex items-center gap-2 ${
                           isActive ? 'text-fg-primary' : 'text-fg-secondary'
                         }`}
@@ -522,6 +523,7 @@ export function ModelEffortSelector(): JSX.Element {
                     key={m}
                     type="button"
                     onClick={() => void pickEffort(m)}
+                    disabled={busy}
                     title={isModelDefault ? t('modelPicker.effort.modelDefault') : undefined}
                     className={`min-w-14 flex-1 text-center px-1 py-1 rounded hover:bg-hover-bg ${
                       selected ? 'bg-surface-3 text-fg-primary' : 'text-fg-secondary'

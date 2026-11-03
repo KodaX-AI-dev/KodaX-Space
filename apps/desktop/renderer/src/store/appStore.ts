@@ -709,10 +709,22 @@ interface AppState {
    */
   workflowRuns: Readonly<Record<string, WorkflowRunT>>;
   workflowObservationStatus: 'ready' | 'recovering';
+  workflowListStale: boolean;
+  workflowObservationRevision: number;
+  workflowLastSuccessfulReadRevision: number;
+  workflowDeletedRunIds: readonly string[];
+  workflowRunRevisions: Readonly<Record<string, number>>;
   /** F060：消费 push workflow.event，按 runId 覆盖式 upsert。*/
   upsertWorkflowRun: (payload: WorkflowEventPayload) => void;
   /** F060：workflow.list 播种已知 run（覆盖式合并进 workflowRuns）。*/
-  seedWorkflowRuns: (runs: readonly WorkflowRunT[]) => void;
+  seedWorkflowRuns: (
+    runs: readonly WorkflowRunT[],
+    options?: {
+      stale?: boolean;
+      expectedRevision?: number;
+      observationStatus?: 'ready' | 'recovering';
+    },
+  ) => void;
   /**
    * F062：workflow.delete 成功后从渲染层移除 run（连带其活动流）。
    * 必须显式移除——seed 是"只增不删"的覆盖合并，且删除无 push 事件，
@@ -4463,6 +4475,18 @@ function capWorkflowRuns(runs: Record<string, WorkflowRunT>): Record<string, Wor
   return trimmed;
 }
 
+function workflowRevisionsForRuns(
+  runs: Readonly<Record<string, WorkflowRunT>>,
+  previous: Readonly<Record<string, number>>,
+  updatedIds: readonly string[],
+  revision: number,
+): Record<string, number> {
+  const updated = new Set(updatedIds);
+  return Object.fromEntries(
+    Object.keys(runs).map((id) => [id, updated.has(id) ? revision : (previous[id] ?? 0)]),
+  );
+}
+
 function nextLocalTranscriptSentAt(): number {
   const now = Date.now();
   const next = now > lastLocalTranscriptSentAt ? now : lastLocalTranscriptSentAt + 1;
@@ -6376,6 +6400,11 @@ export const useAppStore = create<AppState>((setState) => {
     agentActorSnapshotBySession: {},
     workflowRuns: {},
     workflowObservationStatus: 'ready',
+    workflowListStale: false,
+    workflowObservationRevision: 0,
+    workflowLastSuccessfulReadRevision: 0,
+    workflowDeletedRunIds: [],
+    workflowRunRevisions: {},
     workflowActivityByRun: {},
     lastDiffPath: null,
     pendingToolPaths: {},
@@ -7739,6 +7768,7 @@ export const useAppStore = create<AppState>((setState) => {
     upsertWorkflowRun: (payload) =>
       set((state) => {
         const { snapshot, sessionId, surface, projectRoot } = payload;
+        if (state.workflowDeletedRunIds.includes(snapshot.runId)) return state;
         const eventMessage = payload.message?.trim();
         const run: WorkflowRunT = {
           ...snapshot,
@@ -7747,16 +7777,62 @@ export const useAppStore = create<AppState>((setState) => {
           ...(surface !== undefined ? { surface } : {}),
           ...(projectRoot !== undefined ? { projectRoot } : {}),
         };
-        return { workflowRuns: capWorkflowRuns({ ...state.workflowRuns, [run.runId]: run }) };
+        const revision = state.workflowObservationRevision + 1;
+        const workflowRuns = capWorkflowRuns({ ...state.workflowRuns, [run.runId]: run });
+        return {
+          workflowObservationRevision: revision,
+          workflowRuns,
+          workflowRunRevisions: workflowRevisionsForRuns(
+            workflowRuns,
+            state.workflowRunRevisions,
+            [run.runId],
+            revision,
+          ),
+        };
       }),
 
     // F060：workflow.list 播种——覆盖式合并（已存在的 runId 用新值覆盖，保留其它）。
-    seedWorkflowRuns: (runs) =>
+    seedWorkflowRuns: (runs, options) =>
       set((state) => {
-        if (runs.length === 0) return state;
+        const expectedRevision = options?.expectedRevision ?? state.workflowObservationRevision;
+        const healthIsCurrent = expectedRevision >= state.workflowLastSuccessfulReadRevision;
         // immutable：用 Object.fromEntries 构造增量，再一次性 spread（不原地 mutate 中间对象）。
-        const additions = Object.fromEntries(runs.map((r) => [r.runId, r]));
-        return { workflowRuns: capWorkflowRuns({ ...state.workflowRuns, ...additions }) };
+        const deleted = new Set(state.workflowDeletedRunIds);
+        const additions = Object.fromEntries(
+          runs
+            .filter(
+              (run) =>
+                !deleted.has(run.runId) &&
+                (options?.stale ||
+                  (state.workflowRunRevisions[run.runId] ?? 0) <= expectedRevision),
+            )
+            .map((run) => [run.runId, run]),
+        );
+        const workflowRuns = capWorkflowRuns(
+          options?.stale
+            ? { ...additions, ...state.workflowRuns }
+            : { ...state.workflowRuns, ...additions },
+        );
+        const revision = state.workflowObservationRevision + 1;
+        return {
+          workflowObservationRevision: revision,
+          workflowLastSuccessfulReadRevision:
+            healthIsCurrent && !options?.stale && options?.observationStatus !== 'recovering'
+              ? revision
+              : state.workflowLastSuccessfulReadRevision,
+          workflowObservationStatus: options?.observationStatus ?? state.workflowObservationStatus,
+          workflowListStale:
+            !healthIsCurrent || options?.observationStatus === 'recovering'
+              ? state.workflowListStale
+              : options?.stale === true,
+          workflowRuns,
+          workflowRunRevisions: workflowRevisionsForRuns(
+            workflowRuns,
+            state.workflowRunRevisions,
+            options?.stale ? [] : Object.keys(additions),
+            revision,
+          ),
+        };
       }),
 
     // F062：删除成功后从渲染层移除该 run（immutable：重建不含该 key 的对象），并清其活动流。
@@ -7767,7 +7843,18 @@ export const useAppStore = create<AppState>((setState) => {
         }
         const { [runId]: _removedRun, ...workflowRuns } = state.workflowRuns;
         const { [runId]: _removedActivity, ...workflowActivityByRun } = state.workflowActivityByRun;
-        return { workflowRuns, workflowActivityByRun };
+        return {
+          workflowRuns,
+          workflowActivityByRun,
+          workflowObservationRevision: state.workflowObservationRevision + 1,
+          workflowDeletedRunIds: [...state.workflowDeletedRunIds, runId].slice(-MAX_WORKFLOW_RUNS),
+          workflowRunRevisions: workflowRevisionsForRuns(
+            workflowRuns,
+            state.workflowRunRevisions,
+            [],
+            state.workflowObservationRevision + 1,
+          ),
+        };
       }),
 
     // F065：子 agent 活动——按 runId 有界追加（每 run 最近 MAX_ACTIVITY_PER_RUN 条）。

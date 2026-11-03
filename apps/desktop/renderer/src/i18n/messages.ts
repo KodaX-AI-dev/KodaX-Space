@@ -674,6 +674,7 @@ export const messages = {
       'The selected Agent applies only to child spawns without an explicit target; authored targets keep precedence.',
     'workflow.externalAgentPreflightFailed': 'External Agent preflight failed: {reason}',
     'workflow.refreshList': 'Refresh list',
+    'workflow.listStale': 'Workflow refresh failed. The last known results may be out of date.',
     'workflow.observationRecovering':
       'Workflow updates are reconnecting. The displayed state may be out of date.',
     'settings.extensionHealth.refresh': 'Refresh Host extension capabilities',
@@ -709,6 +710,8 @@ export const messages = {
     'workflow.stop': 'Stop',
     'workflow.stopFailed': 'Stop failed',
     'workflow.rename': 'Rename',
+    'workflow.hostManagementUnavailable':
+      'This version cannot rename or delete shared workflows. Upgrade Space when support is available.',
     'workflow.renameFailed': 'Rename failed',
     'workflow.renameAria': 'Rename workflow',
     'workflow.delete': 'Delete',
@@ -3911,6 +3914,8 @@ export const messages = {
     'workflow.stop': '停止',
     'workflow.stopFailed': '停止失败',
     'workflow.rename': '重命名',
+    'workflow.hostManagementUnavailable':
+      '当前版本暂不支持重命名或删除共享工作流，请在后续版本提供支持后升级 Space。',
     'workflow.renameFailed': '重命名失败',
     'workflow.renameAria': '重命名工作流',
     'workflow.delete': '删除',
@@ -5708,6 +5713,7 @@ export const messages = {
     'message.queue.waitingSafePoint': '等待安全插入点',
     'message.queue.bindingBlocked':
       '尚未发送：所选专家、技能或授权不可用。可取回完整消息，检查后重新发送。',
+    'workflow.listStale': '工作流刷新失败，当前显示的上次结果可能已过期。',
     'workflow.observationRecovering': '工作流状态正在重新连接，当前显示可能已过期。',
     'settings.extensionHealth.refresh': '刷新 Host 扩展能力',
     'settings.extensionHealth.ready': '内置能力已就绪。',
