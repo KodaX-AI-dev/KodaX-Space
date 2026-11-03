@@ -6,6 +6,8 @@ macOS arm64/Intel 在安装包构建后、候选归档前执行 `codesign --veri
 
 ## 执行结构
 
+`electron-fixture-diagnostics` 是手动 Linux 专项，针对原生版本元数据、Inspector 夹具、启动遮罩、更新退出和本地动画 frame 导航，重复两次且 `retries=0`。它不参与 `ci-source-gate`，不能替代以下同 SHA 完整源码与成品门禁。
+
 同一提交的三个 workflow 并行推进：
 
 - `build`：独立 lint；Windows、Linux、macOS arm64、macOS Intel 各执行一次 typecheck、完整单测和源码构建。`typecheck` 自带 workspace packages 构建，不再额外重复调用。

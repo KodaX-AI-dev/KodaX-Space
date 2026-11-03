@@ -232,6 +232,7 @@ async function openLibrary(
     })
     .waitFor();
   return {
+    page,
     frame,
     requests,
     navigate: (tab: 'experts' | 'connectors') =>
@@ -450,7 +451,7 @@ test(
   'connector cards are horizontal, responsive, offline-branded, and open only configuration with an accessible action',
   { skip: !browserPath },
   async (t) => {
-    const { frame, requests, resize, finishConfiguration } = await openLibrary(
+    const { page, frame, requests, resize, finishConfiguration } = await openLibrary(
       t,
       [preset],
       'connectors',
@@ -494,6 +495,8 @@ test(
     assert.equal(narrow.x, nextNarrow.x);
     assert.ok(nextNarrow.y >= narrow.y + narrow.height);
     await action.focus();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
     assert.equal(await action.evaluate((element) => element.matches(':focus-visible')), true);
     await action.press('Enter');
     assert.equal(await action.isDisabled(), true);

@@ -5,7 +5,7 @@
 
 import { _electron, type ElectronApplication, type Page } from '@playwright/test';
 import path from 'node:path';
-import { existsSync, promises as fs, realpathSync } from 'node:fs';
+import { existsSync, promises as fs, readFileSync, realpathSync } from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
@@ -15,7 +15,12 @@ import { cleanupRuntimeClientCredentialForTestProfile } from '../../scripts/runt
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '../..');
-const ELECTRON_MAIN = path.join(REPO_ROOT, 'dist-electron', 'main.js');
+const ELECTRON_APP = path.join(REPO_ROOT, 'dist-electron');
+const SPACE_VERSION = (
+  JSON.parse(readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')) as {
+    readonly version: string;
+  }
+).version;
 const ELECTRON_CLOSE_TIMEOUT_MS = 10_000;
 const DAEMON_POST_CLOSE_RETRY_DELAYS_MS = [0, 100, 300] as const;
 
@@ -44,6 +49,37 @@ if (process.platform === 'darwin') {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function installNativeDialogCancellation(app: ElectronApplication): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    let version: string;
+    try {
+      version = await app.evaluate(({ app, dialog }) => {
+        dialog.showMessageBox = async (...args: unknown[]) => {
+          const options = args.at(-1) as Electron.MessageBoxOptions;
+          return { response: options.cancelId ?? 0, checkboxChecked: false };
+        };
+        return app.getVersion();
+      });
+    } catch (error: unknown) {
+      // Playwright #33737: inspector handles can be collected independently of
+      // the app. Only this idempotent test hook may repeat, never SDK operations.
+      if (
+        attempt >= 2 ||
+        app.process().exitCode !== null ||
+        !(error instanceof Error) ||
+        !/Execution context was destroyed|Promise was collected/.test(error.message)
+      )
+        throw error;
+      await delay(25);
+      continue;
+    }
+    if (version !== SPACE_VERSION) {
+      throw new Error(`Electron version ${version} does not match Space ${SPACE_VERSION}`);
+    }
+    return;
+  }
 }
 
 async function stopOwnedTestDaemonQuietly(testDataDir: string): Promise<boolean> {
@@ -194,7 +230,9 @@ export async function launchSpace(
     app = await _electron.launch({
       ...(executablePath ? { executablePath } : {}),
       ...(opts?.recordVideo ? { recordVideo: opts.recordVideo } : {}),
-      args: executablePath ? [] : [ELECTRON_MAIN],
+      // Electron reads metadata only from an application directory. Launching
+      // main.js directly bypasses package.json and reports 0.0 on Linux.
+      args: executablePath ? [] : [ELECTRON_APP],
       env: {
         ...baseEnv,
         KODAX_TEST_ONBOARDING: testId,
@@ -256,12 +294,7 @@ export async function launchSpace(
     await app.firstWindow();
     // Cancel native confirmations; never force success or replace the real
     // Runtime shutdown checks. The boot overlay may still cover the renderer.
-    await app.evaluate(({ dialog }) => {
-      dialog.showMessageBox = async (...args: unknown[]) => {
-        const options = args.at(-1) as Electron.MessageBoxOptions;
-        return { response: options.cancelId ?? 0, checkboxChecked: false };
-      };
-    });
+    await installNativeDialogCancellation(app);
     await opts?.onLaunched?.(app);
     const page = await waitForMainRendererPage(app);
     app.off('window', instrumentPage);

@@ -1,0 +1,38 @@
+name: electron-fixture-diagnostics
+
+# Targeted Linux verification for the native Electron bootstrap and updater
+# fixture. This workflow never qualifies the source gate or publishes a release.
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - name: Install native test dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb gnome-keyring libsecret-1-0 fonts-wqy-zenhei
+      - run: npm run build:smoke
+      - name: Verify native metadata, inspector setup and update shutdown
+        run: >-
+          xvfb-run -a npm run e2e:run --
+          tests/e2e/native-notifications.spec.ts
+          tests/e2e/startup-overlay.spec.ts
+          tests/e2e/update-safe-exit.spec.ts
+          tests/e2e/artifact-file-preview.spec.ts
+          --grep='notification settings|boot overlay|update installation|loads and switches local animation'
+          --repeat-each=2 --retries=0 --max-failures=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-electron-fixture-diagnostics
+          path: test-results/
+          if-no-files-found: ignore

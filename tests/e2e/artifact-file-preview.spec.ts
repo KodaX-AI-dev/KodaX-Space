@@ -703,9 +703,11 @@ test('Project HTML File Viewer loads and switches local animation frames in both
           })
           .click();
       }
-      await expect(host).toHaveAttribute('data-ready', 'true');
       await expect(animation.getByRole('heading')).toHaveText('Direction a');
       await expect(animation.locator('output')).toHaveText('Time 2.5');
+      // Network mode replaces the outer iframe. Check readiness only after the
+      // new document is visible, so a previous document's ready flag cannot win.
+      await expect(host).toHaveAttribute('data-ready', 'true');
       await frame.getByRole('button', { name: 'Switch direction' }).click();
       await expect(animation.getByRole('heading')).toHaveText('Direction b');
       await expect(animation.locator('output')).toHaveText('Time 2.5');
