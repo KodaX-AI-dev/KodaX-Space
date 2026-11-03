@@ -6,7 +6,7 @@ macOS arm64/Intel 在安装包构建后、候选归档前执行 `codesign --veri
 
 ## 执行结构
 
-`electron-fixture-diagnostics` 是手动 Linux 专项，针对原生版本元数据、Inspector 夹具、启动遮罩、更新退出和本地动画 frame 导航，重复两次且 `retries=0`。它不参与 `ci-source-gate`，不能替代以下同 SHA 完整源码与成品门禁。
+`electron-fixture-diagnostics` 是手动专项：Linux 验证原生版本元数据、Inspector 夹具、启动遮罩、更新退出和本地动画 frame 导航，重复两次且 `retries=0`；Mac ARM 验证沙箱、共享 Host 清理、多客户端学习与键盘焦点。它不参与 `ci-source-gate`，不能替代以下同 SHA 完整源码与成品门禁。
 
 同一提交的三个 workflow 并行推进：
 

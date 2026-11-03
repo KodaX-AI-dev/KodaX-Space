@@ -1,13 +1,34 @@
 name: electron-fixture-diagnostics
 
-# Targeted Linux verification for the native Electron bootstrap and updater
-# fixture. This workflow never qualifies the source gate or publishes a release.
+# Targeted native bootstrap and Runtime fixture verification. This workflow
+# never qualifies the source gate or publishes a release.
 on: workflow_dispatch
 
 permissions:
   contents: read
 
 jobs:
+  mac-runtime:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:packages
+      - run: node scripts/ensure-sqlite-native.mjs node
+      - run: node scripts/test/warm-kodax-native-artifacts.mjs
+      - name: Verify sandbox, shared Host cleanup, learning and keyboard focus
+        run: >-
+          node --test --test-timeout=300000 --test-force-exit --test-concurrency=1
+          --import ./scripts/test/isolated-credential-profile.mjs --import tsx
+          --test-name-pattern='command containment|shared daemon outer timeout|shares one Coder session|learned|connector cards are horizontal'
+          apps/desktop/electron/test/kodax-runtime-compat.test.ts
+          apps/desktop/electron/test/learning-daemon-integration.test.ts
+          apps/desktop/renderer/src/features/extensions/PartnerLibraryFrame.test.ts
   linux:
     runs-on: ubuntu-latest
     timeout-minutes: 20

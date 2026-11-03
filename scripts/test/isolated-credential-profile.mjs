@@ -7,7 +7,8 @@ import path from 'node:path';
 // backend must never discover the developer's real profile or share another test's keys.
 const suffix = `space-suite-${randomUUID()}`;
 const temporaryRoot = realpathSync.native(os.tmpdir());
-if (process.platform === 'darwin') process.env.TMPDIR = temporaryRoot;
+// Canonicalize the credential home, not global TMPDIR: the SDK also uses the
+// shorter OS temp alias for Unix sockets with long diagnostic profile names.
 const root = path.join(temporaryRoot, `kodax-test-${suffix}`);
 process.env.KODAX_TEST_ONBOARDING = suffix;
 process.env.KODAX_HOME = root;

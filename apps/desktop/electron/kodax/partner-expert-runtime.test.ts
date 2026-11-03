@@ -540,10 +540,10 @@ test('switching and removing shipped experts preserves history while another con
 });
 
 async function waitFor(predicate: () => boolean): Promise<void> {
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + (process.env.CI ? 30_000 : 10_000);
   while (!predicate()) {
     if (Date.now() > deadline) throw new Error('Partner expert runtime test timed out');
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => setTimeout(resolve, 20));
   }
 }
 
