@@ -129,17 +129,22 @@ export async function restartIsolatedHost(space: SpaceInstance) {
     });
   const before = await connection();
   expect(await stopOwnedTestDaemon(space.testDataDir)).toBe(true);
-  await expect
-    .poll(
-      async () => {
-        const after = await connection();
-        return after.state === 'ready' && after.runtimeId !== before.runtimeId;
-      },
-      { timeout: 45_000 },
-    )
-    .toBe(true);
-  await writeFile(
-    test.info().outputPath('host-restart.json'),
-    JSON.stringify({ before, after: await connection() }, null, 2),
-  );
+  let after = before;
+  try {
+    await expect
+      .poll(
+        async () => {
+          after = await connection();
+          return after.state === 'ready' && after.runtimeId !== before.runtimeId;
+        },
+        { timeout: 45_000 },
+      )
+      .toBe(true);
+  } finally {
+    await writeFile(
+      test.info().outputPath('host-restart.json'),
+      JSON.stringify({ before, after }, null, 2),
+    );
+  }
+  return after;
 }

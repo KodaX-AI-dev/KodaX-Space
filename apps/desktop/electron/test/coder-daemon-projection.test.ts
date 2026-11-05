@@ -24,6 +24,35 @@ import {
 
 await initializeCoderDaemonProjectionSdk();
 
+test('an unchanged first product queue does not invalidate the restored live projection', () => {
+  const projection = projectRuntimeSessionSnapshot(observation, []);
+  projection.queuedInputs = [];
+  const reducer = new CoderSessionProjectionReducer(projection, observation.runs);
+  assert.equal(reducer.replaceProductQueue([]), undefined);
+  assert.deepEqual(reducer.snapshot(), projection);
+  const added = reducer.replaceProductQueue([
+    { inputId: 'new-intent', text: 'Keep this question', enqueuedAt: 1 },
+  ]);
+  assert.equal(added?.change.domain, 'queue');
+  assert.equal(reducer.snapshot().queuedInputs[0]?.inputId, 'new-intent');
+  assert.equal(
+    reducer.replaceProductQueue([
+      { inputId: 'new-intent', text: 'Keep this question', enqueuedAt: 1 },
+    ]),
+    undefined,
+  );
+  const restored = new CoderSessionProjectionReducer(reducer.snapshot(), observation.runs);
+  assert.equal(
+    restored.replaceProductQueue([
+      { inputId: 'new-intent', text: 'Keep this question', enqueuedAt: 1 },
+    ]),
+    undefined,
+  );
+  assert.equal(restored.replaceProductQueue([])?.change.domain, 'queue');
+  assert.deepEqual(restored.snapshot().queuedInputs, []);
+  assert.equal(restored.replaceProductQueue([]), undefined);
+});
+
 for (const code of ['default_skill_unavailable', 'execution_mode_mismatch'] as const)
   test(`a blocked queued intent keeps ${code} without inventing a Run or dropping the original input`, () => {
     const reducer = new CoderSessionProjectionReducer(

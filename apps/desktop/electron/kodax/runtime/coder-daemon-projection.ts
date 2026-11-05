@@ -1304,6 +1304,7 @@ export class CoderSessionProjectionReducer {
     }));
     if (isDeepStrictEqual(next, this.#productQueue)) return undefined;
     this.#productQueue = next;
+    if (isDeepStrictEqual(next, this.#projection.queuedInputs)) return undefined;
     return this.#commit(this.#projection.cursor.seq, {
       domain: 'queue',
       queuedInputs: this.#productQueue,

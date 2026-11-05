@@ -245,6 +245,15 @@ test('Script respects Plan denial and Stop retains partial effects without repla
     provider.url,
   );
   try {
+    const executable = await space.app.evaluate(({ app }) => ({
+      executable: process.execPath,
+      packaged: app.isPackaged,
+      appPath: app.getAppPath(),
+      node: process.versions.node,
+      electron: process.versions.electron,
+    }));
+    await writeFile(test.info().outputPath('executable.json'), JSON.stringify(executable, null, 2));
+    if (process.env.SPACE_E2E_EXECUTABLE) expect(executable.packaged).toBe(true);
     const picker = space.page.getByTestId('work-mode-selector');
     await expect(picker).toBeEnabled({ timeout: 30_000 });
     await picker.selectOption('script');
@@ -321,8 +330,7 @@ test('Script respects Plan denial and Stop retains partial effects without repla
       test.info().outputPath('script-stopped-view.json'),
       JSON.stringify(before, null, 2),
     );
-    await restartIsolatedHost(space);
-    const history = await readSdkHistoryPage(space, sessionId);
+    const restarted = await restartIsolatedHost(space);
     const probe = await promisify(execFile)(
       process.execPath,
       [
@@ -343,7 +351,7 @@ test('Script respects Plan denial and Stop retains partial effects without repla
         const after=[];for(let i=0;i<3;i++){after.push(await read());await new Promise(resolve=>setTimeout(resolve,100));}
         await client.sessions.load(sessionId);const refreshed=await read();
         const next=await client.sessions.observeView(sessionId,()=>{});next.close();const afterObservation=await read();
-        process.stdout.write(JSON.stringify({before,after,refreshed,afterObservation}));
+        process.stdout.write(JSON.stringify({host:client.identity,before,after,refreshed,afterObservation}));
       }finally{await client.close();}
     `,
       ],
@@ -354,6 +362,7 @@ test('Script respects Plan denial and Stop retains partial effects without repla
       },
     );
     const direct = JSON.parse(probe.stdout) as {
+      host: { runtimeId: string; version: string };
       before: { ok: boolean };
       after: { ok: boolean; code?: string }[];
       refreshed: { ok: boolean };
@@ -367,20 +376,12 @@ test('Script respects Plan denial and Stop retains partial effects without repla
       body: JSON.stringify(direct),
       contentType: 'application/json',
     });
-    // Record the upstream raw boundary separately; the product must still recover below.
-    if (
-      !direct.refreshed.ok ||
-      direct.after.some((result) => !result.ok) ||
-      !direct.afterObservation.ok
-    )
-      test.info().annotations.push({
-        type: 'SDK limitation',
-        description:
-          'Raw beta.2 history may return resync_required after Script Stop/cold observation. This test separately requires the Space compatibility read and no-replay assertions below.',
-      });
-    for (const result of [...direct.after, direct.afterObservation])
-      if (!result.ok) expect(result.code).toBe('resync_required');
+    expect(direct.host.runtimeId).toBe(restarted.runtimeId);
+    expect(direct.before.ok).toBe(true);
+    expect(direct.refreshed.ok).toBe(true);
+    for (const result of [...direct.after, direct.afterObservation]) expect(result.ok).toBe(true);
 
+    const history = await readSdkHistoryPage(space, sessionId);
     expect(history.productItems?.some((item) => item.tool?.name === 'script_exec')).toBe(true);
     expect(await readFile(path.join(projectRoot, 'partial.txt'), 'utf8')).toBe('ONCE');
     await expect(readFile(path.join(projectRoot, 'after-stop.txt'))).rejects.toMatchObject({

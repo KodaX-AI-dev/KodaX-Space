@@ -2,6 +2,15 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { runNodeOnIsolatedDesktop } from './e2e-isolated-desktop.mjs';
 
+if (process.env.SPACE_E2E_PACKAGED_EXECUTABLE) {
+  throw new Error(
+    'Use SPACE_E2E_EXECUTABLE for packaged tests; SPACE_E2E_PACKAGED_EXECUTABLE is not supported.',
+  );
+}
+
+process.stdout.write(
+  `[e2e] ${process.env.SPACE_E2E_EXECUTABLE ? `packaged: ${process.env.SPACE_E2E_EXECUTABLE}` : 'source Electron'}\n`,
+);
 const require = createRequire(import.meta.url);
 const native = spawnSync(process.execPath, ['scripts/ensure-sqlite-native.mjs', 'electron'], {
   stdio: 'inherit',
