@@ -110,3 +110,13 @@
 四个 job 的最终日志均无 retry 记录，完整矩阵与门禁保持，没把平台条件跳过或重试当作首次通过。最新真正成品主包与 Main/555 个 Renderer 文件指纹一致；`ff4bdfa0` 之后只改 CI、测试与文档，未引入第二 Runtime、Session 写入者、SDK 补丁或自动重发。
 
 已确认的两个问题按 Space 根因闭合，未发现需要 SDK 变更的确定项；此前把它们直接归因 SDK 的结论撤回。一次独立本地 Provider 超时仍未稳定定因，十轮额外验证通过不能为它补造根因；保留失败及后续取证。Issue 371 首读性能、Issue 225 原始客户偶发启动和真实外部环境不因本轮通过而宣称完成。已发布 Space alpha.4 及其 beta.1 资产保持不变，本地 beta.2 产物未发布。
+
+### 文档提交的完整复验：b90ff545
+
+包含指南/版本说明的文档提交触发仓库规定的完整矩阵：[build 41981067416](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41981067416) 7/7、[CI 41981067386](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41981067386) 6/6 全绿。它与 `1a0bada0` 没有生产代码差异。
+
+本轮 Linux 为 95/89 首次通过、1/6 条件跳过；Windows 2/2 为 88 首次通过、7 条件跳过；Windows 1/2 为 88 首次通过、1 flaky、7 条件跳过。唯一 flaky 是既有 `full-access-mode.spec.ts` 的默认权限持久化即时读取断言（首次得到 undefined，随后重试通过），不属于本轮修改的测试。ModeSelector 的按钮显示用户意图，默认值经 `void persistRuntimeDefaults(...)` 异步保存；旧测试在文字变化后立即读 settings，并把 IPC 错误也折成 undefined，未等待持久化完成。因此日志能确认该验证时序/诊断缺口，不能据此认定 SDK 写入故障；本轮没有修改该用例来取得绿色结果。此轮有 flaky 的事实保留，不替换前一轮 `1a0bada0` 无重试的真实结果，也不声称本轮全量测试均首次通过。
+
+### 可转 SDK 的最终结论
+
+正式 Registry `@kodax-ai/kodax@0.7.97-beta.2` 保持未修改时，已确认先前历史 `resync_required` 和 Stop 后下一次发送冲突存在 Space 根因：首次相同队列被误报为变化，造成观察/快照补读反馈，持续触发 Host 真实位置索引与存储围栏活动；暂停同一 Host 的隔离 Space Main 后读取恢复，恢复 Main 后再现，Space 单行修复的正反向 A/B/A 对照成立。Space 随后补齐前台空闲订阅保留及切换竞态，避免去掉反馈后界面状态陈旧。349 项针对性单测、真正成品 34 项专项及 6 项生命周期、核心三轮 9 次和额外 Partner 十轮均通过，源码完整矩阵与四平台 build 也已验证。因此这两项不需要 SDK 新增补丁或放宽并发保护；请保留真实并发、过期 cursor/sourceRevision 和输入准入的拒绝语义。独立的一次本地 Provider 超时尚未稳定定因、以及最新文档复验中一个旧权限设置测试的 flaky，均不据此新增 SDK 缺陷要求；Issue 371 性能和原始客户环境仍单独跟踪。
