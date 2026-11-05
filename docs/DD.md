@@ -1,5 +1,7 @@
 # KodaX Space 详细设计
 
+> 2026-11-05 工作树更新：SDK 已锁定正式 Registry `0.7.97-beta.2`，当前实现与验收以 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md) 为准；下列 alpha.4/beta.1 基线是已发布版本记录，本轮不替换公开标签或安装包。Workflow 作为用户显式单次功能，不再提供保存、修改等管理。
+
 Issues 230/232（纳入 alpha.4）：Linux 与 Windows 共用自绘窗口操作按钮。更新设置通过只读 `updater.getState` 获取本地状态；`updater.check` 才联网，`updater.download` 与 `updater.install` 各携带用户确认的版本。Main 关闭自动下载/退出安装，独立校验稳定及预发布通道。安装回调在现有完全退出链路确认 Runtime 停止、本地清理及诊断刷新完成后执行；任务、对等客户端、超时或恢复不能绕过该屏障。详见 [排查与验证记录](research/kylin-window-sandbox-and-manual-updates-2026-10-28.md)。
 
 F147（工作区与设置集成纳入 alpha.4）：Shell 内设置工作面复用全部六分类面板，保留面板 tab ID 与语义控制接口；后台 workspace 保持挂载并隐藏/inert，Portal 详情通过 `FloatingSurfaceHost.suspended` 暂停可见性、焦点与键盘捕获而保留子组件。外观直接共用原 appStore 主题/质量键；正文连续实色、局部 chrome 玻璃。功能映射与回归边界见 [实施清单](design/space-ui-integration.md)。

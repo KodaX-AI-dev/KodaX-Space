@@ -1,5 +1,7 @@
 # KodaX Space 高层设计（HLD）
 
+> 2026-11-05 工作树更新：SDK 已锁定正式 Registry `0.7.97-beta.2`，当前实现与验收以 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md) 为准；下列 alpha.4/beta.1 基线是已发布版本记录，本轮不替换公开标签或安装包。Workflow 作为用户显式单次功能，不再提供保存、修改等管理。
+
 > 更新日期：2026-11-04。版本基线为 Space `0.1.47-alpha.4` / npm Registry `@kodax-ai/kodax@0.7.97-beta.1`。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；发布门与验证状态见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)，SDK 接缝和外部验证限制单独保留。
 > 当前公共接口以 [beta.1 接入](releases/kodax-0.7.97-beta.1-integration.md)、[完整验收](releases/kodax-beta1-full-acceptance.md)和[补审修复](releases/kodax-beta1-claude-followup.md)为准。带日期的旧版本设计保留历史语境。
 
@@ -75,15 +77,15 @@ Space Artifact/Control handlers, credential broker, BrowserWindow and OS integra
 
 ### 2.1 进程列表
 
-| 进程                 | 角色                   | 持久                  | 内含                                                                         |
-| -------------------- | ---------------------- | --------------------- | ---------------------------------------------------------------------------- |
+| 进程                 | 角色                   | 持久                  | 内含                                                          |
+| -------------------- | ---------------------- | --------------------- | ------------------------------------------------------------- |
 | `space-main`         | Electron main（Node）  | 应用/Windows 托盘周期 | IPC、Coder/Partner Product Client、Space host tools、后台托盘 |
-| `space-preload`      | Electron preload       | 每窗口                | 安全桥（contextBridge）                                                      |
-| `space-renderer`     | React UI               | 每窗口                | UI only，无 KodaX runtime                                                    |
-| `quick-ask-window`   | 独立 BrowserWindow     | 按需                  | Quick Ask renderer；Coder session 由 daemon 拥有                             |
-| KodaX Runtime daemon | Coder Runtime owner    | profile 周期          | Coder session/run/live truth；供 Space/CLI/IDE 共享                          |
-| MCP server children  | MCP server             | owner 按需 spawn      | Coder 由 daemon 管；Partner/Space residual 由 main 管                        |
-| Repointel daemon     | 系统级（用户提前安装） | 系统周期              | KodaX 内核已通过 loopback HTTP 接，Space 无关                                |
+| `space-preload`      | Electron preload       | 每窗口                | 安全桥（contextBridge）                                       |
+| `space-renderer`     | React UI               | 每窗口                | UI only，无 KodaX runtime                                     |
+| `quick-ask-window`   | 独立 BrowserWindow     | 按需                  | Quick Ask renderer；Coder session 由 daemon 拥有              |
+| KodaX Runtime daemon | Coder Runtime owner    | profile 周期          | Coder session/run/live truth；供 Space/CLI/IDE 共享           |
+| MCP server children  | MCP server             | owner 按需 spawn      | Coder 由 daemon 管；Partner/Space residual 由 main 管         |
+| Repointel daemon     | 系统级（用户提前安装） | 系统周期              | KodaX 内核已通过 loopback HTTP 接，Space 无关                 |
 
 ### 2.2 关键差别（与 sidecar+ACP 模型对比）
 
@@ -622,19 +624,19 @@ Space → CLI:
 
 ## 11. 技术栈决策（最终）
 
-| 层          | 选择                                                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Shell       | **Electron 30+** ([ADR-001](ADR/ADR-001-shell-electron.md))                                                                                |
-| Renderer    | **React 19 + Vite 6 + TypeScript + Zustand 5 + Tailwind + shadcn-derived UI**                                                              |
-| Editor 组件 | Monaco（只读 + diff）                                                                                                                      |
-| 终端组件    | xterm.js + node-pty                                                                                                                        |
-| KodaX 集成  | Coder/Partner 经 Runtime facade 使用共享 Host；均不走 ACP（[v0.1.32](features/v0.1.32.md)） |
-| Native 加速 | 仅按 profile 引入 NAPI-RS 热路径；无已承诺 native-helper feature ([ADR-002](ADR/ADR-002-rust-integration-napi.md))                         |
-| IPC schema  | zod，验证所有 renderer↔main channel                                                                                                        |
-| Keychain    | `@napi-rs/keyring`（Win Credential Manager / macOS Keychain / Linux Secret Service）                                                       |
-| 自动更新    | Squirrel.Mac + Squirrel.Windows                                                                                                            |
-| 安装包      | NSIS (Win) + DMG/ZIP (macOS x64/arm64) + AppImage/deb (Linux x64); signing/notarization/channel trust tracked by F101                      |
-| 测试        | Vitest（unit）+ Playwright for Electron（E2E）                                                                                             |
+| 层          | 选择                                                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| Shell       | **Electron 30+** ([ADR-001](ADR/ADR-001-shell-electron.md))                                                           |
+| Renderer    | **React 19 + Vite 6 + TypeScript + Zustand 5 + Tailwind + shadcn-derived UI**                                         |
+| Editor 组件 | Monaco（只读 + diff）                                                                                                 |
+| 终端组件    | xterm.js + node-pty                                                                                                   |
+| KodaX 集成  | Coder/Partner 经 Runtime facade 使用共享 Host；均不走 ACP（[v0.1.32](features/v0.1.32.md)）                           |
+| Native 加速 | 仅按 profile 引入 NAPI-RS 热路径；无已承诺 native-helper feature ([ADR-002](ADR/ADR-002-rust-integration-napi.md))    |
+| IPC schema  | zod，验证所有 renderer↔main channel                                                                                   |
+| Keychain    | `@napi-rs/keyring`（Win Credential Manager / macOS Keychain / Linux Secret Service）                                  |
+| 自动更新    | Squirrel.Mac + Squirrel.Windows                                                                                       |
+| 安装包      | NSIS (Win) + DMG/ZIP (macOS x64/arm64) + AppImage/deb (Linux x64); signing/notarization/channel trust tracked by F101 |
+| 测试        | Vitest（unit）+ Playwright for Electron（E2E）                                                                        |
 
 ### 11.1 不引入
 
@@ -791,7 +793,7 @@ NAPI crate 独立 Rust 单测 + 与 TS wrapper 的集成测。
 | Surfaces                  | Space 是 KodaX 的 first-party 桌面 surface；不挪用任务逻辑                                                    |
 | Intent Gate / Direct Path | 在对应 KodaX Runtime owner 内；UI 仅看 Space main 的 sanitized projection                                     |
 | Scout / AMA Control Plane | 仅以"模式徽标 + Round"体现；不绘制内部图                                                                      |
-| Coding Runtime            | Coder/Partner 共用 SDK Host；Partner 使用 Agent 业务绑定                                                     |
+| Coding Runtime            | Coder/Partner 共用 SDK Host；Partner 使用 Agent 业务绑定                                                      |
 | Durable Task State        | 写盘真理面在 KodaX runtime（`~/.kodax/sessions/`）；Space 是读视图                                            |
 | Skill 集成                | 通过 public Skill registry/catalog；F135 以 SDK plugin API 注册审定的 Space builtin root                      |
 | 证据分层                  | UI 在 verdict 卡片浏览，不重新组织                                                                            |

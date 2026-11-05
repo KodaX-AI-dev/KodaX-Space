@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**Space `0.1.47-alpha.4` 精确依赖 Registry SDK `0.7.97-beta.1`。** Root、Desktop、IPC schema 和 UI kit 统一版本，lockfile 与打包门禁校验 Registry 字节。发布状态与验证见 [alpha.4 发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)、[beta.1 接入](docs/releases/kodax-0.7.97-beta.1-integration.md)及[补审修复](docs/releases/kodax-beta1-claude-followup.md)。
+**当前工作树精确依赖 Registry SDK `0.7.97-beta.2`。** 适配与验证见 [beta.2 接入记录](docs/releases/kodax-beta2-space-adaptation.md)。已发布的 Space `0.1.47-alpha.4` 保持 beta.1 原始构建，其[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)保留为历史证据；本轮升级没有替换公开标签或安装包。Root/Desktop 使用同一 SDK，lockfile 和成品门禁核验 Registry 字节。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。
@@ -212,16 +212,16 @@ KodaX-Space/
 
 关键技术选择：
 
-| 层              | 选择                                                                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shell           | Electron 42                                                                                                                                                         |
-| Renderer        | React 19、Vite、TypeScript、Zustand                                                                                                                                 |
-| UI/runtime 分离 | Renderer 不直接执行 LLM/tool；特权工作留在 Electron main。                                                                                                          |
+| 层              | 选择                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shell           | Electron 42                                                                                                                                                        |
+| Renderer        | React 19、Vite、TypeScript、Zustand                                                                                                                                |
+| UI/runtime 分离 | Renderer 不直接执行 LLM/tool；特权工作留在 Electron main。                                                                                                         |
 | KodaX 集成      | Coder 与 Partner 经公共 Product Client 使用共享 Host；Coder 默认 Coding，Partner 使用 Agent 和可信业务绑定。Main 提供产品工具与授权，不创建第二个 Session writer。 |
-| IPC             | 来自 `@kodax-space/space-ipc-schema` 的 zod-validated contracts。                                                                                                   |
-| Terminal        | xterm.js + node-pty。                                                                                                                                               |
-| Preview         | Monaco、pdfjs、mammoth/docx、SheetJS/xlsx。                                                                                                                         |
-| Tests           | Node test runner、Playwright、typecheck、packaging smoke checks。                                                                                                   |
+| IPC             | 来自 `@kodax-space/space-ipc-schema` 的 zod-validated contracts。                                                                                                  |
+| Terminal        | xterm.js + node-pty。                                                                                                                                              |
+| Preview         | Monaco、pdfjs、mammoth/docx、SheetJS/xlsx。                                                                                                                        |
+| Tests           | Node test runner、Playwright、typecheck、packaging smoke checks。                                                                                                  |
 
 ## 开发
 
@@ -268,7 +268,7 @@ npm run e2e:headed
 | [README.md](README.md)                                                                                           | 英文 README。                                                              |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                                                                               | 贡献边界、验证要求和文档同步规则。                                         |
 | [docs/README.md](docs/README.md)                                                                                 | 文档中心，以及当前文档/历史文档索引。                                      |
-| [docs/USER_MANUAL.zh-CN.md](docs/USER_MANUAL.zh-CN.md)                                                           | 当前版本的图解中文手册；旧截图仅辅助定位。                                |
+| [docs/USER_MANUAL.zh-CN.md](docs/USER_MANUAL.zh-CN.md)                                                           | 当前版本的图解中文手册；旧截图仅辅助定位。                                 |
 | [docs/USAGE.md](docs/USAGE.md)                                                                                   | 源码启动、profile、Runtime Host、测试、打包与排障。                        |
 | [docs/BUILTIN_SKILLS.md](docs/BUILTIN_SKILLS.md)                                                                 | builtin skill 的来源、许可、更新、补丁和打包完整性流程。                   |
 | [docs/releases/v0.1.34-release-readiness.md](docs/releases/v0.1.34-release-readiness.md)                         | v0.1.34 的发布门禁、产物摘要、已知风险与发布证据。                         |

@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文对应 Space `v0.1.47-alpha.4` / Registry `@kodax-ai/kodax@0.7.97-beta.1`。稳定版仍是 Space v0.1.46 / KodaX 0.7.96。旧截图仅用于定位，以实际界面为准；[发布与验证记录](releases/v0.1.47-alpha.4-release-readiness.md)列出已验证范围。
+> 本文描述当前工作树的 Registry SDK `0.7.97-beta.2` 适配，见 [接入与验收](releases/kodax-beta2-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 仍为 beta.1 构建；稳定版仍是 Space v0.1.46 / KodaX 0.7.96。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -211,7 +211,7 @@ macOS 请在“系统设置 → 通知 → KodaX Space”允许通知并开启�
 - **Turn**：你发送一条消息，到这一轮完成、失败或取消。
 - **Run**：KodaX Runtime 对一轮任务的执行记录；Coder daemon 为运行提供稳定 `runId`、有序事件和多客户端共享状态。
 - **Artifact**：独立于项目文件的生成物，例如报告、HTML、SVG、PDF、DOCX、XLSX。
-- **Workflow**：可观察、可暂停/恢复/停止、可保存和复跑的多步骤任务。
+- **Workflow**：由用户显式启动一次、可观察并暂停/恢复/停止的多步骤任务；最终回复保留在会话中。
 
 <a id="runtime-host"></a>
 
@@ -229,7 +229,7 @@ flowchart LR
 唯一会话执行与历史写入者]
 ```
 
-Space 锁定 KodaX SDK 0.7.97-beta.1。Partner 与专家使用共享 Host 的 Agent 模式；默认 Skill 由 Host 准备，排队输入在真正消费时采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。实际验收与限制见 [beta.1 接入记录](releases/kodax-0.7.97-beta.1-integration.md)。
+Space 工作树锁定 KodaX SDK 0.7.97-beta.2。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md)。
 
 Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 
@@ -556,7 +556,7 @@ interactive HTML 在沙箱中预览；React artifact 当前不是 LiveCanvas。O
 
 ### Workflow
 
-Workflow 管理多步骤任务和历史。入口包括 `/workflow`、Workflow Launcher、Task Dock 和 Workflow popout。可查看 run、pause/resume/stop、rerun、rename/delete，以及保存/运行 workflow。Space 的 Workflow Controller 保留 durable history、origin、立即停止投影和 Artifact 关联。
+Workflow 是用户显式启动的单次多步骤功能。使用 `/workflow create <需求>` 或选择已有定义启动；Task Dock 和 Workflow 执行面显示当前会话的进度，支持 pause/resume/stop。最终回复由执行 Host 保存进会话，结果中的交付物引用保留；断开窗口不等于停止。界面不再提供保存、修改、改名、删除、清理或重跑历史的管理操作，旧定义和历史结果保留。Host 负责终态持久化及安全收尾，Space 不直接清理其运行目录。
 
 ### Memory Governance
 

@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**Space `0.1.47-alpha.4` pins Registry SDK `0.7.97-beta.1` exactly.** Root, Desktop, IPC schema and UI kit share one Space version; the lockfile and packaged dependency gate verify Registry integrity. See [alpha.4 qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md), [beta.1 integration](docs/releases/kodax-0.7.97-beta.1-integration.md) and [repair evidence](docs/releases/kodax-beta1-claude-followup.md).
+**The working tree pins Registry SDK `0.7.97-beta.2` exactly.** See [beta.2 adaptation and acceptance](docs/releases/kodax-beta2-space-adaptation.md). The published Space `0.1.47-alpha.4` remains an immutable beta.1 build; its [qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md) is historical release evidence. Root and Desktop resolve the same SDK; package gates verify Registry integrity.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.
@@ -225,16 +225,16 @@ KodaX-Space/
 
 Key technical choices:
 
-| Layer                 | Choice                                                                                                                                                                                                            |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shell                 | Electron 42                                                                                                                                                                                                       |
-| Renderer              | React 19, Vite, TypeScript, Zustand                                                                                                                                                                               |
-| UI/runtime separation | Renderer has no direct LLM/tool execution; privileged work stays in Electron main.                                                                                                                                |
+| Layer                 | Choice                                                                                                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shell                 | Electron 42                                                                                                                                                                                                                                      |
+| Renderer              | React 19, Vite, TypeScript, Zustand                                                                                                                                                                                                              |
+| UI/runtime separation | Renderer has no direct LLM/tool execution; privileged work stays in Electron main.                                                                                                                                                               |
 | KodaX integration     | Coder and Partner use the SDK shared Host through public Product Client contracts. Coder defaults to Coding; Partner uses Agent with trusted business bindings. Electron main owns product tools and authorization, not a second Session writer. |
-| IPC                   | zod-validated contracts from `@kodax-space/space-ipc-schema`.                                                                                                                                                     |
-| Terminal              | xterm.js + node-pty.                                                                                                                                                                                              |
-| Preview               | Monaco, pdfjs, mammoth/docx, SheetJS/xlsx.                                                                                                                                                                        |
-| Tests                 | Node test runner, Playwright, typecheck, smoke packaging checks.                                                                                                                                                  |
+| IPC                   | zod-validated contracts from `@kodax-space/space-ipc-schema`.                                                                                                                                                                                    |
+| Terminal              | xterm.js + node-pty.                                                                                                                                                                                                                             |
+| Preview               | Monaco, pdfjs, mammoth/docx, SheetJS/xlsx.                                                                                                                                                                                                       |
+| Tests                 | Node test runner, Playwright, typecheck, smoke packaging checks.                                                                                                                                                                                 |
 
 ## Development
 

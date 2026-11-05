@@ -1,5 +1,7 @@
 # Partner 与 Space/Coder 集成契约
 
+> 2026-11-05 工作树已接入 SDK `0.7.97-beta.2`：可信 profile 使用 `requiredWorkMode:'agent'`，Host 在实际准入、排队消费和装配时核验，`execution_mode_mismatch` 保留原问题。约束不禁用 shell/write/子 Agent；恢复记录保留原要求。Workflow 是用户显式单次执行，不再提供保存/编辑等管理。当前验收见 [beta.2 接入](../releases/kodax-beta2-space-adaptation.md)，下列发布基线保留历史语境。
+
 > 2026-11-04 版本基线：Space `0.1.47-alpha.4` / Registry SDK `0.7.97-beta.1`。本轮发布状态、验收与未关闭边界见 [alpha.4 发布记录](../releases/v0.1.47-alpha.4-release-readiness.md)；下方带日期的旧记录保留历史语境。
 
 2026-11-03 补审：本地文件提案重新进入任务卡与按需详情审核，详情启动器提供审核、交付与 checkpoint 历史/回滚入口；不恢复旧永久 Workbench。详情按当前 Partner Session 挂载，切面或切会话不沿用旧审核状态。Host 工具注册拒绝明确矛盾的 Session 标记，仍兼容缺失旧字段，正常 shell/write/子 Agent 能力保留。验证状态及 SDK 外部缺口见 [补审记录](../releases/kodax-beta1-claude-followup.md)。
