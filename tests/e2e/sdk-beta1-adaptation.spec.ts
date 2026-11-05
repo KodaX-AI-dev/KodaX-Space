@@ -116,7 +116,7 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
     await expect(space.page.getByTestId('partner-work-mode')).toHaveText('Agent');
     expect(provider.requests.some((text) => text.includes('BETA1_DEFAULT_EXPERT'))).toBe(true);
   } catch (error) {
-    await recordPartnerFailure(space, provider.url).catch((diagnosticError: unknown) => {
+    await recordPartnerFailure(space, provider).catch((diagnosticError: unknown) => {
       console.error('[partner-e2e] failure evidence unavailable:', diagnosticError);
     });
     throw error;
@@ -126,15 +126,22 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
   }
 });
 
-async function recordPartnerFailure(space: SpaceInstance, url: string): Promise<void> {
+async function recordPartnerFailure(
+  space: SpaceInstance,
+  provider: Awaited<ReturnType<typeof createLocalSdkProvider>>,
+): Promise<void> {
+  const transportBeforeProbe = provider.transport;
+  const url = provider.url;
   const sessionId = await currentSdkSession(space);
-  const contracts = await space.page.evaluate(
-    async (id) => ({
-      providers: await window.kodaxSpace!.invoke('provider.list', undefined),
-      live: await window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId: id }),
-    }),
-    sessionId,
-  );
+  const contracts = await space.page.evaluate(async (id) => {
+    const [providers, live, product, statistics] = await Promise.all([
+      window.kodaxSpace!.invoke('provider.list', undefined),
+      window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId: id }),
+      window.kodaxSpace!.invoke('session.productSnapshot', { sessionId: id }),
+      window.kodaxSpace!.invoke('session.statistics', { sessionId: id }),
+    ]);
+    return { providers, live, product, statistics };
+  }, sessionId);
   const health = await space.app.evaluate(async (_electron, baseUrl) => {
     try {
       return {
@@ -145,7 +152,7 @@ async function recordPartnerFailure(space: SpaceInstance, url: string): Promise<
     }
   }, url);
   await test.info().attach('partner-failure-contracts.json', {
-    body: JSON.stringify({ url, contracts, health }),
+    body: JSON.stringify({ url, transportBeforeProbe, contracts, health }),
     contentType: 'application/json',
   });
 }

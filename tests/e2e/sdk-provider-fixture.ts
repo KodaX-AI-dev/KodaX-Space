@@ -102,6 +102,7 @@ export async function createLocalSdkProvider() {
   let preparedCommandRequests = 0;
   const pending = new Map<string, ServerResponse>();
   const errors: string[] = [];
+  const transport = { connections: 0, requestsStarted: 0, bodiesCompleted: 0 };
   let projectRoot = '';
   const reply = (response: ServerResponse, content: string, tools?: unknown[]) => {
     if (!response.headersSent) response.writeHead(200, { 'content-type': 'text/event-stream' });
@@ -122,6 +123,7 @@ export async function createLocalSdkProvider() {
     );
   };
   const handle = async (request: IncomingMessage, response: ServerResponse) => {
+    transport.requestsStarted++;
     if (request.method === 'GET') {
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ data: [{ id: 'space-e2e-model' }] }));
@@ -129,6 +131,7 @@ export async function createLocalSdkProvider() {
     }
     let body = '';
     for await (const chunk of request) body += String(chunk);
+    transport.bodiesCompleted++;
     const parsed = JSON.parse(body) as {
       model?: string;
       messages: WireMessage[];
@@ -366,10 +369,16 @@ export async function createLocalSdkProvider() {
       response.destroy();
     });
   });
+  server.on('connection', () => {
+    transport.connections++;
+  });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Local Provider did not bind');
   return {
+    get transport() {
+      return { ...transport };
+    },
     requestModels,
     questionResults,
     url: `http://127.0.0.1:${address.port}/v1`,
@@ -395,7 +404,13 @@ export async function createLocalSdkProvider() {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );
-      await attachSdkEvidence('local-provider-state.json', { requests, errors });
+      await attachSdkEvidence('local-provider-state.json', {
+        url: `http://127.0.0.1:${address.port}/v1`,
+        requests,
+        requestModels,
+        errors,
+        transport,
+      });
     },
   };
 }

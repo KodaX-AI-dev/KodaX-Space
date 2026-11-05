@@ -14,7 +14,8 @@ import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import os from 'node:os';
 import { promises as fs } from 'node:fs';
-import { launchSpace } from './fixtures.js';
+import type { PermissionMode } from '@kodax-space/space-ipc-schema';
+import { launchSpace, type SpaceInstance } from './fixtures.js';
 
 const MODE_LABELS = ['Plan', 'Accept edits', 'Auto[LLM]', 'Full access'] as const;
 
@@ -27,6 +28,29 @@ async function openModeMenu(page: import('@playwright/test').Page): Promise<void
 
 function modeMenuItem(page: import('@playwright/test').Page, label: string) {
   return page.locator('div.bottom-full button[title]', { hasText: label });
+}
+
+async function expectPermissionState(
+  space: SpaceInstance,
+  sessionId: string,
+  mode: PermissionMode,
+): Promise<void> {
+  await expect
+    .poll(() =>
+      space.page.evaluate(async (id) => {
+        const [settings, sessions] = await Promise.all([
+          window.kodaxSpace.invoke('settings.get', {}),
+          window.kodaxSpace.invoke('session.list', { surface: 'code' }),
+        ]);
+        if (!settings.ok) throw new Error(`settings.get: ${settings.error.message}`);
+        if (!sessions.ok) throw new Error(`session.list: ${sessions.error.message}`);
+        return {
+          persisted: settings.data.runtimeDefaults?.permissionMode,
+          session: sessions.data.sessions.find((item) => item.sessionId === id)?.permissionMode,
+        };
+      }, sessionId),
+    )
+    .toEqual({ persisted: mode, session: mode });
 }
 
 test('mode selector exposes the four canonical profiles and Full access end to end', async () => {
@@ -53,6 +77,8 @@ test('mode selector exposes the four canonical profiles and Full access end to e
     await textarea.fill('mode alignment probe');
     await textarea.press('Enter');
     await expect(page.getByTestId('user-message-bubble').first()).toBeVisible({ timeout: 15_000 });
+    const sessionId = await page.getByTestId('conversation-stream').getAttribute('data-session-id');
+    if (!sessionId) throw new Error('Permission mode probe has no selected Session');
 
     // 1) The menu lists exactly the canonical profiles, in canonical order.
     await openModeMenu(page);
@@ -68,33 +94,29 @@ test('mode selector exposes the four canonical profiles and Full access end to e
     await expect(modeButton).toContainText(MODE_LABELS[3], { timeout: 10_000 });
 
     // The active session and the persisted next-session default must both hold it.
-    const persisted = await page.evaluate(async () => {
-      const r = await window.kodaxSpace.invoke('settings.get', {});
-      return r.ok ? r.data.runtimeDefaults?.permissionMode : undefined;
-    });
-    expect(persisted).toBe('full-access');
-    const sessionMode = await page.evaluate(async () => {
-      const r = await window.kodaxSpace.invoke('session.list', { surface: 'code' });
-      return r.ok ? r.data.sessions?.[0]?.permissionMode : undefined;
-    });
-    expect(sessionMode).toBe('full-access');
+    await expectPermissionState(space, sessionId, 'full-access');
 
     // 3) Shift+Tab cycles forward with wrap-around: full-access → plan.
     await page.keyboard.press('Shift+Tab');
     await expect(modeButton).toContainText(MODE_LABELS[0], { timeout: 10_000 });
     for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+Tab');
     await expect(modeButton).toContainText(MODE_LABELS[0], { timeout: 10_000 });
+    await expectPermissionState(space, sessionId, 'plan');
 
     // 4) Back to Full access via the menu button (mouse path).
     await modeButton.click();
     await modeMenuItem(page, MODE_LABELS[3]).click();
     await expect(modeButton).toContainText(MODE_LABELS[3], { timeout: 10_000 });
+    await expectPermissionState(space, sessionId, 'full-access');
 
     // 5) Reload — the next-session default restores Full access.
     await page.reload();
     await page.waitForSelector('[data-space-shell-ready]', { timeout: 30_000 });
-    const modeButtonAfterReload = page.locator('button[title*="Mode"], button[title*="模式"]').first();
+    const modeButtonAfterReload = page
+      .locator('button[title*="Mode"], button[title*="模式"]')
+      .first();
     await expect(modeButtonAfterReload).toContainText(MODE_LABELS[3], { timeout: 15_000 });
+    await expectPermissionState(space, sessionId, 'full-access');
 
     // No renderer errors during the whole flow.
     const reactErrors = consoleErrors.filter((e) => /React error #\d{3}/i.test(e));

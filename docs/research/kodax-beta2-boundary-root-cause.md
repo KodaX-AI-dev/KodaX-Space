@@ -120,3 +120,7 @@
 ### 可转 SDK 的最终结论
 
 正式 Registry `@kodax-ai/kodax@0.7.97-beta.2` 保持未修改时，已确认先前历史 `resync_required` 和 Stop 后下一次发送冲突存在 Space 根因：首次相同队列被误报为变化，造成观察/快照补读反馈，持续触发 Host 真实位置索引与存储围栏活动；暂停同一 Host 的隔离 Space Main 后读取恢复，恢复 Main 后再现，Space 单行修复的正反向 A/B/A 对照成立。Space 随后补齐前台空闲订阅保留及切换竞态，避免去掉反馈后界面状态陈旧。349 项针对性单测、真正成品 34 项专项及 6 项生命周期、核心三轮 9 次和额外 Partner 十轮均通过，源码完整矩阵与四平台 build 也已验证。因此这两项不需要 SDK 新增补丁或放宽并发保护；请保留真实并发、过期 cursor/sourceRevision 和输入准入的拒绝语义。独立的一次本地 Provider 超时尚未稳定定因、以及最新文档复验中一个旧权限设置测试的 flaky，均不据此新增 SDK 缺陷要求；Issue 371 性能和原始客户环境仍单独跟踪。
+
+## Space 补完后续
+
+用户进一步要求实际修复后，权限 E2E 的异步读取问题已完成可控慢写 RED/GREEN 修复，并为独立 Provider 超时补充分层取证；原生产修复 ead06bfe/ff4bdfa0 已在 main。本轮具体改动、38 次真实成品重复和 349 项单测记录见 [Space 修复补完](kodax-beta2-space-followup.md)。历史失败与旧 CI 数字继续保留，不由后续结果覆盖。
