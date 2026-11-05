@@ -43,7 +43,7 @@ async function seedHistory(root: string): Promise<void> {
   });
 }
 
-test('packaged SDK history reports are readable and one bottom arrow reaches the latest after bidirectional browsing', async () => {
+test('SDK task rename persists and history scrolls continuously across page boundaries', async () => {
   const provider = await createLocalSdkProvider();
   const { space } = await launchRealSdkSpace(
     `history-navigation-${Date.now()}`,
@@ -66,6 +66,27 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     await space.page
       .getByTestId('sidebar-session-row')
       .filter({ hasText: 'SDK_HISTORY_NAVIGATION' })
+      .click();
+    const sessionRow = space.page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: 'SDK_HISTORY_NAVIGATION' });
+    await sessionRow.click({ button: 'right' });
+    await space.page.locator('[data-menu-action="rename-session"]').click();
+    const rename = space.page.getByRole('textbox', { name: 'Rename session' });
+    await rename.fill('SDK_HISTORY_RENAMED');
+    await rename.press('Enter');
+    await expect
+      .poll(() =>
+        space.page.evaluate(async (id) => {
+          const result = await window.kodaxSpace!.invoke('session.list', { surface: 'code' });
+          return result.ok ? result.data.sessions.find((s) => s.sessionId === id)?.title : null;
+        }, SESSION),
+      )
+      .toBe('SDK_HISTORY_RENAMED');
+    await space.page.reload();
+    await space.page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: 'SDK_HISTORY_RENAMED' })
       .click();
     const stream = space.page.getByTestId('conversation-stream');
     const scroller = space.page.getByTestId('conversation-scroll-container');
@@ -98,6 +119,7 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     const newest = await ids();
     const moveToOlder = async () => {
       const before = await ids();
+      const heightBefore = await scroller.evaluate((el) => el.scrollHeight);
       await scroller.hover();
       await space.page.mouse.wheel(
         0,
@@ -105,13 +127,10 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
       );
       try {
         await expect.poll(ids, { timeout: 10_000 }).not.toEqual(before);
+        await expect(stream.getByText('HISTORY_ANSWER_259', { exact: true })).toHaveCount(1);
         await expect
-          .poll(() =>
-            scroller.evaluate(
-              (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
-            ),
-          )
-          .toBeLessThan(2);
+          .poll(() => scroller.evaluate((el) => el.scrollHeight))
+          .toBeGreaterThan(heightBefore);
       } catch (error) {
         const facts = await space.page.evaluate(async (sessionId) => {
           const history = await window.kodaxSpace!.invoke('session.history', {
@@ -142,12 +161,26 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     };
     await moveToOlder();
     const middle = await ids();
+    await test.info().attach('history-identities.json', {
+      body: JSON.stringify({ newest, middle }),
+      contentType: 'application/json',
+    });
+    const seam = stream.getByText('HISTORY_ANSWER_220', { exact: true });
+    await expect(seam).toHaveCount(1);
+    const seamBox = await seam.boundingBox();
+    const scrollBox = await scroller.boundingBox();
+    expect(
+      seamBox!.y,
+      'first older load should preserve the visible current-view boundary',
+    ).toBeGreaterThanOrEqual(scrollBox!.y - 120);
+    expect(seamBox!.y).toBeLessThan(scrollBox!.y + scrollBox!.height);
+
     await moveToOlder();
     const oldest = await ids();
     expect(oldest).not.toEqual(middle);
     await scroller.hover();
     await space.page.mouse.wheel(0, await scroller.evaluate((element) => element.scrollHeight));
-    await expect.poll(ids).toEqual(middle);
+    await expect.poll(ids).toEqual(oldest);
     await expect(
       space.page.getByRole('button', { name: 'Return to newest messages', exact: true }),
     ).toHaveCount(0);
@@ -163,8 +196,90 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
       )
       .toBeLessThan(2);
     await expect(report).toHaveCount(1);
+    await space.page.waitForTimeout(500);
     await space.page.screenshot({ path: test.info().outputPath('history-return-latest.png') });
     expect(failures).toEqual([]);
+    expect(provider.errors).toEqual([]);
+  } finally {
+    await provider.close();
+    await space.close();
+  }
+});
+
+test('a short-looking SDK conversation with folded tools keeps its final answer when loading older history', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space } = await launchRealSdkSpace(
+    `compact-history-${Date.now()}`,
+    provider.url,
+    async (root) => {
+      const project = path.join(root, 'project');
+      await mkdir(project, { recursive: true });
+      const manager = createSessionManager({
+        sessionsDir: path.join(root, 'sessions'),
+        configHome: root,
+      });
+      const messages: KodaXMessage[] = [
+        { role: 'user', inputId: 'compact-query', content: 'COMPACT_HISTORY_QUERY' },
+      ];
+      for (let i = 0; i < 160; i++)
+        messages.push(
+          {
+            role: 'assistant',
+            outputId: `compact-${i}`,
+            content: [
+              { type: 'tool_use', id: `call-${i}`, name: 'read', input: { path: 'fixture.txt' } },
+            ],
+          },
+          {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: `call-${i}`, content: 'Read complete' }],
+          },
+        );
+      messages.push({
+        role: 'assistant',
+        outputId: 'compact-final',
+        content: [
+          {
+            type: 'text',
+            text: 'COMPACT_FINAL_ANSWER\n\n' + 'A readable final paragraph.\n\n'.repeat(18),
+          },
+        ],
+      });
+      await manager.storage.save('compact-history', {
+        title: 'COMPACT_HISTORY',
+        gitRoot: project,
+        scope: 'user',
+        runtimeInfo: { workspaceRoot: project, surface: 'repl' },
+        messages,
+      });
+    },
+  );
+  try {
+    await space.page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: 'COMPACT_HISTORY' })
+      .click();
+    const scroller = space.page.getByTestId('conversation-scroll-container');
+    const answer = space.page.getByText('COMPACT_FINAL_ANSWER', { exact: true });
+    await expect(answer).toHaveCount(1, { timeout: 30000 });
+    const ids = () =>
+      scroller
+        .locator('[data-msg-id]')
+        .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+    const query = space.page.getByText('COMPACT_HISTORY_QUERY', { exact: true });
+    for (let page = 0; page < 4 && (await query.count()) === 0; page++) {
+      const before = await ids();
+      await space.page.waitForTimeout(700);
+      await scroller.hover();
+      await space.page.mouse.wheel(0, -(await scroller.evaluate((el) => el.scrollHeight)));
+      await expect.poll(ids).not.toEqual(before);
+      await expect(answer).toHaveCount(1);
+    }
+    await expect(query).toHaveCount(1);
+    await space.page.mouse.wheel(0, await scroller.evaluate((el) => el.scrollHeight));
+    await expect(
+      scroller.getByText('A readable final paragraph.', { exact: true }).last(),
+    ).toBeInViewport();
     expect(provider.errors).toEqual([]);
   } finally {
     await provider.close();

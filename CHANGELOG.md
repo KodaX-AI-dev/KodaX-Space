@@ -19,7 +19,9 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Upgrade the exact Registry SDK to 0.7.97-alpha.11. Add Host-owned Agent/Coding/experimental Script work modes, Host streaming token estimates, explicit saved tool-original reads, structured task reports and non-interactive question outcomes; retain the earlier history, manual-update and recovery fixes.
 
 - 普通 SDK 信息改用中性通知；旧版子任务报告折叠展示并还原传输转义，保留可读 Markdown 详情，避免把任务报告误画成黄色告警。
-- 修复历史浏览停在旧页底部的问题：向下继续读取相邻新页，并统一为一个可回到真实最新消息的向下按钮；迟到分页不能覆盖用户已选择的最新窗口。
+- 修复历史滚动的截断与跳页：同一修订的历史页连续保留，首次从当前窗口切入历史时恢复阅读锚点；向下滚动不再换走已读内容，底部按钮仍可回到真实最新消息，迟到请求不能覆盖当前选择。
+- 用户问题增加常驻发送者标签、淡蓝底色与左侧色条，便于在长回答中辨认每轮任务；保留长问题展开/收起与附件入口。
+- 修复任务和项目重命名失焦即丢失：Enter 或失焦只保存一次，Esc 取消，输入法选词不提前提交；保存被拒绝时显示错误并保留原名，右键菜单 Escape 退出恢复焦点。
 - 修复冷启动首次加载长历史时，集中完成的正文补读触发密集同步重绘并出现 React 185；正文缓存仍即时完整可读，仅合并同帧界面通知。
 - 软件更新改为设置中手动检查，分别确认下载和重启安装；启动、退出均不自动更新，正式版拒绝 alpha/beta/rc 候选，确认动作绑定所选版本。
 - 修复银河麒麟等 Linux 桌面在隐藏原生标题栏后缺少最小化、最大化和关闭按钮；复用现有窗口控制与退出流程。

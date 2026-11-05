@@ -2156,7 +2156,7 @@ export function BottomBar(): JSX.Element {
         const title = deriveTitle(effectivePrompt);
         if (title) {
           void invokeComposerIpc('session.setTitle', { sessionId: sid, title }).then((r) => {
-            if (r.ok) upsertSession({ ...sessNow, title });
+            if (r.ok && r.data.ok) upsertSession({ ...sessNow, title });
           });
         }
       }

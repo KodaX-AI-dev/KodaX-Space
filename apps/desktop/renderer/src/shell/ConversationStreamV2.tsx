@@ -39,6 +39,7 @@ import { projectProductConversation } from '../features/session/productConversat
 import {
   useProductSessionTranscript,
   productTranscriptSnapshot,
+  productHistoryScrollAnchorId,
   installProductItemContent,
 } from '../store/productSessionView.js';
 import { readProductItemText } from '../lib/productItemContent.js';
@@ -225,6 +226,7 @@ type QueryJumpAnchor = {
 
 type ViewportScrollAnchor = {
   id: string;
+  historyId?: string;
   offsetTop: number;
 };
 
@@ -1275,10 +1277,11 @@ export function ConversationStreamV2(): JSX.Element {
       const top = messageTopWithinScroller(scroller, node);
       return {
         id,
+        historyId: productHistoryScrollAnchorId(currentSessionId, id),
         offsetTop: top - scroller.scrollTop,
       };
     },
-    [],
+    [currentSessionId],
   );
 
   const rememberScrollSnapshot = useCallback(
@@ -1412,7 +1415,11 @@ export function ConversationStreamV2(): JSX.Element {
     anchor = viewportScrollAnchorRef.current,
   ): boolean {
     if (!anchor) return false;
-    const target = scroller.querySelector(`[data-msg-id="${CSS.escape(anchor.id)}"]`);
+    const target =
+      scroller.querySelector(`[data-msg-id="${CSS.escape(anchor.id)}"]`) ??
+      (anchor.historyId
+        ? scroller.querySelector(`[data-msg-id="${CSS.escape(anchor.historyId)}"]`)
+        : null);
     if (!(target instanceof HTMLElement)) return false;
 
     const targetTop = messageTopWithinScroller(scroller, target);
@@ -1441,13 +1448,15 @@ export function ConversationStreamV2(): JSX.Element {
       missingAnchorFallback === 'older-window-seam' ||
       missingAnchorFallback === 'newer-window-seam'
     ) {
-      // A bounded older window can intentionally have no canonical row in common with the page
-      // it replaces. The semantic seam is the bottom/newest edge of that older window, not the
-      // same scroll-height ratio (which would jump a user loading at top to another arbitrary top).
+      // Retained SDK history keeps its suffix: if no unique identity can bridge
+      // the view/history boundary, preserve distance into that suffix. Legacy
+      // replacement windows still enter at their adjoining edge.
       const nextMaxTop =
         missingAnchorFallback === 'newer-window-seam'
           ? 0
-          : olderHistoryWindowSeamScrollTop(scroller.scrollHeight, scroller.clientHeight);
+          : productTranscript !== undefined
+            ? Math.max(0, scroller.scrollHeight - snapshot.scrollHeight + snapshot.scrollTop)
+            : olderHistoryWindowSeamScrollTop(scroller.scrollHeight, scroller.clientHeight);
       markProgrammaticScroll();
       scroller.scrollTop = nextMaxTop;
       wasAtBottomRef.current = false;
@@ -1577,8 +1586,11 @@ export function ConversationStreamV2(): JSX.Element {
     scroller: HTMLDivElement,
     direction: 'older' | 'newer' = 'older',
   ): void {
+    // SDK history retains its newer pages. Downward scrolling must not replace
+    // that document; only the explicit bottom control returns to the live view.
     if (
       currentSessionId === null ||
+      (direction === 'newer' && productTranscript !== undefined) ||
       !(direction === 'older' ? historyPaging.hasMore : historyPaging.hasNewer) ||
       latestJumpRequest !== null ||
       historyPaging.phase === 'loading' ||

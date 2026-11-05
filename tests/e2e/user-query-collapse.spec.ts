@@ -37,6 +37,7 @@ test('long user queries keep a four-line preview and can expand or collapse in p
       .last();
     await expect(bubble).toBeVisible({ timeout: 10_000 });
 
+    await expect(bubble.getByTestId('user-query-label')).toHaveText('You');
     const content = bubble.getByTestId('user-query-content');
     const toggle = bubble.getByTestId('user-query-toggle');
     await expect(toggle).toBeVisible();
@@ -77,6 +78,12 @@ test('long user queries keep a four-line preview and can expand or collapse in p
     await expect
       .poll(() => content.evaluate((element) => element.clientHeight))
       .toBeLessThanOrEqual(collapsed.clientHeight + 1);
+    await bubble.scrollIntoViewIfNeeded();
+    await space.page.waitForTimeout(300);
+    await space.page.screenshot({ path: test.info().outputPath('user-query-dark.png') });
+    await space.page.evaluate(() => document.documentElement.classList.remove('dark'));
+    await space.page.waitForTimeout(300);
+    await space.page.screenshot({ path: test.info().outputPath('user-query-light.png') });
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

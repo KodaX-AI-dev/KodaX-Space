@@ -5799,7 +5799,7 @@ test('visited SDK history pages can be read in both directions and newest select
   await loadOlderSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['oldest'],
+    ['oldest', 'middle', 'newest'],
   );
   replaceProductSessionView({
     sessionId,
@@ -5815,7 +5815,7 @@ test('visited SDK history pages can be read in both directions and newest select
   await loadOlderSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['oldest'],
+    ['oldest', 'middle'],
   );
   await loadNewerSessionHistory(sessionId);
   await loadNewerSessionHistory(sessionId);
@@ -5884,7 +5884,7 @@ test('failed and superseded forward reads retain the selected page and navigatio
   await assert.rejects(loadNewerSessionHistory(sessionId), /temporarily unavailable/);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['oldest'],
+    ['oldest', 'middle', 'newest'],
   );
   rejectForward = false;
   const pending = loadNewerSessionHistory(sessionId);
@@ -5947,18 +5947,18 @@ test('SDK paging keeps history as a separate frozen window and never folds its t
   await loadOlderSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['old-history'],
+    ['old-history', 'new-history'],
   );
   await revalidateNewestSessionHistory(sessionId, 'code');
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['old-history'],
+    ['old-history', 'new-history'],
   );
   assert.equal(sessionHistoryPagingSnapshot(sessionId).hasNewer, true);
   replaceProductSessionView({ sessionId, runtimeId: 'runtime', revision: 2, items: [] });
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['old-history'],
+    ['old-history', 'new-history'],
   );
   await restoreNewestSessionHistory(sessionId, 'code');
   assert.deepEqual(productTranscriptSnapshot(sessionId)?.items, []);

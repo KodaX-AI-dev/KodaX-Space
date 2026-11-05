@@ -401,16 +401,14 @@ function ProjectTree({
     [statusMap],
   );
 
-  // F043 review HIGH-1 修：blur=cancel, Enter=commit。原 onBlur 也调 submit 会让
-  // Enter → setRenamingPath(null) → input unmount → blur 触发第二次 submit，并发两条 IPC。
-  // 现在 onBlur 直接 setRenamingPath(null) 不动 IPC；只有 Enter 走 commit。
+  // RenameInput fences Enter + blur so a rename sends exactly one mutation.
   const onRenameCommit = useCallback(
     async (proj: Project, newName: string): Promise<void> => {
       setRenamingPath(null);
       const trimmed = newName.trim();
       if (trimmed.length === 0 || trimmed === proj.name) return; // no-op / unchanged
       if (!window.kodaxSpace) return;
-      const r = await window.kodaxSpace.invoke('project.recent.rename', {
+      const r = await invokeWithTimeout(window.kodaxSpace, 'project.recent.rename', {
         path: proj.path,
         name: trimmed,
       });
@@ -507,6 +505,7 @@ function ProjectTree({
           } ${isDragOverTarget ? 'outline outline-1 outline-info/60' : ''}`}
           onContextMenu={(e) => {
             e.preventDefault();
+            (e.target as HTMLElement).closest('button')?.focus();
             setProjCtxMenu({ project: proj, x: e.clientX, y: e.clientY });
           }}
           title={proj.path}
@@ -521,23 +520,11 @@ function ProjectTree({
             <Caret open={isExpanded} />
           </button>
           {isRenaming ? (
-            <input
-              type="text"
-              defaultValue={proj.name}
-              autoFocus
-              maxLength={256}
-              className="flex-1 bg-surface-2 border border-border-strong rounded px-1 py-0.5 text-xs text-fg-primary outline-none focus:border-border-strong"
-              onBlur={() => setRenamingPath(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  void onRenameCommit(proj, e.currentTarget.value);
-                } else if (e.key === 'Escape') {
-                  e.preventDefault();
-                  setRenamingPath(null);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
+            <RenameInput
+              initial={proj.name}
+              ariaLabel={t('menu.project.rename')}
+              onCommit={(value) => void onRenameCommit(proj, value)}
+              onCancel={() => setRenamingPath(null)}
             />
           ) : (
             <button
@@ -1075,7 +1062,8 @@ function SessionRow({
       sessionId: session.sessionId,
       title: trimmed,
     });
-    if (r.ok) upsertSession({ ...session, title: trimmed });
+    if (r.ok && r.data.ok) upsertSession({ ...session, title: trimmed });
+    else pushToast(t('sidebar.renameFailed'), 'error');
   }
 
   if (isRenaming) {
@@ -1112,6 +1100,7 @@ function SessionRow({
           onDoubleClick={onStartRename}
           onContextMenu={(e) => {
             e.preventDefault();
+            e.currentTarget.focus();
             onContextMenu(e.clientX, e.clientY);
           }}
           aria-busy={deleting}
@@ -1194,18 +1183,26 @@ function formatSidebarTime(timestamp: number, locale: SupportedLocaleT): string 
   return isZh ? `${yr} 年` : `${yr}y`;
 }
 
-/** Inline rename input — Enter 提交、Esc / blur 取消（避免静默改名误操作） */
+/** Inline rename input — Enter / blur save; Escape cancels. */
 function RenameInput({
   initial,
+  ariaLabel,
   onCommit,
   onCancel,
 }: {
   initial: string;
+  ariaLabel?: string;
   onCommit: (value: string) => void;
   onCancel: () => void;
 }): JSX.Element {
   const { t } = useI18n();
   const [value, setValue] = useState(initial);
+  const finished = useRef(false);
+  const commit = (): void => {
+    if (finished.current) return;
+    finished.current = true;
+    onCommit(value);
+  };
   return (
     <input
       type="text"
@@ -1213,20 +1210,22 @@ function RenameInput({
       autoFocus
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={(e) => {
+        if (e.nativeEvent.isComposing) return;
         if (e.key === 'Enter') {
           e.preventDefault();
-          onCommit(value);
+          commit();
         } else if (e.key === 'Escape') {
           e.preventDefault();
+          finished.current = true;
           onCancel();
         }
       }}
-      onBlur={onCancel}
+      onBlur={commit}
       onFocus={(e) => e.currentTarget.select()}
       className="flex-1 bg-transparent text-fg-primary text-xs outline-none border-b border-border-strong focus:border-warn px-0.5 -mx-0.5"
       placeholder={t('sidebar.session.renamePlaceholder')}
       maxLength={256}
-      aria-label={t('sidebar.session.renameAria')}
+      aria-label={ariaLabel ?? t('sidebar.session.renameAria')}
     />
   );
 }

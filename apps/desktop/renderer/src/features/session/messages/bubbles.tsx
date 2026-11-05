@@ -15,6 +15,7 @@ import {
   Info,
   Maximize2,
   Undo2,
+  UserRound,
   Wrench,
 } from 'lucide-react';
 import { isSessionAttachmentPreviewUrl } from '@kodax-space/space-ipc-schema';
@@ -460,16 +461,23 @@ export function UserBubble({
   attachments?: readonly UserImageAttachment[];
   sentAt?: number;
 }): JSX.Element {
-  // Keep the document column and attachment behavior; emphasis comes from the surface, not blue text.
+  const { t } = useI18n();
   const visibleContent = attachments.length > 0 && content.trim() === '(image)' ? '' : content;
   return (
-    <div className="group flex flex-col items-start" data-testid="user-message-bubble">
+    <div className="group flex flex-col items-start pt-3" data-testid="user-message-bubble">
       <div
         className={[
           'conversation-user-content inline-block min-w-0 max-w-[min(85%,100%)] overflow-hidden rounded-2xl px-4 py-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] border',
-          'bg-surface-2 border-border-default/70 text-fg-primary',
+          'bg-info/10 border-info/30 border-l-[3px] border-l-info/80 text-fg-primary',
         ].join(' ')}
       >
+        <div
+          data-testid="user-query-label"
+          className="mb-2 flex items-center gap-1.5 whitespace-normal text-xs font-semibold leading-4 text-info"
+        >
+          <UserRound className="h-3.5 w-3.5" aria-hidden />
+          {t('message.userQueryLabel')}
+        </div>
         {visibleContent.length > 0 && <CollapsibleUserMessageContent content={visibleContent} />}
         {attachments.length > 0 && (
           <div className={visibleContent.length > 0 ? 'mt-2' : undefined}>

@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/appStore.js';
+import { pushToast } from '../../store/toastStore.js';
 import { resolveActiveModel } from '../../shell/resolveActiveModel.js';
 import { useSurfaceStore } from '../../store/surface.js';
 import { sessionMatchesScope } from '../../lib/sessionScope.js';
@@ -213,7 +214,9 @@ export function SessionList(): JSX.Element {
       title: trimmed,
     });
     setRenaming(null);
-    if (result.ok && currentProjectPath) {
+    if (!result.ok || !result.data.ok) {
+      pushToast(t('sidebar.renameFailed'), 'error');
+    } else if (currentProjectPath) {
       await refreshSessions(currentProjectPath, replaceSessionsForScope, currentSurface);
     }
   }
@@ -289,7 +292,11 @@ interface SessionListRowProps {
   readonly renameDraft: string;
   readonly onSelect: (sessionId: string) => void;
   readonly onDelete: (e: React.MouseEvent, sessionId: string) => void;
-  readonly onStartRename: (e: React.MouseEvent, sessionId: string, title: string | undefined) => void;
+  readonly onStartRename: (
+    e: React.MouseEvent,
+    sessionId: string,
+    title: string | undefined,
+  ) => void;
   readonly onRenameDraftChange: (value: string) => void;
   readonly onCommitRename: () => void;
   readonly onCancelRename: () => void;
@@ -379,10 +386,7 @@ function SessionListRow({
                 className="flex items-center gap-1 text-[11px] text-fg-muted"
                 title={t('session.deleting')}
               >
-                <span
-                  className="sidebar-status-spinner sidebar-status-spinner--mini"
-                  aria-hidden
-                />
+                <span className="sidebar-status-spinner sidebar-status-spinner--mini" aria-hidden />
                 {t('session.deleting')}
               </span>
             ) : (

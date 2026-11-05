@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-30
+Last Updated: 2026-11-04
 
 > Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96. This unpublished working tree retains Space 0.1.47-alpha.3 and pins Registry SDK 0.7.97-alpha.11; the published alpha.3 installers still use SDK alpha.9. Start from the [documentation hub](README.md) and [alpha.11 integration](releases/kodax-0.7.97-alpha.11-integration.md) for current behavior, qualification and remaining investigations.
 
@@ -231,6 +231,9 @@ Last Updated: 2026-10-30
 | 233 | High | Resolved in source | Cold Session history hydration can show React 185 when full-body reads complete together | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
 | 234 | Medium | Resolved in source | Ordinary child reports appear as yellow warnings with raw SDK transport markup | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
 | 235 | Medium | Resolved in source | Downward history scrolling and the bottom arrow stop at a frozen older window | Reported local v0.1.47-alpha.3 / SDK alpha.10 | 2026-10-28 |
+| 236 | High | Resolved in source | History page replacement removes newer replies and loses view-to-history scroll anchors | Reported v0.1.47-alpha.4 | 2026-11-04 |
+| 237 | Medium | Resolved in source | Sidebar renames are cancelled on blur and rejected saves appear successful | Reported v0.1.47-alpha.4 | 2026-11-04 |
+| 238 | Medium | Resolved in source | User queries blend into long assistant transcripts | Reported v0.1.47-alpha.4 | 2026-11-04 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16041,17 +16044,25 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 - **Changed files / tests**: `productConversation.ts`, `composeMessages.ts`, `messages/bubbles.tsx`, `i18n/messages.ts`, `sessionHistoryPaging.ts`, `ConversationStreamV2.tsx`, `runtime-host-adapter.ts`; colocated projection/notice/paging/Adapter tests, `conversationHistoryNavigation.browser.test.ts`, and packaged `sdk-history-navigation.spec.ts`. The first newest read now establishes SDK observation before capturing a history cursor, preventing immediate source invalidation. Validation: 107 related tests and the full Adapter suite pass; final package cold-load replay passes 3/3. Installer, Portable and final package results/hashes are in the [investigation](research/renderer-185-agent-notices-and-history-navigation-2026-10-28.md).
 - **Resolution date**: 2026-10-28. See [regression guide](test-guides/ISSUE_234_0.1.47-alpha.3_REGRESSION_GUIDE.md).
 
+## Issues 236–238 — Alpha customer history and sidebar feedback
+
+- **Created / resolution date**: 2026-11-04. Status: Resolved in source. Reported version: alpha.4; fixed working tree: 0.1.47-alpha.3 with Registry SDK alpha.11, not yet released. Customer screenshots and the supplied Word report established the symptoms; independent fixtures reproduce the affected paths.
+- **236 Original Problem (High)**: scrolling older history replaces the visible document and removes newer answers. A short-looking conversation with many folded tool calls can lose its final answer too. **Root cause**: SDK history pages were installed as replacements; live and history IDs differ, so the viewport anchor fell back to the page bottom. **Resolution**: accumulate same-revision history pages, retain their suffix, use unique SDK identities only for viewport mapping, and return to live only through the bottom control. No live/history body stitching or opaque ID parsing. Revision checks and lifecycle fences remain intact.
+- **237 Original Problem (Medium)**: renaming seems ineffective after leaving the field; failed saves can temporarily display an unsaved title. **Root cause**: blur cancelled edits, UI ignored the mutation's business result, and menu Escape lost trigger focus. **Resolution**: Enter/blur commit once, Esc cancels, IME confirmation does not submit, failed saves notify without changing the title, project/session menus restore focus. Real SDK list refresh verifies saved names. This establishes concrete failure paths, not the customer's exact unrecorded click sequence.
+- **238 Original Problem (Medium)**: subdued query bubbles are difficult to find among long answers. **Resolution**: persistent localized sender label, blue-tinted background, accent edge and turn spacing; four-line expand/collapse and attachments remain supported.
+- **Files / tests**: renderer `sessionHistoryPaging.ts`, `ConversationStreamV2.tsx`, `productSessionView.ts`, sidebar/session rename entrypoints, `SidebarContextMenu.tsx`, `messages/bubbles.tsx` and translations. 83 targeted unit/browser tests and four Electron E2E scenarios cover continuous long/compact history, distinct SDK IDs, stale replies, live isolation, rename rejection/blur/IME/cancellation, project/task menus, file menus and query collapse. See [regression guide](test-guides/ISSUE_236_0.1.47-alpha.3_REGRESSION_GUIDE.md).
+
 ## Summary
 
 
-- Total: 222
+- Total: 225
 - Open: 1
 - Ready: 3
 - Needs info: 1
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 206
-- High: 116
-- Medium: 94
+- Resolved (including source-only fixes): 209
+- High: 117
+- Medium: 96
 - Low: 12
 - Next ready to resolve: 222

@@ -929,7 +929,18 @@ async function requestHistory(
             ? trail.slice(0, -1)
             : [...trail, reference],
       );
-      installProductHistory(sessionId, result.productItems, page.hasNewer);
+      // SDK pages share one revision and opaque history item identity. Retain the
+      // already-read suffix so crossing a page boundary never removes text below
+      // the reader. The live view remains a separate, independently advancing source.
+      const retainedHistory = continueFromCurrentBoundary
+        ? (productTranscriptSnapshot(sessionId)?.historyItems ?? [])
+        : [];
+      const incomingIds = new Set(result.productItems.map((item) => item.id));
+      installProductHistory(
+        sessionId,
+        [...result.productItems, ...retainedHistory.filter((item) => !incomingIds.has(item.id))],
+        page.hasNewer,
+      );
       updateAllTerminalHistoryWorkflows(sessionId, 'in-flight', 'completed');
       deferredReadyRevalidations.delete(sessionId);
       loadedEpochs.set(sessionId, requestedEpoch);

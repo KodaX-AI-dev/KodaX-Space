@@ -3,11 +3,38 @@ import test from 'node:test';
 import { useAppStore } from './appStore.js';
 import {
   productTranscriptSnapshot,
+  productHistoryScrollAnchorId,
   replaceProductSessionView,
   resetProductSessionViews,
   installProductHistory,
   installProductItemContent,
 } from './productSessionView.js';
+
+test('viewport anchors cross view/history IDs only with unambiguous SDK identity', () => {
+  resetProductSessionViews();
+  installProductHistory(
+    's',
+    [
+      { id: 'history-user', type: 'user', inputId: 'input', text: 'question' },
+      { id: 'history-a', type: 'assistant', outputId: 'output', text: 'same' },
+      { id: 'history-b', type: 'assistant', outputId: 'output', text: 'same' },
+    ],
+    false,
+  );
+  replaceProductSessionView({
+    sessionId: 's',
+    runtimeId: 'r',
+    revision: 1,
+    items: [
+      { id: 'view-user', type: 'user', inputId: 'input', text: 'question' },
+      { id: 'view-answer', type: 'assistant', outputId: 'output', text: 'same' },
+      { id: 'unrelated', type: 'user', text: 'question' },
+    ],
+  });
+  assert.equal(productHistoryScrollAnchorId('s', 'view-user'), 'history-user');
+  assert.equal(productHistoryScrollAnchorId('s', 'view-answer'), undefined);
+  assert.equal(productHistoryScrollAnchorId('s', 'unrelated'), undefined);
+});
 
 test('removing a session releases its SDK transcript and full bodies', () => {
   resetProductSessionViews();

@@ -33,6 +33,7 @@ export function SidebarContextMenu({
   testId,
 }: SidebarContextMenuProps): JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null);
+  const returnFocusTarget = useRef(typeof document === 'undefined' ? null : document.activeElement);
   const [measuredHeight, setMeasuredHeight] = useState(estimatedHeight);
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -70,6 +71,8 @@ export function SidebarContextMenu({
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
+        const target = returnFocusTarget.current;
+        if (target instanceof HTMLElement && target.isConnected) target.focus();
         return;
       }
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;

@@ -122,9 +122,9 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
       sessionId,
       title: trimmed,
     });
-    if (r.ok) {
+    if (r.ok && r.data.ok) {
       upsertSession({ ...session, title: trimmed });
-    }
+    } else pushToast(t('sidebar.renameFailed'), 'error');
     setRenaming(false);
     onClose();
   }

@@ -73,6 +73,31 @@ function publish(sessionId: string, next: ProductTranscript, deferBodyNotificati
 export function productTranscriptSnapshot(sessionId: string | null): ProductTranscript | undefined {
   return sessionId ? transcripts.get(sessionId) : undefined;
 }
+/** Cross-source identity is only a viewport hint; never use it to merge message bodies. */
+export function productHistoryScrollAnchorId(
+  sessionId: string | null,
+  itemId: string,
+): string | undefined {
+  const transcript = productTranscriptSnapshot(sessionId);
+  // History DOM nodes already carry history IDs; avoid scanning accumulated
+  // pages on every scroll frame once the cross-source transition is complete.
+  if (!transcript?.view || transcript.browsingOlder) return undefined;
+  const source = transcript.items.find((item) => item.id === itemId);
+  if (!source) return undefined;
+  if (transcript.historyItems.some((item) => item.id === itemId)) return itemId;
+  const matches = transcript.historyItems.filter(
+    (item) =>
+      item.type === source.type &&
+      ((source.inputId !== undefined && item.inputId === source.inputId) ||
+        (source.outputId !== undefined && item.outputId === source.outputId) ||
+        (source.tool?.callId !== undefined && item.tool?.callId === source.tool.callId) ||
+        (source.historyBoundary !== undefined &&
+          item.historyBoundary?.entryId === source.historyBoundary.entryId)),
+  );
+  // One output may contain multiple same-type blocks. Ambiguity is not permission
+  // to collapse those blocks or guess an identity from their text or opaque IDs.
+  return matches.length === 1 ? matches[0]?.id : undefined;
+}
 export function replaceProductSessionView(view: SessionProductView): void {
   const previous = transcripts.get(view.sessionId);
   if (previous?.view?.runtimeId === view.runtimeId && previous.view.revision >= view.revision)
