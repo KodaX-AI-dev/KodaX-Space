@@ -1,5 +1,7 @@
 # KodaX Space Feature List
 
+> 2026-11-05 unreleased mainline: exact Registry SDK `0.7.97-beta.2`; published alpha.4 remains beta.1. The [beta.2 integration](releases/kodax-beta2-space-adaptation.md) and [boundary root-cause correction](research/kodax-beta2-boundary-root-cause.md) distinguish Space fixes, actual packaged validation and unresolved performance/environment boundaries. This does not publish or replace alpha.4.
+
 > Last reviewed: 2026-11-04; current stable v0.1.46 / KodaX 0.7.96; alpha.4 release qualification is below.
 > Latest stable release: [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) (first stable 0.1.46 release; exact stable KodaX 0.7.96 Registry, all rc.6 contracts and fixes). Previous stable: [`v0.1.45`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.45) (`0.1.45` package baseline; exact KodaX 0.7.95 Registry, FEATURE_032 v2 inline ask-user cards, admitted-Run reconnect recovery, and KodaX 0.7.95 contract alignment)
 > Current source: Space `0.1.47-alpha.4` / Registry SDK `0.7.97-beta.1`. Shared Host Partner Agent, mode selection, file credentials, manual updates and UI/history repairs are qualified in [alpha.4 readiness](releases/v0.1.47-alpha.4-release-readiness.md). SDK and platform limits remain explicit.
