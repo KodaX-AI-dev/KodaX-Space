@@ -1284,7 +1284,8 @@ export class CoderSessionProjectionReducer {
           | 'execution_binding_unavailable'
           | 'execution_binding_rejected'
           | 'execution_binding_changed'
-          | 'default_skill_unavailable';
+          | 'default_skill_unavailable'
+          | 'execution_mode_mismatch';
         readonly message: string;
       };
     }[],

@@ -10,7 +10,7 @@ import os from 'node:os';
 
 for (const termination of ['close', 'crash'])
   test(
-    `a fresh Main restores the complete queued Partner intent after Host restart without duplicate execution (${termination})`,
+    `a fresh Main restores the complete queued Partner intent on the same live Host without duplicate execution (${termination})`,
     { timeout: 120_000 },
     async () => {
       process.env.KODAX_TEST_ONBOARDING = `beta1-cold-${randomUUID()}`;
@@ -65,7 +65,7 @@ for (const termination of ['close', 'crash'])
           ],
         }),
       );
-      const report = { sdk: '0.7.97-beta.1', termination };
+      const report = { termination };
       const children = [];
       function start(action, extra = {}) {
         const child = spawn(
@@ -153,13 +153,13 @@ for (const termination of ['close', 'crash'])
         for (const child of children) if (child.exitCode === null) child.kill();
         server.closeAllConnections();
         await new Promise((resolve) => server.close(resolve));
-        await mkdir('artifacts/diagnostics/beta1-fixes', { recursive: true });
+        await mkdir('artifacts/diagnostics/beta2', { recursive: true });
         await writeFile(
-          'artifacts/diagnostics/beta1-fixes/cold-main-host-report.json',
+          'artifacts/diagnostics/beta2/cold-main-host-report.json',
           JSON.stringify(report, null, 2),
         );
         await writeFile(
-          `artifacts/diagnostics/beta1-fixes/cold-main-${termination}-host-report.json`,
+          `artifacts/diagnostics/beta2/cold-main-${termination}-host-report.json`,
           JSON.stringify(report, null, 2),
         );
       }

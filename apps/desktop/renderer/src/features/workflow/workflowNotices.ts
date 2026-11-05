@@ -44,7 +44,7 @@ export function formatWorkflowEventNotices(
     }
   }
 
-  if (payload.type === 'workflow_finished') {
+  if (payload.type === 'workflow_finished' && payload.snapshot.resultSource !== 'session') {
     const finished = formatWorkflowFinishedNotice(payload);
     if (finished) notices.push(finished);
   }

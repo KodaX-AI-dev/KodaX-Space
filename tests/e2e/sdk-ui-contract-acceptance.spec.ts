@@ -15,6 +15,37 @@ import {
 
 test.setTimeout(120_000);
 
+test('repo inspection uses the current execution Host without initializing or calling the model', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space, projectRoot } = await launchRealSdkSpace(`repo-host-${Date.now()}`, provider.url);
+  try {
+    await sendSdkPrompt(space, 'REPO_HOST_SETUP');
+    await expect(space.page.getByTestId('conversation-stream')).toContainText(
+      'SDK_REPLY:REPO_HOST_SETUP',
+    );
+    const sessionId = await currentSdkSession(space);
+    await waitSdkIdle(space, sessionId);
+    const before = provider.requests.length;
+    const facts = await space.page.evaluate(
+      async (input) => ({
+        profile: await window.kodaxSpace!.invoke('runtime.profileSnapshot', undefined),
+        repo: await window.kodaxSpace!.invoke('repointel.status', input),
+      }),
+      { sessionId, projectRoot, probe: false },
+    );
+    expect(facts.repo).toMatchObject({ ok: true, data: { initialized: false } });
+    if (!facts.repo.ok || !facts.profile.ok) throw new Error('Host facts unavailable');
+    expect(facts.repo.data.runtimeId).toBe(facts.profile.data.connection.runtimeId);
+    await sendSdkPrompt(space, '/repointel status');
+    await expect(space.page.getByTestId('conversation-stream')).toContainText('initialized=false');
+    expect(provider.requests).toHaveLength(before);
+    await space.page.screenshot({ path: test.info().outputPath('repo-host-inspection.png') });
+  } finally {
+    await provider.close();
+    await space.close();
+  }
+});
+
 async function completedHostWorkflow(
   space: SpaceInstance,
   projectRoot: string,
@@ -86,7 +117,7 @@ async function delayWorkflowList(space: SpaceInstance) {
   });
   await space.page
     .getByTestId('workflow-management-panel')
-    .getByRole('button', { name: 'Refresh workflow library', exact: true })
+    .getByRole('button', { name: 'Refresh workflow list', exact: true })
     .click();
   await expect
     .poll(() =>
@@ -168,11 +199,10 @@ async function seedBrokenExtension(root: string) {
   );
 }
 
-async function expectHostManagementDisabled(scope: Locator) {
-  for (const name of ['Rename', 'Delete']) {
+async function expectNoWorkflowManagement(scope: Locator) {
+  for (const name of ['Rename', 'Delete', 'Save', 'Rerun']) {
     const button = scope.getByRole('button', { name, exact: true });
-    await expect(button).toBeDisabled();
-    await expect(button).toHaveAttribute('title', /Upgrade Space/);
+    await expect(button).toHaveCount(0);
   }
 }
 
@@ -195,7 +225,7 @@ async function readHostManagementResults(space: SpaceInstance, runId: string) {
   return result;
 }
 
-test('Host-owned workflow management rejects unsupported mutations and explains its disabled actions', async () => {
+test('explicit Workflow execution retains its Host final response without saved-run management', async () => {
   const provider = await createLocalSdkProvider();
   const { space, projectRoot } = await launchRealSdkSpace(
     `workflow-management-${Date.now()}`,
@@ -215,19 +245,28 @@ test('Host-owned workflow management rejects unsupported mutations and explains 
       data: { run: { runId: run.runId, status: 'completed' } },
     });
     const panel = await openWorkflowManagement(space);
-    await expectHostManagementDisabled(panel);
-    await panel
-      .getByTestId('workflow-saved-list-item')
-      .filter({ hasText: run.savedWorkflowName! })
-      .click();
-    await expectHostManagementDisabled(panel.getByTestId('workflow-run-card'));
-    // Saved definitions remain Space-owned; their own rename/delete actions stay enabled.
+    await expectNoWorkflowManagement(panel);
+    await expect(panel.getByTestId('workflow-saved-list-item')).toHaveCount(0);
+    await panel.getByTestId('workflow-result-toggle').click();
+    await expect(panel.getByTestId('workflow-result-body')).toContainText(
+      'ACCEPTANCE_WORKFLOW_DONE',
+    );
+    const result = await space.page.evaluate(
+      (runId) => window.kodaxSpace!.invoke('workflow.result', { runId }),
+      run.runId,
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      data: { result: expect.stringContaining('ACCEPTANCE_WORKFLOW_DONE') },
+    });
+    await expect(space.page.getByTestId('conversation-stream')).toContainText(
+      'ACCEPTANCE_WORKFLOW_DONE',
+    );
     await expect(
-      panel
-        .getByTestId('workflow-management-detail')
-        .getByRole('button', { name: 'Rename', exact: true })
-        .first(),
-    ).toBeEnabled();
+      space.page
+        .locator('[data-testid="system-notice"][data-notice-variant="workflow"]')
+        .filter({ hasText: '[workflow] completed:' }),
+    ).toHaveCount(0);
     await space.page.screenshot({
       path: test.info().outputPath('workflow-management-capabilities.png'),
     });

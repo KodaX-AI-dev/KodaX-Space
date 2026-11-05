@@ -880,6 +880,7 @@ export const spaceRuntimeQueuedInputSchema = z
           'execution_binding_rejected',
           'execution_binding_changed',
           'default_skill_unavailable',
+          'execution_mode_mismatch',
         ]),
         message: z.string().max(512),
       })

@@ -88,36 +88,6 @@ const WORKFLOW_SUBCOMMANDS: ReadonlyArray<{
   { label: 'resume', descriptionKey: 'slash.workflow.resume.desc', argsHint: '<runId>' },
   { label: 'stop', descriptionKey: 'slash.workflow.stop.desc', argsHint: '[runId]' },
   {
-    label: 'delete',
-    descriptionKey: 'slash.workflow.delete.desc',
-    argsHint: '[--force] [--run|--saved] <target>',
-  },
-  {
-    label: 'prune',
-    descriptionKey: 'slash.workflow.prune.desc',
-    argsHint: '--dry-run|--keep N|--older-than Nd',
-  },
-  {
-    label: 'rerun',
-    descriptionKey: 'slash.workflow.rerun.desc',
-    argsHint: '<runId|savedName> [args]',
-  },
-  {
-    label: 'save',
-    descriptionKey: 'slash.workflow.save.desc',
-    argsHint: '<runId> <name>',
-  },
-  {
-    label: 'rename',
-    descriptionKey: 'slash.workflow.rename.desc',
-    argsHint: '<runId|savedName> <newName>',
-  },
-  {
-    label: 'revise',
-    descriptionKey: 'slash.workflow.revise.desc',
-    argsHint: '[--replace] <runId|savedName> <change>',
-  },
-  {
     label: 'create',
     descriptionKey: 'slash.workflow.create.desc',
     argsHint: '<request>',
@@ -231,15 +201,6 @@ function buildWorkflowSuggestions(
   const runItems = runs.map((run) =>
     workflowSuggestion(query, run.runId, `${run.status} ${workflowTitle(run)}`),
   );
-  const savedItems = (library?.saved ?? []).map((w) =>
-    workflowSuggestion(
-      query,
-      w.name,
-      w.source
-        ? t('slash.workflow.savedWorkflowWithMeta', { meta: w.source })
-        : t('slash.workflow.savedWorkflow'),
-    ),
-  );
   const flag = (label: string, description: string): SlashPickerItem =>
     workflowSuggestion(query, label, description);
 
@@ -254,31 +215,7 @@ function buildWorkflowSuggestions(
     case 'pause':
     case 'resume':
     case 'stop':
-    case 'save':
       return filter(runItems);
-    case 'delete':
-      return filter([
-        flag('--force', t('slash.workflow.flag.force')),
-        flag('--run', t('slash.workflow.flag.run')),
-        flag('--saved', t('slash.workflow.flag.saved')),
-        ...runItems,
-        ...savedItems,
-      ]);
-    case 'prune':
-      return filter([
-        flag('--dry-run', t('slash.workflow.flag.dryRun')),
-        flag('--keep', t('slash.workflow.flag.keep')),
-        flag('--older-than', t('slash.workflow.flag.olderThan')),
-      ]);
-    case 'rerun':
-    case 'rename':
-      return filter([...runItems, ...savedItems]);
-    case 'revise':
-      return filter([
-        flag('--replace', t('slash.workflow.flag.replace')),
-        ...runItems,
-        ...savedItems,
-      ]);
     default:
       return [];
   }

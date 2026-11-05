@@ -33,6 +33,22 @@ function event(over: Partial<WorkflowEventPayload>): WorkflowEventPayload {
   };
 }
 
+test('a Host Workflow final response stays in the SDK Session without a duplicate local completion notice', () => {
+  assert.deepEqual(
+    formatWorkflowEventNotices(
+      event({
+        type: 'workflow_finished',
+        snapshot: run({
+          status: 'completed',
+          resultSource: 'session',
+          resultSummary: 'SDK final response',
+        }),
+      }),
+    ),
+    [],
+  );
+});
+
 test('workflow event notices include completed child agent summaries', () => {
   const notices = formatWorkflowEventNotices(
     event({
@@ -85,13 +101,23 @@ test('workflow finished notice names the run id so same-named runs are distingui
   const failed = formatWorkflowEventNotices(
     event({
       type: 'workflow_finished',
-      snapshot: run({ runId: 'run-old', workflowName: 'deep-review', status: 'failed', error: 'boom' }),
+      snapshot: run({
+        runId: 'run-old',
+        workflowName: 'deep-review',
+        status: 'failed',
+        error: 'boom',
+      }),
     }),
   );
   const rerun = formatWorkflowEventNotices(
     event({
       type: 'workflow_finished',
-      snapshot: run({ runId: 'run-new', workflowName: 'deep-review', status: 'completed', resultSummary: 'ok' }),
+      snapshot: run({
+        runId: 'run-new',
+        workflowName: 'deep-review',
+        status: 'completed',
+        resultSummary: 'ok',
+      }),
     }),
   );
   assert.equal(failed[0]?.text, '[workflow] failed: deep-review · run-old\nboom');

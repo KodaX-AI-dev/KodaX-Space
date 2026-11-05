@@ -10,6 +10,7 @@ export const repointelStatusChannel = {
   name: 'repointel.status',
   direction: 'invoke',
   input: z.object({
+    sessionId: z.string().min(1).max(256).optional(),
     projectRoot: z.string().min(1).max(4096).optional(),
     // The chip fetches with probe:false (cheap, config-only — no semantic-worker spawn)
     // to drive its always-on readiness pill; the /repointel status doctor view omits it
@@ -28,11 +29,13 @@ export const repointelStatusChannel = {
     // off and the UI shows a locked/upsell state instead of running it.
     entitled: z.boolean(),
     // Resolved engine mode + health from inspectRepoIntelligenceRuntime. The chip uses
-    // these so the pill can reflect READINESS ("Full" when enabled + healthy) instead of
+    // these and initialized so the pill can reflect actual Host readiness instead of
     // a misleading "idle" whenever the current session simply hasn't invoked repo-intel
     // yet. null when the SDK inspection itself failed.
     effectiveEngine: z.enum(['off', 'light', 'full']).nullable(),
     engineStatus: z.enum(['disabled', 'ok', 'limited', 'unavailable', 'warming']).nullable(),
+    initialized: z.boolean().optional(),
+    runtimeId: z.string().min(1).optional(),
     diagnostics: z.array(repointelStatusItemSchema).min(1),
   }),
 } as const;
@@ -46,10 +49,12 @@ export const repointelPrewarmChannel = {
   name: 'repointel.prewarm',
   direction: 'invoke',
   input: z.object({
+    sessionId: z.string().min(1).max(256).optional(),
     projectRoot: z.string().min(1).max(4096),
   }),
   output: z.object({
     started: z.boolean(),
+    runtimeId: z.string().min(1).optional(),
   }),
 } as const;
 

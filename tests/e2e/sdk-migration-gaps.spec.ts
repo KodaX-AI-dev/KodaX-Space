@@ -69,20 +69,22 @@ test('Workflow execution and Memory management share the actual Host with anothe
     const runId = started.data.runId;
     await expect.poll(async () => (await peer!.workflows.get(runId))?.status).toBe('completed');
     expect((await peer.workflows.list({ runId }))[0]?.runId).toBe(runId);
-    // The rerun reads the Host-managed run directory while the first run may
-    // still be finalizing it; the run record lands on disk after the daemon
-    // already reports `completed` from memory, so retry with a real backoff
-    // budget instead of three immediate attempts.
-    let rerun: { ok: boolean; data?: { runId: string } } | undefined;
-    for (let attempt = 1; ; attempt++) {
-      rerun = await space.page.evaluate(
-        (input) => window.kodaxSpace!.invoke('workflow.rerun', input),
-        { sessionId, runId },
-      );
-      if ((rerun.ok && rerun.data) || attempt >= 15) break;
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
-    }
-    expect(rerun.ok && rerun.data).toHaveProperty('runId');
+    const rerun = await space.page.evaluate(
+      (input) => window.kodaxSpace!.invoke('workflow.rerun', input),
+      { sessionId, runId },
+    );
+    expect(rerun).toMatchObject({
+      ok: true,
+      data: { error: expect.stringContaining('single-use') },
+    });
+    await expect
+      .poll(
+        async () =>
+          (await peer!.sessions.readHistory(sessionId)).items.filter(
+            (item) => item.taskResult?.source === 'workflow' && item.taskResult.taskId === runId,
+          ).length,
+      )
+      .toBe(1);
     const memory = await peer.memory.forProject(projectRoot);
     expect(
       (

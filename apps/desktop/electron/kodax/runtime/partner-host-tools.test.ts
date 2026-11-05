@@ -150,6 +150,7 @@ test('checkpoint rebinding keeps admitted persona and does not prepare the newly
     },
   });
   assert.deepEqual(binding.context.agentProfile, admitted);
+  assert.equal(binding.context.requiredWorkMode, 'agent');
 });
 
 test('an older Partner checkpoint without a proven business snapshot never adopts the current expert or connector scope', async () => {

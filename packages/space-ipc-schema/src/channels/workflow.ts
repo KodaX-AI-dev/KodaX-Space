@@ -118,6 +118,8 @@ export const workflowProcessSnapshotSchema = z.object({
   status: workflowProcessStatusSchema,
   /** Space admission facts: absent for legacy local runs; never inferred from a UI action. */
   managementCapabilities: z.object({ rename: z.boolean(), delete: z.boolean() }).optional(),
+  /** This Host commits its final response to the owning Session, rather than a local notice. */
+  resultSource: z.literal('session').optional(),
   startedAt: z.string().max(SHORT),
   updatedAt: z.string().max(SHORT),
   elapsedMs: z.number().nonnegative().optional(),

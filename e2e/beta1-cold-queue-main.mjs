@@ -9,6 +9,8 @@ const { RuntimeHostAdapter } =
   await import('../apps/desktop/electron/kodax/runtime-host-adapter.ts');
 const { RuntimeClientIdentityStore } =
   await import('../apps/desktop/electron/kodax/runtime/runtime-client-identity.ts');
+const { RuntimeInputAuthorizationStore } =
+  await import('../apps/desktop/electron/kodax/runtime/runtime-input-authorization-store.ts');
 const { registerSpaceBuiltinSkills } =
   await import('../apps/desktop/electron/skill/space-builtins.ts');
 await registerSpaceBuiltinSkills(path.resolve('resources/builtin-skills'));
@@ -29,6 +31,9 @@ const options = {
 const create = () =>
   new RuntimeHostAdapter({
     ...options,
+    inputAuthorizationStore: new RuntimeInputAuthorizationStore(
+      path.join(input.profileRoot, 'space', 'input-authorizations'),
+    ),
     identityStore: new RuntimeClientIdentityStore(
       path.join(input.profileRoot, 'space', 'identity.json'),
     ),
@@ -79,22 +84,29 @@ try {
     assert.equal(report.runtimeId, input.runtimeId);
     await adapter.readSessionProductView(sessionId);
     process.send({ stage: 'attached', mainPid: process.pid });
-    await runtime.runs.await(activeRunId);
+    const activeOutcome = await runtime.runs.await(activeRunId);
+    report.activePhase = activeOutcome.phase;
+    assert.equal(activeOutcome.phase, 'completed');
     await new Promise((resolve) => setTimeout(resolve, 500));
     const liveFact = await runtime.runs.getInput(sessionId, inputId);
     report.liveHostRebound = liveFact?.state === 'submitted';
-    if (liveFact?.state === 'queued') {
-      report.liveHostPending = { state: liveFact.state, admissionError: liveFact.admissionError };
-      await shutdown();
-      adapter = create();
-      await adapter.initialize();
-      report.replacementRuntimeId = runtime.identity.runtimeId;
-      assert.notEqual(report.replacementRuntimeId, report.runtimeId);
-      await adapter.readSessionProductView(sessionId);
-    }
+    report.queueBefore = (await adapter.readSessionLiveSnapshot(sessionId)).queuedInputs.map(
+      ({ inputId, state, recovery, admissionError }) => ({
+        inputId,
+        state,
+        recovery,
+        admissionError,
+      }),
+    );
     await until(
       async () => (await runtime.runs.getInput(sessionId, inputId))?.state === 'submitted',
     );
+    assert.equal(
+      runtime.identity.runtimeId,
+      input.runtimeId,
+      'Main recovery must not restart the live Host',
+    );
+    report.liveHostRebound = true;
     const consumed = await runtime.runs.getInput(sessionId, inputId);
     assert.equal((await runtime.runs.await(consumed.runId)).phase, 'completed');
     const run = await runtime.runs.get(consumed.runId);
@@ -147,6 +159,7 @@ try {
     process.send({ stage: 'result', report });
   }
 } catch (error) {
+  process.stderr.write(`Cold queue report: ${JSON.stringify(report)}\n`);
   try {
     if (runtime && input.action !== 'create') await shutdown();
     else await adapter.close();

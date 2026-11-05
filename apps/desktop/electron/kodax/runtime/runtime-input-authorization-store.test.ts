@@ -47,6 +47,7 @@ test('persona, verification and actual Host tool metadata survive durable input 
   const store = new RuntimeInputAuthorizationStore();
   const authorization = {
     profile: {
+      requiredWorkMode: 'agent' as const,
       agentProfile: {
         surface: 'partner',
         id: 'expert',

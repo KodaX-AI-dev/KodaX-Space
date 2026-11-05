@@ -56,7 +56,7 @@ export function QueuedInputRecovery({
       {recovery && recovery !== 'ready' && <div>{t(`message.queue.recovery.${recovery}`)}</div>}
       <button
         type="button"
-        disabled={busy || recovery === 'unavailable' || recovery === 'restoring'}
+        disabled={busy || recovery === 'restoring'}
         onClick={() => void takeBack()}
         className="underline disabled:opacity-50"
       >

@@ -284,6 +284,7 @@ test('a workflow resolves an older Partner outside the initial profile before it
     sharedSessionSettings: { version: 2, keys: ['workMode'] },
   });
   fake.runtime.workflows.start = async (input) => {
+    assert.equal(input.authorization?.profile?.requiredWorkMode, 'agent');
     assert.equal(
       (await fake.runtime.sessions.getSettingsVersioned(input.sessionId!)).value.workMode,
       'agent',
@@ -1352,6 +1353,8 @@ test('terminal Stop retries delegate acceptance to the owner and never retarget 
 });
 
 for (const [capability, value] of [
+  ['productInputRecovery', undefined],
+  ['productExecutionModeConstraint', undefined],
   ['sessionCancellation', undefined],
   ['sessionCancellation', { version: 1, durableFrontier: false }],
   ['toolInvocation', undefined],
@@ -1520,6 +1523,8 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
         liveOutputSegments: 1,
         managedRunDurability: 1,
         productClient: 1,
+        productInputRecovery: 1,
+        productExecutionModeConstraint: 1,
         sessionDrafts: 1,
         runtimeEventCoalescing: 1,
         runtimeAutoModeGuardrail: 6,
@@ -1814,6 +1819,8 @@ function createFakeRuntime(runtimeId = 'rt_test') {
     },
     capabilities: {
       productClient: { version: 1 },
+      productInputRecovery: { version: 1 },
+      productExecutionModeConstraint: { version: 1 },
       sessionDrafts: { version: 1 },
       productExecutionAuthorization: { version: 2 },
       productHistoryBoundaries: { version: 1 },
@@ -12940,37 +12947,41 @@ test('daemon bridge projects root repo-intelligence traces onto the Repointel ch
   });
   const bridgeRuntimeEvent = bindTestRuntimeEventBridge(adapter);
 
-  bridgeRuntimeEvent({
-    id: 'event_repo_intel_trace',
-    seq: 44,
-    time: '2026-08-19T00:00:00.000Z',
-    type: 'repo_intelligence.trace',
-    sessionId: 's_repointel',
-    runId: 'run_repointel',
-    turnId: 'turn_repointel',
-    payload: {
-      stage: 'preturn',
-      summary: 'stage=preturn | mode=full/full/ok | cache_hit=yes',
-      capability: {
-        mode: 'full',
-        engine: 'full',
-        level: 'enhanced',
-        status: 'ok',
-        warnings: [],
-      },
-      trace: {
-        mode: 'full',
-        engine: 'full',
-        triggeredAt: '2026-08-19T00:00:00.000Z',
-        source: 'full',
-        cacheHit: true,
+  bridgeRuntimeEvent(
+    {
+      id: 'event_repo_intel_trace',
+      seq: 44,
+      time: '2026-08-19T00:00:00.000Z',
+      type: 'repo_intelligence.trace',
+      sessionId: 's_repointel',
+      runId: 'run_repointel',
+      turnId: 'turn_repointel',
+      payload: {
+        stage: 'preturn',
+        summary: 'stage=preturn | mode=full/full/ok | cache_hit=yes',
+        capability: {
+          mode: 'full',
+          engine: 'full',
+          level: 'enhanced',
+          status: 'ok',
+          warnings: [],
+        },
+        trace: {
+          mode: 'full',
+          engine: 'full',
+          triggeredAt: '2026-08-19T00:00:00.000Z',
+          source: 'full',
+          cacheHit: true,
+        },
       },
     },
-  });
+    'rt-repo',
+  );
 
   assert.deepEqual(sessionEvents, [
     {
       kind: 'repointel_trace',
+      runtimeEvent: { runtimeId: 'rt-repo', runId: 'run_repointel', seq: 44 },
       sessionId: 's_repointel',
       event: {
         kind: 'preturn',

@@ -36,11 +36,7 @@ import type { SlashCommandDef, SlashHandlerContext, SlashHandlerResult } from '.
 import { kodaxHost, providerDescriptor } from '../kodax/host.js';
 import { learningSafetyService } from '../ipc/learning.js';
 import { isRepoIntelEntitled } from '../kodax/repo-intel-gate.js';
-import {
-  workflowController,
-  type LaunchSession,
-  type SavedWorkflowLite,
-} from '../kodax/workflow-controller.js';
+import { workflowController, type LaunchSession } from '../kodax/workflow-controller.js';
 import { loadPersistedSession } from '../kodax/session-store.js';
 import {
   createSpaceSdkExtensionRuntime,
@@ -1216,36 +1212,20 @@ type WorkflowInvocation =
   | { readonly kind: 'pause'; readonly runId: string }
   | { readonly kind: 'resume'; readonly runId: string }
   | { readonly kind: 'stop'; readonly runId: string }
-  | {
-      readonly kind: 'delete';
-      readonly target: string;
-      readonly force?: boolean;
-      readonly scope?: 'run' | 'saved' | 'conflict';
-    }
-  | { readonly kind: 'prune'; readonly rawArgs: readonly string[] }
-  | { readonly kind: 'save'; readonly runId: string; readonly name: string }
-  | { readonly kind: 'rename'; readonly target: string; readonly newName: string }
-  | {
-      readonly kind: 'revise';
-      readonly target: string;
-      readonly request: string;
-      readonly replace?: boolean;
-    }
-  | { readonly kind: 'rerun'; readonly runId: string; readonly rawArgs: string }
+  | { readonly kind: 'retired' }
   | { readonly kind: 'create'; readonly request: string }
   | { readonly kind: 'start'; readonly name: string; readonly rawArgs: string };
 
 /** Partner uses the general Agent surface; Host authorization governs Workflow effects. */
-export function isPartnerAllowedWorkflowKind(kind: WorkflowInvocation['kind']): boolean {
+export function isPartnerAllowedWorkflowKind(kind: string): boolean {
   void kind;
   return true;
 }
 
 const DEFAULT_WORKFLOW_RUNS_LIMIT = 20;
-const DEFAULT_WORKFLOW_PRUNE_KEEP = 50;
 const MAX_WORKFLOW_RUNS_LIMIT = 200;
 const WORKFLOW_ARG_HINT =
-  'pending | help | list | runs [--all|--limit N] | show [runId] | pause <runId> | resume <runId> | stop [runId] | delete [--force] [--run|--saved] <runId|savedName> | prune --dry-run|--keep N|--older-than Nd | rerun <runId|savedName> [args] | save <runId> <name> | rename <runId|alias|savedName> <newName> | revise [--replace] <runId|alias|savedName> <change> | create <request> | <name> [args]';
+  'help | list | runs | show [runId] | pause <runId> | resume <runId> | stop [runId] | create <request> | <name> [args]';
 
 function parseWorkflowInvocation(args: readonly string[]): WorkflowInvocation {
   const first = args[0]?.toLowerCase();
@@ -1261,38 +1241,8 @@ function parseWorkflowInvocation(args: readonly string[]): WorkflowInvocation {
   if (first === 'pause') return { kind: 'pause', runId: args[1] ?? '' };
   if (first === 'resume') return { kind: 'resume', runId: args[1] ?? '' };
   if (first === 'stop') return { kind: 'stop', runId: args[1] ?? '' };
-  if (first === 'delete') {
-    const rest = args.slice(1);
-    const force = rest.includes('--force');
-    const saved = rest.includes('--saved');
-    const run = rest.includes('--run');
-    const target =
-      rest.find((arg) => arg !== '--force' && arg !== '--saved' && arg !== '--run') ?? '';
-    const scope = saved && run ? 'conflict' : saved ? 'saved' : run ? 'run' : undefined;
-    return {
-      kind: 'delete',
-      target,
-      ...(force ? { force: true } : {}),
-      ...(scope ? { scope } : {}),
-    };
-  }
-  if (first === 'prune') return { kind: 'prune', rawArgs: args.slice(1) };
-  if (first === 'save') return { kind: 'save', runId: args[1] ?? '', name: args[2] ?? '' };
-  if (first === 'rename')
-    return { kind: 'rename', target: args[1] ?? '', newName: args.slice(2).join(' ').trim() };
-  if (first === 'revise') {
-    const raw = args.slice(1);
-    const replace = raw.includes('--replace');
-    const cleaned = raw.filter((arg) => arg !== '--replace');
-    return {
-      kind: 'revise',
-      target: cleaned[0] ?? '',
-      request: cleaned.slice(1).join(' ').trim(),
-      ...(replace ? { replace: true } : {}),
-    };
-  }
-  if (first === 'rerun')
-    return { kind: 'rerun', runId: args[1] ?? '', rawArgs: args.slice(2).join(' ').trim() };
+  if (['delete', 'prune', 'save', 'rename', 'revise', 'rerun'].includes(first))
+    return { kind: 'retired' };
   if (first === 'create') return { kind: 'create', request: args.slice(1).join(' ').trim() };
   return { kind: 'start', name: args[0]!, rawArgs: args.slice(1).join(' ').trim() };
 }
@@ -1314,15 +1264,6 @@ function parseNonNegativeInteger(value: string | undefined): number | undefined 
   if (!value) return undefined;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
-}
-
-function parseOlderThanMs(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const match = /^(\d+)([dh]?)$/i.exec(value.trim());
-  if (!match) return undefined;
-  const amount = Number(match[1]);
-  if (!Number.isInteger(amount) || amount <= 0) return undefined;
-  return (match[2]?.toLowerCase() === 'h' ? amount * 60 * 60 : amount * 24 * 60 * 60) * 1000;
 }
 
 function parseWorkflowRunsOptions(args: readonly string[]): {
@@ -1351,48 +1292,6 @@ function parseWorkflowRunsOptions(args: readonly string[]): {
   return { all, limit };
 }
 
-function parseWorkflowPruneOptions(args: readonly string[]): {
-  readonly dryRun: boolean;
-  readonly keep?: number;
-  readonly olderThanDays?: number;
-  readonly error?: string;
-} {
-  let dryRun = false;
-  let keep: number | undefined;
-  let olderThanDays: number | undefined;
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === '--dry-run') {
-      dryRun = true;
-      continue;
-    }
-    if (arg === '--keep') {
-      const parsed = parseNonNegativeInteger(args[index + 1]);
-      if (parsed === undefined) return { dryRun, error: '--keep expects a non-negative integer' };
-      keep = parsed;
-      index += 1;
-      continue;
-    }
-    if (arg === '--older-than') {
-      const parsed = parseOlderThanMs(args[index + 1]);
-      if (parsed === undefined)
-        return { dryRun, error: '--older-than expects a value like 7d or 24h' };
-      olderThanDays = Math.ceil(parsed / (24 * 60 * 60 * 1000));
-      index += 1;
-      continue;
-    }
-    return { dryRun, error: `unknown option: ${arg ?? ''}` };
-  }
-  if (dryRun && keep === undefined && olderThanDays === undefined) {
-    return { dryRun, keep: DEFAULT_WORKFLOW_PRUNE_KEEP };
-  }
-  return {
-    dryRun,
-    ...(keep !== undefined ? { keep } : {}),
-    ...(olderThanDays !== undefined ? { olderThanDays } : {}),
-  };
-}
-
 function workflowHelp(): string {
   return [
     'Usage:',
@@ -1404,12 +1303,6 @@ function workflowHelp(): string {
     '  /workflow pause <runId>',
     '  /workflow resume <runId>',
     '  /workflow stop [runId]',
-    '  /workflow delete [--force] [--run|--saved] <runId|savedName>',
-    '  /workflow prune --dry-run|--keep N|--older-than Nd',
-    '  /workflow rerun <runId|savedName> [args]',
-    '  /workflow save <runId> <name>',
-    '  /workflow rename <runId|savedName> <newName>',
-    '  /workflow revise [--replace] <runId|savedName> <change>',
     '  /workflow create <request>',
     '  /workflow <name> [args]',
   ].join('\n');
@@ -1447,16 +1340,6 @@ function findWorkflowRun(sessionId: string, target: string): WorkflowRunT | unde
   });
 }
 
-function findSavedWorkflow(
-  saved: readonly SavedWorkflowLite[],
-  target: string,
-): SavedWorkflowLite | undefined {
-  const lower = target.toLowerCase();
-  return saved.find(
-    (w) => w.name === target || w.name.toLowerCase() === lower || w.path === target,
-  );
-}
-
 function workflowRunDetails(run: WorkflowRunT, full = false): string {
   const lines = [
     formatWorkflowRun(run),
@@ -1476,19 +1359,6 @@ function workflowRunDetails(run: WorkflowRunT, full = false): string {
     }
   }
   return lines.filter(Boolean).join('\n');
-}
-
-function formatSavedAction(
-  prefix: string,
-  result: { readonly name?: string; readonly path?: string; readonly previousPath?: string },
-): string {
-  return [
-    `${prefix}: ${result.name ?? ''}`.trim(),
-    result.path ? `Path: ${result.path}` : '',
-    result.previousPath ? `Previous: ${result.previousPath}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
 }
 
 type ToggleValue = 'on' | 'off';
@@ -2071,6 +1941,12 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       if (ctx.args[0]?.toLowerCase() === 'pending') return handleLearningPending(ctx, 'workflow');
 
       const invocation = parseWorkflowInvocation(ctx.args);
+      if (invocation.kind === 'retired')
+        return {
+          ok: false,
+          message:
+            'Workflow is a single-use operation in Space. Use /workflow create or explicitly start a definition; saved definitions and conversation results are retained without management actions.',
+        };
 
       if (invocation.kind === 'help') {
         return { ok: true, message: workflowHelp(), echo: true };
@@ -2187,205 +2063,6 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
         return ok
           ? { ok: true, message: `workflow ${invocation.kind}: ${selected.runId}`, echo: true }
           : { ok: false, message: `workflow ${invocation.kind} failed: ${selected.runId}` };
-      }
-
-      if (invocation.kind === 'delete') {
-        if (!invocation.target)
-          return {
-            ok: false,
-            message: 'Usage: /workflow delete [--force] [--run|--saved] <runId|savedName>',
-          };
-        if (invocation.scope === 'conflict')
-          return { ok: false, message: 'choose only one delete scope: --run or --saved' };
-        const library = await workflowController.listLibrary(session.projectRoot);
-        const run =
-          invocation.scope === 'saved'
-            ? undefined
-            : findWorkflowRun(ctx.sessionId, invocation.target);
-        const saved =
-          invocation.scope === 'run'
-            ? undefined
-            : findSavedWorkflow(library.saved, invocation.target);
-        if (run && saved && invocation.scope === undefined) {
-          return {
-            ok: false,
-            message: `ambiguous delete target: ${invocation.target}; use --run or --saved`,
-          };
-        }
-        if (saved && !run) {
-          const result = await workflowController.deleteSavedWorkflow(
-            saved.name,
-            session.projectRoot,
-            saved.source,
-          );
-          return 'error' in result
-            ? { ok: false, message: result.error }
-            : {
-                ok: true,
-                message: formatSavedAction('Deleted saved workflow', result),
-                echo: true,
-              };
-        }
-        if (!run) return { ok: false, message: `workflow target not found: ${invocation.target}` };
-        const ok = await workflowController.deleteRun(run.runId, invocation.force);
-        return ok
-          ? {
-              ok: true,
-              message: `Deleted workflow run ${run.runId}${invocation.force ? ' with --force' : ''}.`,
-              echo: true,
-            }
-          : { ok: false, message: `workflow delete failed: ${run.runId}` };
-      }
-
-      if (invocation.kind === 'prune') {
-        const options = parseWorkflowPruneOptions(invocation.rawArgs);
-        if (options.error)
-          return {
-            ok: false,
-            message: `Usage: /workflow prune --dry-run | --keep N | --older-than Nd\n${options.error}`,
-          };
-        if (!options.dryRun && options.keep === undefined && options.olderThanDays === undefined) {
-          return {
-            ok: false,
-            message:
-              'Usage: /workflow prune --dry-run | --keep N | --older-than Nd\nNo cleanup rule was provided.',
-          };
-        }
-        const result = await workflowController.prune(options);
-        const lines = [
-          options.dryRun ? 'Workflow prune preview:' : 'Workflow prune:',
-          `Candidates: ${result.candidates.length ? result.candidates.join(', ') : '(none)'}`,
-          `Protected active runs: ${result.protectedRuns}`,
-          options.dryRun ? 'Dry run only.' : `Deleted: ${result.deleted}`,
-        ];
-        return { ok: true, message: compactSlashMessage(lines.join('\n')), echo: true };
-      }
-
-      if (invocation.kind === 'save') {
-        if (!invocation.runId || !invocation.name)
-          return { ok: false, message: 'Usage: /workflow save <runId> <name>' };
-        const run = runtimeHostAdapter.isRuntimeSelected()
-          ? await runtimeHostAdapter.getWorkflow(invocation.runId)
-          : findWorkflowRun(ctx.sessionId, invocation.runId);
-        if (!run) return { ok: false, message: `workflow run not found: ${invocation.runId}` };
-        const result = await workflowController.saveGeneratedWorkflowFromRun(
-          run.runId,
-          invocation.name,
-          session.projectRoot,
-        );
-        return 'error' in result
-          ? { ok: false, message: result.error }
-          : { ok: true, message: formatSavedAction('Saved workflow', result), echo: true };
-      }
-
-      if (invocation.kind === 'rename') {
-        if (!invocation.target || !invocation.newName)
-          return { ok: false, message: 'Usage: /workflow rename <runId|savedName> <newName>' };
-        const library = await workflowController.listLibrary(session.projectRoot);
-        const run = findWorkflowRun(ctx.sessionId, invocation.target);
-        const saved = findSavedWorkflow(library.saved, invocation.target);
-        if (run && saved)
-          return {
-            ok: false,
-            message: `ambiguous rename target: ${invocation.target}; use the concrete runId or saved workflow name`,
-          };
-        if (run) {
-          const ok = await workflowController.rename(run.runId, invocation.newName);
-          return ok
-            ? {
-                ok: true,
-                message: `Renamed workflow run ${run.runId} to ${invocation.newName}.`,
-                echo: true,
-              }
-            : { ok: false, message: `workflow rename failed: ${run.runId}` };
-        }
-        if (saved) {
-          const result = await workflowController.renameSavedWorkflow(
-            saved.name,
-            invocation.newName,
-            session.projectRoot,
-            saved.source,
-          );
-          return 'error' in result
-            ? { ok: false, message: result.error }
-            : {
-                ok: true,
-                message: formatSavedAction('Renamed saved workflow', result),
-                echo: true,
-              };
-        }
-        return { ok: false, message: `workflow target not found: ${invocation.target}` };
-      }
-
-      if (invocation.kind === 'revise') {
-        if (!invocation.target || !invocation.request) {
-          return {
-            ok: false,
-            message: 'Usage: /workflow revise [--replace] <runId|savedName> <change request>',
-          };
-        }
-        const library = await workflowController.listLibrary(session.projectRoot);
-        const run = findWorkflowRun(ctx.sessionId, invocation.target);
-        const saved = findSavedWorkflow(library.saved, invocation.target);
-        if (run && saved)
-          return {
-            ok: false,
-            message: `ambiguous revise target: ${invocation.target}; use the concrete runId or saved workflow name`,
-          };
-        if (invocation.replace && !saved)
-          return { ok: false, message: 'revise --replace requires a saved workflow name target' };
-        if (!run && !saved)
-          return { ok: false, message: `workflow target not found: ${invocation.target}` };
-        const result = await workflowController.reviseWorkflow({
-          target: run?.runId ?? saved!.name,
-          request: invocation.request,
-          ...(invocation.replace ? { replace: true } : {}),
-          session: launchSession,
-          ...(saved ? { saved } : {}),
-        });
-        return 'error' in result
-          ? { ok: false, message: result.error }
-          : {
-              ok: true,
-              message: formatSavedAction(
-                invocation.replace ? 'Replaced saved workflow' : 'Saved workflow revision',
-                result,
-              ),
-              echo: true,
-            };
-      }
-
-      if (invocation.kind === 'rerun') {
-        if (!invocation.runId)
-          return { ok: false, message: 'Usage: /workflow rerun <runId|savedName> [args]' };
-        const library = await workflowController.listLibrary(session.projectRoot);
-        const run = runtimeHostAdapter.isRuntimeSelected()
-          ? await runtimeHostAdapter.getWorkflow(invocation.runId)
-          : findWorkflowRun(ctx.sessionId, invocation.runId);
-        const saved = findSavedWorkflow(library.saved, invocation.runId);
-        if (run && saved)
-          return {
-            ok: false,
-            message: `ambiguous rerun target: ${invocation.runId}; use /workflow ${saved.name} for saved or a concrete runId`,
-          };
-        const args = parseWorkflowArgs(invocation.rawArgs);
-        const result = saved
-          ? await workflowController.start({
-              target: saved.path,
-              source: 'saved',
-              args,
-              session: launchSession,
-            })
-          : run
-            ? await workflowController.rerunGeneratedWorkflow(run.runId, args, launchSession)
-            : { error: `workflow target not found: ${invocation.runId}` };
-        return 'error' in result
-          ? { ok: false, message: result.error }
-          : {
-              ok: true,
-              message: `workflow started: ${saved?.name ?? run?.workflowName ?? invocation.runId} (${result.runId})`,
-              echo: true,
-            };
       }
 
       if (invocation.kind === 'create') {
@@ -2602,12 +2279,6 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
         return { ok: true, message: '__action__:show-repointel-trace', echo: false };
       }
       if (detailMode === 'warm') {
-        if (runtimeHostAdapter.isRuntimeSelected())
-          return {
-            ok: false,
-            message:
-              '[repointel] This Host does not expose prewarm. Runtime traces remain available; upgrade the SDK when Host prewarm support is published.',
-          };
         // Repo-intelligence is a licensed capability — don't prewarm the built-in engine
         // without an active license (matches the run gate + chip lock). Fail-closed via
         // repo-intel-gate.ts.
@@ -2617,6 +2288,14 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
             message:
               '[repointel] repo-intelligence is a licensed capability. Activate a license (Settings → License) to enable prewarm and repo-aware assistance.',
             echo: true,
+          };
+        }
+        if (runtimeHostAdapter.isRuntimeSelected()) {
+          const status = await runtimeHostAdapter.inspectRepoIntelligence(ctx.sessionId, true);
+          return {
+            ok: true,
+            echo: true,
+            message: `[repointel] Host status=${status.status}, initialized=${status.initialized}, effective=${status.effectiveEngine}.${status.warnings.length ? '\n' + status.warnings.join('\n') : ''}`,
           };
         }
         const sdk = await loadSpaceSdkCoding();

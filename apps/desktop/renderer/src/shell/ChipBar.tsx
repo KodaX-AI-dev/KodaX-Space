@@ -276,6 +276,8 @@ function RepointelChip({ projectPath }: { readonly projectPath: string }): JSX.E
   const [statusErr, setStatusErr] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const runtimeId = useAppStore((s) => s.runtimeConnection.runtimeId);
+  const refreshRevision = useAppStore((s) => s.repoIntelStatusRevision);
   const licenseStatus = useAppStore((s) => s.licenseStatus);
   // 订阅原始 events array，避免 selector 返回新数组引用造成 zustand re-render 风暴
   const events = useAppStore((s) =>
@@ -286,11 +288,15 @@ function RepointelChip({ projectPath }: { readonly projectPath: string }): JSX.E
     if (!events || events.length === 0) return EMPTY_TRACES;
     const collected: RepointelTraceSlim[] = [];
     for (let i = events.length - 1; i >= 0 && collected.length < 3; i--) {
-      const ev = events[i] as unknown as { kind: string; event?: RepointelTraceSlim };
-      if (ev.kind === 'repointel_trace' && ev.event) collected.push(ev.event);
+      const ev = events[i];
+      if (
+        ev?.kind === 'repointel_trace' &&
+        (!runtimeId || ev.runtimeEvent?.runtimeId === runtimeId)
+      )
+        collected.push(ev.event);
     }
     return collected.length === 0 ? EMPTY_TRACES : collected;
-  }, [events]);
+  }, [events, runtimeId]);
 
   useEffect(() => {
     if (!open) return;
@@ -308,9 +314,14 @@ function RepointelChip({ projectPath }: { readonly projectPath: string }): JSX.E
   useEffect(() => {
     if (!window.kodaxSpace) return;
     let cancelled = false;
+    setStatus(null);
     setStatusErr(null);
     void window.kodaxSpace
-      .invoke('repointel.status', { projectRoot: projectPath, probe: false })
+      .invoke('repointel.status', {
+        projectRoot: projectPath,
+        sessionId: currentSessionId ?? undefined,
+        probe: false,
+      })
       .then((result) => {
         if (cancelled) return;
         if (result.ok) setStatus(result.data);
@@ -319,7 +330,7 @@ function RepointelChip({ projectPath }: { readonly projectPath: string }): JSX.E
     return () => {
       cancelled = true;
     };
-  }, [projectPath, t]);
+  }, [projectPath, currentSessionId, runtimeId, licenseStatus, refreshRevision, open, t]);
 
   if (!currentSessionId) return null;
 
@@ -338,7 +349,10 @@ function RepointelChip({ projectPath }: { readonly projectPath: string }): JSX.E
   const latest = latestTraces[0];
   const liveMode = latest?.mode;
   const readyMode =
-    status && (status.effectiveEngine === 'full' || status.effectiveEngine === 'light')
+    status &&
+    status.initialized !== false &&
+    (status.engineStatus === 'ok' || status.engineStatus === 'limited') &&
+    (status.effectiveEngine === 'full' || status.effectiveEngine === 'light')
       ? status.effectiveEngine
       : undefined;
   const mode = liveMode ?? readyMode;

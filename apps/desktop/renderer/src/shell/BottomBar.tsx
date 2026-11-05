@@ -488,11 +488,26 @@ function workflowPendingMessage(
 // remounts; resetting on app restart is fine (warm again next run).
 const prewarmedProjects = new Set<string>();
 function maybePrewarmRepoIntel(value: string, projectRoot: string | null): void {
-  if (!projectRoot || value.length === 0 || prewarmedProjects.has(projectRoot)) return;
+  const { currentSessionId, runtimeConnection } = useAppStore.getState();
+  const key = JSON.stringify([projectRoot, currentSessionId, runtimeConnection.runtimeId]);
+  if (!projectRoot || !currentSessionId || value.length === 0 || prewarmedProjects.has(key)) return;
   if (!window.kodaxSpace) return;
-  prewarmedProjects.add(projectRoot); // optimistic — never retry-spam per keystroke
+  prewarmedProjects.add(key); // one attempt per Host/Session, never retry per keystroke
+  if (prewarmedProjects.size > 128)
+    prewarmedProjects.delete(prewarmedProjects.values().next().value!);
   // Fire-and-forget: must never disrupt typing, so swallow everything.
-  void window.kodaxSpace.invoke('repointel.prewarm', { projectRoot }).catch(() => {});
+  void window.kodaxSpace
+    .invoke('repointel.prewarm', { projectRoot, sessionId: currentSessionId })
+    .then((result) => {
+      if (result.ok && result.data.started)
+        useAppStore
+          .getState()
+          .invalidateRepoIntelStatus(
+            currentSessionId,
+            result.data.runtimeId ?? runtimeConnection.runtimeId,
+          );
+    })
+    .catch(() => {});
 }
 
 export function BottomBar(): JSX.Element {
@@ -1250,6 +1265,10 @@ export function BottomBar(): JSX.Element {
         return false;
       }
       const { ok, message, echo, clearStream, unknownCommand } = result.data;
+      if (ok && name.toLowerCase() === 'repointel' && args[0]?.toLowerCase() === 'warm')
+        useAppStore
+          .getState()
+          .invalidateRepoIntelStatus(sessionId, useAppStore.getState().runtimeConnection.runtimeId);
       if (unknownCommand) {
         return true;
       }
@@ -1430,6 +1449,7 @@ export function BottomBar(): JSX.Element {
       }
       const traces = events.filter((ev) => ev.kind === 'repointel_trace');
       const result = await invokeComposerIpc('repointel.status', {
+        sessionId,
         projectRoot: state.currentProjectPath ?? undefined,
       });
       if (!result.ok) {

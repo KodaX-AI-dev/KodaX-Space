@@ -68,28 +68,40 @@ async function loadFixture(
 const channelRegistration =
   'export const registerChannel=(name,handler)=>channels[name]=handler;export const registerChannelWithEvent=registerChannel;';
 
-test('repo status reports Host configuration and unknown engine health without probing Main', async (t) => {
+test('repo status and explicit warm use the execution Host cache, preserving uninitialized and warning facts', async (t) => {
   const fixture = await loadFixture(t, 'repointel', 'registerRepointelChannels', {
     './register.js': channelRegistration,
     '../kodax/repo-intel-gate.js': 'export const isRepoIntelEntitled=async()=>true;',
     '../kodax/sdk-extensions.js':
       'export const loadSpaceSdkCoding=async()=>{throw Error("must not probe Main")};',
     '../kodax/runtime-host-adapter.js':
-      'export const runtimeHostAdapter={isRuntimeSelected:()=>true,readEffectiveRuntimeConfig:async()=>{if(state.failure)throw Error("Host unavailable");return{entries:{repoIntelligenceMode:{value:"full"}}}}};',
+      'export const runtimeHostAdapter={isRuntimeSelected:()=>true,inspectRepoIntelligence:async(id,warm)=>{if(state.failure)throw Error("Host unavailable");if(id!=="session")throw Error("Session required");if(warm)state.localStarts++;return{runtimeId:"actual-host",sessionId:id,workspaceRoot:state.directory,configuredMode:"full",requestedMode:"full",effectiveEngine:"light",status:"limited",initialized:!!warm,warnings:["Worker fallback"]}}};',
   });
   fixture.state.failure = false;
   const status = (await fixture.channels['repointel.status']!({
     probe: true,
+    sessionId: 'session',
+    projectRoot: 'untrusted-project',
   })) as ChannelOutput<'repointel.status'>;
-  assert.equal(status.effectiveEngine, null);
-  assert.equal(status.warmSupported, false);
-  assert.ok(
-    status.diagnostics.some((item) => item.detail.includes('Host configuration mode=full')),
+  assert.equal(status.effectiveEngine, 'light');
+  assert.equal(status.warmSupported, true);
+  assert.equal(status.initialized, false);
+  assert.equal(status.runtimeId, 'actual-host');
+  assert.equal(status.projectRoot, path.resolve(fixture.state.directory));
+  assert.ok(status.diagnostics.some((item) => item.detail === 'Worker fallback'));
+  assert.equal(fixture.state.localStarts, 0, 'inspection never initializes the cache');
+  assert.deepEqual(
+    await fixture.channels['repointel.prewarm']!({
+      sessionId: 'session',
+      projectRoot: 'untrusted',
+    }),
+    { started: true, runtimeId: 'actual-host' },
   );
+  assert.equal(fixture.state.localStarts, 1);
   fixture.state.failure = true;
-  const failed = (await fixture.channels['repointel.status']!(
-    {},
-  )) as ChannelOutput<'repointel.status'>;
+  const failed = (await fixture.channels['repointel.status']!({
+    sessionId: 'session',
+  })) as ChannelOutput<'repointel.status'>;
   assert.equal(failed.engineStatus, null);
   assert.ok(
     failed.diagnostics.some(

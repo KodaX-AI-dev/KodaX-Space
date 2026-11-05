@@ -682,6 +682,12 @@ export const messages = {
     'workflow.externalAgentPreflightFailed': 'External Agent preflight failed: {reason}',
     'workflow.refreshList': 'Refresh list',
     'workflow.listStale': 'Workflow refresh failed. The last known results may be out of date.',
+    'workflow.singleUseTitle': 'Workflow execution',
+    'workflow.savedResponseMissing':
+      'No saved Session response is available. Older runs may only have a summary. Click to retry reading.',
+    'workflow.singleUseDescription':
+      'Start a workflow explicitly for this session. Progress and final results stay in the conversation.',
+    'workflow.resultReadFailed': 'Saved response unavailable. Retry reading',
     'workflow.observationRecovering':
       'Workflow updates are reconnecting. The displayed state may be out of date.',
     'settings.extensionHealth.refresh': 'Refresh Host extension capabilities',
@@ -730,7 +736,7 @@ export const messages = {
     'workflow.agentStopped': '{count} stopped',
     'workflow.details': 'Phase details',
     'workflow.summary': 'Summary',
-    'workflow.fullResult': 'Full result',
+    'workflow.fullResult': 'Saved final response',
     'workflow.loadingResult': 'Loading...',
     'workflow.copyResult': 'Copy result',
     'workflow.copy': 'Copy',
@@ -2852,7 +2858,7 @@ export const messages = {
       'Not sent: the selected role, method or authorization is unavailable. Take back the full message to review and send again.',
     'message.queue.recovery.restoring': 'Restoring this queued input…',
     'message.queue.recovery.unavailable':
-      'This client has no complete original input. A preview cannot be taken back or resubmitted.',
+      'Automatic recovery has no complete local input. You can ask the Host to take back the original input.',
     'message.queue.recovery.blocked':
       'Restoration did not complete. Take back the original input to review and send it again.',
     'message.queue.takeBack': 'Take back message',
@@ -3947,7 +3953,7 @@ export const messages = {
     'workflow.agentStopped': '{count} stopped',
     'workflow.details': '阶段详情',
     'workflow.summary': '摘要',
-    'workflow.fullResult': '完整结果',
+    'workflow.fullResult': '已保存的最终回复',
     'workflow.loadingResult': '加载中...',
     'workflow.copyResult': '复制结果',
     'workflow.copy': '复制',
@@ -5741,6 +5747,11 @@ export const messages = {
       '尚未发送：所选专家、技能或授权不可用。可取回完整消息，检查后重新发送。',
     'workflow.listStale': '工作流刷新失败，当前显示的上次结果可能已过期。',
     'workflow.observationRecovering': '工作流状态正在重新连接，当前显示可能已过期。',
+    'workflow.singleUseTitle': '工作流执行',
+    'workflow.savedResponseMissing':
+      '此运行暂无已保存的会话最终回复；旧记录可能仅有摘要。点击可重新读取。',
+    'workflow.singleUseDescription': '为当前会话显式启动一次工作流，进度和最终结果保留在对话中。',
+    'workflow.resultReadFailed': '暂时无法读取已保存结果，点击重试',
     'settings.extensionHealth.refresh': '刷新 Host 扩展能力',
     'settings.extensionHealth.ready': '内置能力已就绪。',
     'settings.extensionHealth.degraded': '部分内置能力不可用，对话和历史仍可使用。',
@@ -5752,7 +5763,8 @@ export const messages = {
       '凭证持久保存到系统保护存储后才会完成连接。保存失败时，请恢复存储访问后重试。',
     'connector.dingtalkStorage': '钉钉自行管理凭证，目前仍依赖系统 Keychain。',
     'message.queue.recovery.restoring': '正在恢复此排队输入…',
-    'message.queue.recovery.unavailable': '当前客户端没有完整原始输入，不能用预览取回或重新提交。',
+    'message.queue.recovery.unavailable':
+      '本地没有完整输入用于自动恢复，可尝试从 Host 取回原始输入。',
     'message.queue.recovery.blocked': '恢复未完成。可取回原始输入，检查后重新发送。',
     'message.queue.takeBack': '取回消息',
     'message.queue.failed': '未送达',

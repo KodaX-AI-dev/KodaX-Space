@@ -8,7 +8,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assertKodaxReleaseDependencyState } from '../scripts/kodax-runtime-release-gate.mjs';
 
-test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () => {
+test('installed Registry SDK Space adapter acceptance', { timeout: 180_000 }, async () => {
   const dependency = await assertKodaxReleaseDependencyState(
     process.cwd(),
     path.resolve('node_modules/@kodax-ai/kodax'),
@@ -87,6 +87,7 @@ test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () 
   const { RuntimeClientIdentityStore } =
     await import('../apps/desktop/electron/kodax/runtime/runtime-client-identity.ts');
   let attached;
+  let connectionOptions;
   const report = {
     dependency,
     sdk: dependency.version,
@@ -98,6 +99,7 @@ test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () 
     homeDir,
     identityStore: new RuntimeClientIdentityStore(path.join(profileRoot, 'space', 'identity.json')),
     runtimeFactory: async ({ autoStart, endpoint, transport, ...options }) => {
+      connectionOptions = options;
       attached = autoStart
         ? await sdk.ensureKodaXRuntime(options)
         : await sdk.connectKodaXRuntime({ ...options, endpoint, transport });
@@ -122,6 +124,9 @@ test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () 
     );
     assert.equal(attached.capabilities.productExecutionBinding.version, 1);
     assert.equal(attached.capabilities.sessionPromotion.version, 1);
+    assert.equal(attached.capabilities.productInputRecovery.version, 1);
+    assert.equal(attached.capabilities.productExecutionModeConstraint.version, 1);
+    assert.equal(attached.capabilities.repoIntelligenceDiagnostics.version, 1);
     // Install the actual product expert library through the public extension boundary.
     const { getSpaceExtensionStore, getSpaceExpertCatalog } =
       await import('../apps/desktop/electron/space-extensions/runtime.ts');
@@ -289,7 +294,78 @@ test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () 
       type: item.type,
       text: item.text,
     }));
+    const observations = [];
+    const existing = await attached.sessions.observeView(quick, (view) => observations.push(view));
     await adapter.promoteSession(quick, 'code');
+    await until(() => observations.at(-1)?.session.tag === 'code');
+    const promoted = await attached.sessions.load(quick);
+    assert.equal(observations.at(-1).session.metadataRevision, promoted.metadataRevision);
+    existing.close();
+    const peer = await sdk.connectKodaXRuntime({
+      ...connectionOptions,
+      daemonLifecycle: undefined,
+      autoStart: false,
+      clientInfo: {
+        name: 'beta2-read-peer',
+        instanceId: randomUUID(),
+        instanceSecret: randomUUID(),
+      },
+    });
+    try {
+      const fresh = [];
+      const observation = await peer.sessions.observeView(quick, (view) => fresh.push(view));
+      try {
+        assert.equal(fresh.at(-1).session.tag, 'code');
+        assert.equal(fresh.at(-1).session.metadataRevision, promoted.metadataRevision);
+        assert.ok(fresh.at(-1).items.some((item) => item.text.includes('Fixture complete.')));
+      } finally {
+        observation.close();
+      }
+      const constrained = await create();
+      const startWorkflow = attached.workflows.start.bind(attached.workflows);
+      const beforeMismatch = requests.length;
+      attached.workflows.start = async (input) => {
+        assert.equal(input.authorization.profile.requiredWorkMode, 'agent');
+        const selected = await peer.sessions.getSettingsVersioned(constrained);
+        await peer.sessions.updateSettingsVersioned(
+          constrained,
+          { workMode: 'coding' },
+          { expectedRevision: selected.revision },
+        );
+        return startWorkflow(input);
+      };
+      try {
+        await assert.rejects(
+          adapter.startWorkflow({
+            sessionId: constrained,
+            projectRoot: workspace,
+            source: {
+              kind: 'inline',
+              manifest: {
+                name: 'wrong-mode-denied',
+                description: 'No wrong-mode execution',
+                phases: ['check'],
+                maxAgents: 1,
+                maxConcurrency: 1,
+                readOnly: true,
+                patterns: ['fan-out-and-synthesize'],
+              },
+              source: 'async function run() { throw new Error("WRONG_MODE_BODY_EXECUTED"); }',
+            },
+          }),
+          { code: 'execution_mode_mismatch' },
+        );
+        assert.equal(requests.length, beforeMismatch);
+        assert.equal((await peer.sessions.getSettings(constrained)).workMode, 'coding');
+        report.checks.push(
+          'a second client changing Partner to Coding after Main authorization is refused by Host before Workflow execution',
+        );
+      } finally {
+        attached.workflows.start = startWorkflow;
+      }
+    } finally {
+      await peer.close();
+    }
     assert.equal((await attached.sessions.load(quick)).tag, 'code');
     assert.deepEqual(
       (await attached.sessions.readHistory(quick)).items.map((item) => ({
@@ -300,7 +376,68 @@ test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () 
     );
     await adapter.promoteSession(quick, 'code');
     report.checks.push(
-      'Quick Ask promotion preserves the same Session/history and its retry is idempotent',
+      'Quick Ask promotion refreshes existing/new/second-client views and preserves the same Session/history',
+    );
+    const repoSession = await create('code');
+    await adapter.updateSessionSettings(repoSession, { repoIntelligenceMode: 'off' });
+    const beforeRepo = requests.length;
+    const repo = await adapter.inspectRepoIntelligence(repoSession);
+    assert.equal(repo.runtimeId, attached.identity.runtimeId);
+    assert.equal(repo.sessionId, repoSession);
+    assert.equal(repo.initialized, false);
+    assert.equal(repo.status, 'disabled');
+    assert.equal(requests.length, beforeRepo);
+    report.repo = repo;
+    report.checks.push('Host repository inspection remains lazy and makes no Provider request');
+    const { _setRepoIntelEntitlementForTesting } =
+      await import('../apps/desktop/electron/kodax/repo-intel-gate.ts');
+    _setRepoIntelEntitlementForTesting(async () => true);
+    try {
+      await attached.config.patch({ repoIntelligenceMode: 'light' });
+      const warmed = await adapter.inspectRepoIntelligence(repoSession, true);
+      assert.equal(warmed.initialized, true);
+      assert.equal(warmed.effectiveEngine, 'light');
+      assert.equal((await attached.catalog.inspectRepoIntelligence(repoSession)).initialized, true);
+      assert.equal(requests.length, beforeRepo);
+      report.checks.push(
+        'explicit Host prewarm shares its cache with public inspection without Provider calls',
+      );
+    } finally {
+      _setRepoIntelEntitlementForTesting(null);
+    }
+
+    const legacy = await create('code');
+    const legacyGate = gate();
+    holdNext = legacyGate;
+    const beforeLegacy = requests.length;
+    const heldRun = await ask(legacy, 'LEGACY_QUEUE_ORIGINAL');
+    await until(() => requests.length > beforeLegacy);
+    const originalInput = {
+      sessionId: legacy,
+      inputId: randomUUID(),
+      text: 'Retained full old input. '.repeat(500),
+      delivery: 'after_turn',
+    };
+    assert.equal((await attached.runs.acceptInput(originalInput)).state, 'queued');
+    const withdraw = attached.runs.withdrawInput.bind(attached.runs);
+    let lost = false;
+    attached.runs.withdrawInput = async (...args) => {
+      const value = await withdraw(...args);
+      if (!lost) {
+        lost = true;
+        throw new Error('Lost durable withdrawal reply');
+      }
+      return value;
+    };
+    await assert.rejects(adapter.withdrawProductInput(originalInput), /Lost durable/);
+    const recovered = await adapter.withdrawProductInput(originalInput);
+    assert.equal(recovered.text, originalInput.text);
+    attached.runs.withdrawInput = withdraw;
+    assert.deepEqual(await withdraw(legacy, originalInput.inputId), originalInput);
+    legacyGate.release();
+    assert.equal((await heldRun.result).phase, 'completed');
+    report.checks.push(
+      'legacy input without Space material recovers the full durable withdrawal receipt after a lost response',
     );
     report.requestCount = requests.length;
     async function until(predicate) {
@@ -334,9 +471,9 @@ test('Registry beta.1 Space adapter acceptance', { timeout: 180_000 }, async () 
       report.shutdown = stopped.status;
     } else await adapter.close();
     await new Promise((resolve) => server.close(resolve));
-    await mkdir('artifacts/diagnostics/beta1-release', { recursive: true });
+    await mkdir('artifacts/diagnostics/beta2', { recursive: true });
     await writeFile(
-      'artifacts/diagnostics/beta1-release/real-sdk-host-report.json',
+      'artifacts/diagnostics/beta2/real-sdk-host-report.json',
       JSON.stringify(report, null, 2),
     );
   }

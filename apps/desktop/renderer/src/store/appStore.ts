@@ -708,6 +708,8 @@ interface AppState {
    * 视图（F061）按 currentSession 过滤。
    */
   workflowRuns: Readonly<Record<string, WorkflowRunT>>;
+  repoIntelStatusRevision: number;
+  invalidateRepoIntelStatus(sessionId: string, runtimeId: string | undefined): void;
   workflowObservationStatus: 'ready' | 'recovering';
   workflowListStale: boolean;
   workflowObservationRevision: number;
@@ -6399,6 +6401,13 @@ export const useAppStore = create<AppState>((setState) => {
     managedTaskStatusBySession: {},
     agentActorSnapshotBySession: {},
     workflowRuns: {},
+    repoIntelStatusRevision: 0,
+    invalidateRepoIntelStatus: (sessionId, runtimeId) =>
+      set((state) =>
+        state.currentSessionId === sessionId && state.runtimeConnection.runtimeId === runtimeId
+          ? { repoIntelStatusRevision: state.repoIntelStatusRevision + 1 }
+          : state,
+      ),
     workflowObservationStatus: 'ready',
     workflowListStale: false,
     workflowObservationRevision: 0,

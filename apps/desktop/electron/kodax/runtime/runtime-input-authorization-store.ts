@@ -66,6 +66,7 @@ const verificationSchema = z
   .strict();
 const profileSchema = z
   .object({
+    requiredWorkMode: z.literal('agent').optional(),
     defaultSkill: z.object({ name: id }).strict().optional(),
     agentProfile: z
       .object({

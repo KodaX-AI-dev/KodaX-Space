@@ -998,29 +998,26 @@ test('/workflow runs works before workflow manager init', async () => {
   assert.ok(result.message?.includes('No workflow runs'));
 });
 
-test('/workflow help lists full workflow subcommands', async () => {
+test('/workflow help offers single-use execution without persistence management', async () => {
   const { sessionId } = kodaxHost.createSession({
     projectRoot: 'C:\\tmp\\proj',
     provider: 'mock',
   });
   const result = await runCmd('workflow', sessionId, ['help']);
   assert.equal(result.ok, true);
-  assert.ok(result.message?.includes('/workflow delete'));
-  assert.ok(result.message?.includes('/workflow prune'));
-  assert.ok(result.message?.includes('/workflow rerun'));
-  assert.ok(result.message?.includes('/workflow revise'));
+  for (const command of ['delete', 'prune', 'rerun', 'revise', 'save', 'rename'])
+    assert.ok(!result.message?.includes(`/workflow ${command}`));
   assert.ok(result.message?.includes('/workflow create'));
 });
 
-test('/workflow prune --dry-run works before lifecycle init', async () => {
+test('/workflow management refuses to mutate retained definitions and history', async () => {
   const { sessionId } = kodaxHost.createSession({
     projectRoot: 'C:\\tmp\\proj',
     provider: 'mock',
   });
   const result = await runCmd('workflow', sessionId, ['prune', '--dry-run']);
-  assert.equal(result.ok, true);
-  assert.equal(result.echo, true);
-  assert.ok(result.message?.includes('Workflow prune preview'));
+  assert.equal(result.ok, false);
+  assert.match(result.message ?? '', /single-use/);
 });
 
 test('/workflow create without request returns usage', async () => {

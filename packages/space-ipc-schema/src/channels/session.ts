@@ -1692,6 +1692,7 @@ export const sessionEventChannel = {
       // ---- Repointel (repo intelligence) trace ----
       z.object({
         kind: z.literal('repointel_trace'),
+        ...runtimeSessionEventOriginShape,
         sessionId: z.string().min(1),
         event: repointelTraceSchema,
       }),

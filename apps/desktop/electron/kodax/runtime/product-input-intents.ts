@@ -28,7 +28,10 @@ const inputSchema = z
     targetRunId: z.string().optional(),
     inputArtifacts: z.array(artifact).optional(),
   })
-  .strict();
+  .strict()
+  .transform(({ inputArtifacts, ...input }) =>
+    inputArtifacts?.length ? { ...input, inputArtifacts } : input,
+  );
 const recordSchema = z
   .object({ principal: z.string(), input: inputSchema, withdrawn: z.literal(true).optional() })
   .strict();
@@ -119,25 +122,21 @@ export async function readPendingProductInput(
 }
 
 export async function takeBackProductInput(
-  runs: Pick<KodaXDaemonRuntime['runs'], 'getInput' | 'withdrawInput'>,
+  runs: Pick<KodaXDaemonRuntime['runs'], 'withdrawInput'>,
   principal: string,
   input: { sessionId: string; inputId: string },
 ): Promise<ClientSubmitInput> {
-  const saved = await readProductRecord(principal, input.sessionId, input.inputId);
-  const original = saved?.input;
-  if (!saved || !original)
-    throw new Error(
-      'This input has no complete Space recovery record. No new withdrawal was attempted; its outcome must be checked with the Host.',
-    );
-  if (saved.withdrawn) return original;
-  const fact = await runs.getInput(input.sessionId, input.inputId);
-  if (fact?.state !== 'withdrawn') {
-    try {
-      await runs.withdrawInput(input.sessionId, input.inputId);
-    } catch (error) {
-      if ((await runs.getInput(input.sessionId, input.inputId))?.state !== 'withdrawn') throw error;
-    }
-  }
+  let saved = await readProductRecord(principal, input.sessionId, input.inputId);
+  if (saved?.withdrawn) return saved.input;
+  // beta.2 owns the durable, principal-bound receipt. A shared `withdrawn` status alone
+  // cannot prove the original text or attachments, especially for pre-upgrade queues.
+  const original = await runs.withdrawInput(input.sessionId, input.inputId);
+  if (original.sessionId !== input.sessionId || original.inputId !== input.inputId)
+    throw new Error('Host withdrawal receipt identity changed.');
+  await captureProductInput(principal, original);
+  saved ??= await readProductRecord(principal, input.sessionId, input.inputId);
+  if (!saved || !isDeepStrictEqual(saved.input, original))
+    throw new Error('Host withdrawal receipt differs from the original input.');
   const bytes = Buffer.from(JSON.stringify({ principal, input: original, withdrawn: true }));
   try {
     await replaceFileIfUnchanged(

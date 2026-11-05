@@ -5,7 +5,7 @@ import path from 'node:path';
 import { getSpaceDataDir } from '../data-paths.js';
 import { captureProductInput, takeBackProductInput } from './product-input-intents.js';
 
-test('taking back a long queued input survives Host and UI response loss without losing attachments or withdrawing twice', async () => {
+test('taking back a long queued input retries its durable Host receipt after response loss', async () => {
   const original = {
     sessionId: 'long-queued',
     inputId: 'original',
@@ -27,13 +27,14 @@ test('taking back a long queued input survives Host and UI response loss without
     withdrawInput: async () => {
       calls++;
       state = 'withdrawn';
-      throw new Error('Host response lost after commit');
+      if (calls === 1) throw new Error('Host response lost after commit');
+      return original;
     },
   };
-  assert.deepEqual(await takeBackProductInput(runs, 'main-principal', original), original);
+  await assert.rejects(takeBackProductInput(runs, 'main-principal', original), /response lost/);
   // A Renderer/Main restart retries the same identity after losing its success response.
   assert.deepEqual(await takeBackProductInput(runs, 'main-principal', original), original);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   const coldHost = {
     ...runs,
     getInput: async () => {
@@ -45,11 +46,69 @@ test('taking back a long queued input survives Host and UI response loss without
     original,
     'a durably confirmed Main receipt survives Host replacement',
   );
-  await assert.rejects(
-    takeBackProductInput(runs, 'different-principal', original),
-    /recovery record/,
-  );
+});
+
+test('legacy queued input without a Space record returns the complete Host receipt and caches it across restart', async () => {
+  const original = {
+    sessionId: 'legacy-withdraw',
+    inputId: 'old-input',
+    text: 'Original '.repeat(1500),
+    delivery: 'after_turn' as const,
+    inputArtifacts: [
+      { kind: 'file' as const, path: '/workspace/original.csv', name: 'original.csv' },
+    ],
+  };
+  let calls = 0;
+  const runs = {
+    withdrawInput: async () => {
+      calls++;
+      return original;
+    },
+  };
+  assert.deepEqual(await takeBackProductInput(runs, 'legacy-owner', original), original);
+  assert.deepEqual(await takeBackProductInput(runs, 'legacy-owner', original), original);
   assert.equal(calls, 1);
+  await assert.rejects(
+    takeBackProductInput(
+      {
+        withdrawInput: async () => {
+          throw Object.assign(new Error('Original principal required'), {
+            code: 'permission_denied',
+          });
+        },
+      },
+      'foreign-owner',
+      original,
+    ),
+    { code: 'permission_denied' },
+  );
+});
+
+test('a Host receipt for another input never replaces the original private material', async () => {
+  const original = { sessionId: 'wrong-receipt', inputId: 'original', text: 'Retain original' };
+  await captureProductInput('receipt-owner', original);
+  await assert.rejects(
+    takeBackProductInput(
+      { withdrawInput: async () => ({ ...original, inputId: 'other' }) },
+      'receipt-owner',
+      original,
+    ),
+    /identity|receipt/i,
+  );
+});
+
+test('the Host omits an empty artifact list without changing the original intent', async () => {
+  const original = {
+    sessionId: 'empty-artifacts',
+    inputId: 'same-input',
+    text: 'Exact original',
+    delivery: 'after_turn' as const,
+  };
+  await captureProductInput('empty-owner', { ...original, inputArtifacts: [] });
+  assert.deepEqual(
+    await takeBackProductInput({ withdrawInput: async () => original }, 'empty-owner', original),
+    original,
+  );
 });
 
 test('a refused take-back keeps its original input and never records a successful cancellation', async () => {

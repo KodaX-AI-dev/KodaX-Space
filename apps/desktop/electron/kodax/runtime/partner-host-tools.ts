@@ -175,6 +175,7 @@ async function partnerExecutionContext(
   if (state.expert) await getSpaceExpertCatalog().requireAvailable(state.expert);
   if (input.recovery)
     return {
+      requiredWorkMode: input.recovery.profile?.requiredWorkMode ?? 'agent',
       ...(input.recovery.binding?.defaultSkill
         ? { defaultSkill: input.recovery.binding.defaultSkill }
         : {}),
@@ -192,6 +193,7 @@ async function partnerExecutionContext(
       })
     : null;
   return {
+    requiredWorkMode: 'agent',
     ...(!input.explicitMethod && state.expert?.useSkill !== false && state.expert?.expert.skillRef
       ? { defaultSkill: { name: state.expert.expert.skillRef } }
       : {}),

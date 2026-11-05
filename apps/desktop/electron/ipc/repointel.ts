@@ -45,29 +45,39 @@ function sdkStatus(status: string): RepointelStatusItemT['status'] {
 async function sdkDiagnostics(
   projectRoot: string | null,
   probe: boolean,
+  sessionId?: string,
 ): Promise<{
   readonly warmSupported: boolean;
   readonly warmReason: string;
   readonly effectiveEngine: 'off' | 'light' | 'full' | null;
   readonly engineStatus: 'disabled' | 'ok' | 'limited' | 'unavailable' | 'warming' | null;
   readonly diagnostics: readonly RepointelStatusItemT[];
+  readonly initialized?: boolean;
+  readonly runtimeId?: string;
+  readonly workspaceRoot?: string;
 }> {
   try {
     if (runtimeHostAdapter.isRuntimeSelected()) {
-      const config = await runtimeHostAdapter.readEffectiveRuntimeConfig();
-      const mode = config.entries.repoIntelligenceMode?.value;
+      if (!sessionId) throw new Error('Select a Session to inspect its execution Host.');
+      const status = await runtimeHostAdapter.inspectRepoIntelligence(sessionId);
       return {
-        warmSupported: false,
+        warmSupported: status.requestedMode !== 'off',
         warmReason:
-          'This Host has no public repo-intelligence inspection/prewarm API. Run-time traces remain available.',
-        effectiveEngine: mode === 'off' ? 'off' : null,
-        engineStatus: mode === 'off' ? 'disabled' : null,
+          status.requestedMode === 'off'
+            ? 'Repo intelligence is disabled by Host settings.'
+            : WARM_SUPPORTED_REASON,
+        effectiveEngine: status.effectiveEngine,
+        engineStatus: status.status,
+        initialized: status.initialized,
+        runtimeId: status.runtimeId,
+        workspaceRoot: status.workspaceRoot,
         diagnostics: [
           item(
             'repo-intelligence',
-            'warn',
-            `Host configuration mode=${typeof mode === 'string' ? mode : 'inherited'}; effective worker health is unavailable through this SDK.`,
+            status.initialized ? sdkStatus(status.status) : 'warn',
+            `Host status=${status.status}, configured=${status.configuredMode}, requested=${status.requestedMode}, effective=${status.effectiveEngine}, initialized=${status.initialized}.`,
           ),
+          ...status.warnings.map((warning) => item('warning', 'warn', warning)),
         ],
       };
     }
@@ -137,11 +147,15 @@ async function sdkDiagnostics(
 async function buildStatus(
   projectRoot: string | undefined,
   probe: boolean,
+  sessionId?: string,
 ): Promise<RepointelStatusOutput> {
-  const normalizedProjectRoot = projectRoot ? path.resolve(projectRoot) : null;
+  const requestedProjectRoot = projectRoot ? path.resolve(projectRoot) : null;
+  const sdk = await sdkDiagnostics(requestedProjectRoot, probe, sessionId);
+  const normalizedProjectRoot = sdk.workspaceRoot
+    ? path.resolve(sdk.workspaceRoot)
+    : requestedProjectRoot;
   const projectExists = normalizedProjectRoot !== null && canReadDirectory(normalizedProjectRoot);
   const gitRoot = projectExists ? findGitRoot(normalizedProjectRoot) : null;
-  const sdk = await sdkDiagnostics(normalizedProjectRoot, probe);
   // Repo-intelligence is a licensed capability — any active license unlocks it.
   // Fail-closed (see repo-intel-gate.ts).
   const entitled = await isRepoIntelEntitled();
@@ -189,6 +203,8 @@ async function buildStatus(
     entitled,
     effectiveEngine: entitled ? sdk.effectiveEngine : 'off',
     engineStatus: entitled ? sdk.engineStatus : 'disabled',
+    initialized: sdk.initialized,
+    runtimeId: sdk.runtimeId,
     diagnostics,
   };
 }
@@ -201,10 +217,20 @@ async function buildStatus(
  * — a prewarm must never disrupt the UI. The SDK detaches the worker, so this returns as
  * soon as the warm is kicked off.
  */
-async function prewarmProject(projectRoot: string): Promise<{ readonly started: boolean }> {
-  if (runtimeHostAdapter.isRuntimeSelected()) return { started: false };
+async function prewarmProject(
+  projectRoot: string,
+  sessionId?: string,
+): Promise<{ readonly started: boolean; readonly runtimeId?: string }> {
   try {
     if (!(await isRepoIntelEntitled())) return { started: false };
+    if (runtimeHostAdapter.isRuntimeSelected()) {
+      if (!sessionId) return { started: false };
+      const status = await runtimeHostAdapter.inspectRepoIntelligence(sessionId, true);
+      return {
+        started: status.requestedMode !== 'off' && status.initialized,
+        runtimeId: status.runtimeId,
+      };
+    }
     const normalized = path.resolve(projectRoot);
     if (!canReadDirectory(normalized)) return { started: false };
     const gitRoot = findGitRoot(normalized);
@@ -212,7 +238,11 @@ async function prewarmProject(projectRoot: string): Promise<{ readonly started: 
     const sdk = await loadSpaceSdkCoding();
     sdk.prewarmRepoIntelligenceCaches({ gitRoot, executionCwd: normalized });
     return { started: true };
-  } catch {
+  } catch (error) {
+    console.warn(
+      '[repointel] prewarm unavailable:',
+      error instanceof Error ? error.message : String(error),
+    );
     return { started: false };
   }
 }
@@ -222,7 +252,10 @@ export function registerRepointelChannels(): void {
     'repointel.status',
     // probe defaults to true (doctor/popover full health check); the chip passes false
     // for its cheap always-on readiness fetch (no semantic-worker spawn on render).
-    (input): Promise<RepointelStatusOutput> => buildStatus(input.projectRoot, input.probe ?? true),
+    (input): Promise<RepointelStatusOutput> =>
+      buildStatus(input.projectRoot, input.probe ?? true, input.sessionId),
   );
-  registerChannel('repointel.prewarm', (input) => prewarmProject(input.projectRoot));
+  registerChannel('repointel.prewarm', (input) =>
+    prewarmProject(input.projectRoot, input.sessionId),
+  );
 }

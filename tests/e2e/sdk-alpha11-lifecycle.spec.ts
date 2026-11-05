@@ -323,6 +323,64 @@ test('Script respects Plan denial and Stop retains partial effects without repla
     );
     await restartIsolatedHost(space);
     const history = await readSdkHistoryPage(space, sessionId);
+    const probe = await promisify(execFile)(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `
+      import path from 'node:path';
+      const {connectKodaXRuntime}=await import('@kodax-ai/kodax/runtime');
+      const client=await connectKodaXRuntime({profile:'coder',sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
+      const sessionId=process.env.SPACE_HISTORY_SESSION;
+      async function read() {
+        try {const history=await client.sessions.readHistory(sessionId);return {ok:true,items:history.items.map(item=>({id:item.id,text:item.text,tool:item.tool?.name}))};}
+        catch(error){if(error.code !== 'resync_required')throw error;return {ok:false,code:error.code,message:error.message};}
+      }
+      try {
+        const before=await read();
+        const observation=await client.sessions.observeView(sessionId,()=>{});observation.close();
+        const after=[];for(let i=0;i<3;i++){after.push(await read());await new Promise(resolve=>setTimeout(resolve,100));}
+        await client.sessions.load(sessionId);const refreshed=await read();
+        const next=await client.sessions.observeView(sessionId,()=>{});next.close();const afterObservation=await read();
+        process.stdout.write(JSON.stringify({before,after,refreshed,afterObservation}));
+      }finally{await client.close();}
+    `,
+      ],
+      {
+        windowsHide: true,
+        timeout: 30_000,
+        env: { ...process.env, KODAX_HOME: space.testDataDir, SPACE_HISTORY_SESSION: sessionId },
+      },
+    );
+    const direct = JSON.parse(probe.stdout) as {
+      before: { ok: boolean };
+      after: { ok: boolean; code?: string }[];
+      refreshed: { ok: boolean };
+      afterObservation: { ok: boolean; code?: string };
+    };
+    await writeFile(
+      test.info().outputPath('raw-host-observe-first-history.json'),
+      JSON.stringify(direct, null, 2),
+    );
+    await test.info().attach('raw-host-observe-first-history.json', {
+      body: JSON.stringify(direct),
+      contentType: 'application/json',
+    });
+    // Record the upstream raw boundary separately; the product must still recover below.
+    if (
+      !direct.refreshed.ok ||
+      direct.after.some((result) => !result.ok) ||
+      !direct.afterObservation.ok
+    )
+      test.info().annotations.push({
+        type: 'SDK limitation',
+        description:
+          'Raw beta.2 history may return resync_required after Script Stop/cold observation. This test separately requires the Space compatibility read and no-replay assertions below.',
+      });
+    for (const result of [...direct.after, direct.afterObservation])
+      if (!result.ok) expect(result.code).toBe('resync_required');
+
     expect(history.productItems?.some((item) => item.tool?.name === 'script_exec')).toBe(true);
     expect(await readFile(path.join(projectRoot, 'partial.txt'), 'utf8')).toBe('ONCE');
     await expect(readFile(path.join(projectRoot, 'after-stop.txt'))).rejects.toMatchObject({

@@ -506,8 +506,11 @@ test('workflow push events update the sidebar and transcript through completion'
     await expect(stream).toContainText('# Final workflow report');
     await expect(stream).toContainText('TAIL_MARKER_VISIBLE_IN_FULL_REPORT');
     await expect(sidebar).not.toContainText('TAIL_MARKER_VISIBLE_IN_FULL_REPORT');
-    await sidebar.getByTestId('workflow-result-toggle').click();
+    await sidebar.getByTestId('workflow-summary-toggle').click();
     await expect(sidebar).toContainText('TAIL_MARKER_VISIBLE_IN_FULL_REPORT');
+    await sidebar.getByTestId('workflow-result-toggle').click();
+    await expect(sidebar.getByTestId('workflow-result-body')).toHaveCount(0);
+    await expect(sidebar).toContainText('Older runs may only have a summary');
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});
@@ -545,66 +548,24 @@ test('workflow stays off primary navigation while the tool menu restores complet
     const panel = space.page.getByTestId('workflow-management-panel');
     await expect(panel).toBeVisible({ timeout: 5_000 });
     await expect(panel).toContainText('Persisted Workflow Review', { timeout: 5_000 });
-    await expect(panel).toContainText('Events Only Workflow Review', { timeout: 5_000 });
-
-    await panel
-      .getByTestId('workflow-run-list-item')
-      .filter({ hasText: 'Persisted Workflow Review' })
-      .click();
-    await expect(panel).toContainText('completed');
-    await expect(panel.getByLabel('Workflow runtime status')).toContainText('Collect changes');
-    await expect(panel.getByLabel('Workflow runtime status')).toContainText('Synthesize report');
-    await expect(panel.getByTestId('workflow-management-result-summary')).toHaveCount(0);
-    await expect(panel.getByTestId('workflow-result-toggle')).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
-    // The WORKFLOW DIAGRAM (pattern-topology chips + full topology graph) was removed as
-    // redundant with the runtime-status list. Top-level phase nodes are asserted above;
-    // child-agent names ("Change collector") are asserted below via the expandable
-    // workflow-management-detail tree.
-    await panel.getByTestId('workflow-details-toggle').click();
-    await expect(panel.getByTestId('workflow-management-detail')).toContainText('Change collector');
-    // Child digests render inline in the flat detail tree (short ones always visible; long
-    // ones expose a workflow-digest-toggle — see the Events Only run below). This short
-    // digest is shown without folding. The workflow resultSummary is no longer shown as a
-    // separate 'workflow-management-result-summary' (asserted count 0 above); the canonical
-    // result is the artifact body verified via workflow-result-body below.
-    await expect(panel.getByTestId('workflow-management-detail')).toContainText(
-      'Recovered persisted child digest.',
-    );
-    await panel
-      .getByTestId('workflow-management-detail')
-      .getByRole('button', { name: 'Run again' })
-      .click();
-    await space.page.waitForTimeout(500);
-    await expect(space.page.getByText('session not found')).toHaveCount(0);
-    await expect(panel.getByTestId('workflow-result-body')).toContainText(
-      'Durable artifact report',
-    );
-    await expect(panel.getByTestId('workflow-management-detail')).not.toContainText('加载中');
-
-    await panel
-      .getByTestId('workflow-run-list-item')
-      .filter({ hasText: 'Events Only Workflow Review' })
-      .click();
-    await expect(panel.getByTestId('workflow-management-detail')).toContainText('completed');
-    await expect(panel.getByLabel('Workflow runtime status')).toContainText('Collect changes');
-    await expect(panel.getByLabel('Workflow runtime status')).toContainText('Synthesize report');
-    // 'Events collector' (child agent) is asserted below via workflow-management-detail.
-    await panel.getByTestId('workflow-details-toggle').click();
-    await expect(panel.getByTestId('workflow-management-detail')).toContainText('Events collector');
-    await expect(panel.getByTestId('workflow-management-detail')).not.toContainText(
-      'DIGEST_TAIL_VISIBLE_ONLY_WHEN_EXPANDED',
-    );
-    await panel.getByTestId('workflow-digest-toggle').first().click();
-    await expect(panel.getByTestId('workflow-management-detail')).toContainText(
-      'DIGEST_TAIL_VISIBLE_ONLY_WHEN_EXPANDED',
-    );
-    await expect(panel.getByTestId('workflow-result-body')).toContainText(
-      'Events-only artifact report',
-    );
-    await expect(panel.getByTestId('workflow-management-detail')).not.toContainText('加载中');
+    await expect(panel).not.toContainText('Events Only Workflow Review');
+    const card = panel
+      .getByTestId('workflow-run-card')
+      .filter({ hasText: 'Persisted Workflow Review' });
+    await expect(card).toHaveAttribute('data-status', 'completed');
+    await expect(card).toContainText('Change collector');
+    await expect(card).toContainText('Recovered persisted child digest.');
+    await expect(panel.getByRole('button', { name: 'Run again', exact: true })).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: 'Rename', exact: true })).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0);
+    await card.getByTestId('workflow-result-toggle').click();
+    await expect(card.getByTestId('workflow-result-body')).toContainText('Durable artifact report');
+    expect(
+      await fs.readFile(
+        path.join(space.testDataDir, 'space/workflow-runs/wf_events_only_e2e/events.jsonl'),
+        'utf8',
+      ),
+    ).toContain('workflow_started');
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

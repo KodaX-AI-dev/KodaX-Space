@@ -1552,6 +1552,8 @@ function projectSessionStopReceipt(
 function assertSpaceDaemonRequiredCapabilities(runtime: KodaXDaemonRuntime): void {
   for (const [name, version] of [
     ['productClient', 1],
+    ['productInputRecovery', 1],
+    ['productExecutionModeConstraint', 1],
     ['sessionDrafts', 1],
     ['productExecutionAuthorization', 2],
     ['productHistoryBoundaries', 1],
@@ -1744,6 +1746,7 @@ function projectRuntimeWorkflow(snapshot: unknown): WorkflowRunT | undefined {
     ...base.data,
     // The published Product Client exposes pause/resume/stop, but no Host rename/delete.
     managementCapabilities: { rename: false, delete: false },
+    resultSource: 'session',
     ...(metadata?.sessionId ? { sessionId: metadata.sessionId } : {}),
     ...(metadata?.surface === 'code' || metadata?.surface === 'partner'
       ? { surface: metadata.surface }
@@ -1798,6 +1801,8 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
     readonly liveOutputSegments?: number;
     readonly managedRunDurability?: number;
     readonly productClient?: number;
+    readonly productInputRecovery?: number;
+    readonly productExecutionModeConstraint?: number;
     readonly sessionDrafts?: number;
     readonly runtimeEventCoalescing?: number;
     readonly runtimeAutoModeGuardrail?: number;
@@ -1817,6 +1822,10 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
     ...(capabilities?.liveOutputSegments === 1 ? [] : ['liveOutputSegments v1']),
     ...(capabilities?.managedRunDurability === 1 ? [] : ['managedRunDurability v1']),
     ...(capabilities?.productClient === 1 ? [] : ['productClient v1']),
+    ...(capabilities?.productInputRecovery === 1 ? [] : ['productInputRecovery v1']),
+    ...(capabilities?.productExecutionModeConstraint === 1
+      ? []
+      : ['productExecutionModeConstraint v1']),
     ...(capabilities?.sessionDrafts === 1 ? [] : ['sessionDrafts v1']),
     ...(capabilities?.runtimeEventCoalescing === 1 ? [] : ['runtimeEventCoalescing v1']),
     ...((capabilities?.runtimeAutoModeGuardrail ?? 0) >= 6 ? [] : ['runtimeAutoModeGuardrail v6']),
@@ -1925,7 +1934,7 @@ function capabilitiesFor(mode: RuntimeHostMode, state: RuntimeHostState): Runtim
       'runtime.workflows',
       'partial',
       'space-bridge',
-      'Space retains durable lifecycle, immediate stop projection, origin, library, and admin semantics.',
+      'The shared Host owns single-use execution, progress and final Session responses; Space provides the launcher and presentation.',
     ),
     capability(
       'runtime.catalog',
@@ -2508,6 +2517,8 @@ export class RuntimeHostAdapter {
         runtimeEventCoalescing: 1,
         sandboxRuntime: 11,
         productClient: 1,
+        productInputRecovery: 1,
+        productExecutionModeConstraint: 1,
         sessionDrafts: 1,
         productExecutionAuthorization: 2,
         productExecutionBinding: 1,
@@ -6060,6 +6071,7 @@ export class RuntimeHostAdapter {
       const trace = runtimeEventRecord(payload?.trace);
       const parsed = sessionEventChannel.payload.safeParse({
         kind: 'repointel_trace',
+        ...runtimeSessionEventOrigin(runtimeId, event),
         sessionId: event.sessionId,
         event: {
           kind: payload?.stage,
@@ -6570,7 +6582,8 @@ export class RuntimeHostAdapter {
           | 'execution_binding_unavailable'
           | 'execution_binding_rejected'
           | 'execution_binding_changed'
-          | 'default_skill_unavailable';
+          | 'default_skill_unavailable'
+          | 'execution_mode_mismatch';
         readonly message: string;
       };
     }[],
@@ -7151,6 +7164,28 @@ export class RuntimeHostAdapter {
     const fields = await repoIntelSessionFields();
     await this.ensureObserved(sessionId);
     await this.updateSessionSettings(sessionId, fields);
+  }
+
+  async inspectRepoIntelligence(sessionId: string, prewarm = false) {
+    const runtime = await this.requireRuntime();
+    await this.assertHostSession(runtime, sessionId);
+    if (runtimeCapabilityVersion(runtime, 'repoIntelligenceDiagnostics') !== 1)
+      throw Object.assign(new Error('Repository diagnostics require an upgraded Host.'), {
+        code: 'daemon_upgrade_required',
+      });
+    if (prewarm) await this.syncRepoIntelligencePolicy(sessionId);
+    const read = prewarm
+      ? runtime.catalog.prewarmRepoIntelligence
+      : runtime.catalog.inspectRepoIntelligence;
+    if (!read) throw new Error('Host repository diagnostics are unavailable.');
+    const status = await read.call(runtime.catalog, sessionId);
+    if (
+      this.runtime !== runtime ||
+      status.runtimeId !== runtime.identity.runtimeId ||
+      status.sessionId !== sessionId
+    )
+      throw new Error('Repository diagnostics belong to another Host or Session.');
+    return status;
   }
 
   private async admitManagedRun(input: RuntimeDaemonStartRunInput): Promise<RuntimeRunHandle> {
@@ -8077,6 +8112,16 @@ export class RuntimeHostAdapter {
     );
     if (!run) throw new Error('Workflow is not owned by the current Host.');
     return run.runDir;
+  }
+
+  async readWorkflowResult(runId: string): Promise<string | undefined> {
+    const runtime = await this.requireRuntime();
+    const run = await this.getWorkflow(runId);
+    if (!run?.sessionId) throw new Error('Host Workflow has no owning Session.');
+    const { readHostWorkflowResult } = await import('./runtime/workflow-result.js');
+    const result = await readHostWorkflowResult(runtime.sessions, run.sessionId, runId);
+    if (this.runtime !== runtime) throw new Error('Host changed while reading Workflow result.');
+    return result;
   }
 
   private async openWorkflowObservation(

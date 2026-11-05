@@ -27,8 +27,6 @@ import {
   Pause,
   Play,
   Square,
-  Pencil,
-  Trash2,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -43,7 +41,6 @@ import type {
 } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../../store/appStore.js';
 import { pushToast } from '../../store/toastStore.js';
-import { requestConfirm } from '../../store/confirmStore.js';
 import { buildItemTree, type WorkflowTreeNode } from './buildItemTree.js';
 import { WorkflowRunGraph } from './WorkflowRunGraph.js';
 import { WorkflowLauncher } from './WorkflowLauncher.js';
@@ -87,7 +84,6 @@ const SPIN: ReadonlySet<string> = new Set(['running']);
 const TERMINAL: ReadonlySet<WorkflowProcessStatusT> = new Set(['completed', 'failed', 'cancelled']);
 // 缩进每层 12px，但封顶 8 层——防 SDK 给深树时内层被推出面板（视觉饱和钳制）。
 const MAX_INDENT_DEPTH = 8;
-const RESULT_LOAD_TIMEOUT_MS = 3000;
 
 const EMPTY_RUNS: readonly WorkflowRunT[] = [];
 const EMPTY_ACTIVITY: readonly WorkflowActivityPayload[] = [];
@@ -227,42 +223,18 @@ export function WorkflowPanelConnected({
   );
 }
 
-// 头部控制簇：pause/resume/stop（按 status）+ rename（full）+ delete（终态 + full）。
+// 执行控制簇：pause/resume/stop；状态仍由 Host 事件回流。
 // 控制后状态由 workflow.event 自然回流，按钮不乐观改本地态。
 function WorkflowControls({
   run,
-  variant,
-  isTerminal,
   hasPhaseCounter,
-  onRename,
 }: {
   run: WorkflowRunT;
-  variant: 'compact' | 'full';
-  isTerminal: boolean;
   hasPhaseCounter: boolean;
-  onRename: () => void;
 }): JSX.Element {
   const { t } = useI18n();
   const runId = run.runId;
   const active = run.status === 'running' || run.status === 'paused';
-  // #1 fix: window.confirm 在 Electron sandbox=true 下会夺走 webContents 键盘焦点且拿不回来
-  // ——改用应用内 requestConfirm。
-  async function handleDelete(): Promise<void> {
-    const confirmed = await requestConfirm({
-      message: t('workflow.deleteRunConfirm', { name: run.displayName ?? run.workflowName }),
-      danger: true,
-      confirmLabel: t('workflow.delete'),
-    });
-    if (!confirmed) return;
-    const res = await window.kodaxSpace?.invoke('workflow.delete', { runId });
-    const env = res as { ok?: boolean; data?: { ok?: boolean } } | undefined;
-    if (!res || env?.ok === false || env?.data?.ok === false) {
-      pushToast(t('workflow.deleteFailed'), 'warning');
-      return;
-    }
-    // 删除无 push 事件、seed 只增不删——必须显式从 store 移除，否则面板里删不掉。
-    useAppStore.getState().removeWorkflowRun(runId);
-  }
   return (
     <div
       className={`flex items-center gap-0.5 flex-shrink-0 ${hasPhaseCounter ? 'ml-1.5' : 'ml-auto'}`}
@@ -305,33 +277,6 @@ function WorkflowControls({
           }
         >
           <Square size={12} />
-        </CtlBtn>
-      )}
-      {variant === 'full' && (
-        <CtlBtn
-          label={t('workflow.rename')}
-          onClick={onRename}
-          disabledReason={
-            run.managementCapabilities?.rename === false
-              ? t('workflow.hostManagementUnavailable')
-              : undefined
-          }
-        >
-          <Pencil size={11} />
-        </CtlBtn>
-      )}
-      {variant === 'full' && isTerminal && (
-        <CtlBtn
-          label={t('workflow.delete')}
-          danger
-          onClick={() => void handleDelete()}
-          disabledReason={
-            run.managementCapabilities?.delete === false
-              ? t('workflow.hostManagementUnavailable')
-              : undefined
-          }
-        >
-          <Trash2 size={11} />
         </CtlBtn>
       )}
     </div>
@@ -388,36 +333,15 @@ function WorkflowRunCard({
   const showTree = detailsOpen;
   const phaseCounter = workflowPhaseCounter(run);
 
-  const [renaming, setRenaming] = useState(false);
-  const [draft, setDraft] = useState('');
-  // 防双触发:Enter 提交后 setRenaming(false) 卸载 input → 触发 blur 又调一次 commitRename。
-  // ref 跨 Enter+blur 序列守一次（state 重置在同事件内读不到，必须用 ref）。
-  const committingRef = useRef(false);
   const name = run.displayName ?? run.workflowName;
-  function startRename(): void {
-    committingRef.current = false;
-    setDraft(name);
-    setRenaming(true);
-  }
-  function commitRename(): void {
-    if (committingRef.current) return;
-    committingRef.current = true;
-    const next = draft.trim();
-    setRenaming(false);
-    if (next && next !== name) {
-      fireControl(
-        window.kodaxSpace?.invoke('workflow.rename', { runId: run.runId, displayName: next }),
-        t('workflow.renameFailed'),
-      );
-    }
-  }
 
   return (
     <div
       data-testid="workflow-run-card"
+      data-status={run.status}
       className="rounded-lg border border-border-default/70 bg-surface-2 p-2"
     >
-      {/* 头部：状态图标 + 名称（可改名）+ phase 进度 + 控制 */}
+      {/* 状态、名称、阶段进度与执行控制。 */}
       {!hideHeader && (
         <div className="flex items-center gap-1.5 min-w-0">
           <RunIcon
@@ -425,38 +349,16 @@ function WorkflowRunCard({
             className={`flex-shrink-0 ${RUN_COLOR[run.status]} ${SPIN.has(run.status) ? 'animate-spin' : ''}`}
             aria-hidden
           />
-          {renaming ? (
-            <input
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitRename}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename();
-                else if (e.key === 'Escape') setRenaming(false);
-              }}
-              className="flex-1 min-w-0 text-[12px] bg-surface-3 border border-border-default rounded px-1 py-0.5 text-fg-primary"
-              aria-label={t('workflow.renameAria')}
-            />
-          ) : (
-            <span className="text-[12px] font-medium text-fg-primary truncate" title={name}>
-              {name}
-            </span>
-          )}
-          {phaseCounter !== undefined && !renaming && (
+          <span className="text-[12px] font-medium text-fg-primary truncate" title={name}>
+            {name}
+          </span>
+          <span className="text-[10px] text-fg-muted">{run.status}</span>
+          {phaseCounter !== undefined && (
             <span className="ml-auto flex-shrink-0 text-[10px] font-mono text-fg-muted">
               {phaseCounter}
             </span>
           )}
-          {!renaming && (
-            <WorkflowControls
-              run={run}
-              variant={variant}
-              isTerminal={isTerminal}
-              hasPhaseCounter={phaseCounter !== undefined}
-              onRename={startRename}
-            />
-          )}
+          <WorkflowControls run={run} hasPhaseCounter={phaseCounter !== undefined} />
         </div>
       )}
 
@@ -511,17 +413,13 @@ function WorkflowRunCard({
       {run.status === 'failed' && run.error && (
         <div className="mt-1 text-[11px] text-danger break-words">{run.error}</div>
       )}
-      {run.resultSummary && isTerminal && run.status !== 'completed' && (
+      {run.resultSummary && isTerminal && (
         <WorkflowSummaryView summary={run.resultSummary} variant={variant} />
       )}
 
       {/* F066 完整结果（终态懒取）；artifacts 已自动桥进 artifact 面板（方案 A）。 */}
       {isTerminal && run.status === 'completed' && (
-        <WorkflowResultView
-          runId={run.runId}
-          fallback={run.resultSummary}
-          defaultOpen={defaultResultOpen}
-        />
+        <WorkflowResultView runId={run.runId} defaultOpen={defaultResultOpen} />
       )}
 
       {/* F065 子 agent 活动遥测（活跃 / full 时显示，不淹主 transcript） */}
@@ -570,48 +468,42 @@ function WorkflowSummaryView({
 /** F066 完整结果视图：终态懒取 workflow.result，可展开 + 复制。 */
 function WorkflowResultView({
   runId,
-  fallback,
   defaultOpen = false,
 }: {
   runId: string;
-  fallback?: string;
   defaultOpen?: boolean;
 }): JSX.Element {
   const { t } = useI18n();
   const [open, setOpen] = useState(defaultOpen);
-  const [result, setResult] = useState<string | null>(fallback ?? null);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
   const fetchAttemptedRef = useRef(false);
   const mountedRef = useRef(true);
-  const resultRef = useRef<string | null>(result);
-  useEffect(() => () => void (mountedRef.current = false), []);
   useEffect(() => {
-    resultRef.current = result;
-  }, [result]);
-  useEffect(() => {
-    if (fallback) setResult((current) => current ?? fallback);
-  }, [fallback]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const loadResult = useCallback(async (): Promise<void> => {
     if (fetchAttemptedRef.current) return;
     fetchAttemptedRef.current = true;
-    // Only show the loading state (which disables the copy button) when there is no
-    // fallback result already displayed. A run with a resultSummary shows immediately and
-    // its copy affordance stays usable; the ref above still guards the fetch reentrancy race.
-    setLoading(resultRef.current === null);
-    const resultPromise =
-      window.kodaxSpace?.invoke('workflow.result', { runId }).catch(() => null) ??
-      Promise.resolve(null);
-    const timeoutPromise = new Promise<null>((resolve) =>
-      window.setTimeout(() => resolve(null), RESULT_LOAD_TIMEOUT_MS),
-    );
+    setLoading(true);
+    setError(false);
     try {
-      const r = await Promise.race([resultPromise, timeoutPromise]);
+      const r = await window.kodaxSpace?.invoke('workflow.result', { runId });
       if (!mountedRef.current) return;
-      setResult(r?.ok ? (r.data.result ?? fallback ?? '') : (fallback ?? ''));
+      if (!r?.ok) throw new Error('Workflow result is unavailable.');
+      if (r.data.result === undefined) fetchAttemptedRef.current = false;
+      setResult(r.data.result ?? null);
+    } catch {
+      if (mountedRef.current) setError(true);
+      fetchAttemptedRef.current = false;
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [fallback, runId]);
+  }, [runId]);
   useEffect(() => {
     if (open) void loadResult();
   }, [loadResult, open]);
@@ -620,7 +512,7 @@ function WorkflowResultView({
     setOpen(next);
     if (next) void loadResult();
   }
-  const copyDisabled = loading || !result;
+  const copyDisabled = loading || result === null;
   return (
     <div className="mt-1">
       <button
@@ -635,9 +527,17 @@ function WorkflowResultView({
       </button>
       {open && (
         <div className="mt-1">
-          {loading && !result ? (
+          {loading ? (
             <div className="text-[10px] text-fg-faint">{t('workflow.loadingResult')}</div>
-          ) : result ? (
+          ) : error ? (
+            <button
+              type="button"
+              className="text-xs text-warn underline"
+              onClick={() => void loadResult()}
+            >
+              {t('workflow.resultReadFailed')}
+            </button>
+          ) : result !== null ? (
             <div className="relative">
               <pre
                 className="max-h-48 overflow-auto rounded bg-surface-3 p-1.5 text-[10px] text-fg-secondary whitespace-pre-wrap break-words"
@@ -648,7 +548,7 @@ function WorkflowResultView({
               <button
                 type="button"
                 onClick={() => {
-                  if (copyDisabled || !result) return;
+                  if (copyDisabled || result === null) return;
                   void navigator.clipboard
                     ?.writeText(result)
                     .then(() => pushToast(t('workflow.resultCopied'), 'success'));
@@ -662,7 +562,13 @@ function WorkflowResultView({
               </button>
             </div>
           ) : (
-            <div className="text-[10px] text-fg-faint">{t('workflow.noResult')}</div>
+            <button
+              type="button"
+              className="text-[10px] text-fg-faint underline"
+              onClick={() => void loadResult()}
+            >
+              {t('workflow.savedResponseMissing')}
+            </button>
           )}
         </div>
       )}

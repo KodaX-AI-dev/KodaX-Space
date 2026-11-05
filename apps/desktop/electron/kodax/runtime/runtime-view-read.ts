@@ -31,7 +31,7 @@ export async function readRuntimeSessionView(
 }
 
 export async function readRuntimeViewText(
-  service: RuntimeViewReader,
+  service: Pick<RuntimeViewReader, 'readViewItem'>,
   sessionId: string,
   item: ClientViewItem,
   part: 'text' | 'input' = 'text',
