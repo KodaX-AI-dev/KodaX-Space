@@ -6,7 +6,7 @@
 
 > 本文对应已发布预发布版 Space `v0.1.47-alpha.2` / npm Registry `@kodax-ai/kodax@0.7.97-alpha.6`。稳定版下载仍是 Space v0.1.46 / KodaX 0.7.96。旧版截图用于界面定位，以实际界面为准；本次变化与已验证范围见[发布准备记录](releases/v0.1.47-alpha.2-release-readiness.md)。
 
-> 当前工作区仍为 Space `0.1.47-alpha.3`，已接入 npm Registry SDK `0.7.97-alpha.10`，尚未发布新的 Space 安装器。新增提问等待/跳过、退出恢复、内置 Skill 本地错误及初始化进度适配；保留 alpha.9 的 EIO 会话隔离和其他客户端退出保护。能力与验证范围见 [alpha.10 接入记录](releases/kodax-0.7.97-alpha.10-integration.md)。
+> 当前源码对应已发布的 Space `v0.1.47-alpha.4` 预发布版，精确接入 npm Registry SDK `0.7.97-alpha.11`。新增 Host 工作模式（Agent/Coding/实验性 Script）、提问等待/跳过、退出恢复、内置 Skill 本地错误及初始化进度适配；历史浏览、重命名与用户问题样式按 Issues 236-238 修正。能力与验证范围见 [alpha.11 接入记录](releases/kodax-0.7.97-alpha.11-integration.md)。
 
 共享 Coder 当前聊天与历史浏览分开；新建但未发送的会话不会留下新空记录；侧栏按真实消息时间排序。当前版本恢复 SDK 提供的用户图片、长正文、工具与 Artifact 记录，结果检查使用工具证据和 visual-review，旧的 /verifier-log 已移除。Windows 首次迁移如需 Sandbox Setup，应在 Settings → Runtime 显式执行；普通启动和工具调用不会隐式提权。旧会话文件与凭据不会因本轮文档或版本同步被删除。
 

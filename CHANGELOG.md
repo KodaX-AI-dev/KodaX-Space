@@ -14,30 +14,28 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
-- Allow choosing the Host work mode before the first Coder input, block sending until the setting is confirmed, and implement `/work-mode` through the same Host setting boundary. Document mode semantics and original-result reads; add Script, MCP-original, Skill lifecycle and long-report regressions. Partner Agent/profile composition remains an SDK follow-up.
+## [0.1.47-alpha.4] - 2026-11-05
 
-- Upgrade the exact Registry SDK to 0.7.97-alpha.11. Add Host-owned Agent/Coding/experimental Script work modes, Host streaming token estimates, explicit saved tool-original reads, structured task reports and non-interactive question outcomes; retain the earlier history, manual-update and recovery fixes.
-
-- 普通 SDK 信息改用中性通知；旧版子任务报告折叠展示并还原传输转义，保留可读 Markdown 详情，避免把任务报告误画成黄色告警。
-- 修复历史滚动的截断与跳页：同一修订的历史页连续保留，首次从当前窗口切入历史时恢复阅读锚点；向下滚动不再换走已读内容，底部按钮仍可回到真实最新消息，迟到请求不能覆盖当前选择。
-- 用户问题增加常驻发送者标签、淡蓝底色与左侧色条，便于在长回答中辨认每轮任务；保留长问题展开/收起与附件入口。
-- 修复任务和项目重命名失焦即丢失：Enter 或失焦只保存一次，Esc 取消，输入法选词不提前提交；保存被拒绝时显示错误并保留原名，右键菜单 Escape 退出恢复焦点。
-- 修复冷启动首次加载长历史时，集中完成的正文补读触发密集同步重绘并出现 React 185；正文缓存仍即时完整可读，仅合并同帧界面通知。
-- 软件更新改为设置中手动检查，分别确认下载和重启安装；启动、退出均不自动更新，正式版拒绝 alpha/beta/rc 候选，确认动作绑定所选版本。
-- 修复银河麒麟等 Linux 桌面在隐藏原生标题栏后缺少最小化、最大化和关闭按钮；复用现有窗口控制与退出流程。
+Fourth alpha of the 0.1.47 line: the 0.1.47 line moves to Registry SDK 0.7.97-alpha.11 with Host work modes, and carries the alpha-customer fixes for history paging, sidebar renames and user-query prominence.
 
 ### Changed
 
-- Upgrade the exact Registry SDK dependency to `@kodax-ai/kodax@0.7.97-alpha.10`. Space uses AMA and migrates retired SA preferences; ordinary question dismissal becomes explicit skip. Forward actual Host initialization phases and bounded context-capacity wait facts.
-
+- Upgrade the exact Registry SDK dependency to `@kodax-ai/kodax@0.7.97-alpha.11` (advancing through alpha.10). Host-owned Agent/Coding/experimental Script work modes, Host streaming token estimates, explicit saved tool-original reads, structured task reports and non-interactive question outcomes; retain the earlier history, manual-update and recovery fixes. See the [alpha.10 integration record](docs/releases/kodax-0.7.97-alpha.10-integration.md) and the [alpha.11 integration record](docs/releases/kodax-0.7.97-alpha.11-integration.md).
+- Allow choosing the Host work mode before the first Coder input, block sending until the setting is confirmed, and implement `/work-mode` through the same Host setting boundary. Document mode semantics and original-result reads; add Script, MCP-original, Skill lifecycle and long-report regressions. Partner Agent/profile composition remains an SDK follow-up.
 - Refine Space's builtin Skills for natural-language selection and task-sized delivery. Reuse supplied context, honor direct-work and file-format requests, and remove unconditional design variants and repeated approval steps. Update Huashu Design to the 3.0 source, copywriting to 2.3.1, customer research to 2.0.4, and call preparation to its reviewed upstream revision while preserving Space adaptations and source integrity.
+- 普通 SDK 信息改用中性通知；旧版子任务报告折叠展示并还原传输转义，保留可读 Markdown 详情，避免把任务报告误画成黄色告警。
+- 用户问题增加常驻发送者标签、淡蓝底色与左侧色条，便于在长回答中辨认每轮任务；保留长问题展开/收起与附件入口。
+- 软件更新改为设置中手动检查，分别确认下载和重启安装；启动、退出均不自动更新，正式版拒绝 alpha/beta/rc 候选，确认动作绑定所选版本。
 
 ### Fixed
 
-- Consume fresh SDK exit-recovery assessments without rewriting historical unknown outcomes, preserve verified personal cleanup when an online peer protects its Host, retain typed local Skill errors through IPC, and resume checkpointed original Runs after Host replacement with trusted Main authorization and no input resubmission. See the [alpha.10 integration record](docs/releases/kodax-0.7.97-alpha.10-integration.md).
-
+- 修复历史滚动的截断与跳页：同一修订的历史页连续保留，首次从当前窗口切入历史时恢复阅读锚点；向下滚动不再换走已读内容，底部按钮仍可回到真实最新消息，迟到请求不能覆盖当前选择。
+- 修复任务和项目重命名失焦即丢失：Enter 或失焦只保存一次，Esc 取消，输入法选词不提前提交；保存被拒绝时显示错误并保留原名，右键菜单 Escape 退出恢复焦点。
+- 修复冷启动首次加载长历史时，集中完成的正文补读触发密集同步重绘并出现 React 185；正文缓存仍即时完整可读，仅合并同帧界面通知。
+- 修复银河麒麟等 Linux 桌面在隐藏原生标题栏后缺少最小化、最大化和关闭按钮；复用现有窗口控制与退出流程。
+- Consume fresh SDK exit-recovery assessments without rewriting historical unknown outcomes, preserve verified personal cleanup when an online peer protects its Host, retain typed local Skill errors through IPC, and resume checkpointed original Runs after Host replacement with trusted Main authorization and no input resubmission.
 - Restore queued input credential leases independently after Main reconstruction, including a queued input whose captured provider allowlist differs from the active Run. Preserve the original input identity and authorization without resubmitting it.
-- Enable the published Artifact tools through a separate trusted Host extension, resolving Space's installed SDK and a real Node worker. Optional extension failures remain diagnosable without disabling builtin Skills or historical conversations. Include the migration-gap suite in packaged release acceptance; see the [qualification record](docs/releases/space-sdk-migration-closeout-2026-10-20.md).
+- Enable the published Artifact tools through a separate trusted Host extension, resolving Space's installed SDK and a real Node worker. Optional extension failures remain diagnosable without disabling builtin Skills or historical conversations. Include the migration-gap suite in packaged release acceptance.
 
 ## [0.1.47-alpha.3] - 2026-10-20
 

@@ -2,7 +2,7 @@
 
 Last Updated: 2026-11-04
 
-> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96. This unpublished working tree retains Space 0.1.47-alpha.3 and pins Registry SDK 0.7.97-alpha.11; the published alpha.3 installers still use SDK alpha.9. Start from the [documentation hub](README.md) and [alpha.11 integration](releases/kodax-0.7.97-alpha.11-integration.md) for current behavior, qualification and remaining investigations.
+> Historical issue details retain their investigation evidence. The latest stable release is [Space v0.1.46](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46) with Registry SDK 0.7.96. The working tree is the published Space v0.1.47-alpha.4 prerelease pinning Registry SDK 0.7.97-alpha.11; the previous alpha.3 installers used SDK alpha.9. Start from the [documentation hub](README.md) and [alpha.11 integration](releases/kodax-0.7.97-alpha.11-integration.md) for current behavior, qualification and remaining investigations.
 
 ## Issue Index
 
@@ -16046,7 +16046,7 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 
 ## Issues 236–238 — Alpha customer history and sidebar feedback
 
-- **Created / resolution date**: 2026-11-04. Status: Resolved in source. Reported version: alpha.4; fixed working tree: 0.1.47-alpha.3 with Registry SDK alpha.11, not yet released. Customer screenshots and the supplied Word report established the symptoms; independent fixtures reproduce the affected paths.
+- **Created / resolution date**: 2026-11-04. Status: Resolved in source. Reported version: alpha.4; shipped in the v0.1.47-alpha.4 prerelease with Registry SDK alpha.11. Customer screenshots and the supplied Word report established the symptoms; independent fixtures reproduce the affected paths.
 - **236 Original Problem (High)**: scrolling older history replaces the visible document and removes newer answers. A short-looking conversation with many folded tool calls can lose its final answer too. **Root cause**: SDK history pages were installed as replacements; live and history IDs differ, so the viewport anchor fell back to the page bottom. **Resolution**: accumulate same-revision history pages, retain their suffix, use unique SDK identities only for viewport mapping, and return to live only through the bottom control. No live/history body stitching or opaque ID parsing. Revision checks and lifecycle fences remain intact.
 - **237 Original Problem (Medium)**: renaming seems ineffective after leaving the field; failed saves can temporarily display an unsaved title. **Root cause**: blur cancelled edits, UI ignored the mutation's business result, and menu Escape lost trigger focus. **Resolution**: Enter/blur commit once, Esc cancels, IME confirmation does not submit, failed saves notify without changing the title, project/session menus restore focus. Real SDK list refresh verifies saved names. This establishes concrete failure paths, not the customer's exact unrecorded click sequence.
 - **238 Original Problem (Medium)**: subdued query bubbles are difficult to find among long answers. **Resolution**: persistent localized sender label, blue-tinted background, accent edge and turn spacing; four-line expand/collapse and attachments remain supported.
