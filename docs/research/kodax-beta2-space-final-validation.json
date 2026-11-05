@@ -1,0 +1,234 @@
+{
+  "date": "2026-11-05",
+  "productionCommit": "e45075612e89e290eb5df21ab1125240371eb7d8",
+  "sdk": "0.7.97-beta.2",
+  "appVersion": "0.1.47-alpha.4",
+  "published": false,
+  "package": {
+    "buildSourceSha": "e45075612e89e290eb5df21ab1125240371eb7d8",
+    "verifiedHead": "e45075612e89e290eb5df21ab1125240371eb7d8",
+    "version": "0.1.47-alpha.4",
+    "mainPackageVersion": "0.1.47-alpha.4",
+    "sdk": "0.7.97-beta.2",
+    "mainMatches": true,
+    "rendererFiles": 555,
+    "artifacts": [
+      {
+        "file": "out/win-unpacked/resources/app.asar",
+        "size": 145088220,
+        "sha256": "eb4dd55a645582f70f59cb61e2eed121e11f10836352cd64df456aebe9ced821"
+      },
+      {
+        "file": "out/KodaX-Space-Setup-0.1.47-alpha.4.exe",
+        "size": 214161855,
+        "sha256": "82ece0a8f6919e916e1b845db674ad6772d3ce9e98833cd5acc857912a50b551"
+      },
+      {
+        "file": "out/KodaX-Space-Portable-0.1.47-alpha.4.exe",
+        "size": 213951945,
+        "sha256": "f7d37a72c2dc2c1c6abecbb430e0129fcc0cddd7fdcec4d2a839d4f2c5e495ae"
+      }
+    ],
+    "published": false,
+    "nonRuntimeChangesSinceBuild": []
+  },
+  "localValidation": {
+    "oauthAndLoopback": {
+      "passed": 20,
+      "failed": 0,
+      "lineCoverage": {
+        "loopback-http.ts": 98,
+        "remote-mcp-oauth.ts": 95.4,
+        "combined": 95.58
+      },
+      "requiredLineCoverage": 80
+    },
+    "providerAndHistoryFixture": {
+      "distinctCases": 13,
+      "repetitions": 3,
+      "passed": 39,
+      "failed": 0,
+      "retries": 0
+    },
+    "packagedLifecycle": {
+      "passed": 6,
+      "failed": 0,
+      "retries": 0
+    },
+    "packagedUiAndRecovery": {
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "retries": 0
+    },
+    "typecheck": "passed",
+    "lint": "passed",
+    "changedFilesFormatting": "passed",
+    "standardsReviewFindings": 0,
+    "specReviewFindings": 0
+  },
+  "remoteValidation": {
+    "ci": {
+      "runId": 41997775340,
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41997775340",
+      "productionCommit": "e45075612e89e290eb5df21ab1125240371eb7d8",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "changes",
+          "conclusion": "success"
+        },
+        {
+          "name": "windows-latest / E2E shard 1/2",
+          "conclusion": "success"
+        },
+        {
+          "name": "windows-latest / E2E shard 2/2",
+          "conclusion": "success"
+        },
+        {
+          "name": "ubuntu-latest / E2E shard 1/2",
+          "conclusion": "success"
+        },
+        {
+          "name": "ubuntu-latest / E2E shard 2/2",
+          "conclusion": "success"
+        },
+        {
+          "name": "CI gate",
+          "conclusion": "success"
+        }
+      ],
+      "testSummary": {
+        "expected": 365,
+        "skipped": 21,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "retries": 0,
+      "shards": [
+        {
+          "artifact": "final-13401318476.zip",
+          "stats": {
+            "startTime": "2026-11-05T08:55:23.390Z",
+            "duration": 810557.466,
+            "expected": 96,
+            "skipped": 1,
+            "unexpected": 0,
+            "flaky": 0
+          },
+          "retries": [],
+          "skips": [
+            "Windows tray keeps only the background host and can recreate a closed Space window"
+          ]
+        },
+        {
+          "artifact": "final-13401508541.zip",
+          "stats": {
+            "startTime": "2026-11-05T08:55:20.081Z",
+            "duration": 731235.928,
+            "expected": 90,
+            "skipped": 6,
+            "unexpected": 0,
+            "flaky": 0
+          },
+          "retries": [],
+          "skips": [
+            "live ama automatically reviews its rendered result without an explicit skill request",
+            "live sa automatically reviews its rendered result without an explicit skill request",
+            "live explicit control inspects current pixels and reports data differences",
+            "the supplied Session loads and reloads from an isolated corpus without React errors or model requests",
+            "Windows close behavior preference is visible, typed, and persisted",
+            "custom window controls perform native maximize restore and minimize operations"
+          ]
+        },
+        {
+          "artifact": "final-13402328051.zip",
+          "stats": {
+            "startTime": "2026-11-05T08:56:29.382Z",
+            "duration": 1664307.454,
+            "expected": 90,
+            "skipped": 7,
+            "unexpected": 0,
+            "flaky": 0
+          },
+          "retries": [],
+          "skips": [
+            "Coder preserves a usable workspace as persisted sidebars meet narrower screens",
+            "S-compact-residue: /compact clears the composer immediately, not after compaction",
+            "S-compact-spinner: compacting spinner stays centered in the context gauge",
+            "conversation expansion lazy-mounts hidden tool details and defers Monaco diff mount",
+            "conversation receipt strip stays top-anchored on expand and preserves scroll through sidebar resizing",
+            "todo drift notification close affordance is stable and dismissible",
+            "right sidebar full-panel buttons open and close promptly while a session streams"
+          ]
+        },
+        {
+          "artifact": "final-13402413432.zip",
+          "stats": {
+            "startTime": "2026-11-05T08:56:28.821Z",
+            "duration": 1600969.394,
+            "expected": 89,
+            "skipped": 7,
+            "unexpected": 0,
+            "flaky": 0
+          },
+          "retries": [],
+          "skips": [
+            "live ama automatically reviews its rendered result without an explicit skill request",
+            "live sa automatically reviews its rendered result without an explicit skill request",
+            "live explicit control inspects current pixels and reports data differences",
+            "S3: send a prompt and see assistant reply via mock adapter",
+            "the supplied Session loads and reloads from an isolated corpus without React errors or model requests",
+            "S5: /clear wipes the conversation buffer",
+            "workflow push events update the sidebar and transcript through completion"
+          ]
+        }
+      ]
+    },
+    "build": {
+      "runId": 41997774443,
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41997774443",
+      "productionCommit": "e45075612e89e290eb5df21ab1125240371eb7d8",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "changes",
+          "conclusion": "success"
+        },
+        {
+          "name": "Static checks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Smoke build (ubuntu-latest)",
+          "conclusion": "success"
+        },
+        {
+          "name": "Smoke build (macos-latest)",
+          "conclusion": "success"
+        },
+        {
+          "name": "Smoke build (windows-latest)",
+          "conclusion": "success"
+        },
+        {
+          "name": "Smoke build (macos-15-intel)",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build gate",
+          "conclusion": "success"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "The historical one-off Provider timeout did not retain its endpoint; the bad-port mechanism is independently reproduced but is not proven as its unique cause.",
+    "No SDK Runtime private files or admission fences were patched; no automatic Run resend was introduced.",
+    "No published Space tag or assets were replaced.",
+    "Customer Kylin/macOS native UX, real external accounts and Issue 371 historical first-read latency are not newly qualified by this run."
+  ]
+}

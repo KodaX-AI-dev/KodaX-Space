@@ -49,7 +49,7 @@
 
 ### 追加验证
 
-- OAuth/loopback：20/20，含受限端口、取消时关闭监听且不保存凭据、准备阶段取消、HTTP 503 不重绑；原 state/PKCE/白名单/refresh/授权超时用例全部通过。
+- OAuth/loopback：20/20，新增监听代码行覆盖率98%，OAuth模块95.40%，合计95.58%（80%行覆盖门槛通过）。含受限端口、取消时关闭监听且不保存凭据、准备阶段取消、HTTP 503 不重绑；原 state/PKCE/白名单/refresh/授权超时用例全部通过。
 - Provider fixture 和历史边界：全部十三条各重复三轮，39/39，retries=0。
 - typecheck、lint、修改文件格式与 diff whitespace 检查通过。
 - 已重新完成 npm run build：成品依赖/原生模块、boot（保留122条历史子任务记录）以及六条真实成品 SDK 生命周期回归全部通过，retries=0；包含 Stop 后立即发送、队列重载且只消费一次、历史/fork、Rewind 与多客户端退出保护。其余成品专项与新生产提交的远端完整检查结果后续追加。没有替换公开 alpha.4 标签或资产。
@@ -61,3 +61,20 @@
 ### Spec（追加）
 
 独立需求轴：0 项。仅准备阶段对受限端口有界重绑，没有修改 SDK 围栏或重发 Run；OAuth 健康路径不结算授权回调，state、PKCE、回调校验和权限范围保持原行为。历史单次超时的证据边界保留。
+
+## 最终成品专项（生产提交 e4507561）
+
+生产修复 `e45075612e89e290eb5df21ab1125240371eb7d8` 已推送 main。重新构建的 `out/win-unpacked/KodaX Space.exe` 使用确切 Registry SDK beta.2，成品 Main 与本次构建输出一致，555个 Renderer文件逐字节一致。Setup、Portable和ASAR的SHA-256及后续远端结果见同目录 `kodax-beta2-space-final-validation.json`。它是本地重新验证包，没有替换公开 alpha.4 发布内容。
+
+通过正确的 `SPACE_E2E_EXECUTABLE` 运行37条真实成品专项，37/37 首次通过，0跳过、retries=0；与打包自动执行的6条合计43/43。覆盖：
+
+- 四权限的默认值/当前会话持久化，语言切换与重载，Agent/Coding/Script 与 Host CAS、运行中切换拒绝、首轮模式选择。
+- Partner 默认专家、Agent 注入和 shell 保留，共享Host，缓存A→B→A、独立客户端改模式、下一轮原子恢复。
+- 两种慢快照前台切换、队列取回完整文本、Quick Ask 同会话 promotion。
+- Thinking/工具参数 token 估算、完整工具原文与MCP原文冷Host恢复、未知状态的多任务报告、Skill可信策略与可见性。
+- 双向历史/一键最新、检查点和未完成工具尾部分页、重复独立输入意图、流式替换与终态、Artifact/图片重载。
+- 单次Workflow、Memory、Repo检查、Host扩展诊断、首轮内置Skill、普通问题重载后单次回答、Responses配置保留SDK路由元数据。
+
+远端生产提交的完整 [CI](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41997775340) 与 [四平台 build](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41997774443) 全部成功。CI 四分片原始 JSON 合计365条首次通过、21条既有平台/条件跳过、0失败、0 flaky、0重试；Windows语言切换此次首次通过，不把第一轮的历史偶发失败改写成已定位的生产根因。21条跳过名称及每分片统计保存在同目录 JSON：包括外部模型/客户历史 corpus 条件、特定OS功能和既有平台隔离项，未把它们计为通过。Build的静态检查和Windows/Linux/macOS ARM/macOS Intel全量单测及编译均通过（全部7个job成功）。
+
+两份最终验收记录与生产改动分层提交；记录提交只改变 docs/research，不替代以上生产 SHA 的完整验证。没有新增需要 SDK 配合的已确认缺口。旧单次 Provider 超时的唯一根因仍不能追溯，已补可区分配置、传输、Main和Host状态的失败证据；既有Issue 371首次历史读取延迟、客户OS原生体验及真实外部账号仍保留原验收边界。
