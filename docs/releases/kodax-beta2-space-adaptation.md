@@ -1,5 +1,7 @@
 # KodaX beta.2 Space 接入与验收
 
+> 2026-11-05 根因复验更正：此前第五组的 SDK 归因已撤回，确认并修复 Space 相同空队列增量引起的观察反馈循环；上一轮误标为成品的 29 项实际为源码测试。当前结果和真正成品补验见 [根因复验](../research/kodax-beta2-boundary-root-cause.md)。以下保留原轮次事实，不能代替更正后的结论。
+
 2026-11-05。基线 Space `3d9ee715` / SDK `0.7.97-beta.1`；目标为正式 Registry `0.7.97-beta.2`。本轮升级不移动已发布的 Space alpha.4 标签，不代替下一次 Space 发版。
 
 ## 实施范围与公开边界
@@ -46,5 +48,5 @@
 
 - Workflow 新执行的最终回复来自 Host canonical Session taskResult；没有这个原项的旧 Host 完成记录只显示明确标记的摘要/原项缺失。升级不凭空恢复旧完整 result.json，也不私读 Host 运行目录。
 - SDK Issue 371 的历史首次读取延迟仍独立验收；Host ready 不等于历史已加载。普通问题保持无本地默认超时，沙箱按 SDK 原设计自动回退，稳定版不会自动升级到预发布。
-- 第五组不能仅凭升级宣布 SDK 根因关闭：Script Stop/冷重启后的 Space 兼容读取与不重放已通过，但独立 SDK observe/历史新首读仍捕获混合成功与 topology resync，见 [beta.2 补验及交接段落](kodax-beta2-observe-history-handoff.md)。启动过渡冲突与稳定窗口的证据分开保留；不把 annotation 或兼容成功冒充 SDK 直读通过。
+- 第五组原始失败随后定位为 Space 队列投影反馈循环，不能仅凭这些失败继续归责 SDK。更正和可转交的澄清见 [根因说明](kodax-beta2-observe-history-handoff.md)，完整对照及严格读验证见根因复验记录。
 - 实际 macOS 通知权限/横幅/声音、麒麟实机、真实外部账号和覆盖安装属于对应环境验收。本轮不替换已发布 alpha.4 的 tag/资产，也不把 SDK 源码后续补丁当成当前发布包功能。

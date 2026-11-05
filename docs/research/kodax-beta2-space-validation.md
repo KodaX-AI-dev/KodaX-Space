@@ -1,5 +1,7 @@
 # SDK beta.2 Space 最终验收记录
 
+> 更正：本记录是 `de015cce` 时点的阶段验收，后续已确认历史冲突由 Space 队列投影反馈循环触发，撤回 SDK 根因归属；其中原称 29 项成品界面测试误用了环境变量，实际为第二轮源码测试，不计入成品资格。已启动正确入口补验，当前结论见 [根因复验记录](kodax-beta2-boundary-root-cause.md)。本记录保留当时失败及 CI 结果，不能代替后续更正。
+
 2026-11-05。适配提交 `71ec948d`，源码验收 SHA `c76a09d8a27730be3a6504df6135053fdd5c6752`。变更范围及双轴复审见 [接入说明](../releases/kodax-beta2-space-adaptation.md)。本记录仅补充实测结果，不宣称全部 SDK 根因或客户环境问题已关闭。
 
 ## 安装与执行身份
@@ -20,17 +22,17 @@
 
 ## 本地验证
 
-| 检查                        | 结果                                                                                                                                     |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 正式包真实 Host 协议专项    | 11 组通过：16 位专家真实 system/tool 载荷、Skill、业务绑定、原子模式竞争、多观察者 promotion、无模型调用 inspect/prewarm、幂等原文撤回等 |
-| 真实 Main 进程正常关闭/崩溃 | 2/2 通过；不同 Main PID、同一 live Host、7,024 字原文、唯一 canonical 输入/根 Run，无重启 Host 兜底                                      |
-| RED→GREEN 及复审定向测试    | 原文/空附件、持久 profile schema、Host 诊断、Workflow 命令退役、结果分页/任务身份/总截止通过；最后补审 9 项及队列枚举 2 项通过           |
-| 静态/编译                   | typecheck、lint、build:smoke 通过                                                                                                        |
-| 源码 Electron 专项          | 25/25 通过，retries=0、无跳过                                                                                                            |
-| Windows 完整打包            | `npm run build` 通过；Registry/native/SDK Worker/Artifact Worker/SQLite/PTY/更新器检查通过，122 条旧子记录保留                           |
-| 打包生命周期                | 6/6 通过，包括真实 SDK Stop、统计/工具/历史、队列、canonical 边界、完整退出及另一客户端保护                                              |
-| 打包版界面                  | 29/29 通过，retries=0、无跳过；含 Partner、通知设置、模式、Skill、问题等待、队列、提升、工具原文/图片、历史回最新、Workflow、设置诊断    |
-| 成品与源码一致性            | 包内 beta.2，主进程字节匹配，555 个 Renderer 文件字节匹配                                                                                |
+| 检查                         | 结果                                                                                                                                     |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 正式包真实 Host 协议专项     | 11 组通过：16 位专家真实 system/tool 载荷、Skill、业务绑定、原子模式竞争、多观察者 promotion、无模型调用 inspect/prewarm、幂等原文撤回等 |
+| 真实 Main 进程正常关闭/崩溃  | 2/2 通过；不同 Main PID、同一 live Host、7,024 字原文、唯一 canonical 输入/根 Run，无重启 Host 兜底                                      |
+| RED→GREEN 及复审定向测试     | 原文/空附件、持久 profile schema、Host 诊断、Workflow 命令退役、结果分页/任务身份/总截止通过；最后补审 9 项及队列枚举 2 项通过           |
+| 静态/编译                    | typecheck、lint、build:smoke 通过                                                                                                        |
+| 源码 Electron 专项           | 25/25 通过，retries=0、无跳过                                                                                                            |
+| Windows 完整打包             | `npm run build` 通过；Registry/native/SDK Worker/Artifact Worker/SQLite/PTY/更新器检查通过，122 条旧子记录保留                           |
+| 打包生命周期                 | 6/6 通过，包括真实 SDK Stop、统计/工具/历史、队列、canonical 边界、完整退出及另一客户端保护                                              |
+| 第二轮源码界面（原误标成品） | 29/29 通过，retries=0、无跳过；不计入成品资格。原环境变量未被 fixture 识别，实际启动源码 Electron。                                      |
+| 成品与源码一致性             | 包内 beta.2，主进程字节匹配，555 个 Renderer 文件字节匹配                                                                                |
 
 上述 29 项不包含随后因 CI 波动追加的流式 token 专项，不能用其通过掩盖补验失败：`sdk-alpha11.spec.ts` 的 token 用例在 Linux CI 首次遇到 `SDK did not supply the current Session view.`、重试后通过；Windows 成品三次无重试补验为 2 通过、1 失败，开启日志的下一组在第一项即失败（其余四项未运行）。后两次失败发生于停止 Thinking 请求后的第二次发送：Provider 仅收到首个 Thinking 请求，第二次准备阶段被 `session_data_changed` 拒绝，草稿恢复。不是 token 数值断言失败，也不计作该专项已通过。保留原始冲突和失败截图，没有扩大重试或改写断言。
 

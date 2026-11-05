@@ -2168,6 +2168,8 @@ export class RuntimeHostAdapter {
   private readonly activeRuns = new Map<string, string>();
   private readonly observations = new Map<string, RuntimeSessionObservationState>();
   private readonly productViews = new Map<string, SessionProductView>();
+  private foregroundObservationSessionId: string | undefined;
+  private foregroundObservationRequest = 0;
   private readonly queueRebindAttempts = new WeakMap<RuntimeSessionObservationState, Set<string>>();
   private readonly queueRebindTasks = new Map<
     string,
@@ -4316,6 +4318,8 @@ export class RuntimeHostAdapter {
       outcome = 'not_found';
     }
     this.desiredObservations.delete(sessionId);
+    if (this.foregroundObservationSessionId === sessionId)
+      this.foregroundObservationSessionId = undefined;
     this.activeCompactionsBySession.delete(sessionId);
     this.localCompactionCallsBySession.delete(sessionId);
     this.stopActorObservation(sessionId);
@@ -4491,7 +4495,24 @@ export class RuntimeHostAdapter {
     return pending;
   }
 
-  async readSessionLiveSnapshot(sessionId: string): Promise<SpaceSessionLiveProjectionT> {
+  async readSessionLiveSnapshot(
+    sessionId: string,
+    retainObservation = false,
+  ): Promise<SpaceSessionLiveProjectionT> {
+    const request = retainObservation ? ++this.foregroundObservationRequest : undefined;
+    if (retainObservation) await this.ensureObserved(sessionId);
+    const state = retainObservation ? this.observations.get(sessionId) : undefined;
+    if (state && request === this.foregroundObservationRequest) {
+      const previous = this.foregroundObservationSessionId;
+      this.foregroundObservationSessionId = sessionId;
+      if (previous && previous !== sessionId)
+        void this.retireObservationWhenSettled(previous).catch((error: unknown) => {
+          console.warn(
+            '[runtime] previous foreground observation retirement failed:',
+            sanitizeDiagnosticError(error),
+          );
+        });
+    }
     await this.readObservedSessionLiveSnapshot(sessionId);
     const observed = this.observations.get(sessionId);
     if (observed && observed.runtime === this.runtime) {
@@ -5012,6 +5033,7 @@ export class RuntimeHostAdapter {
     const state = this.observations.get(sessionId);
     if (
       !state ||
+      this.foregroundObservationSessionId === sessionId ||
       this.activeRuns.has(sessionId) ||
       this.pendingRunAdmissionsBySession.has(sessionId) ||
       this.acceptedInputObservationDemands.has(sessionId)

@@ -304,7 +304,10 @@ export default function App(): JSX.Element {
       // and tool positions; the accepted per-draft watermark rejects only later covered replays.
       sessionEventBatcher.pause(sessionId);
       let scheduledRetry = false;
-      void invokeWithTimeout(bridge, 'session.liveSnapshot', { sessionId })
+      void invokeWithTimeout(bridge, 'session.liveSnapshot', {
+        sessionId,
+        retainObservation: useAppStore.getState().currentSessionId === sessionId,
+      })
         .then((result) => {
           if (!result.ok) throw new Error(result.error?.message ?? 'Session live snapshot failed.');
           if (disposed) return;
@@ -1060,6 +1063,23 @@ export default function App(): JSX.Element {
     currentSessionNeedsRuntimeObservation,
     hasCurrentLiveProjection,
   ]);
+
+  // Keep the selected SDK Session observable after history, including cached idle revisits.
+  // Background Session reads still retire; each selection edge coalesces one fresh intent,
+  // including A → B → A when an older A response is still in flight. No periodic polling.
+  useEffect(() => {
+    if (
+      !currentSessionId ||
+      !coderRuntimeReady ||
+      !currentSessionHistoryAllowsObservation ||
+      useAppStore.getState().sessions.find((session) => session.sessionId === currentSessionId)
+        ?.provider === 'mock'
+    )
+      return;
+    requestSessionLiveSnapshotRef.current(currentSessionId, {
+      allowEqualHydration: true,
+    });
+  }, [currentSessionId, coderRuntimeReady, currentSessionHistoryAllowsObservation]);
 
   // Actor telemetry has an independent Runtime cursor. Seed it explicitly on
   // renderer reload; subsequent changes arrive through agent.actor.changed.

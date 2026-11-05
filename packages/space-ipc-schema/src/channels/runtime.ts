@@ -1167,7 +1167,7 @@ export const runtimeConnectionChangedChannel = {
 export const sessionLiveSnapshotChannel = {
   name: 'session.liveSnapshot',
   direction: 'invoke',
-  input: z.object({ sessionId: idSchema }).strict(),
+  input: z.object({ sessionId: idSchema, retainObservation: z.boolean().optional() }).strict(),
   output: spaceSessionLiveProjectionSchema,
 } as const;
 

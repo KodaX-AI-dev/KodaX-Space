@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
-import type { PushPayload } from '@kodax-space/space-ipc-schema';
+import type { ChannelOutput, PushPayload } from '@kodax-space/space-ipc-schema';
 import {
   createLocalSdkProvider,
   currentSdkSession,
@@ -10,6 +10,8 @@ import {
   sendSdkPrompt,
   waitSdkIdle,
 } from './sdk-provider-fixture.js';
+
+import type { SpaceInstance } from './fixtures.js';
 
 test.setTimeout(150_000);
 
@@ -48,6 +50,39 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
     );
     await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
     await expect(space.page.getByTestId('partner-work-mode')).toHaveText('Agent');
+    // Revisit a cached idle Session; its foreground subscription must be restored too.
+    await space.page.getByRole('button', { name: 'New session', exact: true }).click();
+    await space.page
+      .getByTestId('partner-starter-tasks')
+      .getByRole('button', { name: /Polish your writing/ })
+      .click();
+    await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await sendSdkPrompt(space, 'BETA1_OTHER_EXPERT_SESSION');
+    const otherId = await currentSdkSession(space);
+    expect(otherId).not.toBe(id);
+    await waitSdkIdle(space, otherId);
+    await space.page
+      .locator(`[data-testid="sidebar-session-row"][data-session-id="${id}"]`)
+      .click();
+    await expect(space.page.getByTestId('conversation-stream')).toHaveAttribute(
+      'data-session-id',
+      id,
+    );
+    await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await space.page
+      .locator(`[data-testid="sidebar-session-row"][data-session-id="${otherId}"]`)
+      .click();
+    await expect(space.page.getByTestId('conversation-stream')).toHaveAttribute(
+      'data-session-id',
+      otherId,
+    );
+    await space.page
+      .locator(`[data-testid="sidebar-session-row"][data-session-id="${id}"]`)
+      .click();
+    await expect(space.page.getByTestId('conversation-stream')).toHaveAttribute(
+      'data-session-id',
+      id,
+    );
     // A second public SDK client changes the idle Host setting, bypassing Space's setter guard.
     await promisify(execFile)(
       process.execPath,
@@ -83,6 +118,150 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
     await space.close();
   }
 });
+
+type ForegroundRead = { sessionId: string; retainObservation?: boolean; afterRelease: boolean };
+type ForegroundSession = { id: string; live: ChannelOutput<'session.liveSnapshot'> };
+
+async function createForegroundSession(
+  space: SpaceInstance,
+  prompt: string,
+): Promise<ForegroundSession> {
+  await sendSdkPrompt(space, prompt);
+  const id = await currentSdkSession(space);
+  await waitSdkIdle(space, id);
+  const live = await space.page.evaluate(
+    (sessionId) => window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId }),
+    id,
+  );
+  if (!live.ok) throw new Error(live.error.message);
+  return { id, live: live.data };
+}
+
+async function selectForegroundSession(space: SpaceInstance, id: string): Promise<void> {
+  await space.page.locator(`[data-testid="sidebar-session-row"][data-session-id="${id}"]`).click();
+  await expect(space.page.getByTestId('conversation-stream')).toHaveAttribute(
+    'data-session-id',
+    id,
+  );
+  await space.page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+}
+
+async function installForegroundReadGate(
+  space: SpaceInstance,
+  first: ForegroundSession,
+  second: ForegroundSession,
+  foreground: boolean,
+): Promise<void> {
+  await space.app.evaluate(
+    ({ ipcMain, BrowserWindow }, input) => {
+      const requests: ForegroundRead[] = [];
+      const control = { requests, release: () => {}, held: false, released: false };
+      Reflect.set(globalThis, 'foregroundFlightControl', control);
+      ipcMain.removeHandler('session.liveSnapshot');
+      ipcMain.handle(
+        'session.liveSnapshot',
+        (_event, request: Omit<ForegroundRead, 'afterRelease'>) => {
+          requests.push({ ...request, afterRelease: control.released });
+          const reply = {
+            ok: true,
+            data: request.sessionId === input.first.id ? input.first.live : input.second.live,
+          };
+          if (
+            request.sessionId === input.first.id &&
+            Boolean(request.retainObservation) === input.foreground &&
+            !control.held
+          ) {
+            control.held = true;
+            return new Promise((resolve) => {
+              control.release = () => {
+                control.released = true;
+                resolve(reply);
+              };
+            });
+          }
+          return reply;
+        },
+      );
+      if (!input.foreground)
+        BrowserWindow.getAllWindows()
+          .find((window) => window.webContents.getURL().startsWith('app://space/'))!
+          .webContents.send('session.liveInvalidated', {
+            sessionId: input.first.id,
+            runtimeId: input.first.live.cursor.runtimeId,
+            reason: 'settings_changed',
+            message: 'Controlled background read',
+          });
+    },
+    { first, second, foreground },
+  );
+}
+
+async function readForegroundRequests(space: SpaceInstance): Promise<ForegroundRead[]> {
+  return space.app.evaluate(
+    () => Reflect.get(globalThis, 'foregroundFlightControl').requests as ForegroundRead[],
+  );
+}
+
+async function waitForForegroundRead(
+  space: SpaceInstance,
+  sessionId: string,
+  retained: boolean,
+  afterRelease = false,
+): Promise<void> {
+  await expect
+    .poll(async () =>
+      (await readForegroundRequests(space)).some(
+        (request) =>
+          request.sessionId === sessionId &&
+          Boolean(request.retainObservation) === retained &&
+          (!afterRelease || request.afterRelease),
+      ),
+    )
+    .toBe(true);
+}
+
+async function releaseForegroundRead(space: SpaceInstance): Promise<void> {
+  await space.app.evaluate(() => Reflect.get(globalThis, 'foregroundFlightControl')?.release());
+}
+
+for (const foreground of [false, true]) {
+  test(`foreground activation survives a slow ${foreground ? 'previous foreground' : 'background'} snapshot`, async () => {
+    const provider = await createLocalSdkProvider();
+    const { space } = await launchRealSdkSpace(`foreground-flight-${Date.now()}`, provider.url);
+    try {
+      const first = await createForegroundSession(space, 'FOREGROUND_A');
+      await space.page.getByRole('button', { name: 'New session', exact: true }).click();
+      const second = await createForegroundSession(space, 'FOREGROUND_B');
+      await installForegroundReadGate(space, first, second, foreground);
+      if (foreground) await selectForegroundSession(space, first.id);
+      await waitForForegroundRead(space, first.id, foreground);
+      if (foreground) {
+        await selectForegroundSession(space, second.id);
+        await waitForForegroundRead(space, second.id, true);
+      }
+      await selectForegroundSession(space, first.id);
+      await expect(space.page.getByTestId('conversation-stream')).toContainText('FOREGROUND_A');
+      await releaseForegroundRead(space);
+      await waitForForegroundRead(space, first.id, true, true);
+    } finally {
+      await releaseForegroundRead(space);
+      const recorded = await space.app.evaluate(
+        () => Reflect.get(globalThis, 'foregroundFlightControl')?.requests ?? [],
+      );
+      await test.info().attach('foreground-flight-requests.json', {
+        body: JSON.stringify(recorded),
+        contentType: 'application/json',
+      });
+      await provider.close();
+      await space.close();
+    }
+  });
+}
 
 test('blocked queued input is visible and taking it back preserves text beyond the Host preview', async () => {
   const provider = await createLocalSdkProvider();

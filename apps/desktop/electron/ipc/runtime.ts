@@ -20,9 +20,11 @@ type RuntimeChannelRegistrar = <C extends RuntimeChannelName>(
 export function registerRuntimeProjectionChannels(
   controller: RuntimeProjectionController = runtimeProjectionController,
   register: RuntimeChannelRegistrar = registerChannel,
-  readSessionLiveSnapshot: (sessionId: string) => Promise<SpaceSessionLiveProjectionT> = (
-    sessionId,
-  ) => runtimeHostAdapter.readSessionLiveSnapshot(sessionId),
+  readSessionLiveSnapshot: (
+    sessionId: string,
+    retainObservation?: boolean,
+  ) => Promise<SpaceSessionLiveProjectionT> = (sessionId, retainObservation) =>
+    runtimeHostAdapter.readSessionLiveSnapshot(sessionId, retainObservation),
   requestRuntimeProfileRefresh: () => void = () =>
     runtimeHostAdapter.requestRuntimeProfileRefresh(),
 ): void {
@@ -32,7 +34,9 @@ export function registerRuntimeProjectionChannels(
     requestRuntimeProfileRefresh();
     return controller.profileSnapshot();
   });
-  register('session.liveSnapshot', ({ sessionId }) => readSessionLiveSnapshot(sessionId));
+  register('session.liveSnapshot', ({ sessionId, retainObservation }) =>
+    readSessionLiveSnapshot(sessionId, retainObservation),
+  );
 }
 
 export function registerRuntimeStatisticsChannels(): void {

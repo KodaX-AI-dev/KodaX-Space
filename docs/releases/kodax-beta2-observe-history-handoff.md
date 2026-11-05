@@ -1,5 +1,7 @@
-# beta.2 观测与历史一致性补验
+# beta.2 观测与历史问题：Space 根因更正
 
-正式 Registry `@kodax-ai/kodax@0.7.97-beta.2`、Host fingerprint `92f8849732eda495c6867371736badb50e411a3459792fa0d779113b61098b27` 的 Space Electron 验收仍捕获历史首读收敛问题：Script 写入部分文件→Stop→共享 Host 冷重启，Space 通过既有有界兼容取得历史后，独立被动 SDK 客户端对同一 Session 的无 cursor 首读仍会返回 `resync_required`（location topology changed/could not be verified，偶尔夹有读边界锁冲突）；连续重读有成功也有失败，公开 `sessions.load` 后可成功，但再次 `observeView` 并 close 后的新首读又可能失效。启动瞬间确有过渡冲突，不能把每次短暂 conflict 都当根因，也不能把一次 load 后成功视为稳定收敛。请 SDK 进一步核对实际 admission/location/view 围栏的失效和收敛，区分真实并发写入与仅观察引发的元数据变化；客户端无需反复 load 或重启 Host 才能恢复新首屏，且保留旧 cursor/sourceRevision 的真实冲突、opaque ID、原文/工具证据/nativeHistory 和取消事实。验收需使用正式包、真实 Host、Space Main 与第二客户端，在已确认会话历史可读的稳定点反复执行 observe→close→无 cursor 首读，并与启动过渡、真实并发写入分开记录；无真实内容变化时应稳定可读，其他写入/过期分页仍正确失效，已 Stop 的 Run、未知工具和模型请求不得重放。Space 的公开 API 有界兼容及部分写入不重放测试已通过；这不能替代 SDK 直读接缝的闭环，也不关闭 Issue 371 的首历史性能问题。
+2026-11-05 根因复验已更正之前的 SDK 归因。完整证据、剩余验证及成品记录见 [根因复验](../research/kodax-beta2-boundary-root-cause.md)。旧的历史失败、延长静置失败及 Stop 后草稿恢复记录保留，不能把它们单独当作 SDK 缺陷证明。
 
-复现位于 `tests/e2e/sdk-alpha11-lifecycle.spec.ts` 的 Script 生命周期场景；输出 `raw-host-observe-first-history.json` 将 SDK 原始返回与 Space 用户路径独立记录，`SDK limitation` annotation 不代表根因已修复。原始失败和稳定窗口记录保存在 `artifacts/diagnostics/beta2/history-root-red/`、`history-root-probe/`、`history-stable/`，其中稳定窗口样本为 before=false、after=[true,false,false]、load 后=true、再次观察后=false；均为隔离本地 Provider，无用户真实数据。
+可转给 SDK 线程的澄清说明：
+
+经正式 Registry `@kodax-ai/kodax@0.7.97-beta.2` 与真实 Host 的分层复现，之前 Space 报告的 observe 后历史 `resync_required` 已确认存在 Space 侧根因：新建会话投影 reducer 在首次收到与已有投影相同的空队列时，仍发布 queue 增量并推进版本；空闲观察退休/重建与 Renderer 快照补读形成反馈，约 21 秒产生 252 次 Session observe 和 247 次 Actor 查询，持续触发 Host 位置索引/存储围栏活动。在同一 Host/会话下暂停隔离 Space Main 后历史读稳定成功，恢复 Main 则再现；仅在 Space 增加“有效队列未变则不发布”的判断后，原始 SDK 读取通过，撤掉该行则失败重现，SDK 包及 Host 实现始终未改。纯 SDK 的 Script Stop、冷重启、多客户端观察等对照也通过。因此撤回此前要求 SDK 放宽历史围栏或修改该根因的请求；请保留真实并发写入、过期 cursor/sourceRevision 的拒绝语义。此外，移除反馈循环后发现前台空闲观察被 Space 过早释放，导致外部工作模式变更不能进入 UI；Space 正在补齐单前台订阅保留与切换竞态验收。Space 已修反馈循环，并将原先的 SDK limitation 注释改为严格成功断言；最终重复与成品结果以根因复验记录为准，Issue 371 性能及真实外部环境仍独立验收。

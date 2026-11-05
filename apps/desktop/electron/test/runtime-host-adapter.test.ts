@@ -14564,6 +14564,110 @@ test('observation invalidation preserves a monotonic live revision for a missed 
   await adapter.close();
 });
 
+test('the foreground live snapshot receives idle settings and releases the previous foreground observer', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_foreground');
+  fake.sessions.add('s_other');
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  try {
+    await adapter.readSessionLiveSnapshot('s_foreground', true);
+    assert.equal(fake.calls.observationCloses, 0);
+    fake.emit({
+      id: 'foreground-settings',
+      seq: 1,
+      time: '2026-11-05T00:00:00Z',
+      type: 'session.settings.updated',
+      sessionId: 's_foreground',
+      runId: 's_foreground',
+      payload: {
+        sessionId: 's_foreground',
+        revision: 1,
+        settings: { workMode: 'coding' },
+        patch: { workMode: 'coding' },
+      },
+    });
+    assert.equal(
+      (await adapter.readSessionLiveSnapshot('s_foreground')).settings?.value.workMode,
+      'coding',
+    );
+    await adapter.readSessionLiveSnapshot('s_other', true);
+    assert.equal(fake.calls.observationCloses, 1);
+    assert.deepEqual(fake.calls.observed, ['s_foreground', 's_other']);
+  } finally {
+    await adapter.close();
+  }
+});
+
+function holdNextSessionObservation(fake: ReturnType<typeof createFakeRuntime>, sessionId: string) {
+  const original = fake.runtime.sessions.observeView;
+  let started!: () => void;
+  const starting = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let held = false;
+  fake.runtime.sessions.observeView = async (...args) => {
+    if (args[0] === sessionId && !held) {
+      held = true;
+      started();
+      await gate;
+    }
+    return original(...args);
+  };
+  return { starting, release };
+}
+
+test('a late foreground read cannot replace the newer foreground subscription', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_late');
+  fake.sessions.add('s_selected');
+  const { starting, release } = holdNextSessionObservation(fake, 's_late');
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  try {
+    const older = adapter.readSessionLiveSnapshot('s_late', true);
+    await starting;
+    await adapter.readSessionLiveSnapshot('s_selected', true);
+    release();
+    await older;
+    fake.emit({
+      id: 'newer-foreground-settings',
+      seq: 1,
+      time: '2026-11-05T00:00:00Z',
+      type: 'session.settings.updated',
+      sessionId: 's_selected',
+      runId: 's_selected',
+      payload: {
+        sessionId: 's_selected',
+        revision: 1,
+        settings: { workMode: 'agent' },
+        patch: { workMode: 'agent' },
+      },
+    });
+    assert.equal(
+      (await adapter.readSessionLiveSnapshot('s_selected')).settings?.value.workMode,
+      'agent',
+    );
+  } finally {
+    release();
+    await adapter.close();
+  }
+});
+
 test('a one-shot terminal Actor snapshot does not leave Session or Actor polling alive', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_actor_snapshot');
