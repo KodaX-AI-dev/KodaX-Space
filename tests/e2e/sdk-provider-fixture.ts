@@ -13,6 +13,7 @@ import type {
   SessionProductView,
 } from '@kodax-space/space-ipc-schema';
 import { launchSpace, type LaunchSpaceOptions, type SpaceInstance } from './fixtures.js';
+import { listenFetchableLoopback } from '../../apps/desktop/electron/loopback-http.js';
 import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
 export const FINALIZED_E2E_PLAN =
@@ -123,12 +124,12 @@ export async function createLocalSdkProvider() {
     );
   };
   const handle = async (request: IncomingMessage, response: ServerResponse) => {
-    transport.requestsStarted++;
     if (request.method === 'GET') {
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ data: [{ id: 'space-e2e-model' }] }));
       return;
     }
+    transport.requestsStarted++;
     let body = '';
     for await (const chunk of request) body += String(chunk);
     transport.bodiesCompleted++;
@@ -369,12 +370,10 @@ export async function createLocalSdkProvider() {
       response.destroy();
     });
   });
+  const address = await listenFetchableLoopback(server, AbortSignal.timeout(2_000));
   server.on('connection', () => {
     transport.connections++;
   });
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Local Provider did not bind');
   return {
     get transport() {
       return { ...transport };

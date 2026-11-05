@@ -1,5 +1,10 @@
+import { Server } from 'node:http';
 import { expect, test } from '@playwright/test';
-import { readSdkHistoryPage, readSdkProductView } from './sdk-provider-fixture.js';
+import {
+  createLocalSdkProvider,
+  readSdkHistoryPage,
+  readSdkProductView,
+} from './sdk-provider-fixture.js';
 import type { SpaceInstance } from './fixtures.js';
 import type { ChannelOutput, IpcResult } from '@kodax-space/space-ipc-schema';
 import { readdir, readFile } from 'node:fs/promises';
@@ -134,3 +139,58 @@ for (const page of [undefined, { outcome: 'runtime_unavailable' as const }]) {
     expect(fixture.count()).toBe(1);
   });
 }
+
+test('local SDK Provider exposes a fetchable endpoint when the OS first offers a blocked port', async () => {
+  const listen = Server.prototype.listen;
+  let forced = false;
+  Server.prototype.listen = function (this: Server, ...args: unknown[]) {
+    if (!forced && args[0] === 0) {
+      args[0] = 6666;
+      forced = true;
+    }
+    return Reflect.apply(listen, this, args);
+  } as typeof listen;
+  let provider: Awaited<ReturnType<typeof createLocalSdkProvider>> | undefined;
+  try {
+    provider = await createLocalSdkProvider();
+    const result = await fetch(provider.url + '/models', { signal: AbortSignal.timeout(2_000) });
+    expect(result.status).toBe(200);
+    expect(new URL(provider.url).port).not.toBe('6666');
+    expect(provider.requests).toEqual([]);
+    expect(provider.errors).toEqual([]);
+  } finally {
+    Server.prototype.listen = listen;
+    await provider?.close();
+  }
+});
+
+test('local SDK Provider preserves other preflight failures and closes its listener', async () => {
+  const fetch = globalThis.fetch;
+  const listen = Server.prototype.listen;
+  const failure = new Error('Local Provider preflight unavailable');
+  const observed: { server?: Server } = {};
+  let attempts = 0;
+  Server.prototype.listen = function (this: Server, ...args: unknown[]) {
+    observed.server = this;
+    attempts++;
+    return Reflect.apply(listen, this, args);
+  } as typeof listen;
+  globalThis.fetch = async () => {
+    throw failure;
+  };
+  try {
+    await expect(createLocalSdkProvider()).rejects.toBe(failure);
+    expect(attempts).toBe(1);
+    expect(observed.server?.listening).toBe(false);
+  } finally {
+    globalThis.fetch = fetch;
+    Server.prototype.listen = listen;
+    const server = observed.server;
+    if (server?.listening) {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  }
+});

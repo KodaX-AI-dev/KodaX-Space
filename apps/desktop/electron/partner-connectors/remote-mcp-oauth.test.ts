@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
+import { Server } from 'node:http';
 import {
   createRemoteMcpOAuth,
   type CredentialStore,
@@ -57,6 +58,62 @@ function callbackFor(authorizationUrl: string, code: string, state?: string): UR
   callback.searchParams.set('state', state ?? authorization.searchParams.get('state') ?? '');
   return callback;
 }
+
+test('real OAuth loopback remains browser-fetchable after a blocked port allocation', async () => {
+  const listen = Server.prototype.listen;
+  let forced = false;
+  Server.prototype.listen = function (this: Server, ...args: unknown[]) {
+    if (!forced && args[0] === 0) {
+      args[0] = 6666;
+      forced = true;
+    }
+    return Reflect.apply(listen, this, args);
+  } as typeof listen;
+  const oauth = createRemoteMcpOAuth(baseConfig({ timeoutMs: 2_000 }), {
+    credentials: new MemoryCredentialStore(),
+    discoverEndpoints: async () => endpoints,
+    fetchFn: async () =>
+      Response.json({ access_token: 'fixture-token', expires_in: 3600, token_type: 'Bearer' }),
+  });
+  try {
+    await oauth.authorize(profile, {
+      onAuthorizationUrl: async (url) => {
+        const callback = callbackFor(url, 'one-time-code');
+        const response = await fetch(callback);
+        assert.equal(response.status, 200);
+        await response.text();
+        assert.notEqual(callback.port, '6666');
+      },
+    });
+    assert.equal(await oauth.accessToken(profile), 'fixture-token');
+  } finally {
+    Server.prototype.listen = listen;
+  }
+});
+
+test('cancelling real OAuth closes its callback listener without saving credentials', async () => {
+  const controller = new AbortController();
+  const credentials = new MemoryCredentialStore();
+  let callback: URL | undefined;
+  const oauth = createRemoteMcpOAuth(baseConfig(), {
+    credentials,
+    discoverEndpoints: async () => endpoints,
+    fetchFn: async () => assert.fail('cancelled OAuth must not exchange a code'),
+  });
+  await assert.rejects(
+    oauth.authorize(profile, {
+      signal: controller.signal,
+      onAuthorizationUrl: (url) => {
+        callback = callbackFor(url, 'unused-code');
+        controller.abort();
+      },
+    }),
+    { code: 'authorization_cancelled' },
+  );
+  assert.ok(callback);
+  await assert.rejects(fetch(callback, { signal: AbortSignal.timeout(2_000) }));
+  assert.equal(credentials.values.size, 0);
+});
 
 test('authorize enforces endpoint allowlists and binds a PKCE code to a random state', async () => {
   const credentials = new MemoryCredentialStore();

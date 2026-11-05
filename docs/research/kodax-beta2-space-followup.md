@@ -8,7 +8,7 @@
 - `ff4bdfa0` 已修复前台空闲订阅被退休以及切换/慢请求竞态，后台观察仍按既有条件退休。
 - 两个修复都已在 main；本轮不是把已确认的 Space 根因继续交给 SDK。SDK 保持正式 beta.2 原包，不放宽围栏、不自动重发输入。
 
-## 本轮修改
+## 第一轮修改（897f95c8）
 
 权限选择 E2E 曾在按钮显示用户意图后立即读取保存状态，并用 undefined 代替 IPC 错误，还依赖会话列表第一行。现在通过公开 `settings.get` 和 `session.list` 等待已保存默认值与精确当前 sessionId 的权限同时一致；快捷键、快速循环、最终鼠标选择及重载后的原有断言保留，增加相应持久化检查。未扩大超时、启用重试或修改生产权限策略。
 
@@ -16,7 +16,7 @@
 
 独立 Provider 超时仍没有稳定复现。本轮仅在测试 fixture 增加 TCP 连接、HTTP 请求开始及 body 完成的被动计数；失败时先复制计数，再并发读公开 Provider、live、product、statistics 状态，最后执行 Main 的健康 GET，避免探测本身污染原始计数。只记录隔离本地 URL、计数与公共 DTO，不记录请求头、凭据或 SDK 私有文件；取证失败仍保留原始异常。二十轮相同成品 Partner 复验 20/20 首次通过，不能据此宣称那一次超时的根因已修复，也不新增未经证实的 SDK 需求。
 
-## 本地验证
+## 第一轮本地验证
 
 - 投影和 Runtime adapter：349/349，0 失败、0 跳过。
 - 权限正常/受控慢写：各三轮，共 6/6，retries=0。
@@ -33,4 +33,31 @@
 
 独立需求轴复审：0 项代码发现。符合 ADR-005 四权限与持久化/实际会话事实一致的要求；没有降低断言或修改 SDK 准入/重发边界。Provider 取证增量不等同于超时根因已解决，此边界明确保留。
 
-本轮新提交的远端完整 CI / build 结果在完成后仅追加本研究记录。
+第一轮 `897f95c8` 远端完整 [CI](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41990915515) / [四平台 build](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/41990915680) 均成功。四分片 JSON 合计 360 条首次通过、21 条平台/条件跳过、0 条最终失败；另有1条 Windows 语言切换测试重试后通过（重载后许可证 Community 标记未及时显示），不将它计为首次通过。权限和本轮目标场景没有重试。
+
+## 追加定位：随机端口限制与生产 OAuth 修复
+
+第一轮之后，用错误的本地 Provider 配置做受控失败，确认取证能同时保留原始 Provider-arrival 断言、探测前全零传输计数、实际公开配置 URL、Main 健康 GET 200 以及 live/product/statistics 公共响应。该负向试验预期失败，不计为功能通过。
+
+本机 `netsh int ipv4 show dynamicport tcp` 显示 TCP 动态范围从 1024 开始、数量 13977。`listen(0)` 因此可能分配 6666 等浏览器/Fetch 限制端口：TCP 绑定成功，但 Fetch 抛 `TypeError: fetch failed`，cause 为 `bad port`，请求到不了服务端。通过公开 Server.listen 把第一次随机分配固定到 6666，真实 Provider fixture 稳定 RED。原历史单次超时没有保留 URL，旧 trace 也未包含它，因此不能把此机制认定为那一次超时的唯一根因。
+
+检查相同调用发现，Space 生产 MCP OAuth loopback 也直接暴露 `listen(0)` 的端口；公开 `authorize` 入口同样 RED，返回 `authorization_failed`。这是 Space 的生产缺口，已直接修复，没有给 SDK 增加未经证实的需求。
+
+`listenFetchableLoopback` 在生产 OAuth 和两种真实 SDK 测试 Provider 三处复用：先绑定 127.0.0.1，再用独立 `/_kodax/ready` GET 确认可达；仅 Fetch 的 `bad port` 最多重绑三次，换端口前关闭旧监听。取消、HTTP 错误和其他网络错误立即失败，保留错误，清理失败同时保留原异常。生产沿用既有授权 deadline 与取消信号，不新增设置或请求重发。OAuth 健康路径不触发授权回调，state、PKCE、端点白名单、权限及凭据存储均保持原策略；取消后关闭回调监听、不写入凭据。
+
+新增 Provider 回归用例时曾误覆盖既有 fixture spec，提交前已恢复全部十一条原测试并追加两条新测试；最终 diff 保留原事务、历史修订与失败边界断言。
+
+### 追加验证
+
+- OAuth/loopback：20/20，含受限端口、取消时关闭监听且不保存凭据、准备阶段取消、HTTP 503 不重绑；原 state/PKCE/白名单/refresh/授权超时用例全部通过。
+- Provider fixture 和历史边界：全部十三条各重复三轮，39/39，retries=0。
+- typecheck、lint、修改文件格式与 diff whitespace 检查通过。
+- 已重新完成 npm run build：成品依赖/原生模块、boot（保留122条历史子任务记录）以及六条真实成品 SDK 生命周期回归全部通过，retries=0；包含 Stop 后立即发送、队列重载且只消费一次、历史/fork、Rewind 与多客户端退出保护。其余成品专项与新生产提交的远端完整检查结果后续追加。没有替换公开 alpha.4 标签或资产。
+
+### Standards（追加）
+
+独立规范轴：0 项硬违反、0 项可行动 smell。共享 helper 有三个真实调用，函数少于50行；关闭失败保留原错，abort 监听一次性且回调完成后移除；测试在 finally 恢复全局替换。
+
+### Spec（追加）
+
+独立需求轴：0 项。仅准备阶段对受限端口有界重绑，没有修改 SDK 围栏或重发 Run；OAuth 健康路径不结算授权回调，state、PKCE、回调校验和权限范围保持原行为。历史单次超时的证据边界保留。

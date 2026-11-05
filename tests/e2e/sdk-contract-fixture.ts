@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { writeFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 import type { SpaceInstance } from './fixtures.js';
+import { listenFetchableLoopback } from '../../apps/desktop/electron/loopback-http.js';
 import { stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
 
 interface ToolAction {
@@ -102,9 +103,7 @@ export async function createContractProvider(plans: FixtureState['plans']) {
       response.end('Contract fixture failed');
     });
   });
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('No fixture port');
+  const address = await listenFetchableLoopback(server, AbortSignal.timeout(2_000));
   return {
     url: `http://127.0.0.1:${address.port}/v1`,
     requests,

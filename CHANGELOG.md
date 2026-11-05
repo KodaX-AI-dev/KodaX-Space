@@ -18,6 +18,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Recover legacy queued input through principal-bound, idempotent Host withdrawal receipts. Preserve complete text and attachment references across lost responses; expose mode mismatches without misclassifying them as Provider errors.
 - Inspect and prewarm repo intelligence in the execution Host, with Session/generation isolation and explicit uninitialized/fallback states.
 - Present Workflow as an explicit single-use execution with progress, controls and a durable Session response. Retire save/revise/rename/delete/prune/rerun management actions, retain existing definitions and results, and avoid duplicate local completion notices or preview-as-original fallbacks.
+- Suppress unchanged queue publications and retain the selected idle Session observation. Prevent recursive history refreshes and stale foreground reads without weakening SDK revision checks or replaying inputs.
+- Verify local HTTP readiness before opening MCP OAuth authorization. Rebind browser-restricted random ports with a bounded attempt count; preserve cancellation, PKCE/state validation and ordinary network failures. Apply the same startup check to isolated SDK test Providers.
 
 ## [0.1.47-alpha.4] - 2026-11-04
 

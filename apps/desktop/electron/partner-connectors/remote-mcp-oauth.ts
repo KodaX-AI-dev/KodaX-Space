@@ -1,5 +1,6 @@
 import { createHash, randomBytes as nodeRandomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
+import { listenFetchableLoopback, LOOPBACK_READY_PATH } from '../loopback-http.js';
 
 type SdkMcpModule = typeof import('@kodax-ai/kodax/mcp');
 type DiscoveredOAuthEndpoints = import('@kodax-ai/kodax/mcp').DiscoveredOAuthEndpoints;
@@ -324,71 +325,67 @@ function waitForRefresh(promise: Promise<string>, signal?: AbortSignal): Promise
   });
 }
 
-function defaultLoopbackServer(signal?: AbortSignal): Promise<LoopbackCallbackServer> {
-  return new Promise((resolve, reject) => {
-    let listeningPort = 0;
-    let callbackResolve: ((url: URL) => void) | undefined;
-    let callbackReject: ((error: Error) => void) | undefined;
-    const callback = new Promise<URL>((callbackDone, callbackFailed) => {
-      callbackResolve = callbackDone;
-      callbackReject = callbackFailed;
-    });
-    const server = createServer((request, response) => {
-      const raw = request.url ?? '';
-      let url: URL | undefined;
-      try {
-        if (raw.length <= 4096) url = new URL(raw, `http://127.0.0.1:${listeningPort.toString()}`);
-      } catch {
-        url = undefined;
-      }
-      const valid = request.method === 'GET' && url?.pathname === '/oauth/callback';
-      response.writeHead(valid ? 200 : 400, {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'text/plain; charset=utf-8',
-      });
-      response.end(
-        valid ? 'Authorization received. You can close this window.' : 'Invalid callback.',
-      );
-      if (valid && url) callbackResolve?.(url);
-    });
-    const abort = () => {
-      callbackReject?.(new Error('aborted'));
-      server.close();
-      reject(new Error('aborted'));
-    };
-    signal?.addEventListener('abort', abort, { once: true });
-    server.once('error', () => reject(new Error('server_failed')));
-    server.listen(0, '127.0.0.1', () => {
-      signal?.removeEventListener('abort', abort);
-      const address = server.address();
-      if (!address || typeof address === 'string') {
-        server.close();
-        reject(new Error('server_failed'));
-        return;
-      }
-      listeningPort = address.port;
-      resolve({
-        redirectUri: `http://127.0.0.1:${address.port}/oauth/callback`,
-        waitForCallback: async (waitSignal) => {
-          if (!waitSignal) return callback;
-          if (waitSignal.aborted) throw new Error('aborted');
-          return Promise.race([
-            callback,
-            new Promise<URL>((_done, failed) => {
-              waitSignal.addEventListener('abort', () => failed(new Error('aborted')), {
-                once: true,
-              });
-            }),
-          ]);
-        },
-        close: () =>
-          new Promise<void>((done) => {
-            if (!server.listening) done();
-            else server.close(() => done());
-          }),
-      });
-    });
+function waitForLoopbackCallback(callback: Promise<URL>, signal?: AbortSignal): Promise<URL> {
+  if (!signal) return callback;
+  if (signal.aborted) return Promise.reject(new Error('aborted'));
+  return new Promise<URL>((resolve, reject) => {
+    const abort = () => reject(new Error('aborted'));
+    signal.addEventListener('abort', abort, { once: true });
+    void callback.then(
+      (url) => {
+        signal.removeEventListener('abort', abort);
+        resolve(url);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', abort);
+        reject(error);
+      },
+    );
   });
+}
+
+async function defaultLoopbackServer(
+  signal = new AbortController().signal,
+): Promise<LoopbackCallbackServer> {
+  let listeningPort = 0;
+  let callbackResolve: ((url: URL) => void) | undefined;
+  const callback = new Promise<URL>((resolve) => {
+    callbackResolve = resolve;
+  });
+  const server = createServer((request, response) => {
+    if (request.method === 'GET' && request.url === LOOPBACK_READY_PATH) {
+      response.writeHead(204, { 'Cache-Control': 'no-store' });
+      response.end();
+      return;
+    }
+    const raw = request.url ?? '';
+    let url: URL | undefined;
+    try {
+      if (raw.length <= 4096) url = new URL(raw, `http://127.0.0.1:${listeningPort}`);
+    } catch {
+      url = undefined;
+    }
+    const valid = request.method === 'GET' && url?.pathname === '/oauth/callback';
+    response.writeHead(valid ? 200 : 400, {
+      'Cache-Control': 'no-store',
+      'Content-Type': 'text/plain; charset=utf-8',
+    });
+    response.end(
+      valid ? 'Authorization received. You can close this window.' : 'Invalid callback.',
+    );
+    if (valid && url) callbackResolve?.(url);
+  });
+  const address = await listenFetchableLoopback(server, signal);
+  listeningPort = address.port;
+  return {
+    redirectUri: `http://127.0.0.1:${address.port}/oauth/callback`,
+    waitForCallback: (waitSignal) => waitForLoopbackCallback(callback, waitSignal),
+    close: () =>
+      new Promise<void>((resolve, reject) => {
+        if (!server.listening) resolve();
+        else server.close((error) => (error ? reject(error) : resolve()));
+      }),
+  };
 }
 
 export function createRemoteMcpOAuth(
