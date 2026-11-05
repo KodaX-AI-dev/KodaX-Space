@@ -72,6 +72,13 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Electron 42 downloads lazily on first require; keep network setup outside test deadlines.
+      - name: Prepare Electron binary
+        timeout-minutes: 10
+        run: node node_modules/electron/install.js
+        env:
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+
       - name: Install Unicode PDF font (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei

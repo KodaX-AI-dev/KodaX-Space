@@ -90,6 +90,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare Electron binary
+        timeout-minutes: 10
+        run: node node_modules/electron/install.js
+        env:
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+
       # Linux: Electron e2e needs Xvfb; Unicode PDF tests and production
       # generation need a TrueType CJK font with glyf tables. The shared Coder
       # Runtime also requires a real Secret Service backend for its persistent

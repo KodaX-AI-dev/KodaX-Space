@@ -25,6 +25,7 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       .getByRole('button', { name: /Polish your writing/ })
       .click();
     await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await expect(space.page.locator('textarea').first()).toHaveValue(/请根据【产品、受众和证据】/);
     await sendSdkPrompt(space, 'BETA1_DEFAULT_EXPERT');
     await expect
       .poll(() => provider.requests.some((text) => text.includes('BETA1_DEFAULT_EXPERT')), {
@@ -57,6 +58,7 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       .getByRole('button', { name: /Polish your writing/ })
       .click();
     await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
+    await expect(space.page.locator('textarea').first()).toHaveValue(/请根据【产品、受众和证据】/);
     await sendSdkPrompt(space, 'BETA1_OTHER_EXPERT_SESSION');
     const otherId = await currentSdkSession(space);
     expect(otherId).not.toBe(id);
@@ -113,11 +115,40 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
     await waitSdkIdle(space, id);
     await expect(space.page.getByTestId('partner-work-mode')).toHaveText('Agent');
     expect(provider.requests.some((text) => text.includes('BETA1_DEFAULT_EXPERT'))).toBe(true);
+  } catch (error) {
+    await recordPartnerFailure(space, provider.url).catch((diagnosticError: unknown) => {
+      console.error('[partner-e2e] failure evidence unavailable:', diagnosticError);
+    });
+    throw error;
   } finally {
     await provider.close();
     await space.close();
   }
 });
+
+async function recordPartnerFailure(space: SpaceInstance, url: string): Promise<void> {
+  const sessionId = await currentSdkSession(space);
+  const contracts = await space.page.evaluate(
+    async (id) => ({
+      providers: await window.kodaxSpace!.invoke('provider.list', undefined),
+      live: await window.kodaxSpace!.invoke('session.liveSnapshot', { sessionId: id }),
+    }),
+    sessionId,
+  );
+  const health = await space.app.evaluate(async (_electron, baseUrl) => {
+    try {
+      return {
+        status: (await fetch(baseUrl + '/models', { signal: AbortSignal.timeout(2_000) })).status,
+      };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : String(error) };
+    }
+  }, url);
+  await test.info().attach('partner-failure-contracts.json', {
+    body: JSON.stringify({ url, contracts, health }),
+    contentType: 'application/json',
+  });
+}
 
 type ForegroundRead = { sessionId: string; retainObservation?: boolean; afterRelease: boolean };
 type ForegroundSession = { id: string; live: ChannelOutput<'session.liveSnapshot'> };

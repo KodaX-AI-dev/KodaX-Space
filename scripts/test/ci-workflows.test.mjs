@@ -97,3 +97,23 @@ test('each isolated Windows E2E runner prepares native artifacts before running 
     assert.ok(warmup >= 0 && warmup < e2e, 'runner isolation must not remove native readiness');
   }
 });
+
+test('source runners install Electron before entering bounded unit or UI tests', async () => {
+  const build = await workflow('build.yml');
+  const ci = await workflow('ci.yml');
+  for (const job of [build.jobs.smoke, ci.jobs.test]) {
+    const prepare = job.steps.findIndex(
+      (step) => step.run === 'node node_modules/electron/install.js',
+    );
+    const tests = job.steps.findIndex((step) => /npm test|npm run e2e:run/.test(step.run || ''));
+    assert.ok(
+      prepare >= 0 && prepare < tests,
+      'binary download must finish before a test deadline starts',
+    );
+    assert.equal(
+      job.steps[prepare].env.ELECTRON_MIRROR,
+      'https://github.com/electron/electron/releases/download/',
+    );
+    assert.ok(job.steps[prepare]['timeout-minutes'] > 0);
+  }
+});
