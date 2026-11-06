@@ -1311,3 +1311,11 @@ test('root iteration bridge repairs a missing live snapshot only for the same ac
     undefined,
   );
 });
+
+ test('saved recovery without reliable token counts gives an actionable non-numeric status', () => {
+  const snapshot = snapshotFromRuntimeProfileSession({ sessionId: sid, surface: 'code', createdAt: 10, lastActivityAt: 20,
+    activeRun: { runId: 'capacity_unknown', sessionId: sid, phase: 'recovering', contextRecovery: { waitingSince: 10 } }, queuedRuns: [] });
+  assert.equal(snapshot?.streaming, true);
+  assert.equal(snapshot?.status, 'Recovering saved progress…');
+  assert.equal(snapshot?.contextCapacity, undefined);
+});

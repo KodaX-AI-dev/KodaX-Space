@@ -384,7 +384,7 @@ function snapshotFromRuntimeRunState(
           : run.phase === 'recovering'
             ? contextCapacity
               ? 'Waiting for context capacity…'
-              : 'Recovering…'
+              : run.contextRecovery ? 'Recovering saved progress…' : 'Recovering…'
             : run.phase === 'unknown'
               ? run.lifecycleError?.code === 'actor_settlement_not_persisted'
                 ? 'Stopping and repairing run state…'
@@ -1034,6 +1034,7 @@ type Translate = (key: MessageKey, vars?: Record<string, string | number>) => st
 
 function formatActivityStatus(status: string, sendingTooLong: boolean, t: Translate): string {
   if (sendingTooLong) return t('activity.sendingWaiting');
+  if (status === 'Recovering saved progress…') return t('activity.savedRecovery');
   if (status === 'Sending…') return t('activity.sending');
   if (status.startsWith('Receiving ') && status.endsWith('…'))
     return t('activity.receivingTool', { tool: status.slice(10, -1) });

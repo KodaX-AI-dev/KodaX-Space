@@ -385,6 +385,7 @@ export const messages = {
     'activity.processingResult': 'Processing result...',
     'activity.writing': 'Writing...',
     'activity.compactingContext': 'Compacting context...',
+    'activity.savedRecovery': 'Recovering saved progress. If waiting continues, adjust the model or input, or stop.',
     'activity.contextCapacity':
       'Waiting for context capacity ({required} needed, {available} available). Choose a larger-context model or stop.',
     'activity.verifying': 'Verifying...',
@@ -3631,6 +3632,7 @@ export const messages = {
     'activity.processingResult': '正在处理结果...',
     'activity.writing': '正在写回复...',
     'activity.compactingContext': '正在压缩上下文...',
+    'activity.savedRecovery': '进度已保存，正在恢复。若持续等待，可调整模型或输入，或停止任务。',
     'activity.contextCapacity':
       '正在等待可用上下文（需要 {required}，可用 {available}）。请选择上下文更大的模型，或停止任务。',
     'activity.verifying': '正在验证...',
