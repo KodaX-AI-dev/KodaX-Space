@@ -16,7 +16,7 @@ test('workflow slash create sends on Enter and shows immediate progress', async 
   const testId = `workflow-enter-${Date.now()}`;
   const { space, projectDir } = await launchSeededSpace(testId);
   try {
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     const stream = space.page.getByTestId('conversation-stream');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
@@ -49,7 +49,7 @@ test('workflow slash create send button shows immediate progress', async () => {
   const testId = `workflow-click-${Date.now()}`;
   const { space, projectDir } = await launchSeededSpace(testId);
   try {
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     const stream = space.page.getByTestId('conversation-stream');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 

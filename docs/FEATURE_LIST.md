@@ -1,5 +1,7 @@
 # KodaX Space Feature List
 
+> 2026-11-06 unreleased composer refinement (F031/F035/F147): local command/skill/file tokens, atomic editing, canonical clipboard/send representation and grouped completion surfaces. No additional model call or hidden prompt expansion. [Design and evidence](features/v0.1.47.md#composer-tokens--2026-11-06), [regression guide](test-guides/FEATURE_031_0.1.47_TEST_GUIDE.md).
+
 > 2026-11-05 unreleased mainline: exact Registry SDK `0.7.97-beta.2`; published alpha.4 remains beta.1. The [beta.2 integration](releases/kodax-beta2-space-adaptation.md) and [boundary root-cause correction](research/kodax-beta2-boundary-root-cause.md) distinguish Space fixes, actual packaged validation and unresolved performance/environment boundaries. This does not publish or replace alpha.4.
 
 > Last reviewed: 2026-11-04; current stable v0.1.46 / KodaX 0.7.96; alpha.4 release qualification is below.

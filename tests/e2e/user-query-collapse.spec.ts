@@ -25,7 +25,7 @@ test('long user queries keep a four-line preview and can expand or collapse in p
   try {
     await space.seedProject(projectDir);
 
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
     await textarea.fill(LONG_QUERY);
     await textarea.press('Enter');

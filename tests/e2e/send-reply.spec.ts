@@ -39,7 +39,7 @@ test('S3: send a prompt and see assistant reply via mock adapter', async () => {
     await space.seedProject(projectDir);
 
     // textarea 出现且未 disabled
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await textarea.waitFor({ state: 'visible', timeout: 10_000 });
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
@@ -58,9 +58,7 @@ test('S3: send a prompt and see assistant reply via mock adapter', async () => {
     // composeMessages 把 text + tools 聚成 sub-cluster，外层 cluster header 显示 "Ran 1 command"。
     // 用这条作"mock adapter 跑完"的稳定信号，比 text 内容更稳（text 在折叠的子 cluster 标题里，
     // 不展开看不到）。
-    await expect(
-      stream.getByText(/Ran 1 command/).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(stream.getByText(/Ran 1 command/).first()).toBeVisible({ timeout: 15_000 });
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

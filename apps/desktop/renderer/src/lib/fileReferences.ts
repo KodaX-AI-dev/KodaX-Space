@@ -1,5 +1,27 @@
 type Platform = string;
 
+/** Same representation as dropped files: simple @path, otherwise an escaped file link. */
+export function projectFileReference(root: string, relative: string, platform: Platform): string {
+  if (!/\s|[<>()[\]"']/.test(relative)) return `@${relative}`;
+  const full = `${root.replace(/\\/g, '/').replace(/\/$/, '')}/${relative}`;
+  const encoded = full
+    .split('/')
+    .map((segment, index) =>
+      platform === 'win32' && index === 0 && /^[A-Za-z]:$/.test(segment)
+        ? segment
+        : encodeURIComponent(segment)
+            .replace(/'/g, '%27')
+            .replace(/\(/g, '%28')
+            .replace(/\)/g, '%29'),
+    )
+    .join('/');
+  const href = full.startsWith('//')
+    ? `file:${encoded}`
+    : `file://${encoded.startsWith('/') ? '' : '/'}${encoded}`;
+  const name = relative.split('/').at(-1) ?? relative;
+  return `[${name.replace(/([\\[\]])/g, '\\$1')}](<${href}>)`;
+}
+
 export interface ParsedFileReference {
   readonly kind: 'file';
   readonly raw: string;
@@ -10,7 +32,8 @@ export interface ParsedFileReference {
 }
 
 export type FileReferencePart =
-  { readonly kind: 'text'; readonly text: string } | ParsedFileReference;
+  | { readonly kind: 'text'; readonly text: string }
+  | ParsedFileReference;
 
 export interface AbsoluteAttachmentPath {
   readonly kind: 'file' | 'directory';

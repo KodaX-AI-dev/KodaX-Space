@@ -41,7 +41,7 @@ async function waitForCoderWorkspace(page: Page): Promise<void> {
 }
 
 async function sendPrompt(page: Page, prompt: string): Promise<void> {
-  const textarea = page.locator('textarea').first();
+  const textarea = page.getByTestId('composer-input');
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
   await textarea.fill(prompt);
   await textarea.press('Enter');
@@ -62,7 +62,7 @@ async function snapshot(page: Page): Promise<{
       center: '[data-testid="coder-workspace"]',
       right: '[data-testid="right-sidebar"]',
       stream: '[data-testid="conversation-stream"]',
-      textarea: 'textarea',
+      textarea: '[data-testid="composer-input"]',
       footer: '[data-testid="composer-footer-toolbar"]',
       context: '[data-testid="context-window-indicator"]',
       model: '[data-testid="model-effort-selector"]',

@@ -385,7 +385,8 @@ export const messages = {
     'activity.processingResult': 'Processing result...',
     'activity.writing': 'Writing...',
     'activity.compactingContext': 'Compacting context...',
-    'activity.savedRecovery': 'Recovering saved progress. If waiting continues, adjust the model or input, or stop.',
+    'activity.savedRecovery':
+      'Recovering saved progress. If waiting continues, adjust the model or input, or stop.',
     'activity.contextCapacity':
       'Waiting for context capacity ({required} needed, {available} available). Choose a larger-context model or stop.',
     'activity.verifying': 'Verifying...',
@@ -1382,6 +1383,11 @@ export const messages = {
     'license.status.degraded': 'Degraded',
     'license.expiresOn': 'Expires {date}',
 
+    'composer.copyReference': 'Copy reference',
+    'composer.referenceCopied': 'Reference copied',
+    'composer.searching': 'Searching…',
+    'composer.searchFailed': 'Search failed. Esc to close and retry.',
+    'composer.noMatches': 'No matches. Esc to close.',
     'atPath.files': '@ Files',
     'atPath.insertNavigateHint': 'Tab / Enter to insert · ↑↓ to navigate',
 
@@ -4564,6 +4570,11 @@ export const messages = {
     'license.status.degraded': '降级',
     'license.expiresOn': '到期时间 {date}',
 
+    'composer.copyReference': '复制引用',
+    'composer.referenceCopied': '已复制引用',
+    'composer.searching': '正在搜索…',
+    'composer.searchFailed': '搜索失败，Esc 关闭后重试',
+    'composer.noMatches': '暂无匹配，Esc 关闭',
     'atPath.files': '@ 文件',
     'atPath.insertNavigateHint': 'Tab / Enter 插入 · ↑↓ 导航',
 

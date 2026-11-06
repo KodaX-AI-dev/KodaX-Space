@@ -17,6 +17,7 @@ import { useAppStore } from '../store/appStore.js';
 import { Caret } from '../components/Caret.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import type { MessageKey } from '../i18n/messages.js';
+import type { ComposerToken } from './ComposerTokenNode.js';
 import { safeSkillSlashText, skillSlashInsertText } from './skillSlash.js';
 
 interface AttachMenuProps {
@@ -24,7 +25,7 @@ interface AttachMenuProps {
   onClose: () => void;
   onAddFiles: () => void;
   onAddFolder: () => void;
-  onInsertText: (text: string) => void;
+  onInsertText: (text: string, token?: ComposerToken) => void;
   /** Partner injects its governed account picker instead of Coder's MCP discovery. */
   partnerConnectorContent?: ReactNode;
   onOpenPartnerExperts?: () => void;
@@ -170,7 +171,7 @@ export function AttachMenu({
             key={s.cmd}
             type="button"
             onClick={() => {
-              onInsertText(s.cmd + ' ');
+              onInsertText(s.cmd + ' ', { kind: 'command', label: s.cmd, value: s.cmd });
               onClose();
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-hover-bg flex items-center gap-2 text-xs"
@@ -236,7 +237,12 @@ export function AttachMenu({
             type="button"
             onClick={() => {
               // Insert a skill trigger, falling back to /skill:name for command-name conflicts.
-              onInsertText(skillSlashInsertText(sk.name, slashCommands));
+              onInsertText(skillSlashInsertText(sk.name, slashCommands), {
+                kind: 'skill',
+                label: safeSkillSlashText(sk.name, slashCommands),
+                value: safeSkillSlashText(sk.name, slashCommands),
+                detail: sk.path,
+              });
               onClose();
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-hover-bg flex items-center gap-2 text-xs"

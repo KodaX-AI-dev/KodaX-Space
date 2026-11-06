@@ -23,6 +23,7 @@ import { QueueIndicator } from './QueueIndicator.js';
 import { AttachMenu } from './AttachMenu.js';
 import { PartnerAttachMenu } from './PartnerAttachMenu.js';
 import { AgentPicker } from './AgentPicker.js';
+import { ComposerEditor, type ComposerEditorHandle } from './ComposerEditor.js';
 import { AtPathPopover } from './AtPathPopover.js';
 import { SlashCommandPopover, type SlashPickerItem } from './SlashCommandPopover.js';
 import {
@@ -55,7 +56,11 @@ import { NotificationsSurface } from './NotificationsSurface.js';
 import { pushToast } from '../store/toastStore.js';
 import { sessionMatchesScope } from '../lib/sessionScope.js';
 import { shouldActivateSessionForCurrentScope } from '../lib/sessionActivation.js';
-import { collectAbsoluteAttachmentPaths, compactPathForDisplay } from '../lib/fileReferences.js';
+import {
+  collectAbsoluteAttachmentPaths,
+  compactPathForDisplay,
+  projectFileReference,
+} from '../lib/fileReferences.js';
 import { KodaXDogMascot } from '../components/KodaXDogMascot.js';
 import { KodaXDogSpriteMascot } from '../components/KodaXDogSpriteMascot.js';
 import { FileNameText } from '../components/FileNameText.js';
@@ -590,7 +595,7 @@ export function BottomBar(): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Paste/drop warnings are local to the composer.
   const [imageErr, setImageErr] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef = useRef<ComposerEditorHandle | null>(null);
   const [historyIdx, setHistoryIdx] = useState(-1);
   const draftRef = useRef<string>('');
   const [caret, setCaret] = useState(0);
@@ -630,6 +635,7 @@ export function BottomBar(): JSX.Element {
           'button',
           'input',
           'textarea',
+          '[contenteditable]',
           'select',
           'a',
           '[role="button"]',
@@ -677,29 +683,6 @@ export function BottomBar(): JSX.Element {
     },
     [setPrompt],
   );
-
-  const maxHeightRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    if (maxHeightRef.current === null) {
-      const cs = window.getComputedStyle(ta);
-      let lh = parseFloat(cs.lineHeight);
-      if (!Number.isFinite(lh)) {
-        const fs = parseFloat(cs.fontSize) || 14;
-        lh = fs * 1.4;
-      }
-      const padTop = parseFloat(cs.paddingTop) || 0;
-      const padBottom = parseFloat(cs.paddingBottom) || 0;
-      maxHeightRef.current = Math.round(lh * 12 + padTop + padBottom);
-    }
-    ta.style.height = 'auto';
-    const next = Math.min(ta.scrollHeight, maxHeightRef.current);
-
-    ta.style.height = `${next}px`;
-    ta.style.overflowY = ta.scrollHeight > maxHeightRef.current ? 'auto' : 'hidden';
-  }, [prompt]);
 
   useEffect(() => {
     const onFocus = (): void => focusComposerSoon();
@@ -1201,7 +1184,7 @@ export function BottomBar(): JSX.Element {
     startAttachmentOperation(() => attachLocalFiles(files, 'drag-drop'));
   }
 
-  const activeSlash = getActiveSlashCompletion(prompt, caret);
+  const activeSlash = caret < 0 ? null : getActiveSlashCompletion(prompt, caret);
   const slashDismissed =
     activeSlash !== null &&
     dismissedSlash !== null &&
@@ -2400,6 +2383,15 @@ export function BottomBar(): JSX.Element {
         ? replaceActiveSlashCompletion(prompt, activeSlash, insertText)
         : { text: insertText, caret: insertText.length };
     setDismissedSlash(null);
+    if ((item.kind === 'slash' || item.kind === 'skill') && textareaRef.current) {
+      textareaRef.current.insertToken(activeSlash?.start ?? 0, activeSlash?.end ?? prompt.length, {
+        kind: item.kind === 'skill' ? 'skill' : 'command',
+        label: item.kind === 'skill' ? item.displayName : `/${item.meta.name}`,
+        value: insertText.trimEnd(),
+        detail: item.kind === 'skill' ? item.meta.path : item.meta.description,
+      });
+      return;
+    }
     setPrompt(replacement.text);
     requestAnimationFrame(() => {
       const ta = textareaRef.current;
@@ -2521,7 +2513,7 @@ export function BottomBar(): JSX.Element {
       });
   }
 
-  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
     if (e.key === 'Escape' && isStreaming && !compactingSlash && !slashMode && !attachOpen) {
       e.preventDefault();
       handleCancel();
@@ -2543,7 +2535,8 @@ export function BottomBar(): JSX.Element {
     // Let the textarea handle movement between visual lines (including soft wraps). History
     // navigation starts only after the collapsed caret reaches the absolute text boundary.
     if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && inputHistory.length > 0) {
-      const ta = e.currentTarget;
+      const ta = textareaRef.current;
+      if (!ta) return;
       const value = ta.value;
       const direction: InputHistoryDirection = e.key === 'ArrowUp' ? 'up' : 'down';
       const selectionStart = ta.selectionStart ?? 0;
@@ -2741,21 +2734,24 @@ export function BottomBar(): JSX.Element {
           )}
 
           <div className="relative">
-            <textarea
+            <ComposerEditor
+              key={currentProjectPath ?? ''}
               ref={textareaRef}
+              removeLabel={t('bottom.remove')}
+              closeLabel={t('common.close')}
+              copyLabel={t('composer.copyReference')}
+              onCopyReference={(value) => {
+                void navigator.clipboard.writeText(value).then(
+                  () => pushToast(t('composer.referenceCopied'), 'success'),
+                  () => pushToast(t('fileActions.copyFailed'), 'error'),
+                );
+              }}
               value={prompt}
-              onChange={(e) => {
-                setPrompt(e.target.value);
-                setCaret(e.target.selectionStart ?? e.target.value.length);
-                // Best-effort: warm repo-intel during the typing window (once per project).
-                maybePrewarmRepoIntel(e.target.value, currentProjectPath);
+              onChange={(value) => {
+                setPrompt(value);
+                maybePrewarmRepoIntel(value, currentProjectPath);
               }}
-              onSelect={(e) => {
-                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
-              }}
-              onClick={(e) => {
-                setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0);
-              }}
+              onSelectionChange={setCaret}
               onKeyDown={(e) => {
                 if (slashKeyHandlerRef.current) {
                   const consumed = slashKeyHandlerRef.current(e.nativeEvent);
@@ -2772,7 +2768,7 @@ export function BottomBar(): JSX.Element {
                 onKeyDown(e);
                 requestAnimationFrame(() => {
                   const ta = textareaRef.current;
-                  if (ta) setCaret(ta.selectionStart ?? 0);
+                  if (ta) setCaret(ta.selectionStart === ta.selectionEnd ? ta.selectionStart : -1);
                 });
               }}
               onPaste={(e) => {
@@ -2792,13 +2788,8 @@ export function BottomBar(): JSX.Element {
                 e.preventDefault();
                 startAttachmentOperation(attachNativeClipboardImage);
               }}
-              aria-disabled={composerReadOnly}
               readOnly={composerReadOnly}
-              rows={2}
               placeholder={placeholderText}
-              className={`w-full bg-transparent text-sm text-fg-primary placeholder-fg-muted resize-none focus:outline-none px-0.5 py-1 pr-28 ${
-                composerReadOnly ? 'opacity-70 cursor-wait' : ''
-              }`}
             />
             <div className="absolute right-1 bottom-1 pointer-events-auto flex items-center gap-2">
               <QueueIndicator />
@@ -2818,19 +2809,15 @@ export function BottomBar(): JSX.Element {
                 caret={caret}
                 projectRoot={currentProjectPath}
                 onAccept={(replacement, tokenStart, tokenEnd) => {
-                  const next = prompt.slice(0, tokenStart) + replacement + prompt.slice(tokenEnd);
-                  setPrompt(next);
-                  const newCaret = tokenStart + replacement.length;
-                  requestAnimationFrame(() => {
-                    const live = textareaRef.current;
-                    if (!live) return;
-                    live.focus();
-                    try {
-                      live.setSelectionRange(newCaret, newCaret);
-                    } catch {
-                      /* ignore */
-                    }
-                    setCaret(newCaret);
+                  textareaRef.current?.insertToken(tokenStart, tokenEnd, {
+                    kind: 'file',
+                    label: replacement.split('/').at(-1) ?? replacement,
+                    detail: `${currentProjectPath}/${replacement}`,
+                    value: projectFileReference(
+                      currentProjectPath ?? '',
+                      replacement,
+                      window.kodaxSpace?.platform ?? 'win32',
+                    ),
                   });
                 }}
                 registerKeyHandler={(h) => {
@@ -2888,7 +2875,12 @@ export function BottomBar(): JSX.Element {
                       input.click();
                     }}
                     onAddFolder={() => startAttachmentOperation(attachFolder)}
-                    onInsertText={(text) => setPrompt((p) => (p ? `${p} ${text}` : text))}
+                    onInsertText={(text, token) => {
+                      if (token && textareaRef.current) {
+                        const end = textareaRef.current.value.length;
+                        textareaRef.current.insertToken(end, end, token);
+                      } else setPrompt((p) => (p ? `${p} ${text}` : text));
+                    }}
                     partnerConnectorContent={
                       <PartnerConnectorMenuContent
                         onClose={() => setAttachOpen(false)}
@@ -2910,7 +2902,12 @@ export function BottomBar(): JSX.Element {
                       input.click();
                     }}
                     onAddFolder={() => startAttachmentOperation(attachFolder)}
-                    onInsertText={(text) => setPrompt((p) => (p ? `${p} ${text}` : text))}
+                    onInsertText={(text, token) => {
+                      if (token && textareaRef.current) {
+                        const end = textareaRef.current.value.length;
+                        textareaRef.current.insertToken(end, end, token);
+                      } else setPrompt((p) => (p ? `${p} ${text}` : text));
+                    }}
                   />
                 )}
               </div>

@@ -25,7 +25,7 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       .getByRole('button', { name: /Polish your writing/ })
       .click();
     await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
-    await expect(space.page.locator('textarea').first()).toHaveValue(/请根据【产品、受众和证据】/);
+    await expect(space.page.getByTestId('composer-input')).toHaveText(/请根据【产品、受众和证据】/);
     await sendSdkPrompt(space, 'BETA1_DEFAULT_EXPERT');
     await expect
       .poll(() => provider.requests.some((text) => text.includes('BETA1_DEFAULT_EXPERT')), {
@@ -58,7 +58,7 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       .getByRole('button', { name: /Polish your writing/ })
       .click();
     await expect(space.page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
-    await expect(space.page.locator('textarea').first()).toHaveValue(/请根据【产品、受众和证据】/);
+    await expect(space.page.getByTestId('composer-input')).toHaveText(/请根据【产品、受众和证据】/);
     await sendSdkPrompt(space, 'BETA1_OTHER_EXPERT_SESSION');
     const otherId = await currentSdkSession(space);
     expect(otherId).not.toBe(id);
@@ -333,7 +333,7 @@ test('blocked queued input is visible and taking it back preserves text beyond t
         if (change.sessionId === sessionId) probe.__queueChanges.push(change);
       });
     }, id);
-    const composer = space.page.locator('textarea').first();
+    const composer = space.page.getByTestId('composer-input');
     await composer.fill(original);
     await composer.press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter');
     await expect(space.page.getByTestId('queued-user-message-bubble')).toBeVisible();

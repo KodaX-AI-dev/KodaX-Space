@@ -53,7 +53,7 @@ async function createProject(testId: string): Promise<string> {
 }
 
 async function createSession(space: SpaceInstance, prompt: string): Promise<string> {
-  const textarea = space.page.locator('textarea').first();
+  const textarea = space.page.getByTestId('composer-input');
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
   await textarea.fill(prompt);
   await textarea.press('Enter');

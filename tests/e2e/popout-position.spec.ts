@@ -30,7 +30,9 @@ test('diff popout overlays the conversation without blocking the composer', asyn
     const metrics = await page.evaluate(() => {
       const closeButton = document.querySelector('button[aria-label="Close popout"]');
       const aside = closeButton?.closest('aside') as HTMLElement | null;
-      const textarea = document.querySelector('textarea') as HTMLElement | null;
+      const textarea = document.querySelector(
+        '[data-testid="composer-input"]',
+      ) as HTMLElement | null;
       if (!aside || !textarea) return null;
 
       const asideRect = aside.getBoundingClientRect();
@@ -44,8 +46,9 @@ test('diff popout overlays the conversation without blocking the composer', asyn
         asideHeight: asideRect.height,
         textareaTop: taRect.top,
         textareaHitTag: textareaHitTarget?.tagName ?? null,
-        textareaHitClass: textareaHitTarget instanceof HTMLElement ? textareaHitTarget.className : null,
-        textareaReceivesPointer: textareaHitTarget === textarea,
+        textareaHitClass:
+          textareaHitTarget instanceof HTMLElement ? textareaHitTarget.className : null,
+        textareaReceivesPointer: textarea?.contains(textareaHitTarget),
       };
     });
 

@@ -18,7 +18,7 @@ test('conversation file paths reuse the complete file action menu', async () => 
   try {
     await space.seedProject(projectDir);
 
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
     const stream = space.page.getByTestId('conversation-stream');

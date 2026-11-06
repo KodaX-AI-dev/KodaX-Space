@@ -8,6 +8,7 @@
 // 不在 BottomBar 内部直接 inline 实现，独立组件方便 future 让 attach-menu 也复用同补全。
 
 import { useEffect, useRef, useState } from 'react';
+import { BookOpen, Terminal } from 'lucide-react';
 import type {
   ProviderInfo,
   SessionMeta,
@@ -550,7 +551,7 @@ async function loadCommandsOnce(): Promise<SlashCommandMeta[]> {
   if (cachedCommands) return cachedCommands;
   if (!window.kodaxSpace) return [];
   const result = await window.kodaxSpace.invoke('slash.discover', undefined);
-  if (!result.ok) return [];
+  if (!result.ok) throw new Error(result.error.message);
   cachedCommands = [...result.data.commands];
   return cachedCommands;
 }
@@ -570,8 +571,7 @@ async function loadSkillsForProject(
     ...(forceReload ? { forceReload: true } : {}),
   });
   if (!result.ok) {
-    cachedSkills = { projectRoot, list: [] };
-    return [];
+    throw new Error(result.error.message);
   }
   cachedSkills = { projectRoot, list: [...result.data.skills] };
   return cachedSkills.list;
@@ -593,6 +593,7 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
   const [items, setItems] = useState<readonly SlashPickerItem[]>([]);
   const [workflowLibrary, setWorkflowLibrary] = useState<WorkflowLibraryLite | null>(null);
   const [workflowRuns, setWorkflowRuns] = useState<readonly WorkflowRunT[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const projectRoot = useAppStore((s) => s.currentProjectPath);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
@@ -609,10 +610,12 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
       return;
     }
     let cancelled = false;
+    setLoadState('loading');
+    setItems([]);
     // v0.1.10 fix: forceReload=true 让用户跑 skill-creator 后立即可见 (跳 60s cache TTL)。
     // Popover mount 是用户主动按 `/` 触发, 每次 force scan 用户体感无延迟 (SDK discover ~10ms)。
-    void Promise.all([loadCommandsOnce(), loadSkillsForProject(projectRoot, true)]).then(
-      ([cmds, skills]) => {
+    void Promise.all([loadCommandsOnce(), loadSkillsForProject(projectRoot, true)])
+      .then(([cmds, skills]) => {
         if (cancelled) return;
         const merged: SlashPickerItem[] = [
           ...cmds.map((c): SlashPickerItem => ({ kind: 'slash', meta: c })),
@@ -625,10 +628,17 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
             }),
           ),
         ];
-        merged.sort((a, b) => pickerItemName(a).localeCompare(pickerItemName(b)));
+        merged.sort(
+          (a, b) =>
+            (a.kind === 'slash' ? 0 : 1) - (b.kind === 'slash' ? 0 : 1) ||
+            pickerItemName(a).localeCompare(pickerItemName(b)),
+        );
         setItems(merged);
-      },
-    );
+        setLoadState('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState('error');
+      });
     return () => {
       cancelled = true;
     };
@@ -690,7 +700,19 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
   // 上下键 / Tab / Esc 键盘处理
   useEffect(() => {
     const onKey = (e: KeyboardEvent): boolean => {
-      if (filtered.length === 0) return false;
+      if (e.isComposing) return false;
+      if (filtered.length === 0) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onPick(null);
+          return true;
+        }
+        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          return true;
+        }
+        return false;
+      }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIdx((i) => Math.min(i + 1, filtered.length - 1));
@@ -699,8 +721,11 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
         e.preventDefault();
         setSelectedIdx((i) => Math.max(i - 1, 0));
         return true;
-      } else if (e.key === 'Tab') {
-        // Tab accepts completion. Enter is reserved for composer send; Shift+Enter remains textarea newline.
+      } else if (
+        e.key === 'Tab' ||
+        (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey)
+      ) {
+        // Accept a candidate without also sending; Shift+Enter remains newline.
         const item = filtered[selectedIdx];
         if (item) {
           e.preventDefault();
@@ -722,84 +747,105 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
   useEffect(() => {
     if (!listRef.current) return;
     const el = listRef.current.querySelector<HTMLDivElement>(`[data-slash-idx="${selectedIdx}"]`);
-    el?.scrollIntoView({ block: 'nearest' });
+    const list = listRef.current;
+    if (!el) return;
+    const itemRect = el.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    if (itemRect.top < listRect.top) list.scrollTop += itemRect.top - listRect.top;
+    else if (itemRect.bottom > listRect.bottom) list.scrollTop += itemRect.bottom - listRect.bottom;
   }, [selectedIdx]);
 
   if (!projectRoot) return null;
-  if (filtered.length === 0) return null;
 
   return (
-    <div
-      ref={listRef}
-      className="absolute left-3 right-3 bottom-full mb-1 max-h-64 overflow-y-auto bg-surface-4 border border-border-default rounded-lg shadow-xl text-xs z-40"
-      role="listbox"
-      aria-label={t('slash.commandsAndSkills')}
-    >
-      {filtered.map((item, idx) => {
-        const selected = idx === selectedIdx;
-        const name =
-          item.kind === 'workflow' || item.kind === 'slash-arg' ? item.label : item.meta.name;
-        const description =
-          item.kind === 'workflow' || item.kind === 'slash-arg'
-            ? item.description
-            : item.kind === 'slash'
-              ? slashCommandDescription(item.meta, t)
-              : item.meta.description;
-        const argsHint =
-          item.kind === 'workflow' || item.kind === 'slash-arg'
-            ? item.argsHint
-            : item.kind === 'slash'
-              ? item.meta.argsHint
-              : item.meta.argumentHint;
-        const displayName =
-          item.kind === 'workflow' || item.kind === 'slash-arg'
-            ? item.label
-            : item.kind === 'skill'
-              ? item.displayName
-              : `/${item.meta.name}`;
-        return (
-          <div
-            key={`${item.kind}:${name}`}
-            data-slash-idx={idx}
-            role="option"
-            aria-selected={selected}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              props.onPick(item);
-            }}
-            onMouseEnter={() => setSelectedIdx(idx)}
-            className={`px-3 py-1.5 flex items-center gap-3 cursor-pointer ${
-              selected ? 'bg-surface-3 text-fg-primary' : 'text-fg-muted hover:bg-hover-bg'
-            }`}
-          >
-            <span
-              className={`font-mono min-w-[140px] ${
-                item.kind === 'skill'
-                  ? 'text-run'
-                  : item.kind === 'workflow' || item.kind === 'slash-arg'
-                    ? 'text-accent'
-                    : 'text-warn'
-              }`}
-            >
-              {/* Skill names may use /skill:name when needed to avoid command conflicts. */}
-              {displayName}
-            </span>
-            {argsHint && <span className="text-[11px] text-fg-faint font-mono">{argsHint}</span>}
-            <span className="text-fg-muted truncate">{description}</span>
-            <span className="ml-auto text-[9px] text-fg-faint uppercase">
-              {item.kind === 'workflow'
-                ? 'workflow'
-                : item.kind === 'slash-arg'
-                  ? 'arg'
-                  : item.kind === 'slash'
-                    ? item.meta.source === 'user'
-                      ? 'user'
-                      : ''
-                    : item.meta.source}
-            </span>
+    <div className="composer-completions" role="listbox" aria-label={t('slash.commandsAndSkills')}>
+      <div className="composer-completion-heading">{t('slash.commandsAndSkills')}</div>
+      <div className="composer-completion-list" ref={listRef}>
+        {filtered.length === 0 && (
+          <div className="composer-completion-empty">
+            {t(
+              loadState === 'loading'
+                ? 'composer.searching'
+                : loadState === 'error'
+                  ? 'composer.searchFailed'
+                  : 'composer.noMatches',
+            )}
           </div>
-        );
-      })}
+        )}
+        {filtered.map((item, idx) => {
+          const selected = idx === selectedIdx;
+          const name =
+            item.kind === 'workflow' || item.kind === 'slash-arg' ? item.label : item.meta.name;
+          const description =
+            item.kind === 'workflow' || item.kind === 'slash-arg'
+              ? item.description
+              : item.kind === 'slash'
+                ? slashCommandDescription(item.meta, t)
+                : item.meta.description;
+          const argsHint =
+            item.kind === 'workflow' || item.kind === 'slash-arg'
+              ? item.argsHint
+              : item.kind === 'slash'
+                ? item.meta.argsHint
+                : item.meta.argumentHint;
+          const displayName =
+            item.kind === 'workflow' || item.kind === 'slash-arg'
+              ? item.label
+              : item.kind === 'skill'
+                ? item.displayName
+                : `/${item.meta.name}`;
+          return (
+            <div key={`${item.kind}:${name}`}>
+              {(idx === 0 || filtered[idx - 1]?.kind !== item.kind) &&
+                (item.kind === 'slash' || item.kind === 'skill') && (
+                  <div className="composer-completion-heading">
+                    {t(item.kind === 'skill' ? 'attach.skills' : 'attach.slashCommands')}
+                  </div>
+                )}
+              <div
+                data-slash-idx={idx}
+                data-completion-kind={item.kind}
+                role="option"
+                aria-selected={selected}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  props.onPick(item);
+                }}
+                onPointerMove={() => setSelectedIdx(idx)}
+                className={`composer-completion-row ${selected ? 'is-active' : ''}`}
+              >
+                {item.kind === 'skill' ? (
+                  <BookOpen size={16} aria-hidden />
+                ) : (
+                  <Terminal size={16} aria-hidden />
+                )}
+                <span className="composer-completion-copy">
+                  <span className="composer-completion-name">
+                    {/* Skill names may use /skill:name when needed to avoid command conflicts. */}
+                    {displayName}
+                  </span>
+                  {argsHint && (
+                    <span className="ml-2 text-[11px] text-fg-muted font-mono">{argsHint}</span>
+                  )}
+                  <span className="composer-completion-description">{description}</span>
+                </span>
+                <span className="ml-auto text-[9px] text-fg-faint uppercase">
+                  {item.kind === 'workflow'
+                    ? 'workflow'
+                    : item.kind === 'slash-arg'
+                      ? 'arg'
+                      : item.kind === 'slash'
+                        ? item.meta.source === 'user'
+                          ? 'user'
+                          : ''
+                        : item.meta.source}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="composer-completion-footer">{t('atPath.insertNavigateHint')} · Esc</div>
     </div>
   );
 }

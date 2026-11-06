@@ -49,7 +49,7 @@ test('unknown reasoning controls preserve selection before and after Mock sessio
     await space.page.getByRole('button', { name: 'Off', exact: true }).click();
     await space.page.keyboard.press('Control+i');
     await expect(space.page.getByText('Capabilities unknown.', { exact: false })).toHaveCount(0);
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await textarea.click();
     await textarea.fill('reasoning observation fixture');
     await textarea.press('Enter');
@@ -96,7 +96,7 @@ test('provider/model picker applies selections before and after session creation
     await space.page.getByRole('button', { name: 'gpt-5.4', exact: true }).click();
     await expect(selector).toContainText('gpt-5.4');
 
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
     await textarea.fill('model picker active-session check');
     await textarea.press('Enter');

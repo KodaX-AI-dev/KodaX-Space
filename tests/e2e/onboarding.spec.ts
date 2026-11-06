@@ -26,14 +26,17 @@ test('S1: first launch with isolated data dir shows welcome / no-project state',
 
     // 等到 Space renderer 渲染完 body（main process bootstrap + initial state hydrate）
     // —— Welcome dashboard 或 textarea placeholder 至少一个出现
-    await space.page.waitForSelector('textarea, [aria-label="Loading conversation history"], h1', {
-      timeout: 15_000,
-    });
+    await space.page.waitForSelector(
+      '[data-testid="composer-input"], [aria-label="Loading conversation history"], h1',
+      {
+        timeout: 15_000,
+      },
+    );
 
     // 隔离生效检查：textarea 要么不存在（welcome state），要么 placeholder 是 "Open a folder first"
-    const textarea = space.page.locator('textarea');
-    if (await textarea.count() > 0) {
-      const placeholder = await textarea.first().getAttribute('placeholder');
+    const textarea = space.page.getByTestId('composer-input');
+    if ((await textarea.count()) > 0) {
+      const placeholder = await textarea.first().getAttribute('data-placeholder');
       // 期望 placeholder 提示用户先开 folder（OC-12 隔离后没有 recent project）
       // OR 已经 hydrate 到 defaultWorkspace（首次启动会创建并 use defaultWorkspace）
       // 两种都接受，只要不报错
@@ -61,20 +64,27 @@ test('S2: Space actually writes into the isolated data dir (OC-12 plumbing alive
 
   const space = await launchSpace(testId);
   try {
-    await space.page.waitForSelector('textarea, h1', { timeout: 15_000 });
+    await space.page.waitForSelector('[data-testid="composer-input"], h1', { timeout: 15_000 });
 
     // 触发一次 IPC 写入：project.recent.add 会写 projects.json，mkdir SPACE_DATA_DIR
     const writeResult = await space.page.evaluate((p) => {
-      return (window as unknown as { kodaxSpace: { invoke: (n: string, i: unknown) => Promise<unknown> } })
-        .kodaxSpace.invoke('project.recent.add', { path: p });
+      return (
+        window as unknown as { kodaxSpace: { invoke: (n: string, i: unknown) => Promise<unknown> } }
+      ).kodaxSpace.invoke('project.recent.add', { path: p });
     }, projectDir);
     expect(writeResult).toBeTruthy();
 
     // 现在 dataDir + dataDir/space/projects.json 都应该存在
-    const dirExists = await fs.access(dataDir).then(() => true).catch(() => false);
+    const dirExists = await fs
+      .access(dataDir)
+      .then(() => true)
+      .catch(() => false);
     expect(dirExists).toBe(true);
     const projectsFile = path.join(dataDir, 'space', 'projects.json');
-    const fileExists = await fs.access(projectsFile).then(() => true).catch(() => false);
+    const fileExists = await fs
+      .access(projectsFile)
+      .then(() => true)
+      .catch(() => false);
     expect(fileExists).toBe(true);
   } finally {
     await space.close();

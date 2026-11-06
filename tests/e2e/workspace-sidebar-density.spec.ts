@@ -20,11 +20,11 @@ test('dense Chinese project navigation and task details remain usable together',
     await emitPlan(space);
     await page.getByLabel('显示右侧侧边栏', { exact: true }).click();
     await expect(page.locator('[data-task-dock-section="plan"]')).toContainText('验证项目切换');
-    const composer = page.locator('.composer-surface textarea');
+    const composer = page.getByTestId('composer-input');
     await composer.fill('保留草稿，继续检查多个项目和任务详情的阅读体验');
     await captureDensity(page, '01-dense-dark');
     await selectAppearance(page, '浅色');
-    await expect(composer).toHaveValue('保留草稿，继续检查多个项目和任务详情的阅读体验');
+    await expect(composer).toHaveText('保留草稿，继续检查多个项目和任务详情的阅读体验');
     await captureDensity(page, '02-dense-light');
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(page.getByTestId('right-sidebar')).toBeVisible();

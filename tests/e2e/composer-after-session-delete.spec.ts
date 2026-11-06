@@ -17,7 +17,7 @@ test('composer remains focusable after deleting the current session', async () =
     await space.seedProject(projectDir);
     await page.waitForTimeout(1500);
 
-    const composer = page.locator('textarea[placeholder^="Describe a task"]').first();
+    const composer = page.getByTestId('composer-input');
     await expect(composer).toBeVisible({ timeout: 5000 });
     await composer.fill('create a disposable session');
     await composer.press('Enter');
@@ -57,24 +57,22 @@ test('composer remains focusable after deleting the current session', async () =
       )
       .toBe(0);
     await expect(composer).toHaveAttribute(
-      'placeholder',
+      'data-placeholder',
       'Describe a task or ask a question - session will be created on send',
     );
-    await expect(composer).toHaveValue('');
+    await expect(composer).toHaveText('');
 
     await expect
       .poll(async () =>
         page.evaluate(() => {
-          const composerTextarea = document.querySelector(
-            'textarea[placeholder^="Describe a task"]',
-          );
+          const composerTextarea = document.querySelector('[data-testid="composer-input"]');
           return document.activeElement === composerTextarea;
         }),
       )
       .toBe(true);
 
     await page.keyboard.type('typing after delete still works');
-    await expect(composer).toHaveValue('typing after delete still works');
+    await expect(composer).toHaveText('typing after delete still works');
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

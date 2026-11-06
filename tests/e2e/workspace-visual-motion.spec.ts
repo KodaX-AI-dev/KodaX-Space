@@ -31,13 +31,13 @@ test('Chinese workspace, menus and settings form a coherent visual journey', asy
     await inspectComposerAndMenu(page);
     await inspectSettingsJourney(page);
     await page.keyboard.press('Escape');
-    await expect(page.locator('.composer-surface textarea')).toHaveValue(
+    await expect(page.getByTestId('composer-input')).toHaveText(
       '继续优化界面，让每次操作都更有质感',
     );
     await page.mouse.click(750, 90);
     await page.waitForTimeout(400);
     await captureVisualStep(page, '07-workspace-light.png');
-    await page.locator('.composer-surface textarea').click();
+    await page.getByTestId('composer-input').click();
     await page.waitForTimeout(220);
     await captureVisualStep(page, '07b-composer-light-focus.png');
     await page.waitForTimeout(850);
@@ -57,7 +57,7 @@ test('focus feedback is finite, honours quality and reduced motion, and pauses i
     const settings = page.getByTestId('settings-workspace');
     await settings.getByRole('button', { name: 'Full', exact: true }).click();
     await page.keyboard.press('Escape');
-    const composer = page.locator('.composer-surface textarea');
+    const composer = page.getByTestId('composer-input');
     await composer.fill('Motion must keep the editor and its controls usable');
     const light = page.locator('.composer-focus-light');
     await expect(light).toBeAttached();
@@ -104,7 +104,7 @@ test('animated context menus retain their final size inside the viewport', async
   const { page } = space;
   try {
     await page.setViewportSize({ width: 1000, height: 400 });
-    const composer = page.locator('textarea').first();
+    const composer = page.getByTestId('composer-input');
     await composer.fill('Check menu placement');
     await composer.press('Enter');
     const row = page.getByTestId('sidebar-session-row').first();
@@ -167,7 +167,7 @@ async function seedVisualConversation(space: SpaceInstance): Promise<void> {
     const project = path.join(space.testDataDir, name);
     await mkdir(project);
     await space.seedProject(project);
-    const input = page.locator('textarea').first();
+    const input = page.getByTestId('composer-input');
     await expect(input).toBeEnabled();
     await input.fill(name === 'Atlas Web' ? '梳理首页的交互与内容层级' : '检查工作区的交互细节');
     await input.press('Enter');
@@ -198,7 +198,7 @@ async function selectChineseFullAppearance(page: Page): Promise<void> {
 }
 
 async function inspectComposerAndMenu(page: Page): Promise<void> {
-  const composer = page.locator('.composer-surface textarea');
+  const composer = page.getByTestId('composer-input');
   await composer.fill('继续优化界面，让每次操作都更有质感');
   await page.mouse.click(750, 90);
   await page.waitForTimeout(600);
@@ -234,7 +234,7 @@ async function inspectSettingsJourney(page: Page): Promise<void> {
 
 async function inspectFocusAndBackground(space: SpaceInstance): Promise<void> {
   const { page } = space;
-  const composer = page.locator('.composer-surface textarea');
+  const composer = page.getByTestId('composer-input');
   const light = page.locator('.composer-focus-light');
   const window = await space.app.browserWindow(page);
   await window.evaluate((win) => win.focus());
@@ -297,7 +297,7 @@ async function inspectScrollAndMenu(page: Page): Promise<void> {
 
 async function inspectQualityGates(page: Page): Promise<void> {
   const settings = page.getByTestId('settings-workspace');
-  const composer = page.locator('.composer-surface textarea');
+  const composer = page.getByTestId('composer-input');
   const light = page.locator('.composer-focus-light');
   for (const quality of ['Balanced', 'Minimal']) {
     await page.getByTestId('settings-button').click();
@@ -327,7 +327,7 @@ async function inspectQualityGates(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
   await composer.click();
   expect(await light.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
-  await expect(composer).toHaveValue('Motion must keep the editor and its controls usable');
+  await expect(composer).toHaveText('Motion must keep the editor and its controls usable');
 }
 
 async function startParallelRuns(
@@ -370,7 +370,7 @@ async function inspectParallelSettings(
   const settings = page.getByTestId('settings-workspace');
   const first = page.locator(`[data-testid="sidebar-session-row"][data-session-id="${firstId}"]`);
   const second = page.locator(`[data-testid="sidebar-session-row"][data-session-id="${secondId}"]`);
-  const composer = page.locator('.composer-surface textarea');
+  const composer = page.getByTestId('composer-input');
   await composer.fill('两个项目继续并行，保留这份草稿');
   expect(
     await page
@@ -390,7 +390,7 @@ async function inspectParallelSettings(
   await page.waitForTimeout(500);
   await captureVisualStep(page, '09-real-parallel-settings.png');
   await page.keyboard.press('Escape');
-  await expect(composer).toHaveValue('两个项目继续并行，保留这份草稿');
+  await expect(composer).toHaveText('两个项目继续并行，保留这份草稿');
   await expect(first.locator('.sidebar-status-spinner')).toBeVisible();
   await expect(second.locator('.sidebar-status-spinner')).toBeVisible();
   await page.mouse.move(750, 90);

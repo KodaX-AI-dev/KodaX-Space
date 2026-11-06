@@ -72,7 +72,7 @@ test('mode selector exposes the four canonical profiles and Full access end to e
 
     // Create a live session (mock run completes locally) so
     // session.setPermissionMode has a real target.
-    const textarea = page.locator('textarea').first();
+    const textarea = page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
     await textarea.fill('mode alignment probe');
     await textarea.press('Enter');

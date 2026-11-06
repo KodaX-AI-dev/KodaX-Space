@@ -119,21 +119,22 @@ test(
     const page = await mountCapabilityFixture(t);
     await page.getByRole('button', { name: '引用飞书专家', exact: true }).click();
     await page.getByRole('button', { name: '多维表格', exact: true }).click();
-    const draft = page.locator('textarea');
+    const draft = page.getByTestId('composer-input');
     await draft.fill('保留现有草稿：');
     await draft.evaluate((element) => {
-      const input = element as HTMLTextAreaElement;
+      const input = element as HTMLElement;
       input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
+      window.getSelection()?.selectAllChildren(input);
+      window.getSelection()?.collapseToEnd();
     });
     await page.getByRole('button', { name: '新建多维表格', exact: true }).click();
-    assert.equal(await draft.inputValue(), '保留现有草稿：请新建一个飞书多维表格。');
+    assert.equal(await draft.innerText(), '保留现有草稿：请新建一个飞书多维表格。');
     // The insertion posts a caret-fixing requestAnimationFrame; let that frame
     // land before overwriting the field so the two writes cannot interleave.
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
     await draft.fill('保留现有草稿：请新建一个飞书多维表格。字段包括项目、负责人');
     assert.equal(
-      await draft.inputValue(),
+      await draft.innerText(),
       '保留现有草稿：请新建一个飞书多维表格。字段包括项目、负责人',
     );
 
@@ -167,15 +168,16 @@ test(
     await bar.getByRole('button', { name: '腾讯文档 · 账号乙', exact: true }).waitFor();
     assert.equal(await bar.getByRole('button', { name: '新建多维表格', exact: true }).count(), 0);
     await bar.getByRole('button', { name: '腾讯文档 · 账号乙', exact: true }).click();
-    const draft = page.locator('textarea');
+    const draft = page.getByTestId('composer-input');
     await draft.fill('保留草稿：');
     await draft.evaluate((element) => {
-      const input = element as HTMLTextAreaElement;
+      const input = element as HTMLElement;
       input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
+      window.getSelection()?.selectAllChildren(input);
+      window.getSelection()?.collapseToEnd();
     });
     await bar.getByRole('button', { name: '新建文档', exact: true }).click();
-    assert.match(await draft.inputValue(), /^保留草稿：.*腾讯文档.*账号乙/);
+    assert.match(await draft.innerText(), /^保留草稿：.*腾讯文档.*账号乙/);
     const calls = (await page.evaluate(() => Reflect.get(window, 'calls'))) as {
       channel: string;
     }[];
@@ -204,6 +206,6 @@ test(
     await bar.getByRole('button', { name: '腾讯文档 · 账号乙', exact: true }).waitFor();
     await bar.getByRole('button', { name: '多维表格', exact: true }).click();
     await bar.getByRole('button', { name: '新建多维表格', exact: true }).click();
-    assert.equal(await page.locator('textarea').inputValue(), '请新建一个飞书多维表格。');
+    assert.equal(await page.getByTestId('composer-input').innerText(), '请新建一个飞书多维表格。');
   },
 );

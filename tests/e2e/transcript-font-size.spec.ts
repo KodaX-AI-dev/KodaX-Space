@@ -17,7 +17,7 @@ test('transcript font buttons visibly resize existing conversation text', async 
   try {
     const { page } = space;
     await page.setViewportSize({ width: 1920, height: 1032 });
-    const composer = page.locator('.composer-surface textarea');
+    const composer = page.getByTestId('composer-input');
     await expect(composer).toBeEnabled();
     await composer.fill('检查对话文字大小是否随菜单选择真正变化');
     await composer.press('Enter');

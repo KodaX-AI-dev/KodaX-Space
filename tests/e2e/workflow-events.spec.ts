@@ -339,7 +339,7 @@ test('workflow push events update the sidebar and transcript through completion'
   const testId = `workflow-events-${Date.now()}`;
   const { space, projectDir } = await launchSeededSpace(testId);
   try {
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     const stream = space.page.getByTestId('conversation-stream');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
@@ -524,7 +524,7 @@ test('workflow stays off primary navigation while the tool menu restores complet
     await expect(
       space.page.getByTestId('left-sidebar').getByRole('button', { name: 'Open workflow panel' }),
     ).toHaveCount(0);
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     const stream = space.page.getByTestId('conversation-stream');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 

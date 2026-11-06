@@ -150,7 +150,7 @@ test(
           await page.addScriptTag({ content: bundled.outputFiles[0]!.text });
           await page.getByRole('button', { name: 'Prepare selected draft', exact: true }).click();
           await page.getByTestId('selected-expert').filter({ hasText: 'Draft editor' }).waitFor();
-          await page.locator('textarea').fill('Preserve this draft');
+          await page.getByTestId('composer-input').fill('Preserve this draft');
           await page.getByTestId('partner-plugins-nav').click();
           const primaryKey = await page.evaluate(() =>
             /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ||
@@ -179,7 +179,7 @@ test(
           const newDraft = {
             expert: await page.getByTestId('selected-expert').textContent(),
             libraryViews: await page.getByTestId('library-view').count(),
-            text: await page.locator('textarea').inputValue(),
+            text: await page.getByTestId('composer-input').innerText(),
           };
           await page.getByRole('button', { name: 'Deliver old create ACK', exact: true }).click();
           assert.deepEqual(

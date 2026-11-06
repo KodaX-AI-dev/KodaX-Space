@@ -169,11 +169,11 @@ test('SDK user images retain safe thumbnails and full previews across reload', a
       ),
     );
     await space.page.getByTestId('file-attachment-input').setInputFiles(imagePath);
-    await space.page.locator('textarea').first().fill('SDK_IMAGE');
+    await space.page.getByTestId('composer-input').fill('SDK_IMAGE');
     await expect(
       space.page.getByRole('button', { name: 'Send message', exact: true }),
     ).toBeEnabled();
-    await space.page.locator('textarea').first().press('Enter');
+    await space.page.getByTestId('composer-input').press('Enter');
     const sessionId = await currentSdkSession(space);
     let latestImageView: unknown;
     try {

@@ -325,9 +325,9 @@ test('project prompt commands execute once through the Host preparation entry', 
       path.join(directory, 'migration-probe.md'),
       '---\ndescription: Host command probe\n---\nHOST_COMMAND_BODY $ARGUMENTS\n',
     );
-    await space.page.locator('textarea').first().fill('/migration-probe exact-argument');
-    await space.page.locator('textarea').first().press('Escape');
-    await space.page.locator('textarea').first().press('Enter');
+    await space.page.getByTestId('composer-input').fill('/migration-probe exact-argument');
+    await space.page.getByTestId('composer-input').press('Escape');
+    await space.page.getByTestId('composer-input').press('Enter');
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
       'SDK_REPLY:/migration-probe exact-argument',
     );

@@ -52,7 +52,7 @@ test('work-mode command reads and updates the Host without a model request', asy
     const sessionId = await currentSdkSession(space);
     await waitSdkIdle(space, sessionId);
     const requests = provider.requests.length;
-    const composer = space.page.locator('textarea').first();
+    const composer = space.page.getByTestId('composer-input');
     await composer.fill('/work-mode');
     await composer.press('Escape');
     await composer.press('Enter');

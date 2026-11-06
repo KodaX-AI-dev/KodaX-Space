@@ -94,14 +94,14 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     );
 
     await page.getByRole('button', { name: 'Partner', exact: true }).click();
-    const composer = page.locator('textarea:visible').first();
+    const composer = page.getByTestId('composer-input');
     await page
       .getByTestId('partner-starter-tasks')
       .getByRole('button', { name: /Polish your writing/ })
       .click();
     await expect(page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
-    await expect(composer).not.toHaveValue('');
-    const starterDraft = await composer.inputValue();
+    await expect(composer).not.toHaveText('');
+    const starterDraft = await composer.innerText();
     await expect(page.getByTestId('sidebar-session-row')).toHaveCount(0);
     await page.getByTestId('partner-plugins-nav').click();
     const library = page.frameLocator('[data-testid="space-extension-frame"]');
@@ -112,7 +112,7 @@ test('a fresh Space profile can select and use the bundled Partner expert', asyn
     await expect(library.getByRole('checkbox', { name: '使用默认方法' })).toBeChecked();
     await library.getByRole('button', { name: '使用专家', exact: true }).click();
     await expect(page.getByTestId('partner-expert-chip')).toHaveText('营销文案');
-    await expect(composer).toHaveValue(starterDraft);
+    await expect(composer).toHaveText(starterDraft);
 
     await expect(composer).toBeEnabled();
     await composer.fill('请为测试产品起草一段首页文案。');

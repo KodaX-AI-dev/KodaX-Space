@@ -35,7 +35,7 @@ test('S-compact-residue: /compact clears the composer immediately, not after com
   try {
     await space.seedProject(projectDir);
 
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
     // 点 Send 按钮走 handleSend，绕开 SlashCommandPopover 的异步加载窗口（同 S5）。
@@ -43,7 +43,7 @@ test('S-compact-residue: /compact clears the composer immediately, not after com
     await space.page.getByLabel('Send message').click();
 
     // 回归断言：提交即清空。修复前 slash.exec 挂起期间 textarea 一直保持 "/compact"。
-    await expect(textarea).toHaveValue('', { timeout: 2_000 });
+    await expect(textarea).toHaveText('', { timeout: 2_000 });
 
     // 挂起的 slash.exec 最终仍要完成并把结果回显进消息流（防止"根本没发出去"的假绿）。
     const stream = space.page.getByTestId('conversation-stream');
@@ -76,7 +76,7 @@ test('S-compact-spinner: compacting spinner stays centered in the context gauge'
   try {
     await space.seedProject(projectDir);
 
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
     await textarea.fill('/compact');

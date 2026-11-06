@@ -24,7 +24,9 @@ async function createGitProject(testId: string): Promise<string> {
   return projectDir;
 }
 
-async function launchSeededSpace(testId: string): Promise<{ space: SpaceInstance; projectDir: string }> {
+async function launchSeededSpace(
+  testId: string,
+): Promise<{ space: SpaceInstance; projectDir: string }> {
   const projectDir = await createGitProject(testId);
   const space = await launchSpace(testId);
   await space.seedProject(projectDir);
@@ -38,13 +40,13 @@ async function launchSeededSpace(testId: string): Promise<{ space: SpaceInstance
 }
 
 async function createSession(space: SpaceInstance, prompt: string): Promise<string> {
-  const textarea = space.page.locator('textarea').first();
+  const textarea = space.page.getByTestId('composer-input');
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
   await textarea.fill(prompt);
   await textarea.press('Enter');
-  await expect(
-    space.page.getByTestId('conversation-stream').getByText(prompt).first(),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(space.page.getByTestId('conversation-stream').getByText(prompt).first()).toBeVisible(
+    { timeout: 10_000 },
+  );
 
   const readSessionId = () =>
     space.page.evaluate(async () => {
@@ -75,47 +77,50 @@ async function emitSessionEvent(space: SpaceInstance, event: SessionEvent): Prom
 }
 
 async function emitWorkflowStarted(space: SpaceInstance, sessionId: string): Promise<void> {
-  await space.app.evaluate(({ BrowserWindow }, payload) => {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (!win) throw new Error('No BrowserWindow available');
-    win.webContents.send('workflow.event', payload);
-  }, {
-    type: 'workflow_started',
-    sessionId,
-    surface: 'code',
-    message: 'workflow e2e started',
-    snapshot: {
-      runId: 'right-sidebar-popout-workflow',
-      workflowName: 'generated',
-      displayName: 'Right Sidebar Workflow',
-      status: 'running',
-      startedAt: '2026-06-26T00:00:00.000Z',
-      updatedAt: '2026-06-26T00:00:00.000Z',
-      patterns: ['fan-out-and-synthesize'],
-      activePhaseIndex: 0,
-      phaseCount: 2,
-      latestMessage: 'workflow e2e started',
-      items: [
-        { id: 'phase-1', title: 'Inspect right sidebar', kind: 'phase', status: 'running' },
-        {
-          id: 'agent-1',
-          title: 'Sidebar checker',
-          kind: 'agent',
-          phaseId: 'phase-1',
-          status: 'running',
+  await space.app.evaluate(
+    ({ BrowserWindow }, payload) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (!win) throw new Error('No BrowserWindow available');
+      win.webContents.send('workflow.event', payload);
+    },
+    {
+      type: 'workflow_started',
+      sessionId,
+      surface: 'code',
+      message: 'workflow e2e started',
+      snapshot: {
+        runId: 'right-sidebar-popout-workflow',
+        workflowName: 'generated',
+        displayName: 'Right Sidebar Workflow',
+        status: 'running',
+        startedAt: '2026-06-26T00:00:00.000Z',
+        updatedAt: '2026-06-26T00:00:00.000Z',
+        patterns: ['fan-out-and-synthesize'],
+        activePhaseIndex: 0,
+        phaseCount: 2,
+        latestMessage: 'workflow e2e started',
+        items: [
+          { id: 'phase-1', title: 'Inspect right sidebar', kind: 'phase', status: 'running' },
+          {
+            id: 'agent-1',
+            title: 'Sidebar checker',
+            kind: 'agent',
+            phaseId: 'phase-1',
+            status: 'running',
+          },
+        ],
+        counts: { pending: 0, running: 2, completed: 0, failed: 0, cancelled: 0, skipped: 0 },
+        progress: {
+          spawnedAgents: 1,
+          finishedAgents: 0,
+          activeAgents: 1,
+          failedAgents: 0,
+          stoppedAgents: 0,
+          plannedItems: 2,
         },
-      ],
-      counts: { pending: 0, running: 2, completed: 0, failed: 0, cancelled: 0, skipped: 0 },
-      progress: {
-        spawnedAgents: 1,
-        finishedAgents: 0,
-        activeAgents: 1,
-        failedAgents: 0,
-        stoppedAgents: 0,
-        plannedItems: 2,
       },
     },
-  });
+  );
 }
 
 async function seedRightSidebarSignals(space: SpaceInstance, sessionId: string): Promise<void> {
@@ -161,22 +166,25 @@ async function startStreamingNoise(
   sessionId: string,
   durationMs = 1200,
 ): Promise<void> {
-  await space.app.evaluate(({ BrowserWindow }, input) => {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (!win) throw new Error('No BrowserWindow available');
-    let count = 0;
-    const timer = setInterval(() => {
-      win.webContents.send('session.event', {
-        kind: 'text_delta',
-        sessionId: input.sessionId,
-        text: `stream-${count++} `,
-      });
-    }, 8);
-    setTimeout(() => {
-      clearInterval(timer);
-      win.webContents.send('session.event', { kind: 'stream_end', sessionId: input.sessionId });
-    }, input.durationMs);
-  }, { sessionId, durationMs });
+  await space.app.evaluate(
+    ({ BrowserWindow }, input) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (!win) throw new Error('No BrowserWindow available');
+      let count = 0;
+      const timer = setInterval(() => {
+        win.webContents.send('session.event', {
+          kind: 'text_delta',
+          sessionId: input.sessionId,
+          text: `stream-${count++} `,
+        });
+      }, 8);
+      setTimeout(() => {
+        clearInterval(timer);
+        win.webContents.send('session.event', { kind: 'stream_end', sessionId: input.sessionId });
+      }, input.durationMs);
+    },
+    { sessionId, durationMs },
+  );
 }
 
 function section(sidebar: Locator, title: RegExp): Locator {
@@ -218,7 +226,8 @@ test('Changes expands a fully untracked directory into reviewable file rows', as
     const header = changes.getByTestId('task-dock-section-header');
     const toggle = changes.getByTestId('task-dock-section-toggle');
     const [headerBox, toggleBox] = await Promise.all([header.boundingBox(), toggle.boundingBox()]);
-    if (!headerBox || !toggleBox) throw new Error('Changes section header geometry was unavailable');
+    if (!headerBox || !toggleBox)
+      throw new Error('Changes section header geometry was unavailable');
     expect(toggleBox.height).toBeGreaterThanOrEqual(32);
     expect(Math.abs(toggleBox.height - headerBox.height)).toBeLessThanOrEqual(1);
 

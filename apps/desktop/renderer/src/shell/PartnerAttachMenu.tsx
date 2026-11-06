@@ -13,6 +13,7 @@ import { useAppStore } from '../store/appStore.js';
 import { Caret } from '../components/Caret.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import type { MessageKey } from '../i18n/messages.js';
+import type { ComposerToken } from './ComposerTokenNode.js';
 import { safeSkillSlashText, skillSlashInsertText } from './skillSlash.js';
 
 interface PartnerAttachMenuProps {
@@ -20,7 +21,7 @@ interface PartnerAttachMenuProps {
   readonly onClose: () => void;
   readonly onAddFiles: () => void;
   readonly onAddFolder: () => void;
-  readonly onInsertText: (text: string) => void;
+  readonly onInsertText: (text: string, token?: ComposerToken) => void;
   readonly partnerConnectorContent: ReactNode;
   readonly partnerExpertContent: ReactNode;
 }
@@ -198,7 +199,11 @@ export function PartnerAttachMenu({
               key={command.cmd}
               type="button"
               onClick={() => {
-                onInsertText(`${command.cmd} `);
+                onInsertText(`${command.cmd} `, {
+                  kind: 'command',
+                  label: command.cmd,
+                  value: command.cmd,
+                });
                 onClose();
               }}
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-hover-bg"
@@ -245,7 +250,12 @@ export function PartnerAttachMenu({
               type="button"
               title={`${skill.path} (${skill.source})`}
               onClick={() => {
-                onInsertText(skillSlashInsertText(skill.name, slashCommands));
+                onInsertText(skillSlashInsertText(skill.name, slashCommands), {
+                  kind: 'skill',
+                  label: safeSkillSlashText(skill.name, slashCommands),
+                  value: safeSkillSlashText(skill.name, slashCommands),
+                  detail: skill.path,
+                });
                 onClose();
               }}
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-hover-bg"

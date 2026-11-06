@@ -7,6 +7,183 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Composer objects share the existing warm paper/graphite palette. */
+.composer-editor {
+  min-height: 64px;
+  max-height: 312px;
+  overflow-y: auto;
+  padding: 4px 4px 8px;
+  outline: none;
+  font-size: 14px;
+  line-height: 26px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: rgb(var(--fg-primary));
+}
+.composer-editor[aria-readonly='true'] {
+  opacity: 0.7;
+}
+.composer-editor:has(> p:only-child > br:only-child)::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  pointer-events: none;
+  color: rgb(var(--fg-muted));
+}
+.composer-paragraph {
+  margin: 0;
+}
+.composer-token {
+  display: inline-block;
+  vertical-align: -4px;
+  font-weight: 500;
+  max-width: min(60%, 280px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 6px;
+  margin: 0 1px;
+  border: 1px solid rgb(var(--border-strong) / 0.7);
+  border-radius: 6px;
+  background: rgb(var(--surface-3) / 0.65);
+  color: rgb(var(--fg-primary));
+  font-size: 13px;
+  line-height: 22px;
+  cursor: default;
+}
+/* Icons from installed Lucide (ISC); decoration preserves Lexical text DOM. */
+.composer-token::before {
+  content: '';
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  vertical-align: -2px;
+  margin-right: 5px;
+  background: currentColor;
+  mask: var(--composer-icon) center / contain no-repeat;
+  color: rgb(var(--fg-muted));
+  user-select: none;
+}
+.composer-token[data-composer-token='file'] {
+  --composer-icon: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%2022a2%202%200%200%201-2-2V4a2%202%200%200%201%202-2h8a2.4%202.4%200%200%201%201.704.706l3.588%203.588A2.4%202.4%200%200%201%2020%208v12a2%202%200%200%201-2%202z%22%2F%3E%3Cpath%20d%3D%22M14%202v5a1%201%200%200%200%201%201h5%22%2F%3E%3Cpath%20d%3D%22M10%209H8%22%2F%3E%3Cpath%20d%3D%22M16%2013H8%22%2F%3E%3Cpath%20d%3D%22M16%2017H8%22%2F%3E%3C%2Fsvg%3E');
+}
+.composer-token[data-composer-token='skill'] {
+  --composer-icon: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%207v14%22%2F%3E%3Cpath%20d%3D%22M3%2018a1%201%200%200%201-1-1V4a1%201%200%200%201%201-1h5a4%204%200%200%201%204%204%204%204%200%200%201%204-4h5a1%201%200%200%201%201%201v13a1%201%200%200%201-1%201h-6a3%203%200%200%200-3%203%203%203%200%200%200-3-3z%22%2F%3E%3C%2Fsvg%3E');
+}
+.composer-token[data-composer-token='command'] {
+  --composer-icon: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2019h8%22%2F%3E%3Cpath%20d%3D%22m4%2017%206-6-6-6%22%2F%3E%3C%2Fsvg%3E');
+}
+.composer-token:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+.composer-completions {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: min(460px, 100%);
+  max-height: min(360px, 48vh);
+  overflow: hidden;
+  margin-bottom: 10px;
+  padding: 5px;
+  z-index: 50;
+  background: rgb(var(--surface-4));
+  border: 1px solid rgb(var(--border-strong));
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.16);
+  color: rgb(var(--fg-primary));
+  font-size: 13px;
+}
+.composer-completions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.composer-completion-list {
+  min-height: 0;
+  overflow-y: auto;
+}
+.composer-completion-heading,
+.composer-completion-footer {
+  flex-shrink: 0;
+}
+.composer-completion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 7px;
+  text-align: left;
+  cursor: pointer;
+}
+.composer-completion-row.is-active {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.composer-completion-row > svg,
+.composer-completion-kind {
+  flex-shrink: 0;
+  color: rgb(var(--fg-muted));
+}
+.composer-completion-kind {
+  width: 16px;
+  text-align: center;
+  font-family: var(--mono);
+}
+.composer-completion-copy {
+  display: block;
+  min-width: 0;
+  flex: 1;
+}
+.composer-completion-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+.composer-completion-description {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(var(--fg-muted));
+  font-size: 12px;
+}
+.composer-completion-heading,
+.composer-completion-footer {
+  padding: 6px 9px;
+  font-size: 11px;
+  color: rgb(var(--fg-muted));
+}
+.composer-completion-footer {
+  border-top: 1px solid rgb(var(--border-default));
+  margin-top: 4px;
+}
+.composer-completion-empty {
+  padding: 14px 9px;
+  color: rgb(var(--fg-muted));
+}
+.composer-token-details {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 51;
+  width: min(440px, 100%);
+  padding: 12px;
+  border: 1px solid rgb(var(--border-strong));
+  border-radius: 10px;
+  background: rgb(var(--surface-4));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.composer-token-details button {
+  min-height: 28px;
+  margin: 8px 12px 0 0;
+  color: rgb(var(--accent-ink));
+}
+
 @layer base {
   html,
   body,

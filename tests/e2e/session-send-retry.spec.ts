@@ -40,16 +40,16 @@ test('history rejection restores the draft and retries the same Session with a n
         },
       );
     });
-    const composer = space.page.locator('textarea').first();
+    const composer = space.page.getByTestId('composer-input');
     await expect(composer).toBeEnabled();
     await composer.fill('retry this exact message');
     await composer.press('Enter');
     const rejection = 'Message not sent: reading the session history timed out.';
     await expect(space.page.getByText(rejection, { exact: false })).toBeVisible();
-    await expect(composer).toHaveValue('retry this exact message');
+    await expect(composer).toHaveText('retry this exact message');
     await expect(composer).toBeEnabled();
     await composer.press('Enter');
-    await expect(composer).toHaveValue('');
+    await expect(composer).toHaveText('');
     await expect(space.page.getByText(rejection, { exact: false })).toHaveCount(0);
     await expect(space.page.getByText('stale retry identity', { exact: false })).toHaveCount(0);
     await expect(

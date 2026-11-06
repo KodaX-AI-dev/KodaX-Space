@@ -35,13 +35,15 @@ async function resizeMainWindow(space: SpaceInstance): Promise<void> {
 }
 
 async function createSession(space: SpaceInstance, prompt: string): Promise<string> {
-  const textarea = space.page.locator('textarea').first();
+  const textarea = space.page.getByTestId('composer-input');
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
   await textarea.fill(prompt);
   await textarea.press('Enter');
-  await expect(space.page.getByTestId('conversation-stream').getByText(prompt).first()).toBeVisible({
-    timeout: 10_000,
-  });
+  await expect(space.page.getByTestId('conversation-stream').getByText(prompt).first()).toBeVisible(
+    {
+      timeout: 10_000,
+    },
+  );
 
   const readSessionId = () =>
     space.page.evaluate(async () => {
@@ -95,9 +97,7 @@ async function emitTodoDriftWarning(
 }
 
 function driftNotification(page: Page): Locator {
-  return page
-    .getByTestId('notification-row')
-    .filter({ hasText: 'Todo list drift detected' });
+  return page.getByTestId('notification-row').filter({ hasText: 'Todo list drift detected' });
 }
 
 async function recordRendererSessionEvents(page: Page): Promise<void> {
@@ -182,7 +182,9 @@ test('todo drift notification close affordance is stable and dismissible', async
     expect(buttonBox.height, 'dismiss button height should stay icon-sized').toBeGreaterThanOrEqual(
       22,
     );
-    expect(buttonBox.height, 'dismiss button height should stay icon-sized').toBeLessThanOrEqual(28);
+    expect(buttonBox.height, 'dismiss button height should stay icon-sized').toBeLessThanOrEqual(
+      28,
+    );
 
     const rightInset = rowBox.x + rowBox.width - (buttonBox.x + buttonBox.width);
     expect(rightInset, 'dismiss button should sit near the row right edge').toBeGreaterThanOrEqual(
@@ -212,7 +214,10 @@ test('todo drift notification close affordance is stable and dismissible', async
       )
       .not.toBe(backgroundBeforeHover);
 
-    const buttonBoxAfterHover = await requireBox(dismiss, 'notification dismiss button after hover');
+    const buttonBoxAfterHover = await requireBox(
+      dismiss,
+      'notification dismiss button after hover',
+    );
     expectClose(buttonBoxAfterHover.x, buttonBox.x, 'dismiss button x should not move on hover');
     expectClose(buttonBoxAfterHover.y, buttonBox.y, 'dismiss button y should not move on hover');
     expectClose(
@@ -233,8 +238,7 @@ test('todo drift notification close affordance is stable and dismissible', async
         rect.top + rect.height / 2,
       );
       return (
-        target instanceof Element &&
-        target.closest('[data-testid="notification-dismiss"]') === el
+        target instanceof Element && target.closest('[data-testid="notification-dismiss"]') === el
       );
     });
     expect(hitTargetIsDismiss, 'visible dismiss affordance should match the hit target').toBe(true);

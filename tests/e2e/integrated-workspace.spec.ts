@@ -15,7 +15,7 @@ test('settings is a work surface that preserves the composer and all appearance 
   const space = await launchSpace(`integrated-workspace-${Date.now()}`);
   try {
     const { page } = space;
-    const composer = page.locator('[data-testid="coder-workspace"] textarea');
+    const composer = page.locator('[data-testid="coder-workspace"] [data-testid="composer-input"]');
     await expect(composer).toBeEnabled({ timeout: 15_000 });
     const navigation = page.getByTestId('left-sidebar');
     const navigationBounds = await navigation.boundingBox();
@@ -71,7 +71,7 @@ test('settings is a work surface that preserves the composer and all appearance 
     await page.setViewportSize({ width: 1280, height: 800 });
     await settings.getByRole('button', { name: 'Close settings' }).click();
     await expect(composer).toBeVisible();
-    await expect(composer).toHaveValue('Keep this draft while changing appearance');
+    await expect(composer).toHaveText('Keep this draft while changing appearance');
     await expect(navigation).toBeVisible();
     expect((await navigation.boundingBox())?.width).toBe(navigationBounds?.width);
     await page.getByRole('button', { name: 'Results', exact: true }).click();
@@ -88,7 +88,7 @@ test('settings is a work surface that preserves the composer and all appearance 
     await page.keyboard.press('Escape');
     await expect(settings).toHaveCount(0);
     await expect(results).toBeVisible();
-    await expect(composer).toHaveValue('Keep this draft while changing appearance');
+    await expect(composer).toHaveText('Keep this draft while changing appearance');
   } finally {
     await space.close();
   }

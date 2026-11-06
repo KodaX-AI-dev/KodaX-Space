@@ -37,7 +37,7 @@ test('queued message notification leaves the composer accessible at narrow and w
         },
         { width: width!, height: height! },
       );
-      const composer = space.page.locator('textarea').first();
+      const composer = space.page.getByTestId('composer-input');
       await expect(composer).toBeEnabled();
       await composer.fill(`next message ${width}`);
       await composer.press('Enter');
@@ -51,7 +51,7 @@ test('queued message notification leaves the composer accessible at narrow and w
       expect(toastBox).not.toBeNull();
       expect(composerBox).not.toBeNull();
       expect(toastBox!.y + toastBox!.height).toBeLessThan(composerBox!.y);
-      await expect(composer).toHaveValue('');
+      await expect(composer).toHaveText('');
       await composer.fill('can still type');
       await toast.getByRole('button').click();
       await expect(toast).toHaveCount(0);

@@ -9,7 +9,8 @@
 //
 // 键盘事件: BottomBar onKeyDown 优先派发到本 popover (如果 open); 否则走原逻辑 (history 翻 / send 等)。
 
-import { useEffect, useState } from 'react';
+import { FileText } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { FileNameText } from '../components/FileNameText.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 
@@ -29,8 +30,11 @@ interface Props {
 
 /** 找 caret 前最近的 `@token`,返回 { start, query } 或 null。token 边界: 起始 = 行首/空白/@前;
  *  结束 = caret (用户还在打字);中间不许含空白。 */
-function findAtToken(text: string, caret: number): { start: number; query: string } | null {
-  if (caret === 0) return null;
+function findAtToken(
+  text: string,
+  caret: number,
+): { start: number; end: number; query: string } | null {
+  if (caret < 1) return null;
   // 从 caret 往回扫,找最后一个 '@';期间不许遇到空白
   let i = caret - 1;
   while (i >= 0) {
@@ -38,7 +42,9 @@ function findAtToken(text: string, caret: number): { start: number; query: strin
     if (ch === '@') {
       // '@' 前必须是 行首 / 空白 (避免 email 等被误识)
       if (i === 0 || /\s/.test(text.charAt(i - 1))) {
-        return { start: i, query: text.slice(i + 1, caret) };
+        let end = caret;
+        while (end < text.length && !/\s/.test(text[end]!)) end++;
+        return { start: i, end, query: text.slice(i + 1, caret) };
       }
       return null;
     }
@@ -58,6 +64,8 @@ export function AtPathPopover({
   const { t } = useI18n();
   const token = findAtToken(text, caret);
   const [matches, setMatches] = useState<readonly string[]>([]);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [active, setActive] = useState(0);
   // Esc-dismissed state: 用户在当前 @token 上按过 Esc → 标记 (tokenStart,length) 为 dismissed,
   // 直到 caret 离开或者 token 又变了才重新启用 (审查 M2)。
@@ -80,6 +88,8 @@ export function AtPathPopover({
       setMatches([]);
       return;
     }
+    setMatches([]);
+    setStatus('loading');
     let cancelled = false;
     const debounceTimer = setTimeout(() => {
       if (cancelled) return;
@@ -91,9 +101,17 @@ export function AtPathPopover({
           limit: 20,
         })
         .then((r) => {
-          if (cancelled || !r.ok) return;
+          if (cancelled) return;
+          if (!r.ok) {
+            setStatus('error');
+            return;
+          }
+          setStatus('ready');
           setMatches(r.data.paths);
           setActive(0);
+        })
+        .catch(() => {
+          if (!cancelled) setStatus('error');
         });
     }, 120);
     return () => {
@@ -106,27 +124,28 @@ export function AtPathPopover({
 
   // 注册键盘 handler (open 时消费 Tab/Enter/↑↓/Esc; close 时还原 null)
   useEffect(() => {
-    if (!open || matches.length === 0) {
+    if (!open) {
       registerKeyHandler(null);
       return;
     }
     const handler = (e: KeyboardEvent): boolean => {
-      if (e.key === 'Tab' || e.key === 'Enter') {
+      if (e.isComposing) return false;
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey)) {
         e.preventDefault();
         const picked = matches[active];
         if (picked && token) {
-          onAccept(`@${picked} `, token.start, caret);
+          onAccept(picked, token.start, token.end);
         }
         return true;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setActive((i) => (i - 1 + matches.length) % matches.length);
+        setActive((i) => (matches.length ? (i - 1 + matches.length) % matches.length : 0));
         return true;
       }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setActive((i) => (i + 1) % matches.length);
+        setActive((i) => (matches.length ? (i + 1) % matches.length : 0));
         return true;
       }
       if (e.key === 'Escape') {
@@ -142,14 +161,35 @@ export function AtPathPopover({
     return () => registerKeyHandler(null);
   }, [open, matches, active, token, caret, currentKey, onAccept, registerKeyHandler]);
 
-  if (!open || matches.length === 0) return null;
+  useEffect(() => {
+    const list = listRef.current;
+    const selected = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!list || !selected) return;
+    const itemRect = selected.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    if (itemRect.top < listRect.top) list.scrollTop += itemRect.top - listRect.top;
+    else if (itemRect.bottom > listRect.bottom) list.scrollTop += itemRect.bottom - listRect.bottom;
+  }, [active]);
+
+  if (!open) return null;
 
   return (
-    <div className="absolute left-1 bottom-full mb-2 w-80 max-h-72 overflow-auto bg-surface-4 border border-border-default rounded-lg shadow-xl text-[12px] z-50">
+    <div className="composer-completions" role="listbox" aria-label={t('atPath.files')}>
       <div className="px-2 py-1 text-[11px] text-fg-muted uppercase tracking-wider border-b border-border-default/60">
         {t('atPath.files')} {token?.query ? `· "${token.query}"` : ''}
       </div>
-      <ul>
+      <ul className="composer-completion-list" ref={listRef}>
+        {matches.length === 0 && (
+          <li className="composer-completion-empty">
+            {t(
+              status === 'loading'
+                ? 'composer.searching'
+                : status === 'error'
+                  ? 'composer.searchFailed'
+                  : 'composer.noMatches',
+            )}
+          </li>
+        )}
         {matches.map((p, i) => {
           const isActive = i === active;
           const basename = p.slice(p.lastIndexOf('/') + 1);
@@ -159,28 +199,32 @@ export function AtPathPopover({
               <button
                 type="button"
                 onMouseEnter={() => setActive(i)}
-                onClick={() => {
-                  if (token) onAccept(`@${p} `, token.start, caret);
+                role="option"
+                aria-selected={isActive}
+                onMouseDown={(event) => {
+                  event.preventDefault();
                 }}
-                className={`flex w-full min-w-0 items-center gap-1 px-2 py-1 text-left font-mono ${
-                  isActive ? 'bg-surface-3 text-fg-primary' : 'text-fg-muted hover:bg-hover-bg'
-                }`}
+                onClick={() => {
+                  if (token) onAccept(p, token.start, token.end);
+                }}
+                className={`composer-completion-row ${isActive ? 'is-active' : ''}`}
                 title={p}
               >
-                <FileNameText name={basename} className="flex-1 text-fg-primary" title={p} />
-                {dirname && (
-                  <span className="max-w-[45%] flex-shrink truncate text-fg-muted">
-                    · {dirname.replace(/\/$/, '')}
-                  </span>
-                )}
+                <FileText size={16} aria-hidden="true" />
+                <span className="composer-completion-copy">
+                  <FileNameText name={basename} className="text-fg-primary" title={p} />
+                  {dirname && (
+                    <span className="composer-completion-description">
+                      {dirname.replace(/\/$/, '')}
+                    </span>
+                  )}
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
-      <div className="px-2 py-1 text-[11px] text-fg-faint border-t border-border-default/60">
-        {t('atPath.insertNavigateHint')}
-      </div>
+      <div className="composer-completion-footer">{t('atPath.insertNavigateHint')}</div>
     </div>
   );
 }

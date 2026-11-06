@@ -329,7 +329,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '- 当前共享 Coder 直接显示 SDK 提供的有序当前 view；SDK 保存 canonical 输入、助手消息与工具结果，并提供恢复后的正文和用户图片。Space 不自行重建中断正文，也不写回正式历史；历史浏览与当前聊天分开，重复文字保留各自输入身份。',
       '- SDK 根据来源身份与压缩边界证据只读恢复旧历史，并自动重建旧页面缓存；无法证明的压缩边界显示部分可恢复历史与提示，保留原始记录，不阻塞继续发送消息。Space 不按文字或时间猜测去重，也不改写会话文件。',
       '- 当前共享 Coder 通过 SDK Product 输入提交与 view 读取确认消息。排队接收只确认 inputId，不预先分配未来 runId；后续 delivery 与有序 view 绑定实际轮次。steer、重连和重试保留原输入身份及授权；Space 保留 queued input 的可见状态，未确认交付时不靠正文或旧气泡猜测成功。拒绝或确认未送达时显示可恢复状态；诊断不含用户正文。',
-      '- 输入 / 打开 slash command 和 skill 补全；输入 @ 打开项目路径补全；上下键在补全和历史消息中导航。',
+      '- 输入 / 打开命令与技能补全，@ 打开项目文件补全。候选打开时 Tab/Enter 插入，Esc 关闭后 Enter 发送；加载或无匹配时 Enter 不穿透发送。已选项显示行内标签，可整体删除/撤销；点击或 Alt+↓ 查看引用并移除。复制保留完整引用。补全与标签只在本地处理，不展开技能或追加隐藏提示。',
       '- 粘贴或拖入 PNG/JPEG/WEBP 图片会生成图片 chip；当前 base64/IPC 路径的临时源文件处理上限为 12 MiB，Space 调用 KodaX 将最大边压到 2000 px，并要求最终文件不超过 6 MiB；单轮上限 8 张。',
       '- 拖入或通过 + 菜单添加文件/文件夹：项目内优先插入 @relative/path，项目外插入 file:// 链接；可见消息保留链接，但发送给模型的是经 Electron 校验的原生绝对路径；草稿最多 32 个文件引用。',
       '- + 菜单还可插入 slash command、打开 connectors/MCP、查看 skills。Agent picker 会插入 @agent-name。',

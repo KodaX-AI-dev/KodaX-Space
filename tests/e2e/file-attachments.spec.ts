@@ -102,7 +102,7 @@ test('sent image renders in the user bubble and opens in Task Dock', async () =>
   try {
     const { page } = space;
     await space.seedProject(projectDir);
-    const textarea = page.locator('textarea').first();
+    const textarea = page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
     await page.getByTestId('file-attachment-input').setInputFiles(pngPath);
     await textarea.fill('inspect the attached image');

@@ -26,7 +26,7 @@ test('S5: /clear wipes the conversation buffer', async () => {
   try {
     await space.seedProject(projectDir);
 
-    const textarea = space.page.locator('textarea').first();
+    const textarea = space.page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
     // 范围限定到对话流容器（避免匹到 breadcrumb / Recents 里同名的 session title）
@@ -38,8 +38,7 @@ test('S5: /clear wipes the conversation buffer', async () => {
     await textarea.press('Enter');
     await expect(stream.getByText(prompt).first()).toBeVisible({ timeout: 10_000 });
     // mock adapter 跑完 → "Ran 1 command" cluster 出现
-    await expect(stream.getByText(/Ran 1 command/).first())
-      .toBeVisible({ timeout: 15_000 });
+    await expect(stream.getByText(/Ran 1 command/).first()).toBeVisible({ timeout: 15_000 });
 
     // 2) /clear —— SlashCommandPopover 在 fill('/...') 后异步打开 (要拉 commands)，
     // 用 textarea.press('Enter') 会撞 popover-still-loading 的空窗。直接点 Send 按钮
@@ -49,8 +48,7 @@ test('S5: /clear wipes the conversation buffer', async () => {
 
     // 3) 之前的对话流内容消失（resetSessionMessages 清空 userMessagesBySession + eventsBySession）
     await expect(stream.getByText(prompt).first()).not.toBeVisible({ timeout: 5_000 });
-    await expect(stream.getByText(/Ran 1 command/).first())
-      .not.toBeVisible({ timeout: 5_000 });
+    await expect(stream.getByText(/Ran 1 command/).first()).not.toBeVisible({ timeout: 5_000 });
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

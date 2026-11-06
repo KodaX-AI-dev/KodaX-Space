@@ -154,7 +154,7 @@ async function sweepRegion(
 
 async function seedRichSession(space: SpaceInstance): Promise<string> {
   const { page } = space;
-  const textarea = page.locator('textarea').first();
+  const textarea = page.getByTestId('composer-input');
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
   await textarea.fill('请检查 README 和工作区配置，汇总需要调整的界面细节。');
   await textarea.press('Enter');
@@ -387,7 +387,7 @@ test('major surfaces and popovers are available and close cleanly', async () => 
     await alive();
 
     // Slash popover: typing "/" in the composer lists built-in commands.
-    const textarea = page.locator('textarea').first();
+    const textarea = page.getByTestId('composer-input');
     await textarea.fill('/');
     await expect(page.locator('text=/mode').first()).toBeVisible({ timeout: 5_000 });
     await textarea.fill('');

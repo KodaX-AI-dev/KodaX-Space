@@ -29,7 +29,7 @@ async function launchArtifactSpace(
     });
     await space.page.reload();
     await space.page.waitForLoadState('domcontentloaded');
-    const composer = space.page.locator('textarea').first();
+    const composer = space.page.getByTestId('composer-input');
     await expect(composer).toBeEnabled({ timeout: 10_000 });
     await composer.fill('seed artifact runtime e2e session');
     await composer.press('Enter');

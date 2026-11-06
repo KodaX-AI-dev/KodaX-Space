@@ -47,7 +47,7 @@ async function switchToPartner(page: Page): Promise<void> {
 }
 
 async function sendPrompt(page: Page, prompt: string): Promise<void> {
-  const textarea = page.locator('textarea').first();
+  const textarea = page.getByTestId('composer-input');
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
   await textarea.fill(prompt);
   await textarea.press('Enter');
@@ -85,7 +85,7 @@ async function snapshotLayout(page: Page): Promise<LayoutSnapshot> {
       conversation: '[data-testid="partner-conversation"]',
       detail: '[data-testid="right-sidebar"]',
       stream: '[data-testid="conversation-stream"]',
-      textarea: 'textarea',
+      textarea: '[data-testid="composer-input"]',
       send: '[aria-label="Send message"]',
       menu: '[role="menu"]',
       dialog: '[role="dialog"]',
@@ -211,12 +211,12 @@ test('Partner layout remains usable without panel overlap across common widths',
     const starterTasks = page.getByTestId('partner-starter-tasks');
     await expect(starterTasks).toBeVisible();
     await expect(starterTasks.getByRole('button')).toHaveCount(6);
-    const composer = page.locator('textarea').first();
+    const composer = page.getByTestId('composer-input');
     await expect(composer).toHaveAttribute(
       'placeholder',
       /Describe a task - sending will create a Partner session/,
     );
-    await expect(composer).toHaveValue('');
+    await expect(composer).toHaveText('');
     const contextRail = page.getByTestId('partner-context-rail');
     await expect(contextRail).toHaveCount(0);
     await page.getByTestId('partner-context-toggle').click();

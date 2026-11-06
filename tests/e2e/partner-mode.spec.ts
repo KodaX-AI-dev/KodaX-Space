@@ -123,7 +123,7 @@ async function readPartnerSources(
 }
 
 async function sendPartnerPrompt(page: Page, prompt: string): Promise<void> {
-  const textarea = page.locator('textarea').first();
+  const textarea = page.getByTestId('composer-input');
   await expect(textarea).toBeEnabled({ timeout: 10_000 });
   await textarea.fill(prompt);
   await textarea.press('Enter');
@@ -470,7 +470,7 @@ test('Partner supports normal composer use, slash clear, mode shortcut, and resu
     await sendPartnerPrompt(page, followUp);
     await expect(await readSessions(page, projectDir, 'partner')).toHaveLength(1);
 
-    const textarea = page.locator('textarea').first();
+    const textarea = page.getByTestId('composer-input');
     await textarea.fill('/clear');
     await page.getByLabel('Send message').click();
     await expect(
@@ -678,14 +678,14 @@ test('Partner sources can be attached and removed, and deleting the session reco
         timeout: 10_000,
       },
     );
-    const composer = page.locator('textarea').first();
+    const composer = page.getByTestId('composer-input');
     await expect(composer).toHaveAttribute(
       'placeholder',
       /Describe a task - sending will create a Partner session/,
     );
     await expect(composer).toBeEnabled();
     await composer.fill('typing after partner delete still works');
-    await expect(composer).toHaveValue('typing after partner delete still works');
+    await expect(composer).toHaveText('typing after partner delete still works');
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});
