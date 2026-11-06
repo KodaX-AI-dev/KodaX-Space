@@ -23,6 +23,7 @@ export type RuntimeExitSettlement = (
         | 'owner_changed'
         | 'owner_identity_mismatch'
         | 'owner_unverified'
+        | 'verification_timeout'
         | 'stop_not_accepted';
       readonly nextAction:
         | 'keep-open'
@@ -70,11 +71,12 @@ export interface RuntimeDaemonRollbackResult {
 
 const RECOVERY_REASONS: Readonly<
   Record<
-    ClientExitRecovery['reason'],
+    ClientExitRecovery['reason'] | 'host_generation_terminated',
     Extract<RuntimeExitSettlement, { status: 'blocked' }>['reason']
   >
 > = {
   host_shutdown_verified: 'cleanup_unverified',
+  host_generation_terminated: 'cleanup_unverified',
   client_cleanup_verified: 'cleanup_unverified',
   client_cleanup_pending: 'cleanup_unverified',
   client_cleanup_unknown: 'cleanup_unverified',

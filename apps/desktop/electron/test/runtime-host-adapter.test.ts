@@ -1,4 +1,7 @@
-import type { RuntimeInlineOwnerHandle } from '../kodax/runtime-host-adapter.js';
+import type {
+  RuntimeExitSettlement,
+  RuntimeInlineOwnerHandle,
+} from '../kodax/runtime-host-adapter.js';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
@@ -5779,6 +5782,36 @@ test('startup recovery leaves exact prepared-ticket management reconnect to the 
   assert.equal(factoryCalls, 0);
   assert.equal(settlementCalls.length, 1);
   assert.equal(settlementCalls[0]?.runtime, undefined);
+});
+
+test('startup recovery retries join a pending SDK verification instead of starting concurrent cleanup', async () => {
+  let calls = 0;
+  let complete!: (settlement: RuntimeExitSettlement) => void;
+  const verification = new Promise<RuntimeExitSettlement>((resolve) => {
+    complete = resolve;
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async () => Promise.reject(new Error('unexpected Space Runtime attach')),
+    runtimeExitSettler: async () => {
+      calls += 1;
+      return verification;
+    },
+  });
+
+  const first = adapter.resumePendingRuntimeExitSettlement();
+  const second = adapter.resumePendingRuntimeExitSettlement();
+  assert.equal(calls, 1);
+  complete({ status: 'recovered', repairs: [] });
+  assert.deepEqual(await Promise.all([first, second]), [
+    { status: 'recovered', repairs: [] },
+    { status: 'recovered', repairs: [] },
+  ]);
+  await adapter.resumePendingRuntimeExitSettlement();
+  assert.equal(calls, 2);
 });
 
 test('startup recovery returns the SDK-owned recovered settlement without a Space close', async () => {

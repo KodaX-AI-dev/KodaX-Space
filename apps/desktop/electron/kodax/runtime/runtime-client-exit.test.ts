@@ -120,6 +120,34 @@ test('a fresh blocking recovery assessment overrides a historical clean receipt'
   }
 });
 
+test('crash recovery readiness preserves unknown cleanup and cannot certify graceful Host shutdown', () => {
+  const historical: ClientExitReceipt = {
+    ...receipt,
+    cleanup: {
+      ...receipt.cleanup,
+      state: 'unknown',
+      issues: ['shutdown outcome was never published'],
+    },
+    host: { ...receipt.host, state: 'unknown' },
+    recovery: {
+      state: 'ready',
+      checkedAt: '2026-11-06T00:00:00Z',
+      reason: 'host_shutdown_verified',
+      nextAction: 'start_or_connect',
+    },
+  };
+  // Exercise the new wire assessment while the app remains installable with
+  // the currently published SDK's narrower declaration.
+  Object.assign(historical.recovery!, { reason: 'host_generation_terminated' });
+  const settlement = projectClientExitReceipt(historical);
+
+  assert.equal(settlement.status, 'recovered');
+  assert.equal(settlement.receipt?.cleanup.state, 'unknown');
+  assert.equal(settlement.receipt?.host.state, 'unknown');
+  assert.equal(runtimeExitConfirmsHostStopped(settlement), false);
+  assert.deepEqual(settlement.receipt, historical);
+});
+
 test('verified personal cleanup can finish while the SDK protects an online peer Host', () => {
   const projected = projectClientExitReceipt({
     ...receipt,

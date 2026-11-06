@@ -1481,6 +1481,60 @@ async function showRuntimeExitRecoveryNoticeIfNeeded(): Promise<void> {
   });
 }
 
+async function showRuntimeStartupRecoveryBlocker(
+  settlement: Extract<RuntimeExitSettlement, { readonly status: 'blocked' }>,
+): Promise<boolean> {
+  const locale = await resolveCurrentTrayLocale();
+  const zh = locale === 'zh-CN';
+  const notice = runtimeExitRecoveryBlockedNotice(settlement, zh ? 'zh-CN' : 'en');
+  restoreVisibleExitControlSurface();
+  setVisibleBootStatus(
+    settlement.reason === 'verification_timeout'
+      ? zh
+        ? '上次助手退出验证已等待 30 秒。请查看恢复提示。'
+        : 'Previous Runtime exit verification has waited 30 seconds.'
+      : zh
+        ? '正在等待上次助手退出验证。请查看恢复提示。'
+        : 'Previous Runtime exit verification needs attention.',
+    'close-only',
+  );
+  while (!startupShutdownCoordinator.isShutdownRequested()) {
+    const response = await dialog.showMessageBox({
+      type: 'warning',
+      ...notice,
+      buttons: [
+        zh ? '打开诊断目录' : 'Open diagnostics folder',
+        zh ? '继续验证' : 'Continue verification',
+        zh ? '关闭提示' : 'Dismiss notice',
+      ],
+      defaultId: 1,
+      cancelId: 2,
+      noLink: true,
+    });
+    if (response.response === 1) {
+      setVisibleBootStatus(
+        zh ? '正在重新验证上次助手退出状态…' : 'Verifying the previous Runtime exit again…',
+      );
+      return true;
+    }
+    if (response.response !== 0) return false;
+    await handleRuntimeExitRecoveryDialogResponse(0, {
+      diagnosticsDirectory: () =>
+        getDiagnosticLogDirectory() ?? path.join(app.getPath('userData'), 'diagnostics'),
+      ensureDirectory: (directory) => mkdirSync(directory, { recursive: true }),
+      openDirectory: (directory) => shell.openPath(directory),
+      onOpenError: (error) =>
+        diagnosticsLogger?.warn(
+          'diagnostics',
+          'runtime-exit-recovery-folder-open-failed',
+          'The Runtime recovery diagnostics directory could not be opened.',
+          { error: error.slice(0, 512) },
+        ),
+    });
+  }
+  return false;
+}
+
 async function resolveCurrentTrayLocale(): Promise<BackgroundTrayLocale> {
   try {
     const settings = await settingsStore.load();
@@ -2259,6 +2313,7 @@ const startupPromise = app
 
     await initializeSdkDiagnostics(diagnosticsLogger);
     if (startupShutdownCoordinator.isShutdownRequested()) return;
+    setVisibleBootStatus('Checking the previous Runtime exit before opening your workspace');
     let startupBoundary: Awaited<ReturnType<typeof runRuntimeStartupBoundary>>;
     try {
       startupBoundary = await runRuntimeStartupBoundary({
@@ -2267,6 +2322,7 @@ const startupPromise = app
         settle: () => runtimeHostAdapter.resumePendingRuntimeExitSettlement(),
         continueAutomaticRetry: () => !startupShutdownCoordinator.isShutdownRequested(),
         shutdownSignal: startupShutdownCoordinator.shutdownSignal,
+        onBlocked: showRuntimeStartupRecoveryBlocker,
         reconcileOwnerPolicy: () =>
           runtimeHostAdapter
             .reconcileStartupOwnerPolicy()
@@ -2359,42 +2415,6 @@ const startupPromise = app
       return;
     }
     if (startupBoundary.action === 'block') {
-      if (startupShutdownCoordinator.isShutdownRequested()) return;
-      const locale = await resolveCurrentTrayLocale();
-      const zh = locale === 'zh-CN';
-      const notice = runtimeExitRecoveryBlockedNotice(
-        startupBoundary.settlement,
-        zh ? 'zh-CN' : 'en',
-      );
-      restoreVisibleExitControlSurface();
-      setVisibleBootStatus(
-        zh
-          ? 'Runtime 退出恢复仍被安全边界阻止。'
-          : 'Runtime exit recovery remains blocked by its safety boundary.',
-        'close-only',
-      );
-      const blockerDialog = await dialog.showMessageBox({
-        type: 'error',
-        ...notice,
-        buttons: [zh ? '打开诊断目录' : 'Open diagnostics folder', zh ? '关闭' : 'Close'],
-        defaultId: 1,
-        cancelId: 1,
-        noLink: true,
-      });
-      await handleRuntimeExitRecoveryDialogResponse(blockerDialog.response, {
-        diagnosticsDirectory: () =>
-          getDiagnosticLogDirectory() ?? path.join(app.getPath('userData'), 'diagnostics'),
-        ensureDirectory: (directory) => mkdirSync(directory, { recursive: true }),
-        openDirectory: (directory) => shell.openPath(directory),
-        onOpenError: (openError) => {
-          diagnosticsLogger?.warn(
-            'diagnostics',
-            'runtime-exit-recovery-folder-open-failed',
-            'The Runtime recovery diagnostics directory could not be opened.',
-            { error: openError.slice(0, 512) },
-          );
-        },
-      });
       return;
     }
     if (startupShutdownCoordinator.isShutdownRequested()) return;

@@ -97,6 +97,17 @@ export function runtimeExitRecoveryBlockedNotice(
   locale: 'zh-CN' | 'en',
 ): RuntimeExitRecoveryBlockedNotice {
   const zh = locale === 'zh-CN';
+  if (settlement.reason === 'verification_timeout') {
+    return {
+      title: zh ? '助手恢复验证仍在等待' : 'Assistant recovery verification is still pending',
+      message: zh
+        ? '上次助手退出状态在 30 秒内尚未确认'
+        : 'The previous Runtime exit could not be verified within 30 seconds',
+      detail: zh
+        ? '请选择“继续验证”以等待当前检查或重新检查。也可以打开诊断目录。助手将在安全验证完成后启动，请保留原恢复文件。'
+        : 'Choose “Continue verification” to wait for the current check or recheck recovery, or open the diagnostics folder. The assistant starts after safety verification completes. Preserve the recovery files.',
+    };
+  }
   if (isWindowsAclRecoveryText(settlement.message)) {
     const action = zh
       ? runtimeExitRecoveryActionZh(settlement.nextAction)
@@ -135,7 +146,7 @@ function runtimeExitRecoveryActionZh(
     return '请完全退出并重新打开 Space；若问题仍存在，请在此阻断窗口选择“打开诊断目录”并联系支持。';
   }
   if (nextAction === 'retry-automatically') {
-    return 'Space 会继续自动验证和恢复；恢复完成前不会启动竞争的 Coder Runtime。';
+    return '请选择“继续验证”以等待或重新检查恢复状态。助手将在安全验证完成后启动。';
   }
   return '请勿反复重启或手动删除恢复文件；请在此阻断窗口选择“打开诊断目录”并联系支持。';
 }
@@ -150,7 +161,7 @@ function runtimeExitRecoveryActionEn(
     return 'Fully exit and reopen Space. If the problem returns, choose “Open diagnostics folder” in this blocking window and contact support.';
   }
   if (nextAction === 'retry-automatically') {
-    return 'Space will keep verifying and recovering automatically without starting a competing Coder Runtime.';
+    return 'Choose “Continue verification” to wait for or recheck recovery. The assistant starts after safety verification completes.';
   }
   return 'Do not repeatedly restart or delete recovery files. Choose “Open diagnostics folder” in this blocking window and contact support.';
 }
@@ -238,9 +249,62 @@ export async function resolveRuntimeExitRecoveryStartup(
 ): Promise<RuntimeExitRecoveryStartupDecision> {
   if (recoveryStartupCancelled(input)) return { action: 'cancelled' };
   if (!(input.scanPending ?? input.requested)) return { action: 'continue' };
+  const budget = new AbortController();
+  const timer = setTimeout(() => budget.abort(), 30_000);
+  const shutdownSignal = input.shutdownSignal
+    ? AbortSignal.any([input.shutdownSignal, budget.signal])
+    : budget.signal;
+  let lastSettlement: RuntimeExitSettlement | undefined;
+  try {
+    const decision = await resolveBoundedRuntimeExitRecovery({
+      ...input,
+      shutdownSignal,
+      settle: async () => {
+        lastSettlement = await input.settle();
+        return lastSettlement;
+      },
+    });
+    if (budget.signal.aborted && !recoveryStartupCancelled(input)) {
+      return {
+        action: 'block',
+        settlement: {
+          status: 'blocked',
+          reason: 'verification_timeout',
+          nextAction: 'retry-automatically',
+          message: 'Runtime exit verification is still pending after 30 seconds.',
+          ...(lastSettlement?.receipt ? { receipt: lastSettlement.receipt } : {}),
+        },
+      };
+    }
+    return decision;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function waitForRecoveryOperation<T>(
+  operation: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T | undefined> {
+  if (signal?.aborted) return Promise.resolve(undefined);
+  return new Promise((resolve, reject) => {
+    const onAbort = (): void => resolve(undefined);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    void Promise.resolve()
+      .then(operation)
+      .then(resolve, reject)
+      .finally(() => {
+        signal?.removeEventListener('abort', onAbort);
+      });
+  });
+}
+
+async function resolveBoundedRuntimeExitRecovery(
+  input: RuntimeExitRecoveryStartupInput,
+): Promise<RuntimeExitRecoveryStartupDecision> {
   let automaticRetryAttempt = 0;
-  let settlement = await input.settle();
-  if (recoveryStartupCancelled(input)) return { action: 'cancelled' };
+  let settlement = await waitForRecoveryOperation(input.settle, input.shutdownSignal);
+  if (!settlement || recoveryStartupCancelled(input)) return { action: 'cancelled' };
   while (
     settlement.status === 'blocked' &&
     settlement.nextAction === 'retry-automatically' &&
@@ -249,8 +313,8 @@ export async function resolveRuntimeExitRecoveryStartup(
     automaticRetryAttempt += 1;
     const completedWait = await waitBeforeRecoveryRetry(input, automaticRetryAttempt);
     if (!completedWait || recoveryStartupCancelled(input)) return { action: 'cancelled' };
-    settlement = await input.settle();
-    if (recoveryStartupCancelled(input)) return { action: 'cancelled' };
+    settlement = await waitForRecoveryOperation(input.settle, input.shutdownSignal);
+    if (!settlement || recoveryStartupCancelled(input)) return { action: 'cancelled' };
   }
   if (settlement.status !== 'blocked') {
     return input.requested ? { action: 'exit', settlement } : { action: 'continue', settlement };
@@ -271,11 +335,14 @@ export async function runRuntimeStartupBoundary(input: {
   ) => Promise<void>;
   readonly continueAutomaticRetry?: () => boolean;
   readonly shutdownSignal?: AbortSignal;
+  readonly onBlocked?: (
+    settlement: Extract<RuntimeExitSettlement, { readonly status: 'blocked' }>,
+  ) => Promise<boolean>;
   readonly reconcileOwnerPolicy: () => Promise<boolean>;
   readonly prepareStartup: () => Promise<void>;
   readonly initializeRuntime: (ownerPolicyReady: boolean) => void;
 }): Promise<RuntimeExitRecoveryStartupDecision> {
-  const decision = await resolveRuntimeExitRecoveryStartup({
+  const recoveryInput = {
     requested: input.recoveryRequested,
     scanPending: input.scanPendingExit,
     settle: input.settle,
@@ -286,7 +353,17 @@ export async function runRuntimeStartupBoundary(input: {
       ? { continueAutomaticRetry: input.continueAutomaticRetry }
       : {}),
     ...(input.shutdownSignal !== undefined ? { shutdownSignal: input.shutdownSignal } : {}),
-  });
+  };
+  let decision = await resolveRuntimeExitRecoveryStartup(recoveryInput);
+  const onBlocked = input.onBlocked;
+  while (decision.action === 'block' && onBlocked) {
+    if (shutdownSignalAborted(input.shutdownSignal)) return { action: 'cancelled' };
+    const settlement = decision.settlement;
+    const retry = await waitForRecoveryOperation(() => onBlocked(settlement), input.shutdownSignal);
+    if (shutdownSignalAborted(input.shutdownSignal)) return { action: 'cancelled' };
+    if (!retry) return decision;
+    decision = await resolveRuntimeExitRecoveryStartup(recoveryInput);
+  }
   if (decision.action !== 'continue') return decision;
   const ownerPolicyReady = await input.reconcileOwnerPolicy();
   if (shutdownSignalAborted(input.shutdownSignal)) return { action: 'cancelled' };

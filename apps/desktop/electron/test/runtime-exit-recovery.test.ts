@@ -171,6 +171,177 @@ test('shutdown aborts an automatic recovery wait without showing a stale blocker
   assert.deepEqual(await decisionPromise, { action: 'cancelled' });
 });
 
+test('a stalled SDK verification becomes an actionable block within the startup budget', async (context) => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  let decision: Awaited<ReturnType<typeof runRuntimeStartupBoundary>> | undefined;
+  let prepared = false;
+  const pending = runRuntimeStartupBoundary({
+    recoveryRequested: false,
+    scanPendingExit: true,
+    settle: () => new Promise(() => undefined),
+    reconcileOwnerPolicy: async () => {
+      prepared = true;
+      return true;
+    },
+    prepareStartup: async () => {
+      prepared = true;
+    },
+    initializeRuntime: () => {
+      prepared = true;
+    },
+  }).then((result) => {
+    decision = result;
+  });
+
+  context.mock.timers.tick(30_000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  assert.equal(decision?.action, 'block');
+  assert.equal(prepared, false);
+  if (decision?.action === 'block') {
+    assert.equal(decision.settlement.status, 'blocked');
+    assert.equal(decision.settlement.nextAction, 'retry-automatically');
+  }
+  await pending;
+});
+
+test('the recovery budget also bounds repeated pending results without releasing Runtime admission', async (context) => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  let decision: Awaited<ReturnType<typeof runRuntimeStartupBoundary>> | undefined;
+  let prepared = false;
+  const pending = runRuntimeStartupBoundary({
+    recoveryRequested: false,
+    scanPendingExit: true,
+    settle: async () => ({
+      status: 'blocked',
+      reason: 'cleanup_unverified',
+      nextAction: 'retry-automatically',
+      message: 'outcome missing',
+    }),
+    waitBeforeAutomaticRetry: () => new Promise(() => undefined),
+    reconcileOwnerPolicy: async () => {
+      prepared = true;
+      return true;
+    },
+    prepareStartup: async () => {
+      prepared = true;
+    },
+    initializeRuntime: () => {
+      prepared = true;
+    },
+  }).then((result) => {
+    decision = result;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  context.mock.timers.tick(30_000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  assert.equal(decision?.action, 'block');
+  assert.equal(prepared, false);
+  await pending;
+});
+
+test('shutdown cancels a hung recovery read and never displays a retry blocker', async () => {
+  const shutdown = new AbortController();
+  let displayed = false;
+  const pending = runRuntimeStartupBoundary({
+    recoveryRequested: false,
+    scanPendingExit: true,
+    shutdownSignal: shutdown.signal,
+    settle: () => new Promise(() => undefined),
+    onBlocked: async () => {
+      displayed = true;
+      return false;
+    },
+    reconcileOwnerPolicy: async () => {
+      throw new Error('unexpected owner transition');
+    },
+    prepareStartup: async () => {
+      throw new Error('unexpected preparation');
+    },
+    initializeRuntime: () => {
+      throw new Error('unexpected Host startup');
+    },
+  });
+  shutdown.abort();
+  assert.deepEqual(await pending, { action: 'cancelled' });
+  assert.equal(displayed, false);
+});
+
+test('explicit verification retry resumes the same startup boundary only after SDK recovery succeeds', async () => {
+  const order: string[] = [];
+  let reads = 0;
+  const decision = await runRuntimeStartupBoundary({
+    recoveryRequested: false,
+    scanPendingExit: true,
+    settle: async () =>
+      ++reads === 1
+        ? {
+            status: 'blocked',
+            reason: 'cleanup_unverified',
+            nextAction: 'manual-recovery',
+            message: 'verification unavailable',
+          }
+        : { status: 'recovered', repairs: [] },
+    onBlocked: async () => {
+      order.push('retry');
+      return true;
+    },
+    reconcileOwnerPolicy: async () => {
+      order.push('reconcile');
+      return true;
+    },
+    prepareStartup: async () => {
+      order.push('prepare');
+    },
+    initializeRuntime: () => {
+      order.push('initialize');
+    },
+  });
+
+  assert.equal(decision.action, 'continue');
+  assert.deepEqual(order, ['retry', 'reconcile', 'prepare', 'initialize']);
+  assert.equal(reads, 2);
+});
+
+test('shutdown closes startup admission even while the recovery dialog is awaiting user input', async () => {
+  const shutdown = new AbortController();
+  let shown = false;
+  let decision: Awaited<ReturnType<typeof runRuntimeStartupBoundary>> | undefined;
+  const pending = runRuntimeStartupBoundary({
+    recoveryRequested: false,
+    scanPendingExit: true,
+    shutdownSignal: shutdown.signal,
+    settle: async () => ({
+      status: 'blocked',
+      reason: 'owner_unverified',
+      nextAction: 'manual-recovery',
+      message: 'owner unverified',
+    }),
+    onBlocked: () => {
+      shown = true;
+      return new Promise(() => undefined);
+    },
+    reconcileOwnerPolicy: async () => {
+      throw new Error('unexpected owner transition');
+    },
+    prepareStartup: async () => {
+      throw new Error('unexpected preparation');
+    },
+    initializeRuntime: () => {
+      throw new Error('unexpected Host startup');
+    },
+  }).then((result) => {
+    decision = result;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(shown, true);
+  shutdown.abort();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(decision, { action: 'cancelled' });
+  await pending;
+});
+
 test('shutdown cancellation prevents owner reconciliation and Runtime initialization', async () => {
   const shutdown = new AbortController();
   const order: string[] = [];

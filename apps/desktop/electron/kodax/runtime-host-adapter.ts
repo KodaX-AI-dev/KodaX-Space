@@ -2160,6 +2160,7 @@ export class RuntimeHostAdapter {
   private runtimeReadyRevision = 0;
   private readonly runtimeReadyObservers = new Set<(revision: number) => void>();
   private clientExitSettlement: Promise<RuntimeExitSettlement> | undefined;
+  private startupExitSettlement: Promise<RuntimeExitSettlement> | undefined;
   private runtimeProfile = 'coder';
   /** Exact Run identities accepted through this Space process, retained for child-workflow provenance. */
   private readonly spaceOwnedRunIds = new Set<string>();
@@ -8801,7 +8802,16 @@ export class RuntimeHostAdapter {
   }
 
   /** Resume SDK-owned exit recovery before startup owner reconciliation. */
-  async resumePendingRuntimeExitSettlement(): Promise<RuntimeExitSettlement> {
+  resumePendingRuntimeExitSettlement(): Promise<RuntimeExitSettlement> {
+    // A UI wait can expire while the SDK is still inspecting the old owner.
+    // Explicit retries join that inspection instead of running cleanup concurrently.
+    this.startupExitSettlement ??= this.readPendingRuntimeExitSettlement().finally(() => {
+      this.startupExitSettlement = undefined;
+    });
+    return this.startupExitSettlement;
+  }
+
+  private async readPendingRuntimeExitSettlement(): Promise<RuntimeExitSettlement> {
     const settler = this.runtimeExitSettler ?? ((input) => this.settlePublishedRuntimeExit(input));
     try {
       const settlement = await settler({
