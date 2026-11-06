@@ -140,7 +140,9 @@ async function seedDenseProjects(space: SpaceInstance): Promise<void> {
 async function selectAppearance(page: Page, theme: string): Promise<void> {
   await page.getByTestId('settings-button').click();
   const settings = page.getByTestId('settings-workspace');
+  await settings.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: theme, exact: true }).click();
+  await settings.locator('#settings-tab-preferences').click();
   if (await settings.getByRole('button', { name: '简体中文', exact: true }).count()) {
     await settings.getByRole('button', { name: '简体中文', exact: true }).click();
   }

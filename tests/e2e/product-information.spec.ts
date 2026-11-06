@@ -14,6 +14,7 @@ async function capture(page: Page, name: string): Promise<void> {
 type Locale = 'en-US' | 'zh-CN';
 
 async function inspectRuntimeCopy(page: Page, locale: Locale): Promise<void> {
+  await page.locator('#settings-tab-sandbox').click();
   const boundary = page.getByText(
     locale === 'zh-CN'
       ? '这里隔离受支持的命令执行，尚未覆盖全部文档与原生资源访问。启动和普通工具调用不会自动触发设置。'
@@ -23,12 +24,16 @@ async function inspectRuntimeCopy(page: Page, locale: Locale): Promise<void> {
   await boundary.scrollIntoViewIfNeeded();
   await expect(boundary).toBeInViewport();
   await capture(page, `${locale}-sandbox-boundary`);
-  const description = page.getByText(
-    locale === 'zh-CN'
-      ? '管理外部 Agent 注册项、检查调度就绪状态并查看持久任务。'
-      : 'Manage external agent registrations, check dispatch readiness, and inspect durable tasks.',
-    { exact: true },
-  );
+  await page.locator('#settings-tab-external-agents').click();
+  const description = page
+    .getByTestId('settings-workspace')
+    .locator('header')
+    .getByText(
+      locale === 'zh-CN'
+        ? '管理外部 Agent 注册项、检查调度就绪状态并查看持久任务。'
+        : 'Manage external agent registrations, check dispatch readiness, and inspect durable tasks.',
+      { exact: true },
+    );
   await description.scrollIntoViewIfNeeded();
   await expect(description).toBeInViewport();
   await capture(page, `${locale}-external-agents`);
@@ -38,9 +43,14 @@ async function inspectSettings(page: Page, locale: Locale): Promise<void> {
   for (const tab of [
     'preferences',
     'providers',
-    'runtime',
+    'appearance',
+    'context',
+    'mcp',
+    'skills',
+    'sandbox',
+    'external-agents',
     'extensions',
-    'license',
+    'about',
     'diagnostics',
   ]) {
     await page.locator(`#settings-tab-${tab}`).click();
@@ -53,7 +63,7 @@ async function inspectSettings(page: Page, locale: Locale): Promise<void> {
       );
     }
     await capture(page, `${locale}-settings-${tab}`);
-    if (tab === 'runtime') await inspectRuntimeCopy(page, locale);
+    if (tab === 'sandbox') await inspectRuntimeCopy(page, locale);
   }
 }
 
@@ -116,9 +126,12 @@ for (const locale of ['en-US', 'zh-CN'] as const) {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.getByTestId('settings-button').click();
       if (locale === 'zh-CN') {
+        await page.locator('#settings-tab-preferences').click();
         await page.getByRole('button', { name: '简体中文', exact: true }).click();
+        await page.locator('#settings-tab-appearance').click();
         await page.getByRole('button', { name: '浅色', exact: true }).click();
       } else {
+        await page.locator('#settings-tab-appearance').click();
         await page.getByRole('button', { name: 'Dark', exact: true }).click();
       }
       await expect(page.getByText('显示语言已更新', { exact: true })).toHaveCount(0);

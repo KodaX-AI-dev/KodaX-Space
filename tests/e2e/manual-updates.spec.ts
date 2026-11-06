@@ -47,6 +47,7 @@ test('settings requires separate confirmation for download and installation', as
           ).manualUpdateCalls,
       );
     await space.page.getByTestId('settings-button').click();
+    await space.page.locator('#settings-tab-about').click();
     const section = space.page.getByTestId('update-settings');
     await expect(
       section.getByRole('button', { name: 'Check for updates', exact: true }),
@@ -80,7 +81,9 @@ test('settings requires separate confirmation for download and installation', as
       .getByRole('button', { name: 'Confirm', exact: true })
       .click();
     await expect.poll(async () => (await calls()).installs).toEqual(['0.1.48']);
-    await expect(section.getByRole('button', { name: 'Installing...', exact: true })).toBeDisabled();
+    await expect(
+      section.getByRole('button', { name: 'Installing...', exact: true }),
+    ).toBeDisabled();
   } finally {
     await space.close();
   }

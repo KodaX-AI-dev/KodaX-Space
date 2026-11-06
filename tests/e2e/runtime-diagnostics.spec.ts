@@ -64,6 +64,7 @@ test('Chinese diagnostics explains current capability limits and preserves techn
   try {
     const { page } = space;
     await page.getByTestId('settings-button').click();
+    await page.locator('#settings-tab-preferences').click();
     await page.getByRole('button', { name: '简体中文', exact: true }).click();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: '运行时诊断', exact: true }).click();
@@ -88,7 +89,9 @@ test('diagnostics remains readable in both themes and short windows', async () =
     const { page } = space;
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.getByTestId('settings-button').click();
+    await page.locator('#settings-tab-appearance').click();
     await page.getByRole('button', { name: 'Dark', exact: true }).click();
+    await page.locator('#settings-tab-preferences').click();
     await page.getByRole('button', { name: '简体中文', exact: true }).click();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: '运行时诊断', exact: true }).click();
@@ -97,6 +100,7 @@ test('diagnostics remains readable in both themes and short windows', async () =
     await captureDiagnostics(page, 'zh-dark');
     await page.keyboard.press('Escape');
     await page.getByTestId('settings-button').click();
+    await page.locator('#settings-tab-appearance').click();
     await page.getByRole('button', { name: '浅色', exact: true }).click();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: '运行时诊断', exact: true }).click();

@@ -33,12 +33,13 @@ test('settings is a work surface that preserves the composer and all appearance 
     expect(settingsBounds?.width).toBe(navigationBounds?.width);
     await expect(composer).toBeAttached();
     await expect(composer).not.toBeVisible();
-    await expect(settings.getByRole('tab')).toHaveCount(6);
-    await settings.getByRole('tab', { name: 'Preferences', exact: true }).focus();
+    await expect(settings.getByRole('tab')).toHaveCount(11);
+    await settings.getByRole('tab', { name: 'General', exact: true }).focus();
     await page.keyboard.press('Shift+Tab');
     await expect(
       settings.getByRole('button', { name: 'Back to workspace', exact: true }),
     ).toBeFocused();
+    await settings.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: 'Light', exact: true }).click();
     await expect(page.locator('html')).not.toHaveClass(/dark/);
     for (const quality of ['Minimal', 'Balanced', 'Full']) {
@@ -67,7 +68,8 @@ test('settings is a work surface that preserves the composer and all appearance 
     expect(await settings.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
     await page.setViewportSize({ width: 640, height: 800 });
     await expect(settings.getByRole('button', { name: 'Close settings' })).toBeInViewport();
-    await expect(settings.getByRole('tab', { name: 'Preferences', exact: true })).toBeInViewport();
+    await settings.getByRole('tab', { name: 'General', exact: true }).click();
+    await expect(settings.getByRole('tab', { name: 'General', exact: true })).toBeInViewport();
     await page.setViewportSize({ width: 1280, height: 800 });
     await settings.getByRole('button', { name: 'Close settings' }).click();
     await expect(composer).toBeVisible();

@@ -101,7 +101,9 @@ async function captureFontChoices(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
   await page.getByTestId('settings-button').click();
   const settings = page.getByTestId('settings-workspace');
+  await page.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: 'Dark', exact: true }).click();
+  await page.locator('#settings-tab-preferences').click();
   await settings.getByRole('button', { name: '简体中文', exact: true }).click();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '对话视图', exact: true }).click();

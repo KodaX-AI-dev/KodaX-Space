@@ -32,7 +32,7 @@ test('a late Host extension error cannot overwrite the latest successful setting
       });
     });
     await space.page.getByTestId('settings-button').click();
-    await space.page.locator('#settings-tab-runtime').click();
+    await space.page.locator('#settings-tab-diagnostics').click();
     const panel = space.page.getByTestId('extension-health');
     await expect(panel).toBeVisible();
     await panel

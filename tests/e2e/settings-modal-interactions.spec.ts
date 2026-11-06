@@ -209,6 +209,7 @@ test('Settings preferences controls are keyboardable, minimal, and persist edits
     // KodaX 0.7.58 removed host-side natural-language workflow auto-start, so the
     // invocation-mode buttons (Off/Confirm/Auto) no longer exist — only the runtime
     // caps under "Advanced limits" remain (expanded by default).
+    await dialog.locator('#settings-tab-context').click();
     const advanced = dialog.getByRole('button', { name: 'Advanced limits' });
     await expect(advanced).toHaveAttribute('aria-expanded', 'true');
     await advanced.click();
@@ -241,17 +242,17 @@ test('Settings interactive inventory has no unnamed controls across dynamic stat
     await openSettings(page);
 
     await expectNamedInteractionSurface(page, 'preferences panel', [
-      'Preferences',
-      'Providers',
+      'General',
+      'Models & providers',
       'Close settings',
       'Default workspace',
       'Browse',
       'Save workspace',
       TASK_FOCUS_TOGGLE,
-      'Advanced limits',
     ]);
 
-    // Advanced limits is expanded by default in the 0.7.58 layout (no invocation modes).
+    await settingsDialog(page).locator('#settings-tab-context').click();
+    // Runtime limits live alongside context settings.
     await expectNamedInteractionSurface(page, 'preferences advanced limits', [
       'Max agents',
       'Max concurrency',
@@ -315,9 +316,9 @@ test('Settings language switch localizes provider settings and custom form', asy
     await openSettings(page);
 
     await page.getByRole('button', { name: '简体中文' }).click();
-    await expect(page.getByRole('tab', { name: '偏好' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '常规' })).toBeVisible();
 
-    await page.getByRole('tab', { name: '服务商' }).click();
+    await page.getByRole('tab', { name: '模型与服务商' }).click();
     await expect(page.locator('#settings-panel-providers')).toBeVisible();
     await expect(page.getByText('已配置', { exact: true })).toBeVisible();
     await expect(page.getByText('密钥存储', { exact: true })).toBeVisible();

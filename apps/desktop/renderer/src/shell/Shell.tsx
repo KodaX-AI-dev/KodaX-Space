@@ -103,7 +103,11 @@ import {
   type PartnerDetailWorkspaceContext,
 } from '../features/partner/partnerDetailWorkspace.js';
 import { HandoffInbox } from './HandoffInbox.js';
-import { SettingsModal, type SettingsTab } from '../features/settings/SettingsModal.js';
+import { SettingsModal } from '../features/settings/SettingsModal.js';
+import {
+  legacySettingsTab,
+  type SettingsPageInput,
+} from '../features/settings/settingsNavigation.js';
 import {
   SpaceControlBroker,
   type TaskDockWidthPreset,
@@ -450,7 +454,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsNavigationMountedRef = useRef(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('preferences');
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsPageInput>('preferences');
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatusT | null>(null);
   const licenseRefreshRequestRef = useRef(0);
   const popoutBoundsRef = useRef<HTMLDivElement | null>(null);
@@ -944,7 +948,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   );
 
   const openSettingsAt = useCallback(
-    (tab: SettingsTab): void => {
+    (tab: SettingsPageInput): void => {
       if (!settingsOpen) settingsNavigationMountedRef.current = leftSidebarVisible;
       setSettingsInitialTab(tab);
       setSettingsOpen(true);
@@ -1764,7 +1768,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
       )}
       <SpaceControlBroker
         settingsOpen={settingsOpen}
-        settingsTab={settingsInitialTab}
+        settingsTab={legacySettingsTab(settingsInitialTab)}
         taskDockWidthMode={rightSidebarWidthMode}
         onOpenSettings={openSettingsAt}
         onSetTaskDockWidthMode={setTaskDockWidthPreset}

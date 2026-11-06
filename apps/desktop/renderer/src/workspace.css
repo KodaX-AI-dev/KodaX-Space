@@ -344,6 +344,100 @@ html:not(.q-minimal) .space-shell .ix-zone :is(button, [role='button']):not(:dis
 .settings-nav-button svg {
   margin-top: 0;
 }
+.settings-navigation > div:first-child {
+  padding-block: 16px 10px;
+}
+.settings-back {
+  margin-bottom: 16px;
+}
+.settings-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 0;
+  scroll-padding-block: 8px;
+}
+.settings-nav-group-label {
+  padding: 4px 12px 5px;
+  color: rgb(var(--fg-muted));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.settings-nav-group--footer {
+  position: sticky;
+  bottom: -8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgb(var(--border-default));
+  background: rgb(var(--surface-2));
+}
+.settings-nav-button {
+  padding-block: 9px;
+  gap: 10px;
+}
+.settings-nav-button > span > span:first-child {
+  font-size: 15px;
+}
+.settings-content > header {
+  min-height: 88px;
+  padding-block: 18px;
+}
+.settings-scroll > .settings-page > div {
+  padding-block: 24px 48px;
+}
+.settings-section {
+  padding-block: 22px;
+}
+.settings-section-heading {
+  margin-bottom: 16px;
+}
+.settings-section-heading > div:first-child {
+  display: none;
+}
+.settings-section-heading h3 {
+  font-size: 15px;
+}
+.settings-section-heading p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.settings-section--row .settings-section-heading {
+  margin-bottom: 12px;
+}
+.settings-scope-note {
+  padding: 10px 12px;
+  border-left: 2px solid rgb(var(--border-default));
+  color: rgb(var(--fg-muted));
+  font-size: 12px;
+}
+.settings-about-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  padding-block: 8px 12px;
+}
+#settings-license-section > div {
+  padding: 0;
+}
+.settings-technical-details > summary {
+  padding-block: 16px;
+  color: rgb(var(--fg-secondary));
+  cursor: pointer;
+  font-size: 13px;
+}
+@media (min-width: 1100px) {
+  .settings-section--row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+    align-items: start;
+    gap: 32px;
+  }
+  .settings-section--row .settings-section-heading {
+    margin-bottom: 0;
+  }
+}
 .appearance-choices {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -536,6 +630,18 @@ html.q-minimal .space-shell .composer-surface {
   }
   .settings-navigation h2 {
     font-size: 18px;
+    white-space: nowrap;
+  }
+  .settings-navigation .settings-back {
+    width: auto;
+    flex: none;
+  }
+  .settings-navigation > div:first-child > div {
+    margin-left: auto;
+    flex: none;
+  }
+  .settings-back kbd {
+    display: none;
   }
   .settings-mark,
   .settings-navigation p,
@@ -544,6 +650,7 @@ html.q-minimal .space-shell .composer-surface {
   }
   .settings-nav-list {
     display: flex;
+    flex-direction: row;
     flex: none;
     gap: 4px;
     overflow-x: auto;
@@ -555,8 +662,15 @@ html.q-minimal .space-shell .composer-surface {
     gap: 6px;
     padding: 8px;
   }
-  .settings-nav-list > button {
+  .settings-nav-group {
+    display: contents;
+  }
+  .settings-nav-group-label {
+    display: none;
+  }
+  .settings-nav-list .settings-nav-button {
     margin: 0;
+    white-space: nowrap;
   }
   .settings-nav-button > span > span:first-child {
     font-size: 14px;
@@ -566,7 +680,7 @@ html.q-minimal .space-shell .composer-surface {
     padding: 12px 18px;
   }
   .settings-scroll > [role='tabpanel'] > div {
-    padding: 4px 18px 24px;
+    padding: 16px 18px 24px;
   }
   .workspace-composer {
     padding-left: 12px;

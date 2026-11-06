@@ -325,7 +325,7 @@ test('actual Host extension diagnostics reach Settings while Skills and conversa
     await waitSdkIdle(space, await currentSdkSession(space));
     await expectAvailableBuiltinsWithFailure(space);
     await space.page.getByTestId('settings-button').click();
-    await space.page.locator('#settings-tab-runtime').click();
+    await space.page.locator('#settings-tab-diagnostics').click();
     const panel = space.page.getByTestId('extension-health');
     await expect(panel).toContainText('Builtin capabilities are available.');
     await panel.locator('summary').click();

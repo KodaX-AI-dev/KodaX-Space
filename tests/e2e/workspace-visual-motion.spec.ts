@@ -55,6 +55,7 @@ test('focus feedback is finite, honours quality and reduced motion, and pauses i
   try {
     await page.getByTestId('settings-button').click();
     const settings = page.getByTestId('settings-workspace');
+    await settings.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: 'Full', exact: true }).click();
     await page.keyboard.press('Escape');
     const composer = page.getByTestId('composer-input');
@@ -189,8 +190,11 @@ async function seedVisualConversation(space: SpaceInstance): Promise<void> {
 async function selectChineseFullAppearance(page: Page): Promise<void> {
   await page.getByTestId('settings-button').click();
   const settings = page.getByTestId('settings-workspace');
+  await settings.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: 'Dark', exact: true }).click();
+  await settings.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: 'Full', exact: true }).click();
+  await settings.locator('#settings-tab-preferences').click();
   await settings.getByRole('button', { name: '简体中文', exact: true }).click();
   await expect(page.getByText('显示语言已更新', { exact: true })).not.toBeVisible({
     timeout: 6000,
@@ -220,13 +224,15 @@ async function inspectSettingsJourney(page: Page): Promise<void> {
   await expect(settings).toBeVisible();
   await expect(page.getByTestId('left-sidebar')).not.toBeVisible();
   await page.waitForTimeout(650);
+  await settings.locator('#settings-tab-appearance').click();
   await captureVisualStep(page, '04-settings-dark.png');
+  await page.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: '全特效', exact: true }).hover();
   await page.waitForTimeout(700);
-  await settings.getByRole('tab').nth(1).click();
+  await settings.locator('#settings-tab-providers').click();
   await page.waitForTimeout(500);
   await captureVisualStep(page, '05-settings-category.png');
-  await settings.getByRole('tab').first().click();
+  await settings.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: '浅色', exact: true }).click();
   await page.waitForTimeout(600);
   await captureVisualStep(page, '06-settings-light.png');
@@ -301,6 +307,7 @@ async function inspectQualityGates(page: Page): Promise<void> {
   const light = page.locator('.composer-focus-light');
   for (const quality of ['Balanced', 'Minimal']) {
     await page.getByTestId('settings-button').click();
+    await settings.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: quality, exact: true }).click();
     await page.keyboard.press('Escape');
     await composer.click();
@@ -316,9 +323,10 @@ async function inspectQualityGates(page: Page): Promise<void> {
     }
   }
   await page.getByTestId('settings-button').click();
+  await settings.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: 'Full', exact: true }).click();
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await settings.getByRole('tab').nth(1).click();
+  await settings.locator('#settings-tab-providers').click();
   expect(
     await settings
       .locator('[role="tabpanel"]:visible')
@@ -386,6 +394,7 @@ async function inspectParallelSettings(
     firstId,
   );
   expect(live.ok && live.data.activeRun).toBeTruthy();
+  await page.locator('#settings-tab-appearance').click();
   await settings.getByRole('button', { name: '浅色', exact: true }).click();
   await page.waitForTimeout(500);
   await captureVisualStep(page, '09-real-parallel-settings.png');

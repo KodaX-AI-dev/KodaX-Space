@@ -2,6 +2,35 @@ import type { SupportedLocaleT } from '@kodax-space/space-ipc-schema';
 
 export const messages = {
   'en-US': {
+    'settings.mcp.openMigration': 'Configuration & migration details',
+    'settings.mcp.sourcesTitle': 'Configuration sources',
+    'settings.skills.locationsTitle': 'Installation locations',
+    'settings.externalAgents.registrationsTitle': 'Registered agents',
+    'settings.group.application': 'Application',
+    'settings.group.tasks': 'Tasks',
+    'settings.group.capabilities': 'Capabilities',
+    'settings.group.system': 'System',
+    'settings.nav.general': 'General',
+    'settings.nav.general.description':
+      'Language, workspace, terminal, window behavior and notifications.',
+    'settings.nav.providers': 'Models & providers',
+    'settings.nav.context': 'Context & limits',
+    'settings.nav.context.title': 'Context & runtime limits',
+    'settings.nav.context.description':
+      'Configure shared context compaction and Space Workflow runtime limits.',
+    'settings.nav.extensions': 'Extensions & components',
+    'settings.nav.sandbox': 'Safety & sandbox',
+    'settings.nav.sandbox.description':
+      'Inspect the command sandbox and set up the host backend when needed.',
+    'settings.nav.diagnostics': 'Troubleshooting',
+    'settings.nav.diagnostics.description':
+      'Inspect health, configuration and migration details, or export local diagnostics.',
+    'settings.nav.about': 'About',
+    'settings.nav.about.description': 'Version, software updates and license.',
+    'settings.nav.mcp.title': 'MCP configuration',
+    'settings.nav.technicalDetails': 'Host, configuration & migration details',
+    'settings.scope.shared':
+      'Shared KodaX configuration · Context compaction is shared with other KodaX clients. Workflow limits below are Space preferences.',
     'modelPicker.applyEffortFailed':
       'Could not apply effort to this session. Refresh it and retry.',
     'provider.credentialReadFailed':
@@ -1651,7 +1680,7 @@ export const messages = {
     'settings.mcp.projectServers': 'Project servers',
     'settings.mcp.recommendationLabel': 'Recommendation',
     'settings.mcp.recommendation':
-      'Keep global MCP in ~/.kodax/integrations/mcp.json and project overrides in <project>/.kodax/integrations/mcp.json. Use the SDK migration action above, or run `kodax integrations migrate` followed by `--apply`, to move legacy config.json entries.',
+      'Keep global MCP in ~/.kodax/integrations/mcp.json and project overrides in <project>/.kodax/integrations/mcp.json. Open configuration and migration details in Troubleshooting, or run `kodax integrations migrate` followed by `--apply`, to move legacy config.json entries.',
     'settings.mcp.reload': 'Reload MCP',
     'settings.mcp.reloaded': 'MCP reloaded: {count} server(s)',
     'settings.skills.title': 'Skills',
@@ -3284,6 +3313,31 @@ export const messages = {
       'Auto is sandbox-first. Full access runs directly on the host; connector scopes and reviewed writes still apply.',
   },
   'zh-CN': {
+    'settings.mcp.openMigration': '查看配置与迁移详情',
+    'settings.mcp.sourcesTitle': '配置来源',
+    'settings.skills.locationsTitle': '安装位置',
+    'settings.externalAgents.registrationsTitle': '已注册 Agent',
+    'settings.group.application': '应用',
+    'settings.group.tasks': '任务',
+    'settings.group.capabilities': '能力',
+    'settings.group.system': '系统',
+    'settings.nav.general': '常规',
+    'settings.nav.general.description': '语言、工作区、终端、窗口行为与通知。',
+    'settings.nav.providers': '模型与服务商',
+    'settings.nav.context': '上下文与限制',
+    'settings.nav.context.title': '上下文与运行限制',
+    'settings.nav.context.description': '配置共享的上下文压缩策略与 Space Workflow 运行限制。',
+    'settings.nav.extensions': '扩展与连接组件',
+    'settings.nav.sandbox': '安全与沙箱',
+    'settings.nav.sandbox.description': '查看命令沙箱状态，按需设置宿主后端。',
+    'settings.nav.diagnostics': '故障排查',
+    'settings.nav.diagnostics.description': '检查健康状态、配置与迁移详情，或导出本地诊断。',
+    'settings.nav.about': '关于',
+    'settings.nav.about.description': '版本、软件更新与许可证。',
+    'settings.nav.mcp.title': 'MCP 配置',
+    'settings.nav.technicalDetails': 'Host、配置与迁移详情',
+    'settings.scope.shared':
+      '共享 KodaX 配置 · 上下文压缩与其他 KodaX 客户端共享；下方 Workflow 限制属于 Space 偏好。',
     'modelPicker.applyEffortFailed': '无法将思考强度应用到此会话，请刷新后重试。',
     'provider.credentialReadFailed': '凭证读取失败，请解决存储问题后重试，现有凭证已保留。',
     'message.queue.withdrawn': '已撤回',
@@ -6363,7 +6417,7 @@ export const messages = {
     'settings.mcp.projectServers': '项目服务',
     'settings.mcp.recommendationLabel': '建议',
     'settings.mcp.recommendation':
-      '全局 MCP 放在 ~/.kodax/integrations/mcp.json，项目覆盖放在 <project>/.kodax/integrations/mcp.json。可使用上方 SDK 迁移按钮，或运行 `kodax integrations migrate` dry-run 后再用 `--apply`，迁移旧 config.json 条目。',
+      '全局 MCP 放在 ~/.kodax/integrations/mcp.json，项目覆盖放在 <project>/.kodax/integrations/mcp.json。可在故障排查中查看配置与迁移详情，或运行 `kodax integrations migrate` dry-run 后再用 `--apply`，迁移旧 config.json 条目。',
     'settings.mcp.reload': '重载 MCP',
     'settings.mcp.reloaded': 'MCP 已重载：{count} 个服务',
     'settings.skills.title': '技能',

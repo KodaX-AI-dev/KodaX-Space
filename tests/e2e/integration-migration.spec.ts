@@ -32,7 +32,7 @@ test('Settings previews and applies the SDK legacy integration migration non-des
     );
 
     await space.page.getByTestId('settings-button').click();
-    await space.page.locator('#settings-tab-runtime').click();
+    await space.page.locator('#settings-tab-diagnostics').click();
 
     await expect(space.page.getByText('Legacy integration configuration detected')).toBeVisible();
     await expect(space.page.getByText(/MCP: 1 entries/)).toBeVisible();

@@ -16,17 +16,18 @@ test('language switch updates settings, sidebar, and command palette copy', asyn
 
     await page.getByTestId('settings-button').click();
     await expect(page.locator('#settings-modal-title')).toHaveText('Settings');
-    await expect(page.getByRole('tab', { name: 'License' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Workflow host' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'About' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Context & limits' })).toBeVisible();
 
     await page.getByRole('button', { name: '简体中文' }).click();
     await expect(page.locator('#settings-modal-title')).toHaveText('设置');
     await expect(page.getByText('显示语言已更新', { exact: true })).toBeVisible();
-    await expect(page.getByRole('tab', { name: '许可证' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '工作流宿主' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '关于' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '上下文与限制' })).toBeVisible();
     await expect(page.getByTestId('settings-button')).toContainText('设置');
     const settings = page.getByTestId('settings-workspace');
-    await expect(settings.getByRole('tab')).toHaveCount(6);
+    await expect(settings.getByRole('tab')).toHaveCount(11);
+    await settings.locator('#settings-tab-appearance').click();
     await expect(settings.getByRole('heading', { name: '外观', exact: true })).toBeVisible();
     for (const quality of ['极简', '均衡', '全特效']) {
       await expect(settings.getByRole('button', { name: quality, exact: true })).toBeVisible();
@@ -53,6 +54,7 @@ test('language switch updates settings, sidebar, and command palette copy', asyn
       path: testInfo.outputPath('workspace-zh-light.png'),
     });
     await page.getByTestId('settings-button').click();
+    await settings.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: '深色', exact: true }).click();
 
     await page.keyboard.press('Escape');
@@ -85,8 +87,8 @@ test('language switch updates settings, sidebar, and command palette copy', asyn
     await page.getByRole('button', { name: 'English' }).click();
     await expect(page.locator('#settings-modal-title')).toHaveText('Settings');
     await expect(page.getByText('Display language updated', { exact: true })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'License' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Workflow host' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'About' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Context & limits' })).toBeVisible();
     await expect(page.getByTestId('settings-button')).toContainText('Settings');
     await expect(page.getByLabel('Runtime diagnostics')).toContainText('Community');
     await expect(page.locator('button[aria-label^="Theme"]').first()).toBeVisible();

@@ -12,6 +12,9 @@ import {
 } from 'react';
 import {
   ArrowLeft,
+  Info,
+  Palette,
+  Wrench,
   Archive,
   AlertTriangle,
   Bot,
@@ -76,22 +79,22 @@ import { ExtensionSettingsPanel } from '../extensions/ExtensionSettingsPanel.js'
 import { AppearanceSettings } from './AppearanceSettings.js';
 import { UpdateSettings } from '../updater/UpdateSettings.js';
 
-export type SettingsTab =
-  | 'providers'
-  | 'preferences'
-  | 'runtime'
-  | 'diagnostics'
-  | 'license'
-  | 'extensions';
+import {
+  resolveSettingsPage,
+  type SettingsPageId,
+  type SettingsPageInput,
+} from './settingsNavigation.js';
+export type { SettingsTab } from './settingsNavigation.js';
 
 interface SettingsModalProps {
-  readonly initialTab?: SettingsTab;
-  readonly onTabChange?: (tab: SettingsTab) => void;
+  readonly initialTab?: SettingsPageInput;
+  readonly onTabChange?: (tab: SettingsPageId) => void;
   readonly onClose: () => void;
 }
 
 interface SettingsTabMeta {
-  readonly id: SettingsTab;
+  readonly id: SettingsPageId;
+  readonly group: 'application' | 'tasks' | 'capabilities' | 'system' | 'footer';
   readonly labelKey: MessageKey;
   readonly descriptionKey: MessageKey;
   readonly Icon: LucideIcon;
@@ -102,48 +105,87 @@ type Translate = (key: MessageKey, vars?: Record<string, string | number>) => st
 const TABS: readonly SettingsTabMeta[] = [
   {
     id: 'preferences',
-    labelKey: 'settings.preferences',
-    descriptionKey: 'settings.preferences.description',
+    group: 'application',
+    labelKey: 'settings.nav.general',
+    descriptionKey: 'settings.nav.general.description',
     Icon: SlidersHorizontal,
   },
   {
+    id: 'appearance',
+    group: 'application',
+    labelKey: 'settings.appearance',
+    descriptionKey: 'settings.appearance.description',
+    Icon: Palette,
+  },
+  {
     id: 'providers',
-    labelKey: 'settings.providers',
+    group: 'tasks',
+    labelKey: 'settings.nav.providers',
     descriptionKey: 'settings.providers.description',
     Icon: KeyRound,
   },
   {
-    id: 'runtime',
-    labelKey: 'settings.runtime',
-    descriptionKey: 'settings.runtime.description',
-    Icon: Database,
+    id: 'context',
+    group: 'tasks',
+    labelKey: 'settings.nav.context',
+    descriptionKey: 'settings.nav.context.description',
+    Icon: Archive,
+  },
+  {
+    id: 'external-agents',
+    group: 'capabilities',
+    labelKey: 'settings.externalAgents.title',
+    descriptionKey: 'settings.externalAgents.description',
+    Icon: Bot,
+  },
+  {
+    id: 'mcp',
+    group: 'capabilities',
+    labelKey: 'settings.mcp.title',
+    descriptionKey: 'settings.mcp.description',
+    Icon: Network,
+  },
+  {
+    id: 'skills',
+    group: 'capabilities',
+    labelKey: 'settings.skills.title',
+    descriptionKey: 'settings.skills.description',
+    Icon: FileArchive,
   },
   {
     id: 'extensions',
-    labelKey: 'extensions.title',
+    group: 'capabilities',
+    labelKey: 'settings.nav.extensions',
     descriptionKey: 'extensions.settingsDescription',
     Icon: PackageOpen,
   },
   {
-    id: 'license',
-    labelKey: 'settings.license',
-    descriptionKey: 'settings.license.description',
+    id: 'sandbox',
+    group: 'system',
+    labelKey: 'settings.nav.sandbox',
+    descriptionKey: 'settings.nav.sandbox.description',
     Icon: ShieldCheck,
   },
   {
     id: 'diagnostics',
-    labelKey: 'settings.diagnostics',
-    descriptionKey: 'settings.diagnostics.description',
-    Icon: FileArchive,
+    group: 'system',
+    labelKey: 'settings.nav.diagnostics',
+    descriptionKey: 'settings.nav.diagnostics.description',
+    Icon: Wrench,
+  },
+  {
+    id: 'about',
+    group: 'footer',
+    labelKey: 'settings.nav.about',
+    descriptionKey: 'settings.nav.about.description',
+    Icon: Info,
   },
 ];
+const GROUPS = ['application', 'tasks', 'capabilities', 'system', 'footer'] as const;
+const RUNTIME_PAGES: readonly SettingsPageId[] = ['context', 'mcp', 'skills', 'diagnostics'];
 
 export function SettingsModal(props: SettingsModalProps): JSX.Element {
-  return (
-    <SpaceExtensionsProvider>
-      <SettingsModalContent {...props} />
-    </SpaceExtensionsProvider>
-  );
+  return <SettingsModalContent {...props} />;
 }
 
 function SettingsModalContent({
@@ -152,41 +194,86 @@ function SettingsModalContent({
   onClose,
 }: SettingsModalProps): JSX.Element {
   const { t } = useI18n();
-  const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const [tab, setTab] = useState<SettingsPageId>(() => resolveSettingsPage(initialTab));
+  const [visited, setVisited] = useState<ReadonlySet<SettingsPageId>>(
+    () => new Set([resolveSettingsPage(initialTab)]),
+  );
+  const [externalAgentsEnabled, setExternalAgentsEnabled] = useState<boolean | null>(null);
+  const runtimeState = useAppStore((state) => state.runtimeConnection.state);
+  const currentProjectPath = useAppStore((state) => state.currentProjectPath);
+  const visibleTabs = TABS.filter(
+    (item) => item.id !== 'external-agents' || externalAgentsEnabled === true,
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
-  function selectTab(next: SettingsTab): void {
+  function selectTab(next: SettingsPageId): void {
     setTab(next);
+    setVisited((previous) => new Set([...previous, next]));
     scrollRef.current?.scrollTo({ top: 0 });
     onTabChange?.(next);
     window.requestAnimationFrame(() => {
-      document.getElementById(`settings-tab-${next}`)?.focus();
+      const button = document.getElementById(`settings-tab-${next}`);
+      button?.focus({ preventScroll: true });
+      button?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
   }
 
   useEffect(() => {
-    setTab(initialTab);
+    const next = resolveSettingsPage(initialTab);
+    setTab(next);
+    setVisited((previous) => new Set([...previous, next]));
+    scrollRef.current?.scrollTo({ top: 0 });
+    if (initialTab === 'license') {
+      requestAnimationFrame(() =>
+        document.getElementById('settings-license-section')?.scrollIntoView({ block: 'start' }),
+      );
+    }
   }, [initialTab]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void window.kodaxSpace
+      ?.invoke('agent.external.status', {})
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) setExternalAgentsEnabled(result.data.enabled);
+        else pushToast(result.error.message, 'error');
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) pushToast(String(error), 'error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [runtimeState]);
+
+  useEffect(() => {
+    if (tab !== 'external-agents' || externalAgentsEnabled !== false) return;
+    setTab('preferences');
+    setVisited((previous) => new Set([...previous, 'preferences']));
+    onTabChange?.('preferences');
+    requestAnimationFrame(() => document.getElementById('settings-tab-preferences')?.focus());
+  }, [externalAgentsEnabled, tab, onTabChange]);
+
   function handleTabListKeyDown(e: ReactKeyboardEvent<HTMLElement>): void {
-    const currentIndex = TABS.findIndex((t) => t.id === tab);
+    const currentIndex = visibleTabs.findIndex((t) => t.id === tab);
     if (currentIndex < 0) return;
 
     let nextIndex: number | null = null;
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-      nextIndex = (currentIndex + 1) % TABS.length;
+      nextIndex = (currentIndex + 1) % visibleTabs.length;
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-      nextIndex = (currentIndex - 1 + TABS.length) % TABS.length;
+      nextIndex = (currentIndex - 1 + visibleTabs.length) % visibleTabs.length;
     } else if (e.key === 'Home') {
       nextIndex = 0;
     } else if (e.key === 'End') {
-      nextIndex = TABS.length - 1;
+      nextIndex = visibleTabs.length - 1;
     }
 
     if (nextIndex === null) return;
     e.preventDefault();
-    selectTab(TABS[nextIndex].id);
+    selectTab(visibleTabs[nextIndex].id);
   }
 
   useEffect(() => {
@@ -205,7 +292,7 @@ function SettingsModalContent({
 
   useEffect(() => {
     const previous = document.activeElement;
-    document.getElementById('settings-tab-' + initialTab)?.focus();
+    document.getElementById('settings-tab-' + resolveSettingsPage(initialTab))?.focus();
     return () => {
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
@@ -251,30 +338,29 @@ function SettingsModalContent({
             role="tablist"
             aria-orientation="vertical"
             aria-label={t('settings.sections')}
-            className="settings-nav-list min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-2"
+            className="settings-nav-list min-h-0 flex-1 overflow-y-auto px-3 py-2"
             onKeyDown={handleTabListKeyDown}
           >
-            {TABS.map((t) => (
-              <SettingsNavButton
-                key={t.id}
-                tab={t}
-                label={t.labelKey}
-                description={t.descriptionKey}
-                active={tab === t.id}
-                onClick={() => selectTab(t.id)}
-              />
+            {GROUPS.map((group) => (
+              <div key={group} className={`settings-nav-group settings-nav-group--${group}`}>
+                {group !== 'footer' && (
+                  <div className="settings-nav-group-label">{t(`settings.group.${group}`)}</div>
+                )}
+                {visibleTabs
+                  .filter((item) => item.group === group)
+                  .map((item) => (
+                    <SettingsNavButton
+                      key={item.id}
+                      tab={item}
+                      label={item.labelKey}
+                      description={item.descriptionKey}
+                      active={tab === item.id}
+                      onClick={() => selectTab(item.id)}
+                    />
+                  ))}
+              </div>
             ))}
           </nav>
-
-          <div className="settings-key-safety m-3 border-t border-border-default p-3">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-fg-primary">
-              <ShieldCheck className="h-3.5 w-3.5 text-ok" strokeWidth={1.8} aria-hidden />
-              {t('settings.keySafety.title')}
-            </div>
-            <p className="text-[11px] leading-5 text-fg-muted">
-              {t('settings.keySafety.description')}
-            </p>
-          </div>
         </aside>
 
         <section className="settings-content flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
@@ -282,7 +368,13 @@ function SettingsModalContent({
             <activeTab.Icon className="h-5 w-5 text-fg-secondary" strokeWidth={1.8} aria-hidden />
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl font-semibold tracking-tight leading-tight">
-                {t(activeTab.labelKey)}
+                {t(
+                  tab === 'context'
+                    ? 'settings.nav.context.title'
+                    : tab === 'mcp'
+                      ? 'settings.nav.mcp.title'
+                      : activeTab.labelKey,
+                )}
               </h1>
               <div className="mt-1 text-sm text-fg-muted">{t(activeTab.descriptionKey)}</div>
             </div>
@@ -298,62 +390,118 @@ function SettingsModalContent({
           </header>
 
           <div ref={scrollRef} className="settings-scroll min-h-0 flex-1 overflow-y-auto">
-            <div
-              id="settings-panel-preferences"
-              role="tabpanel"
-              aria-labelledby="settings-tab-preferences"
-              hidden={tab !== 'preferences'}
-              className="h-full"
-            >
+            <SettingsPage id="preferences" active={tab} mounted={visited.has('preferences')}>
               <PreferencesPanel />
-            </div>
-            <div
-              id="settings-panel-providers"
-              role="tabpanel"
-              aria-labelledby="settings-tab-providers"
-              hidden={tab !== 'providers'}
-              className="h-full"
-            >
+            </SettingsPage>
+            <SettingsPage id="appearance" active={tab} mounted={visited.has('appearance')}>
+              <div>
+                <AppearanceSettings />
+              </div>
+            </SettingsPage>
+            <SettingsPage id="providers" active={tab} mounted={visited.has('providers')}>
               <ProvidersPanel />
-            </div>
-            <div
-              id="settings-panel-runtime"
-              role="tabpanel"
-              aria-labelledby="settings-tab-runtime"
-              hidden={tab !== 'runtime'}
-              className="h-full"
+            </SettingsPage>
+            {RUNTIME_PAGES.some((id) => visited.has(id)) && (
+              <RuntimePanels
+                key={currentProjectPath ?? ''}
+                page={tab}
+                visited={visited}
+                onNavigate={selectTab}
+              />
+            )}
+            <SettingsPage
+              id="external-agents"
+              active={tab}
+              mounted={externalAgentsEnabled === true && visited.has('external-agents')}
             >
-              <RuntimePanel />
-            </div>
-            <div
-              id="settings-panel-extensions"
-              role="tabpanel"
-              aria-labelledby="settings-tab-extensions"
-              hidden={tab !== 'extensions'}
-              className="h-full"
-            >
-              <ExtensionSettingsPanel active={tab === 'extensions'} />
-            </div>
-            <div
-              id="settings-panel-diagnostics"
-              role="tabpanel"
-              aria-labelledby="settings-tab-diagnostics"
-              hidden={tab !== 'diagnostics'}
-              className="h-full"
-            >
-              <DiagnosticsPanel />
-            </div>
-            <div
-              id="settings-panel-license"
-              role="tabpanel"
-              aria-labelledby="settings-tab-license"
-              hidden={tab !== 'license'}
-              className="h-full"
-            >
-              <LicensePanel />
-            </div>
+              <div>
+                <ExternalAgentsSection
+                  key={currentProjectPath ?? ''}
+                  projectRoot={currentProjectPath ?? undefined}
+                />
+              </div>
+            </SettingsPage>
+            <SettingsPage id="sandbox" active={tab} mounted={visited.has('sandbox')}>
+              <div>
+                <SandboxReadinessSection />
+              </div>
+            </SettingsPage>
+            <SettingsPage id="extensions" active={tab} mounted={visited.has('extensions')}>
+              <SpaceExtensionsProvider>
+                <ExtensionSettingsPanel active={tab === 'extensions'} />
+              </SpaceExtensionsProvider>
+            </SettingsPage>
+            <SettingsPage id="about" active={tab} mounted={visited.has('about')}>
+              <AboutPanel />
+            </SettingsPage>
           </div>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function SettingsPage({
+  id,
+  active,
+  mounted,
+  children,
+}: {
+  readonly id: SettingsPageId;
+  readonly active: SettingsPageId;
+  readonly mounted: boolean;
+  readonly children: ReactNode;
+}): JSX.Element | null {
+  if (!mounted) return null;
+  return (
+    <div
+      id={`settings-panel-${id}`}
+      role="tabpanel"
+      aria-labelledby={`settings-tab-${id}`}
+      hidden={active !== id}
+      className={`settings-page settings-page--${id}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function AboutPanel(): JSX.Element {
+  const { t } = useI18n();
+  const [version, setVersion] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    void window.kodaxSpace
+      ?.invoke('space.version', undefined)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) setVersion(result.data.spaceVersion);
+        else pushToast(result.error.message, 'error');
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) pushToast(String(error), 'error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return (
+    <div>
+      <div className="settings-about-brand">
+        <span className="text-xl font-semibold">KodaX Space</span>
+        <span className="font-mono text-sm text-fg-muted">
+          {version ? `v${version}` : t('common.loading')}
+        </span>
+      </div>
+      <SettingsSection
+        title={t('update.title')}
+        description={t('update.manualPolicy')}
+        icon={RefreshCw}
+      >
+        <UpdateSettings />
+      </SettingsSection>
+      <div id="settings-license-section">
+        <LicensePanel />
       </div>
     </div>
   );
@@ -384,7 +532,7 @@ function DiagnosticsPanel(): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-5">
+    <div>
       <SettingsSection
         title={t('settings.diagnostics.title')}
         description={t('settings.diagnostics.description')}
@@ -523,21 +671,7 @@ function PreferencesPanel(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-5">
-      <SettingsSection
-        title={t('settings.appearance')}
-        description={t('settings.appearance.description')}
-        icon={SlidersHorizontal}
-      >
-        <AppearanceSettings />
-      </SettingsSection>
       <LanguageSection />
-      <SettingsSection
-        title={t('update.title')}
-        description={t('update.manualPolicy')}
-        icon={RefreshCw}
-      >
-        <UpdateSettings />
-      </SettingsSection>
       <TerminalShellSection />
       {window.kodaxSpace?.platform === 'win32' && <WindowCloseBehaviorSection />}
 
@@ -611,14 +745,6 @@ function PreferencesPanel(): JSX.Element {
           <NativeCompletionNotificationSettings />
         </div>
       </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.workflowHost.title')}
-        description={t('settings.workflowHost.description')}
-        icon={Settings2}
-      >
-        <WorkflowPolicySection />
-      </SettingsSection>
     </div>
   );
 }
@@ -688,6 +814,7 @@ function TerminalShellSection(): JSX.Element {
 
   return (
     <SettingsSection
+      layout="row"
       title={t('settings.terminalShell.title')}
       description={t('settings.terminalShell.description')}
       icon={SquareTerminal}
@@ -786,6 +913,7 @@ function WindowCloseBehaviorSection(): JSX.Element {
 
   return (
     <SettingsSection
+      layout="row"
       title={t('settings.windowCloseBehavior.title')}
       description={t('settings.windowCloseBehavior.description')}
       icon={LogOut}
@@ -835,7 +963,31 @@ function RuntimeHostSection(): JSX.Element {
   );
 }
 
-function RuntimePanel(): JSX.Element {
+function SettingsError({
+  message,
+}: {
+  readonly message: string | null | undefined;
+}): JSX.Element | null {
+  if (!message) return null;
+  return (
+    <div
+      role="alert"
+      className="rounded-lg border border-danger/40 bg-danger/12 px-3 py-2 text-xs text-danger"
+    >
+      {message}
+    </div>
+  );
+}
+
+function RuntimePanels({
+  page,
+  visited,
+  onNavigate,
+}: {
+  readonly page: SettingsPageId;
+  readonly visited: ReadonlySet<SettingsPageId>;
+  readonly onNavigate: (page: SettingsPageId) => void;
+}): JSX.Element {
   const { t, effectiveLocale } = useI18n();
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   const runtimeConnection = useAppStore((s) => s.runtimeConnection);
@@ -849,8 +1001,18 @@ function RuntimePanel(): JSX.Element {
   const [triggerPercent, setTriggerPercent] = useState('');
   const [triggerTokens, setTriggerTokens] = useState('');
   const [contextWindow, setContextWindow] = useState('');
-  const [err, setErr] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<SettingsPageId, string>>>({});
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [technicalDetailsOpen, setTechnicalDetailsOpen] = useState(false);
+  const setErr = useCallback((message: string | null, target: SettingsPageId): void => {
+    setErrors((previous) => ({ ...previous, [target]: message ?? undefined }));
+  }, []);
   const [saved, setSaved] = useState(false);
+  const formInitialized = useRef(false);
+  const overviewRequest = useRef(0);
+  const projectRef = useRef(currentProjectPath);
+  projectRef.current = currentProjectPath;
+  const diagnosticsVisited = visited.has('diagnostics');
 
   function syncCompactionForm(next: KodaxConfigOverviewT): void {
     setTriggerPercent(next.compaction.triggerPercent?.toString() ?? '');
@@ -860,41 +1022,71 @@ function RuntimePanel(): JSX.Element {
 
   async function refresh(): Promise<void> {
     if (!window.kodaxSpace) return;
+    const request = ++overviewRequest.current;
+    const project = currentProjectPath;
     setLoading(true);
-    setErr(null);
+    setOverviewError(null);
     try {
-      const [overviewResult, migrationResult] = await Promise.all([
-        window.kodaxSpace.invoke('settings.kodaxConfig.get', {
-          ...(currentProjectPath ? { projectRoot: currentProjectPath } : {}),
-        }),
-        window.kodaxSpace.invoke('settings.kodaxConfig.planIntegrationMigration', {}),
-      ]);
-      if (!overviewResult.ok) {
-        setErr(`${overviewResult.error.code}: ${overviewResult.error.message}`);
+      const result = await window.kodaxSpace.invoke('settings.kodaxConfig.get', {
+        ...(project ? { projectRoot: project } : {}),
+      });
+      if (request !== overviewRequest.current || project !== projectRef.current) return;
+      if (!result.ok) {
+        setOverviewError(`${result.error.code}: ${result.error.message}`);
         return;
       }
-      setOverview(overviewResult.data);
-      syncCompactionForm(overviewResult.data);
-      if (migrationResult.ok) {
-        setMigrationPlan(migrationResult.data);
-      } else {
-        setMigrationPlan(null);
-        setErr(`${migrationResult.error.code}: ${migrationResult.error.message}`);
+      setOverview(result.data);
+      if (!formInitialized.current) {
+        syncCompactionForm(result.data);
+        formInitialized.current = true;
       }
+    } catch (error) {
+      if (request === overviewRequest.current) setOverviewError(String(error));
     } finally {
-      setLoading(false);
+      if (request === overviewRequest.current) setLoading(false);
     }
   }
 
+  const refreshMigration = useCallback(async (): Promise<void> => {
+    if (!window.kodaxSpace) return;
+    setErr(null, 'diagnostics');
+    try {
+      const result = await window.kodaxSpace.invoke(
+        'settings.kodaxConfig.planIntegrationMigration',
+        {},
+      );
+      if (result.ok) {
+        setMigrationPlan(result.data);
+        if (result.data.mcp.action === 'create' || result.data.extensions.action === 'create') {
+          setTechnicalDetailsOpen(true);
+        }
+      } else setErr(`${result.error.code}: ${result.error.message}`, 'diagnostics');
+    } catch (error) {
+      setErr(String(error), 'diagnostics');
+    }
+  }, [setErr]);
+
   useEffect(() => {
+    formInitialized.current = false;
+    setOverview(null);
+    setSaved(false);
     void refresh();
+    return () => {
+      overviewRequest.current += 1;
+    };
+    // Project changes invalidate resource reads and the previous form baseline.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProjectPath]);
 
+  useEffect(() => {
+    if (diagnosticsVisited) void refreshMigration();
+  }, [diagnosticsVisited, refreshMigration]);
+
   async function saveCompaction(): Promise<void> {
+    const setOperationError = (message: string | null): void => setErr(message, 'context');
     if (!window.kodaxSpace) return;
     setSaving(true);
-    setErr(null);
+    setOperationError(null);
     setSaved(false);
     try {
       const parsedTrigger = parseOptionalInt(
@@ -935,7 +1127,7 @@ function RuntimePanel(): JSX.Element {
         },
       });
       if (!result.ok) {
-        setErr(`${result.error.code}: ${result.error.message}`);
+        setOperationError(`${result.error.code}: ${result.error.message}`);
         return;
       }
       setOverview(result.data);
@@ -950,24 +1142,25 @@ function RuntimePanel(): JSX.Element {
         runtimeReloadFailed ? 'warning' : 'success',
         runtimeReloadFailed ? 3200 : 1800,
       );
-      if (runtimeReloadFailed) setErr(t('settings.runtimeConfig.reloadFailed'));
+      if (runtimeReloadFailed) setOperationError(t('settings.runtimeConfig.reloadFailed'));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setOperationError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
   }
 
   async function reloadMcp(): Promise<void> {
+    const setOperationError = (message: string | null): void => setErr(message, 'mcp');
     if (!window.kodaxSpace) return;
     setMcpReloading(true);
-    setErr(null);
+    setOperationError(null);
     try {
       const result = await window.kodaxSpace.invoke('mcp.reload', {
         ...(currentProjectPath ? { projectRoot: currentProjectPath } : {}),
       });
       if (!result.ok) {
-        setErr(`${result.error.code}: ${result.error.message}`);
+        setOperationError(`${result.error.code}: ${result.error.message}`);
         return;
       }
       pushToast(
@@ -982,6 +1175,7 @@ function RuntimePanel(): JSX.Element {
   }
 
   async function applyIntegrationMigration(): Promise<void> {
+    const setOperationError = (message: string | null): void => setErr(message, 'diagnostics');
     if (!window.kodaxSpace || !migrationPlan) return;
     const confirmed = await requestConfirm({
       title: t('settings.integrationMigration.confirmTitle'),
@@ -994,14 +1188,14 @@ function RuntimePanel(): JSX.Element {
     if (!confirmed) return;
 
     setMigrationApplying(true);
-    setErr(null);
+    setOperationError(null);
     try {
       const result = await window.kodaxSpace.invoke(
         'settings.kodaxConfig.applyIntegrationMigration',
         {},
       );
       if (!result.ok) {
-        setErr(`${result.error.code}: ${result.error.message}`);
+        setOperationError(`${result.error.code}: ${result.error.message}`);
         return;
       }
       const domains = result.data.applied
@@ -1021,10 +1215,10 @@ function RuntimePanel(): JSX.Element {
       const reloadFailed =
         result.data.runtimeReload.status === 'failed' || !reloadResult.ok || !reloadResult.data.ok;
       window.dispatchEvent(new Event('kodax:integration-config-changed'));
-      await refresh();
-      if (reloadFailed) setErr(t('settings.integrationMigration.reloadFailed'));
+      await Promise.all([refresh(), refreshMigration()]);
+      if (reloadFailed) setOperationError(t('settings.integrationMigration.reloadFailed'));
     } catch (error) {
-      setErr(error instanceof Error ? error.message : String(error));
+      setOperationError(error instanceof Error ? error.message : String(error));
     } finally {
       setMigrationApplying(false);
     }
@@ -1034,14 +1228,15 @@ function RuntimePanel(): JSX.Element {
     source: 'directory' | 'archive',
     target: 'user' | 'project',
   ): Promise<void> {
+    const setOperationError = (message: string | null): void => setErr(message, 'skills');
     if (!window.kodaxSpace) return;
     if (target === 'project' && !currentProjectPath) {
-      setErr(t('settings.skills.projectUnavailable'));
+      setOperationError(t('settings.skills.projectUnavailable'));
       return;
     }
     const busyKey = `${target}-${source}` as SkillInstallBusy;
     setInstalling(busyKey);
-    setErr(null);
+    setOperationError(null);
     try {
       const result = await window.kodaxSpace.invoke('skill.install', {
         source,
@@ -1049,14 +1244,14 @@ function RuntimePanel(): JSX.Element {
         ...(target === 'project' && currentProjectPath ? { projectRoot: currentProjectPath } : {}),
       });
       if (!result.ok) {
-        setErr(`${result.error.code}: ${result.error.message}`);
+        setOperationError(`${result.error.code}: ${result.error.message}`);
         return;
       }
       if (result.data.cancelled) return;
       if (currentProjectPath) {
         await window.kodaxSpace
           .invoke('skill.discover', { projectRoot: currentProjectPath, forceReload: true })
-          .catch(() => undefined);
+          .catch((error: unknown) => pushToast(String(error), 'warning'));
       }
       pushToast(
         t('settings.skills.installed', { name: result.data.name ?? 'skill' }),
@@ -1080,394 +1275,438 @@ function RuntimePanel(): JSX.Element {
   const migrationNeeded =
     migrationPlan?.mcp.action === 'create' || migrationPlan?.extensions.action === 'create';
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-5">
-      {err && (
-        <div className="rounded-lg border border-danger/40 bg-danger/12 px-3 py-2 text-xs text-danger">
-          {err}
-        </div>
-      )}
-
-      <SettingsSection
-        title={t('settings.configApplication.title')}
-        description={t('settings.configApplication.description')}
-        icon={Settings2}
-      >
-        {overview?.application ? (
-          <details className="text-xs text-fg-secondary">
-            <summary>{t('settings.configApplication.details')}</summary>
-            {(['immediate', 'next_run', 'extension_reload', 'restart'] as const).map((timing) => (
-              <p key={timing} className="mt-2">
-                {t(`settings.configApplication.${timing}`)}:{' '}
-                {Object.entries(overview.application!)
-                  .filter(([, value]) => value === timing)
-                  .map(([key]) => key)
-                  .join(', ') || '—'}
-              </p>
-            ))}
-          </details>
-        ) : (
-          <p className="text-xs text-fg-muted">{t('settings.configApplication.unknown')}</p>
-        )}
-      </SettingsSection>
-
-      <RuntimeHostSection />
-      <ExtensionHealth />
-
-      <SandboxReadinessSection />
-
-      <SettingsSection
-        title={t('settings.integrationHealth.title')}
-        description={t('settings.integrationHealth.description')}
-        icon={Network}
-      >
-        <div className="mb-3 flex items-center gap-2 text-xs">
-          {runtimeConnection.integrations?.state === 'healthy' ? (
-            <CheckCircle2 className="h-4 w-4 text-ok" strokeWidth={1.8} aria-hidden />
-          ) : runtimeConnection.integrations?.state === 'degraded' ? (
-            <AlertTriangle className="h-4 w-4 text-warn" strokeWidth={1.8} aria-hidden />
-          ) : (
-            <Loader2 className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden />
-          )}
-          <span className="font-medium text-fg-primary">
-            {runtimeConnection.integrations
-              ? t(
-                  `settings.integrationHealth.${runtimeConnection.integrations.state}` as MessageKey,
-                )
-              : t('settings.integrationHealth.unavailable')}
-          </span>
-        </div>
-        {runtimeConnection.integrations ? (
-          <div className="space-y-2">
-            {runtimeConnection.integrations.domains.map((domain) => (
-              <div
-                key={domain.domain}
-                className="rounded-lg border border-border-default bg-surface px-3 py-2.5"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold uppercase text-fg-primary">
-                    {domain.domain}
-                  </span>
-                  <span
-                    className={['text-[11px]', domain.diagnostic ? 'text-warn' : 'text-ok'].join(
-                      ' ',
-                    )}
-                  >
-                    {domain.diagnostic
-                      ? t('settings.integrationHealth.degraded')
-                      : t('settings.integrationHealth.healthy')}
-                  </span>
-                </div>
-                <div className="mt-1 break-all font-mono text-[11px] text-fg-muted">
-                  {domain.path}
-                </div>
-                <div className="mt-1 text-[11px] text-fg-muted">
-                  {t('settings.integrationHealth.source', {
-                    source: domain.source ?? 'default',
-                  })}
-                  {' · '}
-                  {domain.watching
-                    ? t('settings.integrationHealth.watching')
-                    : t('settings.integrationHealth.notWatching')}
-                </div>
-                <div className="mt-1 text-[11px] text-fg-muted">
-                  {t('settings.integrationHealth.revision', {
-                    revision: String(domain.revision ?? 0),
-                  })}
-                  {' · '}
-                  {domain.lastReloadAt
-                    ? t('settings.integrationHealth.lastReload', {
-                        time: new Date(domain.lastReloadAt).toLocaleString(effectiveLocale),
-                      })
-                    : t('settings.integrationHealth.neverReloaded')}
-                </div>
-                {domain.diagnostic && (
-                  <div className="mt-2 rounded-md border border-warn/30 bg-warn/8 px-2 py-1.5 text-[11px] leading-5 text-warn">
-                    {domain.diagnostic.message}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs leading-5 text-fg-muted">
-            {t('settings.integrationHealth.pending')}
-          </p>
-        )}
-      </SettingsSection>
-
-      <ExternalAgentsSection projectRoot={currentProjectPath ?? undefined} />
-
-      <SettingsSection
-        title={t('settings.kodaxConfig.title')}
-        description={t('settings.kodaxConfig.description')}
-        icon={Database}
-      >
-        <div className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
-          <RuntimeField
-            label={t('settings.kodaxConfig.configPath')}
-            value={overview?.configPath ?? t('common.loading')}
-            mono
-            wide
-          />
-          <RuntimeField
-            label={t('settings.kodaxConfig.configExists')}
-            value={
-              overview
-                ? overview.configExists
-                  ? t('settings.runtime.yes')
-                  : t('settings.runtime.no')
-                : t('common.loading')
-            }
-          />
-          <RuntimeField
-            label={t('settings.kodaxConfig.scope')}
-            value={t('settings.kodaxConfig.sharedScope')}
-            wide
-          />
-        </div>
-        {loading && !overview && (
-          <div className="mt-3 inline-flex items-center gap-2 text-xs text-fg-muted">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />
-            {t('common.loading')}
-          </div>
-        )}
-        {overview && overview.errors.length > 0 && (
-          <div className="mt-3 space-y-1 border-t border-border-default pt-3">
-            {overview.errors.map((item) => (
-              <div key={`${item.path}-${item.error}`} className="text-xs leading-5 text-warn">
-                <span className="font-mono">{item.path}</span>: {item.error}
-              </div>
-            ))}
-          </div>
-        )}
-        {migrationNeeded && migrationPlan && (
-          <div className="mt-4 rounded-lg border border-warn/40 bg-warn/10 p-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle
-                className="mt-0.5 h-4 w-4 shrink-0 text-warn"
-                strokeWidth={1.8}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium text-fg-primary">
-                  {t('settings.integrationMigration.title')}
-                </div>
-                <p className="mt-1 text-[11px] leading-5 text-fg-muted">
-                  {t('settings.integrationMigration.description')}
-                </p>
-                <div className="mt-2 space-y-1 text-[11px] leading-5 text-fg-secondary">
-                  <div>
-                    {t('settings.integrationMigration.previewMcp', {
-                      count: migrationPlan.mcp.entries,
-                      path: migrationPlan.mcp.destination,
-                    })}
-                  </div>
-                  <div>
-                    {t('settings.integrationMigration.previewExtensions', {
-                      count: migrationPlan.extensions.entries,
-                      path: migrationPlan.extensions.destination,
-                    })}
-                  </div>
-                </div>
-                {migrationPlan.warnings.length > 0 && (
-                  <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-5 text-warn">
-                    {migrationPlan.warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void applyIntegrationMigration()}
-                  disabled={migrationApplying}
-                  className="mt-3 inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-warn/50 bg-warn/15 px-3 text-xs font-medium text-warn hover:bg-warn/25 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {migrationApplying && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />
-                  )}
-                  {migrationApplying
-                    ? t('settings.integrationMigration.applying')
-                    : t('settings.integrationMigration.apply')}
-                </button>
-              </div>
+    <>
+      <SettingsPage id="context" active={page} mounted={visited.has('context')}>
+        <div>
+          <SettingsError message={errors['context'] ?? overviewError} />
+          <p className="settings-scope-note">{t('settings.scope.shared')}</p>
+          <SettingsSection
+            title={t('settings.compaction.title')}
+            description={t('settings.compaction.description')}
+            icon={Archive}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+                  {t('settings.compaction.triggerPercent')}
+                </span>
+                <input
+                  type="number"
+                  disabled={!overview || saving}
+                  min={KODAX_COMPACTION_TRIGGER_PERCENT_MIN}
+                  max={KODAX_COMPACTION_TRIGGER_PERCENT_MAX}
+                  aria-label={t('settings.compaction.triggerPercent')}
+                  value={triggerPercent}
+                  onChange={(e) => {
+                    setTriggerPercent(e.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder="75"
+                  className="mt-2 h-9 w-full rounded-lg border border-border-default bg-surface px-3 text-xs text-fg-primary outline-none focus:border-info"
+                />
+                <span className="mt-1 block text-[11px] leading-5 text-fg-muted">
+                  {t('settings.compaction.triggerPercentHint')}
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+                  {t('settings.compaction.triggerTokens')}
+                </span>
+                <input
+                  type="number"
+                  disabled={!overview || saving}
+                  min={0}
+                  max={10_000_000}
+                  aria-label={t('settings.compaction.triggerTokens')}
+                  value={triggerTokens}
+                  onChange={(e) => {
+                    setTriggerTokens(e.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder="0"
+                  className="mt-2 h-9 w-full rounded-lg border border-border-default bg-surface px-3 text-xs text-fg-primary outline-none focus:border-info"
+                />
+                <span className="mt-1 block text-[11px] leading-5 text-fg-muted">
+                  {t('settings.compaction.triggerTokensHint')}
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+                  {t('settings.compaction.contextWindow')}
+                </span>
+                <input
+                  type="number"
+                  disabled={!overview || saving}
+                  min={1024}
+                  max={10_000_000}
+                  aria-label={t('settings.compaction.contextWindow')}
+                  value={contextWindow}
+                  onChange={(e) => {
+                    setContextWindow(e.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder={t('settings.compaction.contextWindowPlaceholder')}
+                  className="mt-2 h-9 w-full rounded-lg border border-border-default bg-surface px-3 text-xs text-fg-primary outline-none focus:border-info"
+                />
+                <span className="mt-1 block text-[11px] leading-5 text-fg-muted">
+                  {t('settings.compaction.contextWindowHint')}
+                </span>
+              </label>
             </div>
-          </div>
-        )}
-      </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.compaction.title')}
-        description={t('settings.compaction.description')}
-        icon={Archive}
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
-              {t('settings.compaction.triggerPercent')}
-            </span>
-            <input
-              type="number"
-              min={KODAX_COMPACTION_TRIGGER_PERCENT_MIN}
-              max={KODAX_COMPACTION_TRIGGER_PERCENT_MAX}
-              value={triggerPercent}
-              onChange={(e) => {
-                setTriggerPercent(e.target.value);
-                setSaved(false);
-              }}
-              placeholder="75"
-              className="mt-2 h-9 w-full rounded-lg border border-border-default bg-surface px-3 text-xs text-fg-primary outline-none focus:border-info"
-            />
-            <span className="mt-1 block text-[11px] leading-5 text-fg-muted">
-              {t('settings.compaction.triggerPercentHint')}
-            </span>
-          </label>
-          <label className="block">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
-              {t('settings.compaction.triggerTokens')}
-            </span>
-            <input
-              type="number"
-              min={0}
-              max={10_000_000}
-              value={triggerTokens}
-              onChange={(e) => {
-                setTriggerTokens(e.target.value);
-                setSaved(false);
-              }}
-              placeholder="0"
-              className="mt-2 h-9 w-full rounded-lg border border-border-default bg-surface px-3 text-xs text-fg-primary outline-none focus:border-info"
-            />
-            <span className="mt-1 block text-[11px] leading-5 text-fg-muted">
-              {t('settings.compaction.triggerTokensHint')}
-            </span>
-          </label>
-          <label className="block">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
-              {t('settings.compaction.contextWindow')}
-            </span>
-            <input
-              type="number"
-              min={1024}
-              max={10_000_000}
-              value={contextWindow}
-              onChange={(e) => {
-                setContextWindow(e.target.value);
-                setSaved(false);
-              }}
-              placeholder={t('settings.compaction.contextWindowPlaceholder')}
-              className="mt-2 h-9 w-full rounded-lg border border-border-default bg-surface px-3 text-xs text-fg-primary outline-none focus:border-info"
-            />
-            <span className="mt-1 block text-[11px] leading-5 text-fg-muted">
-              {t('settings.compaction.contextWindowHint')}
-            </span>
-          </label>
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void saveCompaction()}
-            disabled={saving}
-            className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-ok/50 bg-ok/15 px-3 text-xs font-medium text-ok hover:bg-ok/25 disabled:cursor-not-allowed disabled:opacity-50"
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void saveCompaction()}
+                disabled={saving || !overview}
+                className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-ok/50 bg-ok/15 px-3 text-xs font-medium text-ok hover:bg-ok/25 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />}
+                {saving ? t('common.saving') : t('settings.compaction.save')}
+              </button>
+              {saved && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-ok">
+                  <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden />
+                  {t('common.saved')}
+                </span>
+              )}
+            </div>
+          </SettingsSection>
+          <SettingsSection
+            title={t('settings.workflowHost.title')}
+            description={t('settings.workflowHost.description')}
+            icon={Settings2}
           >
-            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />}
-            {saving ? t('common.saving') : t('settings.compaction.save')}
-          </button>
-          {saved && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-ok">
-              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden />
-              {t('common.saved')}
-            </span>
-          )}
+            <WorkflowPolicySection />
+          </SettingsSection>
         </div>
-      </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.mcp.title')}
-        description={t('settings.mcp.description')}
-        icon={Network}
-      >
-        <div className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
-          <RuntimeField
-            label={t('settings.mcp.globalConfig')}
-            value={overview?.mcp.globalPath ?? t('common.loading')}
-            mono
-          />
-          <RuntimeField label={t('settings.mcp.projectConfig')} value={projectConfigLabel} mono />
-          <RuntimeField label={t('settings.mcp.globalSource')} value={globalMcpSource} />
-          <RuntimeField label={t('settings.mcp.projectSource')} value={projectMcpSource} />
-          <RuntimeField
-            label={t('settings.mcp.globalServers')}
-            value={overview ? String(overview.mcp.globalServers) : t('common.loading')}
-          />
-          <RuntimeField
-            label={t('settings.mcp.projectServers')}
-            value={overview ? String(overview.mcp.projectServers) : t('common.loading')}
-          />
-          <RuntimeField
-            label={t('settings.mcp.recommendationLabel')}
-            value={t('settings.mcp.recommendation')}
-            wide
-          />
+      </SettingsPage>
+      <SettingsPage id="mcp" active={page} mounted={visited.has('mcp')}>
+        <div>
+          <SettingsError message={errors['mcp'] ?? overviewError} />
+          <SettingsSection title={t('settings.mcp.sourcesTitle')} icon={Network}>
+            <div className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
+              <RuntimeField
+                label={t('settings.mcp.globalConfig')}
+                value={overview?.mcp.globalPath ?? t('common.loading')}
+                mono
+              />
+              <RuntimeField
+                label={t('settings.mcp.projectConfig')}
+                value={projectConfigLabel}
+                mono
+              />
+              <RuntimeField label={t('settings.mcp.globalSource')} value={globalMcpSource} />
+              <RuntimeField label={t('settings.mcp.projectSource')} value={projectMcpSource} />
+              <RuntimeField
+                label={t('settings.mcp.globalServers')}
+                value={overview ? String(overview.mcp.globalServers) : t('common.loading')}
+              />
+              <RuntimeField
+                label={t('settings.mcp.projectServers')}
+                value={overview ? String(overview.mcp.projectServers) : t('common.loading')}
+              />
+              <RuntimeField
+                label={t('settings.mcp.recommendationLabel')}
+                value={t('settings.mcp.recommendation')}
+                wide
+              />
+            </div>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => void reloadMcp()}
+                disabled={mcpReloading}
+                className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-3 px-3 text-xs text-fg-primary hover:bg-hover-bg disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${mcpReloading ? 'animate-spin' : ''}`}
+                  strokeWidth={1.8}
+                />
+                {t('settings.mcp.reload')}
+              </button>
+              <button
+                type="button"
+                className="ml-3 text-xs text-fg-secondary underline underline-offset-4"
+                onClick={() => {
+                  setTechnicalDetailsOpen(true);
+                  onNavigate('diagnostics');
+                  requestAnimationFrame(() => {
+                    document.getElementById('settings-config-details-summary')?.focus();
+                    document
+                      .getElementById('settings-config-details')
+                      ?.scrollIntoView({ block: 'start' });
+                  });
+                }}
+              >
+                {t('settings.mcp.openMigration')}
+              </button>
+            </div>
+          </SettingsSection>
         </div>
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={() => void reloadMcp()}
-            disabled={mcpReloading}
-            className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-3 px-3 text-xs text-fg-primary hover:bg-hover-bg disabled:cursor-not-allowed disabled:opacity-50"
+      </SettingsPage>
+      <SettingsPage id="skills" active={page} mounted={visited.has('skills')}>
+        <div>
+          <SettingsError message={errors['skills'] ?? overviewError} />
+          <SettingsSection title={t('settings.skills.locationsTitle')} icon={FileArchive}>
+            <div className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
+              <RuntimeField
+                label={t('settings.skills.userDir')}
+                value={overview?.skills.userSkillsDir ?? t('common.loading')}
+                mono
+              />
+              <RuntimeField label={t('settings.skills.projectDir')} value={projectSkillDir} mono />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <SkillInstallButton
+                label={t('settings.skills.installUserFolder')}
+                busy={installing === 'user-directory'}
+                icon={FolderOpen}
+                onClick={() => void installSkill('directory', 'user')}
+              />
+              <SkillInstallButton
+                label={t('settings.skills.installUserZip')}
+                busy={installing === 'user-archive'}
+                icon={Upload}
+                onClick={() => void installSkill('archive', 'user')}
+              />
+              <SkillInstallButton
+                label={t('settings.skills.installProjectFolder')}
+                busy={installing === 'project-directory'}
+                icon={FolderOpen}
+                disabled={!currentProjectPath}
+                onClick={() => void installSkill('directory', 'project')}
+              />
+              <SkillInstallButton
+                label={t('settings.skills.installProjectZip')}
+                busy={installing === 'project-archive'}
+                icon={Upload}
+                disabled={!currentProjectPath}
+                onClick={() => void installSkill('archive', 'project')}
+              />
+            </div>
+          </SettingsSection>
+        </div>
+      </SettingsPage>
+      <SettingsPage id="diagnostics" active={page} mounted={diagnosticsVisited}>
+        <div>
+          <SettingsError message={errors['diagnostics'] ?? overviewError} />
+          <DiagnosticsPanel />
+          <ExtensionHealth />
+          <SettingsSection
+            title={t('settings.integrationHealth.title')}
+            description={t('settings.integrationHealth.description')}
+            icon={Network}
           >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${mcpReloading ? 'animate-spin' : ''}`}
-              strokeWidth={1.8}
-            />
-            {t('settings.mcp.reload')}
-          </button>
+            <div className="mb-3 flex items-center gap-2 text-xs">
+              {runtimeConnection.integrations?.state === 'healthy' ? (
+                <CheckCircle2 className="h-4 w-4 text-ok" strokeWidth={1.8} aria-hidden />
+              ) : runtimeConnection.integrations?.state === 'degraded' ? (
+                <AlertTriangle className="h-4 w-4 text-warn" strokeWidth={1.8} aria-hidden />
+              ) : (
+                <Loader2 className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden />
+              )}
+              <span className="font-medium text-fg-primary">
+                {runtimeConnection.integrations
+                  ? t(
+                      `settings.integrationHealth.${runtimeConnection.integrations.state}` as MessageKey,
+                    )
+                  : t('settings.integrationHealth.unavailable')}
+              </span>
+            </div>
+            {runtimeConnection.integrations ? (
+              <div className="space-y-2">
+                {runtimeConnection.integrations.domains.map((domain) => (
+                  <div
+                    key={domain.domain}
+                    className="rounded-lg border border-border-default bg-surface px-3 py-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold uppercase text-fg-primary">
+                        {domain.domain}
+                      </span>
+                      <span
+                        className={[
+                          'text-[11px]',
+                          domain.diagnostic ? 'text-warn' : 'text-ok',
+                        ].join(' ')}
+                      >
+                        {domain.diagnostic
+                          ? t('settings.integrationHealth.degraded')
+                          : t('settings.integrationHealth.healthy')}
+                      </span>
+                    </div>
+                    <div className="mt-1 break-all font-mono text-[11px] text-fg-muted">
+                      {domain.path}
+                    </div>
+                    <div className="mt-1 text-[11px] text-fg-muted">
+                      {t('settings.integrationHealth.source', {
+                        source: domain.source ?? 'default',
+                      })}
+                      {' · '}
+                      {domain.watching
+                        ? t('settings.integrationHealth.watching')
+                        : t('settings.integrationHealth.notWatching')}
+                    </div>
+                    <div className="mt-1 text-[11px] text-fg-muted">
+                      {t('settings.integrationHealth.revision', {
+                        revision: String(domain.revision ?? 0),
+                      })}
+                      {' · '}
+                      {domain.lastReloadAt
+                        ? t('settings.integrationHealth.lastReload', {
+                            time: new Date(domain.lastReloadAt).toLocaleString(effectiveLocale),
+                          })
+                        : t('settings.integrationHealth.neverReloaded')}
+                    </div>
+                    {domain.diagnostic && (
+                      <div className="mt-2 rounded-md border border-warn/30 bg-warn/8 px-2 py-1.5 text-[11px] leading-5 text-warn">
+                        {domain.diagnostic.message}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs leading-5 text-fg-muted">
+                {t('settings.integrationHealth.pending')}
+              </p>
+            )}
+          </SettingsSection>
+          <details
+            id="settings-config-details"
+            className="settings-technical-details"
+            open={technicalDetailsOpen}
+            onToggle={(event) => setTechnicalDetailsOpen(event.currentTarget.open)}
+          >
+            <summary id="settings-config-details-summary">
+              {t('settings.nav.technicalDetails')}
+            </summary>
+            <RuntimeHostSection />
+            <SettingsSection
+              title={t('settings.configApplication.title')}
+              description={t('settings.configApplication.description')}
+              icon={Settings2}
+            >
+              {overview?.application ? (
+                <details className="text-xs text-fg-secondary">
+                  <summary>{t('settings.configApplication.details')}</summary>
+                  {(['immediate', 'next_run', 'extension_reload', 'restart'] as const).map(
+                    (timing) => (
+                      <p key={timing} className="mt-2">
+                        {t(`settings.configApplication.${timing}`)}:{' '}
+                        {Object.entries(overview.application!)
+                          .filter(([, value]) => value === timing)
+                          .map(([key]) => key)
+                          .join(', ') || '—'}
+                      </p>
+                    ),
+                  )}
+                </details>
+              ) : (
+                <p className="text-xs text-fg-muted">{t('settings.configApplication.unknown')}</p>
+              )}
+            </SettingsSection>
+            <SettingsSection
+              title={t('settings.kodaxConfig.title')}
+              description={t('settings.kodaxConfig.description')}
+              icon={Database}
+            >
+              <div className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
+                <RuntimeField
+                  label={t('settings.kodaxConfig.configPath')}
+                  value={overview?.configPath ?? t('common.loading')}
+                  mono
+                  wide
+                />
+                <RuntimeField
+                  label={t('settings.kodaxConfig.configExists')}
+                  value={
+                    overview
+                      ? overview.configExists
+                        ? t('settings.runtime.yes')
+                        : t('settings.runtime.no')
+                      : t('common.loading')
+                  }
+                />
+                <RuntimeField
+                  label={t('settings.kodaxConfig.scope')}
+                  value={t('settings.kodaxConfig.sharedScope')}
+                  wide
+                />
+              </div>
+              {loading && !overview && (
+                <div className="mt-3 inline-flex items-center gap-2 text-xs text-fg-muted">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />
+                  {t('common.loading')}
+                </div>
+              )}
+              {overview && overview.errors.length > 0 && (
+                <div className="mt-3 space-y-1 border-t border-border-default pt-3">
+                  {overview.errors.map((item) => (
+                    <div key={`${item.path}-${item.error}`} className="text-xs leading-5 text-warn">
+                      <span className="font-mono">{item.path}</span>: {item.error}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {migrationNeeded && migrationPlan && (
+                <div className="mt-4 rounded-lg border border-warn/40 bg-warn/10 p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle
+                      className="mt-0.5 h-4 w-4 shrink-0 text-warn"
+                      strokeWidth={1.8}
+                      aria-hidden
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-medium text-fg-primary">
+                        {t('settings.integrationMigration.title')}
+                      </div>
+                      <p className="mt-1 text-[11px] leading-5 text-fg-muted">
+                        {t('settings.integrationMigration.description')}
+                      </p>
+                      <div className="mt-2 space-y-1 text-[11px] leading-5 text-fg-secondary">
+                        <div>
+                          {t('settings.integrationMigration.previewMcp', {
+                            count: migrationPlan.mcp.entries,
+                            path: migrationPlan.mcp.destination,
+                          })}
+                        </div>
+                        <div>
+                          {t('settings.integrationMigration.previewExtensions', {
+                            count: migrationPlan.extensions.entries,
+                            path: migrationPlan.extensions.destination,
+                          })}
+                        </div>
+                      </div>
+                      {migrationPlan.warnings.length > 0 && (
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-5 text-warn">
+                          {migrationPlan.warnings.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void applyIntegrationMigration()}
+                        disabled={migrationApplying}
+                        className="mt-3 inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-warn/50 bg-warn/15 px-3 text-xs font-medium text-warn hover:bg-warn/25 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {migrationApplying && (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />
+                        )}
+                        {migrationApplying
+                          ? t('settings.integrationMigration.applying')
+                          : t('settings.integrationMigration.apply')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </SettingsSection>
+          </details>
         </div>
-      </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.skills.title')}
-        description={t('settings.skills.description')}
-        icon={FileArchive}
-      >
-        <div className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
-          <RuntimeField
-            label={t('settings.skills.userDir')}
-            value={overview?.skills.userSkillsDir ?? t('common.loading')}
-            mono
-          />
-          <RuntimeField label={t('settings.skills.projectDir')} value={projectSkillDir} mono />
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <SkillInstallButton
-            label={t('settings.skills.installUserFolder')}
-            busy={installing === 'user-directory'}
-            icon={FolderOpen}
-            onClick={() => void installSkill('directory', 'user')}
-          />
-          <SkillInstallButton
-            label={t('settings.skills.installUserZip')}
-            busy={installing === 'user-archive'}
-            icon={Upload}
-            onClick={() => void installSkill('archive', 'user')}
-          />
-          <SkillInstallButton
-            label={t('settings.skills.installProjectFolder')}
-            busy={installing === 'project-directory'}
-            icon={FolderOpen}
-            disabled={!currentProjectPath}
-            onClick={() => void installSkill('directory', 'project')}
-          />
-          <SkillInstallButton
-            label={t('settings.skills.installProjectZip')}
-            busy={installing === 'project-archive'}
-            icon={Upload}
-            disabled={!currentProjectPath}
-            onClick={() => void installSkill('archive', 'project')}
-          />
-        </div>
-      </SettingsSection>
-    </div>
+      </SettingsPage>
+    </>
   );
 }
 
@@ -1910,11 +2149,7 @@ function ExternalAgentsSection({
   if (status && !status.enabled) return null;
 
   return (
-    <SettingsSection
-      title={t('settings.externalAgents.title')}
-      description={t('settings.externalAgents.description')}
-      icon={Bot}
-    >
+    <SettingsSection title={t('settings.externalAgents.registrationsTitle')} icon={Bot}>
       <div className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
         <RuntimeField
           label={t('settings.externalAgents.sdk')}
@@ -2400,6 +2635,7 @@ function LanguageSection(): JSX.Element {
 
   return (
     <SettingsSection
+      layout="row"
       title={t('settings.language.title')}
       description={t('settings.language.description')}
       icon={Languages}
@@ -2784,6 +3020,7 @@ function ProvidersPanel(): JSX.Element {
 
   return (
     <div className="space-y-4 p-5">
+      <p className="settings-scope-note">{t('settings.keySafety.description')}</p>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <ProviderStat
@@ -3058,24 +3295,28 @@ function SettingsSection({
   description,
   icon: Icon,
   children,
+  layout,
 }: {
   readonly title: string;
-  readonly description: string;
+  readonly description?: string;
   readonly icon: LucideIcon;
   readonly children: ReactNode;
+  readonly layout?: 'row';
 }): JSX.Element {
   return (
-    <section className="settings-section border-b border-border-default py-6">
+    <section
+      className={`settings-section border-b border-border-default py-6${layout ? ' settings-section--row' : ''}`}
+    >
       <div className="settings-section-heading mb-4 flex items-start gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg-secondary">
           <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
         </div>
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-fg-primary">{title}</h3>
-          <p className="mt-1 text-sm leading-6 text-fg-muted">{description}</p>
+          {description && <p className="mt-1 text-sm leading-6 text-fg-muted">{description}</p>}
         </div>
       </div>
-      {children}
+      <div className="settings-section-content min-w-0">{children}</div>
     </section>
   );
 }

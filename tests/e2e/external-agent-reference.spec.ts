@@ -103,7 +103,7 @@ test('Reference Agent management, localization, and Workflow picker are product-
       .toBe('available');
 
     await page.getByTestId('settings-button').click();
-    await page.locator('#settings-tab-runtime').click();
+    await page.locator('#settings-tab-external-agents').click();
 
     await expect(page.getByRole('heading', { name: 'External agents' })).toBeVisible();
     const gates = page.getByTestId('external-agent-adapter-gates');
@@ -127,7 +127,7 @@ test('Reference Agent management, localization, and Workflow picker are product-
 
     await page.locator('#settings-tab-preferences').click();
     await page.getByRole('button', { name: '简体中文' }).click();
-    await page.locator('#settings-tab-runtime').click();
+    await page.locator('#settings-tab-external-agents').click();
     await expect(page.getByRole('heading', { name: '外部 Agent' })).toBeVisible();
     await expect(page.getByRole('button', { name: '运行合规任务' })).toBeVisible();
 

@@ -255,8 +255,11 @@ test('UI button sweep keeps the shell reliable across every region', async () =>
     await page.setViewportSize({ width: 1920, height: 1032 });
     await page.keyboard.press('Control+,');
     const settings = page.getByTestId('settings-workspace');
+    await page.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: 'Dark', exact: true }).click();
+    await page.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: 'Balanced', exact: true }).click();
+    await page.locator('#settings-tab-preferences').click();
     await settings.getByRole('button', { name: '简体中文', exact: true }).click();
     await expect(page.getByText('显示语言已更新', { exact: true })).not.toBeVisible({
       timeout: 6000,
@@ -290,6 +293,7 @@ test('UI button sweep keeps the shell reliable across every region', async () =>
     });
     await page.keyboard.press('Escape');
     await page.keyboard.press('Control+,');
+    await page.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: '浅色', exact: true }).click();
     await page.keyboard.press('Escape');
     await page.mouse.move(800, 90);

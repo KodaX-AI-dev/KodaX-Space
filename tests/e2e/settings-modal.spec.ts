@@ -105,7 +105,7 @@ test('SettingsModal opens via sidebar, Esc closes, Task Dock focus toggle persis
   }
 });
 
-test('SettingsModal tab switch keeps both panels mounted (preserves in-progress edits)', async () => {
+test('SettingsModal mounts pages on first visit and keeps visited drafts', async () => {
   // OC-29 review HIGH-1 anti-regression: 切 tab 时 panel 用 hidden 而非 unmount,
   // 验证 Preferences tab 隐藏后再切回,DOM 还在(不丢编辑中的输入)。
   const space = await launchSpace(`${TEST_ID}-tabs`);
@@ -116,47 +116,46 @@ test('SettingsModal tab switch keeps both panels mounted (preserves in-progress 
     await page.getByTestId('settings-button').click();
     await expect(page.locator('#settings-modal-title')).toBeVisible();
 
-    // Preferences panel 在,Providers panel 也在 (hidden 模式),只是 hidden 属性切换
+    // Unvisited resources are lazy; visited pages retain their editing state.
     const prefPanel = page.locator('#settings-panel-preferences');
     const provPanel = page.locator('#settings-panel-providers');
     await expect(prefPanel).toBeVisible();
-    // Providers panel 在 DOM 里但 hidden
-    await expect(provPanel).toBeAttached();
+    // Providers is not mounted until its first visit.
+    await expect(provPanel).toHaveCount(0);
     await expect(provPanel).not.toBeVisible();
 
     // 点 Providers tab
     await page.locator('#settings-tab-preferences').focus();
     await page.keyboard.press('ArrowDown');
-    await page.waitForTimeout(100);
+    await expect(page.locator('#settings-panel-appearance')).toBeVisible();
+    await page.keyboard.press('ArrowDown');
     await expect(provPanel).toBeVisible();
     // Preferences 还在 DOM,只是 hidden — 不 unmount
     await expect(prefPanel).toBeAttached();
     await expect(prefPanel).not.toBeVisible();
 
     // 切回 Preferences
-    await page.locator('button[role="tab"]', { hasText: 'Preferences' }).click();
+    await page.locator('button[role="tab"]', { hasText: 'General' }).click();
     await expect(prefPanel).toBeVisible();
   } finally {
     await space.close();
   }
 });
 
-test('Runtime settings exposes refreshable ASRT readiness without triggering setup', async () => {
+test('Sandbox settings expose refreshable ASRT readiness without triggering setup', async () => {
   const space = await launchSpace(`${TEST_ID}-sandbox-readiness`);
   try {
     const { page } = space;
     await page.waitForTimeout(2000);
     await page.getByTestId('settings-button').click();
-    await page.locator('#settings-tab-runtime').click();
+    await page.locator('#settings-tab-sandbox').click();
 
-    const runtimePanel = page.locator('#settings-panel-runtime');
+    const runtimePanel = page.locator('#settings-panel-sandbox');
     await expect(runtimePanel.getByText('Command sandbox (ASRT)')).toBeVisible();
     await expect(runtimePanel.getByText('ASRT 0.0.65', { exact: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(
-      runtimePanel.getByText(/Ready|Setup required|Unavailable/).first(),
-    ).toBeVisible();
+    await expect(runtimePanel.getByText(/Ready|Setup required|Unavailable/).first()).toBeVisible();
 
     const refresh = runtimePanel.getByTestId('sandbox-refresh');
     await expect(refresh).toBeEnabled();
@@ -180,7 +179,7 @@ test('SettingsModal providers tab adds a custom provider and saves its API key',
     await page.getByTestId('settings-button').click();
     await expect(page.locator('#settings-modal-title')).toBeVisible();
 
-    await page.locator('button[role="tab"]', { hasText: 'Providers' }).click();
+    await page.locator('button[role="tab"]', { hasText: 'Models & providers' }).click();
     await expect(page.locator('#settings-panel-providers')).toBeVisible();
 
     await page.getByRole('button', { name: 'Add custom' }).click();
@@ -208,7 +207,7 @@ test('SettingsModal keeps a partially-created custom provider visible when key s
     await page.waitForTimeout(2000);
 
     await page.getByTestId('settings-button').click();
-    await page.locator('button[role="tab"]', { hasText: 'Providers' }).click();
+    await page.locator('button[role="tab"]', { hasText: 'Models & providers' }).click();
 
     await page.getByRole('button', { name: 'Add custom' }).click();
     await page.getByLabel('Display name').fill('Partial Gateway');
@@ -238,7 +237,7 @@ test('SettingsModal does not allow an unconfigured provider to become default', 
     await page.waitForTimeout(2000);
 
     await page.getByTestId('settings-button').click();
-    await page.locator('button[role="tab"]', { hasText: 'Providers' }).click();
+    await page.locator('button[role="tab"]', { hasText: 'Models & providers' }).click();
 
     await page.getByRole('button', { name: 'Add custom' }).click();
     await page.getByLabel('Display name').fill('No Key Gateway');
@@ -289,7 +288,7 @@ test('SettingsModal API key editor Escape cancels edit without closing the modal
     await page.waitForTimeout(2000);
 
     await page.getByTestId('settings-button').click();
-    await page.locator('button[role="tab"]', { hasText: 'Providers' }).click();
+    await page.locator('button[role="tab"]', { hasText: 'Models & providers' }).click();
 
     await page.getByRole('button', { name: 'Add custom' }).click();
     await page.getByLabel('Display name').fill('Escape Gateway');
