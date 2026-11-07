@@ -28,11 +28,15 @@ test('file completion is atomic and sends exactly the existing path reference', 
         dark,
       );
       await page.screenshot({
+        animations: 'disabled',
         path: test.info().outputPath(`composer-${dark ? 'dark' : 'light'}.png`),
       });
     }
     await page.setViewportSize({ width: 760, height: 800 });
-    await page.screenshot({ path: test.info().outputPath('composer-narrow.png') });
+    await page.screenshot({
+      animations: 'disabled',
+      path: test.info().outputPath('composer-narrow.png'),
+    });
     await space.app.evaluate(({ ipcMain }) => {
       ipcMain.removeHandler('session.send');
       ipcMain.handle('session.send', (_event, payload: unknown) => {
