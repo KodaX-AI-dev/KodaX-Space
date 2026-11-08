@@ -14,7 +14,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
-- Keep programmatic search positioning and restoration from paging to adjacent conversation history. Preserve wheel, keyboard, touch and held native scrollbar navigation under slow rendering, including platforms that emit no pointermove during scrollbar dragging. Keep page resizing from reversing a held drag or stranding it at a newer history boundary.
+- Keep programmatic search positioning and restoration from paging to adjacent conversation history. Preserve wheel, keyboard, touch and held native scrollbar navigation under slow rendering, including platforms that emit no pointermove during scrollbar dragging. Keep page resizing from reversing a held drag or stranding it at a newer history boundary. Confirm initial native direction at the reached edge, including short pages with overlapping prefetch regions.
 
 - Restore finite composer focus feedback for the Lexical editor, including existing quality, reduced-motion, background and streaming pause guards.
 

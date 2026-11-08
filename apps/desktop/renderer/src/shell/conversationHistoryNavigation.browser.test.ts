@@ -797,3 +797,85 @@ for (const reverseSteps of [1, 12])
       assert.deepEqual(errors, []);
     },
   );
+
+test(
+  'the first native edge is not determined by an earlier opposite relayout offset',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t, true);
+    await page.addStyleTag({
+      content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
+    });
+    await page.evaluate('window.middle()');
+    await page.getByText('MIDDLE 11', { exact: true }).waitFor();
+    await page.evaluate('window.settle(48)');
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await scroller.evaluate((element) => {
+      element.scrollTop = 1000;
+    });
+    await page.evaluate('window.settle()');
+    await sendHistoryPointer(page, 'pointerdown');
+    try {
+      await scroller.evaluate((element) => {
+        const content = element.firstElementChild;
+        if (!(content instanceof HTMLElement)) throw new Error('Expected history content');
+        content.style.paddingTop = '500px';
+        element.scrollTop = 1500;
+      });
+      await page.evaluate('window.settle()');
+      await scroller.evaluate((element) => {
+        const content = element.firstElementChild;
+        if (!(content instanceof HTMLElement)) throw new Error('Expected history content');
+        content.style.paddingTop = '0px';
+        element.scrollTop = 0;
+      });
+      await page.getByText('OLDEST 11', { exact: true }).waitFor();
+      assert.deepEqual(await page.evaluate('window.requests'), ['newest', 'middle', 'oldest']);
+    } finally {
+      await sendHistoryPointer(page, 'pointerup');
+    }
+    assert.deepEqual(errors, []);
+  },
+);
+
+for (const direction of ['older', 'newer'] as const)
+  test(
+    `a short history viewport confirms its first native ${direction} boundary`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t, true);
+      await page.addStyleTag({
+        content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
+      });
+      await page.evaluate('window.middle()');
+      await page.getByText('MIDDLE 11', { exact: true }).waitFor();
+      await page.evaluate('window.settle(48)');
+      const range = await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+        const content = element.firstElementChild;
+        if (!(content instanceof HTMLElement)) throw new Error('Expected history content');
+        content.style.height = `${element.clientHeight + 200}px`;
+        content.style.overflow = 'hidden';
+        element.scrollTop = 100;
+        return element.scrollHeight - element.clientHeight;
+      });
+      assert.equal(range, 200);
+      await page.evaluate('window.settle()');
+      const geometry = await nativeHistoryScrollbarGeometry(page);
+      await page.mouse.move(geometry.x, geometry.y);
+      await page.mouse.down();
+      try {
+        await page.mouse.move(
+          geometry.x,
+          direction === 'older' ? geometry.top - 5 : geometry.bottom + 5,
+          { steps: 1 },
+        );
+        await page.waitForFunction(
+          (cursor) => (window as unknown as { requests: string[] }).requests.at(-1) === cursor,
+          direction === 'older' ? 'oldest' : 'newest',
+        );
+      } finally {
+        await page.mouse.up();
+      }
+      assert.deepEqual(errors, []);
+    },
+  );

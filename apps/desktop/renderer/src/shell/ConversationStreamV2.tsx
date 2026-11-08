@@ -1468,11 +1468,17 @@ export function ConversationStreamV2(): JSX.Element {
       const drag = scrollbarDragRef.current;
       if (drag?.pointerId !== event.pointerId) return;
       const scroller = scrollRef.current;
-      const previousTop = scrollSnapshotRef.current?.scrollTop;
       if (event.type === 'pointercancel') historyScrollIntentRef.current = null;
       else if (drag.direction) historyScrollIntentRef.current = drag.direction;
-      else if (scroller && previousTop !== undefined && scroller.scrollTop !== previousTop) {
-        historyScrollIntentRef.current = scroller.scrollTop > previousTop ? 'newer' : 'older';
+      else if (scroller) {
+        const olderDistance = scroller.scrollTop;
+        const newerDistance = getDistanceFromBottom(scroller);
+        historyScrollIntentRef.current =
+          olderDistance <= HISTORY_LOAD_THRESHOLD_PX && olderDistance < newerDistance
+            ? 'older'
+            : newerDistance < BOTTOM_DISTANCE_PX && newerDistance < olderDistance
+              ? 'newer'
+              : null;
       }
       scrollbarDragRef.current = null;
     };
@@ -1844,6 +1850,31 @@ export function ConversationStreamV2(): JSX.Element {
     handlePrependUserScrollIntent();
   }
 
+  function updateScrollbarDragDirection(
+    scroller: HTMLDivElement,
+    snapshot: ScrollSnapshot | null,
+  ): void {
+    const drag = scrollbarDragRef.current;
+    if (!drag) return;
+    if (drag.direction === null) {
+      // The first pixel offset can follow relayout instead of the held thumb.
+      const olderDistance = scroller.scrollTop;
+      const newerDistance = getDistanceFromBottom(scroller);
+      if (olderDistance <= HISTORY_LOAD_THRESHOLD_PX && olderDistance < newerDistance)
+        drag.direction = 'older';
+      else if (newerDistance < BOTTOM_DISTANCE_PX && newerDistance < olderDistance)
+        drag.direction = 'newer';
+    } else if (
+      prependAnchorRestoreRef.current === null &&
+      snapshot?.scrollHeight === scroller.scrollHeight &&
+      snapshot.clientHeight === scroller.clientHeight &&
+      snapshot.scrollTop !== scroller.scrollTop
+    ) {
+      drag.direction = scroller.scrollTop > snapshot.scrollTop ? 'newer' : 'older';
+    }
+    if (drag.direction) historyScrollIntentRef.current = drag.direction;
+  }
+
   function handleScroll(e: React.UIEvent<HTMLDivElement>): void {
     acceptRestoringScrollbarMovement(e.currentTarget);
     // 守卫期内的 scroll 事件来自 ResizeObserver / smooth scroll 自己的 scrollTop 赋值，
@@ -1867,15 +1898,7 @@ export function ConversationStreamV2(): JSX.Element {
         snapshot !== null &&
         (snapshot.scrollHeight !== scroller.scrollHeight ||
           snapshot.clientHeight !== scroller.clientHeight);
-      if (scrollbarDrag && (movedUp || movedDown)) {
-        const stableGeometry =
-          prependAnchorRestoreRef.current === null &&
-          snapshot?.scrollHeight === scroller.scrollHeight &&
-          snapshot.clientHeight === scroller.clientHeight;
-        if (scrollbarDrag.direction === null || stableGeometry)
-          scrollbarDrag.direction = movedDown ? 'newer' : 'older';
-      }
-      if (scrollbarDrag?.direction) historyScrollIntentRef.current = scrollbarDrag.direction;
+      updateScrollbarDragDirection(scroller, snapshot);
       refreshPendingPrependSnapshot(scroller);
       syncFollowStateFromScrollPosition(scroller);
       syncActiveQueryAnchorFromScrollPosition(scroller);
