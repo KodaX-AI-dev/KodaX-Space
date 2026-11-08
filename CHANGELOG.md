@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Restore finite composer focus feedback for the Lexical editor, including existing quality, reduced-motion, background and streaming pause guards.
+
 - Pin Registry KodaX SDK `0.7.97-beta.3` in both SDK consumers and verify the exact installed package during packaging. Partner profiles declare the Host-owned Agent admission constraint, including durable recovery records; normal shell/write/child Agent permissions remain available.
 - Display SDK Markdown rule fragments as distinct read-only sources. Bind inline instruction edits to Main-proven AGENTS.md targets, retain larger rule collections, and verify beta.3 Windows containment program resources during packaging.
 - Browse saved history in both directions, search the current page or the saved conversation, and return to the original reading position. Locate proven tool and thinking results with their complete source entry expanded.

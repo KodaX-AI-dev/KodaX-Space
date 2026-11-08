@@ -126,3 +126,9 @@
 自动接缝：`transcript-font-size.spec.ts`、`workspace-sidebar-density.spec.ts`、`integrated-workspace.spec.ts`、`workspace-visual-motion.spec.ts`。本机日志、原图与字体证据目录为 `artifacts/f147-type-2026-10-21/`。
 
 最终记录：原 `out/win-unpacked` 已更新，ASAR 入口 JS/CSS 与最终构建逐字节一致。指定该 exe 的上述四份 E2E 共 12/12 通过；原目录包装/启动 smoke 与真实 SDK 完整退出接缝 6/6 通过。全量单测 4,412 通过、20 条条件跳过；类型、lint、构建通过。19 张产品原图已逐张查看，中文会话实际使用 Microsoft YaHei UI，项目/会话行高保持 38/36px；完整表格、原尺寸 ZCode 对照说明和两轴独立评审结果见本轮设计文档。不将本轮字体验收扩展为已有长对话滚动问题或跨设备性能已修复。
+
+## 2026-11-08 Lexical 输入器的动效边界
+
+输入器由 textarea 改为 Lexical contenteditable 后，焦点和暂停选择器必须跟随现有 `.composer-editor`。完整 Linux E2E 与同一 Windows 成品的两项反例均失败：聚焦时没有动效，流式阶段计算样式没有 paused。六处选择器已修正，原动画时长和守卫保持。
+
+使用 `workspace-visual-motion.spec.ts` 的四个真实 Electron 场景验收：中英文设置往返及草稿、有限聚焦反馈与后台窗口切换、真实双项目并行输出时暂停并恢复、视口边缘菜单几何。继续检查 Balanced/Minimal、reduced-motion 和滚动暂停；不以延长用例超时、跳过动画断言或增加常驻动效代替修复。最终源码与重新打包结果见 [beta.3 最终验收](../research/kodax-beta3-space-final-validation.md)。

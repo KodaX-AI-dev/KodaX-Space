@@ -124,3 +124,9 @@ Windows 冷启动测试中 Renderer 4.55 秒就绪。确定性延迟 daemon 20 �
 同时将基线输入器浏览器用例的选择/撤销改为 ControlOrMeta，逐词删除和行首移动按原生 macOS 键位发出。测试仍验证原来的正文、剪贴板、撤销、原子 token 删除和恢复，不改变应用快捷键。Windows 专项1/1通过，macOS 两种架构以最终远端结果为准。
 
 本轮最终冻结提交、成品哈希、Host事实、全部成品用例与远端CI结果统一记录在 [beta.3 最终验收记录](../research/kodax-beta3-space-final-validation.md)。该记录只在对应检查实际完成后填写，不能用门禁跳过或旧版本结果代替。
+
+#### 完整源码 E2E 发现的输入器样式遗漏
+
+冻结提交5c7caadb的Linux完整E2E第二片中，91项通过、6项条件跳过、2项失败。两项失败在默认三次尝试中均存在；同一Windows成品也稳定复现。原因是Lexical已替换textarea，但workspace.css仍以textarea:focus匹配有限动效及暂停规则。现在六处焦点选择器跟随现有.composer-editor；620/1000ms时长、quality/reduced-motion、后台及流式暂停边界不变，没有增加React轮询。两轴独立补审均0项。
+
+这是实际Renderer生产修复，先前f6f70c03的成品与哈希不能作为最终成品。修正后重新构建、打包并验证输出字节，最终来源、哈希和各平台结果统一以最终验收记录为准。

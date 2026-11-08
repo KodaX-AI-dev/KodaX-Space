@@ -177,7 +177,7 @@
 }
 /* The editor and its toolbar share one focus boundary. Keep keyboard focus on
    individual toolbar controls, without a second rectangular ring inside it. */
-.space-shell .composer-surface textarea:focus-visible {
+.space-shell .composer-surface .composer-editor:focus-visible {
   outline: none;
 }
 /* Clip only this decorative layer; menus, context controls and pets stay outside
@@ -722,20 +722,20 @@ html.q-minimal .space-shell .composer-surface {
     background: rgb(var(--accent-ink));
     animation: workspace-selection-arrive var(--motion-slow) var(--ease-expo);
   }
-  html:not(.q-minimal) .composer-surface:has(textarea:focus) .composer-focus-light::before {
+  html:not(.q-minimal) .composer-surface:has(.composer-editor:focus) .composer-focus-light::before {
     animation: workspace-focus-rail 620ms ease-out;
   }
-  html.q-full .composer-surface:has(textarea:focus) .composer-focus-light::before {
+  html.q-full .composer-surface:has(.composer-editor:focus) .composer-focus-light::before {
     animation-duration: 1000ms;
   }
-  html.q-full .composer-surface:has(textarea:focus) .composer-focus-light::after {
+  html.q-full .composer-surface:has(.composer-editor:focus) .composer-focus-light::after {
     animation: workspace-focus-glaze 1000ms ease-out;
   }
   html.q-full.visual-ambient-paused
-    .composer-surface:has(textarea:focus)
+    .composer-surface:has(.composer-editor:focus)
     .composer-focus-light::before,
   html.q-full.visual-ambient-paused
-    .composer-surface:has(textarea:focus)
+    .composer-surface:has(.composer-editor:focus)
     .composer-focus-light::after {
     animation-play-state: paused;
   }
