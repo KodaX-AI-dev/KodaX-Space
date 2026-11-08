@@ -1455,26 +1455,31 @@ export function ConversationStreamV2(): JSX.Element {
   const programmaticScrollIgnoreUntilRef = useRef<number>(0);
   // Scroll events alone do not authorize crossing a history window boundary.
   const historyScrollIntentRef = useRef<'older' | 'newer' | null>(null);
-  const scrollbarPointerIdRef = useRef<number | null>(null);
+  const scrollbarDragRef = useRef<{
+    pointerId: number;
+    direction: 'older' | 'newer' | null;
+  } | null>(null);
 
   useEffect(() => {
     // Preserve the last real direction when native scroll arrives after pointerup.
     const releaseScrollbar = (event: PointerEvent): void => {
-      if (scrollbarPointerIdRef.current !== event.pointerId) return;
+      const drag = scrollbarDragRef.current;
+      if (drag?.pointerId !== event.pointerId) return;
       const scroller = scrollRef.current;
       const previousTop = scrollSnapshotRef.current?.scrollTop;
       if (event.type === 'pointercancel') historyScrollIntentRef.current = null;
+      else if (drag.direction) historyScrollIntentRef.current = drag.direction;
       else if (scroller && previousTop !== undefined && scroller.scrollTop !== previousTop) {
         historyScrollIntentRef.current = scroller.scrollTop > previousTop ? 'newer' : 'older';
       }
-      scrollbarPointerIdRef.current = null;
+      scrollbarDragRef.current = null;
     };
     window.addEventListener('pointerup', releaseScrollbar, true);
     window.addEventListener('pointercancel', releaseScrollbar, true);
     return () => {
       window.removeEventListener('pointerup', releaseScrollbar, true);
       window.removeEventListener('pointercancel', releaseScrollbar, true);
-      scrollbarPointerIdRef.current = null;
+      scrollbarDragRef.current = null;
     };
   }, []);
 
@@ -1799,7 +1804,6 @@ export function ConversationStreamV2(): JSX.Element {
             restoreState.rafId = requestAnimationFrame(restoreAfterLayout);
           } else {
             prependAnchorRestoreRef.current = null;
-            if (scrollbarPointerIdRef.current !== null) clearProgrammaticScrollGuard();
           }
         };
         restoreState.rafId = requestAnimationFrame(restoreAfterLayout);
@@ -1820,13 +1824,17 @@ export function ConversationStreamV2(): JSX.Element {
   function acceptRestoringScrollbarMovement(scroller: HTMLDivElement): void {
     const snapshot = scrollSnapshotRef.current;
     if (
-      scrollbarPointerIdRef.current === null ||
+      scrollbarDragRef.current === null ||
       prependAnchorRestoreRef.current?.phase !== 'restoring' ||
       !prependAnchorRestoreRef.current.positionRestored ||
       !snapshot ||
       snapshot.scrollHeight !== scroller.scrollHeight ||
       snapshot.clientHeight !== scroller.clientHeight ||
-      snapshot.scrollTop === scroller.scrollTop
+      snapshot.scrollTop === scroller.scrollTop ||
+      (scrollbarDragRef.current.direction !== null &&
+        scrollbarDragRef.current.direction !==
+          (scroller.scrollTop > snapshot.scrollTop ? 'newer' : 'older') &&
+        performance.now() < programmaticScrollIgnoreUntilRef.current)
     )
       return;
     // Restoration records its own position synchronously. A new held drag wins over later RAFs.
@@ -1850,24 +1858,27 @@ export function ConversationStreamV2(): JSX.Element {
       const previousTop = scrollSnapshotRef.current?.scrollTop ?? scroller.scrollTop;
       const movedDown = scroller.scrollTop > previousTop;
       const movedUp = scroller.scrollTop < previousTop;
-      const scrollbarHeld = scrollbarPointerIdRef.current !== null;
-      if (scrollbarHeld && (movedUp || movedDown)) {
-        historyScrollIntentRef.current = movedDown ? 'newer' : 'older';
+      const scrollbarDrag = scrollbarDragRef.current;
+      if (scrollbarDrag && (movedUp || movedDown)) {
+        const snapshot = scrollSnapshotRef.current;
+        const stableGeometry =
+          prependAnchorRestoreRef.current === null &&
+          snapshot?.scrollHeight === scroller.scrollHeight &&
+          snapshot.clientHeight === scroller.clientHeight;
+        if (scrollbarDrag.direction === null || stableGeometry)
+          scrollbarDrag.direction = movedDown ? 'newer' : 'older';
       }
+      if (scrollbarDrag?.direction) historyScrollIntentRef.current = scrollbarDrag.direction;
       refreshPendingPrependSnapshot(scroller);
       syncFollowStateFromScrollPosition(scroller);
       syncActiveQueryAnchorFromScrollPosition(scroller);
       // Native scrollbar drags emit scroll, not continuous DOM pointermove.
-      const intent = scrollbarHeld ? 'scrollbar' : historyScrollIntentRef.current;
-      if (
-        movedUp &&
-        (intent === 'older' || intent === 'scrollbar') &&
-        scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX
-      ) {
+      const intent = scrollbarDrag?.direction ?? historyScrollIntentRef.current;
+      if (movedUp && intent === 'older' && scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX) {
         requestAdjacentHistory(scroller);
       } else if (
         movedDown &&
-        (intent === 'newer' || intent === 'scrollbar') &&
+        intent === 'newer' &&
         getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX
       ) {
         requestAdjacentHistory(scroller, 'newer');
@@ -1976,13 +1987,13 @@ export function ConversationStreamV2(): JSX.Element {
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>): void {
     cancelJumpToBottomAnimation();
     historyScrollIntentRef.current = null;
-    scrollbarPointerIdRef.current = null;
+    scrollbarDragRef.current = null;
     const scroller = e.currentTarget;
     const scrollbarWidth = scroller.offsetWidth - scroller.clientWidth;
     if (scrollbarWidth <= 0 || e.button !== 0) return;
     const rect = scroller.getBoundingClientRect();
     if (e.clientX >= rect.right - scrollbarWidth) {
-      scrollbarPointerIdRef.current = e.pointerId;
+      scrollbarDragRef.current = { pointerId: e.pointerId, direction: null };
       clearProgrammaticScrollGuard();
       handlePrependUserScrollIntent();
       disengageFollowForUserScrollIntent(scroller);
@@ -1992,7 +2003,7 @@ export function ConversationStreamV2(): JSX.Element {
   function handleTouchStart(e: ReactTouchEvent<HTMLDivElement>): void {
     cancelJumpToBottomAnimation();
     historyScrollIntentRef.current = null;
-    scrollbarPointerIdRef.current = null;
+    scrollbarDragRef.current = null;
     lastTouchYRef.current = e.touches[0]?.clientY ?? null;
   }
 
@@ -2113,7 +2124,7 @@ export function ConversationStreamV2(): JSX.Element {
     cancelPrependAnchorRestore();
     latestJumpOwnerRef.current = null;
     historyScrollIntentRef.current = null;
-    scrollbarPointerIdRef.current = null;
+    scrollbarDragRef.current = null;
     lastTouchYRef.current = null;
     liveReadingPosition.current = null;
     returnFromLocatedSearch.current = null;

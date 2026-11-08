@@ -70,32 +70,6 @@ async function seedHistory(root: string): Promise<void> {
   });
 }
 
-async function seedUniformHistory(root: string): Promise<void> {
-  const project = path.join(root, 'project');
-  await mkdir(project, { recursive: true });
-  const manager = createSessionManager({
-    sessionsDir: path.join(root, 'sessions'),
-    configHome: root,
-  });
-  const messages: KodaXMessage[] = [];
-  for (let index = 0; index < 225; index++)
-    messages.push(
-      { role: 'user', inputId: `input-${index}`, content: `HISTORY_QUESTION_${index}` },
-      {
-        role: 'assistant',
-        outputId: `output-${index}`,
-        content: [{ type: 'text', text: `HISTORY_ANSWER_${index}` }],
-      },
-    );
-  await manager.storage.save(SESSION, {
-    title: 'SDK_HISTORY_NAVIGATION',
-    gitRoot: project,
-    scope: 'user',
-    runtimeInfo: { workspaceRoot: project, surface: 'repl' },
-    messages,
-  });
-}
-
 async function nativeHistoryGeometry(page: Page) {
   return page.getByTestId('conversation-scroll-container').evaluate((element) => {
     if (!(element instanceof HTMLElement)) throw new Error('Expected HTML history viewport');
@@ -109,8 +83,59 @@ async function nativeHistoryGeometry(page: Page) {
       y: rect.top + (element.scrollTop / range) * (element.clientHeight - thumb) + thumb / 2,
       top: rect.top + thumb / 2,
       bottom: rect.bottom - thumb / 2,
+      nativePixelsPerScroll: (element.clientHeight - thumb) / range,
     };
   });
+}
+
+async function watchNativeHistoryWindows(page: Page): Promise<void> {
+  await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+    const stream = document.querySelector('[data-testid="conversation-stream"]');
+    if (!stream) throw new Error('Expected conversation stream');
+    const firstIndex = () =>
+      Number(
+        stream
+          .querySelector('[data-msg-id]')
+          ?.textContent?.match(/HISTORY_(?:QUESTION|ANSWER)_(\d+)/)?.[1],
+      );
+    const initial = firstIndex();
+    if (!Number.isFinite(initial)) throw new Error('Expected seeded history marker');
+    const markers = [initial];
+    element.setAttribute('data-native-page-markers', JSON.stringify(markers));
+    const observer = new MutationObserver(() => {
+      const next = firstIndex();
+      if (Number.isFinite(next) && next !== markers.at(-1)) {
+        markers.push(next);
+        element.setAttribute('data-native-page-markers', JSON.stringify(markers));
+      }
+    });
+    observer.observe(stream, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['data-msg-id'],
+    });
+    element.addEventListener('finish-native-history-test', () => observer.disconnect(), {
+      once: true,
+    });
+  });
+}
+
+async function nativeHistoryMarkers(page: Page): Promise<number[]> {
+  return JSON.parse(
+    (await page
+      .getByTestId('conversation-scroll-container')
+      .getAttribute('data-native-page-markers')) ?? '[]',
+  ) as number[];
+}
+
+async function expectNativeHistoryDirection(page: Page, sign: number): Promise<void> {
+  const markers = await nativeHistoryMarkers(page);
+  expect(
+    markers.every((value, index) => index === 0 || (value - markers[index - 1]!) * sign > 0),
+    JSON.stringify({ sign, markers }),
+  ).toBe(true);
 }
 
 async function settleNativeHistoryLayout(page: Page): Promise<void> {
@@ -122,10 +147,6 @@ async function settleNativeHistoryLayout(page: Page): Promise<void> {
 
 async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer'): Promise<void> {
   const scroller = page.getByTestId('conversation-scroll-container');
-  const ids = () =>
-    page
-      .locator('[data-msg-id]')
-      .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
   await settleNativeHistoryLayout(page);
   await scroller.evaluate((element, direction) => {
     element.scrollTop =
@@ -135,26 +156,40 @@ async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer')
   const geometry = await nativeHistoryGeometry(page);
   const edge = direction === 'newer' ? geometry.bottom : geometry.top;
   const sign = direction === 'newer' ? 1 : -1;
+  const count = async () => (await nativeHistoryMarkers(page)).length - 1;
+  await watchNativeHistoryWindows(page);
   await page.mouse.move(geometry.x, geometry.y);
   await page.mouse.down();
   try {
-    for (let index = 0; index < 2; index++) {
-      if (
-        await page
-          .getByText(direction === 'older' ? 'HISTORY_QUESTION_0' : 'HISTORY_QUESTION_224', {
-            exact: true,
-          })
-          .count()
-      )
-        break;
-      const before = await ids();
-      if (index > 0) await page.mouse.move(geometry.x, edge - sign * 15, { steps: 4 });
-      await page.mouse.move(geometry.x, edge + sign * 15, { steps: 6 });
-      await expect.poll(ids).not.toEqual(before);
-      await settleNativeHistoryLayout(page);
+    await page.mouse.move(geometry.x, edge + sign * 15, { steps: 6 });
+    await expect
+      .poll(count, { message: `${direction} first native page` })
+      .toBeGreaterThanOrEqual(1);
+    await settleNativeHistoryLayout(page);
+    if ((await count()) < 2) {
+      const remaining = await scroller.evaluate(
+        (element, direction) =>
+          direction === 'older'
+            ? element.scrollTop
+            : element.scrollHeight - element.scrollTop - element.clientHeight,
+        direction,
+      );
+      // Native dragging retains its initial pixel/content ratio when a replacement page grows.
+      await page.mouse.move(
+        geometry.x,
+        edge + sign * (30 + remaining * geometry.nativePixelsPerScroll * 1.25),
+        { steps: 6 },
+      );
     }
+    await expect
+      .poll(count, { message: `${direction} second native page` })
+      .toBeGreaterThanOrEqual(2);
+    await expectNativeHistoryDirection(page, sign);
   } finally {
     await page.mouse.up();
+    await scroller.evaluate((element) =>
+      element.dispatchEvent(new Event('finish-native-history-test')),
+    );
   }
 }
 
@@ -164,7 +199,7 @@ test('native scrollbar stays held across SDK history windows in both directions'
     const { space } = await launchRealSdkSpace(
       `history-native-scrollbar-${Date.now()}`,
       provider.url,
-      seedUniformHistory,
+      seedHistory,
     );
     try {
       await space.page
@@ -172,15 +207,14 @@ test('native scrollbar stays held across SDK history windows in both directions'
         .filter({ hasText: 'SDK_HISTORY_NAVIGATION' })
         .click();
       const stream = space.page.getByTestId('conversation-stream');
-      await expect(stream).toContainText('HISTORY_ANSWER_224');
+      await expect(stream).toContainText('HISTORY_ANSWER_259');
       const newestIds = await stream
         .locator('[data-msg-id]')
         .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
       await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
-      await expect(stream).toContainText('HISTORY_QUESTION_224');
+      await expect(stream).toContainText('HISTORY_QUESTION_259');
       await dragNativeHistoryWindow(space.page, 'older');
-      await expect(stream).not.toContainText('HISTORY_QUESTION_224');
-      await expect(stream).toContainText('HISTORY_QUESTION_0');
+      await expect(stream).not.toContainText('HISTORY_QUESTION_259');
       await dragNativeHistoryWindow(space.page, 'newer');
       const bottom = space.page.getByRole('button', { name: 'Jump to bottom', exact: true });
       if (await bottom.count()) await bottom.click();
@@ -191,7 +225,7 @@ test('native scrollbar stays held across SDK history windows in both directions'
             .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id'))),
         )
         .toEqual(newestIds);
-      await expect(stream).toContainText('HISTORY_ANSWER_224');
+      await expect(stream).toContainText('HISTORY_ANSWER_259');
       expect(provider.requests).toEqual([]);
       expect(provider.errors).toEqual([]);
     } finally {

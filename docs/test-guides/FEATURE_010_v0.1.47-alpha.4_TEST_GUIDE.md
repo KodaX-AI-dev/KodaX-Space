@@ -80,7 +80,9 @@ node --test --import tsx apps/desktop/renderer/src/shell/conversationHistoryNavi
 原生轨道连续跨页必须使用真实 `page.mouse` 按住拖动，分别向新、向旧连续跨两页，
 不能只派发 DOM PointerEvent：原生轨道拖动可能只发 scroll，不持续发 pointermove。
 首轮锚点恢复后 8 帧内继续拖动也须跨页，且按住时的程序搜索不得误翻页。
+稳定页确认到底后，同次按住以 1 步和 12 步反向拖到顶部也须正常翻页。
 合成指针事件仅补充释放、取消及延迟 scroll 的生命周期边界。
 `sdk-history-navigation.spec.ts` 还需对真实 SDK 冻结历史窗口执行相同原生拖动，
-确认页身份确实变化、双向回到原页及单一向下箭头恢复最新结果。
+保留长段内容、工具与报告，确认每个方向经过至少两个不同且严格单调的窗口，
+不能把 A→B→A 计作两页；最后单一向下入口恢复最初实时窗口的精确消息 ID。
 这些是 DOM/浏览器交互契约测试，不代替各 OS 的物理输入设备验收。

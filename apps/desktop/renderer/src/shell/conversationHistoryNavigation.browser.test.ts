@@ -636,7 +636,7 @@ async function dragNativeHistoryPages(
   const geometry = await nativeHistoryScrollbarGeometry(page);
   const edge = direction === 'newer' ? geometry.bottom : geometry.top;
   const sign = direction === 'newer' ? 1 : -1;
-  const requestCount = await page.evaluate('window.requests.length');
+  const requestCount = await page.evaluate<number>('window.requests.length');
   await page.mouse.move(geometry.x, geometry.y);
   await page.mouse.down();
   try {
@@ -725,6 +725,69 @@ for (const phase of ['stable', 'restoring'] as const)
       await page.evaluate('window.settle(48)');
       assert.deepEqual(await page.evaluate('window.requests'), requests);
       await sendHistoryPointer(page, 'pointerup');
+      assert.deepEqual(errors, []);
+    },
+  );
+
+async function reverseHeldNativeScrollbar(
+  page: Page,
+  geometry: { x: number; top: number; bottom: number },
+  steps: number,
+): Promise<void> {
+  await page.mouse.move(geometry.x, geometry.bottom - 30, { steps: 4 });
+  await page.mouse.move(geometry.x, geometry.bottom + 15, { steps: 4 });
+  await page.waitForFunction(() => {
+    const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+    return el.scrollHeight - el.clientHeight - el.scrollTop < 2;
+  });
+  await page.evaluate('window.settle(48)');
+  await page.mouse.move(geometry.x, geometry.top - 15, { steps });
+  await page.evaluate('window.settle(48)');
+  if ((await page.evaluate('window.requests.at(-1)')) !== 'oldest') {
+    await page.mouse.move(geometry.x, geometry.top + 15, { steps: 4 });
+    await page.mouse.move(geometry.x, geometry.top - 15, { steps: 4 });
+  }
+  await page.getByText('OLDEST 11', { exact: true }).waitFor();
+}
+
+for (const reverseSteps of [1, 12])
+  test(
+    `a held native scrollbar can reverse paging direction after stable restoration in ${reverseSteps} steps`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t, true);
+      await prepareNativeHistoryScrollbar(page);
+      const scroller = page.getByTestId('conversation-scroll-container');
+      await page.evaluate('window.settle(48)');
+      await scroller.evaluate((element) => {
+        element.scrollTop = element.scrollHeight - element.clientHeight - 100;
+      });
+      await page.evaluate('window.settle()');
+      const geometry = await nativeHistoryScrollbarGeometry(page);
+      await page.mouse.move(geometry.x, geometry.y);
+      await page.mouse.down();
+      try {
+        await page.mouse.move(geometry.x, geometry.bottom + 15, { steps: 6 });
+        await page.evaluate('window.settle(48)');
+        if ((await page.evaluate('window.requests.at(-1)')) !== 'newest') {
+          await page.mouse.move(geometry.x, geometry.bottom - 15, { steps: 4 });
+          await page.mouse.move(geometry.x, geometry.bottom + 15, { steps: 4 });
+        }
+        await page.getByText('NEWEST 11', { exact: true }).waitFor();
+        await page.evaluate('window.settle(48)');
+        await reverseHeldNativeScrollbar(page, geometry, reverseSteps);
+      } finally {
+        await page.mouse.up();
+      }
+      assert.deepEqual(await page.evaluate('window.requests'), [
+        'newest',
+        'middle',
+        'oldest',
+        'middle',
+        'newest',
+        'middle',
+        'oldest',
+      ]);
       assert.deepEqual(errors, []);
     },
   );
