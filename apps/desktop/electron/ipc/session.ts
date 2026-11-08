@@ -49,7 +49,7 @@ export function assertSessionSendScope(
     );
   }
 }
-import { loadAgentsMd, type AgentsFile } from '../kodax/agents-md-loader.js';
+import { agentsMdEditTargets, loadAgentsMd, type AgentsFile } from '../kodax/agents-md-loader.js';
 import path from 'node:path';
 import { getKodaxDir, getSpaceDataDir } from '../kodax/data-paths.js';
 import {
@@ -215,15 +215,12 @@ export function resolveSessionHistoryBackend(
   return runtimeReady ? 'runtime' : 'runtime-unavailable';
 }
 
-function assertSafePagedHistoryMutation(
-  sessionId: string,
-  historyBoundary: { readonly boundaryId: string; readonly sourceRevision: string } | undefined,
-): void {
+function assertSafePagedHistoryMutation(sessionId: string, hasExactTarget: boolean): void {
   const session = kodaxHost.get(sessionId);
   if (
     session !== undefined &&
     (session.surface === 'code' || session.provider !== 'mock') &&
-    historyBoundary === undefined
+    !hasExactTarget
   ) {
     throw new Error(
       'An exact persisted history boundary is required for a Runtime-backed Session mutation.',
@@ -664,17 +661,59 @@ async function ensureCustomProviderRegistered(providerId: string): Promise<void>
   await registerKodaxCustomProviders(providerConfigStore.listCustom());
 }
 
+/** Writes one exact allowed AGENTS.md path atomically; never infers a path from SDK scope. */
+export async function saveAgentsMdForIpc(
+  input: ChannelInput<'session.agentsMd.save'>,
+  kodaxGlobalDir = getKodaxDir(),
+): Promise<ChannelOutput<'session.agentsMd.save'>> {
+  const session = kodaxHost.get(input.sessionId);
+  if (!session) {
+    throw new Error(`session not found: ${input.sessionId}`);
+  }
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const crypto = await import('node:crypto');
+
+  const allowed = Object.values(agentsMdEditTargets(session.projectRoot, kodaxGlobalDir));
+  const targetPath = allowed.find((candidate) => candidate === path.resolve(input.path));
+  if (targetPath === undefined) {
+    throw new Error(`AGENTS.md path is not editable: ${input.path}`);
+  }
+  // ~/.kodax 与 <project>/.kodax 可能尚不存在；失败留给下面写入时统一报错
+  await fs.mkdir(path.dirname(targetPath), { mode: 0o700, recursive: true }).catch(() => {});
+
+  // 原子写: 同目录 tmp 文件 → rename。tmp 名带随机后缀防并发覆盖。
+  const tmpSuffix = crypto.randomBytes(4).toString('hex');
+  const tmpPath = `${targetPath}.tmp-${tmpSuffix}`;
+  try {
+    await fs.writeFile(tmpPath, input.content, { mode: 0o600 });
+    await fs.rename(tmpPath, targetPath);
+  } catch (err) {
+    // 清理 tmp (best-effort, 不影响 error 抛出)
+    await fs.unlink(tmpPath).catch(() => {});
+    throw new Error(
+      `failed to write AGENTS.md: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  return { ok: true, path: targetPath };
+}
+
 export async function forkSessionForIpc(
   input: ChannelInput<'session.fork'>,
 ): Promise<ChannelOutput<'session.fork'>> {
   if (!kodaxHost.get(input.sessionId)) {
     await kodaxHost.tryResume(input.sessionId);
   }
-  assertSafePagedHistoryMutation(input.sessionId, input.historyBoundary);
+  assertSafePagedHistoryMutation(
+    input.sessionId,
+    input.historyBoundary !== undefined || input.turn !== undefined,
+  );
   const result = await kodaxHost.fork(
     input.sessionId,
     input.forkPointTurnIdx,
     input.historyBoundary,
+    input.turn,
   );
   if (!result) {
     throw new Error(`session not found: ${input.sessionId}`);
@@ -688,7 +727,10 @@ export async function rewindSessionForIpc(
   if (!kodaxHost.get(input.sessionId)) {
     await kodaxHost.tryResume(input.sessionId);
   }
-  assertSafePagedHistoryMutation(input.sessionId, input.historyBoundary);
+  assertSafePagedHistoryMutation(
+    input.sessionId,
+    input.historyBoundary !== undefined || input.confirmedTurn !== undefined,
+  );
   const result = await kodaxHost.rewind(
     input.sessionId,
     input.rewindPastTurnIdx,
@@ -1507,68 +1549,20 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     if (!session) {
       throw new Error(`session not found: ${input.sessionId}`);
     }
-    const files = await loadAgentsMd({ projectRoot: session.projectRoot });
-    const targets = {
-      global: path.join(getKodaxDir(), 'AGENTS.md'),
-      project: path.join(session.projectRoot, 'AGENTS.md'),
-    };
-    return {
-      files: files.map((file) => {
-        const editableScope = (['global', 'project'] as const).find(
-          (scope) => path.relative(targets[scope], file.path) === '',
-        );
-        return { ...file, ...(editableScope ? { editableScope } : {}) };
-      }),
-    };
+    const kodaxGlobalDir = getKodaxDir();
+    const files = await loadAgentsMd({ projectRoot: session.projectRoot, kodaxGlobalDir });
+    return { files, targets: agentsMdEditTargets(session.projectRoot, kodaxGlobalDir) };
   });
 
   // session.agentsMd.save — REPL /memory inline edit 等价
   //
   // 安全设计:
-  //   - scope 闭集 ['global', 'project'] -- renderer 不能传任意 path
-  //   - target path 在 main 端计算 (~/.kodax/AGENTS.md / <session.projectRoot>/AGENTS.md),
-  //     从 host.get(sessionId).projectRoot 拿,renderer 永远拿不到任意路径写权
+  //   - renderer 传精确路径，但只能是 agentsMdEditTargets 的三个 AGENTS.md 之一；
+  //     SDK scope 是优先级而非位置，按 scope 推路径会覆盖另一个文件
   //   - 原子写: tmp 文件 → fs.rename,避免半写状态被 SDK loadAgentsFiles 读到
   //   - 文件权限 0o600 (与 ~/.kodax/auto-rules.jsonc 等 sensitive config 一致)
   //   - content 256KB schema 上限已经在 envelope 校验
-  registerChannel('session.agentsMd.save', async (input) => {
-    const session = kodaxHost.get(input.sessionId);
-    if (!session) {
-      throw new Error(`session not found: ${input.sessionId}`);
-    }
-    const fs = await import('node:fs/promises');
-    const path = await import('node:path');
-    const crypto = await import('node:crypto');
-
-    let targetPath: string;
-    if (input.scope === 'global') {
-      // OC-12 测试模式下走 tmpdir/kodax-test-<id>
-      const globalDir = getKodaxDir();
-      await fs.mkdir(globalDir, { mode: 0o700, recursive: true }).catch(() => {
-        /* mkdir 失败 (磁盘满 / 权限) 走下面写入时再失败,统一错误处理 */
-      });
-      targetPath = path.join(globalDir, 'AGENTS.md');
-    } else {
-      // 'project'
-      targetPath = path.join(session.projectRoot, 'AGENTS.md');
-    }
-
-    // 原子写: 同目录 tmp 文件 → rename。tmp 名带随机后缀防并发覆盖。
-    const tmpSuffix = crypto.randomBytes(4).toString('hex');
-    const tmpPath = `${targetPath}.tmp-${tmpSuffix}`;
-    try {
-      await fs.writeFile(tmpPath, input.content, { mode: 0o600 });
-      await fs.rename(tmpPath, targetPath);
-    } catch (err) {
-      // 清理 tmp (best-effort, 不影响 error 抛出)
-      await fs.unlink(tmpPath).catch(() => {});
-      throw new Error(
-        `failed to write AGENTS.md: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-
-    return { ok: true, path: targetPath };
-  });
+  registerChannel('session.agentsMd.save', (input) => saveAgentsMdForIpc(input));
 
   // session.listRunning — FEATURE_125 Team Mode peer 列表
   //
@@ -1731,7 +1725,8 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
             ...(page.newerCursor ? { newerCursor: page.newerCursor } : {}),
             ...(page.locatedBoundaryId ? { locatedBoundaryId: page.locatedBoundaryId } : {}),
             windowMode: 'replace' as const,
-            hasNewer: input.cursor !== undefined,
+            // productHistoryLocation v2 supplies newerCursor exactly when a newer page exists.
+            hasNewer: page.newerCursor !== undefined,
           },
         });
       }

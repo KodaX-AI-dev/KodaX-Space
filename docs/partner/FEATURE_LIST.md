@@ -17,7 +17,7 @@
 - Current Source Baseline: KodaX Space `v0.1.47-alpha.2` / Registry KodaX `0.7.97-alpha.6`，候选未发布；当前宿主与不变的 Partner 验收边界见 [INTEGRATION](INTEGRATION.md#6-当前集成快照)。
 - Active Baseline: `origin/main`; future work uses `feature/partner-<topic>`
 - Historical Integration Git Snapshot: main merge `a2f7a1b0` via [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5); source `f8daed67` preserved; beta.3 status: [release readiness](../releases/v0.1.46-beta.3-release-readiness.md)
-- Last Updated: 2026-09-14
+- Last Updated: 2026-11-08
 
 Integration evidence: PF001–PF013 existing implementations entered `main` in [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5) at `a2f7a1b0` and originally shipped in Space beta.3, whose GitHub release was subsequently withdrawn. Integration history is retained in the beta.4 candidate; this does not complete the remaining development or real-account acceptance for PF001–PF003. Existing F146 mappings are retained; no new Space F-ID is assigned.
 
@@ -38,6 +38,7 @@ Integration evidence: PF001–PF013 existing implementations entered `main` in [
 | PF011 | Expert Portraits & Browsable Profiles                | Enhancement | High     | `v0.1.0`       | Completed  | Integrated  | —             | [PF011 design](features/v0.1.0.md#feature-pf011) |
 | PF012 | Partner Cold-start Home                              | Enhancement | Medium   | `v0.1.0`       | Completed  | Integrated  | —             | [PF012 design](features/v0.1.0.md#feature-pf012) |
 | PF013 | Sales, Hiring, Onboarding & Presentations            | Enhancement | Medium   | `v0.1.0`       | Completed  | Integrated  | —             | [PF013 design](features/v0.1.0.md#feature-pf013) |
+| PF014 | Partner SDK History Turns for Fork & Rewind          | Enhancement | High     | `v0.1.0`       | Completed  | Local       | —             | [PF014 design](features/v0.1.0.md#feature-pf014) |
 
 ## Feature Details
 
@@ -228,14 +229,28 @@ Integration evidence: PF001–PF013 existing implementations entered `main` in [
 - Updated: 2026-09-14
 - Evidence: [PF013验收与样板](features/PF013-expert-expansion-validation.md)。
 
+### PF014 — Partner SDK History Turns for Fork & Rewind
+
+- Description: 非 Mock 的 Partner 会话与 Coder 共用 KodaX beta.4 历史轮次契约：Fork/回退先由 SDK 解析完整轮次目标再整体提交，不再出现“需要精确历史边界”；Fork 子会话保留专家快照与连接器范围。
+- Category: Enhancement
+- Priority: High
+- Partner Target: `v0.1.0`
+- Dev Status: Completed
+- Integration Status: Local
+- Space Feature: —（随 Space beta.4 SDK 适配；未新增 Space F-ID）
+- Design: [PF014 design](features/v0.1.0.md#feature-pf014)
+- Created: 2026-11-08
+- Updated: 2026-11-08
+- Evidence: 定向自动化、源码 Electron 与 Windows 打包应用场景均通过（见设计节及 [beta.4 适配记录](../releases/kodax-beta4-space-adaptation.md)）；未提交，故仍为 Local。
+
 ## Summary
 
-- Total: 13
+- Total: 14
 - Planned: 0
 - InProgress: 3
-- Completed: 10
-- Local: 0
+- Completed: 11
+- Local: 1
 - Ready: 0
 - Proposed: 0
 - Integrated: 13
-- Next PF ID: PF014
+- Next PF ID: PF015

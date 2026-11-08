@@ -2293,10 +2293,12 @@ export function ConversationStreamV2(): JSX.Element {
           : {}),
         ...(localNoticeCutoffSentAt !== undefined ? { localNoticeCutoffSentAt } : {}),
       });
-      if (!r.ok) {
+      if (!r.ok || 'changed' in r.data) {
         pushToast(
           t('menu.session.forkFailed', {
-            message: r.error?.message ?? t('common.unknownError'),
+            message: r.ok
+              ? t('session.turnChanged')
+              : (r.error?.message ?? t('common.unknownError')),
           }),
           'error',
         );

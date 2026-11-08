@@ -8,5 +8,10 @@ test('context IPC retains more than sixteen bounded Markdown fragments', () => {
     content: `Rule ${index}`,
     scope: 'project',
   }));
-  assert.deepEqual(sessionAgentsMdChannel.output.parse({ files }).files, files);
+  const targets = {
+    global: '/profile/AGENTS.md',
+    project: '/project/AGENTS.md',
+    projectKodax: '/project/.kodax/AGENTS.md',
+  };
+  assert.deepEqual(sessionAgentsMdChannel.output.parse({ files, targets }).files, files);
 });

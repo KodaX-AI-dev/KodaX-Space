@@ -94,7 +94,7 @@ test('an explicit fork copies the expert and persists an independent child snaps
     boundaryId: 'answer-one',
     sourceRevision: 'source-one',
   });
-  assert.ok(forked);
+  assert.ok(forked && 'newSessionId' in forked);
   const child = kodaxHost.get(forked.newSessionId);
   assert.deepEqual(child?.partnerExpert, expert);
   assert.notEqual(child?.partnerExpert, kodaxHost.get(sessionId)?.partnerExpert);

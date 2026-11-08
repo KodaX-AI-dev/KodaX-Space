@@ -1,8 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-11-07
+Last Updated: 2026-11-08
 
-> 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.3`，见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
+> 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
 > Historical issue details retain their dated evidence. Current source/release baseline is Space 0.1.47-alpha.4 / Registry SDK 0.7.97-beta.1; stable remains v0.1.46. See [alpha.4 release status](releases/v0.1.47-alpha.4-release-readiness.md). Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
@@ -234,7 +234,8 @@ Last Updated: 2026-11-07
 | 234 | Medium   | Resolved in source                                                                                           | Ordinary child reports appear as yellow warnings with raw SDK transport markup                                                                                                                             | Reported local v0.1.47-alpha.3 / SDK alpha.10                             | 2026-10-28 |
 | 235 | Medium   | Resolved in source                                                                                           | Downward history scrolling and the bottom arrow stop at a frozen older window                                                                                                                              | Reported local v0.1.47-alpha.3 / SDK alpha.10                             | 2026-10-28 |
 | 236 | Medium   | Resolved                                                                                                     | macOS notifications require signed sender, delivery confirmation and permission-aware badge refresh                                                                                                        | Electron 42 upgrade                                                       | 2026-11-04 |
-| 237 | Medium | Resolved in source | Legacy SDK view body reads fail and repeated per-item warnings flood the conversation | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.2 | 2026-11-07 |
+| 237 | Medium   | Resolved in source                                                                                           | Legacy SDK view body reads fail and repeated per-item warnings flood the conversation                                                                                                                      | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.2                         | 2026-11-07 |
+| 238 | Low      | Open                                                                                                         | AgentModeSelector browser test intermittently times out after the work-mode rollback step                                                                                                                  | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4                         | 2026-11-08 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16061,10 +16062,28 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 - Files / tests: `ConversationStreamV2.tsx`, `i18n/messages.ts`, `productBodyWarnings.browser.test.ts`; sibling KodaX `src/sdk-runtime.ts` and `src/sdk-runtime.legacy-view-read.test.ts`. Both regressions failed before their fixes and passed afterward. The original Session's isolated source-runtime replay completed all 34 reads with zero failures; original Session files were not edited. See [regression guide](test-guides/ISSUE_237_0.1.47-alpha.4_REGRESSION_GUIDE.md).
 - Deployment update, 2026-11-08: Root and Desktop now pin the published Registry SDK `0.7.97-beta.3`. Space installs its physical npm package and uses SDK-owned source references for complete-turn actions. Reading failures retain previews with inline retries. Acceptance of this package is recorded in the [beta.3 adaptation report](releases/kodax-beta3-space-adaptation.md).
 
+## Issue 238 — AgentModeSelector browser test intermittently times out
+
+- Priority: Low (test reliability only; no product behavior observed failing)
+- Status: Open
+- Introduced: Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4 working tree; first affected version unknown
+- Created: 2026-11-08
+- Context: Full Desktop `npm test` during the beta.4 SDK adaptation.
+
+#### Original Problem
+
+`apps/desktop/renderer/src/shell/AgentModeSelector.browser.test.ts`, case "draft mode changes block sending…", hit the 30 s test timeout around line 108 (the `page.waitForFunction` that waits for the Agent radio to become checked after `press('Home')` following a failed/deferred `session.setWorkMode`). The full run reported 4,189 pass / 1 fail / 13 skipped. Running the file alone failed once and passed once with no code changes, so the failure is intermittent. The beta.4 adaptation does not touch the selector or work-mode code.
+
+Expected: the case passes deterministically, or fails with an assertion that names the stuck state instead of a generic timeout.
+
+#### Reproduction
+
+From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 --import ../../scripts/test/isolated-credential-profile.mjs --import tsx renderer/src/shell/AgentModeSelector.browser.test.ts` until it times out. Suspected area: ordering between clearing `window.fail`/`window.defer` and the keyboard selection, or focus not being on the radio group when `Home` is pressed. Root cause not yet confirmed.
+
 ## Summary
 
-- Total: 224
-- Open: 1
+- Total: 225
+- Open: 2
 - Ready: 3
 - Needs info: 1
 - In Progress: 11
@@ -16072,5 +16091,5 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 - Resolved (including source-only fixes): 208
 - High: 116
 - Medium: 96
-- Low: 12
+- Low: 13
 - Next ready to resolve: 222

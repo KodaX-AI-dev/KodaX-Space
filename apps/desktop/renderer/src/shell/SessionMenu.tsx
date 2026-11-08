@@ -174,10 +174,10 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
       forkPointTurnIdx,
       ...(historyBoundary ? { historyBoundary } : {}),
     });
-    if (!r.ok) {
+    if (!r.ok || 'changed' in r.data) {
       pushToast(
         t('menu.session.forkFailed', {
-          message: r.error?.message ?? t('common.unknownError'),
+          message: r.ok ? t('session.turnChanged') : (r.error?.message ?? t('common.unknownError')),
         }),
         'error',
       );

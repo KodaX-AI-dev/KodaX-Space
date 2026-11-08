@@ -74,3 +74,17 @@ export async function loadAgentsMd(opts: LoadAgentsMdOptions): Promise<AgentsFil
     return [];
   }
 }
+
+/**
+ * AGENTS.md files Space may write. SDK `scope` is precedence, not location:
+ * `<projectRoot>/AGENTS.md` loads as 'directory' and `<projectRoot>/.kodax/AGENTS.md`
+ * as 'project', so saves address one of these exact paths instead of a scope.
+ */
+export function agentsMdEditTargets(projectRoot: string, kodaxGlobalDir: string) {
+  const root = path.resolve(projectRoot);
+  return {
+    global: path.join(path.resolve(kodaxGlobalDir), 'AGENTS.md'),
+    project: path.join(root, 'AGENTS.md'),
+    projectKodax: path.join(root, '.kodax', 'AGENTS.md'),
+  } as const;
+}

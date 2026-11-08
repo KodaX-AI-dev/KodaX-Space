@@ -23,7 +23,10 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertKodaxReleaseDependencyState } from './kodax-runtime-release-gate.mjs';
+import {
+  assertKodaxReleaseDependencyState,
+  registryTarballTimeoutMs,
+} from './kodax-runtime-release-gate.mjs';
 import { inspectKodaxDevLink } from './kodax-dev-link-state.mjs';
 import { resolveFeishuCliBuildPlan } from './feishu-cli-build-plan.mjs';
 
@@ -83,7 +86,7 @@ async function verifyReleaseSdk(allowLocalTarball) {
   process.stdout.write(
     allowLocalTarball
       ? '[pack] verifying the exact integrity-pinned local KodaX package...\n'
-      : '[pack] verifying the exact locked KodaX package (Registry timeout: 30s)...\n',
+      : `[pack] verifying the exact locked KodaX package (Registry timeout: ${registryTarballTimeoutMs() / 1000}s)...\n`,
   );
   const dependency = await assertKodaxReleaseDependencyState(SPACE_ROOT, SDK_DIR, {
     allowLocalTarball,

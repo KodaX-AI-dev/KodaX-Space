@@ -6,6 +6,15 @@ import { EnvHttpProxyAgent } from 'undici';
 
 const KODAX_PACKAGE = '@kodax-ai/kodax';
 const REGISTRY_TARBALL_TIMEOUT_MS = 30_000;
+
+/** Slow networks may extend the wait; integrity checks are unchanged. */
+export function registryTarballTimeoutMs(env = process.env) {
+  const raw = env.SPACE_PACK_REGISTRY_TIMEOUT_MS;
+  if (raw === undefined || raw === '') return REGISTRY_TARBALL_TIMEOUT_MS;
+  if (!/^[1-9]\d*$/.test(raw))
+    throw new Error('[pack] SPACE_PACK_REGISTRY_TIMEOUT_MS must be a positive integer.');
+  return Number(raw);
+}
 export const KODAX_NATIVE_PACKAGE_FILES = [
   'dist/windows-effect-job-programs.json',
   ...['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64'].flatMap((target) => [
@@ -170,7 +179,7 @@ export async function fetchRegistryTarball(
   {
     env = process.env,
     fetchImpl = fetch,
-    timeoutMs = REGISTRY_TARBALL_TIMEOUT_MS,
+    timeoutMs = registryTarballTimeoutMs(env),
     createProxyDispatcher = (options) => new EnvHttpProxyAgent(options),
   } = {},
 ) {

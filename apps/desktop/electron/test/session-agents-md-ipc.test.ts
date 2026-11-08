@@ -13,17 +13,21 @@ import os from 'node:os';
 import path from 'node:path';
 import { kodaxHost } from '../kodax/host.js';
 import { loadAgentsMd } from '../kodax/agents-md-loader.js';
+import { saveAgentsMdForIpc } from '../ipc/session.js';
 import { setRendererTarget } from '../ipc/push.js';
 
 let tmpProjectRoot: string;
 
 beforeEach(async () => {
   await kodaxHost.disposeAll();
-  setRendererTarget(() => ({
-    send: () => undefined,
-    isDestroyed: () => false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }) as any);
+  setRendererTarget(
+    () =>
+      ({
+        send: () => undefined,
+        isDestroyed: () => false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }) as any,
+  );
   tmpProjectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kodax-agentsmd-test-'));
 });
 
@@ -68,7 +72,9 @@ test('loadAgentsMd: picks up global + project, global comes first', async () => 
     const files = await loadAgentsMd({ projectRoot: tmpProjectRoot, kodaxGlobalDir: tmpGlobal });
     // SDK 顺序：global 在前
     const globalIdx = files.findIndex((f) => f.scope === 'global');
-    const projectIdx = files.findIndex((f) => f.scope !== 'global' && f.content === '# project rules');
+    const projectIdx = files.findIndex(
+      (f) => f.scope !== 'global' && f.content === '# project rules',
+    );
     assert.ok(globalIdx >= 0, 'global AGENTS.md found');
     assert.ok(projectIdx >= 0, 'project AGENTS.md found');
     assert.ok(globalIdx < projectIdx, 'global must come before project');
@@ -127,3 +133,45 @@ test('IPC integration: createSession then session.agentsMd works via kodaxHost.g
 // v0.1.6 cleanup: AGENTS.md 截断由 SDK loadAgentsFiles 负责，Space 不再持有
 // MAX_AGENTS_BYTES / TRUNCATION_MARKER 常量。schema agentsFileSchema 的 content
 // max（256KB + 64 byte buffer）配的是 SDK 实际截断行为——SDK 改截断尺寸时同步该 schema cap。
+
+test('session.agentsMd.save writes the exact loaded file, never a scope-derived sibling', async () => {
+  const tmpGlobal = fs.mkdtempSync(path.join(os.tmpdir(), 'kodax-global-save-'));
+  const rootAgents = path.join(tmpProjectRoot, 'AGENTS.md');
+  fs.writeFileSync(rootAgents, '# root stays');
+  fs.mkdirSync(path.join(tmpProjectRoot, '.kodax'));
+  fs.writeFileSync(path.join(tmpProjectRoot, '.kodax', 'AGENTS.md'), '# kodax');
+  const { sessionId } = kodaxHost.createSession({ projectRoot: tmpProjectRoot, provider: 'mock' });
+  try {
+    const files = await loadAgentsMd({ projectRoot: tmpProjectRoot, kodaxGlobalDir: tmpGlobal });
+    // SDK scope is precedence: <root>/.kodax/AGENTS.md is 'project', <root>/AGENTS.md 'directory'.
+    const kodaxFile = files.find((f) => f.scope === 'project');
+    assert.ok(kodaxFile);
+    const saved = await saveAgentsMdForIpc(
+      { sessionId, path: kodaxFile.path, content: '# kodax edited' },
+      tmpGlobal,
+    );
+    assert.equal(saved.path, kodaxFile.path);
+    assert.equal(fs.readFileSync(kodaxFile.path, 'utf8'), '# kodax edited');
+    assert.equal(fs.readFileSync(rootAgents, 'utf8'), '# root stays');
+
+    const globalPath = path.join(tmpGlobal, 'nested', 'AGENTS.md');
+    await assert.rejects(
+      saveAgentsMdForIpc({ sessionId, path: globalPath, content: 'x' }, tmpGlobal),
+      /not editable/,
+    );
+    await assert.rejects(
+      saveAgentsMdForIpc(
+        { sessionId, path: path.join(tmpProjectRoot, '.kodax', 'rules', 'a.md'), content: 'x' },
+        tmpGlobal,
+      ),
+      /not editable/,
+    );
+    await saveAgentsMdForIpc(
+      { sessionId, path: path.join(tmpGlobal, 'AGENTS.md'), content: '# global' },
+      tmpGlobal,
+    );
+    assert.equal(fs.readFileSync(path.join(tmpGlobal, 'AGENTS.md'), 'utf8'), '# global');
+  } finally {
+    fs.rmSync(tmpGlobal, { recursive: true, force: true });
+  }
+});

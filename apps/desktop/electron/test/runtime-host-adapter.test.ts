@@ -1109,6 +1109,92 @@ for (const boundary of [
   });
 }
 
+test('history contract v2 returns the complete SDK turn and typed resync reasons', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('v2-host');
+  Object.assign(fake.runtime.capabilities!, {
+    productHistoryTurnResolution: { version: 2 },
+    productHistoryLocation: { version: 2 },
+  });
+  const turn = {
+    sessionId: 'v2-host',
+    historyBoundary: { entryId: 'end', sourceRevision: 'source', kind: 'turn_end' as const },
+    startBoundary: { entryId: 'start', sourceRevision: 'source' },
+    expectedHead: 'end',
+  };
+  const resolveOptions: unknown[] = [];
+  let resolved: () => Promise<unknown> = async () => ({
+    status: 'ready',
+    ...turn,
+    turnIndex: 3,
+    excerpt: 'Question 4',
+    hasLaterTurn: false,
+  });
+  Object.assign(fake.runtime.sessions, {
+    resolveHistoryTurn: async (_id: string, _selector: unknown, options: unknown) => {
+      resolveOptions.push(options);
+      return resolved();
+    },
+  });
+  const reads: unknown[] = [];
+  fake.runtime.sessions.readHistory = async (_id, options) => {
+    reads.push(options);
+    return {
+      revision: 'page',
+      sourceRevision: 'source',
+      status: 'resolved',
+      issues: [],
+      oversized: [],
+      items: [],
+    };
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    assert.deepEqual(await adapter.resolveHistoryTurn('v2-host', { kind: 'latest' }), {
+      status: 'ready',
+      turn,
+      activeRunId: null,
+      turnIndex: 3,
+      excerpt: 'Question 4',
+      hasLaterTurn: false,
+    });
+    assert.deepEqual(resolveOptions, [{ timeoutMs: 15_000 }]);
+    resolved = async () => {
+      throw Object.assign(new Error('expired'), {
+        code: 'resync_required',
+        data: { reason: 'selection_expired' },
+      });
+    };
+    assert.deepEqual(await adapter.resolveHistoryTurn('v2-host', { kind: 'latest' }), {
+      status: 'stale',
+      reason: 'selection_expired',
+    });
+    resolved = async () => {
+      throw Object.assign(new Error('busy'), { code: 'conflict' });
+    };
+    await assert.rejects(() => adapter.resolveHistoryTurn('v2-host', { kind: 'latest' }), /busy/);
+    await adapter.readProductHistory('v2-host', undefined, {
+      historyBoundary: { entryId: 'end', sourceRevision: 'source' },
+    });
+    await adapter.readProductHistory('v2-host', 'older');
+    assert.deepEqual(reads.slice(-2), [
+      {
+        around: { historyBoundary: { entryId: 'end', sourceRevision: 'source' } },
+        limit: 30,
+        timeoutMs: 15_000,
+      },
+      { cursor: 'older', limit: 150, timeoutMs: 15_000 },
+    ]);
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('an older Host keeps history readable and reports unsupported turn actions', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('old-host');
@@ -1559,6 +1645,8 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
         productClient: 1,
         productInputRecovery: 1,
         productExecutionModeConstraint: 1,
+        productHistoryLocation: 2,
+        productHistoryTurnResolution: 2,
         sessionDrafts: 1,
         runtimeEventCoalescing: 1,
         runtimeAutoModeGuardrail: 6,
@@ -1566,6 +1654,32 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
         sharedSessionSettings: 2,
       },
     }),
+  );
+  assert.throws(
+    () =>
+      assertSpaceRuntimeSdkRequiredCapabilities({
+        KODAX_RUNTIME_SDK_CAPABILITIES: {
+          actorSettlementConvergence: 2,
+          conversationHistory: 2,
+          crashOutcomeModel: 2,
+          daemonOrphanExit: 1,
+          daemonShutdownVerification: 1,
+          effectiveConfig: 1,
+          liveOutputSegments: 1,
+          managedRunDurability: 1,
+          productClient: 1,
+          productInputRecovery: 1,
+          productExecutionModeConstraint: 1,
+          productHistoryLocation: 1,
+          productHistoryTurnResolution: 1,
+          sessionDrafts: 1,
+          runtimeEventCoalescing: 1,
+          runtimeAutoModeGuardrail: 6,
+          sandboxRuntime: 11,
+          sharedSessionSettings: 2,
+        },
+      }),
+    /productHistoryLocation v2 and productHistoryTurnResolution v2/,
   );
   assert.throws(
     () =>

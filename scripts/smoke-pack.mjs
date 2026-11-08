@@ -1548,6 +1548,8 @@ function daemonRequirements() {
     sandboxRuntime: 11,
     productClient: 1,
     productHistoryBoundaries: 1,
+    productHistoryLocation: 2,
+    productHistoryTurnResolution: 2,
     productExitControl: 1,
     ...(process.platform === 'win32' ? { daemonShutdownVerification: 1 } : {}),
     integrationConfigResilience: 1,
@@ -1792,6 +1794,11 @@ try {
   const productHistory = daemonRuntime.capabilities?.productHistoryBoundaries;
   if (productHistory?.version !== 1 || daemonRuntime.capabilities?.productExitControl?.version !== 1)
     throw new Error('packaged daemon did not negotiate public history and exit contracts');
+  if (
+    daemonRuntime.capabilities?.productHistoryLocation?.version !== 2 ||
+    daemonRuntime.capabilities?.productHistoryTurnResolution?.version !== 2
+  )
+    throw new Error('packaged daemon did not negotiate history contract v2');
   const daemonSandboxRuntime = daemonRuntime.capabilities?.sandboxRuntime;
   if (
     typeof daemonSandboxRuntime !== 'object' ||

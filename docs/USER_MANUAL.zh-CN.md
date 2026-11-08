@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树的 Registry SDK `0.7.97-beta.3` 适配，见 [接入与验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树的 Registry SDK `0.7.97-beta.4` 适配，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -231,7 +231,7 @@ flowchart LR
 唯一会话执行与历史写入者]
 ```
 
-Space 工作树锁定 KodaX SDK 0.7.97-beta.3。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
+Space 工作树锁定 KodaX SDK 0.7.97-beta.4。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
 
 Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 
@@ -622,7 +622,7 @@ Runtime owner。
 - builtin 表示 skill 本体随应用提供，不表示所有可选工具都被嵌入。Huashu 的浏览器、视频、TTS、AI 评审等扩展流程仍可能需要 Node/Python package、Playwright 浏览器、`ffmpeg`、POSIX-compatible shell 或 API 凭据；不使用这些流程时无需准备。
 - 本机可能存在的 `pdf`、`pptx`、`xlsx`、`docx` skill 不随 Space 分发，因为当前来源许可证禁止复制、修改或再分发。Space 仍可预览这些文件格式；这与是否打包同名 skill 是两件事。
 - `AGENTS.md` 与 markdown agents 提供项目规则和角色，Agent picker 用 `@agent-name` 插入。
-- SDK beta.3 还会加载 `~/.kodax/rules/*.md` 和 `<project>/.kodax/rules/*.md` 的 Markdown 片段。Agents → Context 按源文件展示；片段在此只读，请在编辑器中修改。只有全局与项目根的 `AGENTS.md` 提供内联编辑，创建入口不会把已有片段当成 AGENTS.md。
+- SDK beta.4 继续将 `~/.kodax/rules/*.md` 和 `<project>/.kodax/rules/*.md` 的 Markdown 片段注入 Host 提示词，规则请在编辑器中修改。Agents → Context 只加载 `AGENTS.md`，并按原路径编辑全局、项目根或 `<project>/.kodax/AGENTS.md`；创建入口不会覆盖已加载的项目根文件，其他来源没有内联写入权限。
 
 ### External Agents
 

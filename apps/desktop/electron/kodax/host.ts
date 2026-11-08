@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   ChannelInput,
   ChannelOutput,
+  HistoryTurnTarget,
   SessionEvent,
   SpaceRuntimeRunStopReceiptT,
 } from '@kodax-space/space-ipc-schema';
@@ -58,7 +59,7 @@ import {
   cloneClipboardAttachmentsForFork,
 } from '../ipc/clipboard.js';
 import { revokeSessionAttachmentPreviews } from '../window/session-attachment-protocol.js';
-import { runtimeHostAdapter } from './runtime-host-adapter.js';
+import { historyTurnChangedReason, runtimeHostAdapter } from './runtime-host-adapter.js';
 import { runtimeSettingEffort } from './reasoning-effort.js';
 
 // alpha.2: Real KodaX 内核 vs Mock 切换。
@@ -184,21 +185,30 @@ export function sanitizeTitle(input: string, maxLen: number): string {
   return scalars.slice(0, maxLen - 3).join('') + '...';
 }
 
+function sameHistoryTurn(a: HistoryTurnTarget, b: HistoryTurnTarget): boolean {
+  return (
+    a.sessionId === b.sessionId &&
+    a.expectedHead === b.expectedHead &&
+    a.historyBoundary.entryId === b.historyBoundary.entryId &&
+    a.historyBoundary.sourceRevision === b.historyBoundary.sourceRevision &&
+    a.startBoundary.entryId === b.startBoundary.entryId &&
+    a.startBoundary.sourceRevision === b.startBoundary.sourceRevision
+  );
+}
+
 async function rewindConfirmedTurn(
   sessionId: string,
   turnIndex: number,
-  boundary: { entryId: string; sourceRevision: string },
   confirmed: NonNullable<ChannelInput<'session.rewind'>['confirmedTurn']>,
 ): Promise<ChannelOutput<'session.rewind'>> {
+  if (confirmed.turn.sessionId !== sessionId) return { ok: false, reason: 'target_changed' };
   const target = await runtimeHostAdapter.resolveHistoryTurn(sessionId, confirmed.selector);
   if (
     target.status !== 'ready' ||
     !target.hasLaterTurn ||
     target.turnIndex !== turnIndex ||
-    target.expectedHead !== confirmed.expectedHead ||
     target.activeRunId !== confirmed.activeRunId ||
-    target.historyBoundary.entryId !== boundary.entryId ||
-    target.historyBoundary.sourceRevision !== boundary.sourceRevision
+    !sameHistoryTurn(target.turn, confirmed.turn)
   )
     return { ok: false, reason: 'target_changed' };
   if (target.activeRunId) {
@@ -214,11 +224,8 @@ async function rewindConfirmedTurn(
       return { ok: false, reason: 'stop_unconfirmed' };
   }
   try {
-    const diskRewound = await runtimeHostAdapter.rewindSession({
-      sessionId,
-      historyBoundary: boundary,
-      expectedHead: confirmed.expectedHead,
-    });
+    // The SDK validates the complete turn and its expected head under the storage lock.
+    const diskRewound = await runtimeHostAdapter.rewindSession({ sessionId, turn: target.turn });
     if (!diskRewound)
       return {
         ok: false,
@@ -227,7 +234,10 @@ async function rewindConfirmedTurn(
     return { ok: true, diskRewound: true };
   } catch (error) {
     const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
-    if (code === 'conflict' || code === 'resync_required')
+    // `conflict` is active work; `resync_required` is an expired target. Both leave history intact.
+    if (code === 'conflict')
+      return { ok: false, reason: target.activeRunId ? 'stop_unconfirmed' : 'session_busy' };
+    if (code === 'resync_required')
       return {
         ok: false,
         reason: target.activeRunId ? 'stopped_history_changed' : 'target_changed',
@@ -1181,7 +1191,8 @@ class KodaXHost {
     sourceSessionId: string,
     forkPointTurnIdx: number,
     historyBoundary?: { readonly boundaryId: string; readonly sourceRevision: string },
-  ): Promise<{ newSessionId: string; createdAt: number } | null> {
+    turn?: HistoryTurnTarget,
+  ): Promise<ChannelOutput<'session.fork'> | null> {
     const src = this.sessions.get(sourceSessionId);
     if (!src) return null;
 
@@ -1190,31 +1201,44 @@ class KodaXHost {
     if (usesRuntime && !runtimeHostAdapter.hasReadyRuntime()) {
       throw new Error('Runtime is unavailable for an exact Coder Session fork.');
     }
-    if (usesRuntime && historyBoundary === undefined) {
+    if (usesRuntime && historyBoundary === undefined && turn === undefined) {
       throw new Error('An exact persisted history boundary is required for a Coder Session fork.');
     }
-    const runtimeBoundary = usesRuntime
-      ? {
-          entryId: historyBoundary!.boundaryId,
-          sourceRevision: historyBoundary!.sourceRevision,
-        }
-      : null;
+    if (
+      turn &&
+      (!usesRuntime || historyBoundary !== undefined || turn.sessionId !== sourceSessionId)
+    )
+      throw new Error('A resolved history turn must be the only Fork target of its Coder Session.');
+    const runtimeBoundary =
+      usesRuntime && historyBoundary
+        ? { entryId: historyBoundary.boundaryId, sourceRevision: historyBoundary.sourceRevision }
+        : null;
     const persistedBoundary = usesRuntime
       ? null
       : historyBoundary !== undefined
         ? { kind: 'conversation' as const, historyBoundary }
         : await findPersistedTurnEndBoundary(sourceSessionId, forkPointTurnIdx);
-    if ((usesRuntime && runtimeBoundary === null) || (!usesRuntime && persistedBoundary === null)) {
+    if (
+      (usesRuntime && runtimeBoundary === null && !turn) ||
+      (!usesRuntime && persistedBoundary === null)
+    ) {
       throw new Error(
         `invalid_index: turn ${forkPointTurnIdx} has no authoritative boundary in session ${sourceSessionId}`,
       );
     }
+    let changed: ReturnType<typeof historyTurnChangedReason>;
     const sdkResult = usesRuntime
-      ? await runtimeHostAdapter.forkSession({
-          sessionId: sourceSessionId,
-          historyBoundary: runtimeBoundary!,
-          ...(forkTitle !== undefined ? { title: forkTitle } : {}),
-        })
+      ? await runtimeHostAdapter
+          .forkSession({
+            sessionId: sourceSessionId,
+            ...(turn ? { turn } : { historyBoundary: runtimeBoundary! }),
+            ...(forkTitle !== undefined ? { title: forkTitle } : {}),
+          })
+          .catch((error: unknown) => {
+            changed = turn ? historyTurnChangedReason(error) : undefined;
+            if (changed) return null;
+            throw error;
+          })
       : await forkPersistedSession({
           sourceSessionId,
           ...(persistedBoundary?.kind === 'conversation'
@@ -1222,6 +1246,7 @@ class KodaXHost {
             : { selector: persistedBoundary!.selector }),
           title: forkTitle,
         });
+    if (changed) return { changed };
     if (!sdkResult) return null; // SDK 找不到 source（盘上没记录），不视作错误（fork 一个未持久化的全新 session 是合法的）
 
     // 用 SDK 返回的 sessionId 实例化（不走 createSession 因为后者自己 randomUUID）
@@ -1317,6 +1342,18 @@ class KodaXHost {
     if (usesRuntime && !runtimeHostAdapter.hasReadyRuntime()) {
       throw new Error('Runtime is unavailable for an exact Coder Session rewind.');
     }
+    if (confirmedTurn) {
+      if (!usesRuntime || historyBoundary !== undefined)
+        throw new Error(
+          'A confirmed history turn must be the only Rewind target of a Coder Session.',
+        );
+      const result = await rewindConfirmedTurn(sessionId, rewindPastTurnIdx, confirmedTurn);
+      if (result.diskRewound) s.lastActivityAt = Date.now();
+      return result;
+    }
+    // Real Runtime sessions (Coder and Partner) rewind only through a confirmed SDK turn.
+    if (s instanceof RealKodaXSession || (s.surface === 'code' && s.provider !== 'mock'))
+      return { ok: false, reason: 'target_changed' };
     if (usesRuntime && historyBoundary === undefined) {
       throw new Error(
         'An exact persisted history boundary is required for a Coder Session rewind.',
@@ -1335,18 +1372,6 @@ class KodaXHost {
         : await findPersistedTurnEndBoundary(sessionId, rewindPastTurnIdx);
     if ((usesRuntime && runtimeBoundary === null) || (!usesRuntime && persistedBoundary === null)) {
       return { ok: false, reason: 'invalid_index' };
-    }
-    if (s.surface === 'code' && s.provider !== 'mock' && !confirmedTurn)
-      return { ok: false, reason: 'target_changed' };
-    if (confirmedTurn && runtimeBoundary) {
-      const result = await rewindConfirmedTurn(
-        sessionId,
-        rewindPastTurnIdx,
-        runtimeBoundary,
-        confirmedTurn,
-      );
-      if (result.diskRewound) s.lastActivityAt = Date.now();
-      return result;
     }
     // cancel in-flight，避免 rewind 后还有迟来的 event 把截掉的位置塞回去
     permissionBroker.cancelSession(sessionId, 'session_cancelled');

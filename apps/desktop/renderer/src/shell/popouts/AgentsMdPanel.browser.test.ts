@@ -14,8 +14,7 @@ const projectRule: AgentsFileMeta = {
 const projectAgents: AgentsFileMeta = {
   path: 'C:/project/AGENTS.md',
   content: 'KEEP_PROJECT_AGENTS',
-  scope: 'project',
-  editableScope: 'project',
+  scope: 'directory',
 };
 const globalRule: AgentsFileMeta = {
   path: 'C:/profile/rules/personal.md',
@@ -26,7 +25,6 @@ const globalAgents: AgentsFileMeta = {
   path: 'C:/profile/AGENTS.md',
   content: 'KEEP_GLOBAL_AGENTS',
   scope: 'global',
-  editableScope: 'global',
 };
 
 const PANEL_FIXTURE = `
@@ -37,7 +35,7 @@ const PANEL_FIXTURE = `
       window.saves=[];
       window.kodaxSpace={invoke:async(channel,args)=>{
         if(channel==='settings.get')return {ok:true,data:{languageMode:'en-US',effectiveLocale:'en-US'}};
-        if(channel==='session.agentsMd')return {ok:true,data:{files:window.contextFiles}};
+        if(channel==='session.agentsMd')return {ok:true,data:{files:window.contextFiles,targets:{global:'C:/profile/AGENTS.md',project:'C:/project/AGENTS.md',projectKodax:'C:/project/.kodax/AGENTS.md'}}};
         if(channel==='session.agentsMd.save'){window.saves.push(args);return {ok:true,data:{ok:true,path:'/project/AGENTS.md'}};}
         throw Error(channel);
       }};
@@ -91,10 +89,31 @@ test(
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await page.waitForFunction('window.saves.length === 1');
     assert.deepEqual(await page.evaluate('window.saves'), [
-      { sessionId: 'rules-session', scope: 'project', content: 'NEW_PROJECT_AGENTS' },
+      { sessionId: 'rules-session', path: 'C:/project/AGENTS.md', content: 'NEW_PROJECT_AGENTS' },
     ]);
   },
 );
+
+test('project .kodax AGENTS.md edits keep the exact loaded path', browserOptions, async (t) => {
+  const file: AgentsFileMeta = {
+    path: 'C:/project/.kodax/AGENTS.md',
+    content: 'KEEP_KODAX_AGENTS',
+    scope: 'project',
+  };
+  const page = await openPanel(t, [projectAgents, file]);
+  assert.equal(await page.getByRole('button', { name: '+ Project', exact: true }).count(), 0);
+  await page
+    .getByRole('button')
+    .and(page.getByTitle(file.path, { exact: true }))
+    .click();
+  await page.getByRole('button', { name: /Edit$/ }).click();
+  await page.locator('textarea').fill('UPDATED_KODAX_AGENTS');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.waitForFunction('window.saves.length === 1');
+  assert.deepEqual(await page.evaluate('window.saves'), [
+    { sessionId: 'rules-session', path: file.path, content: 'UPDATED_KODAX_AGENTS' },
+  ]);
+});
 
 test(
   'mixed global and project context keeps AGENTS.md editable and each fragment distinct',

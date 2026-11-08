@@ -9,7 +9,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FileText, Bot } from 'lucide-react';
-import type { AgentsFileMeta, AgentMeta, AgentFailure } from '@kodax-space/space-ipc-schema';
+import type {
+  AgentsFileMeta,
+  AgentMeta,
+  AgentFailure,
+  ChannelOutput,
+} from '@kodax-space/space-ipc-schema';
 import { useAppStore } from '../../store/appStore.js';
 import { FileNameText } from '../../components/FileNameText.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
@@ -97,13 +102,15 @@ function ContextTab(): JSX.Element {
   const { t } = useI18n();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
   const [files, setFiles] = useState<readonly AgentsFileMeta[]>([]);
+  const [targets, setTargets] = useState<ChannelOutput<'session.agentsMd'>['targets'] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
-  // 编辑态: editing!=null 时显示 textarea。draft 是 textarea 当前值; saving = IPC 飞行
+  // 编辑态: editing!=null 时显示 textarea。draft 是 textarea 当前值; saving = IPC 飞行。
+  // path 是精确保存目标：SDK scope 只表示优先级，不能反推文件位置。
   const [editing, setEditing] = useState<{
-    scope: 'global' | 'project';
-    sourcePath?: string;
+    scope: AgentsFileMeta['scope'];
+    path: string;
   } | null>(null);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -116,6 +123,7 @@ function ContextTab(): JSX.Element {
   const reload = (): void => {
     if (!currentSessionId || !window.kodaxSpace) {
       setFiles([]);
+      setTargets(null);
       return;
     }
     reloadTokenRef.current += 1;
@@ -130,9 +138,11 @@ function ContextTab(): JSX.Element {
         if (!r.ok) {
           setError(`${r.error?.code ?? 'ERR_UNKNOWN'}: ${r.error?.message ?? 'unknown error'}`);
           setFiles([]);
+          setTargets(null);
           return;
         }
         setFiles(r.data.files);
+        setTargets(r.data.targets);
         setActiveIdx(0);
       })
       .finally(() => {
@@ -145,13 +155,9 @@ function ContextTab(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSessionId]);
 
-  function startEdit(
-    scope: 'global' | 'project',
-    initialContent: string,
-    sourcePath?: string,
-  ): void {
+  function startEdit(scope: AgentsFileMeta['scope'], path: string, initialContent: string): void {
     setDraft(initialContent);
-    setEditing({ scope, sourcePath });
+    setEditing({ scope, path });
     setSaveError(null);
   }
   function cancelEdit(): void {
@@ -170,7 +176,7 @@ function ContextTab(): JSX.Element {
     try {
       const r = await window.kodaxSpace.invoke('session.agentsMd.save', {
         sessionId: currentSessionId,
-        scope: editing.scope,
+        path: editing.path,
         content: draft,
       });
       if (!r.ok) {
@@ -203,12 +209,10 @@ function ContextTab(): JSX.Element {
             <span className="text-fg-secondary font-medium">
               {t('agents.editing', { scope: scopeLabel(editing.scope, t) })}
             </span>
-            {editing.sourcePath && (
-              <FileNameText
-                name={editing.sourcePath}
-                className="max-w-[240px] font-mono text-[11px] text-fg-muted"
-              />
-            )}
+            <FileNameText
+              name={editing.path}
+              className="max-w-[240px] font-mono text-[11px] text-fg-muted"
+            />
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -248,7 +252,7 @@ function ContextTab(): JSX.Element {
         />
         <div className="px-3 py-1 text-[11px] text-fg-muted border-t border-border-default flex justify-between">
           <span>{t('agents.charCount', { count: draft.length.toLocaleString() })}</span>
-          <span>{editing.scope === 'global' ? '~/.kodax/AGENTS.md' : '<project>/AGENTS.md'}</span>
+          <FileNameText name={editing.path} className="max-w-[60%]" />
         </div>
       </div>
     );
@@ -284,7 +288,10 @@ function ContextTab(): JSX.Element {
         <div className="flex gap-2 mt-2">
           <button
             type="button"
-            onClick={() => startEdit('global', '# AGENTS.md (global)\n\n')}
+            disabled={targets === null}
+            onClick={() =>
+              targets && startEdit('global', targets.global, '# AGENTS.md (global)\n\n')
+            }
             className={[
               'px-2.5 py-1 text-xs rounded',
               'bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25',
@@ -294,7 +301,10 @@ function ContextTab(): JSX.Element {
           </button>
           <button
             type="button"
-            onClick={() => startEdit('project', '# AGENTS.md (project)\n\n')}
+            disabled={targets === null}
+            onClick={() =>
+              targets && startEdit('directory', targets.project, '# AGENTS.md (project)\n\n')
+            }
             className={[
               'px-2.5 py-1 text-xs rounded',
               'bg-ok/15 text-ok border border-ok/30 hover:bg-ok/25',
@@ -308,8 +318,10 @@ function ContextTab(): JSX.Element {
   }
 
   const active = files[activeIdx] ?? files[0];
-  // A rule's scope does not identify the AGENTS.md destination of the save IPC.
-  const editableScope = active.editableScope ?? null;
+  // Loaded scope does not grant write access; only Main-proven exact paths are editable.
+  const editable = targets !== null && Object.values(targets).includes(active.path);
+  const missingGlobal = targets !== null && !files.some((f) => f.path === targets.global);
+  const missingProject = targets !== null && !files.some((f) => f.path === targets.project);
 
   return (
     <div className="h-full flex flex-col text-xs">
@@ -321,31 +333,31 @@ function ContextTab(): JSX.Element {
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          {editableScope !== null && (
+          {editable && (
             <button
               type="button"
-              onClick={() => startEdit(editableScope, active.content, active.path)}
+              onClick={() => startEdit(active.scope, active.path, active.content)}
               className="px-2 py-0.5 text-[11px] rounded text-fg-muted hover:text-fg-primary hover:bg-hover-bg"
-              title={t('agents.editTitle', { scope: scopeLabel(editableScope, t) })}
+              title={t('agents.editTitle', { scope: scopeLabel(active.scope, t) })}
             >
               ✎ {t('agents.edit')}
             </button>
           )}
           {/* Create the OTHER scope if it's not in the loaded list */}
-          {!files.some((f) => f.editableScope === 'global') && (
+          {targets !== null && missingGlobal && (
             <button
               type="button"
-              onClick={() => startEdit('global', '# AGENTS.md (global)\n\n')}
+              onClick={() => startEdit('global', targets.global, '# AGENTS.md (global)\n\n')}
               className="px-2 py-0.5 text-[11px] rounded text-warn/80 hover:text-warn hover:bg-warn/30"
               title={t('agents.createGlobal')}
             >
               {t('agents.globalButton')}
             </button>
           )}
-          {!files.some((f) => f.editableScope === 'project') && (
+          {targets !== null && missingProject && (
             <button
               type="button"
-              onClick={() => startEdit('project', '# AGENTS.md (project)\n\n')}
+              onClick={() => startEdit('directory', targets.project, '# AGENTS.md (project)\n\n')}
               className="px-2 py-0.5 text-[11px] rounded text-ok/80 hover:text-ok hover:bg-ok/30"
               title={t('agents.createProject')}
             >
@@ -371,11 +383,7 @@ function ContextTab(): JSX.Element {
             >
               <span className={SCOPE_COLORS[f.scope]}>●</span>{' '}
               <span>
-                {scopeLabel(f.scope, t)} ·{' '}
-                {f.path
-                  .split(/[\\/]/)
-                  .slice(f.editableScope ? -1 : -2)
-                  .join('/')}
+                {scopeLabel(f.scope, t)} · {f.path.split(/[\\/]/).slice(-2).join('/')}
               </span>
             </button>
           ))}
@@ -389,9 +397,7 @@ function ContextTab(): JSX.Element {
         <FileNameText name={active.path} className="flex-1" />
       </div>
 
-      {editableScope === null && (
-        <p className="px-3 pb-2 text-fg-muted">{t('agents.readOnlySource')}</p>
-      )}
+      {!editable && <p className="px-3 pb-2 text-fg-muted">{t('agents.readOnlySource')}</p>}
       <pre className="flex-1 overflow-auto px-3 pb-3 text-xs text-fg-secondary whitespace-pre-wrap font-mono leading-relaxed">
         {active.content}
       </pre>

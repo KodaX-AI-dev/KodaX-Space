@@ -68,10 +68,12 @@ export function SessionContextMenu({
       forkPointTurnIdx: turnIndex,
       ...(historyBoundary ? { historyBoundary } : {}),
     });
-    if (!result.ok) {
+    if (!result.ok || 'changed' in result.data) {
       pushToast(
         t('menu.session.forkFailed', {
-          message: result.error?.message ?? t('common.unknownError'),
+          message: result.ok
+            ? t('session.turnChanged')
+            : (result.error?.message ?? t('common.unknownError')),
         }),
         'error',
       );

@@ -70,7 +70,7 @@ test('Partner creates, persists and forks independent connector scopes; other se
     boundaryId: 'answer-one',
     sourceRevision: 'source-one',
   });
-  assert.ok(fork);
+  assert.ok(fork && 'newSessionId' in fork);
   assert.deepEqual((await store.read(fork.newSessionId))?.partnerConnectors, [binding]);
   assert.equal(await kodaxHost.setPartnerConnectors(fork.newSessionId, []), 'ok');
   assert.deepEqual(kodaxHost.get(first.sessionId)?.partnerConnectors, [binding]);

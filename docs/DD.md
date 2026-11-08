@@ -1,5 +1,7 @@
 # KodaX Space 详细设计
 
+> 当前工作树已接入 Registry SDK `0.7.97-beta.4`，见 [beta.4 适配](releases/kodax-beta4-space-adaptation.md)。历史操作使用完整 SDK 轮次目标与历史契约 v2；AGENTS.md 按精确路径编辑，规则由 Host 单独加载。下方 beta.3 及更早记录保留其历史语境。
+
 > 2026-11-08 当前工作树：Registry SDK `0.7.97-beta.3`，见 [完整适配与验收](releases/kodax-beta3-space-adaptation.md)。工作模式仅首轮 Run 接纳前选择；历史定位与整轮操作按实际 Host 能力开放；规则片段保留独立来源。以下带日期的旧版本记录保持历史语境。
 
 > 2026-11-05 工作树更新：SDK 已锁定正式 Registry `0.7.97-beta.2`，当前实现与验收以 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md) 为准；下列 alpha.4/beta.1 基线是已发布版本记录，本轮不替换公开标签或安装包。Workflow 作为用户显式单次功能，不再提供保存、修改等管理。

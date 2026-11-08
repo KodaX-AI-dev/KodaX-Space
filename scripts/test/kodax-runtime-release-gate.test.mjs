@@ -36,6 +36,28 @@ test('Registry tarball fetch fails with a bounded timeout', async () => {
   assert.equal(aborted, true);
 });
 
+test('a slow network can extend the Registry timeout only through an explicit positive value', async () => {
+  const hang = (_resolved, { signal }) =>
+    new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('fetch aborted')), { once: true });
+    });
+  await assert.rejects(
+    fetchRegistryTarball('https://registry.npmjs.org/example.tgz', {
+      env: { SPACE_PACK_REGISTRY_TIMEOUT_MS: '15' },
+      fetchImpl: hang,
+    }),
+    /timed out after 15 ms/i,
+  );
+  for (const value of ['0', '-1', 'soon', '1.5'])
+    await assert.rejects(
+      fetchRegistryTarball('https://registry.npmjs.org/example.tgz', {
+        env: { SPACE_PACK_REGISTRY_TIMEOUT_MS: value },
+        fetchImpl: hang,
+      }),
+      /SPACE_PACK_REGISTRY_TIMEOUT_MS must be a positive integer/,
+    );
+});
+
 test('Registry tarball fetch honors the configured environment proxy', async () => {
   let dispatcher;
   const fetchImpl = async (_resolved, options) => {

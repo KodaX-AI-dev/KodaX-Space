@@ -750,7 +750,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'Space 统一使用 AMA 自适应多智能体模式，不再提供 SA 选择或 Alt+M 切换；旧 SA 默认值和会话设置在后续执行时收敛为 AMA。/agent-mode sa 会说明退役并提示使用 AMA。Workflow 只在显式 Workflow 强信号、/workflow、命名模式或 SDK 请求下开放；普通复杂任务、并行或审查不会自动触发。历史执行事实不会被改写。',
       '',
       'Agent picker 会读取用户目录和项目目录下的 markdown agents，选择后向 composer 插入 @agent-name。AGENTS.md 和 markdown agents 主要用于给模型补充角色、规则和项目约定。',
-      'SDK beta.3 同时加载 ~/.kodax/rules/*.md 与项目 .kodax/rules/*.md。Agents 的 Context 页按文件显示这些规则片段，片段只读，需在编辑器中修改。只有 Main 确认的全局和项目根 AGENTS.md 可内联编辑或创建，片段内容不会作为 AGENTS.md 的编辑草稿。',
+      'SDK beta.4 将 ~/.kodax/rules/*.md 与项目 .kodax/rules/*.md 注入 Host 提示词，规则需在编辑器中修改。Agents 的 Context 页只加载 AGENTS.md，按 Main 确认的精确原路径编辑全局、项目根或项目 .kodax/AGENTS.md；创建入口不会覆盖已加载的项目根文件，其他来源没有内联写入权限。',
       '',
       'Agents popout/Task Dock 会显示当前会话相关 agent 状态。',
       '',

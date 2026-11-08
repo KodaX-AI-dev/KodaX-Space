@@ -21,6 +21,11 @@ import {
   setSessionRuntimeStoreForTesting,
 } from '../kodax/session-runtime-store.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
+import { RealKodaXSession } from '../kodax/real-session.js';
+import type {
+  PartnerConnectorSnapshotT,
+  PartnerExpertSnapshotT,
+} from '@kodax-space/space-ipc-schema';
 import { collectCrossPageTurnBoundaries, collectLeadingTurnTailBoundary } from '../ipc/session.js';
 
 let mockState: MockSessionState;
@@ -80,52 +85,98 @@ test('fork: unknown in-memory source returns null', async () => {
   assert.equal(result, null);
 });
 
-test('confirmed rewind preserves its observed head and does not stop a replacement Run', async (t) => {
+function historyTurn(sessionId: string, expectedHead = 'tail') {
+  return {
+    sessionId,
+    historyBoundary: {
+      entryId: 'tail',
+      sourceRevision: 'selected-revision',
+      kind: 'turn_end' as const,
+    },
+    startBoundary: { entryId: 'start', sourceRevision: 'selected-revision' },
+    expectedHead,
+  };
+}
+
+function readyTurn(sessionId: string, activeRunId: string | null, expectedHead = 'tail') {
+  return {
+    status: 'ready' as const,
+    turn: historyTurn(sessionId, expectedHead),
+    activeRunId,
+    turnIndex: 40,
+    hasLaterTurn: true,
+    excerpt: 'the selected question',
+  };
+}
+
+test('confirmed rewind passes the unchanged SDK turn and does not stop a replacement Run', async (t) => {
   const { sessionId } = kodaxHost.createSession({
     projectRoot: runtimeDir,
     provider: 'mock',
     surface: 'code',
   });
-  const boundary = { boundaryId: 'tail', sourceRevision: 'selected-revision' };
   const target = {
     selector: { kind: 'previous' as const },
-    expectedHead: 'head',
+    turn: historyTurn(sessionId),
     activeRunId: 'original-run',
   };
   const stop = t.mock.method(kodaxHost.get(sessionId)!, 'cancel', async () => undefined);
   t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
   const write = t.mock.method(runtimeHostAdapter, 'rewindSession', async () => null);
-  const resolve = t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () => ({
-    status: 'ready',
-    expectedHead: 'head',
-    activeRunId: 'replacement-run',
-    historyBoundary: { entryId: 'tail', sourceRevision: 'selected-revision' },
-    turnIndex: 40,
-    hasLaterTurn: true,
-    excerpt: 'the selected question',
-  }));
-  assert.deepEqual(await kodaxHost.rewind(sessionId, 40, boundary, target), {
+  const resolve = t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () =>
+    readyTurn(sessionId, 'replacement-run'),
+  );
+  assert.deepEqual(await kodaxHost.rewind(sessionId, 40, undefined, target), {
     ok: false,
     reason: 'target_changed',
   });
+  resolve.mock.mockImplementation(async () => readyTurn(sessionId, null, 'newer-head'));
+  assert.deepEqual(
+    await kodaxHost.rewind(sessionId, 40, undefined, { ...target, activeRunId: null }),
+    { ok: false, reason: 'target_changed' },
+  );
   assert.equal(stop.mock.callCount(), 0);
   assert.equal(write.mock.callCount(), 0);
-  resolve.mock.mockImplementation(async () => ({
-    status: 'ready' as const,
-    expectedHead: 'head',
-    activeRunId: null,
-    historyBoundary: { entryId: 'tail', sourceRevision: 'selected-revision' },
-    turnIndex: 40,
-    hasLaterTurn: true,
-    excerpt: 'the selected question',
-  }));
-  await kodaxHost.rewind(sessionId, 40, boundary, { ...target, activeRunId: null });
-  assert.deepEqual(write.mock.calls[0]?.arguments[0], {
-    sessionId,
-    historyBoundary: { entryId: 'tail', sourceRevision: 'selected-revision' },
-    expectedHead: 'head',
-  });
+  resolve.mock.mockImplementation(async () => readyTurn(sessionId, null));
+  await kodaxHost.rewind(sessionId, 40, undefined, { ...target, activeRunId: null });
+  assert.deepEqual(write.mock.calls[0]?.arguments[0], { sessionId, turn: historyTurn(sessionId) });
   assert.equal(stop.mock.callCount(), 0);
+  await assert.rejects(
+    () => kodaxHost.rewind(sessionId, 40, { boundaryId: 'tail', sourceRevision: 'r' }, target),
+    /only Rewind target/,
+  );
+});
+
+test('confirmed rewind keeps active-work conflicts distinct from expired targets', async (t) => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: runtimeDir,
+    provider: 'mock',
+    surface: 'code',
+  });
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
+  t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () => readyTurn(sessionId, null));
+  const write = t.mock.method(runtimeHostAdapter, 'rewindSession', async () => {
+    throw Object.assign(new Error('busy'), { code: 'conflict' });
+  });
+  const confirmed = {
+    selector: { kind: 'index' as const, index: 40 },
+    turn: historyTurn(sessionId),
+    activeRunId: null,
+  };
+  assert.deepEqual(await kodaxHost.rewind(sessionId, 40, undefined, confirmed), {
+    ok: false,
+    reason: 'session_busy',
+  });
+  write.mock.mockImplementation(async () => {
+    throw Object.assign(new Error('expired'), {
+      code: 'resync_required',
+      data: { reason: 'head_changed' },
+    });
+  });
+  assert.deepEqual(await kodaxHost.rewind(sessionId, 40, undefined, confirmed), {
+    ok: false,
+    reason: 'target_changed',
+  });
 });
 
 test('rewind reports a successful bound Stop and a rejected truncation separately', async (t) => {
@@ -135,17 +186,10 @@ test('rewind reports a successful bound Stop and a rejected truncation separatel
     surface: 'code',
   });
   const order: string[] = [];
-  const boundary = { entryId: 'saved-tail', sourceRevision: 'confirmed-revision' };
   t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
-  t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () => ({
-    status: 'ready' as const,
-    turnIndex: 40,
-    excerpt: 'Forty-one',
-    historyBoundary: boundary,
-    hasLaterTurn: true,
-    expectedHead: 'head',
-    activeRunId: 'selected-run',
-  }));
+  t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () =>
+    readyTurn(sessionId, 'selected-run'),
+  );
   const stop = t.mock.method(
     runtimeHostAdapter,
     'cancelSessionRuns',
@@ -167,39 +211,58 @@ test('rewind reports a successful bound Stop and a rejected truncation separatel
     runtimeHostAdapter,
     'rewindSession',
     async (input: Parameters<typeof runtimeHostAdapter.rewindSession>[0]) => {
-      assert.deepEqual(input, { sessionId, historyBoundary: boundary, expectedHead: 'head' });
+      assert.deepEqual(input, { sessionId, turn: historyTurn(sessionId) });
       order.push('write');
       throw Object.assign(new Error('snapshot changed while stopping'), {
         code: 'resync_required',
+        data: { reason: 'head_changed' },
       });
     },
   );
-  assert.deepEqual(
-    await kodaxHost.rewind(
-      sessionId,
-      40,
-      { boundaryId: 'saved-tail', sourceRevision: 'confirmed-revision' },
-      { selector: { kind: 'index', index: 40 }, expectedHead: 'head', activeRunId: 'selected-run' },
-    ),
-    {
-      ok: false,
-      reason: 'stopped_history_changed',
-    },
-  );
+  const confirmed = {
+    selector: { kind: 'index' as const, index: 40 },
+    turn: historyTurn(sessionId),
+    activeRunId: 'selected-run',
+  };
+  assert.deepEqual(await kodaxHost.rewind(sessionId, 40, undefined, confirmed), {
+    ok: false,
+    reason: 'stopped_history_changed',
+  });
   assert.deepEqual(order, ['stop', 'write']);
   stop.mock.mockImplementation(async () => {
     throw new Error('stop receipt transport disconnected');
   });
-  assert.deepEqual(
-    await kodaxHost.rewind(
-      sessionId,
-      40,
-      { boundaryId: boundary.entryId, sourceRevision: boundary.sourceRevision },
-      { selector: { kind: 'index', index: 40 }, expectedHead: 'head', activeRunId: 'selected-run' },
-    ),
-    { ok: false, reason: 'stop_unconfirmed' },
-  );
+  assert.deepEqual(await kodaxHost.rewind(sessionId, 40, undefined, confirmed), {
+    ok: false,
+    reason: 'stop_unconfirmed',
+  });
   assert.deepEqual(order, ['stop', 'write']);
+});
+
+test('Runtime fork passes a resolved turn unchanged and reports an expired target', async (t) => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: runtimeDir,
+    provider: 'mock',
+    surface: 'code',
+  });
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
+  const fork = t.mock.method(runtimeHostAdapter, 'forkSession', async () => {
+    throw Object.assign(new Error('expired'), {
+      code: 'resync_required',
+      data: { reason: 'revision_mismatch' },
+    });
+  });
+  assert.deepEqual(await kodaxHost.fork(sessionId, 0, undefined, historyTurn(sessionId)), {
+    changed: 'revision_mismatch',
+  });
+  assert.deepEqual(fork.mock.calls[0]?.arguments[0], {
+    sessionId,
+    turn: historyTurn(sessionId),
+  });
+  await assert.rejects(
+    () => kodaxHost.fork(sessionId, 0, undefined, historyTurn('another-session')),
+    /only Fork target/,
+  );
 });
 
 test('Runtime fork uses the exact paged-history boundary without re-reading a local turn index', async () => {
@@ -225,7 +288,7 @@ test('Runtime fork uses the exact paged-history boundary without re-reading a lo
       boundaryId: 'entry_exact_tail',
       sourceRevision: 'source_exact',
     });
-    assert.ok(result);
+    assert.ok(result && 'newSessionId' in result);
     assert.deepEqual(receivedBoundary, {
       entryId: 'entry_exact_tail',
       sourceRevision: 'source_exact',
@@ -368,6 +431,63 @@ test('Runtime fork and rewind fail closed when an exact boundary or Runtime auth
   }
 });
 
+test('Runtime Partner fork and rewind use the resolved turn and keep Partner bindings', async (t) => {
+  const expert: PartnerExpertSnapshotT = {
+    extensionId: 'partner.library',
+    extensionVersion: '1.0.0',
+    expert: {
+      id: 'writing-guide',
+      revision: 1,
+      name: 'Writing guide',
+      description: 'Review drafts',
+      prompt: 'Explain each revision.',
+      starterTasks: [],
+    },
+  };
+  const connector: PartnerConnectorSnapshotT = {
+    extensionId: 'kodax.partner-library',
+    connectorId: 'feishu',
+    connectionId: 'connection-one',
+    connectionRevision: 1,
+    name: 'Docs',
+    accountLabel: 'QA account',
+    documents: [{ url: 'https://example.feishu.cn/docx/Allowed', access: 'append' }],
+  };
+  kodaxHost.setFactory((opts) => new RealKodaXSession(opts));
+  t.after(() => kodaxHost.setFactory(null));
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: runtimeDir,
+    provider: 'space-runtime-partner-test',
+    surface: 'partner',
+    partnerExpert: expert,
+    partnerConnectors: [connector],
+  });
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
+  const fork = t.mock.method(runtimeHostAdapter, 'forkSession', async () => ({
+    newSessionId: 'partner-runtime-child',
+  }));
+  const forked = await kodaxHost.fork(sessionId, 40, undefined, historyTurn(sessionId));
+  assert.deepEqual(fork.mock.calls[0]?.arguments[0], { sessionId, turn: historyTurn(sessionId) });
+  assert.ok(forked && 'newSessionId' in forked);
+  const child = kodaxHost.get(forked.newSessionId);
+  assert.equal(child?.surface, 'partner');
+  assert.deepEqual(child?.partnerExpert, expert);
+  assert.deepEqual(child?.partnerConnectors, [connector]);
+
+  const write = t.mock.method(runtimeHostAdapter, 'rewindSession', async () => null);
+  t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () => readyTurn(sessionId, null));
+  await kodaxHost.rewind(sessionId, 40, undefined, {
+    selector: { kind: 'previous' },
+    turn: historyTurn(sessionId),
+    activeRunId: null,
+  });
+  assert.deepEqual(write.mock.calls[0]?.arguments[0], { sessionId, turn: historyTurn(sessionId) });
+  assert.deepEqual(
+    await kodaxHost.rewind(sessionId, 40, { boundaryId: 'tail', sourceRevision: 'r' }),
+    { ok: false, reason: 'target_changed' },
+  );
+});
+
 test('Partner fork and rewind prefer the exact source-revision boundary over the legacy ordinal', async () => {
   const { sessionId } = kodaxHost.createSession({
     projectRoot: 'C:\\tmp\\proj',
@@ -408,7 +528,7 @@ test('fork: child inherits and persists the complete runtime identity', async ()
   kodaxHost.setThinking(src, true);
   seedPersistedSession(src, 'C:\\tmp\\proj');
   const result = await kodaxHost.fork(src, 3);
-  assert.ok(result, 'fork should succeed');
+  assert.ok(result && 'newSessionId' in result, 'fork should succeed');
   const child = kodaxHost.get(result.newSessionId);
   assert.ok(child, 'child session should be retrievable');
   assert.equal(child.projectRoot, 'C:\\tmp\\proj');
@@ -435,7 +555,7 @@ test('fork: child has parentSessionId + forkPointTurnIdx metadata', async () => 
   });
   seedPersistedSession(src, 'C:\\tmp\\proj');
   const result = await kodaxHost.fork(src, 5);
-  assert.ok(result);
+  assert.ok(result && 'newSessionId' in result);
   const child = kodaxHost.get(result.newSessionId);
   assert.equal(child?.parentSessionId, src);
   assert.equal(child?.forkPointTurnIdx, 5);
@@ -450,7 +570,7 @@ test('fork: child title is "<src title> (fork)" when source has title', async ()
   await kodaxHost.setTitle(src, 'Investigate bug');
   seedPersistedSession(src, 'C:\\tmp\\proj', 'Investigate bug');
   const result = await kodaxHost.fork(src, 0);
-  assert.ok(result);
+  assert.ok(result && 'newSessionId' in result);
   assert.equal(kodaxHost.get(result.newSessionId)?.title, 'Investigate bug (fork)');
 });
 
@@ -463,11 +583,11 @@ test('fork: title does not accumulate "(fork) (fork)" on repeat fork', async () 
   await kodaxHost.setTitle(src, 'X');
   seedPersistedSession(src, 'C:\\tmp\\proj', 'X');
   const r1 = await kodaxHost.fork(src, 0);
-  assert.ok(r1);
+  assert.ok(r1 && 'newSessionId' in r1);
   assert.equal(kodaxHost.get(r1.newSessionId)?.title, 'X (fork)');
   // fork 第一次的 child（title 已是 "X (fork)") 再 fork 一次——不应变 "X (fork) (fork)"
   const r2 = await kodaxHost.fork(r1.newSessionId, 0);
-  assert.ok(r2);
+  assert.ok(r2 && 'newSessionId' in r2);
   assert.equal(kodaxHost.get(r2.newSessionId)?.title, 'X (fork)');
 });
 
@@ -480,7 +600,7 @@ test('fork: child title stays undefined when source has none', async () => {
   // 不调 setTitle / send，title 保持 undefined
   seedPersistedSession(src, 'C:\\tmp\\proj', ''); // SDK title fallback 到空串
   const result = await kodaxHost.fork(src, 0);
-  assert.ok(result);
+  assert.ok(result && 'newSessionId' in result);
   // F038 行为：src title undefined → fork 不加 "(fork)" 后缀；child title 也是 undefined
   assert.equal(kodaxHost.get(result.newSessionId)?.title, undefined);
 });
@@ -493,7 +613,7 @@ test('fork: source and child have different sessionIds, both listed in-flight', 
   });
   seedPersistedSession(src, 'C:\\tmp\\proj');
   const result = await kodaxHost.fork(src, 0);
-  assert.ok(result);
+  assert.ok(result && 'newSessionId' in result);
   assert.notEqual(result.newSessionId, src);
   const ids = kodaxHost.listInFlight().map((s) => s.sessionId);
   assert.ok(ids.includes(src));
@@ -710,7 +830,7 @@ test('fork: resolves turn index to the completed turn end selector', async () =>
   ]);
 
   const result = await kodaxHost.fork(sessionId, 0);
-  assert.ok(result);
+  assert.ok(result && 'newSessionId' in result);
   assert.equal(mockState.lastForkSelector(), 'a0_final');
 });
 

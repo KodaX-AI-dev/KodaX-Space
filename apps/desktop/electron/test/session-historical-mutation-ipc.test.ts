@@ -105,6 +105,7 @@ test('session.fork resumes a persisted-only Session and preserves its exact hist
       historyBoundary,
     });
 
+    assert.ok('newSessionId' in result);
     assert.equal(result.newSessionId, 's_persisted_fork_child');
     assert.equal(kodaxHost.get(sessionId)?.sessionId, sessionId);
     assert.deepEqual(receivedBoundary, {

@@ -71,7 +71,9 @@ import type {
   ClientStartupProgress,
   ClientSessionView,
   ClientHistoryPage,
+  ClientHistoryResyncReason,
   ClientHistorySearchResult,
+  ClientHistoryTurnResolution,
   ClientWorkflowStartInput,
   ClientCommandResult,
   ClientSubmitInput,
@@ -496,6 +498,22 @@ function runtimeErrorCode(error: unknown): string | undefined {
   return error && typeof error === 'object' && 'code' in error
     ? String((error as { readonly code?: unknown }).code)
     : undefined;
+}
+
+const HISTORY_RESYNC_REASONS = new Set<string>([
+  'revision_mismatch',
+  'source_changed',
+  'selection_expired',
+  'head_changed',
+] satisfies ClientHistoryResyncReason[]);
+
+/** Typed SDK history resync reason; never inferred from error text. */
+export function historyTurnChangedReason(error: unknown): ClientHistoryResyncReason | undefined {
+  if (runtimeErrorCode(error) !== 'resync_required') return undefined;
+  const reason = (error as { readonly data?: { readonly reason?: unknown } }).data?.reason;
+  return typeof reason === 'string' && HISTORY_RESYNC_REASONS.has(reason)
+    ? (reason as ClientHistoryResyncReason)
+    : 'source_changed';
 }
 
 function isRuntimeResyncRequired(error: unknown): boolean {
@@ -1763,27 +1781,7 @@ async function createPublishedRuntime(
   options: SpaceRuntimeConnectOptions,
 ): Promise<KodaXDaemonRuntime> {
   const sdk = await import('@kodax-ai/kodax/runtime');
-  assertSpaceRuntimeSdkRequiredCapabilities(
-    sdk as typeof sdk & {
-      readonly KODAX_RUNTIME_SDK_CAPABILITIES?: {
-        readonly actorSettlementConvergence?: number;
-        readonly conversationHistory?: number;
-        readonly crashOutcomeModel?: number;
-        readonly daemonOrphanExit?: number;
-        readonly daemonShutdownVerification?: number;
-        readonly effectiveConfig?: number;
-        readonly managedRunDurability?: number;
-        readonly productClient?: number;
-        readonly sessionDrafts?: number;
-        readonly runtimeEventCoalescing?: number;
-        readonly runtimeAutoModeGuardrail?: number;
-        readonly sandboxRuntime?: number;
-
-        readonly sharedSessionSettings?: number;
-        readonly liveOutputSegments?: number;
-      };
-    },
-  );
+  assertSpaceRuntimeSdkRequiredCapabilities(sdk);
   const { autoStart, endpoint, transport, ...startup } = options;
   return withDarwinRuntimeDaemonTmpdir(process.platform, () =>
     autoStart
@@ -1805,6 +1803,8 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
     readonly productClient?: number;
     readonly productInputRecovery?: number;
     readonly productExecutionModeConstraint?: number;
+    readonly productHistoryLocation?: number;
+    readonly productHistoryTurnResolution?: number;
     readonly sessionDrafts?: number;
     readonly runtimeEventCoalescing?: number;
     readonly runtimeAutoModeGuardrail?: number;
@@ -1828,6 +1828,10 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
     ...(capabilities?.productExecutionModeConstraint === 1
       ? []
       : ['productExecutionModeConstraint v1']),
+    ...((capabilities?.productHistoryLocation ?? 0) >= 2 ? [] : ['productHistoryLocation v2']),
+    ...((capabilities?.productHistoryTurnResolution ?? 0) >= 2
+      ? []
+      : ['productHistoryTurnResolution v2']),
     ...(capabilities?.sessionDrafts === 1 ? [] : ['sessionDrafts v1']),
     ...(capabilities?.runtimeEventCoalescing === 1 ? [] : ['runtimeEventCoalescing v1']),
     ...((capabilities?.runtimeAutoModeGuardrail ?? 0) >= 6 ? [] : ['runtimeAutoModeGuardrail v6']),
@@ -2530,6 +2534,8 @@ export class RuntimeHostAdapter {
         sessionPromotion: 1,
         productActorAuthorization: 1,
         productHistoryBoundaries: 1,
+        productHistoryLocation: 2,
+        productHistoryTurnResolution: 2,
         productExitControl: 1,
         productExecutionFacts: 1,
         liveOutputSegments: 1,
@@ -4206,7 +4212,7 @@ export class RuntimeHostAdapter {
     const runtime = await this.requireRuntime();
     if (
       !runtime.sessions.resolveHistoryTurn ||
-      !runtimeCapabilityVersion(runtime, 'productHistoryTurnResolution')
+      runtimeCapabilityVersion(runtime, 'productHistoryTurnResolution') < 2
     )
       return { status: 'unsupported' };
     if (
@@ -4226,18 +4232,37 @@ export class RuntimeHostAdapter {
               revision: selector.revision!,
             }
           : { ...selector, source: 'view' as const };
-    const result = await runtime.sessions.resolveHistoryTurn(sessionId, selected);
+    let result: ClientHistoryTurnResolution;
+    try {
+      result = await runtime.sessions.resolveHistoryTurn(sessionId, selected, {
+        timeoutMs: RUNTIME_READ_TIMEOUT_MS,
+      });
+    } catch (error) {
+      const reason = historyTurnChangedReason(error);
+      if (reason) return { status: 'stale', reason };
+      throw error;
+    }
     if (result.status !== 'ready') return result;
     const activeRunId = (await this.findActiveRunId(sessionId)) ?? null;
-    if (this.runtime !== runtime) return { status: 'stale' };
-    return { ...result, activeRunId };
+    if (this.runtime !== runtime) return { status: 'stale', reason: 'runtime_changed' };
+    const { historyBoundary, startBoundary, expectedHead, turnIndex, excerpt, hasLaterTurn } =
+      result;
+    return {
+      status: 'ready',
+      turn: { sessionId: result.sessionId, historyBoundary, startBoundary, expectedHead },
+      activeRunId,
+      turnIndex,
+      excerpt,
+      hasLaterTurn,
+    };
   }
 
   async forkSession(input: RuntimeForkSessionInput) {
     const runtime = await this.requireRuntime();
     await this.assertHostSession(runtime, input.sessionId);
     const newSessionId =
-      input.newSessionId ?? (input.historyBoundary ? await generateKodaxSessionId() : undefined);
+      input.newSessionId ??
+      (input.turn || input.historyBoundary ? await generateKodaxSessionId() : undefined);
     const result = await runtime.sessions
       .fork({ ...input, ...(newSessionId ? { newSessionId } : {}) })
       .catch(async (error: unknown) => {
@@ -4318,14 +4343,15 @@ export class RuntimeHostAdapter {
     const runtime = await this.requireRuntime();
     await this.assertHostSession(runtime, input.sessionId);
     const result = await runtime.sessions.rewind(input).catch(async (error: unknown) => {
-      if (!input.historyBoundary || !isRuntimeDaemonDisconnectFailure(error)) throw error;
+      const targetEntryId = (input.turn?.historyBoundary ?? input.historyBoundary)?.entryId;
+      if (!targetEntryId || !isRuntimeDaemonDisconnectFailure(error)) throw error;
       const checked = await this.resolveHistoryTurn(input.sessionId, { kind: 'latest' }).catch(
         () => undefined,
       );
       if (
         checked?.status === 'ready' &&
-        checked.historyBoundary.entryId === input.historyBoundary.entryId &&
-        checked.expectedHead === input.historyBoundary.entryId &&
+        checked.turn.historyBoundary.entryId === targetEntryId &&
+        checked.turn.expectedHead === targetEntryId &&
         !checked.activeRunId
       ) {
         return (await this.requireRuntime()).sessions.load(input.sessionId);
@@ -4693,14 +4719,15 @@ export class RuntimeHostAdapter {
   ): Promise<(Omit<ClientHistoryPage, 'items'> & { items: SessionProductItem[] }) | null> {
     // First observation can update SDK-owned Session metadata. Establish it before capturing
     // the newest history revision so its continuation cursor is not stale on arrival.
-    if (around && runtimeCapabilityVersion(runtime, 'productHistoryLocation') < 1) return null;
+    if (around && runtimeCapabilityVersion(runtime, 'productHistoryLocation') < 2) return null;
     if (cursor === undefined && refreshView && !around)
       await this.readSessionProductView(sessionId);
-    const page = await runtime.sessions.readHistory(sessionId, {
-      ...(cursor ? { cursor } : {}),
-      ...(around ? { around } : {}),
-      limit: around ? 30 : 150,
-    });
+    const page = await runtime.sessions.readHistory(
+      sessionId,
+      around
+        ? { around, limit: 30, timeoutMs: RUNTIME_READ_TIMEOUT_MS }
+        : { ...(cursor ? { cursor } : {}), limit: 150, timeoutMs: RUNTIME_READ_TIMEOUT_MS },
+    );
     return page
       ? {
           ...page,

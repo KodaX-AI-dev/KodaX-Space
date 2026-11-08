@@ -15,16 +15,33 @@ type Selector = ChannelInput<'session.resolveHistoryTurn'>['selector'];
 type Target = Extract<ChannelOutput<'session.resolveHistoryTurn'>, { status: 'ready' }>;
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 const pending = new Set<string>();
-const unavailableReason: Readonly<Record<string, MessageKey | undefined>> = {
+type UnavailableReason = Extract<
+  ChannelOutput<'session.resolveHistoryTurn'>,
+  { status: 'unavailable' }
+>['reason'];
+const unavailableReason: Readonly<Record<UnavailableReason, MessageKey>> = {
   no_previous_turn: 'menu.session.noEarlierTurn',
   no_turns: 'session.turnEmpty',
   turn_not_found: 'session.turnIndexMissing',
   unresolved_history: 'session.turnHistoryIncomplete',
   not_canonical: 'session.turnNotOnBranch',
+  incomplete_turn: 'session.turnIncomplete',
+  unproven_source: 'session.turnUnavailable',
+  item_not_found: 'session.turnUnavailable',
+};
+
+type RewindFailure = NonNullable<ChannelOutput<'session.rewind'>['reason']>;
+const rewindFailureMessage: Readonly<Partial<Record<RewindFailure, MessageKey>>> = {
+  target_changed: 'session.turnChanged',
+  session_busy: 'session.turnRewindBusy',
+  stop_unconfirmed: 'session.turnStopUnconfirmed',
+  stopped_history_changed: 'session.turnStoppedConflict',
+  stopped_write_unknown: 'session.turnStoppedUnknown',
+  write_unknown: 'session.turnWriteUnknown',
 };
 
 export function usesProductHistoryActions(session: SessionMeta | undefined): boolean {
-  return session !== undefined && session.provider !== 'mock' && session.surface !== 'partner';
+  return session !== undefined && session.provider !== 'mock';
 }
 
 export function commandHistoryTurnSelector(
@@ -76,7 +93,7 @@ export async function performHistoryTurnAction(
           ? 'session.turnUnsupported'
           : target.status === 'stale'
             ? 'session.turnChanged'
-            : (unavailableReason[target.reason ?? ''] ?? 'session.turnUnavailable');
+            : unavailableReason[target.reason];
       pushToast(t(key), 'warning');
       return;
     }
@@ -95,13 +112,6 @@ export async function performHistoryTurnAction(
   }
 }
 
-function ipcBoundary(target: Target) {
-  return {
-    boundaryId: target.historyBoundary.entryId,
-    sourceRevision: target.historyBoundary.sourceRevision,
-  };
-}
-
 async function forkResolvedTurn(
   session: SessionMeta,
   target: Target,
@@ -115,9 +125,13 @@ async function forkResolvedTurn(
   const result = await window.kodaxSpace!.invoke('session.fork', {
     sessionId: session.sessionId,
     forkPointTurnIdx: target.turnIndex,
-    historyBoundary: ipcBoundary(target),
+    turn: target.turn,
   });
   if (!result.ok) throw new Error(result.error.message);
+  if ('changed' in result.data) {
+    pushToast(t('session.turnChanged'), 'warning');
+    return;
+  }
   const child: SessionMeta = {
     sessionId: result.data.newSessionId,
     parentSessionId: session.sessionId,
@@ -177,24 +191,12 @@ async function rewindResolvedTurn(
   const result = await window.kodaxSpace!.invoke('session.rewind', {
     sessionId: session.sessionId,
     rewindPastTurnIdx: target.turnIndex,
-    historyBoundary: ipcBoundary(target),
-    confirmedTurn: { selector, expectedHead: target.expectedHead, activeRunId: target.activeRunId },
+    confirmedTurn: { selector, turn: target.turn, activeRunId: target.activeRunId },
   });
   if (!result.ok) throw new Error(result.error.message);
   if (!result.data.ok || !result.data.diskRewound) {
     const reason = result.data.reason;
-    const key =
-      reason === 'target_changed'
-        ? 'session.turnChanged'
-        : reason === 'stop_unconfirmed'
-          ? 'session.turnStopUnconfirmed'
-          : reason === 'stopped_history_changed'
-            ? 'session.turnStoppedConflict'
-            : reason === 'stopped_write_unknown'
-              ? 'session.turnStoppedUnknown'
-              : reason === 'write_unknown'
-                ? 'session.turnWriteUnknown'
-                : 'menu.session.rewindDiskNotRewound';
+    const key = (reason && rewindFailureMessage[reason]) ?? 'menu.session.rewindDiskNotRewound';
     pushToast(t(key), 'warning');
     return;
   }

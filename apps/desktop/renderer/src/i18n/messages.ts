@@ -2862,6 +2862,9 @@ export const messages = {
     'session.turnNotOnBranch': 'This record has no verified position on the current branch.',
     'session.turnChanged': 'The selected history or active run changed. Select the turn again.',
     'session.turnForkBusy': 'Wait for the active run to finish before creating a branch.',
+    'session.turnRewindBusy': 'Wait for the active work to finish before rewinding.',
+    'session.turnIncomplete':
+      'This turn has an unfinished tool call. Choose a completed turn instead.',
     'session.turnConfirm':
       'Keep the turn “{excerpt}” and discard later conversation history? Workspace files will keep their current contents.',
     'session.turnStopRewind': 'Stop current run and rewind',
@@ -5833,6 +5836,8 @@ export const messages = {
     'session.turnNotOnBranch': '无法确认这条记录在当前分支中的位置。',
     'session.turnChanged': '所选历史或当前运行已变化，请重新选择。',
     'session.turnForkBusy': '请等当前运行结束后再创建分支。',
+    'session.turnRewindBusy': '请等当前工作结束后再回退。',
+    'session.turnIncomplete': '这一轮还有未完成的工具调用，请选择一轮已完成的对话。',
     'session.turnConfirm': '保留“{excerpt}”这一轮，截断其后的会话记录？工作区文件保持当前内容。',
     'session.turnStopRewind': '停止当前运行并回退',
     'session.turnStopUnconfirmed': '尚未确认运行已停止，本次未回退历史。',

@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { useConfirmStore } from '../store/confirmStore.js';
-import { commandHistoryTurnSelector, performHistoryTurnAction } from './historyTurnAction.js';
+import {
+  commandHistoryTurnSelector,
+  performHistoryTurnAction,
+  usesProductHistoryActions,
+} from './historyTurnAction.js';
 import { useAppStore } from '../store/appStore.js';
-import type { SessionMeta } from '@kodax-space/space-ipc-schema';
+import type { HistoryTurnTarget, SessionMeta } from '@kodax-space/space-ipc-schema';
+import { useToastStore } from '../store/toastStore.js';
+
+function turn(sessionId: string, entryId = 'tail', expectedHead: string | null = entryId) {
+  const target: HistoryTurnTarget = {
+    sessionId,
+    historyBoundary: { entryId, sourceRevision: 'snapshot', kind: 'turn_end' },
+    startBoundary: { entryId: `${entryId}-start`, sourceRevision: 'snapshot' },
+    expectedHead,
+  };
+  return target;
+}
 
 test('an old-window rewind confirms its SDK excerpt and submits the frozen head and global turn', async () => {
   const calls: Array<{ channel: string; input: unknown }> = [];
@@ -29,8 +44,7 @@ test('an old-window rewind confirms its SDK excerpt and submits the frozen head 
                   excerpt: 'Question forty-one',
                   turnIndex: 40,
                   hasLaterTurn: true,
-                  historyBoundary: { entryId: 'tail', sourceRevision: 'snapshot' },
-                  expectedHead: 'seen-head',
+                  turn: turn('s', 'tail', 'seen-head'),
                   activeRunId: null,
                 },
               }
@@ -55,8 +69,7 @@ test('an old-window rewind confirms its SDK excerpt and submits the frozen head 
       input: {
         sessionId: 's',
         rewindPastTurnIdx: 40,
-        historyBoundary: { boundaryId: 'tail', sourceRevision: 'snapshot' },
-        confirmedTurn: { selector, expectedHead: 'seen-head', activeRunId: null },
+        confirmedTurn: { selector, turn: turn('s', 'tail', 'seen-head'), activeRunId: null },
       },
     });
   } finally {
@@ -95,11 +108,10 @@ test('fork installs the SDK child without inheriting unrelated source counts or 
                 data: {
                   status: 'ready',
                   turnIndex: 40,
-                  expectedHead: 'head',
                   activeRunId: null,
                   hasLaterTurn: true,
                   excerpt: 'Question 41',
-                  historyBoundary: { entryId: 'tail', sourceRevision: 's' },
+                  turn: turn('parent'),
                 },
               }
             : { ok: true, data: { newSessionId: 'verified-child', createdAt: 18 } },
@@ -118,6 +130,15 @@ test('fork installs the SDK child without inheriting unrelated source counts or 
     if (saved) Object.defineProperty(globalThis, 'window', saved);
     else Reflect.deleteProperty(globalThis, 'window');
   }
+});
+
+test('Coder and Partner Runtime sessions use SDK turns; Mock keeps its scripted path', () => {
+  const session = (surface: SessionMeta['surface'], provider: string) =>
+    ({ sessionId: 's', surface, provider }) as SessionMeta;
+  assert.equal(usesProductHistoryActions(session('code', 'live')), true);
+  assert.equal(usesProductHistoryActions(session('partner', 'live')), true);
+  assert.equal(usesProductHistoryActions(session('partner', 'mock')), false);
+  assert.equal(usesProductHistoryActions(undefined), false);
 });
 
 test('command turn selectors keep zero-based indices and reject ambiguous input', () => {
@@ -151,9 +172,8 @@ test('a delayed target cannot open a rewind dialog after switching away and back
               hasLaterTurn: true,
               excerpt: 'Obsolete question',
               turnIndex: 1,
-              historyBoundary: { entryId: 'old', sourceRevision: 'r' },
+              turn: turn('s', 'old'),
               activeRunId: null,
-              expectedHead: 'head',
             },
           };
         },
@@ -175,6 +195,45 @@ test('a delayed target cannot open a rewind dialog after switching away and back
     assert.deepEqual(requests, ['session.resolveHistoryTurn']);
   } finally {
     useAppStore.setState(before);
+    if (saved) Object.defineProperty(globalThis, 'window', saved);
+    else Reflect.deleteProperty(globalThis, 'window');
+  }
+});
+
+test('expired SDK turns and incomplete tool turns explain the next action', async () => {
+  const saved = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const forkInputs: unknown[] = [];
+  let resolution: unknown = {
+    status: 'ready',
+    turnIndex: 2,
+    activeRunId: null,
+    hasLaterTurn: false,
+    excerpt: 'Question 3',
+    turn: turn('s'),
+  };
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      kodaxSpace: {
+        invoke: async (channel: string, input: unknown) => {
+          if (channel === 'session.resolveHistoryTurn') return { ok: true, data: resolution };
+          forkInputs.push(input);
+          return { ok: true, data: { changed: 'revision_mismatch' } };
+        },
+      },
+    },
+  });
+  const session = { sessionId: 's', surface: 'code' } as SessionMeta;
+  const toasts = () => useToastStore.getState().toasts.map((toast) => toast.message);
+  try {
+    await performHistoryTurnAction(session, 'fork', { kind: 'latest' }, (key) => key);
+    assert.deepEqual(forkInputs, [{ sessionId: 's', forkPointTurnIdx: 2, turn: turn('s') }]);
+    assert.equal(toasts().at(-1), 'session.turnChanged');
+    resolution = { status: 'unavailable', reason: 'incomplete_turn' };
+    await performHistoryTurnAction(session, 'fork', { kind: 'latest' }, (key) => key);
+    assert.equal(toasts().at(-1), 'session.turnIncomplete');
+    assert.equal(forkInputs.length, 1);
+  } finally {
     if (saved) Object.defineProperty(globalThis, 'window', saved);
     else Reflect.deleteProperty(globalThis, 'window');
   }

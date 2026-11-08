@@ -209,6 +209,7 @@ export {
   type SessionImageAttachment,
   type SessionSendQueueMode,
   type SessionSendRejectionReason,
+  type HistoryTurnTarget,
 } from './channels/session.js';
 
 export {

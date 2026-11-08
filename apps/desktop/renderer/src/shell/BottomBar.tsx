@@ -1905,8 +1905,9 @@ export function BottomBar(): JSX.Element {
         { sessionId, forkPointTurnIdx, ...(historyBoundary ? { historyBoundary } : {}) },
         { timeoutMs: null },
       );
-      if (!r.ok) {
-        appendUserMessage(sessionId, `[fork] failed: ${r.error?.message ?? 'unknown'}`);
+      if (!r.ok || 'changed' in r.data) {
+        const message = r.ok ? t('session.turnChanged') : (r.error?.message ?? 'unknown');
+        appendUserMessage(sessionId, `[fork] failed: ${message}`);
         return;
       }
       const childTitle =

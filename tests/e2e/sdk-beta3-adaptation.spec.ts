@@ -30,7 +30,7 @@ async function prepareProjectRules(root: string) {
   await writeFile(path.join(root, 'AGENTS.md'), 'PROJECT_AGENTS_KEEP');
 }
 
-test('beta.3 rules reach Coder and Partner while instruction editing preserves every fragment', async () => {
+test('SDK rules reach Coder and Partner while exact AGENTS.md editing preserves every fragment', async () => {
   const provider = await createLocalSdkProvider();
   const { space, projectRoot } = await launchRealSdkSpace(
     `beta3-rules-${Date.now()}`,
@@ -78,15 +78,16 @@ async function assertContextSources(space: Space, sessionId: string, projectRoot
   );
   expect(context.ok).toBe(true);
   if (!context.ok) throw new Error(context.error.message);
-  expect(context.data.files).toHaveLength(27);
-  expect(
-    context.data.files
-      .filter((file) => file.editableScope)
-      .map((file) => file.path)
-      .sort(),
-  ).toEqual(
+  // beta.4 loads rule fragments into Host instructions separately from editable AGENTS.md.
+  expect(context.data.files).toHaveLength(2);
+  expect(context.data.files.map((file) => file.path).sort()).toEqual(
     [path.join(space.testDataDir, 'AGENTS.md'), path.join(projectRoot, 'AGENTS.md')].sort(),
   );
+  expect(context.data.targets).toEqual({
+    global: path.join(space.testDataDir, 'AGENTS.md'),
+    project: path.join(projectRoot, 'AGENTS.md'),
+    projectKodax: path.join(projectRoot, '.kodax', 'AGENTS.md'),
+  });
 }
 
 async function assertSourceFiles(space: Space, projectRoot: string) {
@@ -135,7 +136,7 @@ async function verifyHostContracts(space: Space, sessionId: string) {
     expect(
       typeof capability === 'number' ? capability : capability?.version,
       name,
-    ).toBeGreaterThanOrEqual(1);
+    ).toBeGreaterThanOrEqual(name.startsWith('productHistory') ? 2 : 1);
   }
   expect(facts.workModeLocked).toBe(true);
   const executable = await space.app.evaluate(({ app }) => ({
@@ -155,9 +156,10 @@ async function editProjectInstructions(space: Space, projectRoot: string) {
   await space.page.getByRole('button', { name: 'Activity views', exact: true }).click();
   await space.page.getByRole('button', { name: 'Agents', exact: true }).click();
   const panel = space.page.getByTestId('popout-agents');
-  await expect(panel.getByText('GLOBAL_FRAGMENT_KEEP', { exact: true })).toBeVisible();
+  await expect(panel.getByText('GLOBAL_AGENTS_KEEP', { exact: true })).toBeVisible();
+  await expect(panel.getByText('GLOBAL_FRAGMENT_KEEP', { exact: true })).toHaveCount(0);
   await panel.screenshot({ path: test.info().outputPath('beta3-instructions.png') });
-  await expect(panel.getByRole('button', { name: /Edit$/ })).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: /Edit$/ })).toHaveCount(1);
   await panel
     .getByRole('button')
     .and(panel.getByTitle(path.join(projectRoot, 'AGENTS.md'), { exact: true }))

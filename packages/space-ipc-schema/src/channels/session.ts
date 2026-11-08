@@ -773,14 +773,12 @@ export const sessionSetProviderChannel = {
 //   - 'project'   ${projectRoot}/AGENTS.md
 //   - 'directory' 暂不扫，留扩展位（KodaX REPL cwd→root 递归 + .kodax 子目录 用过）
 //
-// content 上限：256KB / file（main loader 已 truncate + marker），数组 ≤ 16 file
+// content 上限：256KB / file（main loader 已 truncate + marker），数组 ≤ 512 file
 // 兜底 DoS。
 const agentsFileSchema = z.object({
   path: z.string().min(1).max(4096),
   content: z.string().max(262_144 + 64),
   scope: z.enum(['global', 'project', 'directory']),
-  /** Main proves this file is one of the two fixed AGENTS.md save targets. */
-  editableScope: z.enum(['global', 'project']).optional(),
 });
 
 export const sessionAgentsMdChannel = {
@@ -792,6 +790,12 @@ export const sessionAgentsMdChannel = {
   output: z.object({
     // SDK Markdown fragments are bounded by bytes per scope, not sixteen files.
     files: z.array(agentsFileSchema).max(512),
+    /** Main-proven AGENTS.md paths; global/project are also the create targets. */
+    targets: z.object({
+      global: z.string().min(1).max(4096),
+      project: z.string().min(1).max(4096),
+      projectKodax: z.string().min(1).max(4096),
+    }),
   }),
 } as const;
 
@@ -799,23 +803,17 @@ export type AgentsFileMeta = z.infer<typeof agentsFileSchema>;
 
 // ---- Invoke: session.agentsMd.save ---- (FEATURE_034 inline edit, REPL /memory 等价)
 //
-// /memory 命令的写入路径: 用户在 AgentsMdPanel ContextTab 切到 edit mode → 改内容 → Save。
-// main 端只允许写两个 scope:
-//   - 'global'  → ~/.kodax/AGENTS.md  (KodaX 全局 context)
-//   - 'project' → <session.projectRoot>/AGENTS.md
-// 加载来源的 scope 不授予写入；Main 仅为两个固定目标提供 editableScope。
-//
-// 安全:
-//   - sessionId 必须存在 (host.get 命中) — 通过 IPC handler 限定 projectRoot 来源
-//   - scope 是 'global' | 'project' 二选一 — 不允许 renderer 传任意路径
-//   - content 256KB 上限 - DoS guard,同 agentsFileSchema.content max
-//   - main 端原子写 (tmp → rename),与 KodaX REPL /memory 同语义
+// 按精确路径保存。SDK scope 表示优先级而不是文件位置（<projectRoot>/AGENTS.md 是
+// 'directory'，<projectRoot>/.kodax/AGENTS.md 才是 'project'），所以不能从 scope 推路径。
+// main 只允许三个目标：~/.kodax/AGENTS.md、<projectRoot>/AGENTS.md、
+// <projectRoot>/.kodax/AGENTS.md；其他路径一律拒绝。原子写 (tmp → rename)，256KB 上限。
 export const sessionAgentsMdSaveChannel = {
   name: 'session.agentsMd.save',
   direction: 'invoke',
   input: z.object({
     sessionId: z.string().min(1),
-    scope: z.enum(['global', 'project']),
+    /** Exact AGENTS.md path from session.agentsMd files[].path or targets. */
+    path: z.string().min(1).max(4096),
     /** 文件完整内容 (替换写入,不是 patch)。最大 256KB,与 agentsFile.content 限制一致 */
     content: z.string().max(262_144),
   }),
@@ -1141,6 +1139,47 @@ const turnSelectorSchema = z.discriminatedUnion('kind', [
     outputId: z.string().min(1).max(4096).optional(),
   }),
 ]);
+/** SDK productHistoryTurnResolution v2 target; Space passes it back unchanged. */
+export interface HistoryTurnTarget {
+  readonly sessionId: string;
+  readonly historyBoundary: {
+    readonly entryId: string;
+    readonly sourceRevision: string;
+    readonly kind: 'turn_end';
+  };
+  readonly startBoundary: { readonly entryId: string; readonly sourceRevision: string };
+  readonly expectedHead: string | null;
+}
+const sdkHistoryBoundaryShape = {
+  entryId: z.string().min(1).max(4096),
+  sourceRevision: z.string().min(1).max(256),
+};
+const historyTurnTargetSchema: z.ZodType<HistoryTurnTarget> = z
+  .object({
+    sessionId: z.string().min(1),
+    historyBoundary: z.object({ ...sdkHistoryBoundaryShape, kind: z.literal('turn_end') }).strict(),
+    startBoundary: z.object(sdkHistoryBoundaryShape).strict(),
+    expectedHead: z.string().min(1).max(4096).nullable(),
+  })
+  .strict();
+const HISTORY_TURN_UNAVAILABLE_REASONS = [
+  'unresolved_history',
+  'no_turns',
+  'no_previous_turn',
+  'turn_not_found',
+  'unproven_source',
+  'item_not_found',
+  'not_canonical',
+  'incomplete_turn',
+] as const;
+/** SDK resync reasons plus Space's own Runtime replacement fence. */
+const HISTORY_TURN_CHANGED_REASONS = [
+  'revision_mismatch',
+  'source_changed',
+  'selection_expired',
+  'head_changed',
+  'runtime_changed',
+] as const;
 export const sessionResolveHistoryTurnChannel = {
   name: 'session.resolveHistoryTurn',
   direction: 'invoke',
@@ -1148,18 +1187,17 @@ export const sessionResolveHistoryTurnChannel = {
   output: z.discriminatedUnion('status', [
     z.object({
       status: z.literal('ready'),
-      historyBoundary: z.object({
-        entryId: z.string().min(1),
-        sourceRevision: z.string().min(1),
-      }),
-      expectedHead: z.string().nullable(),
+      turn: historyTurnTargetSchema,
       activeRunId: z.string().nullable(),
       turnIndex: absoluteTurnIndexSchema,
       excerpt: z.string(),
       hasLaterTurn: z.boolean(),
     }),
-    z.object({ status: z.literal('stale'), reason: z.string().optional() }),
-    z.object({ status: z.literal('unavailable'), reason: z.string().optional() }),
+    z.object({ status: z.literal('stale'), reason: z.enum(HISTORY_TURN_CHANGED_REASONS) }),
+    z.object({
+      status: z.literal('unavailable'),
+      reason: z.enum(HISTORY_TURN_UNAVAILABLE_REASONS),
+    }),
     z.object({ status: z.literal('unsupported') }),
   ]),
 } as const;
@@ -1170,12 +1208,19 @@ export const sessionForkChannel = {
   input: z.object({
     sessionId: z.string().min(1),
     forkPointTurnIdx: absoluteTurnIndexSchema,
+    /** Legacy message boundary for Sessions without SDK turn resolution (mock/Partner). */
     historyBoundary: conversationHistoryBoundarySchema.optional(),
+    /** Ready resolveHistoryTurn target; mutually exclusive with historyBoundary. */
+    turn: historyTurnTargetSchema.optional(),
   }),
-  output: z.object({
-    newSessionId: z.string().min(1),
-    createdAt: z.number().int().nonnegative(),
-  }),
+  output: z.union([
+    z.object({
+      newSessionId: z.string().min(1),
+      createdAt: z.number().int().nonnegative(),
+    }),
+    /** The SDK rejected the resolved turn as expired; reselect before forking again. */
+    z.object({ changed: z.enum(HISTORY_TURN_CHANGED_REASONS) }),
+  ]),
 } as const;
 
 // ---- Invoke: session.rewind ---- (FEATURE_033 in-memory)
@@ -1194,10 +1239,11 @@ export const sessionRewindChannel = {
     sessionId: z.string().min(1),
     rewindPastTurnIdx: absoluteTurnIndexSchema,
     historyBoundary: conversationHistoryBoundarySchema.optional(),
+    /** User-confirmed SDK turn; Main re-resolves the selector and requires the same target. */
     confirmedTurn: z
       .object({
         selector: turnSelectorSchema,
-        expectedHead: z.string().nullable(),
+        turn: historyTurnTargetSchema,
         activeRunId: z.string().nullable(),
       })
       .optional(),

@@ -343,6 +343,12 @@ const extensionInvokeChannels = {
   [sessionPartnerExpertSetChannel.name]: sessionPartnerExpertSetChannel,
 } as const;
 
+const historyTurnInvokeChannels = {
+  [sessionForkChannel.name]: sessionForkChannel,
+  [sessionResolveHistoryTurnChannel.name]: sessionResolveHistoryTurnChannel,
+  [sessionRewindChannel.name]: sessionRewindChannel,
+} as const;
+
 const sessionInvokeChannels = {
   [versionChannel.name]: versionChannel,
   [sandboxStatusChannel.name]: sandboxStatusChannel,
@@ -373,9 +379,6 @@ const sessionInvokeChannels = {
   [sessionSetProviderChannel.name]: sessionSetProviderChannel,
   [sessionSetPermissionModeChannel.name]: sessionSetPermissionModeChannel,
   [sessionSetAgentModeChannel.name]: sessionSetAgentModeChannel,
-  [sessionForkChannel.name]: sessionForkChannel,
-  [sessionResolveHistoryTurnChannel.name]: sessionResolveHistoryTurnChannel,
-  [sessionRewindChannel.name]: sessionRewindChannel,
   [sessionAgentsMdChannel.name]: sessionAgentsMdChannel,
   [sessionAgentsMdSaveChannel.name]: sessionAgentsMdSaveChannel,
   [sessionHistoryChannel.name]: sessionHistoryChannel,
@@ -577,6 +580,7 @@ const coreInvokeChannels = {
 // Keep the declaration type in named parts: flattening the growing registry exceeds
 // TypeScript's declaration serialization limit while losing none of the channel types.
 export const invokeChannels: typeof sessionInvokeChannels &
+  typeof historyTurnInvokeChannels &
   typeof coreInvokeChannels &
   typeof extensionInvokeChannels &
   typeof connectorInvokeChannels &
@@ -584,6 +588,7 @@ export const invokeChannels: typeof sessionInvokeChannels &
   typeof partnerComponentInvokeChannels = {
   ...partnerComponentInvokeChannels,
   ...sessionInvokeChannels,
+  ...historyTurnInvokeChannels,
   ...coreInvokeChannels,
   ...extensionInvokeChannels,
   ...connectorInvokeChannels,

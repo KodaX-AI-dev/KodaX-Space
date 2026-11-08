@@ -20,6 +20,7 @@ import {
   sessionForkChannel,
   sessionRewindChannel,
   sessionAgentsMdChannel,
+  sessionAgentsMdSaveChannel,
   sessionSetAgentModeChannel,
   sessionSetReasoningModeChannel,
 } from '../src/index.js';
@@ -1539,15 +1540,46 @@ test('session.agentsMd output accepts global + project scopes', () => {
   const out = {
     files: [
       { path: '/home/u/.kodax/AGENTS.md', content: '# global', scope: 'global' as const },
-      { path: '/proj/AGENTS.md', content: '# project', scope: 'project' as const },
+      { path: '/proj/.kodax/AGENTS.md', content: '# project', scope: 'project' as const },
     ],
+    targets: {
+      global: '/home/u/.kodax/AGENTS.md',
+      project: '/proj/AGENTS.md',
+      projectKodax: '/proj/.kodax/AGENTS.md',
+    },
   };
   assert.equal(sessionAgentsMdChannel.output.safeParse(out).success, true);
+  assert.equal(
+    sessionAgentsMdChannel.output.safeParse({ files: out.files }).success,
+    false,
+    'create targets are required so the renderer never infers paths from scope',
+  );
+});
+
+test('session.agentsMd.save saves an exact path instead of a scope', () => {
+  assert.equal(
+    sessionAgentsMdSaveChannel.input.safeParse({
+      sessionId: 's_1',
+      path: '/proj/.kodax/AGENTS.md',
+      content: '# x',
+    }).success,
+    true,
+  );
+  assert.equal(
+    sessionAgentsMdSaveChannel.input.safeParse({ sessionId: 's_1', scope: 'project', content: '' })
+      .success,
+    false,
+  );
 });
 
 test('session.agentsMd output rejects unknown scope', () => {
   const out = {
     files: [{ path: '/x/AGENTS.md', content: '', scope: 'workspace' }],
+    targets: {
+      global: '/g/AGENTS.md',
+      project: '/x/AGENTS.md',
+      projectKodax: '/x/.kodax/AGENTS.md',
+    },
   };
   assert.equal(sessionAgentsMdChannel.output.safeParse(out).success, false);
 });
@@ -1558,9 +1590,14 @@ test('session.agentsMd output enforces array cap (DoS guard)', () => {
     content: '',
     scope: 'project' as const,
   }));
+  const targets = {
+    global: '/g/AGENTS.md',
+    project: '/p0/AGENTS.md',
+    projectKodax: '/p0/.kodax/AGENTS.md',
+  };
   assert.equal(
-    sessionAgentsMdChannel.output.safeParse({ files: files.slice(0, 512) }).success,
+    sessionAgentsMdChannel.output.safeParse({ files: files.slice(0, 512), targets }).success,
     true,
   );
-  assert.equal(sessionAgentsMdChannel.output.safeParse({ files }).success, false);
+  assert.equal(sessionAgentsMdChannel.output.safeParse({ files, targets }).success, false);
 });

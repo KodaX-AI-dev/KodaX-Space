@@ -288,17 +288,13 @@ test('real canonical boundaries reject stale mutations and UI Rewind permits sub
           rewindPastTurnIdx: target.turnIndex,
           confirmedTurn: {
             selector: { kind: 'index', index: 0 },
-            expectedHead: target.expectedHead,
+            turn: target.turn,
             activeRunId: target.activeRunId,
-          },
-          historyBoundary: {
-            boundaryId: target.historyBoundary.entryId,
-            sourceRevision: target.historyBoundary.sourceRevision,
           },
         }),
       { id: sessionId, target: before.data },
     );
-    expect(stale.ok && stale.data.ok).toBe(false);
+    expect(stale.ok ? stale.data : stale.error).toEqual({ ok: false, reason: 'target_changed' });
     expect(
       (await readSdkHistory(space, sessionId)).items.filter((item) => item.type === 'user'),
     ).toHaveLength(2);
@@ -345,6 +341,78 @@ test('real canonical boundaries reject stale mutations and UI Rewind permits sub
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
       'SDK_REPLY:AFTER_REWIND',
     );
+    expect(provider.errors).toEqual([]);
+  } finally {
+    await provider.close();
+    await space.close();
+  }
+});
+
+async function partnerUserTurns(
+  space: Awaited<ReturnType<typeof launchRealSdkSpace>>['space'],
+  id: string,
+) {
+  const result = await space.page.evaluate(
+    (sessionId) =>
+      window.kodaxSpace!.invoke('session.history', {
+        sessionId,
+        requestId: crypto.randomUUID(),
+        expectedSurface: 'partner',
+      }),
+    id,
+  );
+  if (!result.ok || result.data.page?.outcome !== 'ready') return -1;
+  return (result.data.productItems ?? []).filter((item) => item.type === 'user').length;
+}
+
+test('a Runtime Partner session rewinds and forks through SDK turns and stays Partner', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space, projectRoot } = await launchRealSdkSpace(
+    `sdk-partner-${Date.now()}`,
+    provider.url,
+  );
+  try {
+    await space.page.getByRole('button', { name: 'Partner', exact: true }).click();
+    await sendSdkPrompt(space, 'PARTNER_FIRST');
+    const sessionId = await currentSdkSession(space);
+    const stream = space.page.getByTestId('conversation-stream');
+    await expect(stream).toContainText('SDK_REPLY:PARTNER_FIRST', { timeout: 20_000 });
+    await waitSdkIdle(space, sessionId);
+    await sendSdkPrompt(space, 'PARTNER_SECOND');
+    await expect(stream).toContainText('SDK_REPLY:PARTNER_SECOND', { timeout: 20_000 });
+    await waitSdkIdle(space, sessionId);
+    await expect.poll(() => partnerUserTurns(space, sessionId)).toBe(2);
+
+    await space.page
+      .getByRole('button', { name: 'Keep this turn and rewind later history', exact: true })
+      .first()
+      .click();
+    await space.page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Rewind to here', exact: true })
+      .click();
+    await expect.poll(() => partnerUserTurns(space, sessionId)).toBe(1);
+    await expect(stream).not.toContainText('PARTNER_SECOND');
+
+    await space.page
+      .getByRole('button', { name: 'Keep through this turn and create a branch', exact: true })
+      .last()
+      .click();
+    await expect.poll(() => currentSdkSession(space)).not.toBe(sessionId);
+    const forkId = await currentSdkSession(space);
+    await expect.poll(() => partnerUserTurns(space, forkId)).toBe(1);
+    const partnerSessions = await space.page.evaluate(async (root) => {
+      const listed = await window.kodaxSpace!.invoke('session.list', {
+        projectRoot: root,
+        surface: 'partner',
+      });
+      if (!listed.ok) throw new Error(listed.error.message);
+      return listed.data.sessions.map((session) => session.sessionId);
+    }, projectRoot);
+    expect(partnerSessions).toEqual(expect.arrayContaining([sessionId, forkId]));
+    await sendSdkPrompt(space, 'PARTNER_AFTER_FORK');
+    await expect(stream).toContainText('SDK_REPLY:PARTNER_AFTER_FORK', { timeout: 20_000 });
+    await expect(space.page.getByText(/exact history boundary/i)).toHaveCount(0);
     expect(provider.errors).toEqual([]);
   } finally {
     await provider.close();
