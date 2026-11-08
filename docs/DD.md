@@ -1,5 +1,7 @@
 # KodaX Space 详细设计
 
+> 2026-11-08 当前工作树：Registry SDK `0.7.97-beta.3`，见 [完整适配与验收](releases/kodax-beta3-space-adaptation.md)。工作模式仅首轮 Run 接纳前选择；历史定位与整轮操作按实际 Host 能力开放；规则片段保留独立来源。以下带日期的旧版本记录保持历史语境。
+
 > 2026-11-05 工作树更新：SDK 已锁定正式 Registry `0.7.97-beta.2`，当前实现与验收以 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md) 为准；下列 alpha.4/beta.1 基线是已发布版本记录，本轮不替换公开标签或安装包。Workflow 作为用户显式单次功能，不再提供保存、修改等管理。
 
 2026-11-07 设置导航源码优化：F147 改为分组直达页面，MCP/技能/外部 Agent 独立可见，外观独立，压缩与 Workflow 限制同页，健康/迁移/诊断归排障，版本/更新/授权归关于。六个旧设置输入在边界映射，内部页面状态不复用旧 runtime 类别；面板首访挂载、访问后保留本次打开期间的草稿，共享读取不重置表单。配置写入与会话语义不变，不增加模型调用。设计与证据见 [实施记录](research/settings-navigation-implementation-2026-11-07.md)。下方六分类描述保留为已发布 alpha.4 的历史基线。
@@ -14,7 +16,7 @@ F147（工作区与设置集成纳入 alpha.4）：Shell 内设置工作面复�
 
 ## alpha.4 产品边界
 
-真实 Coder 与 Partner 使用同一 SDK Host；Partner 使用 Agent 画像与消费时业务绑定，正常 shell/write/子 Agent 能力保留。工作模式、模型、权限独立；Host 的 safe-idle 与 revision/CAS 控制切换。
+真实 Coder 与 Partner 使用同一 SDK Host；Partner 使用 Agent 画像与消费时业务绑定，正常 shell/write/子 Agent 能力保留。工作模式、模型、权限独立；Host 的首轮前锁定事实与 revision/CAS 控制模式选择，首轮接纳后保持原模式。
 
 Provider 与稳定客户端凭据使用 SDK 权限受限的 auth.json，不依赖系统 Keychain；显式来源、迁移和连接身份校验保留。Mac 使用 ad-hoc 应用签名支持 Electron 42 通知，SDK 原生资源不重签以保留哈希；OS 接收事件与系统横幅/声音分开。
 

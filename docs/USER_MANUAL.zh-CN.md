@@ -620,6 +620,7 @@ Runtime owner。
 - builtin 表示 skill 本体随应用提供，不表示所有可选工具都被嵌入。Huashu 的浏览器、视频、TTS、AI 评审等扩展流程仍可能需要 Node/Python package、Playwright 浏览器、`ffmpeg`、POSIX-compatible shell 或 API 凭据；不使用这些流程时无需准备。
 - 本机可能存在的 `pdf`、`pptx`、`xlsx`、`docx` skill 不随 Space 分发，因为当前来源许可证禁止复制、修改或再分发。Space 仍可预览这些文件格式；这与是否打包同名 skill 是两件事。
 - `AGENTS.md` 与 markdown agents 提供项目规则和角色，Agent picker 用 `@agent-name` 插入。
+- SDK beta.3 还会加载 `~/.kodax/rules/*.md` 和 `<project>/.kodax/rules/*.md` 的 Markdown 片段。Agents → Context 按源文件展示；片段在此只读，请在编辑器中修改。只有全局与项目根的 `AGENTS.md` 提供内联编辑，创建入口不会把已有片段当成 AGENTS.md。
 
 ### External Agents
 
