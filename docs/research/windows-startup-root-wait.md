@@ -65,7 +65,7 @@ Space `0.1.47-alpha.4`、Node `22.23.1`、Electron `42.5.0`。另一 checkout �
 | 启动夹具阶段完整 npm test                   | 4,709 通过、20 条件跳过、0 失败                     |
 | npm run build:smoke                         | 通过                                                |
 | 启动、绘制、后台节流、SDK UI 专项           | 10/10，无重试                                       |
-| 最终提交正常 CI                             | 待完成                                              |
+| 生产修复提交正常 CI                         | 351d3b90：CI 6/6、Build 7/7，通过；Linux 重试见下文 |
 
 80 次快速启动探索在至少 31 次完成后主动终止，未完成批次不计通过。
 早期 green 探索中误断言 Mock 不产生 Host 描述文件，失败后已纠正；未计通过。
@@ -102,9 +102,40 @@ Settings inventory 均首次通过。Linux 192 首次通过、1 个重试后通�
 
 慢渲染回归与三类输入分别使用真实浏览器事件路径；原完整用例继续覆盖滚轮、历史搜索、
 回到最新及过期读取。最新 4 个浏览器用例连续 3 轮全部通过（12/12，无重试）；类型检查、lint、生产冒烟构建通过。
-真实 SDK 历史导航与长会话滚动的源码 Electron E2E 5/5，无重试。新提交门禁结果待补。
+真实 SDK 历史导航与长会话滚动的源码 Electron E2E 5/5，无重试。最终源码门禁结果见下文。
 旧源码的 failed-jobs 重验再次在同一搜索返回断言失败；它不算新生产修复的验收。
 Linux reload 观测的单次重试继续保留为未闭环的独立验收项，不能表述为全部首次通过。
+
+## 最终源码验收：351d3b90
+
+`351d3b9099c2a55a47e2e368626829d33f77414a` 的
+[CI 42494139816](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/42494139816)
+与 [Build 42494139811](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/42494139811)
+均在 workflow attempt 1 完成并成功，分别 6/6、7/7 job 成功。
+
+| 验收                                               | 实际结果                                             |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| 修复后的完整本机 npm test                          | 4,712 通过，20 条件跳过，0 失败                      |
+| 慢渲染搜索与三类输入浏览器回归                     | 4 个用例连续 3 轮：12/12，无重试                     |
+| 真实 SDK 历史导航、长会话滚动源码 Electron E2E     | 5/5，无重试                                          |
+| Windows 完整源码 E2E                               | 188 首次通过，14 条件跳过，0 重试/失败               |
+| Linux 完整源码 E2E                                 | 192 首次通过，1 个重试后通过，9 条件跳过，0 最终失败 |
+| Windows / Linux / Intel macOS / Apple Silicon 构建 | 全部通过；各平台新增 4 个浏览器回归均实际执行并通过  |
+| 两种 macOS 架构 Desktop 单测                       | 各 4,161 通过、35 条件跳过、0 失败（4,196 项）       |
+| 类型、lint、格式、生产冒烟构建、双轴评审           | 通过，无剩余评审发现                                 |
+
+已下载四个 E2E JSON，逐项核对 root 成功/缺失、原 extension diagnostics、Settings inventory、
+SDK 历史搜索与双向分页均只有一次成功执行。Windows 附件另证实 root 已挂载、document complete、
+原生窗口隐藏/后台节流、挂载后动画帧 0。原文档中的历史触发原因边界仍然保留。
+
+Linux 的唯一重试仍是 `startup-overlay.spec.ts:157` 的 reload 覆盖层观测返回 null；
+原 root 等待和本次新增历史回归均未重试。该独立观测问题未确定根因，保留待定位，
+没有修改它的超时、断言或重试策略，也不宣称它已闭环。当前没有已证实需要 SDK 修改的项目。
+
+E2E 证据 artifact：Windows shard 1 `13623826012`、shard 2 `13623078386`；
+Linux shard 1 `13623526464`、shard 2 `13622454461`，均属于上述 CI run，保留 14 天。
+本地审计副本为 `new-final-ci-summary.json`、`new-build-*.log`、`npm-test-final.log`；
+这些忽略目录中的日志不随 Git 上传。本节不将 beta.3 验证替代另一线程的 beta.4 升级验收。
 
 ## Standards
 
