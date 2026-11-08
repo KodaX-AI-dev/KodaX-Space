@@ -9,6 +9,7 @@ import { existsSync, promises as fs, readFileSync, realpathSync } from 'node:fs'
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
+import { captureWithEvidenceBudget } from '../../scripts/e2e-evidence-budget.mjs';
 import { cleanupRuntimeClientCredentialForTestProfile } from '../../scripts/runtime-test-credential-cleanup.mjs';
 
 // ESM-compatible __dirname derivation (Playwright transpiles to ESM)
@@ -52,7 +53,6 @@ function delay(ms: number): Promise<void> {
 }
 
 async function attachRootFailure(app: ElectronApplication, page: Page): Promise<void> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
   const evidence = Promise.allSettled([
     page.evaluate(() => ({
       rootAttached: document.getElementById('root') !== null,
@@ -74,12 +74,7 @@ async function attachRootFailure(app: ElectronApplication, page: Page): Promise<
   }));
   try {
     // Never retain profile contents, page text, credentials, or arbitrary URLs.
-    const snapshot = await Promise.race([
-      evidence,
-      new Promise((resolve) => {
-        timer = setTimeout(() => resolve({ status: 'timed_out' }), 2000);
-      }),
-    ]);
+    const snapshot = await captureWithEvidenceBudget(evidence);
     await test.info().attach('startup-root-failure', {
       body: JSON.stringify(snapshot),
       contentType: 'application/json',
@@ -89,8 +84,6 @@ async function attachRootFailure(app: ElectronApplication, page: Page): Promise<
       type: 'startup-root-failure',
       description: 'Evidence attachment unavailable',
     });
-  } finally {
-    clearTimeout(timer);
   }
 }
 

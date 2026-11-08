@@ -1301,6 +1301,7 @@ export function ConversationStreamV2(): JSX.Element {
     const el = scrollRef.current?.querySelector(`[data-msg-id="${CSS.escape(id)}"]`);
     if (el && el instanceof HTMLElement) {
       handlePrependUserScrollIntent();
+      scrollbarDragRef.current = null;
       const pendingPrepend = prependAnchorRestoreRef.current;
       const loadingPrepend = pendingPrepend?.phase === 'loading';
       markProgrammaticScroll(
@@ -1427,6 +1428,7 @@ export function ConversationStreamV2(): JSX.Element {
     );
     if (!row) return;
     handlePrependUserScrollIntent();
+    scrollbarDragRef.current = null;
     pendingSearchFocus.current = null;
     wasAtBottomRef.current = false;
     row.focus({ preventScroll: true });
@@ -1855,12 +1857,17 @@ export function ConversationStreamV2(): JSX.Element {
       if (performance.now() < programmaticScrollIgnoreUntilRef.current) return;
       // Freeze at the user's latest real position, not the threshold position where the async
       // request happened to start. The snapshot becomes immutable when phase turns restoring.
-      const previousTop = scrollSnapshotRef.current?.scrollTop ?? scroller.scrollTop;
+      const snapshot = scrollSnapshotRef.current;
+      const previousTop = snapshot?.scrollTop ?? scroller.scrollTop;
       const movedDown = scroller.scrollTop > previousTop;
       const movedUp = scroller.scrollTop < previousTop;
       const scrollbarDrag = scrollbarDragRef.current;
+      const nativeRelayout =
+        scrollbarDrag !== null &&
+        snapshot !== null &&
+        (snapshot.scrollHeight !== scroller.scrollHeight ||
+          snapshot.clientHeight !== scroller.clientHeight);
       if (scrollbarDrag && (movedUp || movedDown)) {
-        const snapshot = scrollSnapshotRef.current;
         const stableGeometry =
           prependAnchorRestoreRef.current === null &&
           snapshot?.scrollHeight === scroller.scrollHeight &&
@@ -1874,13 +1881,12 @@ export function ConversationStreamV2(): JSX.Element {
       syncActiveQueryAnchorFromScrollPosition(scroller);
       // Native scrollbar drags emit scroll, not continuous DOM pointermove.
       const intent = scrollbarDrag?.direction ?? historyScrollIntentRef.current;
-      if (movedUp && intent === 'older' && scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX) {
+      // Relayout can reduce pixel top while a held thumb still reaches the newer edge.
+      const towardOlder = intent === 'older' && (movedUp || nativeRelayout);
+      const towardNewer = intent === 'newer' && (movedDown || nativeRelayout);
+      if (towardOlder && scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX) {
         requestAdjacentHistory(scroller);
-      } else if (
-        movedDown &&
-        intent === 'newer' &&
-        getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX
-      ) {
+      } else if (towardNewer && getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX) {
         requestAdjacentHistory(scroller, 'newer');
       }
     });

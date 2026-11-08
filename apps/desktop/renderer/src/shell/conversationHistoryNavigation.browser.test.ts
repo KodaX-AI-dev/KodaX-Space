@@ -710,6 +710,12 @@ for (const phase of ['stable', 'restoring'] as const)
       });
       await page.evaluate('window.settle(48)');
       await sendHistoryPointer(page, 'pointerdown');
+      if (phase === 'stable') {
+        await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+          element.scrollTop = 200;
+        });
+        await page.evaluate('window.settle()');
+      }
       if (phase === 'restoring') {
         await page.getByTestId('conversation-scroll-container').evaluate((element) => {
           element.scrollTop = element.scrollHeight;

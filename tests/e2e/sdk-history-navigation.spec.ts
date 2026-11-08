@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createSessionManager } from '@kodax-ai/kodax/session';
 import type { KodaXMessage } from '@kodax-ai/kodax/agent';
+import { captureWithEvidenceBudget } from '../../scripts/e2e-evidence-budget.mjs';
 import { createLocalSdkProvider, launchRealSdkSpace } from './sdk-provider-fixture.js';
 
 test.setTimeout(120_000);
@@ -73,17 +74,21 @@ async function seedHistory(root: string): Promise<void> {
 async function nativeHistoryGeometry(page: Page) {
   return page.getByTestId('conversation-scroll-container').evaluate((element) => {
     if (!(element instanceof HTMLElement)) throw new Error('Expected HTML history viewport');
-    const gutter = element.offsetWidth - element.clientWidth;
-    const range = element.scrollHeight - element.clientHeight;
-    if (gutter <= 0 || range <= 0) throw new Error('Native history scrollbar must overflow');
     const rect = element.getBoundingClientRect();
-    const thumb = (element.clientHeight * element.clientHeight) / element.scrollHeight;
+    const height = element.clientHeight;
+    const range = element.scrollHeight - height;
+    const top = element.scrollTop;
+    const gutter = element.offsetWidth - element.clientWidth;
+    if (gutter <= 0 || range <= 0 || top <= 0 || top >= range)
+      throw new Error('Native drag must start inside an overflowing page');
+    const thumb = (height * height) / (range + height);
+    const travel = height - thumb;
     return {
       x: rect.right - gutter / 2,
-      y: rect.top + (element.scrollTop / range) * (element.clientHeight - thumb) + thumb / 2,
+      y: rect.top + (top / range) * travel + thumb / 2,
       top: rect.top + thumb / 2,
-      bottom: rect.bottom - thumb / 2,
-      nativePixelsPerScroll: (element.clientHeight - thumb) / range,
+      bottom: rect.top + height - thumb / 2,
+      nativePixelsPerScroll: travel / range,
     };
   });
 }
@@ -145,52 +150,107 @@ async function settleNativeHistoryLayout(page: Page): Promise<void> {
   });
 }
 
-async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer'): Promise<void> {
+async function attachNativeHistoryDragFailure(
+  page: Page,
+  geometry: Awaited<ReturnType<typeof nativeHistoryGeometry>>,
+  direction: string,
+  originalError: unknown,
+): Promise<void> {
+  try {
+    const evidence = await captureWithEvidenceBudget(
+      Promise.all([
+        page.getByTestId('conversation-scroll-container').evaluate((element) => ({
+          top: element.scrollTop,
+          height: element.scrollHeight,
+          client: element.clientHeight,
+          rect: element.getBoundingClientRect().toJSON(),
+        })),
+        nativeHistoryMarkers(page),
+      ]).then(([viewport, markers]) => ({ viewport, markers })),
+    );
+    await test.info().attach(`native-${direction}-geometry.json`, {
+      body: JSON.stringify({ geometry, evidence }),
+      contentType: 'application/json',
+    });
+  } catch (cause) {
+    throw new AggregateError(
+      [originalError, cause],
+      'Native history drag and evidence capture failed',
+      { cause: originalError },
+    );
+  }
+}
+
+async function moveNativeHistoryPages(
+  page: Page,
+  geometry: Awaited<ReturnType<typeof nativeHistoryGeometry>>,
+  direction: 'older' | 'newer',
+): Promise<void> {
   const scroller = page.getByTestId('conversation-scroll-container');
-  await settleNativeHistoryLayout(page);
-  await scroller.evaluate((element, direction) => {
-    element.scrollTop =
-      direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
-  }, direction);
-  await settleNativeHistoryLayout(page);
-  const geometry = await nativeHistoryGeometry(page);
   const edge = direction === 'newer' ? geometry.bottom : geometry.top;
   const sign = direction === 'newer' ? 1 : -1;
   const count = async () => (await nativeHistoryMarkers(page)).length - 1;
+  await page.mouse.move(geometry.x, edge + sign * 15, { steps: 6 });
+  await expect.poll(count, { message: `${direction} first native page` }).toBeGreaterThanOrEqual(1);
+  await settleNativeHistoryLayout(page);
+  if ((await count()) < 2) {
+    const remaining = await scroller.evaluate(
+      (element, direction) =>
+        direction === 'older'
+          ? element.scrollTop
+          : element.scrollHeight - element.scrollTop - element.clientHeight,
+      direction,
+    );
+    // Native dragging retains its initial pixel/content ratio when a replacement page grows.
+    await page.mouse.move(
+      geometry.x,
+      edge + sign * (30 + remaining * geometry.nativePixelsPerScroll * 1.25),
+      { steps: 6 },
+    );
+  }
+  await expect
+    .poll(count, { message: `${direction} second native page` })
+    .toBeGreaterThanOrEqual(2);
+  await expectNativeHistoryDirection(page, sign);
+}
+
+async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer'): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  await settleNativeHistoryLayout(page);
+  await scroller.evaluate((element) => {
+    element.scrollTop = (element.scrollHeight - element.clientHeight) / 2;
+  });
+  await settleNativeHistoryLayout(page);
+  const geometry = await nativeHistoryGeometry(page);
   await watchNativeHistoryWindows(page);
   await page.mouse.move(geometry.x, geometry.y);
   await page.mouse.down();
+  let failed = false;
+  let cleanupFailure: 'timed_out' | 'query_failed' | undefined;
   try {
-    await page.mouse.move(geometry.x, edge + sign * 15, { steps: 6 });
-    await expect
-      .poll(count, { message: `${direction} first native page` })
-      .toBeGreaterThanOrEqual(1);
-    await settleNativeHistoryLayout(page);
-    if ((await count()) < 2) {
-      const remaining = await scroller.evaluate(
-        (element, direction) =>
-          direction === 'older'
-            ? element.scrollTop
-            : element.scrollHeight - element.scrollTop - element.clientHeight,
-        direction,
-      );
-      // Native dragging retains its initial pixel/content ratio when a replacement page grows.
-      await page.mouse.move(
-        geometry.x,
-        edge + sign * (30 + remaining * geometry.nativePixelsPerScroll * 1.25),
-        { steps: 6 },
-      );
-    }
-    await expect
-      .poll(count, { message: `${direction} second native page` })
-      .toBeGreaterThanOrEqual(2);
-    await expectNativeHistoryDirection(page, sign);
+    await moveNativeHistoryPages(page, geometry, direction);
+  } catch (error) {
+    failed = true;
+    await attachNativeHistoryDragFailure(page, geometry, direction, error);
+    throw error;
   } finally {
-    await page.mouse.up();
-    await scroller.evaluate((element) =>
-      element.dispatchEvent(new Event('finish-native-history-test')),
+    const cleanup = await captureWithEvidenceBudget(
+      Promise.all([
+        page.mouse.up(),
+        scroller.evaluate((element) =>
+          element.dispatchEvent(new Event('finish-native-history-test')),
+        ),
+      ]).then(() => ({ released: true })),
     );
+    if ('status' in cleanup) {
+      cleanupFailure = cleanup.status;
+      if (failed)
+        test
+          .info()
+          .annotations.push({ type: 'native-history-cleanup', description: cleanup.status });
+    }
   }
+  if (cleanupFailure) throw new Error(`Native scrollbar cleanup ${cleanupFailure}`);
 }
 
 test('native scrollbar stays held across SDK history windows in both directions', async () => {
@@ -202,6 +262,8 @@ test('native scrollbar stays held across SDK history windows in both directions'
       seedHistory,
     );
     try {
+      const window = await space.app.browserWindow(space.page);
+      await window.evaluate((window) => window.setContentSize(1024, 724));
       await space.page
         .getByTestId('sidebar-session-row')
         .filter({ hasText: 'SDK_HISTORY_NAVIGATION' })
