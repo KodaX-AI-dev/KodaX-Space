@@ -51,9 +51,9 @@ jobs:
     if: needs.changes.outputs.run_tests == 'true'
     name: Smoke build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    # Bound any hung unit test or lingering post-test handle to a failed run
-    # with logs instead of a multi-hour stuck job.
-    timeout-minutes: 45
+    # Intel cold runs can exhaust 45 minutes before reaching the new history tests.
+    # Keep individual test deadlines; bound the full job with logs on every platform.
+    timeout-minutes: ${{ matrix.os == 'macos-15-intel' && 60 || 45 }}
     strategy:
       fail-fast: false
       matrix:
