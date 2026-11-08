@@ -53,6 +53,9 @@ export function registerRuntimeStatisticsChannels(): void {
     runtimeHostAdapter.readWorkMode(sessionId),
   );
   registerChannel('session.productItem', (input) => runtimeHostAdapter.readProductItem(input));
+  registerChannel('session.resolveHistoryTurn', ({ sessionId, selector }) =>
+    runtimeHostAdapter.resolveHistoryTurn(sessionId, selector),
+  );
   registerChannel('session.productSearch', async ({ sessionId, query }) => {
     const result = await runtimeHostAdapter.searchProductHistory(sessionId, query);
     return { ...result, hits: [...result.hits] };

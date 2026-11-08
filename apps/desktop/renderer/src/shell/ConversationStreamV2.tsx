@@ -1,3 +1,4 @@
+import { usePageFindMatches } from '../features/session/usePageFindMatches.js';
 import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 // ConversationStreamV2 — alpha.1
 //
@@ -26,7 +27,8 @@ import {
   type TouchEvent as ReactTouchEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
-import type { SessionEvent, SessionMeta } from '@kodax-space/space-ipc-schema';
+import type { SessionEvent, SessionMeta, SessionProductItem } from '@kodax-space/space-ipc-schema';
+import { performHistoryTurnAction, usesProductHistoryActions } from '../lib/historyTurnAction.js';
 import {
   useAppStore,
   type LocalNoticeMessage,
@@ -39,9 +41,13 @@ import { projectProductConversation } from '../features/session/productConversat
 import {
   useProductSessionTranscript,
   productTranscriptSnapshot,
-  installProductItemContent,
 } from '../store/productSessionView.js';
-import { readProductItemText } from '../lib/productItemContent.js';
+import { isProductItemPreview } from '../lib/productItemContent.js';
+import { ThinkingText } from '../features/session/messages/ThinkingText.js';
+import {
+  ProductBodyOwnerContext,
+  ProductItemBody,
+} from '../features/session/messages/ProductItemBody.js';
 import { ProductHistorySearch } from '../features/session/ProductHistorySearch.js';
 import {
   appendRuntimeFailureNotices,
@@ -71,7 +77,7 @@ const EMPTY_USER_MESSAGES: readonly UserMessage[] = [];
 const EMPTY_LOCAL_NOTICES: readonly LocalNoticeMessage[] = [];
 const EMPTY_QUEUED_USER_MESSAGES: readonly QueuedUserMessage[] = [];
 const EMPTY_WORKFLOW_NOTICES: readonly WorkflowNoticeMessage[] = [];
-const EMPTY_MATCH_IDS: readonly string[] = [];
+
 const INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS = 120;
 const SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS = 400;
 // 追底判定与 jump-to-bottom 按钮显隐共用此阈值，两者严格互补（< 阈值追底，>= 阈值显示按钮），避免双阈值死区。
@@ -111,6 +117,7 @@ import type { MessageKey } from '../i18n/messages.js';
 import {
   loadOlderSessionHistory,
   loadNewerSessionHistory,
+  openLocatedHistory,
   olderHistoryWindowSeamScrollTop,
   PREPEND_ANCHOR_CORRECTION_FRAME_OFFSETS,
   preservesPrependAnchorForBoundaryInput,
@@ -130,6 +137,7 @@ import {
 // title 取 step 前 assistant_text 的首句 (preceding `assistant_text.text` 或 `thinking`)。
 type ToolCallMsg = Extract<ConversationMessage, { kind: 'tool_call' }>;
 type SubCluster = {
+  productItem?: SessionProductItem;
   id: string;
   title: string;
   tools: ToolCallMsg[];
@@ -170,6 +178,8 @@ type ArtifactMessage = {
  * thinking 拆出来在 cluster 前单独出一条折叠记录。
  */
 type ThinkingMessage = {
+  productItem?: SessionProductItem;
+  sourceItemId: string;
   kind: 'thinking';
   id: string;
   thinking: string;
@@ -177,7 +187,7 @@ type ThinkingMessage = {
 };
 
 type ViewMessage =
-  | Exclude<ConversationMessage, { kind: 'tool_call' }>
+  | (Exclude<ConversationMessage, { kind: 'tool_call' }> & { sourceItemId?: string })
   | ToolClusterMessage
   | ArtifactMessage
   | ThinkingMessage;
@@ -220,12 +230,19 @@ type Translate = (key: MessageKey, vars?: Record<string, string | number>) => st
 type QueryJumpAnchor = {
   id: string;
   content: string;
-  ordinal: number;
+};
+
+type SavedItemReference = {
+  readonly itemId: string;
+  readonly revision?: string;
+  readonly inputId?: string;
+  readonly outputId?: string;
 };
 
 type ViewportScrollAnchor = {
   id: string;
   offsetTop: number;
+  savedItemId?: string;
 };
 
 type ScrollSnapshot = {
@@ -376,6 +393,7 @@ function subClustersShareProjection(
       left.turnIndex === right.turnIndex &&
       left.syntheticTitle === right.syntheticTitle &&
       left.thinking === right.thinking &&
+      left.productItem === right.productItem &&
       left.tools.length === right.tools.length &&
       left.tools.every((tool, toolIndex) => tool === right.tools[toolIndex])
     );
@@ -385,6 +403,13 @@ function subClustersShareProjection(
 function viewMessagesShareProjection(previous: ViewMessage, next: ViewMessage): boolean {
   if (previous === next) return true;
   if (previous.kind !== next.kind || previous.id !== next.id) return false;
+  if ('productItem' in previous || 'productItem' in next) {
+    if (
+      !('productItem' in previous && 'productItem' in next) ||
+      previous.productItem !== next.productItem
+    )
+      return false;
+  }
   switch (previous.kind) {
     case 'user':
       return (
@@ -632,6 +657,12 @@ function pickToolString(input: Record<string, unknown> | undefined, key: string)
 
 function artifactMessageFromTool(tool: ToolCallMsg): ArtifactMessage | null {
   if (tool.toolName !== 'create_artifact' || tool.status === 'interrupted') return null;
+  if (
+    tool.productItem &&
+    (isProductItemPreview(tool.productItem, 'input') ||
+      isProductItemPreview(tool.productItem, 'text'))
+  )
+    return null;
   const match = typeof tool.result === 'string' ? ARTIFACT_RESULT_RE.exec(tool.result) : null;
   if (tool.status === 'done' && !match) return null;
 
@@ -723,6 +754,8 @@ function groupTools(
             out.push({
               kind: 'thinking',
               id: `${m.id}_thinking`,
+              sourceItemId: m.id,
+              ...(m.productItem ? { productItem: m.productItem } : {}),
               thinking: m.thinking!,
               ...(m.turnIndex !== undefined ? { turnIndex: m.turnIndex } : {}),
             });
@@ -731,6 +764,8 @@ function groupTools(
           out.push({
             kind: 'assistant_text',
             id: `${m.id}_text`,
+            sourceItemId: m.id,
+            ...(m.productItem ? { productItem: m.productItem } : {}),
             text: m.text,
             sentAt: m.sentAt,
             ...(m.turnIndex !== undefined ? { turnIndex: m.turnIndex } : {}),
@@ -753,6 +788,7 @@ function groupTools(
             ...(m.turnIndex !== undefined ? { turnIndex: m.turnIndex } : {}),
             syntheticTitle: true,
             thinking: m.thinking!,
+            ...(m.productItem ? { productItem: m.productItem } : {}),
           });
         } else {
           // thinking/verbose 视图：thinking 仍独立成行（默认展开），每个 step 各自成组。
@@ -761,6 +797,8 @@ function groupTools(
             out.push({
               kind: 'thinking',
               id: `${m.id}_thinking`,
+              sourceItemId: m.id,
+              ...(m.productItem ? { productItem: m.productItem } : {}),
               thinking: m.thinking!,
               ...(m.turnIndex !== undefined ? { turnIndex: m.turnIndex } : {}),
             });
@@ -782,6 +820,8 @@ function groupTools(
           out.push({
             kind: 'thinking',
             id: `${m.id}_thinking`,
+            sourceItemId: m.id,
+            ...(m.productItem ? { productItem: m.productItem } : {}),
             thinking: m.thinking!,
             ...(m.turnIndex !== undefined ? { turnIndex: m.turnIndex } : {}),
           });
@@ -790,6 +830,8 @@ function groupTools(
           out.push({
             kind: 'assistant_text',
             id: `${m.id}_text`,
+            sourceItemId: m.id,
+            ...(m.productItem ? { productItem: m.productItem } : {}),
             text: m.text,
             sentAt: m.sentAt,
             ...(m.turnIndex !== undefined ? { turnIndex: m.turnIndex } : {}),
@@ -827,62 +869,31 @@ export function ConversationStreamV2(): JSX.Element {
   const { t } = useI18n();
   const isStreaming = useIsStreaming();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const actionSession = useAppStore((s) =>
+    s.sessions.find((session) => session.sessionId === s.currentSessionId),
+  );
+  const usesSavedTurns = usesProductHistoryActions(actionSession);
   const productTranscript = useProductSessionTranscript(currentSessionId);
-  const productBodyReads = useRef(new Set<string>());
-  useEffect(() => {
-    if (!currentSessionId || !productTranscript || !window.kodaxSpace) return;
-    const sessionId = currentSessionId;
-    const source = productTranscript.browsingOlder || !productTranscript.view ? 'history' : 'view';
-    for (const item of productTranscript.items) {
-      if (item.outputState === 'draft') continue;
-      for (const part of ['text', 'input'] as const) {
-        const length = part === 'text' ? item.totalTextLength : item.tool?.totalInputLength;
-        const preview = part === 'text' ? item.text : (item.tool?.inputText ?? '');
-        if (
-          length === undefined ||
-          (preview.length === length && (part === 'input' || !item.textOffset))
-        )
-          continue;
-        const key = JSON.stringify([
-          sessionId,
-          item.id,
-          part,
-          item.outputState,
-          item.textRevision,
-          length,
-        ]);
-        if (productBodyReads.current.has(key)) continue;
-        productBodyReads.current.add(key);
-        void readProductItemText(
-          item,
-          async (offset) => {
-            const result = await window.kodaxSpace!.invoke('session.productItem', {
-              sessionId,
-              itemId: item.id,
-              source,
-              part,
-              offset,
-            });
-            if (!result.ok) throw new Error(result.error.message);
-            return result.data;
-          },
-          part,
-          source,
-        )
-          .then((text) => {
-            installProductItemContent(sessionId, item, part, text);
-          })
-          .catch((error: unknown) => {
-            pushToast(
-              error instanceof Error ? error.message : 'SDK item body read failed.',
-              'warning',
-            );
-          })
-          .finally(() => productBodyReads.current.delete(key));
-      }
-    }
-  }, [currentSessionId, productTranscript]);
+  const selectedSource =
+    productTranscript?.browsingOlder || !productTranscript?.view ? 'history' : 'view';
+  const selectedRuntime = productTranscript?.view?.runtimeId;
+  const bodyOwner = useMemo(
+    () =>
+      currentSessionId
+        ? ({
+            sessionId: currentSessionId,
+            source: selectedSource,
+            runtimeId: selectedRuntime,
+          } as const)
+        : undefined,
+    [currentSessionId, selectedSource, selectedRuntime],
+  );
   const historyPaging = useSessionHistoryPaging(currentSessionId);
+  const canOpenSavedPage =
+    !!productTranscript?.view &&
+    !productTranscript.browsingOlder &&
+    productTranscript.historyItems.length > 0 &&
+    historyPaging.phase === 'ready';
   const historyRuntimeReason = useAppStore((s) =>
     s.runtimeConnection.state === 'ready' ? undefined : s.runtimeConnection.reason,
   );
@@ -930,13 +941,20 @@ export function ConversationStreamV2(): JSX.Element {
             productTranscript.items,
             productTranscript.browsingOlder ? [] : legacyUserMessages,
             productTranscript.browsingOlder ? [] : queuedUserMessages,
-            productTranscript.historyItems,
+            usesSavedTurns ? undefined : productTranscript.historyItems,
             productTranscript.browsingOlder
               ? {}
               : { local: localNotices, workflow: workflowNotices },
           )
         : undefined,
-    [productTranscript, legacyUserMessages, queuedUserMessages, localNotices, workflowNotices],
+    [
+      productTranscript,
+      legacyUserMessages,
+      queuedUserMessages,
+      localNotices,
+      workflowNotices,
+      usesSavedTurns,
+    ],
   );
   const userMessages = productConversation?.userMessages ?? legacyUserMessages;
   // 用来判断 "is this session loading history?" — persisted session 在 SDK summary
@@ -1029,23 +1047,30 @@ export function ConversationStreamV2(): JSX.Element {
         : appendRuntimeFailureNotices(eventMessages, runtimeLive, runtimeProfileSession),
     [eventMessages, runtimeLive, runtimeProfileSession, productConversation],
   );
+  const [locatedSearchItem, setLocatedSearchItem] = useState<string | null>(null);
+  const pendingSearchFocus = useRef<{
+    readonly itemId: string;
+    readonly itemIds: readonly string[];
+  } | null>(null);
+  const readingView =
+    locatedSearchItem && transcriptView !== 'verbose' ? 'thinking' : transcriptView;
   const viewMessages = useMemo(() => {
-    const fresh = groupTools(messages, transcriptView, t);
+    const fresh = groupTools(messages, readingView, t);
     const previous = viewMessagesCacheRef.current;
     return previous?.sessionId === currentSessionId
       ? retainStableViewMessages(previous.messages, fresh)
       : fresh;
-  }, [messages, transcriptView, t, currentSessionId]);
+  }, [messages, readingView, t, currentSessionId]);
   useLayoutEffect(() => {
     viewMessagesCacheRef.current = { sessionId: currentSessionId, messages: viewMessages };
   }, [currentSessionId, viewMessages]);
   // summary 视图：滤掉 thinking 行和工具组，只保留对话正文。其余视图原样渲染。
   const displayMessages = useMemo(
     () =>
-      transcriptView === 'summary'
+      readingView === 'summary'
         ? viewMessages.filter((m) => m.kind !== 'thinking' && m.kind !== 'tool_cluster')
         : viewMessages,
-    [viewMessages, transcriptView],
+    [viewMessages, readingView],
   );
   const historyBoundaryLoading =
     historyPaging.phase === 'loading' &&
@@ -1108,7 +1133,7 @@ export function ConversationStreamV2(): JSX.Element {
       if (m.kind !== 'user' && !(m.kind === 'local_notice' && m.variant === 'echo')) continue;
       const content = compactInlineText(m.content);
       if (!content) continue;
-      anchors.push({ id: m.id, content, ordinal: anchors.length + 1 });
+      anchors.push({ id: m.id, content });
     }
     return anchors;
   }, [displayMessages]);
@@ -1165,7 +1190,9 @@ export function ConversationStreamV2(): JSX.Element {
     sessionId: string;
     token: symbol;
     completed: boolean;
+    returnPosition?: ScrollSnapshot;
   } | null>(null);
+  const liveReadingPosition = useRef<ScrollSnapshot | null>(null);
   const [activeQueryAnchorId, setActiveQueryAnchorId] = useState<string | null>(null);
   const [hoverQueryAnchorId, setHoverQueryAnchorId] = useState<string | null>(null);
   // 每个 tool_group 的展开状态；默认折叠
@@ -1175,79 +1202,19 @@ export function ConversationStreamV2(): JSX.Element {
   // 自己实现"按消息文本子串匹配 + ring 高亮 + ↑↓ 导航"。
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchScope, setSearchScope] = useState<'page' | 'session'>('page');
+  const sessionSearch = !!productTranscript && searchScope === 'session';
+  const searchResultsRef = useRef<HTMLDivElement>(null);
+  const returnFromLocatedSearch = useRef<(() => void) | null>(null);
+  const searchOrigin = useRef<{
+    sessionId: string | null;
+    snapshot: ScrollSnapshot | null;
+    focus: HTMLElement | null;
+  } | null>(null);
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  // 全局 Ctrl+F 打开搜索框（焦点不在 input 也行）。BottomBar textarea 上 Ctrl+F
-  // 默认就 no-op（Electron BrowserWindow 没有 native find），window 层 preventDefault 即可。
-  // Esc 关闭并清空 query。
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (!isSurfaceInteractive(scrollRef.current)) return;
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        setSearchOpen(true);
-        // focus 落到搜索框（下一帧，等 input 挂载）
-        requestAnimationFrame(() => searchInputRef.current?.focus());
-      }
-      if (e.key === 'Escape' && searchOpen) {
-        setSearchOpen(false);
-        setSearchQuery('');
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [searchOpen]);
-
-  // 计算匹配的 message id 列表（按 displayMessages 顺序），用于 ring 高亮 + nav。
-  // 必须用 displayMessages 而非 viewMessages：summary 视图滤掉了 thinking / tool_cluster，
-  // 若仍按 viewMessages 索引会数到屏幕上根本不存在的 DOM 节点（计数虚高、跳转/高亮失效）。
-  // 大小写不敏感；空 query → 空数组。
-  const matchIds = useMemo<readonly string[]>(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return EMPTY_MATCH_IDS;
-    const ids: string[] = [];
-    for (const m of displayMessages) {
-      let txt = '';
-      switch (m.kind) {
-        case 'user':
-          txt = m.content;
-          break;
-        case 'queued_user':
-          txt = m.content;
-          break;
-        case 'assistant_text':
-          txt = m.text + (m.thinking ?? '');
-          break;
-        case 'system_notice':
-          txt = m.text;
-          break;
-        case 'artifact':
-          txt = [
-            m.title,
-            m.artifactKind,
-            m.summary ?? '',
-            m.artifactId ?? '',
-            m.version !== undefined ? `v${m.version}` : '',
-            m.status,
-          ].join(' ');
-          break;
-        case 'tool_cluster':
-          txt = m.subClusters
-            .flatMap((sc) => [
-              sc.title,
-              sc.thinking ?? '',
-              ...sc.tools.map(
-                (t) => `${t.toolName} ${JSON.stringify(t.input ?? {})} ${t.result ?? ''}`,
-              ),
-            ])
-            .join(' ');
-          break;
-      }
-      if (txt.toLowerCase().includes(q)) ids.push(m.id);
-    }
-    return ids;
-  }, [searchQuery, displayMessages]);
+  const matchIds = usePageFindMatches(scrollRef, searchOpen && !sessionSearch ? searchQuery : '');
 
   const captureViewportScrollAnchor = useCallback(
     (scroller: HTMLDivElement): ViewportScrollAnchor | null => {
@@ -1307,10 +1274,11 @@ export function ConversationStreamV2(): JSX.Element {
     setCurrentMatchIdx(0);
   }, [searchQuery]);
 
+  const visibleMatchIndex = Math.min(currentMatchIdx, matchIds.length - 1);
   // 当前匹配滚到中间
   useEffect(() => {
     if (matchIds.length === 0) return;
-    const id = matchIds[Math.min(currentMatchIdx, matchIds.length - 1)];
+    const id = matchIds[visibleMatchIndex];
     const el = scrollRef.current?.querySelector(`[data-msg-id="${CSS.escape(id)}"]`);
     if (el && el instanceof HTMLElement) {
       const pendingPrepend = prependAnchorRestoreRef.current;
@@ -1320,24 +1288,128 @@ export function ConversationStreamV2(): JSX.Element {
         pendingPrepend.snapshot = rememberScrollSnapshot(pendingPrepend.scroller);
       }
     }
-  }, [currentMatchIdx, matchIds, rememberScrollSnapshot]);
+  }, [visibleMatchIndex, matchIds, rememberScrollSnapshot]);
 
   function nextMatch(): void {
     if (matchIds.length === 0) return;
     handlePrependUserScrollIntent();
-    setCurrentMatchIdx((i) => (i + 1) % matchIds.length);
+    setCurrentMatchIdx((visibleMatchIndex + 1) % matchIds.length);
   }
   function prevMatch(): void {
     if (matchIds.length === 0) return;
     handlePrependUserScrollIntent();
-    setCurrentMatchIdx((i) => (i - 1 + matchIds.length) % matchIds.length);
+    setCurrentMatchIdx((visibleMatchIndex - 1 + matchIds.length) % matchIds.length);
   }
-  function closeSearch(): void {
+  const closeSearch = useCallback((): void => {
     setSearchOpen(false);
     setSearchQuery('');
-  }
+    const origin = searchOrigin.current;
+    searchOrigin.current = null;
+    if (origin && origin.sessionId === currentSessionId) {
+      const scroller = scrollRef.current;
+      if (scroller && origin.snapshot) {
+        if (origin.snapshot.atBottom) scrollToBottomNowRef.current?.(scroller);
+        else restoreScrollSnapshotRef.current?.(scroller, origin.snapshot);
+      }
+      if (origin.focus?.isConnected) origin.focus.focus({ preventScroll: true });
+    }
+  }, [currentSessionId]);
 
-  const currentMatchId = matchIds[Math.min(currentMatchIdx, matchIds.length - 1)];
+  // 全局 Ctrl+F 打开搜索框（焦点不在 input 也行）。BottomBar textarea 上 Ctrl+F
+  // 默认就 no-op（Electron BrowserWindow 没有 native find），window 层 preventDefault 即可。
+  // Esc 关闭并清空 query。
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!isSurfaceInteractive(scrollRef.current)) return;
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        if (returnFromLocatedSearch.current) {
+          returnFromLocatedSearch.current();
+          return;
+        }
+        if (!searchOpen) {
+          searchOrigin.current = {
+            sessionId: currentSessionId,
+            snapshot: scrollRef.current && rememberScrollSnapshot(scrollRef.current),
+            focus: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+          };
+          setSearchScope('page');
+          setSearchOpen(true);
+        }
+        // focus 落到搜索框（下一帧，等 input 挂载）
+        requestAnimationFrame(() => searchInputRef.current?.focus());
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        if (returnFromLocatedSearch.current) returnFromLocatedSearch.current();
+        else closeSearch();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [currentSessionId, searchOpen, closeSearch, rememberScrollSnapshot]);
+
+  async function locateSearchHit(
+    itemId: string,
+    signal: AbortSignal,
+  ): Promise<'located' | 'stale' | 'missing'> {
+    const scroller = scrollRef.current;
+    if (!currentSessionId || !scroller) return 'missing';
+    const snapshot = rememberScrollSnapshot(scroller);
+    const located = await openLocatedHistory(currentSessionId, { searchItemId: itemId }, signal);
+    if (located === 'stale') return 'stale';
+    if (!located) return 'missing';
+    const previousExpansion = expanded;
+    pendingSearchFocus.current = { itemId: located.itemId, itemIds: located.itemIds };
+    setLocatedSearchItem(located.itemId);
+    returnFromLocatedSearch.current = () => {
+      located.restore();
+      pendingSearchFocus.current = null;
+      setLocatedSearchItem(null);
+      setExpanded(previousExpansion);
+      returnFromLocatedSearch.current = null;
+      requestAnimationFrame(() => {
+        if (
+          scrollRef.current !== scroller ||
+          useAppStore.getState().currentSessionId !== currentSessionId
+        )
+          return;
+        if (snapshot.atBottom) scrollToBottomNow(scroller);
+        else restoreViewportScrollAnchor(scroller, snapshot.anchor);
+        const result = searchResultsRef.current?.querySelector<HTMLButtonElement>(
+          `[data-hit-id="${CSS.escape(itemId)}"]`,
+        );
+        (result ?? searchInputRef.current)?.focus({ preventScroll: true });
+      });
+    };
+    return 'located';
+  }
+  useLayoutEffect(() => {
+    const source = pendingSearchFocus.current;
+    if (!locatedSearchItem || source?.itemId !== locatedSearchItem) return;
+    const receipts = viewMessages.filter(
+      (message) =>
+        (message.kind === 'tool_cluster' &&
+          message.subClusters.some((step) =>
+            step.tools.some((tool) => source.itemIds.includes(tool.id)),
+          )) ||
+        (message.kind === 'thinking' && source.itemIds.includes(message.sourceItemId)),
+    );
+    const revealIds = [...source.itemIds, ...receipts.map((receipt) => receipt.id)];
+    if (revealIds.some((id) => !expanded.has(id))) {
+      setExpanded((previous) => new Set([...previous, ...revealIds]));
+      return;
+    }
+    const row = scrollRef.current?.querySelector<HTMLElement>(
+      `[data-source-item="${CSS.escape(locatedSearchItem)}"]`,
+    );
+    if (!row) return;
+    pendingSearchFocus.current = null;
+    wasAtBottomRef.current = false;
+    row.focus({ preventScroll: true });
+    row.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }, [locatedSearchItem, viewMessages, expanded]);
+
+  const currentMatchId = matchIds[visibleMatchIndex];
   const matchSet = useMemo(() => new Set(matchIds), [matchIds]);
 
   // OC-18 markAuto guard：区分**程序滚动**和**用户滚动**。
@@ -1414,7 +1486,9 @@ export function ConversationStreamV2(): JSX.Element {
     anchor = viewportScrollAnchorRef.current,
   ): boolean {
     if (!anchor) return false;
-    const target = scroller.querySelector(`[data-msg-id="${CSS.escape(anchor.id)}"]`);
+    const target = anchor.savedItemId
+      ? scroller.querySelector(`[data-source-item="${CSS.escape(anchor.savedItemId)}"]`)
+      : scroller.querySelector(`[data-msg-id="${CSS.escape(anchor.id)}"]`);
     if (!(target instanceof HTMLElement)) return false;
 
     const targetTop = messageTopWithinScroller(scroller, target);
@@ -1578,10 +1652,13 @@ export function ConversationStreamV2(): JSX.Element {
   function requestAdjacentHistory(
     scroller: HTMLDivElement,
     direction: 'older' | 'newer' = 'older',
+    openSavedExplicitly = false,
   ): void {
     if (
       currentSessionId === null ||
-      !(direction === 'older' ? historyPaging.hasMore : historyPaging.hasNewer) ||
+      !(direction === 'older'
+        ? historyPaging.hasMore || canOpenSavedPage
+        : historyPaging.hasNewer) ||
       latestJumpRequest !== null ||
       historyPaging.phase === 'loading' ||
       prependAnchorRestoreRef.current !== null
@@ -1603,6 +1680,32 @@ export function ConversationStreamV2(): JSX.Element {
       snapshot: rememberScrollSnapshot(scroller),
       scroller,
     };
+    if (direction === 'older' && canOpenSavedPage) {
+      const origin = restoreState.snapshot;
+      const anchor = restoreState.snapshot.anchor;
+      if (anchor && productTranscript) {
+        const row = scroller.querySelector<HTMLElement>(`[data-msg-id="${CSS.escape(anchor.id)}"]`);
+        const live = productTranscript.items.find((item) => item.id === row?.dataset.sourceItem);
+        const boundary = live?.historyBoundary;
+        if (live && boundary) {
+          const sameSource = (item: SessionProductItem) =>
+            item.type === live.type &&
+            item.historyBoundary?.entryId === boundary.entryId &&
+            item.historyBoundary.sourceRevision === boundary.sourceRevision;
+          const matches = productTranscript.historyItems.filter(sameSource);
+          if (matches.length === 1 && productTranscript.items.filter(sameSource).length === 1) {
+            restoreState.snapshot = {
+              ...restoreState.snapshot,
+              anchor: { ...anchor, savedItemId: matches[0]!.id },
+            };
+          }
+        }
+      }
+      if (!restoreState.snapshot.anchor?.savedItemId && !openSavedExplicitly) return;
+      if (!restoreState.snapshot.anchor?.savedItemId)
+        restoreState.snapshot = { ...origin, anchor: null };
+      liveReadingPosition.current = origin;
+    }
     prependAnchorRestoreRef.current = restoreState;
     if (direction === 'older')
       setOlderHistoryFeedback({ sessionId: requestedSessionId, phase: 'loading' });
@@ -1767,6 +1870,7 @@ export function ConversationStreamV2(): JSX.Element {
           handlePrependUserScrollIntent();
         }
         disengageFollowForUserScrollIntent(scroller);
+        if (scroller.scrollTop <= 1) requestAdjacentHistory(scroller);
         break;
       case ' ':
         if (e.shiftKey) {
@@ -1921,6 +2025,11 @@ export function ConversationStreamV2(): JSX.Element {
   useEffect(() => {
     cancelPrependAnchorRestore();
     latestJumpOwnerRef.current = null;
+    liveReadingPosition.current = null;
+    returnFromLocatedSearch.current = null;
+    setLocatedSearchItem(null);
+    setSearchOpen(false);
+    setSearchQuery('');
     setLatestJumpRequest(null);
     if (scrollRef.current) {
       scrollToBottomNowRef.current?.(scrollRef.current);
@@ -1951,9 +2060,20 @@ export function ConversationStreamV2(): JSX.Element {
     const scroller = scrollRef.current;
     if (!scroller) return;
     // The selected SDK window is now committed to the DOM; only this Session may move its viewport.
-    scrollToBottomNowRef.current?.(scroller);
-    wasAtBottomRef.current = true;
-    setShowJumpToBottom(false);
+    const position = latestJumpRequest.returnPosition;
+    if (position && !position.atBottom) {
+      restoreScrollSnapshotRef.current?.(scroller, position);
+      const anchor = position.anchor;
+      if (anchor)
+        scroller
+          .querySelector<HTMLElement>(`[data-msg-id="${CSS.escape(anchor.id)}"]`)
+          ?.focus({ preventScroll: true });
+    } else {
+      scrollToBottomNowRef.current?.(scroller);
+      wasAtBottomRef.current = true;
+      setShowJumpToBottom(false);
+    }
+    liveReadingPosition.current = null;
     latestJumpOwnerRef.current = null;
     setLatestJumpRequest(null);
   }, [latestJumpRequest, currentSessionId, historyPaging, productTranscript, t]);
@@ -1990,16 +2110,20 @@ export function ConversationStreamV2(): JSX.Element {
     animateJumpToBottom(scroller);
   }
 
-  function returnToNewestHistory(): void {
+  function returnToNewestHistory(returnPosition?: ScrollSnapshot): void {
     if (!currentSessionId || latestJumpRequest !== null) return;
     // This replaces the paging lifecycle token, so the stale continuation cannot apply data.
     // Its viewport RAF must be fenced independently before the newest request starts.
     cancelPrependAnchorRestore();
     cancelJumpToBottomAnimation();
     const sessionId = currentSessionId;
+    returnFromLocatedSearch.current = null;
+    setLocatedSearchItem(null);
+    setSearchOpen(false);
+    setSearchQuery('');
     const token = Symbol('latest-history');
     latestJumpOwnerRef.current = token;
-    setLatestJumpRequest({ sessionId, token, completed: false });
+    setLatestJumpRequest({ sessionId, token, completed: false, returnPosition });
     const session = useAppStore
       .getState()
       .sessions.find((candidate) => candidate.sessionId === currentSessionId);
@@ -2064,6 +2188,22 @@ export function ConversationStreamV2(): JSX.Element {
     });
   }, []);
 
+  const productItemsById = useMemo(
+    () => new Map(productTranscript?.items.map((item) => [item.id, item])),
+    [productTranscript?.items],
+  );
+  const productTurnAction = useCallback(
+    (reference: SavedItemReference, operation: 'fork' | 'rewind') => {
+      if (!actionSession) return;
+      void performHistoryTurnAction(
+        actionSession,
+        operation,
+        { kind: 'item', source: selectedSource, ...reference },
+        t,
+      );
+    },
+    [actionSession, selectedSource, t],
+  );
   const forkFromTurn = useCallback(
     async (turnIndex: number): Promise<void> => {
       if (!currentSessionId || !window.kodaxSpace) return;
@@ -2225,6 +2365,17 @@ export function ConversationStreamV2(): JSX.Element {
             />
           )}
           <div className="space-y-3">
+            {canOpenSavedPage && (
+              <button
+                type="button"
+                className="text-xs text-fg-muted hover:text-fg-primary"
+                onClick={() => {
+                  if (scrollRef.current) requestAdjacentHistory(scrollRef.current, 'older', true);
+                }}
+              >
+                {t('conversation.openSavedPage')}
+              </button>
+            )}
             {(olderHistoryFeedback?.sessionId === currentSessionId ||
               historyBoundaryLoading ||
               historyBoundaryWaiting) && (
@@ -2249,8 +2400,19 @@ export function ConversationStreamV2(): JSX.Element {
               historyPaging.phase === 'error' && (
                 <HistoryPagingSentinel
                   phase="error"
-                  reason={historyPaging.runtimeFailureReason}
+                  reason={
+                    historyPaging.savedPageChanged
+                      ? t('conversation.savedPageChanged')
+                      : historyPaging.runtimeFailureReason
+                  }
+                  retryLabel={
+                    historyPaging.savedPageChanged ? t('conversation.returnToNewest') : undefined
+                  }
                   onRetry={() => {
+                    if (historyPaging.savedPageChanged) {
+                      returnToNewestHistory();
+                      return;
+                    }
                     if (historyPaging.surface !== undefined) {
                       // Failure is already painted by this error sentinel; the
                       // rejection itself must not escape as an unhandled error.
@@ -2263,7 +2425,7 @@ export function ConversationStreamV2(): JSX.Element {
                 />
               )}
             {displayMessages.length === 0 &&
-              (historyPaging.phase === 'waiting' && currentSessionMsgCount > 0 ? (
+              (historyPaging.phase === 'waiting' ? (
                 <HistoryPagingSentinel
                   phase="waiting"
                   reason={historyRuntimeReason}
@@ -2280,32 +2442,75 @@ export function ConversationStreamV2(): JSX.Element {
                     historyRuntimeReason ??
                     t('conversation.historyRuntimeUnavailable')}
                 </div>
-              ) : currentSessionMsgCount > 0 ? (
-                // 有 SDK summary msgCount 但 buffer 空 → history IPC 正在 flight,显示骨架
-                // 比 "Send a prompt to start" 更准确,也免去用户盯着空白屏幕等几百毫秒
+              ) : historyPaging.phase === 'error' ? (
+                <HistoryPagingSentinel
+                  phase="error"
+                  onRetry={() => {
+                    if (currentSessionId)
+                      void restoreNewestSessionHistory(
+                        currentSessionId,
+                        historyPaging.surface ?? 'code',
+                      ).catch(() => {
+                        /* The paging state renders the error. */
+                      });
+                  }}
+                />
+              ) : historyPaging.phase === 'loading' ||
+                (historyPaging.phase === 'idle' && currentSessionMsgCount > 0) ? (
                 <HistoryRestoreSkeleton />
               ) : (
-                <div className="text-fg-faint italic text-sm">{t('conversation.emptyPrompt')}</div>
+                !canOpenSavedPage && (
+                  <div className="text-fg-faint italic text-sm">
+                    {t('conversation.emptyPrompt')}
+                  </div>
+                )
               ))}
-            {renderItems.map((item, index) => (
-              <ConversationRenderRow
-                key={item.id}
-                item={item}
-                index={index}
-                animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
-                liveTail={isStreaming && index === renderItems.length - 1}
-                queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
-                expanded={expanded}
-                clustersForceExpand={clustersForceExpand}
-                thinkingForceExpand={thinkingForceExpand}
-                currentMatchId={currentMatchId}
-                matchSet={matchSet}
-                userMessages={userMessages}
-                onToggle={toggleGroup}
-                onForkTurn={forkFromTurn}
-                onRewindTurn={rewindToTurn}
-              />
-            ))}
+            <ProductBodyOwnerContext.Provider value={bodyOwner}>
+              {renderItems.map((item, index) => {
+                const sdkItem =
+                  usesSavedTurns &&
+                  item.kind === 'message' &&
+                  (item.message.kind === 'user' || item.message.kind === 'assistant_text')
+                    ? productItemsById.get(item.message.sourceItemId ?? item.message.id)
+                    : undefined;
+                return (
+                  <ConversationRenderRow
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
+                    liveTail={isStreaming && index === renderItems.length - 1}
+                    queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
+                    expanded={expanded}
+                    clustersForceExpand={clustersForceExpand}
+                    thinkingForceExpand={thinkingForceExpand}
+                    currentMatchId={currentMatchId}
+                    matchSet={matchSet}
+                    userMessages={userMessages}
+                    onToggle={toggleGroup}
+                    onForkTurn={forkFromTurn}
+                    onProductTurn={usesSavedTurns ? productTurnAction : undefined}
+                    productItemId={sdkItem?.outputState === 'draft' ? undefined : sdkItem?.id}
+                    sourceRevision={
+                      selectedSource === 'history'
+                        ? historyPaging.revision
+                        : sdkItem?.historyBoundary?.sourceRevision
+                    }
+                    inputId={
+                      selectedSource === 'view' && !sdkItem?.historyBoundary
+                        ? sdkItem?.inputId
+                        : undefined
+                    }
+                    outputId={
+                      selectedSource === 'view' && !sdkItem?.historyBoundary
+                        ? sdkItem?.outputId
+                        : undefined
+                    }
+                    onRewindTurn={rewindToTurn}
+                  />
+                );
+              })}
+            </ProductBodyOwnerContext.Provider>
             {/* 流式 spinner —— v0.1.4：从 BottomBar 搬到这里，把"正在做什么"
             放在对话流末尾。ActivitySpinner 自己 return null 时本块也不渲染。 */}
             <StreamingSpinnerRow />
@@ -2329,7 +2534,12 @@ export function ConversationStreamV2(): JSX.Element {
       {searchOpen && (
         <div
           data-testid="transcript-search-bar"
-          className="absolute top-2 right-4 z-30 flex items-center gap-1 bg-surface-2 border border-border-strong rounded shadow-xl px-2 py-1"
+          hidden={!!locatedSearchItem}
+          className={
+            locatedSearchItem
+              ? 'hidden'
+              : 'absolute top-2 right-4 z-30 flex items-center gap-1 bg-surface-2 border border-border-strong rounded shadow-xl px-2 py-1'
+          }
         >
           <input
             ref={searchInputRef}
@@ -2337,48 +2547,81 @@ export function ConversationStreamV2(): JSX.Element {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
+              if (sessionSearch && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+                e.preventDefault();
+                const first = searchResultsRef.current?.querySelector<HTMLButtonElement>('button');
+                if (e.key === 'Enter') first?.click();
+                else first?.focus();
+                return;
+              }
               if (e.key === 'Enter') {
                 e.preventDefault();
                 if (e.shiftKey) prevMatch();
                 else nextMatch();
-              } else if (e.key === 'Escape') {
+              } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
-                closeSearch();
+                if (e.key === 'ArrowDown') nextMatch();
+                else prevMatch();
               }
             }}
             placeholder={t('conversation.searchPlaceholder')}
             className="bg-transparent text-xs outline-none w-44 text-fg-primary placeholder:text-fg-muted"
           />
-          {productTranscript && currentSessionId && (
-            <ProductHistorySearch sessionId={currentSessionId} query={searchQuery} />
+          {productTranscript && (
+            <select
+              aria-label={t('conversation.searchScope')}
+              value={searchScope}
+              className="bg-surface-2 text-xs text-fg-secondary"
+              onChange={(event) => {
+                setSearchScope(event.target.value === 'session' ? 'session' : 'page');
+                searchInputRef.current?.focus();
+              }}
+            >
+              <option value="page">{t('conversation.findPage')}</option>
+              <option value="session">{t('conversation.findSession')}</option>
+            </select>
           )}
-          <span className="text-[11px] text-fg-muted font-mono w-12 text-right select-none">
-            {searchQuery
-              ? matchIds.length === 0
-                ? '0/0'
-                : `${currentMatchIdx + 1}/${matchIds.length}`
-              : ''}
-          </span>
-          <button
-            type="button"
-            onClick={prevMatch}
-            disabled={matchIds.length === 0}
-            className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
-            title={t('conversation.previousMatchTitle')}
-            aria-label={t('conversation.previousMatch')}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            onClick={nextMatch}
-            disabled={matchIds.length === 0}
-            className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
-            title={t('conversation.nextMatchTitle')}
-            aria-label={t('conversation.nextMatch')}
-          >
-            ↓
-          </button>
+          {sessionSearch && currentSessionId && (
+            <div ref={searchResultsRef}>
+              <ProductHistorySearch
+                key={currentSessionId}
+                sessionId={currentSessionId}
+                query={searchQuery}
+                onLocate={locateSearchHit}
+              />
+            </div>
+          )}
+          {!sessionSearch && (
+            <>
+              <span className="text-[11px] text-fg-muted font-mono w-12 text-right select-none">
+                {searchQuery
+                  ? matchIds.length === 0
+                    ? '0/0'
+                    : `${visibleMatchIndex + 1}/${matchIds.length}`
+                  : ''}
+              </span>
+              <button
+                type="button"
+                onClick={prevMatch}
+                disabled={matchIds.length === 0}
+                className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
+                title={t('conversation.previousMatchTitle')}
+                aria-label={t('conversation.previousMatch')}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={nextMatch}
+                disabled={matchIds.length === 0}
+                className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
+                title={t('conversation.nextMatchTitle')}
+                aria-label={t('conversation.nextMatch')}
+              >
+                ↓
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={closeSearch}
@@ -2396,6 +2639,24 @@ export function ConversationStreamV2(): JSX.Element {
           chevron 用 2.5 描边补足「细 V 不够显眼」；hover 时 outline 微光环（用 outline 不用 ring，
           避免和 .lift 的 box-shadow 抢同一属性、hover 反而丢掉浮影）。
           外层 div 负责居中定位，内层 button 的 .ix-pop 悬停缩放不和居中 translate 打架。 */}
+      {productTranscript?.browsingOlder && liveReadingPosition.current && !searchOpen && (
+        <button
+          type="button"
+          className="absolute top-2 right-4 z-20 rounded bg-surface-2 px-3 py-1 text-xs"
+          onClick={() => returnToNewestHistory(liveReadingPosition.current ?? undefined)}
+        >
+          {t('conversation.backToReading')}
+        </button>
+      )}
+      {locatedSearchItem && (
+        <button
+          type="button"
+          className="absolute top-2 right-4 z-30 rounded bg-surface-2 px-3 py-1 text-xs"
+          onClick={() => returnFromLocatedSearch.current?.()}
+        >
+          {t('conversation.backToResults')}
+        </button>
+      )}
       {(showJumpToBottom || historyPaging.hasNewer || latestJumpRequest !== null) && (
         <div className="reveal-marker absolute bottom-4 left-1/2 -ml-4 z-10">
           <button
@@ -2473,7 +2734,7 @@ function QueryJumpRail({
             <button
               key={anchor.id}
               type="button"
-              aria-label={`Jump to query ${anchor.ordinal}`}
+              aria-label={previewTitle}
               aria-current={anchor.id === activeId ? 'location' : undefined}
               onClick={() => onJump(anchor.id)}
               onFocus={() => onHover(anchor.id)}
@@ -2496,9 +2757,6 @@ function QueryJumpRail({
                   </span>
                   <span className="mt-0.5 block line-clamp-2 text-[12px] leading-5 text-fg-muted">
                     {previewBody}
-                  </span>
-                  <span className="mt-1.5 block font-mono text-[11px] leading-4 text-fg-faint">
-                    #{anchor.ordinal}
                   </span>
                 </span>
               )}
@@ -2557,6 +2815,8 @@ function ProcessReceiptRow({
           <div
             key={receipt.id}
             data-msg-id={receipt.id}
+            data-source-item={receipt.kind === 'thinking' ? receipt.sourceItemId : undefined}
+            tabIndex={-1}
             data-testid={`process-receipt-${receipt.kind}`}
             className={`relative min-w-0 max-w-full search-ring-anim hover:z-10 focus-within:z-10 ${ringClass}`}
             style={receiptStyle}
@@ -2566,10 +2826,12 @@ function ProcessReceiptRow({
                 cluster={receipt}
                 followTail={followTail && receipt === receipts.at(-1)}
                 expanded={expanded.has(receipt.id) || clustersForceExpand}
+                expandedItems={expanded}
                 onToggle={() => onToggle(receipt.id)}
               />
             ) : (
               <ThinkingBlock
+                productItem={receipt.productItem}
                 thinking={receipt.thinking}
                 followTail={followTail && receipt === receipts.at(-1)}
                 expanded={expanded.has(receipt.id) || thinkingForceExpand}
@@ -2601,6 +2863,11 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   userMessages,
   onToggle,
   onForkTurn,
+  onProductTurn,
+  productItemId,
+  sourceRevision,
+  inputId,
+  outputId,
   onRewindTurn,
 }: {
   readonly item: ConversationRenderItem;
@@ -2616,6 +2883,11 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly userMessages: readonly UserMessage[];
   readonly onToggle: (id: string) => void;
   readonly onForkTurn: (turnIndex: number) => Promise<void>;
+  readonly onProductTurn?: (reference: SavedItemReference, action: 'fork' | 'rewind') => void;
+  readonly productItemId?: string;
+  readonly sourceRevision?: string;
+  readonly inputId?: string;
+  readonly outputId?: string;
   readonly onRewindTurn: (turnIndex: number) => Promise<void>;
 }): JSX.Element {
   const intrinsicStyle = useMemo<ConversationIntrinsicStyle>(
@@ -2659,6 +2931,22 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   }
 
   const message = item.message;
+  const reference = productItemId
+    ? {
+        itemId: productItemId,
+        revision: sourceRevision,
+        ...(inputId ? { inputId } : {}),
+        ...(outputId ? { outputId } : {}),
+      }
+    : undefined;
+  const savedActions =
+    onProductTurn && reference
+      ? {
+          savedTurn: true,
+          onFork: () => onProductTurn(reference, 'fork'),
+          onRewind: () => onProductTurn(reference, 'rewind'),
+        }
+      : undefined;
   const ringClass = searchRingClassFor(message.id, currentMatchId, matchSet);
   let inner: JSX.Element;
   switch (message.kind) {
@@ -2666,6 +2954,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
       inner = (
         <UserBubble
           content={message.content}
+          turnActions={savedActions}
           attachments={message.attachments}
           sentAt={message.sentAt}
         />
@@ -2690,13 +2979,14 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
           sentAt={message.sentAt}
           turnIndex={message.turnIndex}
           completed={message.completed}
+          savedActions={savedActions}
           canRewind={
-            message.turnIndex !== undefined
+            !onProductTurn && message.turnIndex !== undefined
               ? canRewindSelectorTurn(userMessages, message.turnIndex)
               : false
           }
-          onForkTurn={(turnIndex) => void onForkTurn(turnIndex)}
-          onRewindTurn={(turnIndex) => void onRewindTurn(turnIndex)}
+          onForkTurn={onProductTurn ? undefined : (turnIndex) => void onForkTurn(turnIndex)}
+          onRewindTurn={onProductTurn ? undefined : (turnIndex) => void onRewindTurn(turnIndex)}
         />
       );
       break;
@@ -2716,13 +3006,17 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
       <TimelineMarker tone={messageMarkerTone(message)} animate={animateEntry} />
       <div
         data-msg-id={message.id}
+        data-source-item={'sourceItemId' in message ? message.sourceItemId : message.id}
+        tabIndex={-1}
         data-stable-scroll-anchor="true"
         data-live-tail={liveTail ? 'true' : undefined}
         className={`conversation-occlusion-item search-ring-anim ${ringClass}`}
         style={intrinsicStyle}
       >
         <Reveal index={index} animate={animateEntry} className="conversation-message-body">
-          {inner}
+          <ProductItemBody item={'productItem' in message ? message.productItem : undefined}>
+            {inner}
+          </ProductItemBody>
         </Reveal>
       </div>
     </div>
@@ -2894,12 +3188,14 @@ function StreamingSpinnerRow(): JSX.Element | null {
  * Token estimates belong to Host activity; transcript text only identifies the state.
  */
 function ThinkingBlock({
+  productItem,
   thinking,
   followTail,
   expanded,
   onToggle,
 }: {
   thinking: string;
+  productItem?: SessionProductItem;
   followTail: boolean;
   expanded: boolean;
   onToggle: () => void;
@@ -2940,7 +3236,9 @@ function ThinkingBlock({
               'border-thinking/50 text-thinking/90',
             ].join(' ')}
           >
-            {thinking}
+            <ProductItemBody item={productItem}>
+              <ThinkingText text={thinking} />
+            </ProductItemBody>
           </ScrollCapBox>
         </Collapse>
       ) : null}
@@ -2952,6 +3250,7 @@ interface ToolClusterProps {
   cluster: ToolClusterMessage;
   followTail: boolean;
   expanded: boolean;
+  expandedItems: ReadonlySet<string>;
   onToggle: () => void;
 }
 
@@ -2967,7 +3266,13 @@ interface ToolClusterProps {
  *
  * 历史：v0.1.0 起曾两层折叠（外+内 sub-cluster），用户 2026-06-02 反馈两层不直观，降回单层。
  */
-function ToolCluster({ cluster, followTail, expanded, onToggle }: ToolClusterProps): JSX.Element {
+function ToolCluster({
+  cluster,
+  followTail,
+  expanded,
+  expandedItems,
+  onToggle,
+}: ToolClusterProps): JSX.Element {
   const { t } = useI18n();
   const allTools = cluster.subClusters.flatMap((sc) => sc.tools);
   const running = allTools.find((t) => t.status === 'running');
@@ -3056,7 +3361,9 @@ function ToolCluster({ cluster, followTail, expanded, onToggle }: ToolClusterPro
                         'border-thinking/50 text-thinking/90',
                       ].join(' ')}
                     >
-                      {sc.thinking}
+                      <ProductItemBody item={sc.productItem}>
+                        <ThinkingText text={sc.thinking} />
+                      </ProductItemBody>
                     </div>
                   )}
                   {showStepLabel(sc) && (
@@ -3071,7 +3378,7 @@ function ToolCluster({ cluster, followTail, expanded, onToggle }: ToolClusterPro
                   )}
                   <div className="space-y-2">
                     {sc.tools.map((t) => (
-                      <ToolCallCard key={t.id} {...t} />
+                      <ToolCallCard key={t.id} {...t} reveal={expandedItems.has(t.id)} />
                     ))}
                   </div>
                 </div>
@@ -3087,10 +3394,12 @@ function ToolCluster({ cluster, followTail, expanded, onToggle }: ToolClusterPro
 function HistoryPagingSentinel({
   phase,
   reason,
+  retryLabel,
   onRetry,
 }: {
   readonly phase: 'loading' | 'waiting' | 'error';
   readonly reason?: string;
+  readonly retryLabel?: string;
   readonly onRetry: () => void;
 }): JSX.Element {
   const { t } = useI18n();
@@ -3127,7 +3436,7 @@ function HistoryPagingSentinel({
         onClick={onRetry}
         className="rounded border border-danger/40 px-2 py-1 hover:bg-danger/10"
       >
-        {t('message.action.retry')}
+        {retryLabel ?? t('message.action.retry')}
       </button>
     </div>
   );

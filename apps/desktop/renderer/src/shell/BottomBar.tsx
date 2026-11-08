@@ -120,6 +120,12 @@ const SLASH_ARGS_MAX = 20;
 
 const EMPTY_INPUT_HISTORY: readonly string[] = [];
 
+import {
+  commandHistoryTurnSelector,
+  performHistoryTurnAction,
+  usesProductHistoryActions,
+} from '../lib/historyTurnAction.js';
+
 type QueueMode = 'interrupt' | 'after-turn';
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
@@ -1842,6 +1848,18 @@ export function BottomBar(): JSX.Element {
       return;
     }
 
+    if (action === 'fork-session' || action === 'rewind-session') {
+      const session = state.sessions.find((candidate) => candidate.sessionId === sessionId);
+      if (session && usesProductHistoryActions(session)) {
+        const operation = action === 'fork-session' ? 'fork' : 'rewind';
+        const selector = commandHistoryTurnSelector(args, operation);
+        if (!selector) {
+          appendUserMessage(sessionId, t('session.turnInvalidIndex'));
+          return;
+        }
+        return performHistoryTurnAction(session, operation, selector, t);
+      }
+    }
     if (action === 'fork-session') {
       if (!window.kodaxSpace) {
         appendUserMessage(sessionId, '[fork] IPC unavailable');

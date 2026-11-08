@@ -2,6 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readProductItemText } from './productItemContent.js';
 
+test('a declared suffix is never returned as a complete body when the total length is omitted', async () => {
+  const item = { id: 'suffix', type: 'assistant' as const, text: 'tail', textOffset: 4 };
+  const text = await readProductItemText(item, async () => ({
+    id: 'suffix',
+    offset: 0,
+    text: 'headtail',
+    totalLength: 8,
+  }));
+  assert.equal(text, 'headtail');
+});
+
 test('saved original uses its own paging length and never substitutes the preview', async () => {
   const item = {
     id: 'tool',

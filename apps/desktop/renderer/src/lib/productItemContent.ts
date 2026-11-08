@@ -20,6 +20,24 @@ async function readBeforeDeadline(
   }
 }
 
+export function productItemBodyLength(
+  item: SessionProductItem,
+  part: 'text' | 'input',
+): number | undefined {
+  if (part === 'input') return item.tool?.totalInputLength;
+  // A positive offset denotes a suffix, even if an older snapshot omitted the optional total.
+  const offset = item.textOffset ?? 0;
+  return item.totalTextLength ?? (offset > 0 ? offset + item.text.length : undefined);
+}
+
+export function isProductItemPreview(item: SessionProductItem, part: 'text' | 'input'): boolean {
+  const length = productItemBodyLength(item, part);
+  if (length === undefined) return false;
+  return part === 'input'
+    ? (item.tool?.inputText ?? '').length !== length
+    : item.text.length !== length || (item.textOffset ?? 0) !== 0;
+}
+
 /** Frozen SDK body read: identity, state, revision and UTF-16 offsets must all agree. */
 export async function readProductItemText(
   item: SessionProductItem,
@@ -27,18 +45,9 @@ export async function readProductItemText(
   part: 'text' | 'input' | 'original' = 'text',
   source: 'view' | 'history' = 'view',
 ): Promise<string> {
-  let length =
-    part === 'original'
-      ? undefined
-      : part === 'input'
-        ? item.tool?.totalInputLength
-        : item.totalTextLength;
+  let length = part === 'original' ? undefined : productItemBodyLength(item, part);
   const preview = part === 'input' ? (item.tool?.inputText ?? '') : item.text;
-  if (
-    part !== 'original' &&
-    (length === undefined || (preview.length === length && (part === 'input' || !item.textOffset)))
-  )
-    return preview;
+  if (part !== 'original' && !isProductItemPreview(item, part)) return preview;
   if (length !== undefined && length > 16 * 1024 * 1024)
     throw new Error('SDK item exceeds the body read limit.');
   let text = '';

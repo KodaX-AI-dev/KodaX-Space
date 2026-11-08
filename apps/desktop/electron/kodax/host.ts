@@ -10,7 +10,12 @@
 // 后续 chore：加 RealKodaXSession 实现并由配置开关切换。
 
 import { randomUUID } from 'node:crypto';
-import type { SessionEvent, SpaceRuntimeRunStopReceiptT } from '@kodax-space/space-ipc-schema';
+import type {
+  ChannelInput,
+  ChannelOutput,
+  SessionEvent,
+  SpaceRuntimeRunStopReceiptT,
+} from '@kodax-space/space-ipc-schema';
 import { canonProjectRoot } from '@kodax-space/space-ipc-schema';
 import { pushToRenderer } from '../ipc/push.js';
 import { permissionBroker } from '../permission/broker.js';
@@ -177,6 +182,60 @@ export function sanitizeTitle(input: string, maxLen: number): string {
   const scalars = Array.from(collapsed);
   if (scalars.length <= maxLen) return scalars.join('');
   return scalars.slice(0, maxLen - 3).join('') + '...';
+}
+
+async function rewindConfirmedTurn(
+  sessionId: string,
+  turnIndex: number,
+  boundary: { entryId: string; sourceRevision: string },
+  confirmed: NonNullable<ChannelInput<'session.rewind'>['confirmedTurn']>,
+): Promise<ChannelOutput<'session.rewind'>> {
+  const target = await runtimeHostAdapter.resolveHistoryTurn(sessionId, confirmed.selector);
+  if (
+    target.status !== 'ready' ||
+    !target.hasLaterTurn ||
+    target.turnIndex !== turnIndex ||
+    target.expectedHead !== confirmed.expectedHead ||
+    target.activeRunId !== confirmed.activeRunId ||
+    target.historyBoundary.entryId !== boundary.entryId ||
+    target.historyBoundary.sourceRevision !== boundary.sourceRevision
+  )
+    return { ok: false, reason: 'target_changed' };
+  if (target.activeRunId) {
+    // A lost cancellation receipt leaves the run's state uncertain. Never truncate in that case.
+    const stop = await runtimeHostAdapter
+      .cancelSessionRuns(sessionId, target.activeRunId)
+      .catch(() => undefined);
+    if (
+      !stop?.accepted ||
+      stop.state !== 'confirmed' ||
+      (stop.phase !== 'cancelled' && stop.phase !== 'interrupted')
+    )
+      return { ok: false, reason: 'stop_unconfirmed' };
+  }
+  try {
+    const diskRewound = await runtimeHostAdapter.rewindSession({
+      sessionId,
+      historyBoundary: boundary,
+      expectedHead: confirmed.expectedHead,
+    });
+    if (!diskRewound)
+      return {
+        ok: false,
+        reason: target.activeRunId ? 'stopped_history_changed' : 'target_changed',
+      };
+    return { ok: true, diskRewound: true };
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+    if (code === 'conflict' || code === 'resync_required')
+      return {
+        ok: false,
+        reason: target.activeRunId ? 'stopped_history_changed' : 'target_changed',
+      };
+    if (target.activeRunId) return { ok: false, reason: 'stopped_write_unknown' };
+    if (code === 'history_write_unconfirmed') return { ok: false, reason: 'write_unknown' };
+    throw error;
+  }
 }
 
 /**
@@ -1250,17 +1309,8 @@ class KodaXHost {
     sessionId: string,
     rewindPastTurnIdx: number,
     historyBoundary?: { readonly boundaryId: string; readonly sourceRevision: string },
-  ): Promise<{
-    ok: boolean;
-    reason?: 'session_not_found' | 'invalid_index' | 'session_busy';
-    /**
-     * reviewer HIGH-3: 报告盘上 rewind 是否成功。
-     * false 当 session 不在盘上 OR lineage 没有更早的 user entry 可退——in-flight
-     * 已 cancel 但持久化未变更，renderer 应当提示用户"已暂停，但历史未截断"
-     * 而非默默 truncate UI buffer。
-     */
-    diskRewound?: boolean;
-  }> {
+    confirmedTurn?: ChannelInput<'session.rewind'>['confirmedTurn'],
+  ): Promise<ChannelOutput<'session.rewind'>> {
     const s = this.sessions.get(sessionId);
     if (!s) return { ok: false, reason: 'session_not_found' };
     const usesRuntime = s.surface === 'code' || s instanceof RealKodaXSession;
@@ -1285,6 +1335,18 @@ class KodaXHost {
         : await findPersistedTurnEndBoundary(sessionId, rewindPastTurnIdx);
     if ((usesRuntime && runtimeBoundary === null) || (!usesRuntime && persistedBoundary === null)) {
       return { ok: false, reason: 'invalid_index' };
+    }
+    if (s.surface === 'code' && s.provider !== 'mock' && !confirmedTurn)
+      return { ok: false, reason: 'target_changed' };
+    if (confirmedTurn && runtimeBoundary) {
+      const result = await rewindConfirmedTurn(
+        sessionId,
+        rewindPastTurnIdx,
+        runtimeBoundary,
+        confirmedTurn,
+      );
+      if (result.diskRewound) s.lastActivityAt = Date.now();
+      return result;
     }
     // cancel in-flight，避免 rewind 后还有迟来的 event 把截掉的位置塞回去
     permissionBroker.cancelSession(sessionId, 'session_cancelled');

@@ -62,7 +62,7 @@ import { encodeRuntimeActorTaskId } from '../kodax/runtime/runtime-agent-project
 await initializeCoderDaemonProjectionSdk();
 
 test('work-mode changes invalidate idle UI only after a successful Host CAS', async (t) => {
-  const fake = createFakeRuntime();
+  const fake = createFakeRuntime('rt_test', false);
   const observe = fake.runtime.sessions.observe;
   fake.runtime.sessions.observe = async (...args) => {
     const observation = await observe(...args);
@@ -277,7 +277,7 @@ test('a rejected cold identity request cannot poison the following Partner admis
 });
 
 test('a workflow resolves an older Partner outside the initial profile before its first operation', async () => {
-  const fake = createFakeRuntime();
+  const fake = createFakeRuntime('rt_test', true);
   fake.runtime.catalog.executionTools = async () => [
     { name: 'bash', sideEffect: 'mutates-shell', planModeAllowed: false },
   ];
@@ -303,6 +303,7 @@ test('a workflow resolves an older Partner outside the initial profile before it
     await adapter.initialize();
     const sessionId = 's_unlisted_partner_workflow';
     fake.sessions.add(sessionId);
+    fake.settings.set(sessionId, { revision: 0, value: { workMode: 'agent' } });
     const record = {
       id: sessionId,
       title: 'Older Partner',
@@ -338,7 +339,7 @@ test('a workflow resolves an older Partner outside the initial profile before it
 
 for (const invalidate of [false, true])
   test(`cold queued Partner inputs rebind once using only the original owned complete intent (invalidate=${invalidate})`, async () => {
-    const fake = createFakeRuntime('rt_cold_queue');
+    const fake = createFakeRuntime('rt_cold_queue', true);
     Object.assign(fake.runtime.capabilities!, {
       productExecutionProfile: { version: 2 },
       productExecutionBinding: { version: 1 },
@@ -353,6 +354,7 @@ for (const invalidate of [false, true])
     });
     const sessionId = 's_cold_owned_queue';
     fake.sessions.add(sessionId);
+    fake.settings.set(sessionId, { revision: 0, value: { workMode: 'agent' } });
     const record = {
       id: sessionId,
       title: 'Queue',
@@ -1107,6 +1109,35 @@ for (const boundary of [
   });
 }
 
+test('an older Host keeps history readable and reports unsupported turn actions', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('old-host');
+  fake.runtime.sessions.readHistory = async () => ({
+    revision: 'page',
+    sourceRevision: 'source',
+    status: 'resolved',
+    issues: [],
+    oversized: [],
+    items: [{ id: 'opaque', type: 'user', text: 'Still readable' }],
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    assert.deepEqual(await adapter.resolveHistoryTurn('old-host', { kind: 'latest' }), {
+      status: 'unsupported',
+    });
+    const page = await adapter.readProductHistory('old-host');
+    assert.ok(page.outcome === 'ready');
+    assert.equal(page.page?.items[0]?.text, 'Still readable');
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('newest history refreshes the SDK view after a quiescent observer has retired', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_mutated');
@@ -1656,7 +1687,7 @@ async function waitForTest(predicate: () => boolean, timeoutMs = 1_000): Promise
   }
 }
 
-function createFakeRuntime(runtimeId = 'rt_test') {
+function createFakeRuntime(runtimeId = 'rt_test', workModeLocked?: boolean) {
   const calls = {
     created: [] as unknown[],
     loaded: [] as string[],
@@ -2119,7 +2150,8 @@ function createFakeRuntime(runtimeId = 'rt_test') {
         return {};
       },
       async getSettingsVersioned(sessionId: string) {
-        return settings.get(sessionId) ?? { revision: 0, value: {} };
+        const current = settings.get(sessionId) ?? { revision: 0, value: {} };
+        return workModeLocked === undefined ? current : { ...current, workModeLocked };
       },
       async updateSettingsVersioned(
         sessionId: string,
@@ -6318,6 +6350,43 @@ test('supported session operations use the Runtime facade', async () => {
   assert.deepEqual(fake.calls.observed, ['s_1']);
   assert.deepEqual(fake.calls.forked, [{ sessionId: 's_1', selector: 'entry_1' }]);
   assert.deepEqual(fake.calls.rewound, [{ sessionId: 's_1', selector: 'entry_0' }]);
+});
+
+test('a lost fork acknowledgement looks up the reserved child without replaying the write', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('source');
+  let writes = 0;
+  let childId: string | undefined;
+  Object.assign(fake.runtime.sessions, {
+    fork: async (input: { newSessionId: string }) => {
+      writes++;
+      childId = input.newSessionId;
+      fake.sessions.add(input.newSessionId);
+      throw Object.assign(new Error('Lost response'), {
+        code: 'protocol_closed',
+        connectionId: 'test-connection',
+        reconnectable: true,
+      });
+    },
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+  });
+  try {
+    const child = await adapter.forkSession({
+      sessionId: 'source',
+      historyBoundary: { entryId: 'target', sourceRevision: 'r' },
+    });
+    assert.ok(childId);
+    assert.equal(child?.id, childId);
+    assert.equal(writes, 1);
+  } finally {
+    await adapter.close();
+  }
 });
 
 test('Coder session listing excludes every Partner ownership marker', async () => {

@@ -80,6 +80,128 @@ test('fork: unknown in-memory source returns null', async () => {
   assert.equal(result, null);
 });
 
+test('confirmed rewind preserves its observed head and does not stop a replacement Run', async (t) => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: runtimeDir,
+    provider: 'mock',
+    surface: 'code',
+  });
+  const boundary = { boundaryId: 'tail', sourceRevision: 'selected-revision' };
+  const target = {
+    selector: { kind: 'previous' as const },
+    expectedHead: 'head',
+    activeRunId: 'original-run',
+  };
+  const stop = t.mock.method(kodaxHost.get(sessionId)!, 'cancel', async () => undefined);
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
+  const write = t.mock.method(runtimeHostAdapter, 'rewindSession', async () => null);
+  const resolve = t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () => ({
+    status: 'ready',
+    expectedHead: 'head',
+    activeRunId: 'replacement-run',
+    historyBoundary: { entryId: 'tail', sourceRevision: 'selected-revision' },
+    turnIndex: 40,
+    hasLaterTurn: true,
+    excerpt: 'the selected question',
+  }));
+  assert.deepEqual(await kodaxHost.rewind(sessionId, 40, boundary, target), {
+    ok: false,
+    reason: 'target_changed',
+  });
+  assert.equal(stop.mock.callCount(), 0);
+  assert.equal(write.mock.callCount(), 0);
+  resolve.mock.mockImplementation(async () => ({
+    status: 'ready' as const,
+    expectedHead: 'head',
+    activeRunId: null,
+    historyBoundary: { entryId: 'tail', sourceRevision: 'selected-revision' },
+    turnIndex: 40,
+    hasLaterTurn: true,
+    excerpt: 'the selected question',
+  }));
+  await kodaxHost.rewind(sessionId, 40, boundary, { ...target, activeRunId: null });
+  assert.deepEqual(write.mock.calls[0]?.arguments[0], {
+    sessionId,
+    historyBoundary: { entryId: 'tail', sourceRevision: 'selected-revision' },
+    expectedHead: 'head',
+  });
+  assert.equal(stop.mock.callCount(), 0);
+});
+
+test('rewind reports a successful bound Stop and a rejected truncation separately', async (t) => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: runtimeDir,
+    provider: 'mock',
+    surface: 'code',
+  });
+  const order: string[] = [];
+  const boundary = { entryId: 'saved-tail', sourceRevision: 'confirmed-revision' };
+  t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => true);
+  t.mock.method(runtimeHostAdapter, 'resolveHistoryTurn', async () => ({
+    status: 'ready' as const,
+    turnIndex: 40,
+    excerpt: 'Forty-one',
+    historyBoundary: boundary,
+    hasLaterTurn: true,
+    expectedHead: 'head',
+    activeRunId: 'selected-run',
+  }));
+  const stop = t.mock.method(
+    runtimeHostAdapter,
+    'cancelSessionRuns',
+    async (id: string, runId: string) => {
+      assert.deepEqual([id, runId], [sessionId, 'selected-run']);
+      order.push('stop');
+      return {
+        sessionId: id,
+        runId,
+        accepted: true,
+        state: 'confirmed' as const,
+        outcome: 'interrupted' as const,
+        phase: 'interrupted' as const,
+        revision: 1,
+      };
+    },
+  );
+  t.mock.method(
+    runtimeHostAdapter,
+    'rewindSession',
+    async (input: Parameters<typeof runtimeHostAdapter.rewindSession>[0]) => {
+      assert.deepEqual(input, { sessionId, historyBoundary: boundary, expectedHead: 'head' });
+      order.push('write');
+      throw Object.assign(new Error('snapshot changed while stopping'), {
+        code: 'resync_required',
+      });
+    },
+  );
+  assert.deepEqual(
+    await kodaxHost.rewind(
+      sessionId,
+      40,
+      { boundaryId: 'saved-tail', sourceRevision: 'confirmed-revision' },
+      { selector: { kind: 'index', index: 40 }, expectedHead: 'head', activeRunId: 'selected-run' },
+    ),
+    {
+      ok: false,
+      reason: 'stopped_history_changed',
+    },
+  );
+  assert.deepEqual(order, ['stop', 'write']);
+  stop.mock.mockImplementation(async () => {
+    throw new Error('stop receipt transport disconnected');
+  });
+  assert.deepEqual(
+    await kodaxHost.rewind(
+      sessionId,
+      40,
+      { boundaryId: boundary.entryId, sourceRevision: boundary.sourceRevision },
+      { selector: { kind: 'index', index: 40 }, expectedHead: 'head', activeRunId: 'selected-run' },
+    ),
+    { ok: false, reason: 'stop_unconfirmed' },
+  );
+  assert.deepEqual(order, ['stop', 'write']);
+});
+
 test('Runtime fork uses the exact paged-history boundary without re-reading a local turn index', async () => {
   const adapter = runtimeHostAdapter as unknown as Record<string, unknown>;
   const originalReady = adapter.hasReadyRuntime;

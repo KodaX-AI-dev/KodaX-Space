@@ -1,3 +1,5 @@
+import { ProductItemBody, useProductBodyPreview } from './ProductItemBody.js';
+import { ThinkingText } from './ThinkingText.js';
 import { QueuedInputRecovery } from './QueuedInputRecovery.js';
 import { ProductToolOriginal } from './ProductToolOriginal.js';
 // Bubble + ToolCallCard + SystemNotice 组件集合。
@@ -109,6 +111,7 @@ function collapseLargeText(text: string, t: Translate): CollapseResult {
 // 尾巴：[复制 icon] + "Xd ago"。hover bubble 时显示，非 hover 时 dim 或隐藏避免视觉
 // 噪音。Claude Desktop 同款风格。
 interface TurnFooterActions {
+  readonly savedTurn?: boolean;
   readonly onFork?: () => void;
   readonly onRewind?: () => void;
   readonly rewindDisabled?: boolean;
@@ -125,10 +128,13 @@ function MessageFooter({
 }): JSX.Element {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const preview = useProductBodyPreview();
 
   async function copyToClipboard(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(text);
+      const fullText = preview ? await preview.read() : text;
+      if (fullText === undefined) return;
+      await navigator.clipboard.writeText(fullText);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -137,6 +143,8 @@ function MessageFooter({
   }
 
   const timeStr = sentAt !== undefined ? formatRelativeTime(sentAt, t) : null;
+  const forkLabel = t(turnActions?.savedTurn ? 'session.turnForkHere' : 'message.forkFromHere');
+  const rewindLabel = t(turnActions?.savedTurn ? 'session.turnRewindHere' : 'message.rewindToHere');
 
   // 时间 + action 图标都常驻显示 (dim)。hover 到 footer 或单个 action 时展开文字；
   // 标签保持单行和稳定行高，避免中文在 max-width 动画中换行引发 hover 抖动。
@@ -149,6 +157,7 @@ function MessageFooter({
     <div className="conversation-message-footer group/footer mt-2 flex min-h-5 items-center gap-3 text-xs leading-none">
       <button
         type="button"
+        disabled={preview !== undefined && !preview.copyable}
         onClick={() => void copyToClipboard()}
         className={actionButtonClass}
         title={t('message.copyMessage')}
@@ -172,27 +181,23 @@ function MessageFooter({
             type="button"
             onClick={turnActions.onFork}
             className={actionButtonClass}
-            title={t('message.forkFromHere')}
-            aria-label={t('message.forkFromHere')}
+            title={forkLabel}
+            aria-label={forkLabel}
           >
             <GitFork className="w-3 h-3" strokeWidth={2} aria-hidden />
-            <span className={actionLabelClass}>{t('message.forkFromHere')}</span>
+            <span className={actionLabelClass}>{forkLabel}</span>
           </button>
           <button
             type="button"
             onClick={turnActions.rewindDisabled ? undefined : turnActions.onRewind}
             disabled={turnActions.rewindDisabled}
             className={`${actionButtonClass} disabled:opacity-35 disabled:hover:text-fg-muted disabled:cursor-not-allowed`}
-            title={
-              turnActions.rewindDisabled ? t('message.alreadyAtTurn') : t('message.rewindToHere')
-            }
-            aria-label={
-              turnActions.rewindDisabled ? t('message.alreadyAtTurn') : t('message.rewindToHere')
-            }
+            title={turnActions.rewindDisabled ? t('message.alreadyAtTurn') : rewindLabel}
+            aria-label={turnActions.rewindDisabled ? t('message.alreadyAtTurn') : rewindLabel}
           >
             <Undo2 className="w-3 h-3" strokeWidth={2} aria-hidden />
             <span className={actionLabelClass}>
-              {turnActions.rewindDisabled ? t('message.alreadyAtTurn') : t('message.rewindToHere')}
+              {turnActions.rewindDisabled ? t('message.alreadyAtTurn') : rewindLabel}
             </span>
           </button>
         </>
@@ -456,9 +461,11 @@ export function UserBubble({
   content,
   attachments = [],
   sentAt,
+  turnActions,
 }: {
   content: string;
   attachments?: readonly UserImageAttachment[];
+  turnActions?: TurnFooterActions;
   sentAt?: number;
 }): JSX.Element {
   // Keep the document column and attachment behavior; emphasis comes from the surface, not blue text.
@@ -478,7 +485,7 @@ export function UserBubble({
           </div>
         )}
       </div>
-      <MessageFooter text={visibleContent} sentAt={sentAt} />
+      <MessageFooter text={visibleContent} sentAt={sentAt} turnActions={turnActions} />
     </div>
   );
 }
@@ -595,6 +602,7 @@ export function AssistantBubble({
   turnIndex,
   completed,
   canRewind,
+  savedActions,
   onForkTurn,
   onRewindTurn,
 }: {
@@ -604,6 +612,7 @@ export function AssistantBubble({
   turnIndex?: number;
   completed?: boolean;
   canRewind?: boolean;
+  savedActions?: TurnFooterActions;
   onForkTurn?: (turnIndex: number) => void;
   onRewindTurn?: (turnIndex: number) => void;
 }): JSX.Element {
@@ -611,7 +620,7 @@ export function AssistantBubble({
   const [showThinking, setShowThinking] = useState(false);
   const thinkingTokenLabel = t('transcript.view.thinking');
   const turnActions =
-    completed === true && turnIndex !== undefined
+    completed === true && turnIndex !== undefined && (onForkTurn || onRewindTurn)
       ? {
           ...(onForkTurn ? { onFork: () => onForkTurn(turnIndex) } : {}),
           ...(onRewindTurn ? { onRewind: () => onRewindTurn(turnIndex) } : {}),
@@ -656,7 +665,7 @@ export function AssistantBubble({
               'border-thinking/50 text-thinking/90',
             ].join(' ')}
           >
-            {thinking}
+            <ThinkingText text={thinking} />
           </ScrollCapBox>
         </Collapse>
       )}
@@ -667,7 +676,9 @@ export function AssistantBubble({
           <span className="dark:text-fg-faint text-fg-muted italic">…</span>
         )}
       </div>
-      {text.length > 0 && <MessageFooter text={text} sentAt={sentAt} turnActions={turnActions} />}
+      {text.length > 0 && (
+        <MessageFooter text={text} sentAt={sentAt} turnActions={savedActions ?? turnActions} />
+      )}
     </div>
   );
 }
@@ -697,6 +708,8 @@ const FILE_MUTATION_TOOLS_DEFAULT_EXPANDED: ReadonlySet<string> = new Set([
 ]);
 
 export function ToolCallCard({
+  id,
+  reveal = false,
   productItem,
   toolName,
   attachments,
@@ -704,12 +717,17 @@ export function ToolCallCard({
   result,
   progress,
   status,
-}: Extract<ConversationMessage, { kind: 'tool_call' }>): JSX.Element {
+}: Extract<ConversationMessage, { kind: 'tool_call' }> & { reveal?: boolean }): JSX.Element {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useState(() =>
+  const [manualExpanded, setManualExpanded] = useState(() =>
     FILE_MUTATION_TOOLS_DEFAULT_EXPANDED.has(toolName),
   );
+  const [revealedExpanded, setRevealedExpanded] = useState(true);
+  const expanded = reveal ? revealedExpanded : manualExpanded;
   const [showFullResult, setShowFullResult] = useState(false);
+  useEffect(() => {
+    if (reveal) setRevealedExpanded(true);
+  }, [reveal]);
   // F068: 运行→完成瞬间触发 WAAPI 一次性高光闪（比 CSS class 更适合一次性效果，无需 cleanup）
   const prevStatusRef = useRef(status);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -749,6 +767,8 @@ export function ToolCallCard({
     <div
       ref={cardRef}
       data-testid="tool-call-card"
+      data-source-item={id}
+      tabIndex={-1}
       className={`conversation-tool-card tool-card-anim rounded-xl border ${colorClass} text-sm`}
     >
       {attachments?.length ? <UserImageAttachments attachments={attachments} /> : null}
@@ -763,7 +783,10 @@ export function ToolCallCard({
             <Wrench className="h-4 w-4 shrink-0 text-fg-muted" strokeWidth={1.7} aria-hidden />
             <button
               type="button"
-              onClick={() => setExpanded((v) => !v)}
+              onClick={() => {
+                if (reveal) setRevealedExpanded((value) => !value);
+                else setManualExpanded((value) => !value);
+              }}
               aria-expanded={expanded}
               className={`flex items-center gap-2 text-left rounded hover:bg-hover-bg ${
                 pathArg ? 'flex-shrink-0' : 'min-w-0 flex-1'
@@ -800,7 +823,9 @@ export function ToolCallCard({
           {/* OC-21 (v0.1.8): tool input 渲染走 toolRegistry 查表分发。任意 toolName 都进
               ToolEditInputView，registry 找不到 / 返 null 就回退到 raw-JSON collapse 视图。
               新 tool 加自己的 renderer 只需 registerToolInputRenderer，不再改本文件。 */}
-          <ToolEditInputView toolName={toolName} input={input} />
+          <ProductItemBody item={expanded ? productItem : undefined} part="input">
+            <ToolEditInputView toolName={toolName} input={input} />
+          </ProductItemBody>
 
           {progress !== undefined && (
             <section>
@@ -810,16 +835,18 @@ export function ToolCallCard({
               <div className="text-xs text-info">{progress}</div>
             </section>
           )}
-          {productItem && <ProductToolOriginal item={productItem} />}
+          {productItem?.tool?.outputPath && <ProductToolOriginal item={productItem} />}
           {result !== undefined && (
-            <ToolResultView
-              toolName={toolName}
-              result={result}
-              input={input}
-              resultCollapse={resultCollapse}
-              showFullResult={showFullResult}
-              setShowFullResult={setShowFullResult}
-            />
+            <ProductItemBody item={expanded ? productItem : undefined}>
+              <ToolResultView
+                toolName={toolName}
+                result={result}
+                input={input}
+                resultCollapse={resultCollapse}
+                showFullResult={showFullResult}
+                setShowFullResult={setShowFullResult}
+              />
+            </ProductItemBody>
           )}
         </div>
       </Collapse>

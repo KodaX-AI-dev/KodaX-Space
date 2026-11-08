@@ -64,12 +64,40 @@ export function resolveSpaceArtifactImports() {
   };
 }
 
+// Only fixed install locations: a converter found through PATH or the workspace could be project-supplied.
+// Windows uses the console soffice.com, because the soffice.exe GUI launcher blocks on CLI calls.
+export function resolveLibreOffice(
+  env = process.env,
+  platform = process.platform,
+  exists = existsSync,
+) {
+  const candidates =
+    platform === 'win32'
+      ? [env.ProgramFiles, env['ProgramFiles(x86)']]
+          .filter((root) => root && path.win32.isAbsolute(root))
+          .map((root) => path.win32.join(root, 'LibreOffice', 'program', 'soffice.com'))
+      : platform === 'darwin'
+        ? ['/Applications/LibreOffice.app/Contents/MacOS/soffice']
+        : [
+            '/usr/bin/soffice',
+            '/usr/lib/libreoffice/program/soffice',
+            '/usr/lib64/libreoffice/program/soffice',
+            '/opt/libreoffice/program/soffice',
+          ];
+  return candidates.find((candidate) => exists(candidate));
+}
+
 export default async function registerSpaceArtifacts(api) {
   const nodeExecutable = await resolveArtifactNode();
+  const libreOfficeExecutable = resolveLibreOffice();
   const imports = resolveSpaceArtifactImports();
   const [{ registerArtifactTools }, { executeManagedProcess }] = await Promise.all([
     import(imports.artifact),
     import(imports.coding),
   ]);
-  return registerArtifactTools(api, { execute: executeManagedProcess, nodeExecutable });
+  return registerArtifactTools(api, {
+    execute: executeManagedProcess,
+    nodeExecutable,
+    ...(libreOfficeExecutable ? { libreOfficeExecutable } : {}),
+  });
 }

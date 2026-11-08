@@ -1,8 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-11-04
+Last Updated: 2026-11-07
 
-> 2026-11-05：工作树正在完成 SDK `0.7.97-beta.2` 的接缝闭环，见 [适配与实测记录](releases/kodax-beta2-space-adaptation.md)。已发布 alpha.4 的 beta.1 记录保持原样；SDK Issue 371 历史首读性能与客户环境验收继续独立，不因升级版本号关闭。
+> 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.3`，见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
 > Historical issue details retain their dated evidence. Current source/release baseline is Space 0.1.47-alpha.4 / Registry SDK 0.7.97-beta.1; stable remains v0.1.46. See [alpha.4 release status](releases/v0.1.47-alpha.4-release-readiness.md). Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
@@ -234,6 +234,7 @@ Last Updated: 2026-11-04
 | 234 | Medium   | Resolved in source                                                                                           | Ordinary child reports appear as yellow warnings with raw SDK transport markup                                                                                                                             | Reported local v0.1.47-alpha.3 / SDK alpha.10                             | 2026-10-28 |
 | 235 | Medium   | Resolved in source                                                                                           | Downward history scrolling and the bottom arrow stop at a frozen older window                                                                                                                              | Reported local v0.1.47-alpha.3 / SDK alpha.10                             | 2026-10-28 |
 | 236 | Medium   | Resolved                                                                                                     | macOS notifications require signed sender, delivery confirmation and permission-aware badge refresh                                                                                                        | Electron 42 upgrade                                                       | 2026-11-04 |
+| 237 | Medium | Resolved in source | Legacy SDK view body reads fail and repeated per-item warnings flood the conversation | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.2 | 2026-11-07 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16051,16 +16052,25 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 - Use ad-hoc bundle signing while preserving SDK native resource bytes; gate both Mac architectures with deep signature and packaged native-hash checks. Report native show/failed/bounded-unconfirmed outcomes, add an explicit settings test action, and refresh the held badge count on native show even after a late permission grant. Keep existing opt-in, one-minute/background/live-task conditions.
 - Local full suite: 4,667 tests, 4,647 passed / 20 conditional skips / 0 failures. Native IPC RED/GREEN, permission refresh and UI→IPC outcomes passed. Automated native events do not prove a visible OS banner/sound or customer permission. [Regression guide](test-guides/ISSUE_236_0.1.47-alpha.4_REGRESSION_GUIDE.md); platform publication evidence follows [alpha.4 qualification](releases/v0.1.47-alpha.4-release-readiness.md).
 
+## Issue 237 — Legacy body reads and repeated warning notifications
+
+- Created / made ready / fixed in source: 2026-11-07; priority Medium. Observed in Space 0.1.47-alpha.4 with a development-linked SDK 0.7.97-beta.2; introduction version is unconfirmed. Registry beta.3 installation and acceptance followed on 2026-11-08.
+- Original problem: opening `20260928_160252_occb6cfe737bfa` continuously stacks `SDK item changed during body read.` notifications. Live public SDK reads reproduced 12 failures among 34 body reads; each failed thinking item returned null. The running Host fingerprint matched the local SDK bundle, ruling out stale installed code for this reproduction.
+- Root cause: SDK `readViewItem` routes legacy view IDs containing `:history:` into the opaque history-reference reader before consulting the view owner. Space reports every failed item separately and immediately forgets failed attempts, so later transcript publications retry them.
+- Resolution: the local KodaX SDK consults the view owner before falling back to the history reader. Space retains failed attempts for the same visible item version, emits one localized warning per selected Session/source/Runtime, preserves previews, and ignores obsolete replies. A changed item version or reopening the conversation permits a new read. No ID parsing or body reconstruction was added to Space.
+- Files / tests: `ConversationStreamV2.tsx`, `i18n/messages.ts`, `productBodyWarnings.browser.test.ts`; sibling KodaX `src/sdk-runtime.ts` and `src/sdk-runtime.legacy-view-read.test.ts`. Both regressions failed before their fixes and passed afterward. The original Session's isolated source-runtime replay completed all 34 reads with zero failures; original Session files were not edited. See [regression guide](test-guides/ISSUE_237_0.1.47-alpha.4_REGRESSION_GUIDE.md).
+- Deployment update, 2026-11-08: Root and Desktop now pin the published Registry SDK `0.7.97-beta.3`. Space installs its physical npm package and uses SDK-owned source references for complete-turn actions. Reading failures retain previews with inline retries. Acceptance of this package is recorded in the [beta.3 adaptation report](releases/kodax-beta3-space-adaptation.md).
+
 ## Summary
 
-- Total: 223
+- Total: 224
 - Open: 1
 - Ready: 3
 - Needs info: 1
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 207
+- Resolved (including source-only fixes): 208
 - High: 116
-- Medium: 95
+- Medium: 96
 - Low: 12
 - Next ready to resolve: 222

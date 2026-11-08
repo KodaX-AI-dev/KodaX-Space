@@ -66,6 +66,7 @@ export function _resetSlashRegistryForTesting(): void {
 /** 列出已注册命令（按 name 字典序）。*/
 export function listSlashCommands(): readonly SlashCommandMeta[] {
   return [...builtins]
+    .filter(({ name }) => name !== 'agent-mode')
     .map(({ handler: _h, ...meta }) => meta)
     .sort((a, b) => a.name.localeCompare(b.name));
 }

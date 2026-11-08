@@ -1,3 +1,4 @@
+import { productItemBodyLength } from '../../lib/productItemContent.js';
 import type { SessionProductItem } from '@kodax-space/space-ipc-schema';
 import type { UserMessage, QueuedUserMessage } from '../../store/transcriptTypes.js';
 import type { ConversationMessage } from './composeMessages.js';
@@ -55,9 +56,11 @@ function toolInput(text?: string): Record<string, unknown> | undefined {
   }
 }
 function displayItem(item: SessionProductItem, turnIndex?: number): ConversationMessage {
+  const body = productItemBodyLength(item, 'text') !== undefined ? { productItem: item } : {};
   if (item.type === 'user')
     return {
       kind: 'user',
+      ...body,
       id: item.id,
       content: item.text,
       sentAt: item.timestamp ?? 0,
@@ -66,6 +69,7 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
   if (item.type === 'assistant' || item.type === 'thinking')
     return {
       kind: 'assistant_text',
+      ...body,
       id: item.id,
       text: item.type === 'assistant' ? item.text : '',
       ...(item.type === 'thinking' ? { thinking: item.text } : {}),
@@ -79,7 +83,9 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
       id: item.id,
       toolId: item.id,
       toolName: item.tool.name,
-      ...(item.tool.outputPath ? { productItem: item } : {}),
+      ...(item.tool.outputPath || item.tool.totalInputLength !== undefined
+        ? { productItem: item }
+        : body),
       ...(item.imageAttachments ? { attachments: item.imageAttachments } : {}),
       input: toolInput(item.tool.inputText),
       result:
@@ -97,6 +103,7 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
   return {
     kind: 'system_notice',
     id: item.id,
+    ...body,
     variant: item.type === 'error' ? 'error' : item.type === 'sidecar' ? 'sidecar' : 'info',
     text: item.text,
     taskResult: item.taskResult,
@@ -110,6 +117,7 @@ function productHistoryBoundary(
   historyItems: readonly SessionProductItem[],
 ) {
   if (item.historyBoundary) return item.historyBoundary;
+  if (historyItems.length === 0) return undefined;
   const identity = item.inputId ?? item.outputId ?? item.tool?.assistantOutputId;
   const boundaries = new Map(
     historyItems

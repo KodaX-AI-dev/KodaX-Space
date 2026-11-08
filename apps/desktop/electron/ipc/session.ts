@@ -694,6 +694,7 @@ export async function rewindSessionForIpc(
     input.sessionId,
     input.rewindPastTurnIdx,
     input.historyBoundary,
+    input.confirmedTurn,
   );
   await truncateLocalNoticesAfterSuccessfulRewind(input, result);
   return result;
@@ -1682,7 +1683,11 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         return withLocalNotices([], undefined, { outcome: 'runtime_unavailable' });
       }
       if (historyBackend === 'runtime') {
-        const result = await runtimeHostAdapter.readProductHistory(input.sessionId, input.cursor);
+        const result = await runtimeHostAdapter.readProductHistory(
+          input.sessionId,
+          input.cursor,
+          input.around,
+        );
         if (result.outcome === 'data_changed') return withLocalNotices([], undefined, result);
         const page = result.page;
         if (page === null) return withLocalNotices([]);
@@ -1713,6 +1718,8 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
             sourceRevision: page.sourceRevision,
             hasMore: page.nextCursor !== undefined,
             ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+            ...(page.newerCursor ? { newerCursor: page.newerCursor } : {}),
+            ...(page.locatedBoundaryId ? { locatedBoundaryId: page.locatedBoundaryId } : {}),
             windowMode: 'replace' as const,
             hasNewer: input.cursor !== undefined,
           },
@@ -1720,6 +1727,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
       }
       /* Legacy persisted/Partner projection below; shared Coder display uses SDK items above. */
       {
+        if (input.around !== undefined) return withLocalNotices([]);
         if (input.cursor !== undefined) {
           return withLocalNotices([], undefined, { outcome: 'data_changed' });
         }

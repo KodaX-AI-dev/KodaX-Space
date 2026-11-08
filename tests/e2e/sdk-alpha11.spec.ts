@@ -177,18 +177,17 @@ test('alpha.11 restored structured reports and original tool content survive rel
   }
 });
 
-test('alpha.11 work modes use Host CAS, persist independently of model and cannot change during a Run', async () => {
+test('work modes use Host CAS before the first Run and remain fixed afterwards', async () => {
   const provider = await createLocalSdkProvider();
   const { space } = await launchRealSdkSpace(`alpha11-mode-${Date.now()}`, provider.url);
   let peer: Awaited<ReturnType<typeof connectKodaXClient>> | undefined;
   try {
-    await sendSdkPrompt(space, 'MODE_INITIAL');
-    const sessionId = await currentSdkSession(space);
-    await waitSdkIdle(space, sessionId);
     const picker = space.page.getByTestId('work-mode-selector');
-    await expect(picker).toHaveValue('coding');
-    await expect(picker).toBeEnabled();
-    await picker.selectOption('agent');
+    const agentChoice = picker.getByRole('radio', { name: 'Agent', exact: true });
+    await expect(agentChoice).toBeEnabled();
+    await agentChoice.click();
+    await expect(agentChoice).toBeChecked();
+    const sessionId = await currentSdkSession(space);
     await expect
       .poll(async () => {
         const reply = await space.page.evaluate(
@@ -240,18 +239,23 @@ test('alpha.11 work modes use Host CAS, persist independently of model and canno
     );
     expect(stale.ok).toBe(false);
     expect((await peer.sessions.getSettings(sessionId)).workMode).toBe('coding');
-    await expect(picker).toHaveValue('coding');
-    await picker.selectOption('script');
+    await expect(picker.getByRole('radio', { name: 'Coding', exact: true })).toBeChecked();
+    await picker.getByRole('radio', { name: 'Script (experimental)', exact: true }).click();
     await expect
       .poll(async () => (await peer!.sessions.getSettings(sessionId)).workMode)
       .toBe('script');
-    await picker.selectOption('coding');
+    await picker.getByRole('radio', { name: 'Coding', exact: true }).click();
     await expect
       .poll(async () => (await peer!.sessions.getSettings(sessionId)).workMode)
       .toBe('coding');
+    const selected = await peer.sessions.getSettingsVersioned(sessionId);
+    for (const key of ['provider', 'model', 'permissionMode', 'agentMode'] as const) {
+      expect(selected.value[key]).toEqual(before.value[key]);
+    }
     await sendSdkPrompt(space, 'HOLD_QUEUE');
     await expect.poll(() => provider.requests, { timeout: 20_000 }).toContain('HOLD_QUEUE');
-    await expect(picker).toBeDisabled();
+    await expect(space.page.getByTestId('work-mode-current')).toContainText('Coding');
+    await expect(picker).toHaveCount(0);
     const active = await peer.sessions.getSettingsVersioned(sessionId);
     const blocked = await space.page.evaluate(
       (args) => window.kodaxSpace!.invoke('session.setWorkMode', args),
@@ -265,10 +269,15 @@ test('alpha.11 work modes use Host CAS, persist independently of model and canno
     await space.page
       .locator(`[data-testid=sidebar-session-row][data-session-id="${sessionId}"]`)
       .click();
-    await expect(picker).toHaveValue('coding', { timeout: 30_000 });
+    await expect(space.page.getByTestId('work-mode-current')).toContainText('Coding', {
+      timeout: 30_000,
+    });
+    await expect(peer.sessions.updateSettings(sessionId, { workMode: 'agent' })).rejects.toThrow(
+      /fixed|first run/i,
+    );
     const after = await peer.sessions.getSettingsVersioned(sessionId);
     for (const key of ['provider', 'model', 'permissionMode', 'agentMode'] as const) {
-      expect(after.value[key]).toEqual(before.value[key]);
+      expect(after.value[key]).toEqual(active.value[key]);
     }
     await recordJson('host-work-mode.json', { before, after });
     expect(provider.errors).toEqual([]);

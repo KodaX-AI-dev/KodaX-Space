@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Code2, LockKeyhole, Sparkles, SquareTerminal } from 'lucide-react';
 import type { ChannelInput, ChannelOutput } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { useAppStore } from '../store/appStore.js';
@@ -14,13 +15,19 @@ interface WorkModeControlProps {
 }
 
 export function AgentModeSelector(props: WorkModeControlProps): JSX.Element {
+  const { t } = useI18n();
   const sessionId = useAppStore((s) => s.currentSessionId);
   const runtimeId = useAppStore((s) => s.runtimeConnection.runtimeId);
   const project = useAppStore((s) => s.currentProjectPath);
   const provider = useAppStore(
     (s) => s.sessions.find((session) => session.sessionId === sessionId)?.provider,
   );
-  if (provider === 'mock') return <span className="text-fg-secondary">AMA</span>;
+  if (provider === 'mock')
+    return (
+      <span className="text-xs text-fg-muted" title={t('workMode.mock')}>
+        Mock
+      </span>
+    );
   return (
     <WorkModeSelector
       key={project + ':' + sessionId + ':' + runtimeId}
@@ -64,6 +71,14 @@ function PartnerWorkModeFact({ sessionId }: { sessionId: string | null }): JSX.E
 }
 
 function useWorkModeState(sessionId: string | null) {
+  const active = useIsStreaming();
+  const admittedRunId = useAppStore((s) =>
+    sessionId
+      ? (s.liveProjectionBySession[sessionId]?.activeRun?.runId ??
+        s.runtimeProfile?.sessions.find((session) => session.sessionId === sessionId)?.activeRun
+          ?.runId)
+      : undefined,
+  );
   const revision = useAppStore((s) =>
     sessionId ? s.liveProjectionBySession[sessionId]?.settings?.revision : undefined,
   );
@@ -92,7 +107,7 @@ function useWorkModeState(sessionId: string | null) {
     return () => {
       disposed = true;
     };
-  }, [sessionId, revision, connection, refresh]);
+  }, [sessionId, revision, connection, refresh, active, admittedRunId]);
 
   return { state, setState, setRefresh, connection };
 }
@@ -127,6 +142,9 @@ function useWorkModeControl(sessionId: string | null, props: WorkModeControlProp
           return reply.data;
         }));
       if (!stillSelected() || !current) return;
+      if (!current.supported) throw new Error('Upgrade the Host to choose a work mode.');
+      if (current.locked)
+        throw new Error('Work mode is fixed. Start a new session to choose another mode.');
       const result = await window.kodaxSpace!.invoke('session.setWorkMode', {
         sessionId: target,
         workMode,
@@ -156,35 +174,116 @@ function WorkModeSelector({
   const active = useIsStreaming();
   const project = useAppStore((s) => s.currentProjectPath);
   const { state, connection, busy, change } = useWorkModeControl(sessionId, props);
+  const unavailable = !project || (!!sessionId && !state?.supported) || connection !== 'ready';
+  if (state?.supported && state.locked) {
+    const mode = WORK_MODES.find((mode) => mode.value === state.workMode)!;
+    const Icon = mode.icon;
+    return (
+      <span
+        data-testid="work-mode-current"
+        className="work-mode-current"
+        title={t('workMode.locked')}
+      >
+        <Icon size={14} aria-hidden />
+        <span>{mode.label}</span>
+        {mode.value === 'script' && (
+          <span className="work-mode-experimental">{t('workMode.experimental')}</span>
+        )}
+        <LockKeyhole size={11} aria-hidden />
+      </span>
+    );
+  }
   return (
-    <select
+    <div className="work-mode-control">
+      <WorkModeSegments
+        value={state?.workMode ?? (sessionId === null ? 'coding' : undefined)}
+        disabled={unavailable || active || busy || props.disabled}
+        title={
+          !state?.supported && state
+            ? t('workMode.upgrade')
+            : busy
+              ? t('workMode.saving')
+              : active
+                ? t('workMode.wait')
+                : t('workMode.beforeFirstRun')
+        }
+        onChange={(value) => void change(value)}
+      />
+      <span className="sr-only" role="status">
+        {busy || props.disabled ? t('workMode.saving') : ''}
+      </span>
+    </div>
+  );
+}
+
+const WORK_MODES = [
+  { value: 'agent', label: 'Agent', icon: Sparkles },
+  { value: 'coding', label: 'Coding', icon: Code2 },
+  { value: 'script', label: 'Script', icon: SquareTerminal },
+] as const;
+type WorkMode = (typeof WORK_MODES)[number]['value'];
+
+function WorkModeSegments({
+  value,
+  disabled,
+  title,
+  onChange,
+}: {
+  readonly value: WorkMode | undefined;
+  readonly disabled: boolean;
+  readonly title: string;
+  readonly onChange: (mode: WorkMode) => void;
+}): JSX.Element {
+  const { t } = useI18n();
+  const selected = WORK_MODES.findIndex((mode) => mode.value === value);
+  return (
+    <div
       data-testid="work-mode-selector"
+      role="radiogroup"
       aria-label={t('workMode.label')}
-      className="composer-control text-sm px-2 py-0.5 rounded bg-surface-2 border border-border-default text-fg-secondary"
-      value={state?.workMode ?? ''}
-      disabled={
-        !project ||
-        (!!sessionId && !state?.supported) ||
-        active ||
-        busy ||
-        props.disabled ||
-        connection !== 'ready'
-      }
-      title={
-        !state?.supported && state
-          ? t('workMode.upgrade')
-          : active
-            ? t('workMode.wait')
-            : t('workMode.label')
-      }
-      onChange={(event) => {
-        void change(event.target.value as ChannelInput<'session.setWorkMode'>['workMode']);
-      }}
+      className="work-mode-segments"
+      title={title}
+      style={{ '--work-mode-index': Math.max(0, selected) } as CSSProperties}
     >
-      {!state && <option value="">{t('workMode.label')}</option>}
-      <option value="agent">Agent</option>
-      <option value="coding">Coding</option>
-      <option value="script">{t('workMode.script')}</option>
-    </select>
+      {selected >= 0 && <span className="work-mode-highlight" aria-hidden />}
+      {WORK_MODES.map(({ value: mode, label, icon: Icon }, index) => (
+        <button
+          key={mode}
+          type="button"
+          role="radio"
+          aria-checked={value === mode}
+          disabled={disabled}
+          aria-label={mode === 'script' ? t('workMode.script') : label}
+          tabIndex={selected === index || (selected < 0 && index === 0) ? 0 : -1}
+          onClick={() => {
+            if (value !== mode) onChange(mode);
+          }}
+          onKeyDown={(event) => {
+            const offset =
+              event.key === 'ArrowRight' || event.key === 'ArrowDown'
+                ? 1
+                : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+                  ? -1
+                  : 0;
+            if (!offset && event.key !== 'Home' && event.key !== 'End') return;
+            event.preventDefault();
+            const next =
+              event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (index + offset + 3) % 3;
+            const buttons =
+              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('button');
+            buttons?.[next]?.focus();
+            if (WORK_MODES[next].value !== value) onChange(WORK_MODES[next].value);
+          }}
+        >
+          <Icon size={14} aria-hidden />
+          <span>{label}</span>
+          {mode === 'script' && (
+            <span className="work-mode-experimental" aria-hidden>
+              {t('workMode.experimental')}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
   );
 }

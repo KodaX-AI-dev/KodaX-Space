@@ -63,7 +63,7 @@ const GROUPS: readonly ShortcutGroup[] = [
     items: [
       { keys: ['/help'], labelKey: 'help.listCommands' },
       { keys: ['/mode'], labelKey: 'help.setPermissionMode' },
-      { keys: ['/agent-mode'], labelKey: 'help.setAgentMode' },
+      { keys: ['/work-mode'], labelKey: 'help.setAgentMode' },
       { keys: ['/provider'], labelKey: 'help.switchProvider' },
       { keys: ['/model'], labelKey: 'help.switchModel' },
       { keys: ['/reasoning'], labelKey: 'help.setReasoningDepth' },

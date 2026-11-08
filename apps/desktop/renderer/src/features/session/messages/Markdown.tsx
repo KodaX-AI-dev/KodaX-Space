@@ -37,6 +37,7 @@ import {
 } from '../../../lib/openPath.js';
 import { useAppStore } from '../../../store/appStore.js';
 import { useI18n } from '../../../i18n/I18nProvider.js';
+import { useProductBodyPreview } from './ProductItemBody.js';
 import {
   parsePartnerDeliveryUri,
   projectPartnerConnectorResource,
@@ -365,6 +366,9 @@ function MarkdownCode({ className, children, node, ...props }: MarkdownCodeProps
 
 function MarkdownInner({ content }: MarkdownProps): JSX.Element {
   const { effectiveLocale } = useI18n();
+  const preview = useProductBodyPreview();
+  // A truncated fence or link has no complete target or code block to copy yet.
+  if (preview) return <span className="whitespace-pre-wrap">{content}</span>;
   // OC-19 module-level LRU 命中即返。命中率高=稳定内容反复 render；流式 delta 不会命中。
   const cacheKey = `${effectiveLocale}\0${content}`;
   const cached = lruCache.get(cacheKey);

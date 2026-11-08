@@ -78,11 +78,13 @@ import type {
 } from '@kodax-ai/kodax/client';
 import type {
   ChannelInput,
+  ChannelOutput,
   SessionProductView,
   SessionProductItem,
 } from '@kodax-space/space-ipc-schema';
 import { readSessionWorkMode, setSessionWorkMode } from './runtime/work-mode.js';
 import { projectProductItems } from './runtime/product-view.js';
+import { generateKodaxSessionId } from './session-id.js';
 import { ensureSpaceBuiltinSkillsOnHost } from '../skill/space-builtins.js';
 import type { HostItemReader } from './runtime/host-image.js';
 import { workflowPolicyStore } from './workflow-policy.js';
@@ -4197,10 +4199,63 @@ export class RuntimeHostAdapter {
     }
   }
 
+  async resolveHistoryTurn(
+    sessionId: string,
+    selector: ChannelInput<'session.resolveHistoryTurn'>['selector'],
+  ): Promise<ChannelOutput<'session.resolveHistoryTurn'>> {
+    const runtime = await this.requireRuntime();
+    if (
+      !runtime.sessions.resolveHistoryTurn ||
+      !runtimeCapabilityVersion(runtime, 'productHistoryTurnResolution')
+    )
+      return { status: 'unsupported' };
+    if (
+      selector.kind === 'item' &&
+      !selector.revision &&
+      (selector.source === 'history' || (!selector.inputId && !selector.outputId))
+    )
+      return { status: 'unavailable', reason: 'unproven_source' };
+    const selected =
+      selector.kind !== 'item'
+        ? selector
+        : selector.source === 'history'
+          ? {
+              kind: 'item' as const,
+              source: 'history' as const,
+              itemId: selector.itemId,
+              revision: selector.revision!,
+            }
+          : { ...selector, source: 'view' as const };
+    const result = await runtime.sessions.resolveHistoryTurn(sessionId, selected);
+    if (result.status !== 'ready') return result;
+    const activeRunId = (await this.findActiveRunId(sessionId)) ?? null;
+    if (this.runtime !== runtime) return { status: 'stale' };
+    return { ...result, activeRunId };
+  }
+
   async forkSession(input: RuntimeForkSessionInput) {
     const runtime = await this.requireRuntime();
     await this.assertHostSession(runtime, input.sessionId);
-    const result = await runtime.sessions.fork(input);
+    const newSessionId =
+      input.newSessionId ?? (input.historyBoundary ? await generateKodaxSessionId() : undefined);
+    const result = await runtime.sessions
+      .fork({ ...input, ...(newSessionId ? { newSessionId } : {}) })
+      .catch(async (error: unknown) => {
+        if (!newSessionId || !isRuntimeDaemonDisconnectFailure(error)) throw error;
+        // Read the reserved child after a lost acknowledgement. Issuing a second
+        // fork could otherwise leave the user with two children.
+        const child = await this.requireRuntime()
+          .then((host) => host.sessions.load(newSessionId))
+          .catch(() => undefined);
+        if (child?.id === newSessionId) return child;
+        throw Object.assign(
+          new Error(
+            `Fork acknowledgement lost. Check the session list for ${newSessionId} before trying again.`,
+            { cause: error },
+          ),
+          { code: 'history_write_unconfirmed' },
+        );
+      });
     if (result !== null) invalidatePersistedSessionCache(result.id);
     return result;
   }
@@ -4262,7 +4317,27 @@ export class RuntimeHostAdapter {
   async rewindSession(input: RuntimeRewindSessionInput) {
     const runtime = await this.requireRuntime();
     await this.assertHostSession(runtime, input.sessionId);
-    const result = await runtime.sessions.rewind(input);
+    const result = await runtime.sessions.rewind(input).catch(async (error: unknown) => {
+      if (!input.historyBoundary || !isRuntimeDaemonDisconnectFailure(error)) throw error;
+      const checked = await this.resolveHistoryTurn(input.sessionId, { kind: 'latest' }).catch(
+        () => undefined,
+      );
+      if (
+        checked?.status === 'ready' &&
+        checked.historyBoundary.entryId === input.historyBoundary.entryId &&
+        checked.expectedHead === input.historyBoundary.entryId &&
+        !checked.activeRunId
+      ) {
+        return (await this.requireRuntime()).sessions.load(input.sessionId);
+      }
+      throw Object.assign(
+        new Error(
+          'Rewind acknowledgement lost. Refresh the saved conversation to check its head.',
+          { cause: error },
+        ),
+        { code: 'history_write_unconfirmed' },
+      );
+    });
     if (result !== null) {
       invalidatePersistedSessionCache(input.sessionId);
       // Mutation success is the authoritative invalidation boundary. A caller arriving
@@ -4563,6 +4638,7 @@ export class RuntimeHostAdapter {
   async readProductHistory(
     sessionId: string,
     cursor?: string,
+    around?: ChannelInput<'session.history'>['around'],
   ): Promise<
     | {
         outcome: 'ready';
@@ -4574,7 +4650,13 @@ export class RuntimeHostAdapter {
     await this.assertPersistedSessionIdentityIfChanged(sessionId);
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const page = await this.readProductHistoryPage(runtime, sessionId, cursor, attempt === 0);
+        const page = await this.readProductHistoryPage(
+          runtime,
+          sessionId,
+          cursor,
+          attempt === 0,
+          around,
+        );
         if (this.runtime !== runtime)
           throw new Error('Runtime changed while reading Session history.');
         return { outcome: 'ready', page };
@@ -4583,6 +4665,7 @@ export class RuntimeHostAdapter {
           throw new Error('Runtime changed while reading Session history.');
         if (
           attempt < 2 &&
+          !around &&
           cursor === undefined &&
           isHistoryReadBoundaryConflict(error, sessionId)
         ) {
@@ -4606,13 +4689,17 @@ export class RuntimeHostAdapter {
     sessionId: string,
     cursor?: string,
     refreshView = true,
+    around?: ChannelInput<'session.history'>['around'],
   ): Promise<(Omit<ClientHistoryPage, 'items'> & { items: SessionProductItem[] }) | null> {
     // First observation can update SDK-owned Session metadata. Establish it before capturing
     // the newest history revision so its continuation cursor is not stale on arrival.
-    if (cursor === undefined && refreshView) await this.readSessionProductView(sessionId);
+    if (around && runtimeCapabilityVersion(runtime, 'productHistoryLocation') < 1) return null;
+    if (cursor === undefined && refreshView && !around)
+      await this.readSessionProductView(sessionId);
     const page = await runtime.sessions.readHistory(sessionId, {
       ...(cursor ? { cursor } : {}),
-      limit: 150,
+      ...(around ? { around } : {}),
+      limit: around ? 30 : 150,
     });
     return page
       ? {

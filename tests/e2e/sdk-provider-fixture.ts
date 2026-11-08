@@ -24,6 +24,8 @@ export const FINALIZED_E2E_PLAN =
 interface WireMessage {
   role: string;
   content?: unknown;
+  tool_calls?: { id: string }[];
+  tool_call_id?: string;
 }
 
 async function attachSdkEvidence(name: string, value: unknown): Promise<void> {
@@ -100,6 +102,14 @@ export async function createLocalSdkProvider() {
   const requests: string[] = [];
   const requestModels: string[] = [];
   const questionResults: unknown[] = [];
+  let forkContext:
+    | {
+        users: unknown[];
+        calls: string[];
+        results: (string | undefined)[];
+        hasEmptyResult: boolean;
+      }
+    | undefined;
   let preparedCommandRequests = 0;
   const pending = new Map<string, ServerResponse>();
   const errors: string[] = [];
@@ -142,6 +152,19 @@ export async function createLocalSdkProvider() {
       parsed.messages.findLast((message) => message.role === 'user')?.content ?? '',
     );
     requests.push(prompt);
+    if (prompt === 'AFTER_TOOL_FORK') {
+      const results = parsed.messages.filter((message) => message.role === 'tool');
+      forkContext = {
+        users: parsed.messages
+          .filter((message) => message.role === 'user')
+          .map((message) => message.content),
+        calls: parsed.messages.flatMap(
+          (message) => message.tool_calls?.map((call) => call.id) ?? [],
+        ),
+        results: results.map((message) => message.tool_call_id),
+        hasEmptyResult: results.some((message) => !message.content),
+      };
+    }
     requestModels.push(parsed.model ?? '<missing>');
     if (JSON.stringify(parsed.messages).includes('HOST_COMMAND_BODY')) preparedCommandRequests++;
     if (request.headers.authorization !== 'Bearer space-e2e-fixture')
@@ -379,6 +402,9 @@ export async function createLocalSdkProvider() {
       return { ...transport };
     },
     requestModels,
+    get forkContext() {
+      return forkContext;
+    },
     questionResults,
     url: `http://127.0.0.1:${address.port}/v1`,
     requests,
@@ -464,7 +490,7 @@ export async function launchRealSdkSpace(
       return id;
     }, baseUrl);
     await space.seedProject(projectRoot);
-    await expect(space.page.locator('textarea').first()).toBeEnabled({ timeout: 15_000 });
+    await expect(space.page.getByTestId('composer-input')).toBeEditable({ timeout: 15_000 });
     return { space, projectRoot, providerId };
   } catch (error) {
     await space.close();
@@ -482,7 +508,7 @@ export async function currentSdkSession(space: SpaceInstance) {
 }
 
 export async function sendSdkPrompt(space: SpaceInstance, prompt: string, key = 'Enter') {
-  const composer = space.page.locator('textarea').first();
+  const composer = space.page.getByTestId('composer-input');
   await composer.fill(prompt);
   await composer.press(key);
   await expect(

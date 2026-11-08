@@ -1,5 +1,6 @@
 import type { SessionMeta } from '@kodax-space/space-ipc-schema';
 import { deleteSessionWithFeedback } from '../lib/deleteSession.js';
+import { performHistoryTurnAction, usesProductHistoryActions } from '../lib/historyTurnAction.js';
 import { openDirectory } from '../lib/openPath.js';
 import { shouldActivateSessionForCurrentScope } from '../lib/sessionActivation.js';
 import { useAppStore } from '../store/appStore.js';
@@ -50,6 +51,8 @@ export function SessionContextMenu({
   async function onFork(): Promise<void> {
     onClose();
     if (!window.kodaxSpace) return;
+    if (usesProductHistoryActions(session))
+      return performHistoryTurnAction(session, 'fork', { kind: 'latest' }, t);
     const turnIndex = latestSelectorTurnIndex(userMessages ?? []);
     if (turnIndex === undefined) {
       pushToast(t('menu.session.noTurnsToFork'), 'info');

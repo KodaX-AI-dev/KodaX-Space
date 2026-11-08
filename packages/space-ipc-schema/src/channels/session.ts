@@ -448,6 +448,7 @@ export type SessionProductView = z.infer<typeof sessionProductViewSchema>;
 
 const sessionWorkModeStateSchema = z.object({
   supported: z.boolean(),
+  locked: z.boolean(),
   revision: z.number().int().nonnegative(),
   workMode: z.enum(['agent', 'coding', 'script']),
 });
@@ -1023,6 +1024,17 @@ export const sessionHistoryChannel = {
      */
     expectedSurface: z.enum(['code', 'partner']).optional(),
     /** Opaque continuation cursor returned by the preceding ready page. */
+    around: z
+      .union([
+        z.object({ searchItemId: z.string().min(1).max(4096) }),
+        z.object({
+          historyBoundary: z.object({
+            entryId: z.string().min(1).max(4096),
+            sourceRevision: z.string().min(1).max(256),
+          }),
+        }),
+      ])
+      .optional(),
     cursor: z.string().min(1).max(4096).optional(),
     /** Immutable page boundary expected by the renderer when requesting an older page. */
     revision: z.string().min(1).max(256).optional(),
@@ -1051,6 +1063,8 @@ export const sessionHistoryChannel = {
             sourceRevision: z.string().min(1).max(256),
             hasMore: z.boolean(),
             nextCursor: z.string().min(1).max(4096).optional(),
+            newerCursor: z.string().min(1).max(4096).optional(),
+            locatedBoundaryId: z.string().min(1).max(4096).optional(),
             /** The newest page replaces the view; every older cursor page prepends to it. */
             windowMode: z.enum(['replace', 'prepend']),
             /** True only when a replacement window omits the newest tail. */
@@ -1111,6 +1125,42 @@ export const sessionLocalNoticeReplaceChannel = {
 //   - title 自动加 "(fork)" 后缀，便于用户在 sidebar 区分
 //
 // 持久化语义：alpha.1 仅 in-memory；KodaX SDK 0.7.42 出 forkSession() 后接磁盘。
+const turnSelectorSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('latest') }),
+  z.object({ kind: z.literal('previous') }),
+  z.object({ kind: z.literal('index'), index: absoluteTurnIndexSchema }),
+  z.object({
+    kind: z.literal('item'),
+    source: z.enum(['view', 'history']),
+    itemId: z.string().min(1).max(4096),
+    revision: z.string().min(1).max(4096).optional(),
+    inputId: z.string().min(1).max(4096).optional(),
+    outputId: z.string().min(1).max(4096).optional(),
+  }),
+]);
+export const sessionResolveHistoryTurnChannel = {
+  name: 'session.resolveHistoryTurn',
+  direction: 'invoke',
+  input: z.object({ sessionId: z.string().min(1), selector: turnSelectorSchema }),
+  output: z.discriminatedUnion('status', [
+    z.object({
+      status: z.literal('ready'),
+      historyBoundary: z.object({
+        entryId: z.string().min(1),
+        sourceRevision: z.string().min(1),
+      }),
+      expectedHead: z.string().nullable(),
+      activeRunId: z.string().nullable(),
+      turnIndex: absoluteTurnIndexSchema,
+      excerpt: z.string(),
+      hasLaterTurn: z.boolean(),
+    }),
+    z.object({ status: z.literal('stale'), reason: z.string().optional() }),
+    z.object({ status: z.literal('unavailable'), reason: z.string().optional() }),
+    z.object({ status: z.literal('unsupported') }),
+  ]),
+} as const;
+
 export const sessionForkChannel = {
   name: 'session.fork',
   direction: 'invoke',
@@ -1141,12 +1191,30 @@ export const sessionRewindChannel = {
     sessionId: z.string().min(1),
     rewindPastTurnIdx: absoluteTurnIndexSchema,
     historyBoundary: conversationHistoryBoundarySchema.optional(),
+    confirmedTurn: z
+      .object({
+        selector: turnSelectorSchema,
+        expectedHead: z.string().nullable(),
+        activeRunId: z.string().nullable(),
+      })
+      .optional(),
     /** First renderer notice removed by rewind; main retains only notices with sentAt < cutoff. */
     localNoticeCutoffSentAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
   }),
   output: z.object({
     ok: z.boolean(),
-    reason: z.enum(['session_not_found', 'invalid_index', 'session_busy']).optional(),
+    reason: z
+      .enum([
+        'session_not_found',
+        'invalid_index',
+        'session_busy',
+        'target_changed',
+        'stop_unconfirmed',
+        'stopped_history_changed',
+        'stopped_write_unknown',
+        'write_unknown',
+      ])
+      .optional(),
     diskRewound: z.boolean().optional(),
   }),
 } as const;

@@ -1498,7 +1498,8 @@ async function handleHostGoal(ctx: SlashHandlerContext): Promise<SlashHandlerRes
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
   {
     name: 'work-mode',
-    description: 'Read or select Agent, Coding or experimental Script for this idle Coder session',
+    description:
+      'Read work mode or select Agent, Coding or experimental Script before the first run',
     argsHint: '[agent|coding|script]',
     source: 'builtin',
     handler: async ({ sessionId, args }) => {
@@ -1511,6 +1512,12 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       const current = await runtimeHostAdapter.readWorkMode(sessionId);
       if (!current.supported)
         return { ok: false, message: 'This Host requires an upgrade to support work modes.' };
+      if (mode !== undefined && current.locked && mode !== current.workMode)
+        return {
+          ok: false,
+          message:
+            'Work mode is fixed for this conversation. Start a new session to choose another mode.',
+        };
       const selected =
         mode === 'agent' || mode === 'coding' || mode === 'script'
           ? await runtimeHostAdapter.updateWorkMode({

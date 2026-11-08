@@ -1204,19 +1204,19 @@ test('installed KodaX version matches the exact Space dependency pin', () => {
   assert.equal(INSTALLED_KODAX_VERSION, EXPECTED_KODAX_VERSION);
 });
 
-test('Issue 222 uses the published beta.2 SDK in both Space dependency manifests', () => {
+test('Space uses the published beta.3 SDK in both dependency manifests', () => {
   const root = require('../../../../package.json') as { dependencies: Record<string, string> };
   const desktop = require('../../package.json') as { dependencies: Record<string, string> };
   const lock = require('../../../../package-lock.json') as {
     packages: Record<string, { version?: string; resolved?: string }>;
   };
-  assert.equal(root.dependencies['@kodax-ai/kodax'], '0.7.97-beta.2');
-  assert.equal(desktop.dependencies['@kodax-ai/kodax'], '0.7.97-beta.2');
-  assert.equal(INSTALLED_KODAX_VERSION, '0.7.97-beta.2');
+  assert.equal(root.dependencies['@kodax-ai/kodax'], '0.7.97-beta.3');
+  assert.equal(desktop.dependencies['@kodax-ai/kodax'], '0.7.97-beta.3');
+  assert.equal(INSTALLED_KODAX_VERSION, '0.7.97-beta.3');
   assert.equal(lock.packages['apps/desktop/node_modules/@kodax-ai/kodax'], undefined);
   assert.match(
     lock.packages['node_modules/@kodax-ai/kodax']?.resolved ?? '',
-    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-beta\.2\.tgz$/,
+    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-beta\.3\.tgz$/,
   );
 });
 

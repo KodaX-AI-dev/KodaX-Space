@@ -9,6 +9,20 @@ import {
   installProductItemContent,
 } from './productSessionView.js';
 
+test('complete bodies belong to the selected SDK source and runtime', () => {
+  resetProductSessionViews();
+  const item = { id: 'opaque', type: 'assistant' as const, text: 'x', totalTextLength: 3 };
+  replaceProductSessionView({ sessionId: 's', runtimeId: 'one', revision: 1, items: [item] });
+  installProductItemContent('s', item, 'text', 'one');
+  installProductHistory('s', [item], true);
+  assert.equal(productTranscriptSnapshot('s')?.items[0]?.text, 'x');
+  installProductItemContent('s', item, 'text', 'two');
+  assert.equal(productTranscriptSnapshot('s')?.view?.items[0]?.text, 'one');
+  installProductHistory('s', [], false);
+  replaceProductSessionView({ sessionId: 's', runtimeId: 'two', revision: 1, items: [item] });
+  assert.equal(productTranscriptSnapshot('s')?.items[0]?.text, 'x');
+});
+
 test('removing a session releases its SDK transcript and full bodies', () => {
   resetProductSessionViews();
   replaceProductSessionView({

@@ -121,12 +121,30 @@ test('published SDK tools, statistics and canonical history survive Renderer rel
     await space.page.getByTestId('session-token-indicator').click();
     await expect(space.page.getByTestId('session-token-breakdown')).toBeVisible();
     await space.page.keyboard.press('Escape');
-    await space.page.getByRole('button', { name: 'Fork from here', exact: true }).last().click();
+    await space.page
+      .getByRole('button', { name: 'Keep through this turn and create a branch', exact: true })
+      .last()
+      .click();
     await expect.poll(() => currentSdkSession(space)).not.toBe(sessionId);
     const forkId = await currentSdkSession(space);
     expect(
       (await readSdkHistory(space, forkId)).items.filter((item) => item.type === 'user').length,
     ).toBe(1);
+    await sendSdkPrompt(space, 'AFTER_TOOL_FORK');
+    await expect(space.page.getByTestId('conversation-stream')).toContainText(
+      'SDK_REPLY:AFTER_TOOL_FORK',
+      { timeout: 20_000 },
+    );
+    const context = provider.forkContext;
+    expect(
+      context?.users.filter((text) => text === 'SDK_TOOLS' || text === 'AFTER_TOOL_FORK'),
+    ).toEqual(['SDK_TOOLS', 'AFTER_TOOL_FORK']);
+    expect(context?.calls).toEqual(['e2e-write', 'e2e-read', 'e2e-manual']);
+    expect(context?.results.toSorted()).toEqual(context?.calls.toSorted());
+    expect(context?.hasEmptyResult).toBe(false);
+    expect(
+      provider.requests.filter((text) => text === 'SDK_TOOLS' || text === 'AFTER_TOOL_FORK'),
+    ).toEqual(['SDK_TOOLS', 'SDK_TOOLS', 'AFTER_TOOL_FORK']);
     expect(provider.errors).toEqual([]);
   } finally {
     await provider.close();
@@ -248,31 +266,46 @@ test('real canonical boundaries reject stale mutations and UI Rewind permits sub
       'SDK_REPLY:FIRST_TURN',
     );
     await waitSdkIdle(space, sessionId);
-    const before = await readSdkHistory(space, sessionId);
-    const boundary = before.items.find((item) => item.type === 'user')?.historyBoundary;
-    expect(boundary).toBeDefined();
+    const before = await space.page.evaluate(
+      (id) =>
+        window.kodaxSpace!.invoke('session.resolveHistoryTurn', {
+          sessionId: id,
+          selector: { kind: 'index', index: 0 },
+        }),
+      sessionId,
+    );
+    if (!before.ok || before.data.status !== 'ready')
+      throw new Error('First saved turn was not resolved');
     await sendSdkPrompt(space, 'SECOND_TURN');
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
       'SDK_REPLY:SECOND_TURN',
     );
     await waitSdkIdle(space, sessionId);
     const stale = await space.page.evaluate(
-      async ({ id, historyBoundary }) =>
+      async ({ id, target }) =>
         window.kodaxSpace!.invoke('session.rewind', {
           sessionId: id,
-          rewindPastTurnIdx: 0,
+          rewindPastTurnIdx: target.turnIndex,
+          confirmedTurn: {
+            selector: { kind: 'index', index: 0 },
+            expectedHead: target.expectedHead,
+            activeRunId: target.activeRunId,
+          },
           historyBoundary: {
-            boundaryId: historyBoundary.entryId,
-            sourceRevision: historyBoundary.sourceRevision,
+            boundaryId: target.historyBoundary.entryId,
+            sourceRevision: target.historyBoundary.sourceRevision,
           },
         }),
-      { id: sessionId, historyBoundary: boundary },
+      { id: sessionId, target: before.data },
     );
     expect(stale.ok && stale.data.ok).toBe(false);
     expect(
       (await readSdkHistory(space, sessionId)).items.filter((item) => item.type === 'user'),
     ).toHaveLength(2);
-    await space.page.getByRole('button', { name: 'Rewind to here', exact: true }).first().click();
+    await space.page
+      .getByRole('button', { name: 'Keep this turn and rewind later history', exact: true })
+      .first()
+      .click();
     await space.page
       .getByRole('dialog')
       .getByRole('button', { name: 'Rewind to here', exact: true })

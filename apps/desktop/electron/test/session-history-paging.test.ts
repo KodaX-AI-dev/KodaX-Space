@@ -597,9 +597,9 @@ test('an unresolved terminal history page cannot prune an omitted live owner', a
   assert.equal(
     useAppStore
       .getState()
-      .userMessagesBySession[sessionId]?.some(
-        (message) => message.content === 'ambiguous live query',
-      ),
+      .userMessagesBySession[
+        sessionId
+      ]?.some((message) => message.content === 'ambiguous live query'),
     true,
   );
 });
@@ -5822,6 +5822,11 @@ test('visited SDK history pages can be read in both directions and newest select
   await loadNewerSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['newest'],
+  );
+  await loadNewerSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
     ['live-new'],
   );
   assert.deepEqual(requested, [
@@ -5945,6 +5950,11 @@ test('SDK paging keeps history as a separate frozen window and never folds its t
     ['sdk-live'],
   );
   assert.deepEqual(useAppStore.getState().eventsBySession[sessionId] ?? [], []);
+  await loadOlderSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['new-history'],
+  );
   await loadOlderSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),

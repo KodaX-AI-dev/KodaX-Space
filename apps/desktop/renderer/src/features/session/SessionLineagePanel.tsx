@@ -149,7 +149,7 @@ export function SessionLineagePanel({
             <span className="truncate flex-1">{title}</span>
             {s.forkPointTurnIdx !== undefined && (
               <span className="text-[9px] text-fg-muted font-mono flex-shrink-0">
-                {t('lineage.turn', { turn: s.forkPointTurnIdx })}
+                {t('lineage.turn', { turn: s.forkPointTurnIdx + 1 })}
               </span>
             )}
             {isAnchor && !isCurrent && (

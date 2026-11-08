@@ -255,10 +255,11 @@ test('Script respects Plan denial and Stop retains partial effects without repla
     await writeFile(test.info().outputPath('executable.json'), JSON.stringify(executable, null, 2));
     if (process.env.SPACE_E2E_EXECUTABLE) expect(executable.packaged).toBe(true);
     const picker = space.page.getByTestId('work-mode-selector');
-    await expect(picker).toBeEnabled({ timeout: 30_000 });
-    await picker.selectOption('script');
-    await expect(picker).toHaveValue('script');
-    await expect(picker).toBeEnabled();
+    const scriptChoice = picker.getByRole('radio', { name: 'Script (experimental)', exact: true });
+    await expect(scriptChoice).toBeEnabled({ timeout: 30_000 });
+    await scriptChoice.click();
+    await expect(scriptChoice).toBeChecked();
+    await expect(scriptChoice).toBeEnabled();
     await sendSdkPrompt(space, 'SCRIPT_READ');
     const sessionId = await currentSdkSession(space);
     await expect(space.page.getByTestId('conversation-stream')).toContainText(

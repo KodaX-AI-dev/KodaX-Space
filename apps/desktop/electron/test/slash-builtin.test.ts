@@ -189,7 +189,7 @@ test('listSlashCommands returns all builtin commands in alpha order', () => {
   // 持续随 KodaX SDK 暴露新命令而增长——做集合包含断言，而不锁死完整数量
   // 避免每次加新内置命令都得改这个测试
   const required = new Set([
-    'agent-mode',
+    'work-mode',
     'auto',
     'clear',
     'compact',
@@ -234,6 +234,8 @@ test('listSlashCommands returns all builtin commands in alpha order', () => {
   }
   // 排序正确性仍校验
   assert.deepEqual(sorted, [...cmds].sort());
+  assert.equal(cmds.includes('agent-mode'), false);
+  assert.equal(typeof getSlashHandler('agent-mode')?.handler, 'function');
 });
 
 test('retired verifier logging is absent from the Space command catalog and help', async () => {

@@ -14,7 +14,11 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
-- Pin KodaX SDK `0.7.97-beta.2` in both SDK consumers. Partner profiles declare the Host-owned Agent admission constraint, including durable recovery records; normal shell/write/child Agent permissions remain available.
+- Pin Registry KodaX SDK `0.7.97-beta.3` in both SDK consumers and verify the exact installed package during packaging. Partner profiles declare the Host-owned Agent admission constraint, including durable recovery records; normal shell/write/child Agent permissions remain available.
+- Browse saved history in both directions, search the current page or the saved conversation, and return to the original reading position. Locate proven tool and thinking results with their complete source entry expanded.
+- Resolve complete saved turns through the SDK for message actions, Session menus and `/fork` or `/rewind`. Preserve hidden tool results and check the confirmed revision, branch head and active Run before rewinding.
+- Read long conversation bodies on demand, retain previews after read failures and offer an inline retry. Keep new Sessions selectable until their first admitted Run fixes the work mode.
+- Provide the installed LibreOffice console converter to the SDK Artifact tools when available.
 - Recover legacy queued input through principal-bound, idempotent Host withdrawal receipts. Preserve complete text and attachment references across lost responses; expose mode mismatches without misclassifying them as Provider errors.
 - Inspect and prewarm repo intelligence in the execution Host, with Session/generation isolation and explicit uninitialized/fallback states.
 - Present Workflow as an explicit single-use execution with progress, controls and a durable Session response. Retire save/revise/rename/delete/prune/rerun management actions, retain existing definitions and results, and avoid duplicate local completion notices or preview-as-original fallbacks.

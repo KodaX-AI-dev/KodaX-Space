@@ -7,6 +7,86 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Work mode is chosen once; confirmed selection moves only after Host acknowledgement. */
+.work-mode-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.work-mode-segments {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  padding: 3px;
+  border: 1px solid rgb(var(--border-default));
+  border-radius: 9px;
+  background: rgb(var(--surface-2));
+  isolation: isolate;
+}
+.work-mode-highlight {
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc((100% - 6px) / 3);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+  border-radius: 6px;
+  transform: translateX(calc(var(--work-mode-index) * 100%));
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+  z-index: -1;
+}
+.work-mode-segments button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: rgb(var(--fg-secondary));
+  transition:
+    color 160ms,
+    opacity 160ms;
+}
+.work-mode-segments button[aria-checked='true'] {
+  color: rgb(var(--fg-primary));
+}
+.work-mode-segments button:hover:not(:disabled) {
+  color: rgb(var(--accent-ink));
+}
+.work-mode-segments button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.work-mode-segments button:focus-visible {
+  outline: 2px solid rgb(var(--accent-ink));
+  outline-offset: 1px;
+}
+.work-mode-experimental {
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-size: 10px;
+  background: var(--accent-soft);
+  color: rgb(var(--accent-ink));
+}
+.work-mode-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  font-size: 12px;
+  color: rgb(var(--fg-secondary));
+}
+@media (prefers-reduced-motion: reduce) {
+  .work-mode-highlight,
+  .work-mode-segments button {
+    transition: none;
+  }
+}
+
 /* Composer objects share the existing warm paper/graphite palette. */
 .composer-editor {
   min-height: 64px;

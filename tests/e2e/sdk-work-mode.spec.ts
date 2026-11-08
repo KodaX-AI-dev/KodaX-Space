@@ -14,10 +14,11 @@ test('a new Coder session can select Agent before its first input reaches the Ho
   const { space } = await launchRealSdkSpace(`work-draft-${Date.now()}`, provider.url);
   try {
     const picker = space.page.getByTestId('work-mode-selector');
-    await expect(picker).toBeEnabled({ timeout: 30_000 });
-    await picker.selectOption('agent');
-    await expect(picker).toHaveValue('agent');
-    await expect(picker).toBeEnabled();
+    const agent = picker.getByRole('radio', { name: 'Agent', exact: true });
+    await expect(agent).toBeEnabled({ timeout: 30_000 });
+    await agent.click();
+    await expect(agent).toBeChecked();
+    await expect(agent).toBeEnabled();
     expect(provider.requests).toEqual([]);
     await space.page.screenshot({ path: test.info().outputPath('first-input-agent.png') });
     const draftId = await currentSdkSession(space);
@@ -30,7 +31,10 @@ test('a new Coder session can select Agent before its first input reaches the Ho
       (sessionId) => window.kodaxSpace!.invoke('session.workMode', { sessionId }),
       draftId,
     );
-    expect(mode).toMatchObject({ ok: true, data: { workMode: 'agent' } });
+    expect(mode).toMatchObject({ ok: true, data: { workMode: 'agent', locked: true } });
+    await expect(space.page.getByTestId('work-mode-current')).toContainText('Agent');
+    await expect(picker).toHaveCount(0);
+    await space.page.screenshot({ path: test.info().outputPath('first-input-locked.png') });
     expect(provider.requests).toEqual(['FIRST_AGENT_INPUT']);
   } finally {
     await provider.close();
@@ -38,7 +42,7 @@ test('a new Coder session can select Agent before its first input reaches the Ho
   }
 });
 
-test('work-mode command reads and updates the Host without a model request', async () => {
+test('work-mode command reads but cannot change a started session, without a model request', async () => {
   const provider = await createLocalSdkProvider();
   const { space, projectRoot } = await launchRealSdkSpace(
     `work-command-${Date.now()}`,
@@ -72,11 +76,16 @@ test('work-mode command reads and updates the Host without a model request', asy
     await composer.fill('/work-mode agent');
     await composer.press('Escape');
     await composer.press('Enter');
-    await expect(space.page.getByTestId('conversation-stream')).toContainText('Work mode: agent');
-    await expect(space.page.getByTestId('work-mode-selector')).toHaveValue('agent');
+    await expect(
+      space.page.getByText(
+        'Work mode is fixed for this conversation. Start a new session to choose another mode.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(space.page.getByTestId('work-mode-current')).toContainText('Coding');
     expect(await command(['invalid'])).toMatchObject({ ok: true, data: { ok: false } });
     expect(await command(['coding', 'extra'])).toMatchObject({ ok: true, data: { ok: false } });
-    expect(await command([])).toMatchObject({ ok: true, data: { message: 'Work mode: agent' } });
+    expect(await command([])).toMatchObject({ ok: true, data: { message: 'Work mode: coding' } });
     expect(provider.requests.length).toBe(requests);
   } finally {
     await provider.close();

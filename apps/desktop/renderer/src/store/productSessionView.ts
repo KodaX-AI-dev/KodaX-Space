@@ -1,3 +1,4 @@
+import { productItemBodyLength } from '../lib/productItemContent.js';
 import { useSyncExternalStore } from 'react';
 import type { SessionProductItem, SessionProductView } from '@kodax-space/space-ipc-schema';
 
@@ -21,41 +22,57 @@ interface ItemBody {
 }
 const bodies = new Map<string, Map<string, ItemBody>>();
 
-function bodyKey(item: SessionProductItem, part: 'text' | 'input'): string {
+// Saved history IDs are scoped to their revision; a view ID belongs to its Runtime.
+export function productItemBodyKey(
+  item: SessionProductItem,
+  part: 'text' | 'input',
+  viewRuntime?: string,
+): string {
   return JSON.stringify([
+    viewRuntime ?? null,
     item.id,
     part,
     item.outputState,
     item.textRevision,
-    part === 'input' ? item.tool?.totalInputLength : item.totalTextLength,
+    productItemBodyLength(item, part),
   ]);
 }
 function completeItems(
   sessionId: string,
   items: readonly SessionProductItem[],
+  viewRuntime?: string,
 ): SessionProductItem[] {
   return items.map((item) => {
-    const text = bodies.get(sessionId)?.get(bodyKey(item, 'text'))?.text;
-    const input = bodies.get(sessionId)?.get(bodyKey(item, 'input'))?.text;
+    const text = bodies.get(sessionId)?.get(productItemBodyKey(item, 'text', viewRuntime))?.text;
+    const input = bodies.get(sessionId)?.get(productItemBodyKey(item, 'input', viewRuntime))?.text;
     return text === undefined && input === undefined
       ? item
       : {
           ...item,
-          ...(text !== undefined ? { text, textOffset: 0 } : {}),
+          ...(text !== undefined ? { text, textOffset: 0, totalTextLength: text.length } : {}),
           ...(input !== undefined && item.tool ? { tool: { ...item.tool, inputText: input } } : {}),
         };
   });
 }
 
+function pruneBodyCache(sessionId: string, next: ProductTranscript): void {
+  const cache = bodies.get(sessionId);
+  if (!cache?.size) return;
+  const retained = new Set<string>();
+  for (const [items, viewRuntime] of [
+    [next.historyItems, undefined],
+    [next.view?.items ?? EMPTY_ITEMS, next.view?.runtimeId],
+  ] as const) {
+    for (const item of items) {
+      retained.add(productItemBodyKey(item, 'text', viewRuntime));
+      retained.add(productItemBodyKey(item, 'input', viewRuntime));
+    }
+  }
+  for (const key of cache.keys()) if (!retained.has(key)) cache.delete(key);
+}
+
 function publish(sessionId: string, next: ProductTranscript, deferBodyNotification = false): void {
-  const retained = new Set(
-    [...next.items, ...next.historyItems, ...(next.view?.items ?? [])].flatMap((item) => [
-      bodyKey(item, 'text'),
-      bodyKey(item, 'input'),
-    ]),
-  );
-  for (const key of bodies.get(sessionId)?.keys() ?? [])
-    if (!retained.has(key)) bodies.get(sessionId)!.delete(key);
+  pruneBodyCache(sessionId, next);
   transcripts.set(sessionId, next);
   // Keep completed bodies immediately readable, while coalescing their render
   // notifications. A cold history load can finish dozens of IPC reads together;
@@ -78,7 +95,10 @@ export function replaceProductSessionView(view: SessionProductView): void {
   if (previous?.view?.runtimeId === view.runtimeId && previous.view.revision >= view.revision)
     return;
   const browsingOlder = previous?.browsingOlder ?? false;
-  const completeView = { ...view, items: completeItems(view.sessionId, view.items) };
+  const completeView = {
+    ...view,
+    items: completeItems(view.sessionId, view.items, view.runtimeId),
+  };
   publish(view.sessionId, {
     view: completeView,
     browsingOlder,
@@ -92,11 +112,12 @@ export function installProductHistory(
   browsingOlder: boolean,
 ): void {
   const previous = transcripts.get(sessionId);
+  const historyItems = completeItems(sessionId, items);
   publish(sessionId, {
     ...(previous?.view ? { view: previous.view } : {}),
-    historyItems: completeItems(sessionId, items),
+    historyItems,
     browsingOlder,
-    items: browsingOlder || !previous?.view ? completeItems(sessionId, items) : previous.view.items,
+    items: browsingOlder || !previous?.view ? historyItems : previous.view.items,
   });
 }
 export function installProductItemContent(
@@ -106,16 +127,21 @@ export function installProductItemContent(
   text: string,
 ): void {
   const previous = transcripts.get(sessionId);
+  const viewRuntime = previous?.browsingOlder ? undefined : previous?.view?.runtimeId;
+  const key = productItemBodyKey(item, part, viewRuntime);
   if (
     !previous ||
-    !previous.items.some((current) => bodyKey(current, part) === bodyKey(item, part))
+    !previous.items.some((current) => productItemBodyKey(current, part, viewRuntime) === key)
   )
     return;
   const cache = bodies.get(sessionId) ?? new Map<string, ItemBody>();
-  cache.set(bodyKey(item, part), { itemId: item.id, part, text });
+  cache.set(key, { itemId: item.id, part, text });
   bodies.set(sessionId, cache);
   const view = previous.view
-    ? { ...previous.view, items: completeItems(sessionId, previous.view.items) }
+    ? {
+        ...previous.view,
+        items: completeItems(sessionId, previous.view.items, previous.view.runtimeId),
+      }
     : undefined;
   const historyItems = completeItems(sessionId, previous.historyItems);
   publish(

@@ -34,10 +34,12 @@ test('S4: Shift+Tab cycles through all four permission profiles', async () => {
     const workMode = space.page.getByTestId('work-mode-selector');
     await expect(modeButton).not.toContainText(/\(next\)|（下次）/);
     await expect(workMode).toBeVisible();
-    const initialWorkMode = await workMode.inputValue();
+    const initialWorkMode = await workMode.getByRole('radio', { checked: true }).allTextContents();
     await expect(space.page.locator('button[title^="Agent:"]')).toHaveCount(0);
     await space.page.keyboard.press('Alt+M');
-    await expect(workMode).toHaveValue(initialWorkMode);
+    expect(await workMode.getByRole('radio', { checked: true }).allTextContents()).toEqual(
+      initialWorkMode,
+    );
     await expect(space.page.getByRole('button', { name: /^SA$/ })).toHaveCount(0);
 
     // 抓初始 label 文本
@@ -75,7 +77,9 @@ test('S4: Shift+Tab cycles through all four permission profiles', async () => {
         { timeout: 5_000 },
       )
       .toBe(initialText);
-    await expect(workMode).toHaveValue(initialWorkMode);
+    expect(await workMode.getByRole('radio', { checked: true }).allTextContents()).toEqual(
+      initialWorkMode,
+    );
   } finally {
     await space.close();
     await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});

@@ -32,6 +32,33 @@ async function seedHistory(root: string): Promise<void> {
         ],
       },
     );
+    if (index === 109) {
+      messages.push(
+        {
+          role: 'assistant',
+          content: [
+            { type: 'thinking', thinking: 'HISTORY_THINKING_NEEDLE_109' },
+            { type: 'text', text: 'HISTORY_DETAIL_CONTEXT_109' },
+            {
+              type: 'tool_use',
+              id: 'history-read-109',
+              name: 'read',
+              input: { path: 'HISTORY_TOOL_NEEDLE_109' },
+            },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'history-read-109',
+              content: 'HISTORY_TOOL_RESULT_109',
+            },
+          ],
+        },
+      );
+    }
   }
   messages.push({ role: 'user', content: REPORT, _source: 'agent-completed' });
   await manager.storage.save(SESSION, {
@@ -42,6 +69,62 @@ async function seedHistory(root: string): Promise<void> {
     messages,
   });
 }
+
+test('saved history search locates a question outside the live window and restores the selected result', async () => {
+  const provider = await createLocalSdkProvider();
+  const { space } = await launchRealSdkSpace(
+    `history-search-${Date.now()}`,
+    provider.url,
+    seedHistory,
+  );
+  try {
+    await space.page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: 'SDK_HISTORY_NAVIGATION' })
+      .click();
+    const stream = space.page.getByTestId('conversation-stream');
+    await expect(stream).toContainText('HISTORY_ANSWER_259');
+    await space.page.keyboard.press('Control+f');
+    const search = space.page.getByTestId('transcript-search-bar');
+    const query = 'HISTORY_QUESTION_109';
+    await search.getByRole('searchbox').fill(query);
+    await expect(search.getByText('0/0', { exact: true })).toBeVisible();
+    await search.getByRole('combobox').selectOption('session');
+    const hit = search.getByTestId('sdk-history-search-result').filter({ hasText: query });
+    await expect(hit).toHaveCount(1);
+    await search.getByRole('searchbox').press('Enter');
+    await expect(search.getByTestId('sdk-history-search-body')).toContainText(query);
+    await search.getByRole('button', { name: 'View in conversation' }).click();
+    await expect(
+      stream.locator('[data-msg-id]').filter({ hasText: query }).first(),
+    ).toBeInViewport();
+    await space.page.getByRole('button', { name: 'Back to results' }).click();
+    await expect(hit).toBeFocused();
+    await expect(search.getByRole('searchbox')).toHaveValue(query);
+    for (const [needle, body] of [
+      ['HISTORY_TOOL_NEEDLE_109', 'HISTORY_TOOL_RESULT_109'],
+      ['HISTORY_DETAIL_CONTEXT_109', 'HISTORY_DETAIL_CONTEXT_109'],
+    ]) {
+      await search.getByRole('searchbox').fill(needle);
+      const detailHit = search.getByTestId('sdk-history-search-result').filter({ hasText: needle });
+      await expect(detailHit).toHaveCount(1);
+      await detailHit.click();
+      await search.getByRole('button', { name: 'View in conversation' }).click();
+      await expect(stream.getByText(body, { exact: true })).toBeVisible();
+      await expect(stream.getByText('HISTORY_THINKING_NEEDLE_109', { exact: true })).toBeVisible();
+      await expect(stream.locator('[data-source-item]:focus')).toBeInViewport();
+      await space.page.getByRole('button', { name: 'Back to results' }).click();
+      await expect(detailHit).toBeFocused();
+    }
+    await space.page.keyboard.press('Escape');
+    await expect(search).toHaveCount(0);
+    await expect(stream).toContainText('HISTORY_ANSWER_259');
+    expect(provider.requests).toEqual([]);
+  } finally {
+    await provider.close();
+    await space.close();
+  }
+});
 
 test('packaged SDK history reports are readable and one bottom arrow reaches the latest after bidirectional browsing', async () => {
   const provider = await createLocalSdkProvider();
@@ -96,6 +179,9 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
         .locator('[data-msg-id]')
         .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
     const newest = await ids();
+    await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
+    await expect.poll(ids).not.toEqual(newest);
+    await expect(stream).toContainText('HISTORY_QUESTION_259');
     const moveToOlder = async () => {
       const before = await ids();
       await scroller.hover();

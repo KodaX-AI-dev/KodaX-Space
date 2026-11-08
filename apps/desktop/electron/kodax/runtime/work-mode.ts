@@ -22,10 +22,12 @@ function supportsWorkMode(host: WorkModeHost): boolean {
 
 export async function readSessionWorkMode(host: WorkModeHost, sessionId: string) {
   const settings = await host.sessions.getSettingsVersioned(sessionId);
+  const locked = 'workModeLocked' in settings ? settings.workModeLocked : undefined;
   return {
-    supported: supportsWorkMode(host),
+    supported: supportsWorkMode(host) && typeof locked === 'boolean',
     revision: settings.revision,
     workMode: settings.value.workMode ?? 'coding',
+    locked: locked !== false,
   };
 }
 
@@ -35,11 +37,21 @@ export async function setSessionWorkMode(
   workMode: WorkMode,
   expectedRevision: number,
 ) {
-  if (!supportsWorkMode(host))
+  const current = await readSessionWorkMode(host, sessionId);
+  if (!current.supported)
     throw Object.assign(new Error('This Host requires an upgrade to support work modes.'), {
       code: 'daemon_upgrade_required',
     });
-  // The Host owns safe-idle validation. Never retry a stale user's choice against a newer revision.
+  if (current.locked && current.workMode !== workMode)
+    throw Object.assign(
+      new Error(
+        'Work mode is fixed after the first run. Start a new session to choose another mode.',
+      ),
+      {
+        code: 'conflict',
+      },
+    );
+  // The Host atomically enforces the first-run boundary and the expected revision.
   await host.sessions.updateSettingsVersioned(sessionId, { workMode }, { expectedRevision });
   return readSessionWorkMode(host, sessionId);
 }

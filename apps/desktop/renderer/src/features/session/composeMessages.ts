@@ -36,6 +36,7 @@ import { selectorTurnIndexesByMessageId } from './turnIndex.js';
 export type ConversationMessage =
   | {
       kind: 'user';
+      productItem?: SessionProductItem;
       id: string;
       content: string;
       attachments?: UserMessage['attachments'];
@@ -64,6 +65,7 @@ export type ConversationMessage =
     }
   | {
       kind: 'assistant_text';
+      productItem?: SessionProductItem;
       id: string;
       /** 累积的 text_delta 拼接结果；用于 markdown 渲染。*/
       text: string;
@@ -92,6 +94,7 @@ export type ConversationMessage =
     }
   | {
       kind: 'system_notice';
+      productItem?: SessionProductItem;
       id: string;
       taskResult?: SessionProductItem['taskResult'];
       variant: 'iteration' | 'error' | 'sidecar' | 'workflow' | 'lineage' | 'info';

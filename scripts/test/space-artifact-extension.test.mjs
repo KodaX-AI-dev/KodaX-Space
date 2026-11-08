@@ -9,14 +9,21 @@ import test from 'node:test';
 import {
   default as registerSpaceArtifacts,
   resolveArtifactNode,
+  resolveLibreOffice,
   resolveSpaceArtifactImports,
 } from '../../resources/space-artifacts.mjs';
 
 test('Space Artifact extension resolves the installed public SDK and a real Node worker', async () => {
   assert.equal(await resolveArtifactNode(), process.execPath);
   const imports = resolveSpaceArtifactImports();
-  assert.equal(await realpath(fileURLToPath(imports.artifact)), await realpath(fileURLToPath(import.meta.resolve('@kodax-ai/kodax/artifacts/kodax'))));
-  assert.equal(await realpath(fileURLToPath(imports.coding)), await realpath(fileURLToPath(import.meta.resolve('@kodax-ai/kodax/coding'))));
+  assert.equal(
+    await realpath(fileURLToPath(imports.artifact)),
+    await realpath(fileURLToPath(import.meta.resolve('@kodax-ai/kodax/artifacts/kodax'))),
+  );
+  assert.equal(
+    await realpath(fileURLToPath(imports.coding)),
+    await realpath(fileURLToPath(import.meta.resolve('@kodax-ai/kodax/coding'))),
+  );
   const names = [];
   const removed = [];
   const dispose = await registerSpaceArtifacts({
@@ -33,6 +40,50 @@ test('Space Artifact extension resolves the installed public SDK and a real Node
   assert.ok(names.includes('artifact_render'));
   dispose();
   assert.equal(removed.length, 10);
+});
+
+test('Space injects LibreOffice only from fixed install locations', () => {
+  const installed =
+    (...files) =>
+    (candidate) =>
+      files.includes(candidate);
+  const windows = {
+    ProgramFiles: 'C:\\Program Files',
+    'ProgramFiles(x86)': 'C:\\Program Files (x86)',
+    PATH: 'C:\\project\\bin',
+  };
+  assert.equal(
+    resolveLibreOffice(
+      windows,
+      'win32',
+      installed('C:\\Program Files (x86)\\LibreOffice\\program\\soffice.com'),
+    ),
+    'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.com',
+  );
+  assert.equal(
+    resolveLibreOffice(windows, 'win32', installed('C:\\project\\bin\\soffice.com')),
+    undefined,
+  );
+  assert.equal(
+    resolveLibreOffice({ ProgramFiles: 'relative' }, 'win32', () => true),
+    undefined,
+  );
+  assert.equal(
+    resolveLibreOffice(
+      {},
+      'darwin',
+      installed('/Applications/LibreOffice.app/Contents/MacOS/soffice'),
+    ),
+    '/Applications/LibreOffice.app/Contents/MacOS/soffice',
+  );
+  assert.equal(
+    resolveLibreOffice({}, 'linux', installed('/usr/lib64/libreoffice/program/soffice')),
+    '/usr/lib64/libreoffice/program/soffice',
+  );
+  assert.equal(
+    resolveLibreOffice({}, 'linux', () => false),
+    undefined,
+  );
 });
 
 test('Electron Host rejects missing Node and probes shell PATH without Node injection variables', async () => {

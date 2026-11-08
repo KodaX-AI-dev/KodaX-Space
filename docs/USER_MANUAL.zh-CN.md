@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树的 Registry SDK `0.7.97-beta.2` 适配，见 [接入与验收](releases/kodax-beta2-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 仍为 beta.1 构建；稳定版仍是 Space v0.1.46 / KodaX 0.7.96。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树的 Registry SDK `0.7.97-beta.3` 适配，见 [接入与验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -219,7 +219,7 @@ macOS 请在“系统设置 → 通知 → KodaX Space”允许通知并开启�
 
 Coder 与 Partner 共同使用独立共享 Host 管理会话、Run、队列、交互、历史和恢复。Space 提供桌面界面和通过 lease 授权的工具。原 Embedded 设置已退役；旧偏好由 SDK 安全迁移，连接失败时保留会话并提供重试，不在后台创建第二个写入者，也不删除 owner-policy 或锁。
 
-Coder 可在安全空闲时选择 Agent、Coding 或实验性 Script；Partner 默认 Agent。Partner 身份本身不禁止 shell、文件写入或子 Agent；具体操作仍受所选权限、审批、工作区、沙箱、连接器与管理员策略限制。
+Coder 可在新会话首条消息前选择 Agent、Coding 或实验性 Script，首轮开始后固定；Partner 默认 Agent。Partner 身份本身不禁止 shell、文件写入或子 Agent；具体操作仍受所选权限、审批、工作区、沙箱、连接器与管理员策略限制。
 
 ```mermaid
 flowchart LR
@@ -229,7 +229,7 @@ flowchart LR
 唯一会话执行与历史写入者]
 ```
 
-Space 工作树锁定 KodaX SDK 0.7.97-beta.2。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md)。
+Space 工作树锁定 KodaX SDK 0.7.97-beta.3。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
 
 Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 
@@ -396,9 +396,9 @@ PowerShell 的 `-Path` 支持 `[...]` 通配符。最新版 KodaX 会把这类�
 
 Coder 输入框底部的“工作模式”控制本会话向模型提供的工作工具：Coding 是默认模式，保留编程分析能力；Agent 移除编程专用分析工具，适合通用任务；Script（实验性）允许模型通过隔离的 JavaScript 单元串联支持的工具。Script 的每个工具调用仍受现有权限约束，实验性不代表效果或效率保证。
 
-新会话发送第一条消息前即可选择模式。选择会创建一个尚未发送的 Host 草稿并保存设置，保存期间不能发送任务；选择成功后，第一条输入使用该模式。只有任务安全空闲时才能切换。其他客户端同时修改设置时会提示冲突，请核对当前值后重新选择；旧 Host 不支持时会提示升级。已有持久会话的选择可在重启后恢复，尚未发送的草稿不会伪装成已保存对话。
+新会话发送第一条消息前可通过滑动分段选择模式。选择会创建一个尚未发送的 Host 草稿并保存设置，保存期间不能发送任务；选择成功后，第一条输入使用该模式。首轮请求被接纳后，选择器收起为只读模式标签；空闲、重启和清理历史都不会解锁，需要其他模式时请新建会话。其他客户端同时修改设置时会提示冲突；旧 Host 缺少锁定状态时会提示升级。尚未发送的草稿不会伪装成已保存对话。
 
-也可输入 `/work-mode` 查询，或 `/work-mode agent`、`/work-mode coding`、`/work-mode script` 切换。命令与下拉框使用同一 Host 设置，不会让模型代为切换。工作模式、Provider/Model、权限模式和 AMA 各自独立：选择 Agent 不等于禁止写文件，具体执行仍由权限模式决定。Partner 当前使用专门的受限 profile，不提供此切换器；与 SDK Agent 预设的组合接入仍待 SDK 支持。
+也可输入 `/work-mode` 查询，或在首轮前使用 `/work-mode agent`、`/work-mode coding`、`/work-mode script` 选择。命令与分段选择器使用同一 Host 设置，不会让模型代为切换。工作模式、Provider/Model、权限模式和 AMA 各自独立：选择 Agent 不等于禁止写文件，具体执行仍由权限模式决定。Partner 默认 Agent，不提供此选择器。
 
 ### 工具原文与任务报告
 

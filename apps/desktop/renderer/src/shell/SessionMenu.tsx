@@ -38,6 +38,7 @@ import { SessionLineagePanel } from '../features/session/SessionLineagePanel.js'
 import { useSurfaceStore } from '../store/surface.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
 import { deleteSessionWithFeedback } from '../lib/deleteSession.js';
+import { performHistoryTurnAction, usesProductHistoryActions } from '../lib/historyTurnAction.js';
 import { requestConfirm } from '../store/confirmStore.js';
 import { pushToast } from '../store/toastStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
@@ -152,6 +153,10 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
    */
   async function doFork(): Promise<void> {
     if (!window.kodaxSpace || !session) return;
+    if (usesProductHistoryActions(session)) {
+      onClose();
+      return performHistoryTurnAction(session, 'fork', { kind: 'latest' }, t);
+    }
     if (latestTurnIndex === undefined) {
       pushToast(t('menu.session.noTurnsToFork'), 'info');
       onClose();
@@ -224,6 +229,10 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
    */
   async function doRewind(): Promise<void> {
     if (!window.kodaxSpace || !session) return;
+    if (usesProductHistoryActions(session)) {
+      onClose();
+      return performHistoryTurnAction(session, 'rewind', { kind: 'previous' }, t);
+    }
     if (previousTurnIndex === undefined) {
       pushToast(t('menu.session.noEarlierTurn'), 'info');
       onClose();
@@ -377,16 +386,24 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
         label={t('menu.session.fork')}
         shortcut="F"
         onClick={() => void doFork()}
-        disabled={latestTurnIndex === undefined}
-        hint={latestTurnIndex === undefined ? t('menu.session.noTurnsToFork') : undefined}
+        disabled={!usesProductHistoryActions(session) && latestTurnIndex === undefined}
+        hint={
+          !usesProductHistoryActions(session) && latestTurnIndex === undefined
+            ? t('menu.session.noTurnsToFork')
+            : undefined
+        }
       />
       <MenuRow
         Icon={Undo2}
         label={t('menu.session.rewindOneTurn')}
         shortcut="W"
         onClick={() => void doRewind()}
-        disabled={previousTurnIndex === undefined}
-        hint={previousTurnIndex === undefined ? t('menu.session.noEarlierTurn') : undefined}
+        disabled={!usesProductHistoryActions(session) && previousTurnIndex === undefined}
+        hint={
+          !usesProductHistoryActions(session) && previousTurnIndex === undefined
+            ? t('menu.session.noEarlierTurn')
+            : undefined
+        }
       />
       <MenuRow
         Icon={Network}

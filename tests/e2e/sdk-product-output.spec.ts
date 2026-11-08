@@ -331,6 +331,10 @@ test('real SDK items replace live output, survive reload, and retain repeated di
       .getByTestId('transcript-search-bar')
       .locator('input')
       .fill('ONE_DISPLAY_INTENT');
+    await space.page
+      .getByTestId('transcript-search-bar')
+      .getByRole('combobox')
+      .selectOption('session');
     await expect(space.page.getByTestId('sdk-history-search-result').first()).toBeVisible();
     await space.page.getByTestId('sdk-history-search-result').first().click();
     await expect(space.page.getByTestId('sdk-history-search-body')).toContainText(

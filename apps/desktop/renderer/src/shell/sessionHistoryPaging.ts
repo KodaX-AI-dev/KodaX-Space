@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type {
+  ChannelInput,
   SessionEvent,
   SessionHistoryItem,
   SessionProductItem,
@@ -30,6 +31,7 @@ export interface SessionHistoryPagingState {
   readonly sourceRevision?: string;
   readonly hasMore: boolean;
   readonly nextCursor?: string;
+  readonly newerCursor?: string;
   readonly conversationStatus?: 'resolved' | 'partial' | 'ambiguous';
   readonly surface?: 'code' | 'partner';
   readonly hasNewer?: boolean;
@@ -38,6 +40,8 @@ export interface SessionHistoryPagingState {
    * runtime_unavailable response, so it never outlives the cycle it describes. */
   readonly runtimeUnavailable?: boolean;
   readonly runtimeFailureReason?: string;
+  /** The reader can still inspect the frozen page after its continuation expires. */
+  readonly savedPageChanged?: boolean;
 }
 const IDLE_HISTORY_STATE: SessionHistoryPagingState = {
   phase: 'idle',
@@ -67,6 +71,7 @@ const invalidationEpochs = new Map<string, number>();
 const loadedEpochs = new Map<string, number>();
 interface HistoryPageReference {
   readonly cursor?: string;
+  readonly around?: ChannelInput<'session.history'>['around'];
   readonly revision?: string;
   readonly sourceRevision?: string;
 }
@@ -631,6 +636,7 @@ interface HistoryResultData {
         readonly sourceRevision: string;
         readonly hasMore: boolean;
         readonly nextCursor?: string;
+        readonly newerCursor?: string;
         readonly windowMode: 'replace' | 'prepend';
         readonly hasNewer: boolean;
       }
@@ -789,7 +795,7 @@ async function requestHistory(
   continuation: boolean,
   expectedSurface?: 'code' | 'partner',
   retainReadyProjection = false,
-  newerPage?: HistoryPageReference & { readonly cursor: string },
+  newerPage?: HistoryPageReference,
 ): Promise<void> {
   const activeToken = activeTokens.get(sessionId);
   if (activeToken === undefined) return;
@@ -818,11 +824,9 @@ async function requestHistory(
     if (!(retainReadyProjection && boundary.phase === 'ready')) {
       publish(sessionId, { ...boundary, phase: 'loading', ...(surface ? { surface } : {}) });
     }
-    const invokeHistoryPage = async (pageBoundary?: {
-      readonly cursor: string;
-      readonly revision?: string;
-      readonly sourceRevision?: string;
-    }): Promise<HistoryResultData> => {
+    const invokeHistoryPage = async (
+      pageBoundary?: HistoryPageReference,
+    ): Promise<HistoryResultData> => {
       const requestId = nextHistoryRequestId();
       const response = await invokeWithTimeout(bridge, 'session.history', {
         sessionId,
@@ -831,6 +835,7 @@ async function requestHistory(
         ...(pageBoundary !== undefined
           ? {
               cursor: pageBoundary.cursor,
+              ...(pageBoundary.around ? { around: pageBoundary.around } : {}),
               revision: pageBoundary.revision,
               sourceRevision: pageBoundary.sourceRevision,
             }
@@ -860,6 +865,10 @@ async function requestHistory(
     let result = await invokeHistoryPage(requestedBoundary);
     if (activeTokens.get(sessionId) !== activeToken) return;
     if ((invalidationEpochs.get(sessionId) ?? 0) !== requestedEpoch) {
+      if (continuation && productTranscriptSnapshot(sessionId)?.browsingOlder) {
+        publish(sessionId, { ...previous, phase: 'error', savedPageChanged: true });
+        return;
+      }
       // A terminal/lineage persistence boundary overtook this read. Do not install a page or a
       // diagnostic from the older source generation; restart from the newest canonical boundary.
       loadedEpochs.delete(sessionId);
@@ -886,6 +895,10 @@ async function requestHistory(
           (requestedBoundary.sourceRevision !== undefined &&
             page.sourceRevision !== requestedBoundary.sourceRevision)))
     ) {
+      if (continuation && productTranscriptSnapshot(sessionId)?.browsingOlder) {
+        publish(sessionId, { ...previous, phase: 'error', savedPageChanged: true });
+        return;
+      }
       invalidateSessionCanonicalTranscriptPage(sessionId);
       loadedEpochs.delete(sessionId);
       productPageTrail.delete(sessionId);
@@ -917,6 +930,8 @@ async function requestHistory(
     if (result.productItems !== undefined && page?.outcome === 'ready') {
       const reference: HistoryPageReference = {
         cursor: requestedBoundary?.cursor,
+        around:
+          requestedBoundary && 'around' in requestedBoundary ? requestedBoundary.around : undefined,
         revision: page.revision,
         sourceRevision: page.sourceRevision,
       };
@@ -926,10 +941,16 @@ async function requestHistory(
         requestedBoundary === undefined
           ? [reference]
           : newerPage
-            ? trail.slice(0, -1)
+            ? trail.length > 1
+              ? trail.slice(0, -1)
+              : [reference]
             : [...trail, reference],
       );
-      installProductHistory(sessionId, result.productItems, page.hasNewer);
+      const selectedSavedPage =
+        page.hasNewer ||
+        !!page.newerCursor ||
+        (newerPage !== undefined && !!productTranscriptSnapshot(sessionId)?.view);
+      installProductHistory(sessionId, result.productItems, selectedSavedPage);
       updateAllTerminalHistoryWorkflows(sessionId, 'in-flight', 'completed');
       deferredReadyRevalidations.delete(sessionId);
       loadedEpochs.set(sessionId, requestedEpoch);
@@ -940,8 +961,9 @@ async function requestHistory(
         revision: page.revision,
         sourceRevision: page.sourceRevision,
         hasMore: page.hasMore,
-        hasNewer: page.hasNewer,
+        hasNewer: selectedSavedPage,
         ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+        ...(page.newerCursor ? { newerCursor: page.newerCursor } : {}),
         ...(result.conversation ? { conversationStatus: result.conversation.status } : {}),
       });
       return;
@@ -1242,16 +1264,40 @@ export async function loadNewerSessionHistory(sessionId: string): Promise<void> 
   if (pending?.token === token) return pending.promise;
   const state = sessionHistoryPagingSnapshot(sessionId);
   if (!state.hasNewer) return;
-  const trail = productPageTrail.get(sessionId);
-  const target = trail?.[trail.length - 2];
   if (
-    target?.cursor !== undefined &&
+    productTranscriptSnapshot(sessionId)?.browsingOlder &&
+    loadedEpochs.get(sessionId) !== (invalidationEpochs.get(sessionId) ?? 0)
+  ) {
+    publish(sessionId, { ...state, phase: 'error', savedPageChanged: true });
+    return;
+  }
+  const trail = productPageTrail.get(sessionId);
+  const target =
+    trail?.[trail.length - 2] ??
+    (state.newerCursor
+      ? {
+          cursor: state.newerCursor,
+          revision: state.revision,
+          sourceRevision: state.sourceRevision,
+        }
+      : undefined);
+  if (
+    target !== undefined &&
     loadedEpochs.get(sessionId) === (invalidationEpochs.get(sessionId) ?? 0)
   ) {
-    return requestHistory(sessionId, true, state.surface, false, {
-      ...target,
-      cursor: target.cursor,
-    });
+    return requestHistory(sessionId, true, state.surface, false, target);
+  }
+  const product = productTranscriptSnapshot(sessionId);
+  if (
+    trail?.length === 1 &&
+    !trail[0]?.cursor &&
+    !trail[0]?.around &&
+    product?.browsingOlder &&
+    product.view
+  ) {
+    installProductHistory(sessionId, product.historyItems, false);
+    publish(sessionId, { ...state, hasNewer: false });
+    return;
   }
   return restoreNewestSessionHistory(sessionId, state.surface ?? 'code');
 }
@@ -1268,7 +1314,112 @@ export async function loadOlderSessionHistory(sessionId: string): Promise<void> 
     await existing.promise.catch(() => undefined);
     if (activeTokens.get(sessionId) !== activeToken) return;
   }
+  const product = productTranscriptSnapshot(sessionId);
+  const state = sessionHistoryPagingSnapshot(sessionId);
+  if (
+    product?.browsingOlder &&
+    loadedEpochs.get(sessionId) !== (invalidationEpochs.get(sessionId) ?? 0)
+  ) {
+    publish(sessionId, { ...state, phase: 'error', savedPageChanged: true });
+    return;
+  }
+  if (
+    state.phase === 'ready' &&
+    product?.view &&
+    !product.browsingOlder &&
+    product.historyItems.length > 0
+  ) {
+    installProductHistory(sessionId, product.historyItems, true);
+    publish(sessionId, { ...state, hasNewer: true });
+    return;
+  }
   return requestHistory(sessionId, true);
+}
+
+/** Read first, then switch the frozen window only when the SDK proved the requested source. */
+export async function openLocatedHistory(
+  sessionId: string,
+  around: NonNullable<ChannelInput<'session.history'>['around']>,
+  signal: AbortSignal,
+): Promise<
+  { itemId: string; itemIds: readonly string[]; restore: () => void } | 'stale' | undefined
+> {
+  const bridge = window.kodaxSpace;
+  const token = activeTokens.get(sessionId);
+  const origin = productTranscriptSnapshot(sessionId);
+  if (!bridge || !token || !origin || signal.aborted) return;
+  const state = sessionHistoryPagingSnapshot(sessionId);
+  if (state.phase === 'loading') return;
+  const epoch = invalidationEpochs.get(sessionId) ?? 0;
+  const trail = productPageTrail.get(sessionId) ?? [];
+  const requestId = nextHistoryRequestId();
+  const reply = await invokeWithTimeout(bridge, 'session.history', {
+    sessionId,
+    requestId,
+    expectedSurface: 'code',
+    around,
+  });
+  if (
+    signal.aborted ||
+    activeTokens.get(sessionId) !== token ||
+    sessionHistoryPagingSnapshot(sessionId) !== state
+  )
+    return;
+  if ((invalidationEpochs.get(sessionId) ?? 0) !== epoch) return 'stale';
+  if (!reply.ok) throw new Error(reply.error.message);
+  const data = reply.data;
+  const page = data.page;
+  if (data.requestId !== requestId || data.sessionId !== sessionId) return;
+  if (page?.outcome === 'data_changed') return 'stale';
+  if (page?.outcome !== 'ready' || !page.locatedBoundaryId || !data.productItems) return;
+  const locatedItems = data.productItems.filter(
+    (candidate) =>
+      candidate.historyBoundary?.entryId === page.locatedBoundaryId &&
+      candidate.historyBoundary?.sourceRevision === page.sourceRevision,
+  );
+  const item =
+    locatedItems.find(
+      (candidate) =>
+        candidate.type === 'user' || (candidate.type === 'assistant' && candidate.text.length > 0),
+    ) ?? locatedItems[0];
+  if (!item) return;
+  activateSessionHistoryPaging(sessionId);
+  const owner = activeTokens.get(sessionId);
+  clearRetry(sessionId);
+  productPageTrail.set(sessionId, [
+    { around, revision: page.revision, sourceRevision: page.sourceRevision },
+  ]);
+  installProductHistory(sessionId, data.productItems, true);
+  loadedEpochs.set(sessionId, epoch);
+  publish(sessionId, {
+    phase: 'ready',
+    surface: 'code',
+    revision: page.revision,
+    sourceRevision: page.sourceRevision,
+    conversationStatus: data.conversation?.status,
+    hasMore: page.hasMore,
+    hasNewer: true,
+    nextCursor: page.nextCursor,
+    newerCursor: page.newerCursor,
+  });
+  return {
+    itemId: item.id,
+    itemIds: locatedItems.map((candidate) => candidate.id),
+    restore: () => {
+      if (activeTokens.get(sessionId) !== owner) return;
+      activateSessionHistoryPaging(sessionId);
+      clearRetry(sessionId);
+      productPageTrail.set(sessionId, trail);
+      installProductHistory(sessionId, origin.historyItems, origin.browsingOlder);
+      if ((invalidationEpochs.get(sessionId) ?? 0) !== epoch) {
+        loadedEpochs.delete(sessionId);
+        publish(sessionId, { ...state, phase: 'error', savedPageChanged: true });
+      } else {
+        loadedEpochs.set(sessionId, epoch);
+        publish(sessionId, state);
+      }
+    },
+  };
 }
 
 /**
