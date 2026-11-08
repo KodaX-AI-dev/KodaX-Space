@@ -83,6 +83,14 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei
 
+      - name: Prepare browser unit test runtime (Linux)
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare browser unit test runtime
+        if: runner.os != 'Linux'
+        run: npx playwright install chromium
+
       - name: Typecheck
         # FEATURE_002+ 起强制——renderer 误用未注册 channel / handler 返回 schema-错配 shape 都被 TS 拦
         run: npm run typecheck

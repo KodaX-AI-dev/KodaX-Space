@@ -273,6 +273,9 @@ test('real SDK items replace live output, survive reload, and retain repeated di
       .toBe(1);
     let view = await readView();
     expect(view.items.filter((item) => item.type === 'user')).toHaveLength(1);
+    expect(view.items.filter((item) => item.type === 'user').map((item) => item.text)).toEqual([
+      prompt,
+    ]);
     for (const item of view.items.filter(
       (item) => item.type === 'user' || item.type === 'assistant',
     )) {
@@ -321,6 +324,10 @@ test('real SDK items replace live output, survive reload, and retain repeated di
     expect(
       new Set(view.items.filter((item) => item.type === 'user').map((item) => item.inputId)).size,
     ).toBe(2);
+    expect(view.items.filter((item) => item.type === 'user').map((item) => item.text)).toEqual([
+      prompt,
+      prompt,
+    ]);
     await expect(
       space.page
         .getByTestId('conversation-render-row')

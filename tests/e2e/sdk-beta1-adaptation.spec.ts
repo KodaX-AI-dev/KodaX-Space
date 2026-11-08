@@ -85,8 +85,8 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       'data-session-id',
       id,
     );
-    // A second public SDK client changes the idle Host setting, bypassing Space's setter guard.
-    await promisify(execFile)(
+    // beta.3 locks the admitted mode for every client, including direct SDK callers.
+    const modeAttempt = await promisify(execFile)(
       process.execPath,
       [
         '--input-type=module',
@@ -97,7 +97,12 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       const client = await connectKodaXRuntime({profile:'coder', sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
       try {
         const current = await client.sessions.getSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION);
-        await client.sessions.updateSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION,{workMode:'coding'},{expectedRevision:current.revision});
+        try {
+          await client.sessions.updateSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION,{workMode:'coding'},{expectedRevision:current.revision});
+          throw Error('An admitted Partner mode was changed');
+        } catch(error) { if(error.code!=='conflict')throw error; }
+        const after=await client.sessions.getSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION);
+        process.stdout.write(JSON.stringify({beforeLocked:current.workModeLocked,afterLocked:after.workModeLocked,workMode:after.value.workMode}));
       } finally { await client.close(); }
     `,
       ],
@@ -107,10 +112,15 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
         env: { ...process.env, KODAX_HOME: space.testDataDir, SPACE_E2E_MODE_SESSION: id },
       },
     );
-    await expect(space.page.getByTestId('partner-work-mode')).toContainText('coding');
-    await sendSdkPrompt(space, 'BETA1_AGENT_RESTORED');
+    expect(JSON.parse(modeAttempt.stdout)).toEqual({
+      beforeLocked: true,
+      afterLocked: true,
+      workMode: 'agent',
+    });
+    await expect(space.page.getByTestId('partner-work-mode')).toHaveText('Agent');
+    await sendSdkPrompt(space, 'BETA3_AGENT_RETAINED');
     await expect
-      .poll(() => provider.requests.some((text) => text.includes('BETA1_AGENT_RESTORED')))
+      .poll(() => provider.requests.some((text) => text.includes('BETA3_AGENT_RETAINED')))
       .toBe(true);
     await waitSdkIdle(space, id);
     await expect(space.page.getByTestId('partner-work-mode')).toHaveText('Agent');

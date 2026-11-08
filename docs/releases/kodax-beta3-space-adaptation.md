@@ -108,3 +108,11 @@ Windows 冷启动测试中 Renderer 4.55 秒就绪。确定性延迟 daemon 20 �
 ### Spec
 
 独立需求轴两次复核：0项。SDK完整发布范围已逐项核对，未发现需要Space重复实现的SDK内部能力；规则只读、目标绑定、512/513边界与资源门禁均有反例及正向验证。模式测试只等待保存结束，不改变生产策略或放宽超时。新成品/远端结果仍单独验收。
+
+#### 首次成品与远端环境补核
+
+生产提交 f6f70c03 的首次成品广回归38项中36通过、2失败，证据另存；不能计作38项通过。两项均是基线测试未跟上已确认的新契约：Partner 测试试图在首轮后用另一客户端改 Coding，beta.3 应拒绝；含 @绝对路径的 literal 测试则在文件补全菜单打开时按 Enter，尚未真正发送。
+
+修正后的同一真实成品专项2/2首次通过：公开第二客户端验证首轮前后锁定事实与Agent保持，后续专家/shell与输入断言保留；literal helper仅在可见 @Files 菜单时Escape再发送，新增SDK view原始正文（含换行/路径）一次与两次重复的严格相等断言，保留不同inputId、重载不重复和搜索原文验证。
+
+首次远端Ubuntu build的两个输入器浏览器测试无法启动，错误为缺少chromium_headless_shell。构建工作流新增测试浏览器准备：Linux使用playwright install --with-deps chromium，其余平台安装相同锁定Playwright的chromium；不skip或延长测试。该变更不进入应用或SDK产物。Standards与Spec针对这四文件补审均0项，旧失败保留，新完整成品/远端结果后续追加。
