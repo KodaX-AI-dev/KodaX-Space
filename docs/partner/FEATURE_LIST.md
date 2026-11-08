@@ -236,12 +236,12 @@ Integration evidence: PF001–PF013 existing implementations entered `main` in [
 - Priority: High
 - Partner Target: `v0.1.0`
 - Dev Status: Completed
-- Integration Status: Local
+- Integration Status: Integrated
 - Space Feature: —（随 Space beta.4 SDK 适配；未新增 Space F-ID）
 - Design: [PF014 design](features/v0.1.0.md#feature-pf014)
 - Created: 2026-11-08
 - Updated: 2026-11-08
-- Evidence: 定向自动化、源码 Electron 与 Windows 打包应用场景均通过（见设计节及 [beta.4 适配记录](../releases/kodax-beta4-space-adaptation.md)）；未提交，故仍为 Local。
+- Evidence: 随 Space beta.4 适配集成到主线，代码提交 `74f55ee8`；Runtime Partner Fork/回退、子会话工作面与绑定保留的源码/Windows 成品场景通过（retries=0）。见 [主线整合验收](../releases/kodax-beta4-space-adaptation.md#本次主线整合与复验) 和 [集成映射](INTEGRATION.md)。未发布新版本。
 
 ## Summary
 
@@ -249,8 +249,8 @@ Integration evidence: PF001–PF013 existing implementations entered `main` in [
 - Planned: 0
 - InProgress: 3
 - Completed: 11
-- Local: 1
+- Local: 0
 - Ready: 0
 - Proposed: 0
-- Integrated: 13
+- Integrated: 14
 - Next PF ID: PF015

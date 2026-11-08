@@ -70,6 +70,7 @@ Partner 融合：Local -> Ready -> Proposed -> Integrated
 | PF011           | —             | `v0.1.0` | Completed   | Integrated  | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
 | PF012           | —             | `v0.1.0` | Completed   | Integrated  | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
 | PF013           | —             | `v0.1.0` | Completed   | Integrated  | [PR #5](https://github.com/KodaX-AI-dev/KodaX-Space/pull/5), main `a2f7a1b0`, [beta.3](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46-beta.3) | 2026-09-14 |
+| PF014           | —             | `v0.1.0` | Completed   | Integrated  | main `74f55ee8`；[Space beta.4 主线整合与源码/Windows 成品验收](../releases/kodax-beta4-space-adaptation.md#本次主线整合与复验)，未发布                         | 2026-11-08 |
 
 ```text
 F146 <- PF001, PF002, PF003
@@ -84,7 +85,9 @@ F146 <- PF001, PF002, PF003
 
 ## 6. 当前集成快照
 
-当前宿主候选为 Space `0.1.47-alpha.2` / Registry SDK `0.7.97-alpha.6`，尚未发布。最新稳定版为 Space `0.1.46`，已发布预发布版为 `0.1.47-alpha.1`。Partner 保留现有 inline owner、内置库和 Host API 边界；本轮不改变 PF 开发/集成状态，也不把外部账号、Coder 共享或自动替换已有库视为已验收。当前发布准备见 [alpha.2 readiness](../releases/v0.1.47-alpha.2-release-readiness.md)。beta.3 Release 撤回、beta.4 候选修复及以下集成记录均保留历史语境。
+当前主线为 Space `0.1.47-alpha.4` 源码 / Registry SDK `0.7.97-beta.4`，PF014 代码提交 `74f55ee8` 已集成；已发布的 Space alpha.4 仍使用原始 SDK beta.1。本轮源码及 Windows 目录包验证不创建新发布，也不将外部账号、Coder 共享或自动替换已有库视为已验收。见 [beta.4 主线整合验收](../releases/kodax-beta4-space-adaptation.md#本次主线整合与复验)。
+
+此前 alpha.2 准备快照（历史）：宿主候选为 Space `0.1.47-alpha.2` / Registry SDK `0.7.97-alpha.6`，当时尚未发布。彼时最新稳定版为 Space `0.1.46`，已发布预发布版为 `0.1.47-alpha.1`。Partner 保留既有 inline owner、内置库和 Host API 边界；相关记录见 [alpha.2 readiness](../releases/v0.1.47-alpha.2-release-readiness.md)。beta.3 Release 撤回、beta.4 候选修复及以下集成记录均保留历史语境。
 
 ### beta.3 历史交付
 
