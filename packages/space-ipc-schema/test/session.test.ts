@@ -1553,10 +1553,14 @@ test('session.agentsMd output rejects unknown scope', () => {
 });
 
 test('session.agentsMd output enforces array cap (DoS guard)', () => {
-  const files = Array.from({ length: 17 }, (_, i) => ({
+  const files = Array.from({ length: 513 }, (_, i) => ({
     path: `/p${i}/AGENTS.md`,
     content: '',
     scope: 'project' as const,
   }));
+  assert.equal(
+    sessionAgentsMdChannel.output.safeParse({ files: files.slice(0, 512) }).success,
+    true,
+  );
   assert.equal(sessionAgentsMdChannel.output.safeParse({ files }).success, false);
 });

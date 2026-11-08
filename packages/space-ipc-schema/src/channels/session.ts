@@ -779,6 +779,8 @@ const agentsFileSchema = z.object({
   path: z.string().min(1).max(4096),
   content: z.string().max(262_144 + 64),
   scope: z.enum(['global', 'project', 'directory']),
+  /** Main proves this file is one of the two fixed AGENTS.md save targets. */
+  editableScope: z.enum(['global', 'project']).optional(),
 });
 
 export const sessionAgentsMdChannel = {
@@ -788,7 +790,8 @@ export const sessionAgentsMdChannel = {
     sessionId: z.string().min(1),
   }),
   output: z.object({
-    files: z.array(agentsFileSchema).max(16),
+    // SDK Markdown fragments are bounded by bytes per scope, not sixteen files.
+    files: z.array(agentsFileSchema).max(512),
   }),
 } as const;
 
@@ -800,7 +803,7 @@ export type AgentsFileMeta = z.infer<typeof agentsFileSchema>;
 // main 端只允许写两个 scope:
 //   - 'global'  → ~/.kodax/AGENTS.md  (KodaX 全局 context)
 //   - 'project' → <session.projectRoot>/AGENTS.md
-// 'directory' scope 不开放写 (递归扫的目录,任意路径不安全)。
+// 加载来源的 scope 不授予写入；Main 仅为两个固定目标提供 editableScope。
 //
 // 安全:
 //   - sessionId 必须存在 (host.get 命中) — 通过 IPC handler 限定 projectRoot 来源

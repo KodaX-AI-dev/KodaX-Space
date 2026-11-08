@@ -611,8 +611,7 @@ async function validateInputArtifactsForSession(
   }
 }
 
-// FEATURE_034 reviewer MEDIUM-2: 编译期保证 loader 的 AgentsFile 与 schema 的 AgentsFileMeta
-// 结构一致——加字段、改 scope enum 等都会立即编译报错，不让 schema/loader 漂移。
+// Keep SDK source fields compatible with IPC; Main adds optional edit-target metadata.
 // (双向 assignability：a→b 和 b→a 都必须成立，等同于结构等价。)
 // 用 export 让 tsc noUnusedLocals 不报错（type-only export 不影响 runtime）
 export type _AssertAgentsFileShapeEqual = AgentsFile extends AgentsFileMeta
@@ -1509,7 +1508,18 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
       throw new Error(`session not found: ${input.sessionId}`);
     }
     const files = await loadAgentsMd({ projectRoot: session.projectRoot });
-    return { files };
+    const targets = {
+      global: path.join(getKodaxDir(), 'AGENTS.md'),
+      project: path.join(session.projectRoot, 'AGENTS.md'),
+    };
+    return {
+      files: files.map((file) => {
+        const editableScope = (['global', 'project'] as const).find(
+          (scope) => path.relative(targets[scope], file.path) === '',
+        );
+        return { ...file, ...(editableScope ? { editableScope } : {}) };
+      }),
+    };
   });
 
   // session.agentsMd.save — REPL /memory inline edit 等价

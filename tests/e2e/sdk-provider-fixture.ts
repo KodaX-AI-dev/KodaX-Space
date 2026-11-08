@@ -100,6 +100,8 @@ async function probeIndependentHistory(space: SpaceInstance, sessionId: string):
 
 export async function createLocalSdkProvider() {
   const requests: string[] = [];
+  // Isolated fixture assertions only; never persist system prompts in evidence files.
+  const requestInstructions: string[] = [];
   const requestModels: string[] = [];
   const questionResults: unknown[] = [];
   let forkContext:
@@ -152,6 +154,12 @@ export async function createLocalSdkProvider() {
       parsed.messages.findLast((message) => message.role === 'user')?.content ?? '',
     );
     requests.push(prompt);
+    requestInstructions.push(
+      parsed.messages
+        .filter((message) => message.role === 'system' || message.role === 'developer')
+        .map((message) => (typeof message.content === 'string' ? message.content : ''))
+        .join('\n'),
+    );
     if (prompt === 'AFTER_TOOL_FORK') {
       const results = parsed.messages.filter((message) => message.role === 'tool');
       forkContext = {
@@ -402,6 +410,7 @@ export async function createLocalSdkProvider() {
       return { ...transport };
     },
     requestModels,
+    requestInstructions,
     get forkContext() {
       return forkContext;
     },

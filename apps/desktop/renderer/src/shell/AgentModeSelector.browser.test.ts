@@ -88,11 +88,12 @@ test(
     await page.waitForFunction('window.finish');
     assert.equal(await page.getByRole('button', { name: 'Send' }).isDisabled(), true);
     await page.evaluate('window.finish();');
-    await page.waitForFunction(() =>
-      document
-        .querySelector('[role="radio"][aria-checked="true"]')
-        ?.textContent?.includes('Coding'),
-    );
+    await page.waitForFunction(() => {
+      const selected = document.querySelector<HTMLButtonElement>(
+        '[role="radio"][aria-checked="true"]',
+      );
+      return selected?.textContent?.includes('Coding') && selected.disabled === false;
+    });
     assert.equal(
       await picker.getByRole('radio', { name: 'Coding', exact: true }).getAttribute('aria-checked'),
       'true',

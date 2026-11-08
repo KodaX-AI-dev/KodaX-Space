@@ -1,7 +1,7 @@
 // AgentsMdPanel — FEATURE_034 + FEATURE_197
 //
 // 一个 popout 容纳两类 agent 配置：
-//   - Context tab: AGENTS.md 文件（global + project，对话被注入的隐式 system 上下文）
+//   - Context tab: AGENTS.md 与只读规则片段（SDK 加载的 system 上下文）
 //   - Custom tab : ~/.kodax/agents/*.md 和 <project>/.kodax/agents/*.md 用户自定义 agents
 //     （KodaX v0.7.43 FEATURE_191 加载、FEATURE_197 暴露 discovery）
 //
@@ -308,15 +308,14 @@ function ContextTab(): JSX.Element {
   }
 
   const active = files[activeIdx] ?? files[0];
-  // 编辑按钮: 只有 global/project scope 可编辑 (directory 不开放写,见 main handler)
-  const editableScope: 'global' | 'project' | null =
-    active.scope === 'global' || active.scope === 'project' ? active.scope : null;
+  // A rule's scope does not identify the AGENTS.md destination of the save IPC.
+  const editableScope = active.editableScope ?? null;
 
   return (
     <div className="h-full flex flex-col text-xs">
       <header className="px-3 py-2 border-b border-border-default/60 flex items-center justify-between">
         <div className="text-fg-secondary font-medium">
-          AGENTS.md{' '}
+          {t('agents.instructions')}{' '}
           <span className="text-fg-muted font-normal">
             ({t('agents.loadedCount', { count: files.length })})
           </span>
@@ -333,7 +332,7 @@ function ContextTab(): JSX.Element {
             </button>
           )}
           {/* Create the OTHER scope if it's not in the loaded list */}
-          {!files.some((f) => f.scope === 'global') && (
+          {!files.some((f) => f.editableScope === 'global') && (
             <button
               type="button"
               onClick={() => startEdit('global', '# AGENTS.md (global)\n\n')}
@@ -343,7 +342,7 @@ function ContextTab(): JSX.Element {
               {t('agents.globalButton')}
             </button>
           )}
-          {!files.some((f) => f.scope === 'project') && (
+          {!files.some((f) => f.editableScope === 'project') && (
             <button
               type="button"
               onClick={() => startEdit('project', '# AGENTS.md (project)\n\n')}
@@ -370,7 +369,14 @@ function ContextTab(): JSX.Element {
               }`}
               title={f.path}
             >
-              <span className={SCOPE_COLORS[f.scope]}>●</span> <span>{scopeLabel(f.scope, t)}</span>
+              <span className={SCOPE_COLORS[f.scope]}>●</span>{' '}
+              <span>
+                {scopeLabel(f.scope, t)} ·{' '}
+                {f.path
+                  .split(/[\\/]/)
+                  .slice(f.editableScope ? -1 : -2)
+                  .join('/')}
+              </span>
             </button>
           ))}
         </div>
@@ -383,6 +389,9 @@ function ContextTab(): JSX.Element {
         <FileNameText name={active.path} className="flex-1" />
       </div>
 
+      {editableScope === null && (
+        <p className="px-3 pb-2 text-fg-muted">{t('agents.readOnlySource')}</p>
+      )}
       <pre className="flex-1 overflow-auto px-3 pb-3 text-xs text-fg-secondary whitespace-pre-wrap font-mono leading-relaxed">
         {active.content}
       </pre>
