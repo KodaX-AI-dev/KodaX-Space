@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 
 import { launchSpace } from './fixtures.js';
 
+type ReloadCoverage = { overlays: number; throttling: boolean } | null;
+
 test('boot overlay remains above a painted Shell and is then removed atomically', async () => {
   const space = await launchSpace(`startup-overlay-${Date.now()}`, {
     onLaunched: async (app) => {
@@ -14,8 +16,9 @@ test('boot overlay remains above a painted Shell and is then removed atomically'
                 if (!win) return null;
                 const readState = () => ({
                   visible: win.isVisible(),
-                  overlays: win.contentView.children.filter((view) => view instanceof WebContentsView)
-                    .length,
+                  overlays: win.contentView.children.filter(
+                    (view) => view instanceof WebContentsView,
+                  ).length,
                 });
                 const beforeActivation = readState();
                 app.emit(
@@ -66,10 +69,7 @@ test('boot overlay remains above a painted Shell and is then removed atomically'
         })
         .catch(() => null);
     await expect
-      .poll(
-        readCoveredState,
-        { timeout: 15_000 },
-      )
+      .poll(readCoveredState, { timeout: 15_000 })
       .toMatchObject({ throttling: false, overlayPainted: true });
     const coveredState = await readCoveredState();
 
@@ -108,17 +108,53 @@ test('boot overlay remains above a painted Shell and is then removed atomically'
 
     await expect(space.page.locator('[data-space-shell-ready]')).toBeVisible();
 
+    // Capture the covered paint boundary before the production ready handler
+    // removes the overlay; reload/load completion can be observed much later.
+    await space.app.evaluate(({ BrowserWindow, WebContentsView, ipcMain }) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (!win) throw new Error('Main window is unavailable');
+      const state = globalThis as unknown as { spaceReloadCoverage: ReloadCoverage };
+      state.spaceReloadCoverage = null;
+      const cleanup = () => {
+        win.webContents.removeListener('did-start-navigation', onNavigation);
+        win.webContents.removeListener('destroyed', cleanup);
+        ipcMain.removeListener('boot.rendererReady', onReady);
+      };
+      const onReady = (event: Electron.IpcMainEvent) => {
+        if (event.sender !== win.webContents) return;
+        state.spaceReloadCoverage = {
+          overlays: win.contentView.children.filter((view) => view instanceof WebContentsView)
+            .length,
+          throttling: win.webContents.getBackgroundThrottling(),
+        };
+        cleanup();
+      };
+      const onNavigation = (
+        _event: Electron.Event,
+        _url: string,
+        isInPlace: boolean,
+        isMainFrame: boolean,
+      ) => {
+        if (isInPlace || !isMainFrame) return;
+        win.webContents.removeListener('did-start-navigation', onNavigation);
+        ipcMain.prependListener('boot.rendererReady', onReady);
+      };
+      win.webContents.once('destroyed', cleanup);
+      win.webContents.on('did-start-navigation', onNavigation);
+    });
     await space.page.reload();
     await space.page.locator('[data-space-shell-ready]').waitFor();
-    const reloadCoveredState = await space.app.evaluate(({ BrowserWindow, WebContentsView }) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      if (!win) return null;
-      return {
-        overlays: win.contentView.children.filter((view) => view instanceof WebContentsView).length,
-        throttling: win.webContents.getBackgroundThrottling(),
-      };
-    });
-    expect(reloadCoveredState).toEqual({ overlays: 1, throttling: false });
+    await expect
+      .poll(
+        () =>
+          space.app.evaluate(
+            () =>
+              (globalThis as unknown as { spaceReloadCoverage: ReloadCoverage })
+                .spaceReloadCoverage,
+          ),
+        { timeout: 15_000 },
+      )
+      .toEqual({ overlays: 1, throttling: false });
 
     await expect
       .poll(
