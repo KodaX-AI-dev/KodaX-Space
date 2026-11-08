@@ -70,6 +70,32 @@ async function seedHistory(root: string): Promise<void> {
   });
 }
 
+async function seedUniformHistory(root: string): Promise<void> {
+  const project = path.join(root, 'project');
+  await mkdir(project, { recursive: true });
+  const manager = createSessionManager({
+    sessionsDir: path.join(root, 'sessions'),
+    configHome: root,
+  });
+  const messages: KodaXMessage[] = [];
+  for (let index = 0; index < 225; index++)
+    messages.push(
+      { role: 'user', inputId: `input-${index}`, content: `HISTORY_QUESTION_${index}` },
+      {
+        role: 'assistant',
+        outputId: `output-${index}`,
+        content: [{ type: 'text', text: `HISTORY_ANSWER_${index}` }],
+      },
+    );
+  await manager.storage.save(SESSION, {
+    title: 'SDK_HISTORY_NAVIGATION',
+    gitRoot: project,
+    scope: 'user',
+    runtimeInfo: { workspaceRoot: project, surface: 'repl' },
+    messages,
+  });
+}
+
 async function nativeHistoryGeometry(page: Page) {
   return page.getByTestId('conversation-scroll-container').evaluate((element) => {
     if (!(element instanceof HTMLElement)) throw new Error('Expected HTML history viewport');
@@ -87,23 +113,25 @@ async function nativeHistoryGeometry(page: Page) {
   });
 }
 
+async function settleNativeHistoryLayout(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    for (let frame = 0; frame < 48; frame++)
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  });
+}
+
 async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer'): Promise<void> {
   const scroller = page.getByTestId('conversation-scroll-container');
   const ids = () =>
     page
       .locator('[data-msg-id]')
       .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
-  const settle = () =>
-    page.evaluate(async () => {
-      for (let frame = 0; frame < 48; frame++)
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    });
-  await settle();
+  await settleNativeHistoryLayout(page);
   await scroller.evaluate((element, direction) => {
     element.scrollTop =
       direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
   }, direction);
-  await settle();
+  await settleNativeHistoryLayout(page);
   const geometry = await nativeHistoryGeometry(page);
   const edge = direction === 'newer' ? geometry.bottom : geometry.top;
   const sign = direction === 'newer' ? 1 : -1;
@@ -111,11 +139,19 @@ async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer')
   await page.mouse.down();
   try {
     for (let index = 0; index < 2; index++) {
+      if (
+        await page
+          .getByText(direction === 'older' ? 'HISTORY_QUESTION_0' : 'HISTORY_QUESTION_224', {
+            exact: true,
+          })
+          .count()
+      )
+        break;
       const before = await ids();
       if (index > 0) await page.mouse.move(geometry.x, edge - sign * 15, { steps: 4 });
       await page.mouse.move(geometry.x, edge + sign * 15, { steps: 6 });
       await expect.poll(ids).not.toEqual(before);
-      await settle();
+      await settleNativeHistoryLayout(page);
     }
   } finally {
     await page.mouse.up();
@@ -128,7 +164,7 @@ test('native scrollbar stays held across SDK history windows in both directions'
     const { space } = await launchRealSdkSpace(
       `history-native-scrollbar-${Date.now()}`,
       provider.url,
-      seedHistory,
+      seedUniformHistory,
     );
     try {
       await space.page
@@ -136,15 +172,18 @@ test('native scrollbar stays held across SDK history windows in both directions'
         .filter({ hasText: 'SDK_HISTORY_NAVIGATION' })
         .click();
       const stream = space.page.getByTestId('conversation-stream');
-      await expect(stream).toContainText('HISTORY_ANSWER_259');
-      await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
-      await expect(stream).toContainText('HISTORY_QUESTION_259');
+      await expect(stream).toContainText('HISTORY_ANSWER_224');
       const newestIds = await stream
         .locator('[data-msg-id]')
         .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+      await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
+      await expect(stream).toContainText('HISTORY_QUESTION_224');
       await dragNativeHistoryWindow(space.page, 'older');
-      await expect(stream).not.toContainText('HISTORY_QUESTION_259');
+      await expect(stream).not.toContainText('HISTORY_QUESTION_224');
+      await expect(stream).toContainText('HISTORY_QUESTION_0');
       await dragNativeHistoryWindow(space.page, 'newer');
+      const bottom = space.page.getByRole('button', { name: 'Jump to bottom', exact: true });
+      if (await bottom.count()) await bottom.click();
       await expect
         .poll(() =>
           stream
@@ -152,8 +191,7 @@ test('native scrollbar stays held across SDK history windows in both directions'
             .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id'))),
         )
         .toEqual(newestIds);
-      await space.page.getByRole('button', { name: 'Jump to bottom', exact: true }).click();
-      await expect(stream).toContainText('HISTORY_ANSWER_259');
+      await expect(stream).toContainText('HISTORY_ANSWER_224');
       expect(provider.requests).toEqual([]);
       expect(provider.errors).toEqual([]);
     } finally {

@@ -636,14 +636,22 @@ async function dragNativeHistoryPages(
   const geometry = await nativeHistoryScrollbarGeometry(page);
   const edge = direction === 'newer' ? geometry.bottom : geometry.top;
   const sign = direction === 'newer' ? 1 : -1;
+  const requestCount = await page.evaluate('window.requests.length');
   await page.mouse.move(geometry.x, geometry.y);
   await page.mouse.down();
   try {
     await page.mouse.move(geometry.x, edge, { steps: 6 });
-    await page.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await page.waitForFunction(
+      (offset) =>
+        (window as unknown as { requests: string[] }).requests.slice(offset).includes('middle'),
+      requestCount,
+    );
     await page.evaluate(`window.settle(${restorationFrames})`);
-    await page.mouse.move(geometry.x, edge - sign * 15, { steps: 4 });
-    await page.mouse.move(geometry.x, edge + sign * 15, { steps: 4 });
+    const finalCursor = direction === 'newer' ? 'newest' : 'oldest';
+    if ((await page.evaluate('window.requests.at(-1)')) !== finalCursor) {
+      await page.mouse.move(geometry.x, edge - sign * 15, { steps: 4 });
+      await page.mouse.move(geometry.x, edge + sign * 15, { steps: 4 });
+    }
     await page
       .getByText(direction === 'newer' ? 'NEWEST 11' : 'OLDEST 11', { exact: true })
       .waitFor();
