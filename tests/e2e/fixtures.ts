@@ -224,6 +224,9 @@ export async function launchSpace(
   delete baseEnv.ELECTRON_RUN_AS_NODE;
 
   let app: ElectronApplication;
+  let selectedRenderer: Page | undefined;
+  const startupSignals: string[] = [];
+  const startupResponses: { url: string; status: number; mime: string }[] = [];
   const executablePath = opts?.executablePath ?? process.env.SPACE_E2E_EXECUTABLE;
   try {
     await opts?.prepareProfile?.(testDataDir);
@@ -260,6 +263,16 @@ export async function launchSpace(
   }
 
   try {
+    // DEBUG-win-startup: retain only renderer/boot lifecycle lines, never SDK payloads.
+    const retainStartupSignal = (chunk: Buffer) => {
+      for (const line of chunk.toString().split(/\r?\n/)) {
+        if (/^\[main\] (renderer|boot |main window|retrying renderer|createMainWindow)/.test(line))
+          startupSignals.push(line.slice(0, 400));
+      }
+      startupSignals.splice(0, Math.max(0, startupSignals.length - 30));
+    };
+    app.process().stdout?.on('data', retainStartupSignal);
+    app.process().stderr?.on('data', retainStartupSignal);
     // 调试 hook：把 main process console + renderer console 都打到 test stdout，
     // 方便 30s 超时时定位卡在哪一步。CI 上可以静默掉。
     if (process.env.E2E_DEBUG === '1') {
@@ -274,6 +287,16 @@ export async function launchSpace(
     const instrumentPage = (candidate: Page): void => {
       if (instrumentedPages.has(candidate)) return;
       instrumentedPages.add(candidate);
+      candidate.on('response', (response) => {
+        if (response.url().startsWith('app://space/') && response.request().isNavigationRequest()) {
+          startupResponses.push({
+            url: response.url().slice(0, 250),
+            status: response.status(),
+            mime: response.headers()['content-type'] ?? '',
+          });
+          startupResponses.splice(0, Math.max(0, startupResponses.length - 20));
+        }
+      });
       if (opts?.onConsole) {
         const { onConsole } = opts;
         candidate.on('console', (msg) => onConsole({ type: msg.type(), text: msg.text() }));
@@ -300,6 +323,7 @@ export async function launchSpace(
     // Runtime shutdown checks. The boot overlay may still cover the renderer.
     await installNativeDialogCancellation(app);
     const page = await waitForMainRendererPage(app);
+    selectedRenderer = page;
     app.off('window', instrumentPage);
     // 关键顺序：先挂 spec 传入的 listeners，再等 domcontentloaded。
     // React #310 等同步 reconcile 错误在首屏 render pass 里就 fire，
@@ -354,6 +378,55 @@ export async function launchSpace(
       close: () => cleanupIsolatedSpace(app, testDataDir),
     };
   } catch (error) {
+    // DEBUG-win-startup: inspect only the failed startup boundary, before cleanup.
+    const bounded = <T>(promise: Promise<T>) =>
+      Promise.race([
+        promise,
+        new Promise<{ timedOut: true }>((resolve) =>
+          setTimeout(() => resolve({ timedOut: true }), 2000),
+        ),
+      ]);
+    const pages = await Promise.all(
+      app.windows().map(async (candidate) => {
+        try {
+          return {
+            selected: candidate === selectedRenderer,
+            url: candidate.url().slice(0, 250),
+            state: await bounded(
+              candidate.evaluate(() => ({
+                url: location.href.slice(0, 250),
+                readyState: document.readyState,
+                root: !!document.getElementById('root'),
+                children: Array.from(document.body?.children ?? [])
+                  .slice(0, 6)
+                  .map((el) => el.tagName),
+                errorPage: !!document.getElementById('main-frame-error'),
+                plainText:
+                  document.contentType === 'text/plain'
+                    ? document.body?.textContent?.slice(0, 100)
+                    : undefined,
+              })),
+            ),
+          };
+        } catch (probeError: unknown) {
+          return { url: candidate.url().slice(0, 250), error: String(probeError).slice(0, 250) };
+        }
+      }),
+    );
+    const native = await bounded(
+      app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().map((win) => ({
+          id: win.id,
+          url: win.webContents.getURL(),
+          visible: win.isVisible(),
+          loading: win.webContents.isLoading(),
+          throttling: win.webContents.getBackgroundThrottling(),
+        })),
+      ),
+    ).catch((probeError: unknown) => String(probeError));
+    process.stderr.write(
+      `[DEBUG-win-startup] ${JSON.stringify({ pages, native, startupSignals, startupResponses })}\n`,
+    );
     await cleanupIsolatedSpace(app, testDataDir).catch((cleanupError: unknown) => {
       throw new AggregateError(
         [error, cleanupError],

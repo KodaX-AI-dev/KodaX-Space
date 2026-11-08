@@ -9,6 +9,8 @@ permissions:
 
 jobs:
   mac-runtime:
+    # This diagnostic branch is intentionally Windows-only; main is unchanged.
+    if: ${{ false }}
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -30,6 +32,7 @@ jobs:
           apps/desktop/electron/test/learning-daemon-integration.test.ts
           apps/desktop/renderer/src/features/extensions/PartnerLibraryFrame.test.ts
   linux:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -61,3 +64,58 @@ jobs:
           name: linux-electron-fixture-diagnostics
           path: test-results/
           if-no-files-found: ignore
+  windows-startup:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [original-shard, loop]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - name: Prepare Electron binary
+        run: node node_modules/electron/install.js
+        env:
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+      - run: npm config set script-shell bash
+      - run: npm run build:smoke
+        shell: bash
+      - run: node scripts/test/warm-kodax-native-artifacts.mjs
+        env:
+          KODAX_HOME: ${{ runner.temp }}/kodax-space-e2e-warmup/.kodax
+      - name: Repeat the original failed scenario without retries
+        if: matrix.scenario == 'loop'
+        run: >-
+          npm run e2e:run -- tests/e2e/sdk-ui-contract-acceptance.spec.ts
+          --grep='actual Host extension diagnostics' --repeat-each=12 --retries=0 --max-failures=1
+        shell: bash
+      - name: Preserve original scenario evidence
+        if: ${{ always() && matrix.scenario == 'loop' }}
+        shell: pwsh
+        run: |
+          if (Test-Path -LiteralPath test-results) {
+            Copy-Item -LiteralPath test-results -Destination startup-original-evidence -Recurse
+          }
+      - name: Exercise forty starts in one persistent worker
+        if: ${{ !cancelled() && matrix.scenario == 'loop' }}
+        run: npm run e2e:run -- tests/e2e/windows-startup-diagnosis.spec.ts --retries=0 --max-failures=1
+        shell: bash
+      - name: Reproduce the original long-lived CI shard without retries
+        if: matrix.scenario == 'original-shard'
+        run: npm run e2e:run -- --shard=2/2 --retries=0
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-startup-diagnosis-${{ matrix.scenario }}
+          path: |
+            startup-original-evidence/
+            test-results/
+            artifacts/diagnostics/e2e/*.log
+          retention-days: 14
+          if-no-files-found: warn
