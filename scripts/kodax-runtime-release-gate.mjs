@@ -7,6 +7,7 @@ import { EnvHttpProxyAgent } from 'undici';
 const KODAX_PACKAGE = '@kodax-ai/kodax';
 const REGISTRY_TARBALL_TIMEOUT_MS = 30_000;
 export const KODAX_NATIVE_PACKAGE_FILES = [
+  'dist/windows-effect-job-programs.json',
   ...['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64'].flatMap((target) => [
     `dist/native/${target}/manifest.json`,
     `dist/native/${target}/LICENSE-APACHE.txt`,

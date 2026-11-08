@@ -167,13 +167,7 @@ async function writeReleaseDependencyFixture(root, versions = {}) {
   );
   for (const relative of KODAX_NATIVE_PACKAGE_FILES) {
     if (relative === versions.omitNativeFile) continue;
-    const target = path.join(
-      root,
-      'node_modules',
-      '@kodax-ai',
-      'kodax',
-      ...relative.split('/'),
-    );
+    const target = path.join(root, 'node_modules', '@kodax-ai', 'kodax', ...relative.split('/'));
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, `fixture:${relative}\n`, 'utf8');
   }
@@ -203,12 +197,24 @@ test('release dependency gate rejects a KodaX package without the universal nati
   const fixture = await writeReleaseDependencyFixture(root, { omitNativeFile: missing });
 
   await assert.rejects(
-    assertKodaxReleaseDependencyState(
-      root,
-      path.join(root, 'node_modules', '@kodax-ai', 'kodax'),
-      { readRegistryTarball: () => readFile(fixture.tarballPath) },
-    ),
+    assertKodaxReleaseDependencyState(root, path.join(root, 'node_modules', '@kodax-ai', 'kodax'), {
+      readRegistryTarball: () => readFile(fixture.tarballPath),
+    }),
     /missing native artifact.*kodax-windows-sandbox\.exe/i,
+  );
+});
+
+test('release dependency gate rejects a package missing the Windows containment programs', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-kodax-program-gate-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const fixture = await writeReleaseDependencyFixture(root, {
+    omitNativeFile: 'dist/windows-effect-job-programs.json',
+  });
+  await assert.rejects(
+    assertKodaxReleaseDependencyState(root, path.join(root, 'node_modules', '@kodax-ai', 'kodax'), {
+      readRegistryTarball: () => readFile(fixture.tarballPath),
+    }),
+    /missing native artifact.*windows-effect-job-programs\.json/i,
   );
 });
 

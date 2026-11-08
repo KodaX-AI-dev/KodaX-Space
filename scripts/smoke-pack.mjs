@@ -859,6 +859,7 @@ async function checkAsarContents(asarPath) {
     '/node_modules/@kodax-ai/kodax/dist/kodax_cli.js',
     '/node_modules/@kodax-ai/kodax/dist/provider-capabilities.json',
     '/node_modules/@kodax-ai/kodax/dist/runtime-daemon-schema.json',
+    '/node_modules/@kodax-ai/kodax/dist/windows-effect-job-programs.json',
     '/node_modules/@kodax-ai/kodax/scripts/kodax-bin.cjs',
   ];
   for (const req of kodaxRuntimeRequired) {
