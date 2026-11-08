@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { runIsolatedSdkProbe } from './sdk-runtime-probe.js';
 import {
   createLocalSdkProvider,
   currentSdkSession,
@@ -110,28 +109,16 @@ async function assertSourceFiles(space: Space, projectRoot: string) {
 }
 
 const HOST_CONTRACT_PROBE = `
-    import path from 'node:path';
-    import {connectKodaXRuntime} from '@kodax-ai/kodax/runtime';
-    const runtime=await connectKodaXRuntime({profile:'coder',sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
-    try {
-      const settings=await runtime.sessions.getSettingsVersioned(process.env.SPACE_CONTRACT_SESSION);
-      process.stdout.write(JSON.stringify({capabilities:runtime.capabilities,workModeLocked:settings.workModeLocked}));
-    } finally {await runtime.close();}
+    const settings=await client.sessions.getSettingsVersioned(process.env.SPACE_CONTRACT_SESSION);
+    process.stdout.write(JSON.stringify({capabilities:client.capabilities,workModeLocked:settings.workModeLocked}));
   `;
 
 async function verifyHostContracts(space: Space, sessionId: string) {
-  const { stdout } = await promisify(execFile)(
-    process.execPath,
-    ['--input-type=module', '-e', HOST_CONTRACT_PROBE],
-    {
-      windowsHide: true,
-      timeout: 20_000,
-      env: {
-        ...process.env,
-        KODAX_HOME: space.testDataDir,
-        SPACE_CONTRACT_SESSION: sessionId,
-      },
-    },
+  const { stdout } = await runIsolatedSdkProbe(
+    space,
+    HOST_CONTRACT_PROBE,
+    { SPACE_CONTRACT_SESSION: sessionId },
+    20_000,
   );
   const facts = JSON.parse(stdout) as {
     capabilities: Record<string, number | { version: number }>;

@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { runIsolatedSdkProbe } from './sdk-runtime-probe.js';
 import { createHash } from 'node:crypto';
 import { createSessionManager } from '@kodax-ai/kodax/session';
 import { createContractProvider, restartIsolatedHost } from './sdk-contract-fixture.js';
@@ -332,35 +333,23 @@ test('Script respects Plan denial and Stop retains partial effects without repla
       JSON.stringify(before, null, 2),
     );
     const restarted = await restartIsolatedHost(space);
-    const probe = await promisify(execFile)(
-      process.execPath,
-      [
-        '--input-type=module',
-        '-e',
-        `
-      import path from 'node:path';
-      const {connectKodaXRuntime}=await import('@kodax-ai/kodax/runtime');
-      const client=await connectKodaXRuntime({profile:'coder',sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
+    const probe = await runIsolatedSdkProbe(
+      space,
+      `
       const sessionId=process.env.SPACE_HISTORY_SESSION;
       async function read() {
         try {const history=await client.sessions.readHistory(sessionId);return {ok:true,items:history.items.map(item=>({id:item.id,text:item.text,tool:item.tool?.name}))};}
         catch(error){if(error.code !== 'resync_required')throw error;return {ok:false,code:error.code,message:error.message};}
       }
-      try {
         const before=await read();
         const observation=await client.sessions.observeView(sessionId,()=>{});observation.close();
         const after=[];for(let i=0;i<3;i++){after.push(await read());await new Promise(resolve=>setTimeout(resolve,100));}
         await client.sessions.load(sessionId);const refreshed=await read();
         const next=await client.sessions.observeView(sessionId,()=>{});next.close();const afterObservation=await read();
         process.stdout.write(JSON.stringify({host:client.identity,before,after,refreshed,afterObservation}));
-      }finally{await client.close();}
     `,
-      ],
-      {
-        windowsHide: true,
-        timeout: 30_000,
-        env: { ...process.env, KODAX_HOME: space.testDataDir, SPACE_HISTORY_SESSION: sessionId },
-      },
+      { SPACE_HISTORY_SESSION: sessionId },
+      30_000,
     );
     const direct = JSON.parse(probe.stdout) as {
       host: { runtimeId: string; version: string };

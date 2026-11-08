@@ -12,11 +12,17 @@
 - 构建真实 `.app`、DMG、ZIP，验证应用的 ad-hoc 签名。
 - 用成品应用运行 Provider 设置与重启、Agent/Coding/Script、Partner、Skill、审批、
   待回答问题、队列、Stop、退出、完整工具原文、历史浏览与恢复等 UI/Host 接口验收。
+- 补验原子输入 token 的 macOS 撤销快捷键，以及窗口展示后的后台节流恢复。
 - 所有 E2E 关闭自动重试；失败需保留首次证据，修复后以新提交重新验收。
 
 `macos-acceptance-<arch>-<attempt>` artifact 包含 Node TAP、E2E 原始 JSON、汇总、
 失败 trace/截图及身份信息。不得上传用户配置目录、auth.json、旧 vault 或真实凭据。
+`macos-installer-<arch>-<attempt>` 保留已验签的 DMG 和身份/哈希，供后续桌面专项使用。
 原生 Node 专项不使用 `--test-force-exit`，必须保留完整结果与正常进程退出。
+
+独立 SDK 检查进程读取隔离 profile 的 daemon descriptor，验证 configHome/profile
+后使用其 endpoint 和本地 daemon token 连接现有 Host，不根据自身 TMPDIR 推导地址。
+Space 在 macOS 使用短 `/tmp` endpoint；外部进程的默认临时目录可能不同。
 
 ## 不依赖 OS vault 的验证
 

@@ -1,5 +1,4 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { runIsolatedSdkProbe } from './sdk-runtime-probe.js';
 import { expect, test } from '@playwright/test';
 import type { ChannelOutput, PushPayload } from '@kodax-space/space-ipc-schema';
 import {
@@ -86,16 +85,9 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
       id,
     );
     // beta.3 locks the admitted mode for every client, including direct SDK callers.
-    const modeAttempt = await promisify(execFile)(
-      process.execPath,
-      [
-        '--input-type=module',
-        '-e',
-        `
-      const {connectKodaXRuntime} = await import('@kodax-ai/kodax/runtime');
-      const path = await import('node:path');
-      const client = await connectKodaXRuntime({profile:'coder', sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
-      try {
+    const modeAttempt = await runIsolatedSdkProbe(
+      space,
+      `
         const current = await client.sessions.getSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION);
         try {
           await client.sessions.updateSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION,{workMode:'coding'},{expectedRevision:current.revision});
@@ -103,14 +95,9 @@ test('Partner uses its selected expert default in Agent mode and retains shell t
         } catch(error) { if(error.code!=='conflict')throw error; }
         const after=await client.sessions.getSettingsVersioned(process.env.SPACE_E2E_MODE_SESSION);
         process.stdout.write(JSON.stringify({beforeLocked:current.workModeLocked,afterLocked:after.workModeLocked,workMode:after.value.workMode}));
-      } finally { await client.close(); }
     `,
-      ],
-      {
-        windowsHide: true,
-        timeout: 15_000,
-        env: { ...process.env, KODAX_HOME: space.testDataDir, SPACE_E2E_MODE_SESSION: id },
-      },
+      { SPACE_E2E_MODE_SESSION: id },
+      15_000,
     );
     expect(JSON.parse(modeAttempt.stdout)).toEqual({
       beforeLocked: true,

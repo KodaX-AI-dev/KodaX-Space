@@ -63,6 +63,7 @@ jobs:
         env:
           npm_config_build_from_source: 'false'
       - name: Verify candidate identity and signature
+        id: candidate
         shell: bash
         env:
           EXPECTED_ARCH: ${{ matrix.arch }}
@@ -96,6 +97,8 @@ jobs:
             tests/e2e/native-notifications.spec.ts \
             tests/e2e/settings-navigation.spec.ts \
             tests/e2e/startup-overlay.spec.ts \
+            tests/e2e/composer-tokens.spec.ts \
+            tests/e2e/window-throttling.spec.ts \
             tests/e2e/sdk-work-mode.spec.ts \
             tests/e2e/sdk-beta1-adaptation.spec.ts \
             tests/e2e/sdk-beta3-adaptation.spec.ts \
@@ -121,3 +124,15 @@ jobs:
             test-results/
           retention-days: 14
           if-no-files-found: warn
+      - name: Preserve verified installer for desktop acceptance
+        if: ${{ !cancelled() && steps.candidate.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: |
+            out/*.dmg
+            macos-acceptance-evidence/identity.json
+            macos-acceptance-evidence/installers.sha256
+          retention-days: 14
+          compression-level: 0
+          if-no-files-found: error

@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { runIsolatedSdkProbe } from './sdk-runtime-probe.js';
 import { randomUUID } from 'node:crypto';
 import type { ClientExitReceipt } from '@kodax-ai/kodax/client';
 import { expect, test } from '@playwright/test';
@@ -36,9 +37,6 @@ async function attachSdkEvidence(name: string, value: unknown): Promise<void> {
 }
 
 const HISTORY_PROBE_PROGRAM = `
-  import path from 'node:path';
-  import {connectKodaXRuntime} from '@kodax-ai/kodax/runtime';
-  const client = await connectKodaXRuntime({profile:'coder', sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
   const id = process.env.SPACE_HISTORY_PROBE_SESSION;
   async function read() {
     try {
@@ -46,7 +44,6 @@ const HISTORY_PROBE_PROGRAM = `
       return {ok:true,revision:p.revision,sourceRevision:p.sourceRevision,itemCount:p.items.length};
     } catch(e) { return {ok:false,code:e.code,message:e.message}; }
   }
-  try {
     const before = await read();
     const refreshes = [];
     for (let i = 0; i < 3; i++) {
@@ -59,7 +56,6 @@ const HISTORY_PROBE_PROGRAM = `
     const observation = await client.sessions.observeView(id,()=>{});
     observation.close();
     process.stdout.write(JSON.stringify({before,refreshes,afterObservation:await read()}));
-  } finally { await client.close(); }
 `;
 
 async function probeIndependentHistory(space: SpaceInstance, sessionId: string): Promise<void> {
@@ -70,18 +66,11 @@ async function probeIndependentHistory(space: SpaceInstance, sessionId: string):
       sessionId,
     ),
   );
-  const { stdout } = await promisify(execFile)(
-    process.execPath,
-    ['--input-type=module', '-e', HISTORY_PROBE_PROGRAM],
-    {
-      windowsHide: true,
-      timeout: 20_000,
-      env: {
-        ...process.env,
-        KODAX_HOME: space.testDataDir,
-        SPACE_HISTORY_PROBE_SESSION: sessionId,
-      },
-    },
+  const { stdout } = await runIsolatedSdkProbe(
+    space,
+    HISTORY_PROBE_PROGRAM,
+    { SPACE_HISTORY_PROBE_SESSION: sessionId },
+    20_000,
   );
   await attachSdkEvidence('independent-history-probe.json', JSON.parse(stdout));
   await attachSdkEvidence(
