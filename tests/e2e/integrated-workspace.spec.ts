@@ -128,6 +128,7 @@ test('two projects keep real SDK runs active while settings and review surfaces 
       firstId,
     );
     expect(firstLive.ok && firstLive.data.activeRun).toBeTruthy();
+    await settings.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: 'Dark', exact: true }).click();
     await settings.getByRole('button', { name: 'Balanced', exact: true }).click();
     await page.screenshot({
@@ -149,6 +150,7 @@ test('two projects keep real SDK runs active while settings and review surfaces 
       path: testInfo.outputPath('workspace-light.png'),
     });
     await page.getByTestId('settings-button').click();
+    await settings.locator('#settings-tab-appearance').click();
     await settings.getByRole('button', { name: 'Dark', exact: true }).click();
     await settings.getByRole('button', { name: 'Close settings' }).click();
     await page.screenshot({

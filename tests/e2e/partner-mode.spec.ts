@@ -680,7 +680,7 @@ test('Partner sources can be attached and removed, and deleting the session reco
     );
     const composer = page.getByTestId('composer-input');
     await expect(composer).toHaveAttribute(
-      'placeholder',
+      'data-placeholder',
       /Describe a task - sending will create a Partner session/,
     );
     await expect(composer).toBeEnabled();

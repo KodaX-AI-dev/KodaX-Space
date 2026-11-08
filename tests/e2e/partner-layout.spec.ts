@@ -213,7 +213,7 @@ test('Partner layout remains usable without panel overlap across common widths',
     await expect(starterTasks.getByRole('button')).toHaveCount(6);
     const composer = page.getByTestId('composer-input');
     await expect(composer).toHaveAttribute(
-      'placeholder',
+      'data-placeholder',
       /Describe a task - sending will create a Partner session/,
     );
     await expect(composer).toHaveText('');

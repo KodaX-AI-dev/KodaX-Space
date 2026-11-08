@@ -22,12 +22,12 @@ test('conversation file paths reuse the complete file action menu', async () => 
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
 
     const stream = space.page.getByTestId('conversation-stream');
-    const filePath = stream.getByRole('button', { name: relativePath }).last();
+    const filePath = stream.getByRole('button', { name: relativePath, exact: true }).last();
     const linkedFile = stream.getByRole('link', { name: 'old.md' }).last();
     const webLink = stream.getByRole('link', { name: 'web' }).last();
     const deliveryLink = stream.getByRole('link', { name: 'delivery' }).last();
     const evidenceLink = stream.getByRole('link', { name: 'evidence' }).last();
-    const outsideFile = stream.getByRole('button', { name: outsidePath }).last();
+    const outsideFile = stream.getByRole('button', { name: outsidePath, exact: true }).last();
 
     async function send(markdown: string): Promise<void> {
       await expect(textarea).toBeEnabled({ timeout: 10_000 });
