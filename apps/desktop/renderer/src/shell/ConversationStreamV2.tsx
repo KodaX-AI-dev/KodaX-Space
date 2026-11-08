@@ -1168,10 +1168,29 @@ export function ConversationStreamV2(): JSX.Element {
   const prependAnchorRestoreRef = useRef<{
     readonly token: symbol;
     phase: 'loading' | 'restoring';
+    positionRestored: boolean;
     rafId: number | null;
     snapshot: ScrollSnapshot;
     readonly scroller: HTMLDivElement;
   } | null>(null);
+  const cancelPrependAnchorRestore = useCallback((): void => {
+    const active = prependAnchorRestoreRef.current;
+    if (active?.rafId !== null && active?.rafId !== undefined) {
+      cancelAnimationFrame(active.rafId);
+    }
+    prependAnchorRestoreRef.current = null;
+  }, []);
+
+  const handlePrependUserScrollIntent = useCallback((): void => {
+    const active = prependAnchorRestoreRef.current;
+    if (active === null) return;
+    // The continuation cannot be cancelled after dispatch without also preventing its DOM apply.
+    // While it is in flight, real scroll events refresh the pending snapshot for either direction.
+    // Once layout restoration starts, every new gesture wins and cancels the remaining RAFs.
+    if (active.phase === 'loading') return;
+    cancelPrependAnchorRestore();
+  }, [cancelPrependAnchorRestore]);
+
   const restoreScrollSnapshotRef = useRef<
     | ((
         scroller: HTMLDivElement,
@@ -1281,6 +1300,7 @@ export function ConversationStreamV2(): JSX.Element {
     const id = matchIds[visibleMatchIndex];
     const el = scrollRef.current?.querySelector(`[data-msg-id="${CSS.escape(id)}"]`);
     if (el && el instanceof HTMLElement) {
+      handlePrependUserScrollIntent();
       const pendingPrepend = prependAnchorRestoreRef.current;
       const loadingPrepend = pendingPrepend?.phase === 'loading';
       markProgrammaticScroll(
@@ -1291,7 +1311,7 @@ export function ConversationStreamV2(): JSX.Element {
         pendingPrepend.snapshot = rememberScrollSnapshot(pendingPrepend.scroller);
       }
     }
-  }, [visibleMatchIndex, matchIds, rememberScrollSnapshot]);
+  }, [visibleMatchIndex, matchIds, rememberScrollSnapshot, handlePrependUserScrollIntent]);
 
   function nextMatch(): void {
     if (matchIds.length === 0) return;
@@ -1406,12 +1426,13 @@ export function ConversationStreamV2(): JSX.Element {
       `[data-source-item="${CSS.escape(locatedSearchItem)}"]`,
     );
     if (!row) return;
+    handlePrependUserScrollIntent();
     pendingSearchFocus.current = null;
     wasAtBottomRef.current = false;
     row.focus({ preventScroll: true });
     markProgrammaticScroll();
     row.scrollIntoView({ block: 'center', behavior: 'instant' });
-  }, [locatedSearchItem, viewMessages, expanded]);
+  }, [locatedSearchItem, viewMessages, expanded, handlePrependUserScrollIntent]);
 
   const currentMatchId = matchIds[visibleMatchIndex];
   const matchSet = useMemo(() => new Set(matchIds), [matchIds]);
@@ -1433,13 +1454,20 @@ export function ConversationStreamV2(): JSX.Element {
   // ResizeObserver 的 instant follow 只需要短守卫；jumpToBottom 的 smooth scroll 用 400ms。
   const programmaticScrollIgnoreUntilRef = useRef<number>(0);
   // Scroll events alone do not authorize crossing a history window boundary.
-  const historyScrollIntentRef = useRef<'older' | 'newer' | 'scrollbar' | null>(null);
+  const historyScrollIntentRef = useRef<'older' | 'newer' | null>(null);
   const scrollbarPointerIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Native scroll delivery can follow pointerup; programmatic positioning clears that intent.
+    // Preserve the last real direction when native scroll arrives after pointerup.
     const releaseScrollbar = (event: PointerEvent): void => {
-      if (scrollbarPointerIdRef.current === event.pointerId) scrollbarPointerIdRef.current = null;
+      if (scrollbarPointerIdRef.current !== event.pointerId) return;
+      const scroller = scrollRef.current;
+      const previousTop = scrollSnapshotRef.current?.scrollTop;
+      if (event.type === 'pointercancel') historyScrollIntentRef.current = null;
+      else if (scroller && previousTop !== undefined && scroller.scrollTop !== previousTop) {
+        historyScrollIntentRef.current = scroller.scrollTop > previousTop ? 'newer' : 'older';
+      }
+      scrollbarPointerIdRef.current = null;
     };
     window.addEventListener('pointerup', releaseScrollbar, true);
     window.addEventListener('pointercancel', releaseScrollbar, true);
@@ -1463,24 +1491,6 @@ export function ConversationStreamV2(): JSX.Element {
     if (jumpToBottomRafRef.current === null) return;
     cancelAnimationFrame(jumpToBottomRafRef.current);
     jumpToBottomRafRef.current = null;
-  }
-
-  function cancelPrependAnchorRestore(): void {
-    const active = prependAnchorRestoreRef.current;
-    if (active?.rafId !== null && active?.rafId !== undefined) {
-      cancelAnimationFrame(active.rafId);
-    }
-    prependAnchorRestoreRef.current = null;
-  }
-
-  function handlePrependUserScrollIntent(): void {
-    const active = prependAnchorRestoreRef.current;
-    if (active === null) return;
-    // The continuation cannot be cancelled after dispatch without also preventing its DOM apply.
-    // While it is in flight, real scroll events refresh the pending snapshot for either direction.
-    // Once layout restoration starts, every new gesture wins and cancels the remaining RAFs.
-    if (active.phase === 'loading') return;
-    cancelPrependAnchorRestore();
   }
 
   function refreshPendingPrependSnapshot(scroller: HTMLDivElement): void {
@@ -1692,12 +1702,14 @@ export function ConversationStreamV2(): JSX.Element {
     const restoreState: {
       readonly token: symbol;
       phase: 'loading' | 'restoring';
+      positionRestored: boolean;
       rafId: number | null;
       snapshot: ScrollSnapshot;
       readonly scroller: HTMLDivElement;
     } = {
       token,
       phase: 'loading',
+      positionRestored: false,
       rafId: null,
       snapshot: rememberScrollSnapshot(scroller),
       scroller,
@@ -1780,12 +1792,14 @@ export function ConversationStreamV2(): JSX.Element {
               );
             }
           }
+          restoreState.positionRestored = true;
           const finalSettleFrame = correctionFrames[correctionFrames.length - 1];
           if (settleFrame < finalSettleFrame) {
             settleFrame += 1;
             restoreState.rafId = requestAnimationFrame(restoreAfterLayout);
           } else {
             prependAnchorRestoreRef.current = null;
+            if (scrollbarPointerIdRef.current !== null) clearProgrammaticScrollGuard();
           }
         };
         restoreState.rafId = requestAnimationFrame(restoreAfterLayout);
@@ -1803,7 +1817,25 @@ export function ConversationStreamV2(): JSX.Element {
       });
   }
 
+  function acceptRestoringScrollbarMovement(scroller: HTMLDivElement): void {
+    const snapshot = scrollSnapshotRef.current;
+    if (
+      scrollbarPointerIdRef.current === null ||
+      prependAnchorRestoreRef.current?.phase !== 'restoring' ||
+      !prependAnchorRestoreRef.current.positionRestored ||
+      !snapshot ||
+      snapshot.scrollHeight !== scroller.scrollHeight ||
+      snapshot.clientHeight !== scroller.clientHeight ||
+      snapshot.scrollTop === scroller.scrollTop
+    )
+      return;
+    // Restoration records its own position synchronously. A new held drag wins over later RAFs.
+    clearProgrammaticScrollGuard();
+    handlePrependUserScrollIntent();
+  }
+
   function handleScroll(e: React.UIEvent<HTMLDivElement>): void {
+    acceptRestoringScrollbarMovement(e.currentTarget);
     // 守卫期内的 scroll 事件来自 ResizeObserver / smooth scroll 自己的 scrollTop 赋值，
     // 不视为用户上滚
     if (performance.now() < programmaticScrollIgnoreUntilRef.current) return;
@@ -1818,10 +1850,15 @@ export function ConversationStreamV2(): JSX.Element {
       const previousTop = scrollSnapshotRef.current?.scrollTop ?? scroller.scrollTop;
       const movedDown = scroller.scrollTop > previousTop;
       const movedUp = scroller.scrollTop < previousTop;
+      const scrollbarHeld = scrollbarPointerIdRef.current !== null;
+      if (scrollbarHeld && (movedUp || movedDown)) {
+        historyScrollIntentRef.current = movedDown ? 'newer' : 'older';
+      }
       refreshPendingPrependSnapshot(scroller);
       syncFollowStateFromScrollPosition(scroller);
       syncActiveQueryAnchorFromScrollPosition(scroller);
-      const intent = historyScrollIntentRef.current;
+      // Native scrollbar drags emit scroll, not continuous DOM pointermove.
+      const intent = scrollbarHeld ? 'scrollbar' : historyScrollIntentRef.current;
       if (
         movedUp &&
         (intent === 'older' || intent === 'scrollbar') &&
@@ -1946,18 +1983,10 @@ export function ConversationStreamV2(): JSX.Element {
     const rect = scroller.getBoundingClientRect();
     if (e.clientX >= rect.right - scrollbarWidth) {
       scrollbarPointerIdRef.current = e.pointerId;
-      historyScrollIntentRef.current = 'scrollbar';
       clearProgrammaticScrollGuard();
       handlePrependUserScrollIntent();
       disengageFollowForUserScrollIntent(scroller);
     }
-  }
-
-  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>): void {
-    if (scrollbarPointerIdRef.current !== e.pointerId || (e.buttons & 1) === 0) return;
-    historyScrollIntentRef.current = 'scrollbar';
-    clearProgrammaticScrollGuard();
-    handlePrependUserScrollIntent();
   }
 
   function handleTouchStart(e: ReactTouchEvent<HTMLDivElement>): void {
@@ -2102,7 +2131,7 @@ export function ConversationStreamV2(): JSX.Element {
       latestJumpOwnerRef.current = null;
       cancelPrependAnchorRestore();
     };
-  }, [currentSessionId]);
+  }, [currentSessionId, cancelPrependAnchorRestore]);
 
   useLayoutEffect(() => {
     if (!latestJumpRequest?.completed || latestJumpRequest.sessionId !== currentSessionId) return;
@@ -2414,7 +2443,6 @@ export function ConversationStreamV2(): JSX.Element {
         onWheelCapture={handleWheel}
         onKeyDownCapture={handleKeyDown}
         onPointerDownCapture={handlePointerDown}
-        onPointerMoveCapture={handlePointerMove}
         onTouchStartCapture={handleTouchStart}
         onTouchMoveCapture={handleTouchMove}
         className={`ix-zone h-full overflow-auto px-8 py-5 ${fontClass}`}

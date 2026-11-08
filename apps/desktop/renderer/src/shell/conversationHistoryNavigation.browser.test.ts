@@ -165,9 +165,8 @@ test(
     await page.getByRole('button', { name: 'Back to results' }).click();
     await stream.getByText('OLDEST 11', { exact: true }).waitFor();
     await search.getByText('Archived needle', { exact: true }).waitFor();
-    assert.equal(
-      await page.evaluate(() => document.activeElement?.getAttribute('data-hit-id')),
-      'unique-hit',
+    await page.waitForFunction(
+      () => document.activeElement?.getAttribute('data-hit-id') === 'unique-hit',
     );
     for (const [kind, mode] of [
       ['tool', 'summary'],
@@ -486,6 +485,7 @@ async function verifyIndependentHistoryGestures(
     await page.evaluate('window.settle()');
     await dispatchHistoryGesture(page, input, direction);
     await expectHistoryGesturePage(page, t, input, direction);
+    if (input === 'scrollbar') await sendHistoryPointer(page, 'pointerup');
   }
 }
 
@@ -528,7 +528,7 @@ async function verifyContinuousScrollbarDrag(
 ): Promise<void> {
   const scroller = page.getByTestId('conversation-scroll-container');
   await page.evaluate('window.start();');
-  await page.evaluate('window.settle(36)');
+  await page.evaluate('window.settle(48)');
   await scroller.evaluate((element) => {
     element.scrollTop = element.scrollHeight - element.clientHeight - 100;
   });
@@ -537,10 +537,19 @@ async function verifyContinuousScrollbarDrag(
     element.scrollTop = element.scrollHeight;
   });
   await expectHistoryGesturePage(page, t, 'continuous scrollbar', 'newer');
-  await page.evaluate('window.settle(36)');
+  await page.evaluate('window.settle(48)');
   await finishHistoryScrollbarDrag(page, release);
-  await page.getByTestId('conversation-stream').getByText('NEWEST 11', { exact: true }).waitFor();
-  await page.evaluate('window.settle(36)');
+  if (release === 'pointerup') {
+    await page.getByTestId('conversation-stream').getByText('NEWEST 11', { exact: true }).waitFor();
+  } else {
+    await page.evaluate('window.settle()');
+    assert.equal(
+      await page.evaluate('window.requests.at(-1)'),
+      'middle',
+      'cancelled drag cannot start a later page read',
+    );
+  }
+  await page.evaluate('window.settle(48)');
   const requests = await page.evaluate('window.requests');
   await sendHistoryPointer(page, 'pointermove');
   await scroller.evaluate((element) => {
@@ -574,3 +583,140 @@ for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
     },
   );
 }
+
+async function nativeHistoryScrollbarGeometry(page: Page) {
+  return page.getByTestId('conversation-scroll-container').evaluate((element) => {
+    if (!(element instanceof HTMLElement)) throw new Error('History viewport must be HTML');
+    const gutter = element.offsetWidth - element.clientWidth;
+    const range = element.scrollHeight - element.clientHeight;
+    if (gutter <= 0 || range <= 0) throw new Error('Native scrollbar fixture must overflow');
+    const rect = element.getBoundingClientRect();
+    const thumb = (element.clientHeight * element.clientHeight) / element.scrollHeight;
+    const travel = element.clientHeight - thumb;
+    return {
+      x: rect.right - gutter / 2,
+      y: rect.top + (element.scrollTop / range) * travel + thumb / 2,
+      top: rect.top + thumb / 2,
+      bottom: rect.top + travel + thumb / 2,
+    };
+  });
+}
+
+async function prepareNativeHistoryScrollbar(page: Page): Promise<void> {
+  await page.addStyleTag({
+    content:
+      '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}[data-testid="conversation-scroll-container"]::-webkit-scrollbar-button{display:none}',
+  });
+  await page.evaluate('window.start()');
+  await page.getByText('OLDEST 11', { exact: true }).waitFor();
+  await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+    element.setAttribute('data-held-native-moves', '0');
+    element.addEventListener('pointermove', (event) => {
+      if ((event as PointerEvent).buttons === 1)
+        element.setAttribute(
+          'data-held-native-moves',
+          String(Number(element.getAttribute('data-held-native-moves')) + 1),
+        );
+    });
+  });
+}
+
+async function dragNativeHistoryPages(
+  page: Page,
+  direction: HistoryDirection,
+  restorationFrames: number,
+): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  await page.evaluate('window.settle(48)');
+  await scroller.evaluate((element, direction) => {
+    element.scrollTop =
+      direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
+  }, direction);
+  await page.evaluate('window.settle()');
+  const geometry = await nativeHistoryScrollbarGeometry(page);
+  const edge = direction === 'newer' ? geometry.bottom : geometry.top;
+  const sign = direction === 'newer' ? 1 : -1;
+  await page.mouse.move(geometry.x, geometry.y);
+  await page.mouse.down();
+  try {
+    await page.mouse.move(geometry.x, edge, { steps: 6 });
+    await page.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await page.evaluate(`window.settle(${restorationFrames})`);
+    await page.mouse.move(geometry.x, edge - sign * 15, { steps: 4 });
+    await page.mouse.move(geometry.x, edge + sign * 15, { steps: 4 });
+    await page
+      .getByText(direction === 'newer' ? 'NEWEST 11' : 'OLDEST 11', { exact: true })
+      .waitFor();
+  } finally {
+    await page.mouse.up();
+  }
+}
+
+for (const restorationFrames of [48, 8])
+  test(
+    `a held native scrollbar continues across history pages after ${restorationFrames} frames with real mouse input`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t, true);
+      await prepareNativeHistoryScrollbar(page);
+      await dragNativeHistoryPages(page, 'newer', restorationFrames);
+      await dragNativeHistoryPages(page, 'older', restorationFrames);
+      assert.deepEqual(await page.evaluate('window.requests'), [
+        'newest',
+        'middle',
+        'oldest',
+        'middle',
+        'newest',
+        'middle',
+        'oldest',
+      ]);
+      t.diagnostic(
+        `Native held pointermove count: ${await page.getByTestId('conversation-scroll-container').getAttribute('data-held-native-moves')}`,
+      );
+      assert.deepEqual(errors, []);
+    },
+  );
+
+for (const phase of ['stable', 'restoring'] as const)
+  test(
+    `holding a scrollbar during ${phase} does not turn programmatic search scrolling into paging`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t, true);
+      await page.addStyleTag({
+        content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
+      });
+      await page.evaluate('window.start();');
+      await page.getByText('OLDEST 11', { exact: true }).waitFor();
+      await page.evaluate('window.settle(48)');
+      await page.keyboard.press('Control+f');
+      const search = page.getByTestId('transcript-search-bar');
+      if (phase === 'stable') {
+        await page.evaluate('window.detail("verbose")');
+        await page.getByTestId('tool-call-card').getByRole('button').first().click();
+      }
+      await search.getByRole('searchbox').fill('no current-page match');
+      await search.getByText('0/0').waitFor();
+      await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await page.evaluate('window.settle(48)');
+      await sendHistoryPointer(page, 'pointerdown');
+      if (phase === 'restoring') {
+        await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+          element.scrollTop = element.scrollHeight;
+        });
+        await page.getByText('MIDDLE 0').waitFor();
+        await page.evaluate('window.settle(8)');
+      }
+      const requests = await page.evaluate('window.requests');
+      await search
+        .getByRole('searchbox')
+        .fill(phase === 'restoring' ? 'MIDDLE 11' : 'concealed tool result');
+      await search.getByText('1/1').waitFor();
+      await page.evaluate('window.settle(48)');
+      assert.deepEqual(await page.evaluate('window.requests'), requests);
+      await sendHistoryPointer(page, 'pointerup');
+      assert.deepEqual(errors, []);
+    },
+  );

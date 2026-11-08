@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createSessionManager } from '@kodax-ai/kodax/session';
@@ -69,6 +69,100 @@ async function seedHistory(root: string): Promise<void> {
     messages,
   });
 }
+
+async function nativeHistoryGeometry(page: Page) {
+  return page.getByTestId('conversation-scroll-container').evaluate((element) => {
+    if (!(element instanceof HTMLElement)) throw new Error('Expected HTML history viewport');
+    const gutter = element.offsetWidth - element.clientWidth;
+    const range = element.scrollHeight - element.clientHeight;
+    if (gutter <= 0 || range <= 0) throw new Error('Native history scrollbar must overflow');
+    const rect = element.getBoundingClientRect();
+    const thumb = (element.clientHeight * element.clientHeight) / element.scrollHeight;
+    return {
+      x: rect.right - gutter / 2,
+      y: rect.top + (element.scrollTop / range) * (element.clientHeight - thumb) + thumb / 2,
+      top: rect.top + thumb / 2,
+      bottom: rect.bottom - thumb / 2,
+    };
+  });
+}
+
+async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer'): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  const ids = () =>
+    page
+      .locator('[data-msg-id]')
+      .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+  const settle = () =>
+    page.evaluate(async () => {
+      for (let frame = 0; frame < 48; frame++)
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+  await settle();
+  await scroller.evaluate((element, direction) => {
+    element.scrollTop =
+      direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
+  }, direction);
+  await settle();
+  const geometry = await nativeHistoryGeometry(page);
+  const edge = direction === 'newer' ? geometry.bottom : geometry.top;
+  const sign = direction === 'newer' ? 1 : -1;
+  await page.mouse.move(geometry.x, geometry.y);
+  await page.mouse.down();
+  try {
+    for (let index = 0; index < 2; index++) {
+      const before = await ids();
+      if (index > 0) await page.mouse.move(geometry.x, edge - sign * 15, { steps: 4 });
+      await page.mouse.move(geometry.x, edge + sign * 15, { steps: 6 });
+      await expect.poll(ids).not.toEqual(before);
+      await settle();
+    }
+  } finally {
+    await page.mouse.up();
+  }
+}
+
+test('native scrollbar stays held across SDK history windows in both directions', async () => {
+  const provider = await createLocalSdkProvider();
+  try {
+    const { space } = await launchRealSdkSpace(
+      `history-native-scrollbar-${Date.now()}`,
+      provider.url,
+      seedHistory,
+    );
+    try {
+      await space.page
+        .getByTestId('sidebar-session-row')
+        .filter({ hasText: 'SDK_HISTORY_NAVIGATION' })
+        .click();
+      const stream = space.page.getByTestId('conversation-stream');
+      await expect(stream).toContainText('HISTORY_ANSWER_259');
+      await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
+      await expect(stream).toContainText('HISTORY_QUESTION_259');
+      const newestIds = await stream
+        .locator('[data-msg-id]')
+        .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+      await dragNativeHistoryWindow(space.page, 'older');
+      await expect(stream).not.toContainText('HISTORY_QUESTION_259');
+      await dragNativeHistoryWindow(space.page, 'newer');
+      await expect
+        .poll(() =>
+          stream
+            .locator('[data-msg-id]')
+            .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id'))),
+        )
+        .toEqual(newestIds);
+      await space.page.getByRole('button', { name: 'Jump to bottom', exact: true }).click();
+      await expect(stream).toContainText('HISTORY_ANSWER_259');
+      expect(provider.requests).toEqual([]);
+      expect(provider.errors).toEqual([]);
+    } finally {
+      await space.close();
+    }
+  } finally {
+    await provider.close();
+  }
+});
 
 test('saved history search locates a question outside the live window and restores the selected result', async () => {
   const provider = await createLocalSdkProvider();

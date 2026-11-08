@@ -77,4 +77,10 @@ node --test --import tsx apps/desktop/renderer/src/shell/conversationHistoryNavi
 验证向新/向旧两个方向的用户翻页；滚轮继续由原完整场景覆盖。
 滚动条场景显式启用 headless 默认隐藏的原生轨道，不能用不存在的轨道冒充拖动验收。
 触摸还需覆盖同次手势中途反向；滚动条需覆盖同次按下连续跨页，以及释放、取消后的后续移动不再声明拖动。
+原生轨道连续跨页必须使用真实 `page.mouse` 按住拖动，分别向新、向旧连续跨两页，
+不能只派发 DOM PointerEvent：原生轨道拖动可能只发 scroll，不持续发 pointermove。
+首轮锚点恢复后 8 帧内继续拖动也须跨页，且按住时的程序搜索不得误翻页。
+合成指针事件仅补充释放、取消及延迟 scroll 的生命周期边界。
+`sdk-history-navigation.spec.ts` 还需对真实 SDK 冻结历史窗口执行相同原生拖动，
+确认页身份确实变化、双向回到原页及单一向下箭头恢复最新结果。
 这些是 DOM/浏览器交互契约测试，不代替各 OS 的物理输入设备验收。
