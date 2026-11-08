@@ -14,7 +14,7 @@ export const SOURCE_JOBS = {
     'Smoke build (windows-latest)',
     'Smoke build (macos-latest)',
     'Smoke build (macos-15-intel)',
-    'Smoke build (ubuntu-latest)',
+    'Smoke build (ubuntu-24.04)',
     'Static checks',
     'Build gate',
   ],

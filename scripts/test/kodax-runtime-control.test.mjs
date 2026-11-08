@@ -25,7 +25,12 @@ export default function activate(api) {
 async function waitForGate(workspace) {
   const deadline = Date.now() + 5000;
   while (true) {
-    try { assert.equal(await readFile(path.join(workspace, 'entered'), 'utf8'), 'entered'); return; }
+    try {
+      const marker = await readFile(path.join(workspace, 'entered'), 'utf8');
+      if (marker === 'entered') return;
+      // The other process can expose the newly created file before writing its bytes.
+      assert.equal(marker, '', 'unexpected fixture gate marker');
+    }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
     assert.ok(Date.now() < deadline, 'actual Host did not enter fixture tool');
     await new Promise(resolve => setTimeout(resolve, 20));
