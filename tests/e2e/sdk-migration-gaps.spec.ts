@@ -77,13 +77,31 @@ test('Workflow execution and Memory management share the actual Host with anothe
       ok: true,
       data: { error: expect.stringContaining('single-use') },
     });
+    const workflowReadConflicts: { code: 'data_changed'; message: string }[] = [];
     await expect
-      .poll(
-        async () =>
-          (await peer!.sessions.readHistory(sessionId)).items.filter(
+      .poll(async () => {
+        try {
+          return (await peer!.sessions.readHistory(sessionId)).items.filter(
             (item) => item.taskResult?.source === 'workflow' && item.taskResult.taskId === runId,
-          ).length,
-      )
+          ).length;
+        } catch (error: unknown) {
+          // The report writer can change topology after Workflow completion.
+          // Retry only this observed, cursor-free read boundary, never the Run.
+          if (
+            !(error instanceof Error) ||
+            !('code' in error) ||
+            error.code !== 'data_changed' ||
+            error.message !== `Session location topology could not be verified for ${sessionId}`
+          )
+            throw error;
+          workflowReadConflicts.push({ code: 'data_changed', message: error.message });
+          await writeFile(
+            test.info().outputPath('workflow-history-read-conflicts.json'),
+            JSON.stringify(workflowReadConflicts, null, 2),
+          );
+          return 0;
+        }
+      })
       .toBe(1);
     const memory = await peer.memory.forProject(projectRoot);
     expect(
