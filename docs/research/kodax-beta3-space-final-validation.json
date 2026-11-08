@@ -1,0 +1,944 @@
+{
+  "date": "2026-11-08",
+  "sourceCommit": "0e23a6a41514cd48abaec26d492df92f911858a9",
+  "acceptanceCommit": "a47279c85f0c30b62c7a9b524052d864ca969866",
+  "sdk": {
+    "version": "0.7.97-beta.3",
+    "resolved": "https://registry.npmjs.org/@kodax-ai/kodax/-/kodax-0.7.97-beta.3.tgz",
+    "integrity": "sha512-vrUtb5Co82moHgQI5zc06ZTjWONVvjmc02FxUWqiO2lzgPOsMc5O6WftsDhlmzorLDUha2SSBsii5o6uBJVQeg=="
+  },
+  "package": {
+    "buildSourceSha": "0e23a6a41514cd48abaec26d492df92f911858a9",
+    "verifiedHead": "a47279c85f0c30b62c7a9b524052d864ca969866",
+    "version": "0.1.47-alpha.4",
+    "mainPackageVersion": "0.1.47-alpha.4",
+    "sdk": "0.7.97-beta.3",
+    "mainMatches": true,
+    "rendererFiles": 555,
+    "artifacts": [
+      {
+        "file": "out/win-unpacked/resources/app.asar",
+        "size": 146273358,
+        "sha256": "b03119955a65a6fb8fcf98f3a902aa6bcd54345e497c1063aa034a5eae2cd98b"
+      },
+      {
+        "file": "out/KodaX-Space-Setup-0.1.47-alpha.4.exe",
+        "size": 214974338,
+        "sha256": "0f19c32da2ec415684bc2966b6674824d3d4e56ba87b68390796216350c6acb6"
+      },
+      {
+        "file": "out/KodaX-Space-Portable-0.1.47-alpha.4.exe",
+        "size": 214764427,
+        "sha256": "7092a72852f1fad215a6d1691e3e8d96c965ba9fc7536bda92c76f4a8f213526"
+      }
+    ],
+    "published": false,
+    "nonRuntimeChangesSinceBuild": [
+      "tests/e2e/integrated-workspace.spec.ts",
+      "tests/e2e/markdown-file-actions.spec.ts",
+      "tests/e2e/partner-layout.spec.ts",
+      "tests/e2e/partner-mode.spec.ts"
+    ]
+  },
+  "host": {
+    "executable": {
+      "packaged": true,
+      "path": "out/win-unpacked/KodaX Space.exe",
+      "electron": "42.5.0"
+    },
+    "facts": {
+      "capabilities": {
+        "events": true,
+        "productExecutionProfile": {
+          "version": 2
+        },
+        "repoIntelligenceDiagnostics": {
+          "version": 1
+        },
+        "actorCheckpointRecovery": {
+          "version": 1
+        },
+        "permissions": true,
+        "workflows": true,
+        "configAdmin": true,
+        "commandCatalog": true,
+        "skillCatalog": true,
+        "artifactUpload": true,
+        "contextDiagnostics": true,
+        "externalAgents": true,
+        "actorControlPlane": {
+          "version": 1,
+          "methodNamespace": "agents"
+        },
+        "invocationPreparation": {
+          "version": 1
+        },
+        "subscriptionLifecycle": {
+          "version": 1,
+          "errorNotifications": true
+        },
+        "workflowSettingsDefaults": {
+          "version": 1
+        },
+        "productClient": {
+          "version": 1
+        },
+        "productHistoryBoundaries": {
+          "version": 1
+        },
+        "productHistoryTurnResolution": {
+          "version": 1
+        },
+        "productHistoryLocation": {
+          "version": 1
+        },
+        "productExecutionAuthorization": {
+          "version": 2
+        },
+        "productExitControl": {
+          "version": 1
+        },
+        "sessionDrafts": {
+          "version": 1
+        },
+        "sessionPromotion": {
+          "version": 1
+        },
+        "productExecutionBinding": {
+          "version": 1
+        },
+        "productInputRecovery": {
+          "version": 1
+        },
+        "productExecutionModeConstraint": {
+          "version": 1
+        },
+        "productExecutionFacts": {
+          "version": 1
+        },
+        "providerProbeAuthorization": {
+          "version": 1
+        },
+        "productActorAuthorization": {
+          "version": 1
+        },
+        "toolInvocation": {
+          "version": 1
+        },
+        "sessionCancellation": {
+          "version": 1,
+          "durableFrontier": true
+        },
+        "memoryManagement": {
+          "version": 1
+        },
+        "sandboxRuntime": {
+          "version": 11,
+          "asrtVersion": "0.0.65",
+          "platform": "win32",
+          "backend": "windows-restricted-user",
+          "genericCommandExecution": true,
+          "controls": ["filesystem", "network", "environment", "timeout", "output"],
+          "ordinaryCallsTriggerSetup": false,
+          "setupMayElevate": true,
+          "unavailableBehavior": "structured-no-execution",
+          "permissionFallback": "normal-permission-policy",
+          "gitSafeDirectory": "authorized-repo-roots",
+          "delayedEffectDrainRecovery": "automatic",
+          "sameBootAclRecovery": "sandbox-user-process-probe",
+          "trustedTextAuthority": "host-transaction",
+          "windowsShellAuthority": "native-token-job-v2",
+          "commandLifetimeFilesystemLease": false
+        },
+        "managedRunDurability": {
+          "version": 1,
+          "initialInputBeforeExecution": true,
+          "completedTurnBeforeEvent": true,
+          "deliveredInputBeforeEvent": true,
+          "persistenceFailure": "fail_closed"
+        },
+        "actorSettlementConvergence": {
+          "version": 2,
+          "rootFence": "fail_closed",
+          "sameOwnerRepair": "automatic",
+          "unknownAfterTurnQueue": true,
+          "terminal": "failed"
+        },
+        "liveOutputSegments": {
+          "version": 1,
+          "segmentIdentity": "provider_request",
+          "replacement": "explicit"
+        },
+        "runtimeEventCoalescing": {
+          "version": 1
+        },
+        "runtimeAutoModeGuardrail": {
+          "version": 6,
+          "owner": "session-runtime",
+          "sandboxFirst": true,
+          "sandboxCompletionAuthority": true,
+          "hostBoundaryReviewOnly": true,
+          "escalationCreatesPermission": false,
+          "automaticUserPromptOnDeny": false,
+          "defaultClassifierTimeoutMs": 90000,
+          "retryClassifierTimeoutMs": 180000,
+          "maxClassifierAttempts": 2,
+          "boundedClassifierInput": true,
+          "diagnosticsVersion": 1,
+          "permissionGrantSuggestions": true,
+          "concretePermissionMatchers": true,
+          "clientScopeExpansion": false,
+          "exactTextMutationApproval": true,
+          "livePermissionContext": true
+        },
+        "daemonOrphanExit": {
+          "version": 1,
+          "idleOnly": true,
+          "bootstrapGrace": true
+        },
+        "daemonShutdownVerification": {
+          "version": 1,
+          "durableOutcome": true,
+          "processContainment": "windows-job"
+        },
+        "externalAgentAdmin": {
+          "version": 1,
+          "activation": true,
+          "conditionalMutations": true,
+          "managementOwner": true
+        },
+        "a2aConfigReconciler": {
+          "version": 1
+        },
+        "sessionObservation": {
+          "version": 1,
+          "maxBufferedEvents": 256
+        },
+        "sessionAdmission": {
+          "version": 1,
+          "surfaces": [
+            "code",
+            "cli",
+            "repl",
+            "acp",
+            "a2a",
+            "sdk",
+            "ide",
+            "space-desktop",
+            "partner"
+          ],
+          "legacySurface": true,
+          "partnerDenied": false
+        },
+        "completeObservationSnapshot": {
+          "version": 1,
+          "transcriptRevision": true,
+          "managedTasks": true,
+          "queuedInputs": true
+        },
+        "connectionLifecycle": {
+          "version": 1
+        },
+        "runLifecycleControl": {
+          "version": 1,
+          "structuredStopReceipt": true,
+          "protocolCancellation": true,
+          "responseAcknowledgement": true
+        },
+        "typedRuntimeEvents": {
+          "version": 1
+        },
+        "daemonSafeRunInput": {
+          "version": 1
+        },
+        "integrationConfigResilience": {
+          "version": 1,
+          "isolatedFailure": true,
+          "legacySourceWatching": true,
+          "lastKnownGood": true,
+          "healthProjection": true
+        },
+        "daemonClientInventory": {
+          "version": 1
+        },
+        "daemonManagement": {
+          "version": 1,
+          "logicalClientCount": true,
+          "revisionedStop": true,
+          "ownerPolicy": true,
+          "ownerFenceState": true,
+          "reverseBridgeDrainingFence": true,
+          "backgroundWorkPreflight": true
+        },
+        "sharedSessionSettings": {
+          "version": 2,
+          "permissionModes": ["plan", "accept-edits", "auto", "full-access"],
+          "legacyPermissionModeAliases": {
+            "auto-in-project": "auto"
+          },
+          "keys": [
+            "provider",
+            "model",
+            "effort",
+            "planModeEffort",
+            "thinking",
+            "reasoningMode",
+            "permissionMode",
+            "executionCwd",
+            "agentMode",
+            "workMode",
+            "autoModeClassifierModel"
+          ]
+        },
+        "durableRecoveryQueries": {
+          "version": 1,
+          "hostToolInvocation": true,
+          "permissionGrants": true,
+          "daemonPreflight": true,
+          "terminalAcknowledgement": false,
+          "terminalAcknowledgementOwner": "client"
+        },
+        "afterTurnInput": {
+          "version": 1
+        },
+        "interruptInput": {
+          "version": 1,
+          "availability": "per_run"
+        },
+        "contextCompaction": {
+          "version": 3,
+          "alwaysOn": true,
+          "absoluteThreshold": true,
+          "contextIdentity": true,
+          "canonicalFinishedEvent": true,
+          "durableBeforeEvict": true,
+          "exactHistoryRecovery": true
+        },
+        "transcriptPaging": {
+          "version": 1,
+          "maxPageBytes": 524288
+        },
+        "transcriptSearch": {
+          "version": 1,
+          "defaultScope": "compacted",
+          "citedEntries": true
+        },
+        "conversationHistory": {
+          "version": 2,
+          "immutablePaging": true,
+          "revisionedBoundaries": true,
+          "ambiguityReporting": true,
+          "topologyTransparentManagedContext": true,
+          "directCloneProvenance": true
+        },
+        "learningCenter": {
+          "version": 1
+        },
+        "skillLearningLoop": {
+          "version": 1,
+          "activation": "project_scoped_canary",
+          "immutableDecisions": true,
+          "recordGatedDiscovery": true,
+          "exactUseAttribution": true,
+          "rollback": true
+        },
+        "askUserTransport": {
+          "version": 1
+        },
+        "permissionCas": {
+          "version": 1
+        },
+        "providerCredentialConnectionBinding": {
+          "version": 1
+        },
+        "providerCredentialBroker": {
+          "version": 2,
+          "registrationConnectionBound": false,
+          "stableClientResume": true,
+          "runtimeRestartExpiresLease": true,
+          "credentialLifetime": "provider_request",
+          "lazyProviderResolution": true,
+          "providerAllowlist": true,
+          "operationTargets": [
+            "run",
+            "session.compact",
+            "provider.reasoning.probe",
+            "actor_turn",
+            "workflow"
+          ],
+          "revocationAbortsPendingRequests": true,
+          "detachedWorkflowScope": "derived_revocable_lease",
+          "requestTimeoutMs": 60000
+        },
+        "effectiveConfig": {
+          "version": 1,
+          "credentialValues": false,
+          "sourceMetadata": true,
+          "scope": "integration:admin"
+        },
+        "runBoundHostTools": {
+          "version": 2,
+          "materializedAgentTools": true,
+          "registrationConnectionBound": false,
+          "stableClientResume": true,
+          "invocationStatusQuery": true,
+          "invocationReplay": false,
+          "invocationTimeoutMs": 60000,
+          "maxResultBytes": 1048576
+        },
+        "coderOwnerFencing": {
+          "version": 1
+        },
+        "crashOutcomeModel": {
+          "version": 2
+        },
+        "coderFeatureMatrix": {
+          "version": 1,
+          "managedRun": true,
+          "transcriptSessions": true,
+          "todoProjection": true,
+          "managedTasks": true,
+          "workflow": true,
+          "mcp": true,
+          "referenceExternalAgent": true,
+          "memory": true,
+          "runtimeArtifacts": true
+        }
+      },
+      "workModeLocked": true
+    }
+  },
+  "localPackaged": {
+    "distinctPassed": 53,
+    "retries": 0,
+    "suites": [
+      {
+        "passed": 43
+      },
+      {
+        "passed": 6
+      },
+      {
+        "passed": 4
+      }
+    ]
+  },
+  "localCompleteUnitBeforeCss": {
+    "tests": 4727,
+    "passed": 4707,
+    "skipped": 20,
+    "failed": 0
+  },
+  "platformUnits": {
+    "windows": {
+      "stages": [
+        {
+          "tests": 155,
+          "pass": 150,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 5
+        },
+        {
+          "tests": 4200,
+          "pass": 4186,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 14
+        },
+        {
+          "tests": 372,
+          "pass": 372,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 4727,
+      "pass": 4708,
+      "fail": 0,
+      "skipped": 19
+    },
+    "linux": {
+      "stages": [
+        {
+          "tests": 155,
+          "pass": 152,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 3
+        },
+        {
+          "tests": 4194,
+          "pass": 4180,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 14
+        },
+        {
+          "tests": 344,
+          "pass": 344,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 4693,
+      "pass": 4676,
+      "fail": 0,
+      "skipped": 17
+    },
+    "macos-arm": {
+      "stages": [
+        {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        },
+        {
+          "tests": 4190,
+          "pass": 4155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 35
+        },
+        {
+          "tests": 372,
+          "pass": 372,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 4717,
+      "pass": 4682,
+      "fail": 0,
+      "skipped": 35
+    },
+    "macos-intel": {
+      "stages": [
+        {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        },
+        {
+          "tests": 4192,
+          "pass": 4157,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 35
+        },
+        {
+          "tests": 372,
+          "pass": 372,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 4719,
+      "pass": 4684,
+      "fail": 0,
+      "skipped": 35
+    }
+  },
+  "e2e": [
+    {
+      "os": "windows",
+      "shard": 1,
+      "artifactId": 13604172155,
+      "stats": {
+        "startTime": "2026-11-08T04:11:34.500Z",
+        "duration": 1400227.512,
+        "expected": 94,
+        "skipped": 7,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "flakyTests": [],
+      "skippedTests": [
+        {
+          "title": "Coder preserves a usable workspace as persisted sidebars meet narrower screens",
+          "file": "coder-layout.spec.ts"
+        },
+        {
+          "title": "S-compact-residue: /compact clears the composer immediately, not after compaction",
+          "file": "compact-composer.spec.ts"
+        },
+        {
+          "title": "S-compact-spinner: compacting spinner stays centered in the context gauge",
+          "file": "compact-composer.spec.ts"
+        },
+        {
+          "title": "conversation expansion lazy-mounts hidden tool details and defers Monaco diff mount",
+          "file": "conversation-expand-lazy.spec.ts"
+        },
+        {
+          "title": "conversation receipt strip stays top-anchored on expand and preserves scroll through sidebar resizing",
+          "file": "conversation-receipts-scroll.spec.ts"
+        },
+        {
+          "title": "todo drift notification close affordance is stable and dismissible",
+          "file": "notifications-surface.spec.ts"
+        },
+        {
+          "title": "right sidebar full-panel buttons open and close promptly while a session streams",
+          "file": "right-sidebar-popouts.spec.ts"
+        }
+      ]
+    },
+    {
+      "os": "windows",
+      "shard": 2,
+      "artifactId": 13604048321,
+      "stats": {
+        "startTime": "2026-11-08T04:12:04.189Z",
+        "duration": 1554387.3739999998,
+        "expected": 92,
+        "skipped": 7,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "flakyTests": [],
+      "skippedTests": [
+        {
+          "title": "live ama automatically reviews its rendered result without an explicit skill request",
+          "file": "sdk-visual-review-live.spec.ts"
+        },
+        {
+          "title": "live sa automatically reviews its rendered result without an explicit skill request",
+          "file": "sdk-visual-review-live.spec.ts"
+        },
+        {
+          "title": "live explicit control inspects current pixels and reports data differences",
+          "file": "sdk-visual-review-live.spec.ts"
+        },
+        {
+          "title": "S3: send a prompt and see assistant reply via mock adapter",
+          "file": "send-reply.spec.ts"
+        },
+        {
+          "title": "the supplied Session loads and reloads from an isolated corpus without React errors or model requests",
+          "file": "session-corpus-replay.spec.ts"
+        },
+        {
+          "title": "S5: /clear wipes the conversation buffer",
+          "file": "slash.spec.ts"
+        },
+        {
+          "title": "workflow push events update the sidebar and transcript through completion",
+          "file": "workflow-events.spec.ts"
+        }
+      ]
+    },
+    {
+      "os": "linux",
+      "shard": 1,
+      "artifactId": 13603976430,
+      "stats": {
+        "startTime": "2026-11-08T04:11:09.604Z",
+        "duration": 862185.078,
+        "expected": 99,
+        "skipped": 1,
+        "unexpected": 0,
+        "flaky": 1
+      },
+      "errors": [],
+      "flakyTests": [
+        {
+          "title": "Project HTML File Viewer loads and switches local animation frames in both network modes",
+          "file": "artifact-file-preview.spec.ts",
+          "attempts": [
+            {
+              "retry": 0,
+              "status": "failed"
+            },
+            {
+              "retry": 1,
+              "status": "passed"
+            }
+          ]
+        }
+      ],
+      "skippedTests": [
+        {
+          "title": "Windows tray keeps only the background host and can recreate a closed Space window",
+          "file": "background-tray-lifecycle.spec.ts"
+        }
+      ]
+    },
+    {
+      "os": "linux",
+      "shard": 2,
+      "artifactId": 13604051604,
+      "stats": {
+        "startTime": "2026-11-08T04:11:20.426Z",
+        "duration": 771553.513,
+        "expected": 93,
+        "skipped": 6,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "errors": [],
+      "flakyTests": [],
+      "skippedTests": [
+        {
+          "title": "live ama automatically reviews its rendered result without an explicit skill request",
+          "file": "sdk-visual-review-live.spec.ts"
+        },
+        {
+          "title": "live sa automatically reviews its rendered result without an explicit skill request",
+          "file": "sdk-visual-review-live.spec.ts"
+        },
+        {
+          "title": "live explicit control inspects current pixels and reports data differences",
+          "file": "sdk-visual-review-live.spec.ts"
+        },
+        {
+          "title": "the supplied Session loads and reloads from an isolated corpus without React errors or model requests",
+          "file": "session-corpus-replay.spec.ts"
+        },
+        {
+          "title": "Windows close behavior preference is visible, typed, and persisted",
+          "file": "window-close-behavior.spec.ts"
+        },
+        {
+          "title": "custom window controls perform native maximize restore and minimize operations",
+          "file": "window-controls.spec.ts"
+        }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "id": 42445420018,
+      "name": "build",
+      "sha": "a47279c85f0c30b62c7a9b524052d864ca969866",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 128623200983,
+          "name": "changes",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623257542,
+          "name": "Smoke build (macos-15-intel)",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623257557,
+          "name": "Smoke build (ubuntu-24.04)",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623257576,
+          "name": "Static checks",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623257585,
+          "name": "Smoke build (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623257615,
+          "name": "Smoke build (macos-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128628951498,
+          "name": "Build gate",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        }
+      ],
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/42445420018"
+    },
+    {
+      "id": 42445420015,
+      "name": "ci",
+      "sha": "a47279c85f0c30b62c7a9b524052d864ca969866",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 128623684109,
+          "name": "changes",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623730485,
+          "name": "ubuntu-latest / E2E shard 2/2",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623730521,
+          "name": "ubuntu-latest / E2E shard 1/2",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623730526,
+          "name": "windows-latest / E2E shard 1/2",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128623730665,
+          "name": "windows-latest / E2E shard 2/2",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        },
+        {
+          "id": 128629728923,
+          "name": "CI gate",
+          "status": "completed",
+          "conclusion": "success",
+          "step": null
+        }
+      ],
+      "url": "https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/42445420015"
+    }
+  ],
+  "observations": [
+    {
+      "id": "transient-license-badge",
+      "rootCause": "unconfirmed",
+      "attributedToSdk": false,
+      "fixed": false,
+      "subsequentTightReloadsPassed": 12
+    },
+    {
+      "id": "html-nested-preview-flaky",
+      "sdkRunOrProviderInTest": false,
+      "fixed": false,
+      "firstAttempt": "Direction a remained after frame switch",
+      "retry": 1,
+      "retryResult": "passed",
+      "file": "artifact-file-preview.spec.ts"
+    }
+  ],
+  "externalValidation": [
+    "customer-native-Kylin-and-macOS",
+    "real-provider-account-quality",
+    "arbitrary-document-Word-WPS-fidelity",
+    "Issue-371-recovery-performance"
+  ],
+  "publishedSpaceReleaseChanged": false,
+  "unitReportingObservation": {
+    "unreportedTitlesComparedWithPreviousRun": [
+      "Runtime sandbox observation is visible without changing tool execution state",
+      "Runtime sandbox presentation distinguishes applied and unselected decisions",
+      "iteration bridge ignores a previous journal epoch after snapshot recovery",
+      "runtime activity preserves actual root iteration and excludes another run",
+      "root iteration bridge repairs a missing live snapshot only for the same active run",
+      "saved recovery without reliable token counts gives an actionable non-numeric status",
+      "session.event payload: provider cache diagnostic is hash-only and provider-reported",
+      "session.event payload: rejects unknown kind (discriminated union locked)",
+      "session.event payload: rejects mismatched fields for kind",
+      "session.event payload: work_budget accepts valid",
+      "session.event payload: work_budget rejects negative used",
+      "session.event payload: work_budget rejects cap=0 (must be positive)",
+      "session.event payload: harness_profile H0 without round",
+      "session.event payload: harness_profile H2 with round",
+      "session.event payload: harness_profile rejects unknown profile",
+      "session.create input accepts mock / builtin / custom provider tokens",
+      "session.create input rejects malformed providerId",
+      "session.send rejects prompt over 1 MB (DoS guard)",
+      "session.event text_delta rejects text over 256 KB",
+      "session.event tool_result rejects content over 512 KB",
+      "permissionMode enum accepts the four canonical profiles",
+      "permissionMode enum rejects legacy values: ask-permissions / bypass-permissions / plan-mode",
+      "session.event workflow_notice accepts live dedup key and sentAt",
+      "session.fork + session.rewind channels are registered",
+      "session.fork input requires sessionId + non-negative forkPointTurnIdx",
+      "session.fork output is { newSessionId, createdAt }",
+      "session.rewind input requires sessionId + non-negative rewindPastTurnIdx",
+      "session.rewind output reason enum is exhaustive",
+      "session.agentsMd channel is registered",
+      "session.agentsMd input requires sessionId",
+      "session.agentsMd output accepts global + project scopes",
+      "session.agentsMd output rejects unknown scope",
+      "session.agentsMd output enforces array cap (DoS guard)",
+      "repeating a truncated history whose final strong user has no response is idempotent",
+      "s_607 projection keeps query, thinking, multi-tool receipts, workflow, and compaction in one order"
+    ],
+    "focusedReplay": {
+      "tests": 254,
+      "passed": 254,
+      "failed": 0,
+      "allComparedTitlesPassed": true,
+      "allComparedResultsPassed": true
+    },
+    "cause": "unconfirmed",
+    "remoteCountsPreserved": true,
+    "missingResultRecords": 36,
+    "missingResultTitles": [
+      "Runtime sandbox observation is visible without changing tool execution state",
+      "Runtime sandbox presentation distinguishes applied and unselected decisions",
+      "iteration bridge ignores a previous journal epoch after snapshot recovery",
+      "runtime activity preserves actual root iteration and excludes another run",
+      "root iteration bridge repairs a missing live snapshot only for the same active run",
+      "saved recovery without reliable token counts gives an actionable non-numeric status",
+      "session.event payload: context budget snapshot is bounded and content-free",
+      "session.event payload: provider cache diagnostic is hash-only and provider-reported",
+      "session.event payload: rejects unknown kind (discriminated union locked)",
+      "session.event payload: rejects mismatched fields for kind",
+      "session.event payload: work_budget accepts valid",
+      "session.event payload: work_budget rejects negative used",
+      "session.event payload: work_budget rejects cap=0 (must be positive)",
+      "session.event payload: harness_profile H0 without round",
+      "session.event payload: harness_profile H2 with round",
+      "session.event payload: harness_profile rejects unknown profile",
+      "session.create input accepts mock / builtin / custom provider tokens",
+      "session.create input rejects malformed providerId",
+      "session.send rejects prompt over 1 MB (DoS guard)",
+      "session.event text_delta rejects text over 256 KB",
+      "session.event tool_result rejects content over 512 KB",
+      "permissionMode enum accepts the four canonical profiles",
+      "permissionMode enum rejects legacy values: ask-permissions / bypass-permissions / plan-mode",
+      "session.event workflow_notice accepts live dedup key and sentAt",
+      "session.fork + session.rewind channels are registered",
+      "session.fork input requires sessionId + non-negative forkPointTurnIdx",
+      "session.fork output is { newSessionId, createdAt }",
+      "session.rewind input requires sessionId + non-negative rewindPastTurnIdx",
+      "session.rewind output reason enum is exhaustive",
+      "session.agentsMd channel is registered",
+      "session.agentsMd input requires sessionId",
+      "session.agentsMd output accepts global + project scopes",
+      "session.agentsMd output rejects unknown scope",
+      "session.agentsMd output enforces array cap (DoS guard)",
+      "repeating a truncated history whose final strong user has no response is idempotent",
+      "s_607 projection keeps query, thinking, multi-tool receipts, workflow, and compaction in one order"
+    ]
+  }
+}
