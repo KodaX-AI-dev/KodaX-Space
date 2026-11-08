@@ -46,3 +46,21 @@ Unix 上同时要求 auth.json 没有 group/other 权限。
 - 测试 Provider 使用本地协议夹具；不声称验证真实订阅权限或线上模型质量。
 
 实际执行结果另记在 `docs/research/`；未执行项保持待验收，不以构建成功代替。
+
+## Windows 启动等待回归（2026-11-08）
+
+对应[排查记录](../research/windows-startup-root-wait.md)。使用本机 Windows 隔离桌面，
+不使用真实用户 profile。先 `npm run build:smoke`，然后运行：
+
+```powershell
+npm run e2e:run -- tests/e2e/renderer-startup-fixture.spec.ts --retries=0 --repeat-each=3
+npm run e2e:run -- tests/e2e/renderer-boot.spec.ts tests/e2e/startup-overlay.spec.ts tests/e2e/window-throttling.spec.ts tests/e2e/sdk-ui-contract-acceptance.spec.ts --retries=0
+npm run e2e:run -- tests/e2e/settings-modal-interactions.spec.ts --grep="interactive inventory" --retries=0 --repeat-each=3
+```
+
+要求：无动画帧时已挂载 root 仍能完成夹具等待；root 确实缺失时拒绝，且清理前的
+`startup-root-failure` 附件保留 root、文档和原生窗口状态，不包含用户内容或凭据。
+不增加全局等待时限，不将“root 已挂载”当作“Shell 已绘制”或“历史已加载完成”。
+非 Windows 跳过此原生后台绘制专项，通用启动/绘制场景继续按各平台执行。
+Settings 必须等待异步 policy 控件出现，再核对全部预期名称和无匿名交互控件。
+记录实际 SDK 版本；其他 checkout 升级不能代替当前测试进程的版本核对。

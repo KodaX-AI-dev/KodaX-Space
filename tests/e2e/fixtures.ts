@@ -3,7 +3,7 @@
 // 每个 spec 直接 import `launchSpace(testId)` 起一个 Space 进程 +
 // 隔离 data dir。spec 退出时 cleanup 关进程并删 tmp 目录。
 
-import { _electron, type ElectronApplication, type Page } from '@playwright/test';
+import { _electron, test, type ElectronApplication, type Page } from '@playwright/test';
 import path from 'node:path';
 import { existsSync, promises as fs, readFileSync, realpathSync } from 'node:fs';
 import os from 'node:os';
@@ -49,6 +49,60 @@ if (process.platform === 'darwin') {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function attachRootFailure(app: ElectronApplication, page: Page): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const evidence = Promise.allSettled([
+    page.evaluate(() => ({
+      rootAttached: document.getElementById('root') !== null,
+      readyState: document.readyState,
+      appDocument: location.href === 'app://space/index.html',
+    })),
+    app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()
+        .slice(0, 8)
+        .map((win) => ({
+          appDocument: win.webContents.getURL() === 'app://space/index.html',
+          visible: win.isVisible(),
+          backgroundThrottling: win.webContents.getBackgroundThrottling(),
+        })),
+    ),
+  ]).then(([document, windows]) => ({
+    document: document.status === 'fulfilled' ? document : { status: 'query_failed' },
+    windows: windows.status === 'fulfilled' ? windows : { status: 'query_failed' },
+  }));
+  try {
+    // Never retain profile contents, page text, credentials, or arbitrary URLs.
+    const snapshot = await Promise.race([
+      evidence,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve({ status: 'timed_out' }), 2000);
+      }),
+    ]);
+    await test.info().attach('startup-root-failure', {
+      body: JSON.stringify(snapshot),
+      contentType: 'application/json',
+    });
+  } catch {
+    test.info().annotations.push({
+      type: 'startup-root-failure',
+      description: 'Evidence attachment unavailable',
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Wait for DOM ownership, independently of whether Electron is painting. */
+export async function waitForRendererRoot(app: ElectronApplication, page: Page): Promise<void> {
+  // Windows can suspend painting while the renderer is hidden or covered.
+  try {
+    await page.locator('#root').waitFor({ state: 'attached' });
+  } catch (error) {
+    await attachRootFailure(app, page);
+    throw error;
+  }
 }
 
 async function installNativeDialogCancellation(app: ElectronApplication): Promise<void> {
@@ -319,7 +373,7 @@ export async function launchSpace(
     // The main process may show a boot splash first; wait for the real renderer
     // document before tests touch app localStorage or query app controls.
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForFunction(() => document.getElementById('root') !== null);
+    await waitForRendererRoot(app, page);
 
     // hook：把 project dir 注入 store + recent list + reload，让 textarea / ModeSelector 都活
     // 抽到这里避免 3 个 spec 都拷一份相同 4 行代码 (review LOW: dedup)
