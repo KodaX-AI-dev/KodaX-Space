@@ -270,23 +270,20 @@ test('native scrollbar stays held across SDK history windows in both directions'
         .click();
       const stream = space.page.getByTestId('conversation-stream');
       await expect(stream).toContainText('HISTORY_ANSWER_259');
-      const newestIds = await stream
-        .locator('[data-msg-id]')
-        .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+      const ids = () =>
+        stream
+          .locator('[data-msg-id]')
+          .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+      const newestIds = await ids();
       await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
+      await expect.poll(ids).not.toEqual(newestIds);
       await expect(stream).toContainText('HISTORY_QUESTION_259');
       await dragNativeHistoryWindow(space.page, 'older');
       await expect(stream).not.toContainText('HISTORY_QUESTION_259');
       await dragNativeHistoryWindow(space.page, 'newer');
       const bottom = space.page.getByRole('button', { name: 'Jump to bottom', exact: true });
       if (await bottom.count()) await bottom.click();
-      await expect
-        .poll(() =>
-          stream
-            .locator('[data-msg-id]')
-            .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id'))),
-        )
-        .toEqual(newestIds);
+      await expect.poll(ids).toEqual(newestIds);
       await expect(stream).toContainText('HISTORY_ANSWER_259');
       expect(provider.requests).toEqual([]);
       expect(provider.errors).toEqual([]);
