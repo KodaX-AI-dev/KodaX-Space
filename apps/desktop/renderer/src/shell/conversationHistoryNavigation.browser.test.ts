@@ -308,10 +308,18 @@ test(
       itemId: 'view-0',
       outputId: 'output-0',
     });
-    await page.evaluate('window.locatedKind="same-page";window.middle()');
+    // Enter saved history through its real UI owner before testing same-page
+    // receipt reuse. Direct store reads bypass that owner's live-follow guard.
+    // Keep this interaction valid on a slower renderer too.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+    await page.evaluate('window.locatedKind="same-page"');
+    await saved.click();
+    await stream.getByText('NEWEST 11', { exact: true }).waitFor();
     await stream.getByTestId('process-receipt-tool_cluster').getByRole('button').first().click();
     const reusedTool = stream.getByTestId('tool-call-card');
     await reusedTool.waitFor();
+    assert.equal(await page.evaluate('window.requests.at(-1)'), 'newest');
     assert.equal(
       await reusedTool.getByRole('button').first().getAttribute('aria-expanded'),
       'false',
@@ -324,6 +332,7 @@ test(
     await stream.getByText('concealed tool result', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back to results' }).click();
     await reusedTool.waitFor();
+    assert.equal(await page.evaluate('window.requests.at(-1)'), 'newest');
     await page.waitForFunction(
       () => document.activeElement?.getAttribute('data-hit-id') === 'unique-hit',
     );
