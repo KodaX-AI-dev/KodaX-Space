@@ -1,0 +1,123 @@
+name: macos-acceptance
+
+# Native diagnostics only: no tags, public release, or credential-bearing profiles.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  acceptance:
+    name: macOS acceptance (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            arch: x64
+            unpacked: mac
+          - os: macos-15
+            arch: arm64
+            unpacked: mac-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - name: Prepare Electron binary
+        timeout-minutes: 10
+        run: node node_modules/electron/install.js
+        env:
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+      - run: npm run build:packages
+      - run: node scripts/ensure-sqlite-native.mjs node
+      - name: Native credential Git and notification regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p macos-acceptance-evidence
+          node --test --test-timeout=120000 --test-concurrency=1 \
+            --import ./scripts/test/isolated-credential-profile.mjs --import tsx \
+            apps/desktop/electron/providers/file-credentials.native.test.ts \
+            apps/desktop/electron/providers/file-credentials.test.ts \
+            apps/desktop/electron/providers/file-credentials.upgrade.test.ts \
+            apps/desktop/electron/providers/legacy-discovery.test.ts \
+            apps/desktop/electron/providers/legacy-storage-retry.test.ts \
+            apps/desktop/electron/providers/provider-storage.test.ts \
+            apps/desktop/electron/test/windows-credential-migration.test.ts \
+            apps/desktop/electron/kodax/runtime/runtime-client-secret-file.test.ts \
+            apps/desktop/electron/kodax/git-install-prompt.test.ts \
+            apps/desktop/electron/window/app-badge.test.ts \
+            scripts/test/mac-notification-package.test.mjs \
+            | tee macos-acceptance-evidence/native-tests.tap
+      - name: Build macOS installer
+        run: npm run build:mac:${{ matrix.arch }}
+        env:
+          npm_config_build_from_source: 'false'
+      - name: Verify candidate identity and signature
+        shell: bash
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          app="out/${{ matrix.unpacked }}/KodaX Space.app"
+          codesign --verify --deep --strict "$app"
+          codesign --display --verbose=2 "$app" 2>macos-acceptance-evidence/codesign.txt
+          sw_vers > macos-acceptance-evidence/system.txt
+          uname -m >> macos-acceptance-evidence/system.txt
+          node --input-type=module -e '
+            import assert from "node:assert/strict";
+            import {readFile,writeFile} from "node:fs/promises";
+            assert.equal(process.arch,process.env.EXPECTED_ARCH);
+            const app=JSON.parse(await readFile("package.json","utf8"));
+            const sdk=JSON.parse(await readFile("node_modules/@kodax-ai/kodax/package.json","utf8"));
+            await writeFile("macos-acceptance-evidence/identity.json",JSON.stringify({
+              sha:process.env.GITHUB_SHA,os:process.platform,arch:process.arch,node:process.version,
+              space:app.version,sdk:sdk.version},null,2));'
+          shasum -a 256 out/*.dmg out/*.zip > macos-acceptance-evidence/installers.sha256
+      - name: Packaged macOS acceptance
+        timeout-minutes: 35
+        shell: bash
+        env:
+          SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/out/${{ matrix.unpacked }}/KodaX Space.app/Contents/MacOS/KodaX Space
+        run: |
+          set -euo pipefail
+          npm run e2e:run -- \
+            tests/e2e/renderer-boot.spec.ts \
+            tests/e2e/provider-file-credentials.spec.ts \
+            tests/e2e/native-notifications.spec.ts \
+            tests/e2e/settings-navigation.spec.ts \
+            tests/e2e/startup-overlay.spec.ts \
+            tests/e2e/sdk-work-mode.spec.ts \
+            tests/e2e/sdk-beta1-adaptation.spec.ts \
+            tests/e2e/sdk-beta3-adaptation.spec.ts \
+            tests/e2e/sdk-unified-contract.spec.ts \
+            tests/e2e/sdk-product-output.spec.ts \
+            tests/e2e/sdk-restored-history.spec.ts \
+            tests/e2e/sdk-history-navigation.spec.ts \
+            tests/e2e/sdk-alpha11-lifecycle.spec.ts \
+            tests/e2e/sdk-ui-contract-acceptance.spec.ts \
+            tests/e2e/sdk-migration-gaps.spec.ts \
+            tests/e2e/partner-bundled.spec.ts \
+            --retries=0 | tee macos-acceptance-evidence/packaged-tests.log
+      - name: Summarize E2E attempts
+        if: always()
+        run: node scripts/ci-report.mjs
+      - name: Preserve macOS acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-acceptance-${{ matrix.arch }}-${{ github.run_attempt }}
+          path: |
+            macos-acceptance-evidence/
+            test-results/
+          retention-days: 14
+          if-no-files-found: warn
