@@ -252,7 +252,8 @@ test('Settings interactive inventory has no unnamed controls across dynamic stat
     ]);
 
     await settingsDialog(page).locator('#settings-tab-context').click();
-    // Runtime limits live alongside context settings.
+    // The policy arrives asynchronously after the Context panel mounts.
+    await expect(settingsDialog(page).getByLabel('Max agents')).toBeVisible();
     await expectNamedInteractionSurface(page, 'preferences advanced limits', [
       'Max agents',
       'Max concurrency',
