@@ -1161,7 +1161,7 @@ export function ConversationStreamV2(): JSX.Element {
   const scrollSnapshotRef = useRef<ScrollSnapshot | null>(null);
   const observedScrollerSizeRef = useRef<{ width: number; height: number } | null>(null);
   const scrollerWasHiddenRef = useRef(false);
-  const touchStartYRef = useRef<number | null>(null);
+  const lastTouchYRef = useRef<number | null>(null);
   const autoFollowRafRef = useRef<number | null>(null);
   const jumpToBottomRafRef = useRef<number | null>(null);
   const scrollSyncRafRef = useRef<number | null>(null);
@@ -1283,6 +1283,9 @@ export function ConversationStreamV2(): JSX.Element {
     if (el && el instanceof HTMLElement) {
       const pendingPrepend = prependAnchorRestoreRef.current;
       const loadingPrepend = pendingPrepend?.phase === 'loading';
+      markProgrammaticScroll(
+        loadingPrepend ? INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS : SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS,
+      );
       el.scrollIntoView({ block: 'center', behavior: loadingPrepend ? 'auto' : 'smooth' });
       if (loadingPrepend && pendingPrepend.scroller === scrollRef.current) {
         pendingPrepend.snapshot = rememberScrollSnapshot(pendingPrepend.scroller);
@@ -1406,6 +1409,7 @@ export function ConversationStreamV2(): JSX.Element {
     pendingSearchFocus.current = null;
     wasAtBottomRef.current = false;
     row.focus({ preventScroll: true });
+    markProgrammaticScroll();
     row.scrollIntoView({ block: 'center', behavior: 'instant' });
   }, [locatedSearchItem, viewMessages, expanded]);
 
@@ -1428,8 +1432,26 @@ export function ConversationStreamV2(): JSX.Element {
   //   监测短时间间隔 (<1s) 必须用单调 monotonic clock.
   // ResizeObserver 的 instant follow 只需要短守卫；jumpToBottom 的 smooth scroll 用 400ms。
   const programmaticScrollIgnoreUntilRef = useRef<number>(0);
+  // Scroll events alone do not authorize crossing a history window boundary.
+  const historyScrollIntentRef = useRef<'older' | 'newer' | 'scrollbar' | null>(null);
+  const scrollbarPointerIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Native scroll delivery can follow pointerup; programmatic positioning clears that intent.
+    const releaseScrollbar = (event: PointerEvent): void => {
+      if (scrollbarPointerIdRef.current === event.pointerId) scrollbarPointerIdRef.current = null;
+    };
+    window.addEventListener('pointerup', releaseScrollbar, true);
+    window.addEventListener('pointercancel', releaseScrollbar, true);
+    return () => {
+      window.removeEventListener('pointerup', releaseScrollbar, true);
+      window.removeEventListener('pointercancel', releaseScrollbar, true);
+      scrollbarPointerIdRef.current = null;
+    };
+  }, []);
 
   function markProgrammaticScroll(guardMs = INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS): void {
+    historyScrollIntentRef.current = null;
     programmaticScrollIgnoreUntilRef.current = performance.now() + guardMs;
   }
 
@@ -1799,9 +1821,18 @@ export function ConversationStreamV2(): JSX.Element {
       refreshPendingPrependSnapshot(scroller);
       syncFollowStateFromScrollPosition(scroller);
       syncActiveQueryAnchorFromScrollPosition(scroller);
-      if (movedUp && scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX) {
+      const intent = historyScrollIntentRef.current;
+      if (
+        movedUp &&
+        (intent === 'older' || intent === 'scrollbar') &&
+        scroller.scrollTop <= HISTORY_LOAD_THRESHOLD_PX
+      ) {
         requestAdjacentHistory(scroller);
-      } else if (movedDown && getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX) {
+      } else if (
+        movedDown &&
+        (intent === 'newer' || intent === 'scrollbar') &&
+        getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX
+      ) {
         requestAdjacentHistory(scroller, 'newer');
       }
     });
@@ -1824,6 +1855,7 @@ export function ConversationStreamV2(): JSX.Element {
     clearProgrammaticScrollGuard();
     const scroller = e.currentTarget;
     const deltaY = e.deltaY;
+    if (deltaY !== 0) historyScrollIntentRef.current = deltaY < 0 ? 'older' : 'newer';
     const scrollTopBefore = scroller.scrollTop;
     const preserveBoundaryRestore = preservesPrependAnchorForBoundaryInput(
       prependAnchorRestoreRef.current?.phase,
@@ -1860,6 +1892,8 @@ export function ConversationStreamV2(): JSX.Element {
       case 'ArrowUp':
       case 'PageUp':
       case 'Home':
+        historyScrollIntentRef.current = 'older';
+        clearProgrammaticScrollGuard();
         if (
           !preservesPrependAnchorForBoundaryInput(
             prependAnchorRestoreRef.current?.phase,
@@ -1873,6 +1907,8 @@ export function ConversationStreamV2(): JSX.Element {
         if (scroller.scrollTop <= 1) requestAdjacentHistory(scroller);
         break;
       case ' ':
+        historyScrollIntentRef.current = e.shiftKey ? 'older' : 'newer';
+        clearProgrammaticScrollGuard();
         if (e.shiftKey) {
           if (
             !preservesPrependAnchorForBoundaryInput(
@@ -1892,6 +1928,8 @@ export function ConversationStreamV2(): JSX.Element {
       case 'ArrowDown':
       case 'PageDown':
       case 'End':
+        historyScrollIntentRef.current = 'newer';
+        clearProgrammaticScrollGuard();
         handlePrependUserScrollIntent();
         followUserScrollTowardNewer(scroller);
         break;
@@ -1900,28 +1938,46 @@ export function ConversationStreamV2(): JSX.Element {
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>): void {
     cancelJumpToBottomAnimation();
+    historyScrollIntentRef.current = null;
+    scrollbarPointerIdRef.current = null;
     const scroller = e.currentTarget;
     const scrollbarWidth = scroller.offsetWidth - scroller.clientWidth;
-    if (scrollbarWidth <= 0) return;
+    if (scrollbarWidth <= 0 || e.button !== 0) return;
     const rect = scroller.getBoundingClientRect();
     if (e.clientX >= rect.right - scrollbarWidth) {
+      scrollbarPointerIdRef.current = e.pointerId;
+      historyScrollIntentRef.current = 'scrollbar';
+      clearProgrammaticScrollGuard();
       handlePrependUserScrollIntent();
       disengageFollowForUserScrollIntent(scroller);
     }
   }
 
+  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>): void {
+    if (scrollbarPointerIdRef.current !== e.pointerId || (e.buttons & 1) === 0) return;
+    historyScrollIntentRef.current = 'scrollbar';
+    clearProgrammaticScrollGuard();
+    handlePrependUserScrollIntent();
+  }
+
   function handleTouchStart(e: ReactTouchEvent<HTMLDivElement>): void {
     cancelJumpToBottomAnimation();
-    touchStartYRef.current = e.touches[0]?.clientY ?? null;
+    historyScrollIntentRef.current = null;
+    scrollbarPointerIdRef.current = null;
+    lastTouchYRef.current = e.touches[0]?.clientY ?? null;
   }
 
   function handleTouchMove(e: ReactTouchEvent<HTMLDivElement>): void {
     const scroller = e.currentTarget;
-    const startY = touchStartYRef.current;
+    const previousY = lastTouchYRef.current;
     const currentY = e.touches[0]?.clientY;
-    if (startY === null || currentY === undefined) return;
-    const deltaY = currentY - startY;
-    if (deltaY > USER_SCROLL_INTENT_DELTA_PX) {
+    if (previousY === null || currentY === undefined) return;
+    const deltaY = currentY - previousY;
+    if (Math.abs(deltaY) <= USER_SCROLL_INTENT_DELTA_PX) return;
+    lastTouchYRef.current = currentY;
+    if (deltaY > 0) {
+      historyScrollIntentRef.current = 'older';
+      clearProgrammaticScrollGuard();
       if (
         !preservesPrependAnchorForBoundaryInput(
           prependAnchorRestoreRef.current?.phase,
@@ -1932,7 +1988,9 @@ export function ConversationStreamV2(): JSX.Element {
         handlePrependUserScrollIntent();
       }
       disengageFollowForUserScrollIntent(scroller);
-    } else if (deltaY < -USER_SCROLL_INTENT_DELTA_PX) {
+    } else {
+      historyScrollIntentRef.current = 'newer';
+      clearProgrammaticScrollGuard();
       handlePrependUserScrollIntent();
       followUserScrollTowardNewer(scroller);
     }
@@ -2025,6 +2083,9 @@ export function ConversationStreamV2(): JSX.Element {
   useEffect(() => {
     cancelPrependAnchorRestore();
     latestJumpOwnerRef.current = null;
+    historyScrollIntentRef.current = null;
+    scrollbarPointerIdRef.current = null;
+    lastTouchYRef.current = null;
     liveReadingPosition.current = null;
     returnFromLocatedSearch.current = null;
     setLocatedSearchItem(null);
@@ -2351,6 +2412,7 @@ export function ConversationStreamV2(): JSX.Element {
         onWheelCapture={handleWheel}
         onKeyDownCapture={handleKeyDown}
         onPointerDownCapture={handlePointerDown}
+        onPointerMoveCapture={handlePointerMove}
         onTouchStartCapture={handleTouchStart}
         onTouchMoveCapture={handleTouchMove}
         className={`ix-zone h-full overflow-auto px-8 py-5 ${fontClass}`}

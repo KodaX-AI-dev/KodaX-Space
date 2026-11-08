@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Keep programmatic search positioning and restoration from paging to adjacent conversation history. Preserve wheel, keyboard, touch and scrollbar navigation under slow rendering.
+
 - Restore finite composer focus feedback for the Lexical editor, including existing quality, reduced-motion, background and streaming pause guards.
 
 - Pin Registry KodaX SDK `0.7.97-beta.3` in both SDK consumers and verify the exact installed package during packaging. Partner profiles declare the Host-owned Agent admission constraint, including durable recovery records; normal shell/write/child Agent permissions remain available.

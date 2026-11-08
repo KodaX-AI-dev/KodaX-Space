@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import { chromium } from 'playwright';
+import { chromium, type Page } from 'playwright';
 
 const fixture = `
 import React from 'react';import{createRoot}from'react-dom/client';
@@ -45,7 +45,7 @@ function App(){const id=useAppStore(state=>state.currentSessionId);return <Conve
 createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nProvider>);
 window.start=async()=>{await restoreNewestSessionHistory('s','code');await loadOlderSessionHistory('s');await loadOlderSessionHistory('s');};
 window.middle=async()=>{await restoreNewestSessionHistory('s','code');await loadOlderSessionHistory('s');};
-window.settle=()=>new Promise(resolve=>{let frames=0;const tick=()=>++frames<12?requestAnimationFrame(tick):resolve();requestAnimationFrame(tick)});
+window.settle=(count=12)=>new Promise(resolve=>{let frames=0;const tick=()=>++frames<count?requestAnimationFrame(tick):resolve();requestAnimationFrame(tick)});
 window.select=id=>{deactivateSessionHistoryPaging(useAppStore.getState().currentSessionId);useAppStore.setState({currentSessionId:id});activateSessionHistoryPaging(id)};
 window.detail=mode=>useAppStore.getState().setTranscriptView(mode);
 window.primeLive=async()=>{
@@ -56,11 +56,9 @@ window.primeLive=async()=>{
 };
 `;
 
-test(
-  'one bottom control returns from frozen history to the real latest message and downward gestures visit adjacent pages',
-  { skip: !existsSync(chromium.executablePath()) },
-  async (t) => {
-    const bundled = await build({
+const browserAvailable = existsSync(chromium.executablePath());
+const bundled = browserAvailable
+  ? await build({
       stdin: {
         contents: fixture,
         resolveDir: fileURLToPath(new URL('.', import.meta.url)),
@@ -89,21 +87,36 @@ test(
           },
         },
       ],
-    });
-    const browser = await chromium.launch({ headless: true });
-    t.after(() => browser.close());
-    const page = await browser.newPage({ viewport: { width: 1100, height: 700 } });
-    const errors: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.message));
-    await page.route('http://history.test/', (route) =>
-      route.fulfill({
-        contentType: 'text/html',
-        body: '<style>[data-testid="conversation-scroll-container"]{height:600px;overflow:auto}</style><div id="root"></div>',
-      }),
-    );
-    await page.goto('http://history.test/');
-    await page.evaluate(() => localStorage.setItem('kodax-space.languageMode', 'en-US'));
-    await page.addScriptTag({ content: bundled.outputFiles[0].text });
+    })
+  : undefined;
+
+async function openHistoryFixture(t: TestContext, showScrollbars = false) {
+  const browser = await chromium.launch({
+    headless: true,
+    ...(showScrollbars ? { ignoreDefaultArgs: ['--hide-scrollbars'] } : {}),
+  });
+  t.after(() => browser.close());
+  const page = await browser.newPage({ viewport: { width: 1100, height: 700 } });
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.route('http://history.test/', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<style>[data-testid="conversation-scroll-container"]{height:600px;overflow:auto}</style><div id="root"></div>',
+    }),
+  );
+  await page.goto('http://history.test/');
+  await page.evaluate(() => localStorage.setItem('kodax-space.languageMode', 'en-US'));
+  await page.addScriptTag({ content: bundled!.outputFiles[0].text });
+  return { page, errors };
+}
+
+test(
+  'one bottom control returns from frozen history to the real latest message and downward gestures visit adjacent pages',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    const cdp = await page.context().newCDPSession(page);
     await page.evaluate('window.start()');
     const stream = page.getByTestId('conversation-stream');
     const scroller = page.getByTestId('conversation-scroll-container');
@@ -116,6 +129,27 @@ test(
     await page.evaluate('window.detail("verbose")');
     await stream.getByTestId('tool-call-card').getByRole('button').first().click();
     await search.getByText('1/1').waitFor();
+    // Slow rendering must not turn a programmatic search jump into history paging.
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 12 });
+    await search.getByRole('searchbox').fill('no current-page match');
+    await search.getByText('0/0').waitFor();
+    await scroller.hover();
+    await page.mouse.wheel(0, -12_000);
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="conversation-scroll-container"]')!.scrollTop === 0,
+    );
+    await page.evaluate('window.settle()');
+    await search.getByRole('searchbox').fill('concealed tool result');
+    await search.getByText('1/1').waitFor();
+    await page.evaluate('window.settle()');
+    await page.evaluate('window.settle()');
+    assert.deepEqual(
+      await page.evaluate('window.requests'),
+      ['newest', 'middle', 'oldest'],
+      'search scrolling must not request an adjacent history page',
+    );
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     await page.evaluate('window.detail("summary")');
     await search.getByText('0/0').waitFor();
     await page.evaluate('window.detail("normal")');
@@ -311,7 +345,6 @@ test(
     // Enter saved history through its real UI owner before testing same-page
     // receipt reuse. Direct store reads bypass that owner's live-follow guard.
     // Keep this interaction valid on a slower renderer too.
-    const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
     await page.evaluate('window.locatedKind="same-page"');
     await saved.click();
@@ -343,3 +376,201 @@ test(
     assert.deepEqual(errors, []);
   },
 );
+
+type HistoryGesture = 'keyboard' | 'touch' | 'scrollbar';
+type HistoryDirection = 'newer' | 'older';
+
+async function sendHistoryTouch(
+  page: Page,
+  type: 'touchstart' | 'touchmove',
+  clientY: number,
+): Promise<void> {
+  await page.getByTestId('conversation-scroll-container').evaluate(
+    (element, { type, clientY }) => {
+      const touch = new Touch({ identifier: 1, target: element, clientX: 100, clientY });
+      element.dispatchEvent(new TouchEvent(type, { touches: [touch], bubbles: true }));
+    },
+    { type, clientY },
+  );
+}
+
+async function sendHistoryPointer(
+  page: Page,
+  type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  assert.ok(
+    await scroller.evaluate(
+      (element) => element instanceof HTMLElement && element.offsetWidth > element.clientWidth,
+    ),
+    'Scrollbar fixture needs a visible track',
+  );
+  const rect = await scroller.boundingBox();
+  assert.ok(rect);
+  await scroller.dispatchEvent(type, {
+    pointerId: 7,
+    buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1,
+    clientX: rect.x + rect.width - 1,
+    clientY: rect.y + 100,
+  });
+}
+
+async function dispatchHistoryGesture(
+  page: Page,
+  input: HistoryGesture,
+  direction: HistoryDirection,
+): Promise<void> {
+  const stream = page.getByTestId('conversation-stream');
+  if (input === 'keyboard') {
+    await stream.getByTestId('process-receipt-tool_cluster').getByRole('button').first().focus();
+    await page.keyboard.press(direction === 'newer' ? 'End' : 'Home');
+    return;
+  }
+  if (input === 'touch') {
+    await sendHistoryTouch(page, 'touchstart', 300);
+    await sendHistoryTouch(page, 'touchmove', direction === 'newer' ? 200 : 400);
+  } else await sendHistoryPointer(page, 'pointerdown');
+  await page.getByTestId('conversation-scroll-container').evaluate((element, direction) => {
+    element.scrollTop = direction === 'newer' ? element.scrollHeight : 0;
+  }, direction);
+}
+
+async function expectHistoryGesturePage(
+  page: Page,
+  t: TestContext,
+  label: string,
+  direction: HistoryDirection,
+): Promise<void> {
+  t.diagnostic(`Checking ${label}/${direction}`);
+  try {
+    await page
+      .getByTestId('conversation-stream')
+      .getByText(direction === 'newer' ? 'MIDDLE 0' : 'OLDEST 11', { exact: true })
+      .waitFor();
+  } catch (error) {
+    t.diagnostic(
+      JSON.stringify({
+        label,
+        direction,
+        requests: await page.evaluate('window.requests'),
+        viewport: await page.getByTestId('conversation-scroll-container').evaluate((element) => ({
+          top: element.scrollTop,
+          height: element.scrollHeight,
+          client: element.clientHeight,
+        })),
+      }),
+    );
+    throw error;
+  }
+  assert.equal(
+    await page.evaluate('window.requests.at(-1)'),
+    direction === 'newer' ? 'middle' : 'oldest',
+  );
+}
+
+async function verifyIndependentHistoryGestures(
+  page: Page,
+  t: TestContext,
+  input: HistoryGesture,
+): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  await page.evaluate('window.start()');
+  await page.getByTestId('conversation-stream').getByText('OLDEST 11', { exact: true }).waitFor();
+  for (const direction of ['newer', 'older'] as const) {
+    // Finish the previous page's bounded anchor correction before an independent gesture.
+    await page.evaluate('window.settle(36)');
+    await scroller.evaluate((element, direction) => {
+      element.scrollTop =
+        direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
+    }, direction);
+    await page.evaluate('window.settle()');
+    await dispatchHistoryGesture(page, input, direction);
+    await expectHistoryGesturePage(page, t, input, direction);
+  }
+}
+
+async function verifyTouchReversals(page: Page, t: TestContext): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  for (const direction of ['newer', 'older'] as const) {
+    await page.evaluate('window.settle(36)');
+    await sendHistoryTouch(page, 'touchstart', 300);
+    await sendHistoryTouch(page, 'touchmove', direction === 'newer' ? 500 : 100);
+    await scroller.evaluate((element, direction) => {
+      element.scrollTop =
+        direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
+    }, direction);
+    await page.evaluate('window.settle()');
+    await sendHistoryTouch(page, 'touchmove', direction === 'newer' ? 400 : 200);
+    await scroller.evaluate((element, direction) => {
+      element.scrollTop = direction === 'newer' ? element.scrollHeight : 0;
+    }, direction);
+    await expectHistoryGesturePage(page, t, 'touch reversal', direction);
+  }
+}
+
+async function finishHistoryScrollbarDrag(
+  page: Page,
+  release: 'pointerup' | 'pointercancel',
+): Promise<void> {
+  await page.getByTestId('conversation-scroll-container').evaluate((element, release) => {
+    const rect = element.getBoundingClientRect();
+    const init = { pointerId: 7, clientX: rect.right - 1, clientY: rect.top + 100, bubbles: true };
+    element.dispatchEvent(new PointerEvent('pointermove', { ...init, buttons: 1 }));
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new PointerEvent(release, { ...init, buttons: 0 }));
+  }, release);
+}
+
+async function verifyContinuousScrollbarDrag(
+  page: Page,
+  t: TestContext,
+  release: 'pointerup' | 'pointercancel',
+): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  await page.evaluate('window.start();');
+  await page.evaluate('window.settle(36)');
+  await scroller.evaluate((element) => {
+    element.scrollTop = element.scrollHeight - element.clientHeight - 100;
+  });
+  await sendHistoryPointer(page, 'pointerdown');
+  await scroller.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expectHistoryGesturePage(page, t, 'continuous scrollbar', 'newer');
+  await page.evaluate('window.settle(36)');
+  await finishHistoryScrollbarDrag(page, release);
+  await page.getByTestId('conversation-stream').getByText('NEWEST 11', { exact: true }).waitFor();
+  await page.evaluate('window.settle(36)');
+  const requests = await page.evaluate('window.requests');
+  await sendHistoryPointer(page, 'pointermove');
+  await scroller.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await page.evaluate('window.settle()');
+  assert.deepEqual(
+    await page.evaluate('window.requests'),
+    requests,
+    'a released pointer cannot continue scrollbar paging',
+  );
+}
+
+for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
+  test(
+    `${input} gestures browse history in both directions after programmatic page restoration`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t, input === 'scrollbar');
+      if (input === 'scrollbar')
+        await page.addStyleTag({
+          content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
+        });
+      await verifyIndependentHistoryGestures(page, t, input);
+      if (input === 'touch') await verifyTouchReversals(page, t);
+      if (input === 'scrollbar') {
+        await verifyContinuousScrollbarDrag(page, t, 'pointerup');
+        await verifyContinuousScrollbarDrag(page, t, 'pointercancel');
+      }
+      assert.deepEqual(errors, []);
+    },
+  );
+}

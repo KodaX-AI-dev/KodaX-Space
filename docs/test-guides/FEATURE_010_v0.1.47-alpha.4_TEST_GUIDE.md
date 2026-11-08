@@ -64,3 +64,17 @@ npm run e2e:run -- tests/e2e/settings-modal-interactions.spec.ts --grep="interac
 非 Windows 跳过此原生后台绘制专项，通用启动/绘制场景继续按各平台执行。
 Settings 必须等待异步 policy 控件出现，再核对全部预期名称和无匿名交互控件。
 记录实际 SDK 版本；其他 checkout 升级不能代替当前测试进程的版本核对。
+
+## 历史搜索自动滚动与输入验收（2026-11-08）
+
+```powershell
+node --test --import tsx apps/desktop/renderer/src/shell/conversationHistoryNavigation.browser.test.ts
+```
+
+当前页搜索从页顶定位页尾工具内容时，即使采用 12 倍 CPU 限速，也不得自动读取相邻页。
+全历史结果定位后“返回结果”恢复原页，不因程序滚动多发分页读取。保留原有回到最新、
+延迟读取、会话切换和搜索焦点恢复断言。键盘、触摸、滚动条分别使用隔离 Chromium 页面，
+验证向新/向旧两个方向的用户翻页；滚轮继续由原完整场景覆盖。
+滚动条场景显式启用 headless 默认隐藏的原生轨道，不能用不存在的轨道冒充拖动验收。
+触摸还需覆盖同次手势中途反向；滚动条需覆盖同次按下连续跨页，以及释放、取消后的后续移动不再声明拖动。
+这些是 DOM/浏览器交互契约测试，不代替各 OS 的物理输入设备验收。
