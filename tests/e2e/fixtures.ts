@@ -289,13 +289,16 @@ export async function launchSpace(
     };
     app.on('window', instrumentPage);
     for (const candidate of app.windows()) instrumentPage(candidate);
-    // Electron's bootstrap execution context may be replaced before its first
-    // window exists. Keep early page instrumentation, but wait before Main eval.
+    // Startup observers must run before firstWindow/inspector stabilization can
+    // consume the very first paint interval they are intended to observe.
+    await opts?.onLaunched?.(app);
+    // Electron's bootstrap context may be replaced before its first window.
+    // General Main setup waits for that window; the early startup observer above
+    // owns its retry policy while the first-paint state is still observable.
     await app.firstWindow();
     // Cancel native confirmations; never force success or replace the real
     // Runtime shutdown checks. The boot overlay may still cover the renderer.
     await installNativeDialogCancellation(app);
-    await opts?.onLaunched?.(app);
     const page = await waitForMainRendererPage(app);
     app.off('window', instrumentPage);
     // 关键顺序：先挂 spec 传入的 listeners，再等 domcontentloaded。
