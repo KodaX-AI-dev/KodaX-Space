@@ -116,3 +116,11 @@ Windows 冷启动测试中 Renderer 4.55 秒就绪。确定性延迟 daemon 20 �
 修正后的同一真实成品专项2/2首次通过：公开第二客户端验证首轮前后锁定事实与Agent保持，后续专家/shell与输入断言保留；literal helper仅在可见 @Files 菜单时Escape再发送，新增SDK view原始正文（含换行/路径）一次与两次重复的严格相等断言，保留不同inputId、重载不重复和搜索原文验证。
 
 首次远端Ubuntu build的两个输入器浏览器测试无法启动，错误为缺少chromium_headless_shell。构建工作流新增测试浏览器准备：Linux使用playwright install --with-deps chromium，其余平台安装相同锁定Playwright的chromium；不skip或延长测试。该变更不进入应用或SDK产物。Standards与Spec针对这四文件补审均0项，旧失败保留，新完整成品/远端结果后续追加。
+
+#### 跨平台测试运行环境
+
+后续远端 Linux 构建在浏览器准备阶段明确失败：ubuntu-latest 已为26.04，而锁定 Playwright1.60 的安装器拒绝该系统（unsupported chromium on ubuntu26.04-x64）。build smoke 仅将 Linux 固定为24.04；静态检查、其他平台和 E2E 不改变。保留该失败，不以浏览器安装未执行冒充测试通过。
+
+同时将基线输入器浏览器用例的选择/撤销改为 ControlOrMeta，逐词删除和行首移动按原生 macOS 键位发出。测试仍验证原来的正文、剪贴板、撤销、原子 token 删除和恢复，不改变应用快捷键。Windows 专项1/1通过，macOS 两种架构以最终远端结果为准。
+
+本轮最终冻结提交、成品哈希、Host事实、全部成品用例与远端CI结果统一记录在 [beta.3 最终验收记录](../research/kodax-beta3-space-final-validation.md)。该记录只在对应检查实际完成后填写，不能用门禁跳过或旧版本结果代替。

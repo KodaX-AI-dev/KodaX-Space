@@ -54,7 +54,7 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
     assert.equal(await editor.locator('[data-composer-token]').textContent(), 'demo.ts');
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('output').textContent(), 'Please inspect @src/demo.ts ');
-    await page.keyboard.press('Control+a');
+    await page.keyboard.press('ControlOrMeta+a');
     const copied = await editor.evaluate((element) => {
       const data = new DataTransfer();
       element.dispatchEvent(
@@ -66,7 +66,7 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Backspace');
     assert.equal(await page.locator('output').textContent(), 'Please inspect ');
-    await page.keyboard.press('Control+z');
+    await page.keyboard.press('ControlOrMeta+z');
     await page.waitForFunction(
       () => document.querySelector('output')?.textContent === 'Please inspect @src/demo.ts ',
     );
@@ -75,7 +75,7 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
     await page.getByText('Restore', { exact: true }).click();
     await page.waitForSelector('[data-composer-token]');
     await editor.focus();
-    await page.keyboard.press('Control+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.press('Backspace');
     assert.equal(await page.locator('output').textContent(), '');
     await page.keyboard.type('next');
@@ -103,14 +103,16 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
     assert.equal(await page.locator('output').textContent(), 'Please inspect @src/demo.ts ');
     await page.getByText('Read only', { exact: true }).click();
     await editor.focus();
-    await page.keyboard.press('Control+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.type('one two');
-    await page.keyboard.press('Control+Backspace');
+    await page.keyboard.press(
+      process.platform === 'darwin' ? 'Alt+Backspace' : 'Control+Backspace',
+    );
     assert.equal(await page.locator('output').textContent(), 'one ');
     await page.getByText('Clear', { exact: true }).click();
     await page.getByText('Command', { exact: true }).click();
     assert.equal(await page.locator('output').textContent(), '/help ');
-    await page.keyboard.press('Home');
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowLeft' : 'Home');
     await page.keyboard.press('Delete');
     assert.equal(await editor.locator('[data-composer-token]').count(), 0);
     await page.getByText('Clear', { exact: true }).click();
