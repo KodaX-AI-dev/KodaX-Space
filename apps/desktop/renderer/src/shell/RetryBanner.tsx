@@ -14,10 +14,11 @@
 // (KodaX 已经恢复正常 retry 后继续了)。
 
 import { useEffect, useRef, useState } from 'react';
-import { RotateCw, Timer, X } from 'lucide-react';
+import { RotateCw, Timer } from 'lucide-react';
 import { useAppStore } from '../store/appStore.js';
 import type { SessionEvent } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../i18n/I18nProvider.js';
+import { ComposerNotice } from './ComposerNotice.js';
 
 const EMPTY_EVENTS: readonly SessionEvent[] = [];
 
@@ -71,39 +72,6 @@ function findActiveBannerRaw(events: readonly SessionEvent[]): BannerRaw | null 
     }
   }
   return null;
-}
-
-interface BannerDismissButtonProps {
-  readonly tone: 'warning' | 'run';
-  readonly onDismiss: () => void;
-}
-
-function BannerDismissButton({ tone, onDismiss }: BannerDismissButtonProps): JSX.Element {
-  const { t } = useI18n();
-  const toneClass =
-    tone === 'warning'
-      ? 'text-warn/80 hover:bg-warn/20 hover:text-warn'
-      : 'text-run/80 hover:bg-run/20 hover:text-run';
-
-  // inset-y-0 pins the button to the banner's interior height (top:0/bottom:0) so the
-  // hover highlight always fills the row exactly — no JS height measurement, no
-  // top-1/2/-translate rounding against border-box vs padding-box (which left the
-  // square floating high above the text). Fixed width keeps a stable click target.
-  return (
-    <button
-      type="button"
-      onClick={onDismiss}
-      className={[
-        'absolute inset-y-0 right-0 inline-flex w-7 items-center justify-center',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-current',
-        toneClass,
-      ].join(' ')}
-      title={t('retry.dismiss')}
-      aria-label={t('retry.dismissAria')}
-    >
-      <X className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-    </button>
-  );
 }
 
 export function RetryBanner(): JSX.Element | null {
@@ -179,47 +147,34 @@ export function RetryBanner(): JSX.Element | null {
     const reasonLabel =
       banner.reason === 'rate-limit' ? t('retry.rateLimited') : t('retry.providerOverloaded');
     return (
-      <div
+      <ComposerNotice
         ref={bannerRootRef}
-        className={[
-          'relative pl-3 pr-7 py-1 text-xs flex items-center gap-2 border-t border-b font-mono',
-          'text-warn bg-warn/15 border-warn/40',
-        ].join(' ')}
+        tone="warning"
+        icon={Timer}
         role="status"
-        aria-live="polite"
+        meta={t('retry.attempt', { attempt: banner.attempt, max: banner.maxAttempts })}
+        onDismiss={dismissActiveBanner}
+        dismissLabel={t('retry.dismissAria')}
       >
-        <Timer className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} aria-hidden />
-        <span>
-          {reasonLabel}
-          {banner.provider ? t('retry.byProvider', { provider: banner.provider }) : ''} ·{' '}
-          {t('retry.retryingIn', { seconds: remainSec })}
-        </span>
-        <span className="text-warn/80 dark:text-warn/60 ml-auto">
-          {t('retry.attempt', { attempt: banner.attempt, max: banner.maxAttempts })}
-        </span>
-        <BannerDismissButton tone="warning" onDismiss={dismissActiveBanner} />
-      </div>
+        {reasonLabel}
+        {banner.provider ? t('retry.byProvider', { provider: banner.provider }) : ''} ·{' '}
+        <span className="tnum">{t('retry.retryingIn', { seconds: remainSec })}</span>
+      </ComposerNotice>
     );
   }
 
   // recovery: 显示 recovery action + attempt
   return (
-    <div
+    <ComposerNotice
       ref={bannerRootRef}
-      className={[
-        'relative pl-3 pr-7 py-1 text-xs flex items-center gap-2 border-t border-b font-mono',
-        'text-run bg-run/15 border-run/40',
-        'dark:text-run/90 dark:bg-run/15 dark:border-run/30',
-      ].join(' ')}
+      tone="info"
+      icon={RotateCw}
       role="status"
-      aria-live="polite"
+      meta={t('retry.attempt', { attempt: banner.attempt, max: banner.maxAttempts })}
+      onDismiss={dismissActiveBanner}
+      dismissLabel={t('retry.dismissAria')}
     >
-      <RotateCw className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} aria-hidden />
-      <span>{t('retry.recovery', { action: banner.recoveryAction ?? '' })}</span>
-      <span className="text-run/80 dark:text-run/60 ml-auto">
-        {t('retry.attempt', { attempt: banner.attempt, max: banner.maxAttempts })}
-      </span>
-      <BannerDismissButton tone="run" onDismiss={dismissActiveBanner} />
-    </div>
+      {t('retry.recovery', { action: banner.recoveryAction ?? '' })}
+    </ComposerNotice>
   );
 }

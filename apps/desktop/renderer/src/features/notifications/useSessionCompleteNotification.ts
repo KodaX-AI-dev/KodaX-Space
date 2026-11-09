@@ -10,6 +10,7 @@ import {
   type CompletionPromptOwner,
 } from './sessionCompleteNotificationModel.js';
 import { isCancelledSessionError } from '../session/sessionError.js';
+import { translateMessage } from '../../i18n/I18nProvider.js';
 
 type ActivePromptRecord = CompletionPromptOwner;
 
@@ -133,18 +134,17 @@ async function maybeNotify(input: {
   const session = input.sessions.find((s) => s.sessionId === input.sessionId);
   const title = session?.title ?? 'KodaX Space';
   const elapsedLabel = formatElapsed(now - input.startedAt);
-  const body =
-    input.outcome === 'complete'
-      ? `Session done - ${elapsedLabel}`
-      : `Session failed - ${elapsedLabel}`;
+  // The in-app notice only shows inside its own Session, so the title would be redundant there;
+  // the OS notification carries it as its title.
+  const body = translateMessage(
+    input.outcome === 'complete' ? 'notification.sessionDone' : 'notification.sessionFailed',
+    { elapsed: elapsedLabel },
+  );
 
   useAppStore.getState().pushNotification({
     id: `session-terminal:${input.sessionId}:${input.startedAt}:${input.outcome}`,
-    severity: input.outcome === 'complete' ? 'info' : 'error',
-    text:
-      input.outcome === 'complete'
-        ? `Session done: ${title} (${elapsedLabel})`
-        : `Session failed: ${title} (${elapsedLabel})`,
+    severity: input.outcome === 'complete' ? 'success' : 'error',
+    text: body,
     sessionId: input.sessionId,
     createdAt: now,
     dismissOnOutsideInteraction: true,

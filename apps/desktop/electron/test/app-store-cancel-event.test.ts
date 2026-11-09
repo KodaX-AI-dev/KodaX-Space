@@ -2366,22 +2366,36 @@ test('forkSessionBuffers copies local notices without adding user turns', () => 
   );
 });
 
+/** Notice copy follows the system languages; pin them so assertions never depend on the host OS. */
+function withSystemLanguages<T>(languages: readonly string[], run: () => T): T {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'languages');
+  Object.defineProperty(navigator, 'languages', { value: languages, configurable: true });
+  try {
+    return run();
+  } finally {
+    if (original) Object.defineProperty(navigator, 'languages', original);
+    else delete (navigator as { languages?: readonly string[] }).languages;
+  }
+}
+
 test('appendEvent turns todo drift warnings into session notifications', () => {
   const store = useAppStore.getState();
-  store.appendEvent({
-    kind: 'todo_drift_warning',
-    sessionId: SID,
-    warning: {
-      kind: 'work_started_without_claimed_todo',
-      toolName: 'write',
-      toolCallId: 'tool_1',
-      count: 1,
-      pendingCount: 2,
-      openCount: 2,
-      firstPendingTodoId: 'todo_1',
-      firstPendingTodoSubject: 'Update tests',
-    },
-  });
+  withSystemLanguages(['en-US'], () =>
+    store.appendEvent({
+      kind: 'todo_drift_warning',
+      sessionId: SID,
+      warning: {
+        kind: 'work_started_without_claimed_todo',
+        toolName: 'write',
+        toolCallId: 'tool_1',
+        count: 1,
+        pendingCount: 2,
+        openCount: 2,
+        firstPendingTodoId: 'todo_1',
+        firstPendingTodoSubject: 'Update tests',
+      },
+    }),
+  );
 
   const state = useAppStore.getState();
   const events = state.eventsBySession[SID] ?? [];

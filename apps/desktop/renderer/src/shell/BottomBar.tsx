@@ -53,6 +53,7 @@ import { AgentModeSelector, PartnerWorkModeIndicator } from './AgentModeSelector
 import { RetryBanner } from './RetryBanner.js';
 import { AskUserDockBar } from '../features/ask-user/AskUserInline.js';
 import { NotificationsSurface } from './NotificationsSurface.js';
+import { ComposerNotice } from './ComposerNotice.js';
 import { pushToast } from '../store/toastStore.js';
 import { sessionMatchesScope } from '../lib/sessionScope.js';
 import { shouldActivateSessionForCurrentScope } from '../lib/sessionActivation.js';
@@ -2631,11 +2632,20 @@ export function BottomBar(): JSX.Element {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      {err && <div className="text-danger text-xs font-mono px-1">{err}</div>}
+      {err && (
+        <ComposerNotice
+          tone="danger"
+          role="alert"
+          onDismiss={() => setErr(null)}
+          dismissLabel={t('notification.dismissAria')}
+        >
+          {err}
+        </ComposerNotice>
+      )}
       {!err && currentRuntimePhase === 'unknown' && (
-        <div role="status" className="text-warn text-xs px-1">
+        <ComposerNotice tone="warning" role="status">
           {t('bottom.runUnconfirmed')}
-        </div>
+        </ComposerNotice>
       )}
 
       <NotificationsSurface />

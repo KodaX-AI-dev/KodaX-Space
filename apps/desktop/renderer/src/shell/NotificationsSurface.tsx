@@ -10,23 +10,17 @@
 //
 // session 过滤: notice.sessionId 与 currentSessionId 不匹配且非全局 (undefined sessionId) 时不显示。
 
-import { X } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '../store/appStore.js';
 import type { Notification } from '../store/appStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
+import { ComposerNotice, type ComposerNoticeTone } from './ComposerNotice.js';
 
-// 双主题色: 暗模式延续原 zinc-900 衬底家族,亮模式用深色文字 + 浅暖/冷衬底保证对比度。
-// 选择 deep-700/800 文字色 + light-100/70 衬底是为了 WCAG AA (4.5:1) 以上对比。
-const SEVERITY_BG: Record<Notification['severity'], string> = {
-  info: 'text-run bg-run/15 border-run/40',
-  warning: 'text-warn bg-warn/15 border-warn/40',
-  error: 'text-danger bg-danger/15 border-danger/40',
-};
-const SEVERITY_ICON: Record<Notification['severity'], string> = {
-  info: 'ℹ',
-  warning: '⚠',
-  error: '✖',
+const SEVERITY_TONE: Record<Notification['severity'], ComposerNoticeTone> = {
+  success: 'success',
+  info: 'info',
+  warning: 'warning',
+  error: 'danger',
 };
 
 interface NotificationRowProps {
@@ -37,25 +31,15 @@ interface NotificationRowProps {
 function NotificationRow({ notification, onDismiss }: NotificationRowProps): JSX.Element {
   const { t } = useI18n();
   return (
-    <div
-      data-testid="notification-row"
-      data-notification-id={notification.id}
-      className={`rounded border px-2 py-1 text-xs flex items-start gap-2 ${SEVERITY_BG[notification.severity]}`}
-    >
-      <span aria-hidden className="mt-px">
-        {SEVERITY_ICON[notification.severity]}
-      </span>
-      <span className="min-w-0 flex-1 break-words leading-snug">{notification.text}</span>
-      <button
-        type="button"
-        data-testid="notification-dismiss"
-        onClick={() => onDismiss(notification.id)}
-        className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary"
-        title={t('notification.dismiss')}
-        aria-label={t('notification.dismissAria')}
+    <div data-notification-id={notification.id} data-testid="notification-row">
+      <ComposerNotice
+        tone={SEVERITY_TONE[notification.severity]}
+        onDismiss={() => onDismiss(notification.id)}
+        dismissLabel={t('notification.dismissAria')}
+        dismissTestId="notification-dismiss"
       >
-        <X className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-      </button>
+        {notification.text}
+      </ComposerNotice>
     </div>
   );
 }

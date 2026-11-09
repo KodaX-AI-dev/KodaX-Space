@@ -184,7 +184,7 @@ export type SessionProviderCacheDiagnostic = Extract<
  */
 export interface Notification {
   readonly id: string;
-  readonly severity: 'info' | 'warning' | 'error';
+  readonly severity: 'success' | 'info' | 'warning' | 'error';
   readonly text: string;
   readonly sessionId?: string;
   readonly createdAt: number;
@@ -8577,15 +8577,18 @@ export const useAppStore = create<AppState>((setState) => {
             next.notifications = notificationsWithoutLegacyDrift;
           } else {
             const subject = event.warning.firstPendingTodoSubject
-              ? ` Pending item: "${event.warning.firstPendingTodoSubject.slice(0, 120)}".`
+              ? translateMessage('notification.todoDriftSubject', {
+                  subject: event.warning.firstPendingTodoSubject.slice(0, 120),
+                })
               : '';
             next.notifications = pushNotificationLocal(notificationsWithoutLegacyDrift, {
               id: driftNoticeId,
               severity: 'info',
-              text:
-                `Todo list drift detected while running ${event.warning.toolName}: ` +
-                `${event.warning.pendingCount} pending item(s), none marked in progress.` +
-                `${subject} KodaX nudged the agent to update todos.`,
+              text: translateMessage('notification.todoDrift', {
+                tool: event.warning.toolName,
+                pending: event.warning.pendingCount,
+                subject,
+              }),
               sessionId: event.sessionId,
               createdAt: Date.now(),
               dismissOnOutsideInteraction: true,
