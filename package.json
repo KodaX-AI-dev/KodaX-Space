@@ -50,6 +50,7 @@
     "test:release": "npm run skills:check && node scripts/test/warm-kodax-native-artifacts.mjs && node --test --test-timeout=300000 --test-force-exit scripts/test/*.test.mjs",
     "e2e": "npm run build:smoke && npm run e2e:run",
     "e2e:run": "node scripts/e2e-run.mjs",
+    "test:perf-baseline": "npm run build:smoke && node scripts/perf-baseline.mjs",
     "e2e:headed": "playwright test --headed",
     "postinstall": "electron-builder install-app-deps && node scripts/ensure-node-pty-helpers.mjs",
     "smoke:boot": "node e2e/boot-smoke-packaged.mjs",
