@@ -1,5 +1,7 @@
 # KodaX Space 运行与开发指南
 
+> 2026-11-09 发布准备：版本基线更新为 Space `0.1.47-alpha.5` / npm Registry `@kodax-ai/kodax@0.7.97-beta.4`，四个 workspace 与 lockfile 统一版本。当前公共接口以 [beta.4 适配](releases/kodax-beta4-space-adaptation.md)为准；发布门与验证状态见 [alpha.5 发布记录](releases/v0.1.47-alpha.5-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。
+
 > 2026-11-05 工作树更新：SDK 已锁定正式 Registry `0.7.97-beta.2`，当前实现与验收以 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md) 为准；下列 alpha.4/beta.1 基线是已发布版本记录，本轮不替换公开标签或安装包。Workflow 作为用户显式单次功能，不再提供保存、修改等管理。
 
 > 更新日期：2026-11-04。版本基线为 Space `0.1.47-alpha.4` / npm Registry `@kodax-ai/kodax@0.7.97-beta.1`。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；发布门与验证状态见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)，SDK 接缝和外部验证限制单独保留。

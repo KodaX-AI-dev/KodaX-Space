@@ -32,7 +32,7 @@
 
 ### 下载安装包
 
-稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，仍为 `v0.1.46`；本轮预发布目标为 [`v0.1.47-alpha.4`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.4)，实际发布与验收状态以[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)为准，源码就绪不代表已发布。预发布不替代稳定版更新。
+稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，仍为 `v0.1.46`；本轮预发布目标为 [`v0.1.47-alpha.5`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.5)，实际发布与验收状态以[发布记录](docs/releases/v0.1.47-alpha.5-release-readiness.md)为准，源码就绪不代表已发布。预发布不替代稳定版更新。
 
 | 平台    | 安装包                                            |
 | ------- | ------------------------------------------------- |
@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前工作树精确依赖 Registry SDK `0.7.97-beta.4`。** 适配见 [beta.4 接入记录](docs/releases/kodax-beta4-space-adaptation.md)，此前验收见 [beta.3 接入记录](docs/releases/kodax-beta3-space-adaptation.md)。已发布的 Space `0.1.47-alpha.4` 使用 beta.1 原始构建，其[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)记录当次验收。Root/Desktop 使用同一 SDK，lockfile 和成品门禁核验 Registry 字节。
+**当前工作树精确依赖 Registry SDK `0.7.97-beta.4`。** 适配见 [beta.4 接入记录](docs/releases/kodax-beta4-space-adaptation.md)，此前验收见 [beta.3](docs/releases/kodax-beta3-space-adaptation.md)与[beta.2](docs/releases/kodax-beta2-space-adaptation.md)接入记录。已发布的 Space `0.1.47-alpha.4` 使用 beta.1 原始构建，其[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)记录当次验收。Root/Desktop 使用同一 SDK，lockfile 和成品门禁核验 Registry 字节。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。
@@ -100,11 +100,11 @@ npm run dev
 
 Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS ad-hoc 构建没有 Developer ID 或公证，仍需手动下载 DMG 更新。Partner 经共享 Host 使用 Agent 模式，保留内置库、shell/write/子 Agent 和外部账号验收边界。
 
-见[本次发布准备](docs/releases/v0.1.47-alpha.4-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
+见[本次发布准备](docs/releases/v0.1.47-alpha.5-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
 
 ## 当前正式版本
 
-最新稳定版为 [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46)（2026-10-06），精确依赖稳定 KodaX `0.7.96`。本轮 alpha.4 预发布使用 SDK beta.1；稳定版仍为 v0.1.46。
+最新稳定版为 [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46)（2026-10-06），精确依赖稳定 KodaX `0.7.96`。本轮 alpha.5 预发布使用 SDK beta.4；稳定版仍为 v0.1.46。
 
 先前 Partner beta.3 的 Release 已撤回，tag 和原验收记录保留为历史；后续稳定版与本候选继续包含现有 Partner 集成。完整版本变化见 [CHANGELOG](CHANGELOG.md)。
 

@@ -32,7 +32,7 @@
 
 ### Download a release
 
-Preview target and release status: [`v0.1.47-alpha.4`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.4), subject to the [qualification record](docs/releases/v0.1.47-alpha.4-release-readiness.md). Stable downloads remain [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest); prereleases do not replace stable updates.
+Preview target and release status: [`v0.1.47-alpha.5`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-alpha.5), subject to the [qualification record](docs/releases/v0.1.47-alpha.5-release-readiness.md). Stable downloads remain [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest); prereleases do not replace stable updates.
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |
@@ -40,7 +40,7 @@ Preview target and release status: [`v0.1.47-alpha.4`](https://github.com/KodaX-
 | macOS    | Intel / Apple Silicon `.dmg`                            |
 | Linux    | `AppImage` and `.deb`                                   |
 
-Windows builds remain unsigned; macOS alpha.4 bundles use ad-hoc signing without Developer ID or notarization. On first launch, Windows SmartScreen or macOS Gatekeeper may ask for manual confirmation. Only install builds from a trusted KodaX-AI distribution channel.
+Windows builds remain unsigned; macOS bundles use ad-hoc signing without Developer ID or notarization. On first launch, Windows SmartScreen or macOS Gatekeeper may ask for manual confirmation. Only install builds from a trusted KodaX-AI distribution channel.
 
 ### Run from source
 
@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**The working tree pins Registry SDK `0.7.97-beta.4` exactly.** See [beta.4 adaptation](docs/releases/kodax-beta4-space-adaptation.md) and the earlier [beta.3 acceptance](docs/releases/kodax-beta3-space-adaptation.md). The published Space `0.1.47-alpha.4` uses the original beta.1 build; its [qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md) records that release. Root and Desktop resolve the same SDK; package gates verify Registry integrity.
+**The working tree pins Registry SDK `0.7.97-beta.4` exactly.** See the [beta.4 adaptation](docs/releases/kodax-beta4-space-adaptation.md) and the earlier [beta.3](docs/releases/kodax-beta3-space-adaptation.md) / [beta.2](docs/releases/kodax-beta2-space-adaptation.md) integration records. The published Space `0.1.47-alpha.4` uses the original beta.1 build; its [qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md) records that release. Root and Desktop resolve the same SDK; package gates verify Registry integrity.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.
@@ -100,11 +100,11 @@ npm run dev
 
 Existing sandbox, credential and exit boundaries remain in effect. macOS ad-hoc builds remain unnotarized and require a manual DMG update. Partner uses the shared Host in Agent mode, bundled library and explicit external-account acceptance limits.
 
-See [release preparation](docs/releases/v0.1.47-alpha.4-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
+See [release preparation](docs/releases/v0.1.47-alpha.5-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
 
 ## Current Release
 
-The latest stable release is [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46), published on 2026-10-06 with stable KodaX `0.7.96`. The alpha.4 target's qualification and publication status are tracked in the links above; source readiness alone does not establish publication.
+The latest stable release is [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.46), published on 2026-10-06 with stable KodaX `0.7.96`. The alpha.5 target's qualification and publication status are tracked in the links above; source readiness alone does not establish publication.
 
 The earlier Partner beta.3 Release was withdrawn; its tag and acceptance records remain historical. Later stable builds and this candidate retain the existing Partner integration. See [CHANGELOG](CHANGELOG.md) for the version history.
 
