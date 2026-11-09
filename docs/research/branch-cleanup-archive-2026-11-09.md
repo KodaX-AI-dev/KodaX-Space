@@ -1,6 +1,6 @@
 # 分支清理归档清单（2026-11-09）
 
-初始比较基线 `a26a73d2`。领先/落后描述 Git 拓扑，不等同于需要合并的功能数量。以下清理已获本轮方案授权；表中引用在删除前逐项核对，未合并的旧提交先保存在远端归档标签。当前状态：归档已创建，等待最终代码验收后删除过时分支。
+初始比较基线 `a26a73d2`。领先/落后描述 Git 拓扑，不等同于需要合并的功能数量。以下清理已获本轮方案授权；表中引用在删除前逐项核对，未合并的旧提交先保存在远端归档标签。当前状态：代码及 Windows 成品验收通过，过时分支已按下表完成清理。
 
 ## 保留范围
 
@@ -68,4 +68,11 @@ git switch -c codex/recovered-alpha4-prep archive/2026-11-09/backup/local-alpha4
 
 ## 执行核验
 
-待最终验收与清理执行后记录实际数量、远端引用核验和主线同步结果。
+- 实际删除 **10 个本地分支、21 个远端分支**。表中为初始 30 条引用，另含验收完成后本轮临时分支 `codex/continuous-history-recovery`（最终 HEAD `9624891bda8bb8db8be59bce530345b4ec8d37db`，已快进到 main）。
+- **18 个远端归档标签**逐项解引用后均与原 HEAD 完全一致，删除后再次核对仍可恢复。已合并的条目逐项确认是 main 祖先。
+- 远端删除以原 HEAD 为条件，使用 atomic push 与逐引用 lease，阻止并发改写被误删。当前无开放 PR。
+- 本地删除以完整原 SHA 做事务校验，排除全部占用工作树。第一次本地事务被 Windows 文本模式的 CRLF 拒绝，未删除本地引用；改为 LF 二进制输入，重新核对后事务整体成功。
+- 删除后重新获取远端并核对：本地只保留 main、dev、alpha4-release-final、ci-release-optimization、queue-history-recovery；远端只保留 main、dev、ci-release-optimization、queue-history-recovery、Partner maintenance。
+- 另一个线程的 alpha4-release-final 仍为 `ce15d123`，其他两个工作树分别仍为 `19521bf3`、`ea3c64f0`，没有移除或归档工作树。主线已快进接入全部验收代码；远端同步由本轮收尾检查确认。
+
+清理结果和精确引用保存在忽略目录 `artifacts/diagnostics/branch-cleanup-result.json`，恢复只需上表的标签或完整 HEAD，不依赖临时脚本。

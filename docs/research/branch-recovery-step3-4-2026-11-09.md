@@ -38,6 +38,12 @@ npm run e2e:run -- tests/e2e/sdk-history-navigation.spec.ts tests/e2e/user-query
 
 日志：`artifacts/diagnostics/step3-{typecheck,lint,full-tests,build,e2e-source-initial,query-e2e-final,pack}.log`。额外成品日志为 `artifacts/diagnostics/step3-e2e-packaged.log`。冷启动 Renderer 5,094 ms 就绪，Runtime 在确定性延迟后 26,479 ms 就绪，122 条历史子进程记录保留。所有场景使用隔离桌面、临时资料与本地 Provider，没有真实连接器账号或远端文档操作，也未做本轮 macOS/Linux 实机验收。
 
+## 清理结果
+
+已删除 10 个本地、21 个远端过时分支；18 个远端归档标签均核对完整 SHA，四份研究原文保留。main 已快进接入全部验收代码；本轮临时开发分支已删除，提交由 main 保持可达。清理不改写 main 历史。
+
+保留的本地分支为 main、dev、codex/alpha4-release-final、codex/ci-release-optimization、codex/queue-history-recovery；远端保留 main、dev、两条工作树分支及 feature/partner-maintenance-20260917。保护分支和三个现有工作树的 HEAD 与初始记录一致。工作区原有 design-demos/ 仍未提交。
+
 ## Standards
 
 初审发现应用内 sessions 帮助主题未同步（CONTRIBUTING.md 文档条款），已在 `0ee42f7d` 补齐，11 项主题测试通过。独立复核剩余规范问题 0，坏味道发现 0，最高严重项无。只读审查范围 `a26a73d2...d5b7c0e7` 加帮助文档补充；不替代自动化验收。
