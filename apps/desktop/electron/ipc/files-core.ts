@@ -48,7 +48,7 @@ export function toPosixRelative(absolute: string, root: string): string {
 }
 
 /**
- * 解析 relativePath 到 projectRoot 子树内绝对路径；走 path.resolve + realpath + prefix 三重检查。
+ * 解析路径到 projectRoot 子树内绝对路径；走 path.resolve + realpath + prefix 三重检查。
  *
  * 入参里 projectRoot 假定已是 OS-absolute（caller 应当先 validateProjectRoot）。函数内仍会
  * realpath 一次 root 本身——抓"projectRoot 自身是 symlink 指向其他位置"的情况。
@@ -63,7 +63,8 @@ export async function resolveInsideProject(
   const realRoot = await fs.realpath(validatedRoot);
 
   const trimmed = relativePath.replace(/^[\\/]+/, '').replace(/[\\/]+$/, '');
-  const target = path.resolve(realRoot, trimmed);
+  const target =
+    absolutePathInRoot(relativePath, validatedRoot, realRoot) ?? path.resolve(realRoot, trimmed);
 
   if (!isPathInside(target, realRoot)) {
     throw new Error(`path escapes projectRoot: ${truncate(relativePath)}`);
@@ -82,6 +83,24 @@ export async function resolveInsideProject(
     throw new Error(`path escapes projectRoot via symlink: ${truncate(relativePath)}`);
   }
   return realTarget;
+}
+
+/**
+ * Absolute paths already inside the project (stored workspace Artifact paths) keep their location,
+ * mapped onto the real root. Stripping the leading `/` would reroot a POSIX path under the project.
+ * Every other input keeps the project-rooted reading.
+ */
+function absolutePathInRoot(
+  input: string,
+  validatedRoot: string,
+  realRoot: string,
+): string | undefined {
+  if (!path.isAbsolute(input)) return undefined;
+  const absolute = path.resolve(input);
+  for (const root of [realRoot, validatedRoot]) {
+    if (isPathInside(absolute, root)) return path.join(realRoot, path.relative(root, absolute));
+  }
+  return undefined;
 }
 
 /** 递归遍历 dir 拿子节点列表，dir 排在 file 前面、同类按 name 排序。
