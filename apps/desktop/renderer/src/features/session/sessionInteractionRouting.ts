@@ -14,16 +14,16 @@ export interface AttentionItemOptions<T> {
   readonly maxVisible: number;
   readonly currentId: string | null;
   readonly getId: (item: T) => string;
-  readonly isAwaiting: (item: T) => boolean;
+  readonly needsAttention: (item: T) => boolean;
 }
 
 /**
- * Keep the selected Session visible, then surface background Sessions that need human input before
- * filling the remaining capped rows in their original order.
+ * Keep the selected Session visible, then surface background Sessions that need the user (awaiting
+ * input, failed, or finished unread) before filling the remaining capped rows in their original order.
  */
 export function prioritizeAttentionItems<T>(
   items: readonly T[],
-  { maxVisible, currentId, getId, isAwaiting }: AttentionItemOptions<T>,
+  { maxVisible, currentId, getId, needsAttention }: AttentionItemOptions<T>,
 ): readonly T[] {
   if (maxVisible <= 0) return [];
   if (items.length <= maxVisible) return items;
@@ -34,12 +34,12 @@ export function prioritizeAttentionItems<T>(
     currentId !== null &&
     !headIds.has(currentId) &&
     items.some((item) => getId(item) === currentId);
-  const awaitingIsHidden = items.some((item) => isAwaiting(item) && !headIds.has(getId(item)));
-  if (!currentIsHidden && !awaitingIsHidden) return head;
+  const attentionIsHidden = items.some((item) => needsAttention(item) && !headIds.has(getId(item)));
+  if (!currentIsHidden && !attentionIsHidden) return head;
 
   const prioritized = [
     ...(currentId === null ? [] : items.filter((item) => getId(item) === currentId)),
-    ...items.filter((item) => getId(item) !== currentId && isAwaiting(item)),
+    ...items.filter((item) => getId(item) !== currentId && needsAttention(item)),
     ...items,
   ];
   const seen = new Set<string>();

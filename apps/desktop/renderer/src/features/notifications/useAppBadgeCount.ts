@@ -1,22 +1,24 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../../store/appStore.js';
+import { sessionAttentionKind } from '../session/sessionAttention.js';
+import {
+  SESSION_STATUS_STATE_KEYS,
+  selectSessionStatuses,
+  type SessionStatusState,
+} from '../session/useSessionStatus.js';
 import { countAttentionSessions } from './appBadgeModel.js';
 
-interface BadgeSessionFlags {
-  readonly pinned?: boolean;
-  readonly archived?: boolean;
-  readonly unread?: boolean;
-}
+type AppSnapshot = ReturnType<typeof useAppStore.getState>;
 
-interface BadgeInteractionRequest {
-  readonly sessionId: string;
-}
+const BADGE_STATE_KEYS = [
+  ...SESSION_STATUS_STATE_KEYS,
+  'sessions',
+  'currentSessionId',
+  'sessionFlags',
+] as const satisfies readonly (keyof AppSnapshot)[];
 
-export interface AppBadgeStoreState {
-  readonly sessionFlags: Readonly<Record<string, BadgeSessionFlags | undefined>>;
-  readonly permissionQueue: readonly BadgeInteractionRequest[];
-  readonly askUserQueue: readonly BadgeInteractionRequest[];
-}
+export type AppBadgeStoreState = SessionStatusState &
+  Pick<AppSnapshot, 'sessions' | 'currentSessionId' | 'sessionFlags'>;
 
 const MAX_APP_BADGE_COUNT = 9999;
 
@@ -27,18 +29,27 @@ interface AppBadgeStore {
   ): () => void;
 }
 
+/** Same rule as the sidebar project summary, so the badge and the sidebar never disagree. */
+function errorSessionIds(state: AppBadgeStoreState): string[] {
+  const ids = state.sessions.map((session) => session.sessionId);
+  const statuses = selectSessionStatuses(state, ids);
+  return ids.filter(
+    (sessionId) =>
+      sessionAttentionKind({
+        status: statuses[sessionId] ?? 'idle',
+        unread: state.sessionFlags[sessionId]?.unread === true,
+        isCurrent: sessionId === state.currentSessionId,
+      }) === 'error',
+  );
+}
+
 export function subscribeAppBadgeCount(
   store: AppBadgeStore,
   setCount: (count: number) => void,
 ): () => void {
   let lastCount: number | undefined;
   const sync = (state: AppBadgeStoreState, previousState?: AppBadgeStoreState): void => {
-    if (
-      previousState &&
-      state.sessionFlags === previousState.sessionFlags &&
-      state.permissionQueue === previousState.permissionQueue &&
-      state.askUserQueue === previousState.askUserQueue
-    ) {
+    if (previousState && BADGE_STATE_KEYS.every((key) => state[key] === previousState[key])) {
       return;
     }
     const count = Math.min(
@@ -46,6 +57,7 @@ export function subscribeAppBadgeCount(
         sessionFlags: state.sessionFlags,
         permissionRequests: state.permissionQueue,
         askUserRequests: state.askUserQueue,
+        errorSessionIds: errorSessionIds(state),
       }),
       MAX_APP_BADGE_COUNT,
     );

@@ -40,7 +40,7 @@ interface SessionStub {
 }
 
 const sessionId = (session: SessionStub): string => session.id;
-const isAwaiting = (session: SessionStub): boolean => session.awaiting === true;
+const needsAttention = (session: SessionStub): boolean => session.awaiting === true;
 
 test('prioritizeAttentionItems keeps the selected Session first and surfaces waiting Sessions', () => {
   const sessions: readonly SessionStub[] = [
@@ -56,7 +56,7 @@ test('prioritizeAttentionItems keeps the selected Session first and surfaces wai
     maxVisible: 3,
     currentId: 'selected',
     getId: sessionId,
-    isAwaiting,
+    needsAttention,
   });
 
   assert.deepEqual(
@@ -77,7 +77,7 @@ test('prioritizeAttentionItems preserves a visible prefix when all attention ite
     maxVisible: 3,
     currentId: 'selected',
     getId: sessionId,
-    isAwaiting,
+    needsAttention,
   });
 
   assert.deepEqual(
@@ -93,7 +93,7 @@ test('prioritizeAttentionItems preserves the original list when no cap is exceed
     maxVisible: 5,
     currentId: 'b',
     getId: sessionId,
-    isAwaiting,
+    needsAttention,
   });
 
   assert.equal(visible, sessions);
@@ -107,7 +107,7 @@ test('prioritizeAttentionItems supports an empty visible cap', () => {
       maxVisible: 0,
       currentId: 'a',
       getId: sessionId,
-      isAwaiting,
+      needsAttention,
     }),
     [],
   );

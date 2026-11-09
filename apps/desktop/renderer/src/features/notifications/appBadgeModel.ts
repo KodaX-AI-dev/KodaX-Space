@@ -12,6 +12,7 @@ export interface AttentionBadgeInput {
   readonly sessionFlags: Readonly<Record<string, AttentionSessionFlags | undefined>>;
   readonly permissionRequests: readonly AttentionRequest[];
   readonly askUserRequests: readonly AttentionRequest[];
+  readonly errorSessionIds: readonly string[];
 }
 
 export function countAttentionSessions(input: AttentionBadgeInput): number {
@@ -21,5 +22,6 @@ export function countAttentionSessions(input: AttentionBadgeInput): number {
   }
   for (const request of input.permissionRequests) sessionIds.add(request.sessionId);
   for (const request of input.askUserRequests) sessionIds.add(request.sessionId);
+  for (const sessionId of input.errorSessionIds) sessionIds.add(sessionId);
   return sessionIds.size;
 }

@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { countAttentionSessions } from './appBadgeModel.js';
 
-test('attention badge counts unique unread and action-required Sessions', () => {
+test('attention badge counts unique unread, failed and action-required Sessions', () => {
   assert.equal(
     countAttentionSessions({
       sessionFlags: {
@@ -13,8 +13,9 @@ test('attention badge counts unique unread and action-required Sessions', () => 
       },
       permissionRequests: [{ sessionId: 'permission' }, { sessionId: 'overlap' }],
       askUserRequests: [{ sessionId: 'question' }, { sessionId: 'overlap' }],
+      errorSessionIds: ['failed', 'overlap'],
     }),
-    4,
+    5,
   );
 });
 
@@ -27,6 +28,7 @@ test('attention badge ignores unrelated flags and repeated requests in one Sessi
       },
       permissionRequests: [{ sessionId: 'same' }, { sessionId: 'same' }],
       askUserRequests: [{ sessionId: 'same' }],
+      errorSessionIds: [],
     }),
     1,
   );

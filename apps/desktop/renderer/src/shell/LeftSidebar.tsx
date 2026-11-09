@@ -48,6 +48,8 @@ import { SidebarFooter } from './SidebarFooter.js';
 import { useSessionStatusMap, type SessionStatus } from '../features/session/useSessionStatus.js';
 import { SessionAwaitingIndicator } from '../features/session/SessionAwaitingIndicator.js';
 import { prioritizeAttentionItems } from '../features/session/sessionInteractionRouting.js';
+import { sessionAttentionKind, summarizeAttention } from '../features/session/sessionAttention.js';
+import { ProjectAttentionBadge } from './ProjectAttentionBadge.js';
 import { pushToast } from '../store/toastStore.js';
 import type { Project } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../i18n/I18nProvider.js';
@@ -422,6 +424,7 @@ function ProjectTree({
     (sid: string): SessionStatus => statusMap[sid] ?? 'idle',
     [statusMap],
   );
+  const sessionFlags = useAppStore((s) => s.sessionFlags);
 
   // RenameInput fences Enter + blur so a rename sends exactly one mutation.
   const onRenameCommit = useCallback(
@@ -467,10 +470,18 @@ function ProjectTree({
       (acc, s) => (statusMap[s.sessionId] === 'running' ? acc + 1 : acc),
       0,
     );
-    const awaitingCount = projSessions.reduce(
-      (acc, s) => (statusMap[s.sessionId] === 'awaiting' ? acc + 1 : acc),
-      0,
-    );
+    // 折叠时项目行汇总"需要你"的 session（待确认 > 出错 > 完成未读），打开后随状态自然消减。
+    const attention = isExpanded
+      ? null
+      : summarizeAttention(
+          projSessions.map((s) =>
+            sessionAttentionKind({
+              status: statusFor(s.sessionId),
+              unread: sessionFlags[s.sessionId]?.unread === true,
+              isCurrent: s.sessionId === currentSessionId,
+            }),
+          ),
+        );
     const isRenaming = renamingPath === proj.path;
 
     // 项目 row 整行可拖排 (指针拖动,见 useDragSort)。archived 项目不参与排序;重命名中 /
@@ -529,20 +540,7 @@ function ProjectTree({
               {proj.name}
             </button>
           )}
-          {awaitingCount > 0 && !isRenaming && (
-            <span
-              className="text-warn text-[11px] flex-shrink-0 font-mono inline-flex items-center gap-1"
-              aria-label={t('sidebar.awaitingCountAria', { count: awaitingCount })}
-              title={t('sidebar.awaitingCountTitle', { count: awaitingCount })}
-            >
-              <SessionAwaitingIndicator
-                mini
-                decorative
-                label={t('sidebar.awaitingCountTitle', { count: awaitingCount })}
-              />
-              {awaitingCount}
-            </span>
-          )}
+          {attention && !isRenaming && <ProjectAttentionBadge summary={attention} />}
           {runningCount > 0 && !isRenaming && (
             <span
               className="text-run text-[11px] flex-shrink-0 font-mono inline-flex items-center gap-1"
@@ -553,7 +551,7 @@ function ProjectTree({
               {runningCount}
             </span>
           )}
-          {isInitialSessionLoad && runningCount === 0 && awaitingCount === 0 && !isRenaming && (
+          {isInitialSessionLoad && runningCount === 0 && !attention?.top && !isRenaming && (
             <span
               className="sidebar-session-load-spinner"
               aria-hidden
@@ -846,9 +844,15 @@ function SessionTree({
       maxVisible,
       currentId: currentSessionId,
       getId: (node) => node.session.sessionId,
-      isAwaiting: (node) => statusFor?.(node.session.sessionId) === 'awaiting',
+      needsAttention: (node) =>
+        statusFor !== undefined &&
+        sessionAttentionKind({
+          status: statusFor(node.session.sessionId),
+          unread: sessionFlags[node.session.sessionId]?.unread === true,
+          isCurrent: node.session.sessionId === currentSessionId,
+        }) !== null,
     });
-  }, [rendered, maxVisible, currentSessionId, statusFor]);
+  }, [rendered, maxVisible, currentSessionId, statusFor, sessionFlags]);
   const overflowCount = maxVisible !== undefined ? rendered.length - cappedRendered.length : 0;
   const effectiveInitialVisible = initialVisible ?? maxVisible ?? rendered.length;
   const effectiveMaxInlineVisible = maxInlineVisible ?? maxVisible ?? rendered.length;
