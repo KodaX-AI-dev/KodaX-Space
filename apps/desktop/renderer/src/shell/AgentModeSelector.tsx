@@ -92,7 +92,11 @@ function useWorkModeState(sessionId: string | null) {
       .invoke('session.workMode', { sessionId })
       .then((result) => {
         if (disposed) return;
-        if (result.ok) setState(result.data);
+        // A reconcile read can resolve after a newer saved mode; never move backwards.
+        if (result.ok)
+          setState((current) =>
+            current && current.revision > result.data.revision ? current : result.data,
+          );
         else {
           setState(undefined);
           pushToast(result.error.message, 'warning');

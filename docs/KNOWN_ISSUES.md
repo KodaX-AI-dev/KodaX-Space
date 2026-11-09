@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-08
+Last Updated: 2026-11-09
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
@@ -235,7 +235,7 @@ Last Updated: 2026-11-08
 | 235 | Medium   | Resolved in source                                                                                           | Downward history scrolling and the bottom arrow stop at a frozen older window                                                                                                                              | Reported local v0.1.47-alpha.3 / SDK alpha.10                             | 2026-10-28 |
 | 236 | Medium   | Resolved                                                                                                     | macOS notifications require signed sender, delivery confirmation and permission-aware badge refresh                                                                                                        | Electron 42 upgrade                                                       | 2026-11-04 |
 | 237 | Medium   | Resolved in source                                                                                           | Legacy SDK view body reads fail and repeated per-item warnings flood the conversation                                                                                                                      | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.2                         | 2026-11-07 |
-| 238 | Low      | Open                                                                                                         | AgentModeSelector browser test intermittently times out after the work-mode rollback step                                                                                                                  | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4                         | 2026-11-08 |
+| 238 | Low      | Resolved                                                                                                     | AgentModeSelector browser test intermittently times out after the work-mode rollback step                                                                                                                  | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4                         | 2026-11-08 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16066,8 +16066,9 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 
 ## Issue 238 — AgentModeSelector browser test intermittently times out
 
-- Priority: Low (test reliability only; no product behavior observed failing)
-- Status: Open
+- Priority: Low (a real but self-correcting UI race; first seen as a test timeout)
+- Status: Resolved
+- Fixed: 0.1.47-alpha.4 source (publication pending)
 - Introduced: Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4 working tree; first affected version unknown
 - Created: 2026-11-08
 - Context: Full Desktop `npm test` during the beta.4 SDK adaptation.
@@ -16082,15 +16083,24 @@ Expected: the case passes deterministically, or fails with an assertion that nam
 
 From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 --import ../../scripts/test/isolated-credential-profile.mjs --import tsx renderer/src/shell/AgentModeSelector.browser.test.ts` until it times out. Suspected area: ordering between clearing `window.fail`/`window.defer` and the keyboard selection, or focus not being on the radio group when `Home` is pressed. Root cause not yet confirmed.
 
+#### Resolution
+
+- **Root cause (confirmed)**: a failed mode change calls `setRefresh`, so `useWorkModeState` issues a reconcile `session.workMode` read from a React passive effect. That commit is a default-priority update, so the effect runs in a later scheduler task. If the next mode keydown arrives before that task, the successful `agent` write (rev 5) is applied first. The reconcile read is issued afterwards and returns the older `coding` rev 4. Its unconditional `setState` reverted the selection, so Agent never became checked and the test hit its 30 s timeout. This is a product race, not only a test artifact: a stale read could make the selector show a mode older than the Host's saved mode until the next refresh.
+- **Evidence**: a temporary copy of the original case dispatched the `Home` keydown from a `MutationObserver` the moment the radios re-enabled, before the passive effect ran. It failed 3/3 with the full-suite symptom. The call log ended `setWorkMode(agent, expectedRevision 4)` → `session.workMode`, and the radios showed Coding checked and enabled. Earlier attempts without that window passed (sequential 20/20, 12 parallel, CPU throttle ×20 10/10). This shows the failure depends only on event timing, not on the beta.4 SDK.
+- **Fix**: `AgentModeSelector.tsx` accepts a read only when its `revision` is not older than the current state's. A read with an equal revision, such as a lock change, still applies.
+- **Files changed**: `apps/desktop/renderer/src/shell/AgentModeSelector.tsx`, `apps/desktop/renderer/src/shell/AgentModeSelector.browser.test.ts`.
+- **Tests added**: "a reconcile read that resolves after a newer saved mode cannot revert the selection" holds the reconcile read until after a newer successful write, then releases it. Before the fix it failed 3/3 (`aria-checked` `false`); after the fix it passes 3/3. The race-window copy of the original case also passes 3/3 after the fix. Desktop `tsc` and ESLint pass for the changed files.
+- **Resolution date**: 2026-11-09.
+
 ## Summary
 
 - Total: 225
-- Open: 2
+- Open: 1
 - Ready: 3
 - Needs info: 1
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 208
+- Resolved (including source-only fixes): 209
 - High: 116
 - Medium: 96
 - Low: 13
