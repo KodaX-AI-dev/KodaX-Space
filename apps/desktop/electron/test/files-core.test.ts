@@ -85,6 +85,41 @@ test('resolveInsideProject: non-existent file returns target path (caller handle
   assert.equal(out, path.join(tmpRoot, 'no-such-file.txt'));
 });
 
+test('resolveInsideProject: absolute paths inside the root keep their location on every platform', async () => {
+  // Stored workspace Artifact paths are absolute; POSIX must not reroot /home/... under root.
+  await fs.mkdir(path.join(tmpRoot, 'site'));
+  await fs.writeFile(path.join(tmpRoot, 'site', 'a.html'), '<h1>a</h1>');
+  const out = await resolveInsideProject(tmpRoot, path.join(tmpRoot, 'site', 'a.html'));
+  assert.equal(out, path.join(tmpRoot, 'site', 'a.html'));
+});
+
+test('resolveInsideProject: absolute paths outside the root never resolve outside it', async () => {
+  // Windows rejects them; POSIX keeps the legacy project-rooted reading of a leading slash.
+  const outside = path.join(path.dirname(tmpRoot), 'outside-secret.txt');
+  const out = await resolveInsideProject(tmpRoot, outside).catch(() => null);
+  if (out !== null) assert.ok(isPathInside(out, tmpRoot), `escaped to ${out}`);
+});
+
+test('resolveInsideProject: absolute paths through a symlinked root alias map onto the real root', async () => {
+  // POSIX-only (e.g. macOS /var -> /private/var); Windows symlinks need elevated rights in CI.
+  if (process.platform === 'win32') return;
+  const aliasParent = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'kodax-alias-')));
+  const alias = path.join(aliasParent, 'project');
+  try {
+    await fs.symlink(tmpRoot, alias);
+    await fs.writeFile(path.join(tmpRoot, 'a.html'), '<h1>a</h1>');
+    const out = await resolveInsideProject(alias, path.join(alias, 'a.html'));
+    assert.equal(out, path.join(tmpRoot, 'a.html'));
+  } finally {
+    await fs.rm(aliasParent, { recursive: true, force: true });
+  }
+});
+
+test('resolveInsideProject: project-rooted leading-slash paths still resolve under the root', async () => {
+  await fs.writeFile(path.join(tmpRoot, 'a.txt'), 'hi');
+  assert.equal(await resolveInsideProject(tmpRoot, '/a.txt'), path.join(tmpRoot, 'a.txt'));
+});
+
 test('resolveInsideProject: rejects symlink escape', async () => {
   // POSIX-only: Windows symlink 需要管理员/开发者模式，CI 不稳。跳过。
   if (process.platform === 'win32') return;

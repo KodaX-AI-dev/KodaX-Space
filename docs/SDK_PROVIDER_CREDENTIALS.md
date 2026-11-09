@@ -1,10 +1,10 @@
 # Provider upgrade and account preservation — FEATURE_302 T12-H
 
-Release baseline: Space `0.1.47-alpha.4` / Registry KodaX `0.7.97-beta.1`, 2026-11-04.
+Release baseline: Space `0.1.47-alpha.5` / Registry KodaX `0.7.97-beta.4`, 2026-11-09. The published alpha.4 / beta.1 record (2026-11-04) remains historical.
 Provider and stable client/exit-recovery credentials use SDK permission-protected auth.json.
 Production packaging verifies exact Registry bytes and rejects development links.
 Earlier implementation references below retain their dated evidence; current qualification and
-remaining SDK seams are recorded in [alpha.4 readiness](releases/v0.1.47-alpha.4-release-readiness.md).
+remaining SDK seams are recorded in [alpha.5 readiness](releases/v0.1.47-alpha.5-release-readiness.md).
 
 ## Accepted contract
 

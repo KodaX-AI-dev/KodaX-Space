@@ -1,5 +1,7 @@
 # KodaX Space 文档中心
 
+> 2026-11-09 发布准备：版本基线更新为 Space `0.1.47-alpha.5` / npm Registry `@kodax-ai/kodax@0.7.97-beta.4`，四个 workspace 与 lockfile 统一版本。当前公共接口以 [beta.4 适配](releases/kodax-beta4-space-adaptation.md)为准；发布门与验证状态见 [alpha.5 发布记录](releases/v0.1.47-alpha.5-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。
+
 > 2026-11-05 工作树更新：SDK 已锁定正式 Registry `0.7.97-beta.2`，当前实现与验收以 [beta.2 接入记录](releases/kodax-beta2-space-adaptation.md) 为准；下列 alpha.4/beta.1 基线是已发布版本记录，本轮不替换公开标签或安装包。Workflow 作为用户显式单次功能，不再提供保存、修改等管理。
 
 > 更新日期：2026-11-04。版本基线为 Space `0.1.47-alpha.4` / npm Registry `@kodax-ai/kodax@0.7.97-beta.1`。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；发布门与验证状态见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)，SDK 接缝和外部验证限制单独保留。
@@ -8,7 +10,7 @@
 
 Space 产品用法由只读 Host Tool `space_manual` 提供，SDK/CLI 机制仍由内建 `kodax_manual` 提供；组合主题保留当前 SDK 原始正文与来源。真实 Coder 与 Partner 经共享 Host 的 Space 扩展组合产品手册，SDK 内建手册不被覆盖。
 
-当前发布范围、跨平台门禁和 SDK/真机边界见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)。旧 alpha.2/alpha.3 发布资料保留原版本指纹。
+当前发布范围、跨平台门禁和 SDK/真机边界见 [alpha.5 发布记录](releases/v0.1.47-alpha.5-release-readiness.md)。旧 alpha.2/alpha.3/alpha.4 发布资料保留原版本指纹。
 
 ## 我想要……
 
@@ -52,8 +54,9 @@ Space 产品用法由只读 Host Tool `space_manual` 提供，SDK/CLI 机制仍�
 | `partner/README.md`                                  | Partner 产品线文档中心           | Partner 内部产品、架构、Feature、测试与融合证据从这里进入                |
 | `KNOWN_ISSUES.md`                                    | 当前问题                         | 已解决项保留结论，新增问题需有复现和状态                                 |
 | `BUILTIN_SKILLS.md`                                  | builtin 分发维护                 | 固定来源、许可、补丁、更新和打包完整性                                   |
-| `features/v0.1.47.md`                                | 当前候选设计                     | 0.1.47 系列设计；当前 SDK 依赖与恢复验收见 alpha.7 接入                  |
-| `releases/v0.1.47-alpha.4-release-readiness.md`      | 当前预发布记录                   | beta.1、macOS 通知、候选门禁与实际发布验证                               |
+| `features/v0.1.47.md`                                | 当前候选设计                     | 0.1.47 系列设计；当前 SDK 依赖与恢复验收见 beta.4 接入                   |
+| `releases/v0.1.47-alpha.5-release-readiness.md`      | 当前预发布记录                   | beta.4 历史契约 v2、工作模式默认值、成果文件操作、候选门禁               |
+| `releases/v0.1.47-alpha.4-release-readiness.md`      | 已发布预发布记录                 | beta.1、macOS 通知、候选门禁与实际发布验证                               |
 | `features/v0.1.45.md`                                | historical release design        | Inline ask-user conversation cards and exact KodaX 0.7.95 boundary       |
 | `releases/v0.1.45-release-readiness.md`              | historical release record        | Gates, GitHub CI, artifact evidence, and regression items                |
 | `test-guides/ISSUE_193_v0.1.45_REGRESSION_GUIDE.md`  | historical regression acceptance | Causal conversation order and Ctrl+R sidecar/interrupt recovery          |

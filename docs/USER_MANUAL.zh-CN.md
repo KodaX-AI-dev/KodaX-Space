@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树的 Registry SDK `0.7.97-beta.4` 适配，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树（`0.1.47-alpha.5` 候选）的 Registry SDK `0.7.97-beta.4` 适配，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -151,7 +151,7 @@ _图 1：已打开示例项目但尚未创建会话时的 Coder 工作台。实�
 
 按 `?` 打开应用内快捷键帮助；按 `Ctrl/Cmd+Shift+P` 打开命令面板。图 1 是定位入口的快速参考；右侧 Task Dock 会在有 Run、Plan、Diff、Artifact 或 Workflow 信息时显示相应的任务分区。
 
-当前源码的设置为独立工作面：点击 Settings 后，左侧由设置分类接替项目/文件导航。点击“返回工作区”、关闭按钮或按 `Escape` 后恢复原导航模式、宽度、文件搜索和输入草稿；后台运行继续执行。嵌套确认或编辑器会优先处理 `Escape`。六类设置及原功能保持可达，主题、视觉质量和中英文偏好仍共用原设置。
+当前源码的设置为独立工作面：点击 Settings 后，左侧由分组导航接替项目/文件导航，按应用（常规、外观）、任务（Providers、上下文与限制）、能力（External Agents、MCP、Skills、扩展）、系统（安全与沙箱、诊断）四组直达页面组织，页脚为关于（版本、软件更新、License）。点击“返回工作区”、关闭按钮或按 `Escape` 后恢复原导航模式、宽度、文件搜索和输入草稿；后台运行继续执行。嵌套确认或编辑器会优先处理 `Escape`。页面首次访问时挂载，本次打开期间保留草稿；旧六分类入口仍被快捷方式接受并映射到新页面，主题、视觉质量和中英文偏好仍共用原设置。
 
 如果后台 Session 正在等待权限或 ask_user 回答，左侧栏会显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 问题以该 Session 对话流尾部的聚焦提问卡呈现（v0.1.44 之前的全屏模态已移除），全部待答卡并存可答，composer 上方的召回停靠条显示待答计数并可定位闪光到队首卡。请求仍保存在全局耐久队列中，切换 Session 不会丢失或误消费。
 

@@ -4,6 +4,18 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '../../../i18n/I18nProvider.js';
 import { LocalNoticeBubble, UserBubble } from './bubbles.js';
 
+/** The provider follows the system languages; pin them so assertions never depend on the host OS. */
+function withSystemLanguages<T>(languages: readonly string[], render: () => T): T {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'languages');
+  Object.defineProperty(navigator, 'languages', { value: languages, configurable: true });
+  try {
+    return render();
+  } finally {
+    if (original) Object.defineProperty(navigator, 'languages', original);
+    else delete (navigator as { languages?: readonly string[] }).languages;
+  }
+}
+
 test('saved slash references retain the composer appearance without turning arguments into commands', () => {
   const markup = renderToStaticMarkup(
     <I18nProvider>
@@ -49,10 +61,12 @@ test('history colors explicit skill and file references while email and ordinary
 });
 
 test('user queries have a persistent localized sender label distinct from assistant prose', () => {
-  const markup = renderToStaticMarkup(
-    <I18nProvider>
-      <UserBubble content="Find the original task" turnActions={{ savedTurn: true }} />
-    </I18nProvider>,
+  const markup = withSystemLanguages(['zh-CN'], () =>
+    renderToStaticMarkup(
+      <I18nProvider>
+        <UserBubble content="Find the original task" turnActions={{ savedTurn: true }} />
+      </I18nProvider>,
+    ),
   );
   assert.match(markup, /data-testid="user-query-label"/);
   assert.match(markup, /你的消息/);

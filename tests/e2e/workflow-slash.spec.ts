@@ -24,11 +24,13 @@ test('workflow slash create sends on Enter and shows immediate progress', async 
     await textarea.fill(command);
     await textarea.press('Enter');
 
+    // Commands keep one durable local receipt instead of a user query bubble.
     await expect(
       stream.getByTestId('local-notice-bubble').filter({ hasText: command }),
-    ).toBeVisible({
-      timeout: 2_000,
-    });
+    ).toBeVisible({ timeout: 2_000 });
+    await expect(
+      stream.getByTestId('user-message-bubble').filter({ hasText: command }),
+    ).toHaveCount(0);
     await expect(
       stream.locator('[data-testid="system-notice"][data-notice-variant="workflow"]', {
         hasText: /\[workflow\] generating workflow\.\.\./i,
@@ -57,11 +59,13 @@ test('workflow slash create send button shows immediate progress', async () => {
     await textarea.fill(command);
     await space.page.getByLabel('Send message').click();
 
+    // Commands keep one durable local receipt instead of a user query bubble.
     await expect(
       stream.getByTestId('local-notice-bubble').filter({ hasText: command }),
-    ).toBeVisible({
-      timeout: 2_000,
-    });
+    ).toBeVisible({ timeout: 2_000 });
+    await expect(
+      stream.getByTestId('user-message-bubble').filter({ hasText: command }),
+    ).toHaveCount(0);
     await expect(
       stream.locator('[data-testid="system-notice"][data-notice-variant="workflow"]', {
         hasText: /\[workflow\] generating workflow\.\.\./i,

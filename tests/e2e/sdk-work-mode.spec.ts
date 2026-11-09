@@ -5,6 +5,7 @@ import {
   sendSdkPrompt,
   currentSdkSession,
   waitSdkIdle,
+  welcomeDraftSdkSession,
 } from './sdk-provider-fixture.js';
 
 test.setTimeout(90_000);
@@ -20,8 +21,10 @@ test('a new Coder session can select Agent before its first input reaches the Ho
     await expect(agent).toBeChecked();
     await expect(agent).toBeEnabled();
     expect(provider.requests).toEqual([]);
+    // The draft keeps the welcome dashboard visible until its first send.
+    await expect(space.page.getByTestId('conversation-stream')).toHaveCount(0);
     await space.page.screenshot({ path: test.info().outputPath('first-input-agent.png') });
-    const draftId = await currentSdkSession(space);
+    const draftId = await welcomeDraftSdkSession(space);
     await sendSdkPrompt(space, 'FIRST_AGENT_INPUT');
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
       'SDK_REPLY:FIRST_AGENT_INPUT',

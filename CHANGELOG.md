@@ -17,19 +17,13 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Open the selected Artifact with one click from a collapsed Coder sidebar, preserving the latest target across mounting and keeping restored File Viewer content from overriding an explicit request.
 - Finish slash completion after optional help commands and terminal argument values, retain real subcommand continuation, and let ready no-match input reach normal validation while preserving discovery loading/error guards.
 - Make conversation history boundaries and return destinations visible, preserve single-page access, distinguish loaded-content find from saved search, and open saved search results directly in context with an original-text fallback.
-- Keep already-read saved history pages together while browsing older or newer records within the same SDK revision. Preserve search return positions and completed bodies; use the bottom action to return to live output.
-- Mark user queries with a localized sender label, a tinted background and an accent edge while preserving long-query collapse, attachments and full-text copy.
-- Restore standalone Artifact rendering by allowing client-side routes on the packaged renderer document while retaining query, asset-fragment and traversal rejection.
-- Save sidebar project and Session renames once on Enter or focus loss, preserve IME composition and Escape cancellation, and report rejected saves without changing the displayed title.
-- Replace the Partner home draft after a successful scenario selection instead of accumulating templates; failed or stale selections preserve the draft and never send automatically.
-- Fill the Partner Artifact detail panel with its Markdown/HTML preview below the toolbar, including resizing and version or tab changes.
-- Retry failed Partner conversation connector verification without disconnecting accounts, losing saved resource scopes or misreporting component failures as changed identities.
+- Preview where a dragged sidebar project will land: the row follows the pointer, other projects slide aside, and it settles into place on release. Dropping at the end works, dragging down no longer lands one slot short, and Escape cancels.
 
-- Keep programmatic search positioning and restoration from paging to adjacent conversation history. Preserve wheel, keyboard, touch and held native scrollbar navigation under slow rendering, including platforms that emit no pointermove during scrollbar dragging. Keep page resizing from reversing a held drag or stranding it at a newer history boundary. Confirm initial native direction at the reached edge, including short pages with overlapping prefetch regions.
+## [0.1.47-alpha.5] - 2026-11-09
 
-- Restore finite composer focus feedback for the Lexical editor, including existing quality, reduced-motion, background and streaming pause guards.
+### Changed
 
-- Pin Registry KodaX SDK `0.7.97-beta.4` in both SDK consumers and verify the exact installed package during packaging. Adopt history contract v2: Fork and rewind submit the SDK-resolved complete turn unchanged, stale targets use the typed `resync_required` reasons, active work is reported as busy, incomplete turns are explained, and newer saved pages follow SDK `newerCursor`. Space now requires history location and turn resolution v2 from the Host. See the [beta.4 adaptation](docs/releases/kodax-beta4-space-adaptation.md).
+- Pin Registry KodaX SDK `0.7.97-beta.4` in both SDK consumers and verify the exact installed package during packaging. Adopt history contract v2: Fork and rewind submit the SDK-resolved complete turn unchanged, stale targets use the typed `resync_required` reasons, active work is reported as busy, incomplete turns are explained, and newer saved pages follow SDK `newerCursor`. Space now requires history location and turn resolution v2 from the Host. See the [beta.4 adaptation](docs/releases/kodax-beta4-space-adaptation.md) and the earlier [beta.3](docs/releases/kodax-beta3-space-adaptation.md) / [beta.2](docs/releases/kodax-beta2-space-adaptation.md) integration records.
 - Save AGENTS.md edits to the exact file that was opened. Editing `<project>/.kodax/AGENTS.md`, or creating a project file when the root AGENTS.md already existed, could overwrite `<project>/AGENTS.md`. Partner profiles declare the Host-owned Agent admission constraint, including durable recovery records; normal shell/write/child Agent permissions remain available.
 - Keep instruction editing restricted to Main-proven AGENTS.md paths, retain the context collection bound, and verify Windows containment program resources during packaging. SDK beta.4 loads rule fragments separately from the AGENTS.md editor.
 - Browse saved history in both directions, search the current page or the saved conversation, and return to the original reading position. Locate proven tool and thinking results with their complete source entry expanded.
@@ -39,8 +33,31 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Recover legacy queued input through principal-bound, idempotent Host withdrawal receipts. Preserve complete text and attachment references across lost responses; expose mode mismatches without misclassifying them as Provider errors.
 - Inspect and prewarm repo intelligence in the execution Host, with Session/generation isolation and explicit uninitialized/fallback states.
 - Present Workflow as an explicit single-use execution with progress, controls and a durable Session response. Retire save/revise/rename/delete/prune/rerun management actions, retain existing definitions and results, and avoid duplicate local completion notices or preview-as-original fallbacks.
+- Remember the last confirmed Coder work mode in Space runtime defaults and apply it to new-conversation previews and Host draft creation. Existing Session modes, Partner Agent mode and temporary Quick Ask behavior stay independent.
+
+### Fixed
+
+- Keep already-read saved history pages together while browsing older or newer records within the same SDK revision. Preserve search return positions and completed bodies; use the bottom action to return to live output.
+- Mark user queries with a localized sender label, a tinted background and an accent edge while preserving long-query collapse, attachments and full-text copy.
+- Keep programmatic search positioning and restoration from paging to adjacent conversation history. Preserve wheel, keyboard, touch and held native scrollbar navigation under slow rendering, including platforms that emit no pointermove during scrollbar dragging. Keep page resizing from reversing a held drag or stranding it at a newer history boundary. Confirm initial native direction at the reached edge, including short pages with overlapping prefetch regions.
+- Render workspace HTML registered as file artifacts through the isolated project web preview, and allow Save As for validated workspace files. Expose shared save, reveal and copy actions across artifact cards, panels and standalone windows, always bound to the selected version. Absolute workspace paths resolve correctly on Linux and macOS instead of being re-rooted under the project, with the same containment checks on every platform.
+- Restore standalone Artifact rendering by allowing client-side routes on the packaged renderer document while retaining query, asset-fragment and traversal rejection.
+- Avoid duplicated slash-command receipts in the conversation — the durable Space receipt is the single owner — and restore composer reference styling.
+- Save sidebar project and Session renames once on Enter or focus loss, preserve IME composition and Escape cancellation, and report rejected saves without changing the displayed title.
+- Replace the Partner home draft after a successful scenario selection instead of accumulating templates; failed or stale selections preserve the draft and never send automatically.
+- Fill the Partner Artifact detail panel with its Markdown/HTML preview below the toolbar, including resizing and version or tab changes.
+- Retry failed Partner conversation connector verification without disconnecting accounts, losing saved resource scopes or misreporting component failures as changed identities.
+- Preserve the new-conversation dashboard during work-mode changes and ignore stale work-mode reconcile reads (Issue 238).
+- Restore finite composer focus feedback for the Lexical editor, including existing quality, reduced-motion, background and streaming pause guards.
 - Suppress unchanged queue publications and retain the selected idle Session observation. Prevent recursive history refreshes and stale foreground reads without weakening SDK revision checks or replaying inputs.
 - Verify local HTTP readiness before opening MCP OAuth authorization. Rebind browser-restricted random ports with a bounded attempt count; preserve cancellation, PKCE/state validation and ordinary network failures. Apply the same startup check to isolated SDK test Providers.
+
+### Documentation and qualification
+
+- Align READMEs, PRD/HLD/DD, usage docs, capability/credentials records, user manual and the in-app `space_manual` with alpha.5 / beta.4: grouped settings navigation, remembered Coder work mode, workspace-file artifact actions, continuous saved history and query emphasis. The SDK's own `kodax_manual` is never overwritten.
+- Qualify the exact source SHA, all four platform packages, native signatures/hashes and packaged consumer UI before publishing. This is a prerelease; stable remains v0.1.46. SDK Repo-intelligence Host gaps, Issue 371 history first-read latency and external account/customer-OS acceptance remain explicit limitations, not silently closed items.
+
+See [alpha.5 release qualification](docs/releases/v0.1.47-alpha.5-release-readiness.md), [beta.4 adaptation](docs/releases/kodax-beta4-space-adaptation.md) and [beta.3 acceptance](docs/releases/kodax-beta3-space-adaptation.md).
 
 ## [0.1.47-alpha.4] - 2026-11-04
 
