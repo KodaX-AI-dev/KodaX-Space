@@ -90,10 +90,23 @@ function record(
   env.report({ ...detail, ipcMs, installMs, commitMs, layoutMs, paintMs });
 }
 
+interface HistoryLoadTrace {
+  received(): void;
+  installed(items: number): void;
+}
+
+const INERT_TRACE: HistoryLoadTrace = { received() {}, installed() {} };
+
 export function startHistoryLoadTrace(
   kind: HistoryLoadKind,
-  env: HistoryLoadEnvironment = browserEnvironment,
-): { received(): void; installed(items: number): void } {
+  env?: HistoryLoadEnvironment,
+): HistoryLoadTrace {
+  // Paging logic also runs in node tests and other non-DOM hosts; there is nothing to measure.
+  if (!env && typeof document === 'undefined') return INERT_TRACE;
+  return createTrace(kind, env ?? browserEnvironment);
+}
+
+function createTrace(kind: HistoryLoadKind, env: HistoryLoadEnvironment): HistoryLoadTrace {
   const requestedAt = env.now();
   let receivedAt: number | undefined;
   let roundTrips = 0;

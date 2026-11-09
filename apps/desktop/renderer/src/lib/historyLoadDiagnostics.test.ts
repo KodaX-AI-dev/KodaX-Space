@@ -87,6 +87,15 @@ test('an install without a received response records nothing', () => {
   assert.equal(reports.length, 0);
 });
 
+test('the default trace is inert without a DOM, so non-browser hosts never throw later', async () => {
+  assert.equal(typeof document, 'undefined');
+  const trace = startHistoryLoadTrace('newest');
+  trace.received();
+  trace.installed(1);
+  // A DOM-only callback would surface as an uncaught exception after these ticks.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+});
+
 test('each load records once even if install is signalled twice', () => {
   const { env, reports, flush } = fakeEnvironment([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   const trace = startHistoryLoadTrace('newer', env);
