@@ -101,6 +101,11 @@ import {
   LocalNoticeBubble,
   QueuedUserBubble,
 } from '../features/session/messages/bubbles.js';
+import {
+  RowDisclosureOwner,
+  RowDisclosureSession,
+  useRevealOnce,
+} from '../features/session/messages/rowDisclosure.js';
 import { WelcomeDashboard } from './WelcomeDashboard.js';
 import { ActivitySpinner, useIsStreaming } from './ActivitySpinner.js';
 import { Caret } from '../components/Caret.js';
@@ -2654,52 +2659,54 @@ export function ConversationStreamV2(): JSX.Element {
                   </div>
                 )
               ))}
-            <ProductBodyOwnerContext.Provider value={bodyOwner}>
-              {renderItems.map((item, index) => {
-                const sdkItem =
-                  usesSavedTurns &&
-                  item.kind === 'message' &&
-                  (item.message.kind === 'user' || item.message.kind === 'assistant_text')
-                    ? productItemsById.get(item.message.sourceItemId ?? item.message.id)
-                    : undefined;
-                return (
-                  <ConversationRenderRow
-                    key={item.id}
-                    item={item}
-                    index={index}
-                    animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
-                    liveTail={isStreaming && index === renderItems.length - 1}
-                    queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
-                    expanded={expanded}
-                    clustersForceExpand={clustersForceExpand}
-                    thinkingForceExpand={thinkingForceExpand}
-                    currentMatchId={currentMatchId}
-                    matchSet={matchSet}
-                    userMessages={userMessages}
-                    onToggle={toggleGroup}
-                    onForkTurn={forkFromTurn}
-                    onProductTurn={usesSavedTurns ? productTurnAction : undefined}
-                    productItemId={sdkItem?.outputState === 'draft' ? undefined : sdkItem?.id}
-                    sourceRevision={
-                      selectedSource === 'history'
-                        ? historyPaging.revision
-                        : sdkItem?.historyBoundary?.sourceRevision
-                    }
-                    inputId={
-                      selectedSource === 'view' && !sdkItem?.historyBoundary
-                        ? sdkItem?.inputId
-                        : undefined
-                    }
-                    outputId={
-                      selectedSource === 'view' && !sdkItem?.historyBoundary
-                        ? sdkItem?.outputId
-                        : undefined
-                    }
-                    onRewindTurn={rewindToTurn}
-                  />
-                );
-              })}
-            </ProductBodyOwnerContext.Provider>
+            <RowDisclosureSession sessionId={currentSessionId}>
+              <ProductBodyOwnerContext.Provider value={bodyOwner}>
+                {renderItems.map((item, index) => {
+                  const sdkItem =
+                    usesSavedTurns &&
+                    item.kind === 'message' &&
+                    (item.message.kind === 'user' || item.message.kind === 'assistant_text')
+                      ? productItemsById.get(item.message.sourceItemId ?? item.message.id)
+                      : undefined;
+                  return (
+                    <ConversationRenderRow
+                      key={item.id}
+                      item={item}
+                      index={index}
+                      animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
+                      liveTail={isStreaming && index === renderItems.length - 1}
+                      queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
+                      expanded={expanded}
+                      clustersForceExpand={clustersForceExpand}
+                      thinkingForceExpand={thinkingForceExpand}
+                      currentMatchId={currentMatchId}
+                      matchSet={matchSet}
+                      userMessages={userMessages}
+                      onToggle={toggleGroup}
+                      onForkTurn={forkFromTurn}
+                      onProductTurn={usesSavedTurns ? productTurnAction : undefined}
+                      productItemId={sdkItem?.outputState === 'draft' ? undefined : sdkItem?.id}
+                      sourceRevision={
+                        selectedSource === 'history'
+                          ? historyPaging.revision
+                          : sdkItem?.historyBoundary?.sourceRevision
+                      }
+                      inputId={
+                        selectedSource === 'view' && !sdkItem?.historyBoundary
+                          ? sdkItem?.inputId
+                          : undefined
+                      }
+                      outputId={
+                        selectedSource === 'view' && !sdkItem?.historyBoundary
+                          ? sdkItem?.outputId
+                          : undefined
+                      }
+                      onRewindTurn={rewindToTurn}
+                    />
+                  );
+                })}
+              </ProductBodyOwnerContext.Provider>
+            </RowDisclosureSession>
             {/* 流式 spinner —— v0.1.4：从 BottomBar 搬到这里，把"正在做什么"
             放在对话流末尾。ActivitySpinner 自己 return null 时本块也不渲染。 */}
             <StreamingSpinnerRow />
@@ -3092,6 +3099,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly outputId?: string;
   readonly onRewindTurn: (turnIndex: number) => Promise<void>;
 }): JSX.Element {
+  const animate = useRevealOnce(item.id, animateEntry);
   const intrinsicStyle = useMemo<ConversationIntrinsicStyle>(
     () => ({
       '--conversation-intrinsic-size': `${estimateRenderItemHeight(
@@ -3111,7 +3119,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
         data-query-anchor-id={queryOwnerId}
         data-testid="conversation-render-row"
       >
-        <TimelineMarker tone={receiptMarkerTone(item.receipts)} animate={animateEntry} />
+        <TimelineMarker tone={receiptMarkerTone(item.receipts)} animate={animate} />
         <div
           className="conversation-occlusion-item"
           data-live-tail={liveTail ? 'true' : undefined}
@@ -3195,28 +3203,30 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
       break;
   }
   return (
-    <div
-      className="relative"
-      data-query-anchor-id={queryOwnerId}
-      data-testid="conversation-render-row"
-    >
-      <TimelineMarker tone={messageMarkerTone(message)} animate={animateEntry} />
+    <RowDisclosureOwner id={item.id}>
       <div
-        data-msg-id={message.id}
-        data-source-item={'sourceItemId' in message ? message.sourceItemId : message.id}
-        tabIndex={-1}
-        data-stable-scroll-anchor="true"
-        data-live-tail={liveTail ? 'true' : undefined}
-        className={`conversation-occlusion-item search-ring-anim ${ringClass}`}
-        style={intrinsicStyle}
+        className="relative"
+        data-query-anchor-id={queryOwnerId}
+        data-testid="conversation-render-row"
       >
-        <Reveal index={index} animate={animateEntry} className="conversation-message-body">
-          <ProductItemBody item={'productItem' in message ? message.productItem : undefined}>
-            {inner}
-          </ProductItemBody>
-        </Reveal>
+        <TimelineMarker tone={messageMarkerTone(message)} animate={animate} />
+        <div
+          data-msg-id={message.id}
+          data-source-item={'sourceItemId' in message ? message.sourceItemId : message.id}
+          tabIndex={-1}
+          data-stable-scroll-anchor="true"
+          data-live-tail={liveTail ? 'true' : undefined}
+          className={`conversation-occlusion-item search-ring-anim ${ringClass}`}
+          style={intrinsicStyle}
+        >
+          <Reveal index={index} animate={animate} className="conversation-message-body">
+            <ProductItemBody item={'productItem' in message ? message.productItem : undefined}>
+              {inner}
+            </ProductItemBody>
+          </Reveal>
+        </div>
       </div>
-    </div>
+    </RowDisclosureOwner>
   );
 });
 

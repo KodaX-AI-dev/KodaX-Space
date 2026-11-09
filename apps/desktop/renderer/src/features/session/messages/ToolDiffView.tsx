@@ -9,6 +9,7 @@
 // 默认全部 collapsed 不烧资源。
 
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { useRowDisclosure } from './rowDisclosure.js';
 import { Eye, FolderOpen } from 'lucide-react';
 import { Caret } from '../../../components/Caret.js';
 import { FileNameText } from '../../../components/FileNameText.js';
@@ -31,6 +32,8 @@ export interface ToolDiffViewProps {
   after: string;
   /** 默认折叠/展开。Edit 通常默认折叠，单 hunk 可以默认展开 */
   defaultExpanded?: boolean;
+  /** Distinguishes several diffs inside one tool card so each keeps its own expansion. */
+  disclosurePart?: string;
 }
 
 /**
@@ -64,8 +67,11 @@ function basenameOf(p: string): string {
 
 export function ToolDiffView(props: ToolDiffViewProps): JSX.Element {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useState(props.defaultExpanded ?? false);
-  const [mountEditor, setMountEditor] = useState(props.defaultExpanded ?? false);
+  const [expanded, setExpanded] = useRowDisclosure(
+    props.disclosurePart ?? 'diff',
+    props.defaultExpanded ?? false,
+  );
+  const [mountEditor, setMountEditor] = useState(expanded);
   const summary = useMemo(
     () => summarizeChange(props.before, props.after),
     [props.before, props.after],

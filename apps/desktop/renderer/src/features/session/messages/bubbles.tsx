@@ -39,6 +39,7 @@ import type { MessageKey } from '../../../i18n/messages.js';
 import { dispatchOpenFileViewer } from '../../artifact/transientArtifact.js';
 // OC-21: side-effect import 让内置 tool renderers (write/edit/multi_edit) 注册到 registry
 import './toolRenderers.js';
+import { RowDisclosureOwner, useRowDisclosure } from './rowDisclosure.js';
 import { getToolInputRenderer, getToolResultRenderer } from './toolRegistry.js';
 
 // ---- P4c: tool result 收窄渲染 ----
@@ -319,7 +320,7 @@ function CollapsibleUserMessageContent({ content }: { content: string }): JSX.El
   const { t } = useI18n();
   const contentId = useId();
   const measuredContentRef = useRef<HTMLDivElement>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expandedChoice, setExpanded] = useRowDisclosure('user-expanded', false);
   const [layout, setLayout] = useState({
     fullHeight: 0,
     previewHeight: 0,
@@ -348,7 +349,6 @@ function CollapsibleUserMessageContent({ content }: { content: string }): JSX.El
           ? current
           : { fullHeight, previewHeight, collapsible },
       );
-      if (!collapsible) setExpanded(false);
     };
 
     measure();
@@ -357,6 +357,7 @@ function CollapsibleUserMessageContent({ content }: { content: string }): JSX.El
     return () => observer.disconnect();
   }, [content]);
 
+  const expanded = layout.collapsible && expandedChoice;
   const maxHeight = layout.collapsible
     ? expanded
       ? layout.fullHeight
@@ -746,7 +747,18 @@ const FILE_MUTATION_TOOLS_DEFAULT_EXPANDED: ReadonlySet<string> = new Set([
   'run_partner_helper',
 ]);
 
-export function ToolCallCard({
+type ToolCallCardProps = Extract<ConversationMessage, { kind: 'tool_call' }> & { reveal?: boolean };
+
+/** Scopes the card's own disclosures (and its nested diffs) to the tool identity. */
+export function ToolCallCard(props: ToolCallCardProps): JSX.Element {
+  return (
+    <RowDisclosureOwner id={props.id}>
+      <ToolCallCardBody {...props} />
+    </RowDisclosureOwner>
+  );
+}
+
+function ToolCallCardBody({
   id,
   reveal = false,
   productItem,
@@ -756,14 +768,14 @@ export function ToolCallCard({
   result,
   progress,
   status,
-}: Extract<ConversationMessage, { kind: 'tool_call' }> & { reveal?: boolean }): JSX.Element {
+}: ToolCallCardProps): JSX.Element {
   const { t } = useI18n();
-  const [manualExpanded, setManualExpanded] = useState(() =>
+  const [manualExpanded, setManualExpanded] = useRowDisclosure('tool-expanded', () =>
     FILE_MUTATION_TOOLS_DEFAULT_EXPANDED.has(toolName),
   );
   const [revealedExpanded, setRevealedExpanded] = useState(true);
   const expanded = reveal ? revealedExpanded : manualExpanded;
-  const [showFullResult, setShowFullResult] = useState(false);
+  const [showFullResult, setShowFullResult] = useRowDisclosure('tool-full-result', false);
   useEffect(() => {
     if (reveal) setRevealedExpanded(true);
   }, [reveal]);
@@ -1154,7 +1166,7 @@ export function SystemNotice(message: SystemNoticeMessage): JSX.Element {
 function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
   const { text, action, retryAvailableAt, terminal } = message;
   const { t } = useI18n();
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useRowDisclosure('error-details', false);
   const detailsId = useId();
   const rows = runtimeFailureRows(message);
   const actionDef = action ? ACTION_BUTTONS[action] : undefined;

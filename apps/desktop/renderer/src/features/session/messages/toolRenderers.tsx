@@ -10,10 +10,10 @@
 // RawJsonInput。需要 hooks 的 renderer (multi_edit) 让返回的 JSX 内嵌使用 hooks
 // 的子组件 (MultiEditList)。
 
-import { useState } from 'react';
 import { FileOutput, Maximize2 } from 'lucide-react';
 import { FileNameText } from '../../../components/FileNameText.js';
 import { ToolDiffView } from './ToolDiffView.js';
+import { useRowDisclosure } from './rowDisclosure.js';
 import { registerToolInputRenderer, registerToolResultRenderer } from './toolRegistry.js';
 import { useAppStore } from '../../../store/appStore.js';
 import { openFileSmart, openPartnerDeliveryById } from '../../../lib/openPath.js';
@@ -115,7 +115,7 @@ registerToolInputRenderer('edit', ({ input }) => {
 
 // ---- multi_edit ----
 //
-// 需要 useState 控 showAllEdits，把状态放在 sub-component 而不是 renderer 本体，
+// 需要 hook 控 showAllEdits，把状态放在 sub-component 而不是 renderer 本体，
 // 让 renderer 仍是 pure function。
 
 interface MultiEditListProps {
@@ -127,7 +127,7 @@ function MultiEditList({ path, edits }: MultiEditListProps): JSX.Element {
   const { t } = useI18n();
   // cap 同屏 Monaco 实例 — 全展开 = N × DiffEditor × ~3MB JS + N × worker
   const MAX_VISIBLE = 5;
-  const [showAllEdits, setShowAllEdits] = useState(false);
+  const [showAllEdits, setShowAllEdits] = useRowDisclosure('all-edits', false);
   const visible = showAllEdits ? edits : edits.slice(0, MAX_VISIBLE);
   const overflow = edits.length - MAX_VISIBLE;
   return (
@@ -150,7 +150,14 @@ function MultiEditList({ path, edits }: MultiEditListProps): JSX.Element {
           );
         }
         return (
-          <ToolDiffView key={i} path={path} before={oldS} after={newS} defaultExpanded={false} />
+          <ToolDiffView
+            key={i}
+            path={path}
+            before={oldS}
+            after={newS}
+            defaultExpanded={false}
+            disclosurePart={`diff:${i}`}
+          />
         );
       })}
       {!showAllEdits && overflow > 0 && (
