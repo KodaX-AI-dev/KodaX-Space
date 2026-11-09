@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { promises as fs } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { launchSpace } from './fixtures.js';
+import {
+  createLocalSdkProvider,
+  currentSdkSession,
+  launchRealSdkSpace,
+  waitSdkIdle,
+} from './sdk-provider-fixture.js';
 
 const QUERY_HEAD = 'QUERY_HEAD: compare the current architecture with the proposed direction.';
 const QUERY_TAIL = 'QUERY_TAIL: finish with a concrete recommendation and acceptance criteria.';
@@ -18,13 +20,9 @@ const LONG_QUERY = [
 
 test('long user queries keep a four-line preview and can expand or collapse in place', async () => {
   const testId = `user-query-collapse-${Date.now()}`;
-  const projectDir = path.join(os.tmpdir(), `kodax-test-${testId}-project`);
-  await fs.mkdir(projectDir, { recursive: true });
-
-  const space = await launchSpace(testId);
+  const provider = await createLocalSdkProvider();
+  const { space } = await launchRealSdkSpace(testId, provider.url);
   try {
-    await space.seedProject(projectDir);
-
     const textarea = space.page.getByTestId('composer-input');
     await expect(textarea).toBeEnabled({ timeout: 10_000 });
     await textarea.fill(LONG_QUERY);
@@ -37,6 +35,9 @@ test('long user queries keep a four-line preview and can expand or collapse in p
       .last();
     await expect(bubble).toBeVisible({ timeout: 10_000 });
 
+    await expect.poll(() => provider.requests.length).toBe(1);
+    await waitSdkIdle(space, await currentSdkSession(space));
+    await bubble.scrollIntoViewIfNeeded();
     const label = bubble.getByTestId('user-query-label');
     await expect(label).toHaveText('You');
     for (const theme of ['light', 'dark']) {
@@ -45,11 +46,25 @@ test('long user queries keep a four-line preview and can expand or collapse in p
       }, theme);
       const style = await bubble.locator('.conversation-user-content').evaluate((element) => {
         const style = getComputedStyle(element);
-        return { border: style.borderLeftWidth, background: style.backgroundColor };
+        return {
+          border: Number.parseFloat(style.borderLeftWidth),
+          ordinaryBorder: Number.parseFloat(style.borderRightWidth),
+          background: style.backgroundColor,
+          pixelRatio: window.devicePixelRatio,
+        };
       });
-      expect(style.border).toBe('3px');
+      // Chromium snaps border widths to device pixels at fractional desktop scaling.
+      expect(style.border).toBeGreaterThan(style.ordinaryBorder * 2);
       expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
-      await expect(label).toBeVisible();
+      await expect(label).toBeInViewport();
+      await test.info().attach(`query-${theme}-style.json`, {
+        body: JSON.stringify(style),
+        contentType: 'application/json',
+      });
+      await space.page.screenshot({
+        path: test.info().outputPath(`query-${theme}.png`),
+        animations: 'disabled',
+      });
     }
     const content = bubble.getByTestId('user-query-content');
     const toggle = bubble.getByTestId('user-query-toggle');
@@ -87,7 +102,9 @@ test('long user queries keep a four-line preview and can expand or collapse in p
 
     await bubble.getByRole('button', { name: 'Copy message', exact: true }).click();
     await expect
-      .poll(() => space.page.evaluate(() => navigator.clipboard.readText()))
+      .poll(async () =>
+        (await space.page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n'),
+      )
       .toBe(LONG_QUERY);
     await expect(label).toHaveText('You');
     await toggle.click();
@@ -96,8 +113,9 @@ test('long user queries keep a four-line preview and can expand or collapse in p
     await expect
       .poll(() => content.evaluate((element) => element.clientHeight))
       .toBeLessThanOrEqual(collapsed.clientHeight + 1);
+    expect(provider.errors).toEqual([]);
   } finally {
+    await provider.close();
     await space.close();
-    await fs.rm(projectDir, { recursive: true, force: true }).catch(() => {});
   }
 });
