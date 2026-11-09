@@ -505,6 +505,22 @@ export async function currentSdkSession(space: SpaceInstance) {
   return sessionId;
 }
 
+/**
+ * A composer-created draft stays on the welcome dashboard until its first send, so the
+ * conversation stream does not expose it yet. Read the only Session through Main instead.
+ */
+export async function welcomeDraftSdkSession(space: SpaceInstance) {
+  let sessionIds: string[] = [];
+  await expect
+    .poll(async () => {
+      const reply = await space.page.evaluate(() => window.kodaxSpace!.invoke('session.list'));
+      sessionIds = reply.ok ? reply.data.sessions.map((session) => session.sessionId) : [];
+      return sessionIds.length;
+    })
+    .toBe(1);
+  return sessionIds[0]!;
+}
+
 export async function sendSdkPrompt(space: SpaceInstance, prompt: string, key = 'Enter') {
   const composer = space.page.getByTestId('composer-input');
   await composer.fill(prompt);

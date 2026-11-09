@@ -13,6 +13,7 @@ import {
   sendSdkPrompt,
   waitSdkIdle,
   currentSdkSession,
+  welcomeDraftSdkSession,
 } from './sdk-provider-fixture.js';
 import { readProductItemText } from '../../apps/desktop/renderer/src/lib/productItemContent.js';
 
@@ -187,7 +188,7 @@ test('work modes use Host CAS before the first Run and remain fixed afterwards',
     await expect(agentChoice).toBeEnabled();
     await agentChoice.click();
     await expect(agentChoice).toBeChecked();
-    const sessionId = await currentSdkSession(space);
+    const sessionId = await welcomeDraftSdkSession(space);
     await expect
       .poll(async () => {
         const reply = await space.page.evaluate(
