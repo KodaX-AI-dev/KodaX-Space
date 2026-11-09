@@ -222,7 +222,7 @@ Last Updated: 2026-11-09
 | 222 | High     | Resolved; Registry alpha.9 Windows verified                                                                  | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 | 223 | Medium   | Resolved in source; local Windows package verified                                                           | Titlebar diagnostics retain startup state and obsolete version/dependency information                                                                                                                      | Observed v0.1.47-alpha.3; first affected version unknown                  | 2026-10-21 |
 | 224 | High     | Resolved                                                                                                     | Complete exit during cold Runtime startup times out instead of releasing startup admission                                                                                                                 | Observed v0.1.47-alpha.3                                                  | 2026-10-25 |
-| 225 | Medium   | needs-info                                                                                                   | Intermittent packaged Runtime cold startup exceeds its readiness deadline                                                                                                                                  | Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9                             | 2026-10-25 |
+| 225 | Medium   | ready                                                                                                        | Intermittent packaged Runtime cold startup exceeds its readiness deadline                                                                                                                                  | Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9                             | 2026-10-25 |
 | 226 | High     | Resolved in source                                                                                           | Retired SA mode can still be selected or restored and fails on unavailable collaboration tools                                                                                                             | Reported v0.1.47-alpha.1                                                  | 2026-10-28 |
 | 227 | High     | Resolved in source                                                                                           | Idle questions time out as errors and dismissal interrupts instead of reporting unanswered                                                                                                                 | Reported v0.1.47-alpha.1 / SDK alpha.9                                    | 2026-10-28 |
 | 228 | Medium   | Resolved in source                                                                                           | Historical unknown client cleanup permanently blocks safe Windows restart                                                                                                                                  | Reported v0.1.47-alpha.1 / SDK alpha.9                                    | 2026-10-28 |
@@ -15937,10 +15937,10 @@ the intentional delayed-start fixture). Startup-wait screenshot was visually che
 ## Issue 225: Intermittent packaged Runtime cold startup exceeds its readiness deadline
 
 - Priority: Medium
-- Status: needs-info
+- Status: ready (fix owned by the KodaX SDK; no Space change applied)
 - Introduced: Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9; first affected version unknown
 - Created: 2026-10-25
-- Missing: a repeatable trigger or per-stage timing from another slow first launch
+- Information completed: 2026-11-09, from per-stage timing that the automatic recorder retained for four further slow launches
 
 ### Original Problem
 
@@ -16009,6 +16009,61 @@ formatting passed. The rebuilt Windows unpacked package passed all packaging/boo
 SDK acceptance cases. Both automatic-diagnostics and startup-exit tests passed against that exact
 package (16.2 s and 22.9 s, including intentional startup delays). Issue 225 remains `needs-info`:
 the recorder is verified; the intermittent original timeout is not claimed fixed.
+
+### Recorder evidence and localisation (2026-11-09)
+
+The real-profile `diagnostics/space-main.jsonl` now holds four automatically retained slow cold
+starts. A second readiness timeout, `daemon_startup_failed`, was also recorded on 2026-10-22. In
+every slow start, `runtime_factory_connect` dominates, and inside it the SDK launcher's
+`initializing:recovery` phase dominates:
+
+| Start (UTC)      | SDK      | Total   | `runtime_factory_connect` | `recovery` (launcher) |
+| ---------------- | -------- | ------- | ------------------------- | --------------------- |
+| 2026-10-28 03:13 | alpha.10 | 12.76 s | 11.59 s                   | 10.13 s               |
+| 2026-11-03 09:46 | alpha.10 | 12.79 s | 11.62 s                   | 9.71 s                |
+| 2026-11-06 14:55 | alpha.10 | 11.06 s | 10.02 s                   | 7.96 s                |
+| 2026-11-07 05:09 | beta.2   | 12.90 s | 10.71 s                   | 7.64 s                |
+
+All other launcher phases total about 1.5 s; Space-side stages after connection total about 1 s.
+The 2026-11-07 daemon `bootstrap.log` has timestamps and splits that recovery: 6.44 s before the
+`runtime` phase and 0.98 s of Session recovery after it. In SDK source (`src/sdk-runtime.ts`, shared
+daemon Host path), the pre-`runtime` recovery phase is exactly `cleanupRegisteredManagedChildren()`
+over the real `~/.kodax/runtime/processes/children` registry. It runs synchronously before the
+Runtime is constructed, so its cost directly consumes the readiness deadline. The earlier real-profile
+`createKodaXRuntime` probe (0.948 s) used embedded mode, which never runs this sweep, so it could not
+see this cost.
+
+Registry state on 2026-11-09:
+
+- 1,356 top-level records from 278 owner PIDs. Every record still has `runCleanupRequired` set, and
+  `processTreeComplete` is `false` on all of them. The registry has grown from about 988 records on
+  2026-10-25. Records from September remain, so startup skips them rather than pruning them, and
+  every daemon start pays for them again.
+- About 53% (715) have cwds in KodaX test or eval temp workspaces, for example
+  `kodax-child-command-recovery-*`, `kodax-eval-dumps-*` and `kodax-edit-runtime-*`. Another 33,918
+  records were quarantined into `.unresolved` (66 MB). Startup does not read those, but more than
+  half are also fixtures such as `/test/repo`. KodaX SDK tests and evals therefore register managed
+  children into the real user registry, a test-isolation defect analogous to Issue 025.
+- The existing safe replay `artifacts/diagnostics/managed-children-startup-probe.mjs` uses an
+  isolated home and impossible identities, and asserts that nothing is killed. Against today's
+  1,356 records it finished in 0.36–0.40 s with one 0.25–0.29 s PowerShell CIM snapshot; with absent
+  PIDs it took 0.11 s. The in-daemon sweep took 6.4–10 s, so the slow part depends on real process
+  identities, live-PID reuse and/or the system state during app launch. Those paths can spawn
+  further per-record PowerShell captures or kill probes.
+- Windows boot events do not line up with the failures (2026-10-25 failed two days after the last
+  boot; 2026-10-28 03:13 preceded that day's boot), so a post-boot cold WMI is not supported as the
+  trigger. The sweep emits no internal timing, and the daemon log is silent between its start and
+  `Runtime daemon starting`.
+
+Not done: no records were deleted, no real-identity replay was run because it could terminate real
+processes, and no Space timeout or SDK file was changed.
+
+Proposed SDK follow-up:
+
+1. Emit sweep timing (records, spawned probes and their durations, outcome counts).
+2. Keep the historical sweep from blocking readiness, or bound it.
+3. Prune or settle records whose owner is proven gone, instead of skipping them forever.
+4. Isolate SDK tests and evals from the real `~/.kodax` registry.
 
 ## Issues 226–229 — Runtime and builtin Skill integration
 
@@ -16096,8 +16151,8 @@ From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 
 
 - Total: 225
 - Open: 1
-- Ready: 3
-- Needs info: 1
+- Ready: 4
+- Needs info: 0
 - In Progress: 11
 - Deferred: 0
 - Resolved (including source-only fixes): 209
