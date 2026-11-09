@@ -475,6 +475,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '当前页搜索的自动定位不会切换历史页。全历史结果可在对话中查看，再用返回结果回到原阅读页；定位和恢复位置不会被当成用户翻页操作。',
       '',
       '左侧栏可打开/移除/归档项目，项目排序可持久化；展开项目会显示最近会话，更多会话通过 picker overlay 搜索。Session 可以新建、选择、重命名、删除、Fork、Rewind 或通过 /new、/sessions、/load、/delete、/fork、/rewind 等命令管理。',
+      '侧栏项目和 Session 重命名可按 Enter 或移开焦点保存一次，Escape 取消；输入法选词确认不会提前提交。保存被拒绝时保留原名称并显示错误提示；右键菜单按 Escape 返回触发位置。',
       '删除 Session 时，列表行会先进入“删除中”状态并禁用重复操作；删除成功后再收起并移除，失败则保留原行和可见错误。',
       '',
       '会话保存模型上下文、工具调用、Artifact、workflow run、计划/Diff/任务等运行状态。跨 KodaX CLI/SDK 共享的历史数据位于 ~/.kodax/sessions。',

@@ -15,6 +15,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 ## [Unreleased]
 
 - Restore standalone Artifact rendering by allowing client-side routes on the packaged renderer document while retaining query, asset-fragment and traversal rejection.
+- Save sidebar project and Session renames once on Enter or focus loss, preserve IME composition and Escape cancellation, and report rejected saves without changing the displayed title.
 
 - Keep programmatic search positioning and restoration from paging to adjacent conversation history. Preserve wheel, keyboard, touch and held native scrollbar navigation under slow rendering, including platforms that emit no pointermove during scrollbar dragging. Keep page resizing from reversing a held drag or stranding it at a newer history boundary. Confirm initial native direction at the reached edge, including short pages with overlapping prefetch regions.
 
