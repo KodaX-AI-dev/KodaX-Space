@@ -2,14 +2,16 @@ import { ProductItemBody, useProductBodyPreview } from './ProductItemBody.js';
 import { ThinkingText } from './ThinkingText.js';
 import { QueuedInputRecovery } from './QueuedInputRecovery.js';
 import { ProductToolOriginal } from './ProductToolOriginal.js';
+import { LineageDivider } from './LineageDivider.js';
 // Bubble + ToolCallCard + SystemNotice 组件集合。
 // 单文件聚合：每个组件 < 80 行，共享 ConversationMessage 类型，拆分反而提高复杂度。
 
 import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle,
   Check,
+  CircleAlert,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Copy,
   GitFork,
@@ -18,6 +20,7 @@ import {
   Maximize2,
   Undo2,
   UserRound,
+  Workflow,
   Wrench,
 } from 'lucide-react';
 import { isSessionAttachmentPreviewUrl } from '@kodax-space/space-ipc-schema';
@@ -121,10 +124,13 @@ function MessageFooter({
   text,
   sentAt,
   turnActions,
+  inline = false,
 }: {
   text: string;
   sentAt?: number;
   turnActions?: TurnFooterActions;
+  /** Sits at the end of a one-line notice row and only shows on hover / keyboard focus. */
+  inline?: boolean;
 }): JSX.Element {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
@@ -154,7 +160,13 @@ function MessageFooter({
     'inline-block max-w-0 overflow-hidden whitespace-nowrap leading-none opacity-0 transition-[max-width,opacity] duration-150 group-hover/footer:max-w-[7.5rem] group-hover/footer:opacity-100 group-hover/action:max-w-[7.5rem] group-hover/action:opacity-100 group-focus-visible/action:max-w-[7.5rem] group-focus-visible/action:opacity-100';
 
   return (
-    <div className="conversation-message-footer group/footer mt-2 flex min-h-5 items-center gap-3 text-xs leading-none">
+    <div
+      className={`conversation-message-footer group/footer flex min-h-5 items-center gap-3 text-xs leading-none ${
+        inline
+          ? 'shrink-0 opacity-0 transition-opacity group-hover/notice:opacity-100 focus-within:opacity-100'
+          : 'mt-2'
+      }`}
+    >
       <button
         type="button"
         disabled={preview !== undefined && !preview.copyable}
@@ -1015,27 +1027,30 @@ function runtimeFailureRows(message: RuntimeFailureDetailsProps): RuntimeFailure
   return rows;
 }
 
-function RuntimeFailureDetails(message: RuntimeFailureDetailsProps): JSX.Element | null {
+function RuntimeFailureTable({
+  id,
+  hidden,
+  rows,
+  terminal,
+}: {
+  readonly id: string;
+  readonly hidden: boolean;
+  readonly rows: readonly RuntimeFailureRow[];
+  readonly terminal: SystemNoticeMessage['terminal'];
+}): JSX.Element {
   const { t } = useI18n();
-  const rows = runtimeFailureRows(message);
-  if (rows.length === 0) return null;
   return (
-    <details className="basis-full mx-auto max-w-3xl px-3 pb-1 text-left text-fg-secondary">
-      <summary className="cursor-pointer select-none text-center text-fg-muted">
-        {t('message.runtimeFailure.details')}
-      </summary>
-      {message.terminal && (
-        <p>{t(`message.runtimeFailure.effects.${message.terminal.effectOutcome}`)}</p>
-      )}
-      <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 rounded border border-current/20 px-2 py-1.5">
+    <div id={id} hidden={hidden} className="basis-full pl-7 text-xs text-fg-secondary">
+      {terminal && <p>{t(`message.runtimeFailure.effects.${terminal.effectOutcome}`)}</p>}
+      <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 rounded-md border border-border-default px-2 py-1.5">
         {rows.map((row) => (
           <Fragment key={row.label}>
-            <dt>{t(row.label)}</dt>
+            <dt className="text-fg-muted">{t(row.label)}</dt>
             <dd className="min-w-0 break-all text-fg-primary">{row.value}</dd>
           </Fragment>
         ))}
       </dl>
-    </details>
+    </div>
   );
 }
 
@@ -1050,11 +1065,13 @@ function InformationNotice({
   const body = text;
   return (
     <div
-      className="conversation-notice notice-in flex items-start gap-3 rounded-xl border border-border-default px-4 py-3 text-left text-fg-secondary"
+      className={`conversation-notice notice-in group/notice flex gap-3 rounded-xl border border-border-default px-4 text-left text-fg-secondary ${
+        collapsed ? 'items-start py-3' : 'items-center py-2.5'
+      }`}
       data-testid="system-notice"
       data-notice-variant="info"
     >
-      <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+      <Info className={`h-4 w-4 shrink-0 text-fg-muted ${collapsed ? 'mt-0.5' : ''}`} aria-hidden />
       <div className="min-w-0 flex-1">
         {collapsed ? (
           <details>
@@ -1079,109 +1096,130 @@ function InformationNotice({
         ) : (
           <div className="whitespace-pre-wrap break-words">{body}</div>
         )}
-        <MessageFooter text={body} sentAt={sentAt} />
+        {collapsed && <MessageFooter text={body} sentAt={sentAt} />}
       </div>
+      {!collapsed && <MessageFooter text={body} sentAt={sentAt} inline />}
     </div>
   );
 }
 
-export function SystemNotice({
-  taskResult,
-  variant,
-  text,
-  lineageKind,
-  historyTruncationScope,
-  omittedItems,
-  action,
-  retryAvailableAt,
-  sentAt,
-  historical,
-  failureKind,
-  failureDetail,
-  runtimeRunId,
-  terminal,
-}: Extract<ConversationMessage, { kind: 'system_notice' }>): JSX.Element {
+export function SystemNotice(message: SystemNoticeMessage): JSX.Element {
   const { t } = useI18n();
-  const isWorkflow = variant === 'workflow';
-  const NoticeIcon = variant === 'error' ? AlertTriangle : Info;
-  const color =
-    variant === 'error' ? 'border-danger/25 text-danger' : 'border-warn/25 text-fg-secondary';
-
-  const actionDef = action ? ACTION_BUTTONS[action] : undefined;
-  const secondsLeft = useRetryCountdown(retryAvailableAt);
-  const countdownActive = action === 'retry' && secondsLeft > 0;
-  // #12 fix: composeMessages 是纯函数、拿不到 i18n context，只透传 content + historical 标记
-  // 而不烤入英文标签；这里（有 useI18n）按 locale 拼出中性的"历史记录"前缀。Live 事件
-  // （historical 缺省）的 text 已经在 composeMessages 里烤好完整文案，原样展示不变。
-  const displayText =
-    variant === 'lineage' && lineageKind === 'compaction'
-      ? t('session.compactionHistoryLabel')
-      : variant === 'lineage' && lineageKind === 'branch_summary'
-        ? `${t('session.branchSummaryHistoryLabel')}: ${text}`
-        : variant === 'lineage' && lineageKind === 'history_truncation'
-          ? t(
-              historyTruncationScope === 'turn'
-                ? 'session.turnHistoryTruncatedLabel'
-                : 'session.historyTruncatedLabel',
-              { count: omittedItems ?? 0 },
-            )
-          : variant === 'sidecar' && historical === true
-            ? `${t('session.sidecarHistoricalLabel')}: ${text}`
-            : text;
+  const { variant, text, lineageKind, sentAt } = message;
 
   if (variant === 'info')
-    return <InformationNotice text={text} sentAt={sentAt} taskResult={taskResult} />;
-
-  if (isWorkflow) {
+    return <InformationNotice text={text} sentAt={sentAt} taskResult={message.taskResult} />;
+  if (variant === 'lineage' && lineageKind !== undefined) {
+    const label =
+      lineageKind === 'compaction'
+        ? t('session.compactionHistoryLabel')
+        : lineageKind === 'branch_summary'
+          ? t('session.branchSummaryHistoryLabel')
+          : t(
+              message.historyTruncationScope === 'turn'
+                ? 'session.turnHistoryTruncatedLabel'
+                : 'session.historyTruncatedLabel',
+              { count: message.omittedItems ?? 0 },
+            );
     return (
-      <div
-        className={`conversation-notice notice-in flex items-start gap-3 rounded-xl border px-4 py-3 text-left ${color}`}
-        data-testid="system-notice"
-        data-notice-variant={variant}
-      >
-        <NoticeIcon className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <div className="whitespace-pre-wrap break-words">{displayText}</div>
-          <MessageFooter text={displayText} sentAt={sentAt} />
-        </div>
-      </div>
+      <LineageDivider
+        kind={lineageKind}
+        label={label}
+        {...(lineageKind === 'branch_summary' && text ? { detail: text } : {})}
+      />
     );
   }
+  if (variant === 'error') return <ErrorNotice {...message} />;
 
+  // #12 fix: composeMessages 是纯函数、拿不到 i18n context，只透传 content + historical 标记
+  // 而不烤入英文标签；这里（有 useI18n）按 locale 拼出中性的"历史记录"前缀。
+  const displayText =
+    variant === 'sidecar' && message.historical === true
+      ? `${t('session.sidecarHistoricalLabel')}: ${text}`
+      : text;
+  const NoticeIcon = variant === 'workflow' ? Workflow : Info;
   return (
     <div
-      className={[
-        'conversation-notice notice-in rounded-xl border',
-        color,
-        'px-4 py-3 text-left flex items-start gap-3 flex-wrap',
-      ].join(' ')}
+      className="conversation-notice notice-in group/notice flex items-center gap-3 rounded-xl border border-border-default px-4 py-2.5 text-left text-fg-secondary"
       data-testid="system-notice"
       data-notice-variant={variant}
     >
-      <NoticeIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{displayText}</span>
-      {terminal?.effectOutcome === 'unknown' && (
-        <span>{t('message.runtimeFailure.effects.unknown')}</span>
+      <NoticeIcon className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+      <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">{displayText}</div>
+      {variant === 'workflow' && <MessageFooter text={displayText} sentAt={sentAt} inline />}
+    </div>
+  );
+}
+
+function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
+  const { text, action, retryAvailableAt, terminal } = message;
+  const { t } = useI18n();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsId = useId();
+  const rows = runtimeFailureRows(message);
+  const actionDef = action ? ACTION_BUTTONS[action] : undefined;
+  const secondsLeft = useRetryCountdown(retryAvailableAt);
+  const countdownActive = action === 'retry' && secondsLeft > 0;
+  // Lines follow content length: title, message and actions share one row and only wrap when
+  // the text is long or the column is narrow.
+  return (
+    <div
+      className="conversation-notice notice-in flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-danger/25 px-4 py-2.5 text-left"
+      data-testid="system-notice"
+      data-notice-variant="error"
+    >
+      <CircleAlert className="h-4 w-4 shrink-0 text-danger" aria-hidden />
+      <div className="min-w-0 flex-1 basis-[16rem] break-words">
+        <span className="font-medium text-danger">{t('message.errorTitle')}</span>
+        {text && (
+          <>
+            <span className="text-fg-muted" aria-hidden>
+              {' · '}
+            </span>
+            <span className="whitespace-pre-wrap text-fg-secondary">{text}</span>
+          </>
+        )}
+        {terminal?.effectOutcome === 'unknown' && (
+          <div className="text-fg-secondary">{t('message.runtimeFailure.effects.unknown')}</div>
+        )}
+      </div>
+      {(rows.length > 0 || actionDef) && (
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {rows.length > 0 && (
+            <button
+              type="button"
+              aria-expanded={detailsOpen}
+              aria-controls={detailsId}
+              onClick={() => setDetailsOpen((open) => !open)}
+              className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-xs text-fg-muted hover:bg-hover-bg hover:text-fg-secondary"
+            >
+              {t('message.runtimeFailure.details')}
+              <ChevronRight
+                className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-90' : ''}`}
+                aria-hidden
+              />
+            </button>
+          )}
+          {actionDef && (
+            <button
+              type="button"
+              disabled={countdownActive}
+              onClick={() => window.dispatchEvent(new CustomEvent(actionDef.event))}
+              className="tnum inline-flex h-7 items-center rounded-md border border-border-default bg-surface-1 px-2.5 text-xs font-medium text-fg-primary shadow-sm transition-colors hover:bg-hover-bg disabled:cursor-not-allowed disabled:text-fg-secondary disabled:hover:bg-surface-1"
+              title={
+                countdownActive ? t('message.retryWaitTitle', { seconds: secondsLeft }) : undefined
+              }
+            >
+              {countdownActive
+                ? t('message.retryIn', { seconds: secondsLeft })
+                : t(actionDef.labelKey)}
+            </button>
+          )}
+        </div>
       )}
-      {actionDef && (
-        <button
-          type="button"
-          disabled={countdownActive}
-          onClick={() => window.dispatchEvent(new CustomEvent(actionDef.event))}
-          className="px-1.5 py-0.5 rounded border border-current/30 hover:bg-current/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-          title={
-            countdownActive ? t('message.retryWaitTitle', { seconds: secondsLeft }) : undefined
-          }
-        >
-          {countdownActive ? t('message.retryIn', { seconds: secondsLeft }) : t(actionDef.labelKey)}
-        </button>
+      {rows.length > 0 && (
+        <RuntimeFailureTable id={detailsId} hidden={!detailsOpen} rows={rows} terminal={terminal} />
       )}
-      <RuntimeFailureDetails
-        {...(failureKind !== undefined ? { failureKind } : {})}
-        {...(failureDetail !== undefined ? { failureDetail } : {})}
-        {...(runtimeRunId !== undefined ? { runtimeRunId } : {})}
-        {...(terminal !== undefined ? { terminal } : {})}
-      />
     </div>
   );
 }

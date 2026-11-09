@@ -3226,6 +3226,7 @@ type MarkerTone =
   | 'assistant'
   | 'system'
   | 'info'
+  | 'danger'
   | 'tool'
   | 'artifact'
   | 'thinking';
@@ -3236,6 +3237,7 @@ const MARKER_TONE_CLASS: Record<MarkerTone, string> = {
   assistant: 'bg-ok',
   system: 'bg-warn',
   info: 'bg-fg-muted',
+  danger: 'bg-danger',
   tool: 'bg-fg-faint dark:bg-fg-muted',
   artifact: 'bg-accent-ink',
   thinking: 'bg-thinking',
@@ -3252,7 +3254,7 @@ function messageMarkerTone(message: StandardViewMessage): MarkerTone {
     case 'assistant_text':
       return 'assistant';
     case 'system_notice':
-      return message.variant === 'info' ? 'info' : 'system';
+      return message.variant === 'error' ? 'danger' : 'info';
     case 'artifact':
       return 'artifact';
   }

@@ -146,7 +146,18 @@ test('provider failure notice renders the SDK safe message and structured diagno
     );
 
     assert.match(markup, /Provider authentication failed\./);
-    assert.match(markup, /Runtime failure details/);
+    assert.match(markup, /Run failed/);
+    assert.match(
+      markup,
+      /aria-expanded="false"[^>]*>Details/,
+      'diagnostics stay behind a collapsed Details toggle on the notice row',
+    );
+    assert.doesNotMatch(markup, /Runtime failure details/);
+    assert.match(
+      markup,
+      /class="[^"]*text-fg-secondary[^"]*">Provider authentication failed./,
+      'the error message itself reads as body text, not as a red alarm',
+    );
     assert.match(markup, /authentication_failed/);
     assert.match(markup, /credential/);
     assert.match(markup, /401/);
@@ -220,4 +231,70 @@ test('context-capacity notice shows the required and available token counts', ()
     assert.match(markup, /context_capacity_exceeded/);
     assert.match(markup, /143400 \/ 131072/);
   });
+});
+
+function renderNotice(props: Omit<Parameters<typeof SystemNotice>[0], 'kind'>): string {
+  let markup = '';
+  withEnglishLocale(() => {
+    markup = renderToStaticMarkup(
+      createElement(
+        TestI18nProvider,
+        null,
+        createElement(SystemNotice, { kind: 'system_notice', ...props }),
+      ),
+    );
+  });
+  return markup;
+}
+
+test('history lineage events render as a thin divider instead of a card', () => {
+  const compaction = renderNotice({
+    id: 'compaction',
+    variant: 'lineage',
+    lineageKind: 'compaction',
+    text: '',
+  });
+  assert.match(compaction, /role="separator"/);
+  assert.match(compaction, /Conversation compacted/);
+  assert.doesNotMatch(compaction, /conversation-notice|border-warn|text-warn/);
+
+  const truncated = renderNotice({
+    id: 'truncated',
+    variant: 'lineage',
+    lineageKind: 'history_truncation',
+    historyTruncationScope: 'turn',
+    omittedItems: 12,
+    text: '',
+  });
+  assert.match(truncated, /role="separator"/);
+  assert.match(truncated, /12 items omitted from this long turn/);
+});
+
+test('a branch summary divider keeps its summary collapsed until opened', () => {
+  const markup = renderNotice({
+    id: 'branch',
+    variant: 'lineage',
+    lineageKind: 'branch_summary',
+    text: 'Tried zod on the other branch and dropped it.',
+  });
+  assert.match(markup, /<details/);
+  assert.doesNotMatch(markup, /<details[^>]* open/);
+  assert.match(markup, /<summary[^>]*>[\s\S]*Returned from another branch[\s\S]*<\/summary>/);
+  assert.match(markup, /Tried zod on the other branch and dropped it\./);
+  assert.doesNotMatch(markup, /Returned from another branch: /);
+});
+
+test('workflow and sidecar notices are neutral, not warnings', () => {
+  for (const variant of ['workflow', 'sidecar'] as const) {
+    const markup = renderNotice({ id: variant, variant, text: '[workflow] agent spawned' });
+    assert.match(markup, new RegExp(`data-notice-variant="${variant}"`));
+    assert.doesNotMatch(markup, /text-warn|border-warn|text-danger/);
+  }
+});
+
+test('a one-line notice keeps its copy action on the same row, revealed on hover or focus', () => {
+  const markup = renderNotice({ id: 'workflow', variant: 'workflow', text: 'Collector done' });
+  assert.match(markup, /group\/notice/);
+  assert.match(markup, /group-hover\/notice:opacity-100[^"]*focus-within:opacity-100/);
+  assert.doesNotMatch(markup, /conversation-message-footer[^"]*mt-2/);
 });

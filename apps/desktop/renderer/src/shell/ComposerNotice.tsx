@@ -3,7 +3,7 @@ import { CircleAlert, CircleCheck, Info, TriangleAlert, X, type LucideIcon } fro
 
 export type ComposerNoticeTone = 'success' | 'info' | 'warning' | 'danger';
 
-// One visual language for every notice docked above the composer: neutral card in the composer's
+// One visual language for notices docked above the composer and for floating toasts: neutral card in the composer's
 // family, tone carried by the icon plus a faint tinted border. Success stays fully neutral — a
 // finished task is good news, not an alarm.
 const TONE_VIEW: Readonly<
@@ -59,7 +59,9 @@ export function ComposerNotice({
       } ${view.frame}`}
     >
       <Glyph className={`h-3.5 w-3.5 flex-shrink-0 ${view.icon}`} strokeWidth={2} aria-hidden />
-      <span className="min-w-0 flex-1 break-words leading-snug">{children}</span>
+      <span className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-snug">
+        {children}
+      </span>
       {meta !== undefined && <span className="tnum flex-shrink-0 text-fg-muted">{meta}</span>}
       {onDismiss && (
         <button

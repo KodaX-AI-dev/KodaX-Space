@@ -9,14 +9,15 @@ const fixture = `
 import React from 'react';import{createRoot}from'react-dom/client';
 import{NotificationsSurface}from'./NotificationsSurface.tsx';import{I18nProvider}from'../i18n/I18nProvider.tsx';
 import{useAppStore}from'../store/appStore.ts';
+import{ToastContainer}from'./ToastContainer.tsx';import{pushToast}from'../store/toastStore.ts';
 window.kodaxSpace={platform:'win32',rendererReady:()=>{},on:()=>()=>{},invoke:async(channel)=>{
 if(channel==='settings.get')return{ok:true,data:{languageMode:'zh-CN',effectiveLocale:'zh-CN'}};
 return{ok:false,error:{message:'Unused fixture channel: '+channel}};
 }};
 useAppStore.setState({currentSessionId:'s',notifications:[]});
 useAppStore.getState().pushNotification({id:'done',severity:'success',text:'已完成 · 用时 3m 12s',sessionId:'s',createdAt:1,dismissOnOutsideInteraction:true});
-window.store=useAppStore;
-createRoot(document.getElementById('root')).render(<I18nProvider><div style={{width:640,padding:24}}><button id="outside">outside</button><NotificationsSurface/></div></I18nProvider>);
+window.store=useAppStore;window.pushToast=pushToast;
+createRoot(document.getElementById('root')).render(<I18nProvider><div style={{width:640,padding:24}}><button id="outside">outside</button><NotificationsSurface/></div><ToastContainer/></I18nProvider>);
 `;
 
 function bundleFixture() {
@@ -109,6 +110,19 @@ test(
     );
     await page.locator('#outside').click();
     assert.equal(await row.count(), 0);
+
+    // Toasts reuse the same card: tone on the icon, message in body text.
+    await page.evaluate(() => {
+      (
+        window as unknown as { pushToast: (m: string, tone: string, ttl: number) => void }
+      ).pushToast('保存失败', 'error', 0);
+    });
+    const toast = page.locator('[data-notice-tone="danger"]', { hasText: '保存失败' });
+    await toast.waitFor();
+    assert.equal(await toast.locator('svg.text-danger').count(), 1);
+    assert.match((await toast.getAttribute('class')) ?? '', /text-fg-secondary/);
+    await toast.getByRole('button', { name: '关闭', exact: true }).click();
+    assert.equal(await toast.count(), 0);
     assert.deepEqual(errors, []);
   },
 );
