@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Keep already-read saved history pages together while browsing older or newer records within the same SDK revision. Preserve search return positions and completed bodies; use the bottom action to return to live output.
+- Mark user queries with a localized sender label, a tinted background and an accent edge while preserving long-query collapse, attachments and full-text copy.
 - Restore standalone Artifact rendering by allowing client-side routes on the packaged renderer document while retaining query, asset-fragment and traversal rejection.
 - Save sidebar project and Session renames once on Enter or focus loss, preserve IME composition and Escape cancellation, and report rejected saves without changing the displayed title.
 - Replace the Partner home draft after a successful scenario selection instead of accumulating templates; failed or stale selections preserve the draft and never send automatically.

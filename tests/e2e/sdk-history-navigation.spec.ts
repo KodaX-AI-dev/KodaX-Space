@@ -93,16 +93,16 @@ async function nativeHistoryGeometry(page: Page) {
   });
 }
 
-async function watchNativeHistoryWindows(page: Page): Promise<void> {
-  await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+async function watchNativeHistoryWindows(page: Page, direction: 'older' | 'newer'): Promise<void> {
+  await page.getByTestId('conversation-scroll-container').evaluate((element, direction) => {
     const stream = document.querySelector('[data-testid="conversation-stream"]');
     if (!stream) throw new Error('Expected conversation stream');
-    const firstIndex = () =>
-      Number(
-        stream
-          .querySelector('[data-msg-id]')
-          ?.textContent?.match(/HISTORY_(?:QUESTION|ANSWER)_(\d+)/)?.[1],
-      );
+    const firstIndex = () => {
+      const indexes = [...stream.querySelectorAll('[data-msg-id]')]
+        .map((row) => Number(row.textContent?.match(/HISTORY_(?:QUESTION|ANSWER)_(\d+)/)?.[1]))
+        .filter(Number.isFinite);
+      return direction === 'older' ? Math.min(...indexes) : Math.max(...indexes);
+    };
     const initial = firstIndex();
     if (!Number.isFinite(initial)) throw new Error('Expected seeded history marker');
     const markers = [initial];
@@ -124,7 +124,7 @@ async function watchNativeHistoryWindows(page: Page): Promise<void> {
     element.addEventListener('finish-native-history-test', () => observer.disconnect(), {
       once: true,
     });
-  });
+  }, direction);
 }
 
 async function nativeHistoryMarkers(page: Page): Promise<number[]> {
@@ -222,7 +222,7 @@ async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer')
   });
   await settleNativeHistoryLayout(page);
   const geometry = await nativeHistoryGeometry(page);
-  await watchNativeHistoryWindows(page);
+  await watchNativeHistoryWindows(page, direction);
   await page.mouse.move(geometry.x, geometry.y);
   await page.mouse.down();
   let failed = false;
@@ -279,8 +279,20 @@ test('native scrollbar stays held across SDK history windows in both directions'
       await expect.poll(ids).not.toEqual(newestIds);
       await expect(stream).toContainText('HISTORY_QUESTION_259');
       await dragNativeHistoryWindow(space.page, 'older');
-      await expect(stream).not.toContainText('HISTORY_QUESTION_259');
+      await expect(stream).toContainText('HISTORY_QUESTION_259');
+      // Locate an unread oldest window through the real search entry before appending newer pages.
+      await space.page.keyboard.press('Control+f');
+      const search = space.page.getByTestId('transcript-search-bar');
+      await search.getByRole('searchbox').fill('HISTORY_QUESTION_0');
+      await search.getByRole('combobox').selectOption('session');
+      await search
+        .getByTestId('sdk-history-search-result')
+        .filter({ hasText: 'HISTORY_QUESTION_0' })
+        .click();
+      await search.getByRole('button', { name: 'View in conversation' }).click();
+      await expect(stream).toContainText('HISTORY_QUESTION_0');
       await dragNativeHistoryWindow(space.page, 'newer');
+      await expect(stream).toContainText('HISTORY_QUESTION_0');
       const bottom = space.page.getByRole('button', { name: 'Jump to bottom', exact: true });
       if (await bottom.count()) await bottom.click();
       await expect.poll(ids).toEqual(newestIds);
@@ -409,6 +421,13 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     await expect(stream).toContainText('HISTORY_QUESTION_259');
     const moveToOlder = async () => {
       const before = await ids();
+      await scroller.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await settleNativeHistoryLayout(space.page);
+      const anchor = stream.locator('[data-msg-id]').first();
+      const anchorId = await anchor.getAttribute('data-msg-id');
+      const anchorTop = await anchor.evaluate((element) => element.getBoundingClientRect().top);
       await scroller.hover();
       await space.page.mouse.wheel(
         0,
@@ -416,13 +435,16 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
       );
       try {
         await expect.poll(ids, { timeout: 10_000 }).not.toEqual(before);
-        await expect
-          .poll(() =>
-            scroller.evaluate(
-              (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
-            ),
-          )
-          .toBeLessThan(2);
+        await settleNativeHistoryLayout(space.page);
+        const after = await ids();
+        expect(before.every((id) => after.includes(id))).toBe(true);
+        expect(
+          Math.abs(
+            (await stream
+              .locator(`[data-msg-id="${anchorId}"]`)
+              .evaluate((element) => element.getBoundingClientRect().top)) - anchorTop,
+          ),
+        ).toBeLessThanOrEqual(2);
       } catch (error) {
         const facts = await space.page.evaluate(async (sessionId) => {
           const history = await window.kodaxSpace!.invoke('session.history', {
@@ -458,7 +480,9 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     expect(oldest).not.toEqual(middle);
     await scroller.hover();
     await space.page.mouse.wheel(0, await scroller.evaluate((element) => element.scrollHeight));
-    await expect.poll(ids).toEqual(middle);
+    await settleNativeHistoryLayout(space.page);
+    expect(await ids()).toEqual(oldest);
+    await expect(stream).toContainText('HISTORY_QUESTION_259');
     await expect(
       space.page.getByRole('button', { name: 'Return to newest messages', exact: true }),
     ).toHaveCount(0);

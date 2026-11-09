@@ -9,7 +9,7 @@ const fixture = `
 import React from 'react';import{createRoot}from'react-dom/client';
 import{ConversationStreamV2}from'./ConversationStreamV2.tsx';
 import{I18nProvider}from'../i18n/I18nProvider.tsx';import{useAppStore}from'../store/appStore.ts';
-import{restoreNewestSessionHistory,loadOlderSessionHistory,activateSessionHistoryPaging,deactivateSessionHistoryPaging}from'./sessionHistoryPaging.ts';
+import{restoreNewestSessionHistory,loadOlderSessionHistory,activateSessionHistoryPaging,deactivateSessionHistoryPaging,openLocatedHistory}from'./sessionHistoryPaging.ts';
 import{useToastStore}from'../store/toastStore.ts';
 import{replaceProductSessionView}from'../store/productSessionView.ts';
 window.requests=[];window.hold=false;window.fail=false;window.release=()=>{};window.toasts=()=>useToastStore.getState().toasts;
@@ -31,20 +31,22 @@ productItems:window.locatedKind==='same-page'?window.samePageItems:window.locate
 :{id:'located-input',type:'user',text:'Located record',historyBoundary:{entryId:'found',sourceRevision:'s'}},
 ...(window.locatedKind==='thinking'?[{id:'following-tool',type:'tool',text:'Following result',tool:{name:'read',callId:'following-call',status:'success',resultRecorded:true}}]:[])],
 page:{outcome:'ready',revision:'r',sourceRevision:'s',locatedBoundaryId:'found',hasMore:false,hasNewer:true,windowMode:'replace'}}};
-window.requests.push(input.cursor??'newest');
+window.requests.push(input.cursor??input.around?.searchItemId??'newest');
 if(window.holdNewest&&!input.cursor){window.newestHeld=true;await new Promise((resolve,reject)=>window.releaseNewest=()=>reject(new Error('Obsolete newest read failed')));}
 if(window.hold&&input.cursor)await new Promise((resolve,reject)=>window.release=()=>window.fail?reject(new Error('Late obsolete read failed')):resolve());
-const index=input.cursor==='oldest'?2:input.cursor==='middle'?1:0;
+const boundary=input.cursor??input.around?.searchItemId;
+const index=boundary==='oldest'?2:boundary==='middle'?1:0;
 const label=['NEWEST','MIDDLE','OLDEST'][index];
-const tool={id:'tool-'+label,type:'tool',text:'concealed tool result',historyBoundary:{entryId:'found',sourceRevision:'s'},tool:{name:'read',callId:'r',status:'success',resultRecorded:true}};
-return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'}]),
-page:{outcome:'ready',revision:'r',sourceRevision:'s',hasMore:index<2,hasNewer:index>0,windowMode:'replace',...(index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
+const tool={id:'tool-'+label,type:'tool',text:'concealed tool result',historyBoundary:{entryId:'found',sourceRevision:'s'},tool:{name:'read',callId:'call-'+label,status:'success',resultRecorded:true}};
+return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'}]),
+page:{outcome:'ready',revision:'r',sourceRevision:'s',hasMore:index<2,hasNewer:index>0,locatedBoundaryId:'found',windowMode:'replace',...(index>0?{newerCursor:index===2?'middle':'newest'}:{}),...(index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
 }};
 useAppStore.setState({currentSessionId:'s',currentProjectPath:'/project',sessions:[{sessionId:'s',title:'History',surface:'code',projectRoot:'/project'}]});
 function App(){const id=useAppStore(state=>state.currentSessionId);return <ConversationStreamV2 key={id}/>}
 createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nProvider>);
 window.start=async()=>{await restoreNewestSessionHistory('s','code');await loadOlderSessionHistory('s');await loadOlderSessionHistory('s');};
-window.middle=async()=>{await restoreNewestSessionHistory('s','code');await loadOlderSessionHistory('s');};
+window.locate=async(id)=>{await restoreNewestSessionHistory('s','code');await openLocatedHistory('s',{searchItemId:id},new AbortController().signal);};
+window.middle=()=>window.locate('middle');
 window.settle=(count=12)=>new Promise(resolve=>{let frames=0;const tick=()=>++frames<count?requestAnimationFrame(tick):resolve();requestAnimationFrame(tick)});
 window.select=id=>{deactivateSessionHistoryPaging(useAppStore.getState().currentSessionId);useAppStore.setState({currentSessionId:id});activateSessionHistoryPaging(id)};
 window.detail=mode=>useAppStore.getState().setTranscriptView(mode);
@@ -134,7 +136,7 @@ test(
     await search.getByRole('searchbox').fill('no current-page match');
     await search.getByText('0/0').waitFor();
     await scroller.hover();
-    await page.mouse.wheel(0, -12_000);
+    await page.mouse.wheel(0, -(await scroller.evaluate((element) => element.scrollHeight)));
     await page.waitForFunction(
       () =>
         document.querySelector('[data-testid="conversation-scroll-container"]')!.scrollTop === 0,
@@ -223,37 +225,10 @@ test(
     await scroller.hover();
     await page.mouse.wheel(0, 300);
     await stream.getByText('MIDDLE 0', { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate('window.requests'), [
-      'newest',
-      'middle',
-      'oldest',
-      'middle',
-    ]);
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
-      return el.scrollTop < el.clientHeight;
-    });
-    assert.ok(
-      await scroller.evaluate((element) => element.scrollTop < element.clientHeight),
-      'a newer page opens at its readable beginning',
-    );
-    await page.evaluate('window.settle()');
-    await scroller.evaluate((element) => {
-      element.scrollTop = 100;
-    });
-    await page.evaluate('window.settle()');
-    assert.equal(
-      await stream.getByText('MIDDLE 0', { exact: true }).count(),
-      1,
-      'dragging the scrollbar down near the page top must not turn back',
-    );
-    await page.mouse.wheel(0, 100);
-    await page.evaluate('window.settle()');
-    assert.equal(
-      await stream.getByText('MIDDLE 0', { exact: true }).count(),
-      1,
-      'continuing downward near the new page top must not turn back',
-    );
+    await page.evaluate('window.settle(48)');
+    assert.deepEqual(await page.evaluate('window.requests'), ['newest', 'middle', 'oldest']);
+    assert.equal(await stream.getByText('OLDEST 11', { exact: true }).count(), 1);
+    assert.equal(await stream.getByText('NEWEST 11', { exact: true }).count(), 1);
     await latest.click();
     await stream.getByText('NEWEST 11', { exact: true }).waitFor();
     const reportMarker = await stream
@@ -434,154 +409,15 @@ async function dispatchHistoryGesture(
   }, direction);
 }
 
-async function expectHistoryGesturePage(
-  page: Page,
-  t: TestContext,
-  label: string,
-  direction: HistoryDirection,
-): Promise<void> {
-  t.diagnostic(`Checking ${label}/${direction}`);
-  try {
-    await page
-      .getByTestId('conversation-stream')
-      .getByText(direction === 'newer' ? 'MIDDLE 0' : 'OLDEST 11', { exact: true })
-      .waitFor();
-  } catch (error) {
-    t.diagnostic(
-      JSON.stringify({
-        label,
-        direction,
-        requests: await page.evaluate('window.requests'),
-        viewport: await page.getByTestId('conversation-scroll-container').evaluate((element) => ({
-          top: element.scrollTop,
-          height: element.scrollHeight,
-          client: element.clientHeight,
-        })),
-      }),
-    );
-    throw error;
-  }
-  assert.equal(
-    await page.evaluate('window.requests.at(-1)'),
-    direction === 'newer' ? 'middle' : 'oldest',
+async function startUnread(page: Page, direction: HistoryDirection): Promise<void> {
+  await page.evaluate(
+    (id) => (window as unknown as { locate(id: string): Promise<void> }).locate(id),
+    direction === 'older' ? 'newest' : 'oldest',
   );
-}
-
-async function verifyIndependentHistoryGestures(
-  page: Page,
-  t: TestContext,
-  input: HistoryGesture,
-): Promise<void> {
-  const scroller = page.getByTestId('conversation-scroll-container');
-  await page.evaluate('window.start()');
-  await page.getByTestId('conversation-stream').getByText('OLDEST 11', { exact: true }).waitFor();
-  for (const direction of ['newer', 'older'] as const) {
-    // Finish the previous page's bounded anchor correction before an independent gesture.
-    await page.evaluate('window.settle(36)');
-    await scroller.evaluate((element, direction) => {
-      element.scrollTop =
-        direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
-    }, direction);
-    await page.evaluate('window.settle()');
-    await dispatchHistoryGesture(page, input, direction);
-    await expectHistoryGesturePage(page, t, input, direction);
-    if (input === 'scrollbar') await sendHistoryPointer(page, 'pointerup');
-  }
-}
-
-async function verifyTouchReversals(page: Page, t: TestContext): Promise<void> {
-  const scroller = page.getByTestId('conversation-scroll-container');
-  for (const direction of ['newer', 'older'] as const) {
-    await page.evaluate('window.settle(36)');
-    await sendHistoryTouch(page, 'touchstart', 300);
-    await sendHistoryTouch(page, 'touchmove', direction === 'newer' ? 500 : 100);
-    await scroller.evaluate((element, direction) => {
-      element.scrollTop =
-        direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
-    }, direction);
-    await page.evaluate('window.settle()');
-    await sendHistoryTouch(page, 'touchmove', direction === 'newer' ? 400 : 200);
-    await scroller.evaluate((element, direction) => {
-      element.scrollTop = direction === 'newer' ? element.scrollHeight : 0;
-    }, direction);
-    await expectHistoryGesturePage(page, t, 'touch reversal', direction);
-  }
-}
-
-async function finishHistoryScrollbarDrag(
-  page: Page,
-  release: 'pointerup' | 'pointercancel',
-): Promise<void> {
-  await page.getByTestId('conversation-scroll-container').evaluate((element, release) => {
-    const rect = element.getBoundingClientRect();
-    const init = { pointerId: 7, clientX: rect.right - 1, clientY: rect.top + 100, bubbles: true };
-    element.dispatchEvent(new PointerEvent('pointermove', { ...init, buttons: 1 }));
-    element.scrollTop = element.scrollHeight;
-    element.dispatchEvent(new PointerEvent(release, { ...init, buttons: 0 }));
-  }, release);
-}
-
-async function verifyContinuousScrollbarDrag(
-  page: Page,
-  t: TestContext,
-  release: 'pointerup' | 'pointercancel',
-): Promise<void> {
-  const scroller = page.getByTestId('conversation-scroll-container');
-  await page.evaluate('window.start();');
+  await page
+    .getByText(direction === 'older' ? 'NEWEST 11' : 'OLDEST 11', { exact: true })
+    .waitFor();
   await page.evaluate('window.settle(48)');
-  await scroller.evaluate((element) => {
-    element.scrollTop = element.scrollHeight - element.clientHeight - 100;
-  });
-  await sendHistoryPointer(page, 'pointerdown');
-  await scroller.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-  });
-  await expectHistoryGesturePage(page, t, 'continuous scrollbar', 'newer');
-  await page.evaluate('window.settle(48)');
-  await finishHistoryScrollbarDrag(page, release);
-  if (release === 'pointerup') {
-    await page.getByTestId('conversation-stream').getByText('NEWEST 11', { exact: true }).waitFor();
-  } else {
-    await page.evaluate('window.settle()');
-    assert.equal(
-      await page.evaluate('window.requests.at(-1)'),
-      'middle',
-      'cancelled drag cannot start a later page read',
-    );
-  }
-  await page.evaluate('window.settle(48)');
-  const requests = await page.evaluate('window.requests');
-  await sendHistoryPointer(page, 'pointermove');
-  await scroller.evaluate((element) => {
-    element.scrollTop = 0;
-  });
-  await page.evaluate('window.settle()');
-  assert.deepEqual(
-    await page.evaluate('window.requests'),
-    requests,
-    'a released pointer cannot continue scrollbar paging',
-  );
-}
-
-for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
-  test(
-    `${input} gestures browse history in both directions after programmatic page restoration`,
-    { skip: !browserAvailable },
-    async (t) => {
-      const { page, errors } = await openHistoryFixture(t, input === 'scrollbar');
-      if (input === 'scrollbar')
-        await page.addStyleTag({
-          content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
-        });
-      await verifyIndependentHistoryGestures(page, t, input);
-      if (input === 'touch') await verifyTouchReversals(page, t);
-      if (input === 'scrollbar') {
-        await verifyContinuousScrollbarDrag(page, t, 'pointerup');
-        await verifyContinuousScrollbarDrag(page, t, 'pointercancel');
-      }
-      assert.deepEqual(errors, []);
-    },
-  );
 }
 
 async function nativeHistoryScrollbarGeometry(page: Page) {
@@ -598,92 +434,128 @@ async function nativeHistoryScrollbarGeometry(page: Page) {
       y: rect.top + (element.scrollTop / range) * travel + thumb / 2,
       top: rect.top + thumb / 2,
       bottom: rect.top + travel + thumb / 2,
+      scale: travel / range,
     };
   });
 }
 
-async function prepareNativeHistoryScrollbar(page: Page): Promise<void> {
-  await page.addStyleTag({
-    content:
-      '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}[data-testid="conversation-scroll-container"]::-webkit-scrollbar-button{display:none}',
-  });
-  await page.evaluate('window.start()');
-  await page.getByText('OLDEST 11', { exact: true }).waitFor();
-  await page.getByTestId('conversation-scroll-container').evaluate((element) => {
-    element.setAttribute('data-held-native-moves', '0');
-    element.addEventListener('pointermove', (event) => {
-      if ((event as PointerEvent).buttons === 1)
-        element.setAttribute(
-          'data-held-native-moves',
-          String(Number(element.getAttribute('data-held-native-moves')) + 1),
-        );
-    });
-  });
-}
-
-async function dragNativeHistoryPages(
-  page: Page,
-  direction: HistoryDirection,
-  restorationFrames: number,
-): Promise<void> {
-  const scroller = page.getByTestId('conversation-scroll-container');
-  await page.evaluate('window.settle(48)');
-  await scroller.evaluate((element, direction) => {
-    element.scrollTop =
-      direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
-  }, direction);
-  await page.evaluate('window.settle()');
-  const geometry = await nativeHistoryScrollbarGeometry(page);
-  const edge = direction === 'newer' ? geometry.bottom : geometry.top;
-  const sign = direction === 'newer' ? 1 : -1;
-  const requestCount = await page.evaluate<number>('window.requests.length');
-  await page.mouse.move(geometry.x, geometry.y);
-  await page.mouse.down();
-  try {
-    await page.mouse.move(geometry.x, edge, { steps: 6 });
-    await page.waitForFunction(
-      (offset) =>
-        (window as unknown as { requests: string[] }).requests.slice(offset).includes('middle'),
-      requestCount,
-    );
-    await page.evaluate(`window.settle(${restorationFrames})`);
-    const finalCursor = direction === 'newer' ? 'newest' : 'oldest';
-    if ((await page.evaluate('window.requests.at(-1)')) !== finalCursor) {
-      await page.mouse.move(geometry.x, edge - sign * 15, { steps: 4 });
-      await page.mouse.move(geometry.x, edge + sign * 15, { steps: 4 });
-    }
-    await page
-      .getByText(direction === 'newer' ? 'NEWEST 11' : 'OLDEST 11', { exact: true })
-      .waitFor();
-  } finally {
-    await page.mouse.up();
-  }
-}
-
-for (const restorationFrames of [48, 8])
+for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
   test(
-    `a held native scrollbar continues across history pages after ${restorationFrames} frames with real mouse input`,
+    `${input} reads unread adjacent pages and keeps every already-read page`,
     { skip: !browserAvailable },
     async (t) => {
-      const { page, errors } = await openHistoryFixture(t, true);
-      await prepareNativeHistoryScrollbar(page);
-      await dragNativeHistoryPages(page, 'newer', restorationFrames);
-      await dragNativeHistoryPages(page, 'older', restorationFrames);
-      assert.deepEqual(await page.evaluate('window.requests'), [
-        'newest',
-        'middle',
-        'oldest',
-        'middle',
-        'newest',
-        'middle',
-        'oldest',
-      ]);
-      t.diagnostic(
-        `Native held pointermove count: ${await page.getByTestId('conversation-scroll-container').getAttribute('data-held-native-moves')}`,
-      );
+      const { page, errors } = await openHistoryFixture(t, input === 'scrollbar');
+      const scroller = page.getByTestId('conversation-scroll-container');
+      for (const direction of ['older', 'newer'] as const) {
+        await startUnread(page, direction);
+        await scroller.evaluate((element, direction) => {
+          element.scrollTop =
+            direction === 'newer' ? element.scrollHeight - element.clientHeight - 100 : 100;
+        }, direction);
+        await page.evaluate('window.settle()');
+        const before = await page.evaluate<number>('window.requests.length');
+        await dispatchHistoryGesture(page, input, direction);
+        await page.waitForFunction(
+          (count) => (window as unknown as { requests: string[] }).requests.length > count,
+          before,
+        );
+        await page.getByText('MIDDLE 11', { exact: true }).waitFor();
+        await page
+          .getByText(direction === 'older' ? 'NEWEST 11' : 'OLDEST 11', { exact: true })
+          .waitFor();
+        await page.evaluate('window.settle(48)');
+        if (input === 'scrollbar') await sendHistoryPointer(page, 'pointerup');
+        // Reversing over already-read content must not refetch or change source.
+        const requests = await page.evaluate('window.requests');
+        const ids = await page
+          .locator('[data-source-item]')
+          .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-source-item')));
+        await dispatchHistoryGesture(page, input, direction === 'older' ? 'newer' : 'older');
+        await page.evaluate('window.settle(48)');
+        if (input === 'scrollbar') await sendHistoryPointer(page, 'pointercancel');
+        assert.deepEqual(await page.evaluate('window.requests'), requests);
+        assert.deepEqual(
+          await page
+            .locator('[data-source-item]')
+            .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-source-item'))),
+          ids,
+        );
+      }
       assert.deepEqual(errors, []);
     },
   );
+}
+
+for (const direction of ['older', 'newer'] as const)
+  for (const restorationFrames of [48, 8])
+    test(
+      `a held native scrollbar ${direction} retains pages after ${restorationFrames} frames`,
+      { skip: !browserAvailable },
+      async (t) => {
+        const { page, errors } = await openHistoryFixture(t, true);
+        await page.addStyleTag({
+          content:
+            '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}[data-testid="conversation-scroll-container"]::-webkit-scrollbar-button{display:none}',
+        });
+        await startUnread(page, direction);
+        const scroller = page.getByTestId('conversation-scroll-container');
+        await scroller.evaluate((element) => {
+          element.scrollTop = (element.scrollHeight - element.clientHeight) / 2;
+        });
+        await page.evaluate('window.settle()');
+        const geometry = await nativeHistoryScrollbarGeometry(page);
+        const edge = direction === 'older' ? geometry.top : geometry.bottom;
+        const sign = direction === 'older' ? -1 : 1;
+        const count = await page.evaluate<number>('window.requests.length');
+        await page.mouse.move(geometry.x, geometry.y);
+        await page.mouse.down();
+        try {
+          await page.mouse.move(geometry.x, edge + sign * 15, { steps: 6 });
+          await page.waitForFunction(
+            (offset) =>
+              (window as unknown as { requests: string[] }).requests
+                .slice(offset)
+                .includes('middle'),
+            count,
+          );
+          await page.evaluate(`window.settle(${restorationFrames})`);
+          const remaining = await scroller.evaluate(
+            (element, direction) =>
+              direction === 'older'
+                ? element.scrollTop
+                : element.scrollHeight - element.clientHeight - element.scrollTop,
+            direction,
+          );
+          await page.mouse.move(
+            geometry.x,
+            edge + sign * (30 + remaining * geometry.scale * 1.25),
+            { steps: 6 },
+          );
+          await page
+            .getByText(direction === 'older' ? 'OLDEST 11' : 'NEWEST 11', { exact: true })
+            .waitFor();
+          await page.evaluate('window.settle(48)');
+          assert.deepEqual((await page.evaluate<string[]>('window.requests')).slice(count), [
+            'middle',
+            direction === 'older' ? 'oldest' : 'newest',
+          ]);
+          for (const label of ['OLDEST', 'MIDDLE', 'NEWEST'])
+            assert.equal(await page.getByText(label + ' 11', { exact: true }).count(), 1);
+          // A held reversal now traverses retained rows; neither edge should reread them.
+          const requests = await page.evaluate('window.requests');
+          await page.mouse.move(
+            geometry.x,
+            direction === 'older' ? geometry.bottom + 15 : geometry.top - 15,
+            { steps: 12 },
+          );
+          await page.evaluate('window.settle(48)');
+          assert.deepEqual(await page.evaluate('window.requests'), requests);
+        } finally {
+          await page.mouse.up();
+        }
+        assert.deepEqual(errors, []);
+      },
+    );
 
 for (const phase of ['stable', 'restoring'] as const)
   test(
@@ -691,112 +563,119 @@ for (const phase of ['stable', 'restoring'] as const)
     { skip: !browserAvailable },
     async (t) => {
       const { page, errors } = await openHistoryFixture(t, true);
-      await page.addStyleTag({
-        content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
-      });
-      await page.evaluate('window.start();');
-      await page.getByText('OLDEST 11', { exact: true }).waitFor();
-      await page.evaluate('window.settle(48)');
+      await startUnread(page, 'newer');
       await page.keyboard.press('Control+f');
       const search = page.getByTestId('transcript-search-bar');
-      if (phase === 'stable') {
-        await page.evaluate('window.detail("verbose")');
-        await page.getByTestId('tool-call-card').getByRole('button').first().click();
-      }
       await search.getByRole('searchbox').fill('no current-page match');
       await search.getByText('0/0').waitFor();
-      await page.getByTestId('conversation-scroll-container').evaluate((element) => {
-        element.scrollTop = 0;
+      const scroller = page.getByTestId('conversation-scroll-container');
+      await scroller.evaluate((element) => {
+        element.scrollTop = 100;
       });
       await page.evaluate('window.settle(48)');
       await sendHistoryPointer(page, 'pointerdown');
-      if (phase === 'stable') {
-        await page.getByTestId('conversation-scroll-container').evaluate((element) => {
-          element.scrollTop = 200;
-        });
-        await page.evaluate('window.settle()');
-      }
       if (phase === 'restoring') {
-        await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+        await scroller.evaluate((element) => {
           element.scrollTop = element.scrollHeight;
         });
-        await page.getByText('MIDDLE 0').waitFor();
+        await page.getByText('MIDDLE 0', { exact: true }).waitFor();
         await page.evaluate('window.settle(8)');
       }
       const requests = await page.evaluate('window.requests');
-      await search
-        .getByRole('searchbox')
-        .fill(phase === 'restoring' ? 'MIDDLE 11' : 'concealed tool result');
+      await search.getByRole('searchbox').fill(phase === 'restoring' ? 'MIDDLE 11' : 'OLDEST 11');
       await search.getByText('1/1').waitFor();
       await page.evaluate('window.settle(48)');
       assert.deepEqual(await page.evaluate('window.requests'), requests);
-      await sendHistoryPointer(page, 'pointerup');
+      await sendHistoryPointer(page, 'pointercancel');
+      await sendHistoryPointer(page, 'pointermove');
+      await scroller.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.evaluate('window.settle()');
+      assert.deepEqual(
+        await page.evaluate('window.requests'),
+        requests,
+        'cancelled pointer cannot start another read',
+      );
       assert.deepEqual(errors, []);
     },
   );
 
-async function reverseHeldNativeScrollbar(
-  page: Page,
-  geometry: { x: number; top: number; bottom: number },
-  steps: number,
-): Promise<void> {
-  await page.mouse.move(geometry.x, geometry.bottom - 30, { steps: 4 });
-  await page.mouse.move(geometry.x, geometry.bottom + 15, { steps: 4 });
-  await page.waitForFunction(() => {
-    const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
-    return el.scrollHeight - el.clientHeight - el.scrollTop < 2;
-  });
-  await page.evaluate('window.settle(48)');
-  await page.mouse.move(geometry.x, geometry.top - 15, { steps });
-  await page.evaluate('window.settle(48)');
-  if ((await page.evaluate('window.requests.at(-1)')) !== 'oldest') {
-    await page.mouse.move(geometry.x, geometry.top + 15, { steps: 4 });
-    await page.mouse.move(geometry.x, geometry.top - 15, { steps: 4 });
-  }
-  await page.getByText('OLDEST 11', { exact: true }).waitFor();
-}
-
-for (const reverseSteps of [1, 12])
+for (const direction of ['older', 'newer'] as const)
   test(
-    `a held native scrollbar can reverse paging direction after stable restoration in ${reverseSteps} steps`,
+    `a short history viewport confirms its first native ${direction} boundary`,
     { skip: !browserAvailable },
     async (t) => {
       const { page, errors } = await openHistoryFixture(t, true);
-      await prepareNativeHistoryScrollbar(page);
-      const scroller = page.getByTestId('conversation-scroll-container');
+      await page.evaluate('window.middle()');
+      await page.getByText('MIDDLE 11', { exact: true }).waitFor();
       await page.evaluate('window.settle(48)');
-      await scroller.evaluate((element) => {
-        element.scrollTop = element.scrollHeight - element.clientHeight - 100;
+      const scroller = page.getByTestId('conversation-scroll-container');
+      const range = await scroller.evaluate((element) => {
+        const content = element.firstElementChild;
+        if (!(content instanceof HTMLElement)) throw new Error('Expected history content');
+        content.style.height = `${element.clientHeight + 200}px`;
+        content.style.overflow = 'hidden';
+        element.scrollTop = 100;
+        return element.scrollHeight - element.clientHeight;
       });
+      assert.equal(range, 200);
       await page.evaluate('window.settle()');
       const geometry = await nativeHistoryScrollbarGeometry(page);
       await page.mouse.move(geometry.x, geometry.y);
       await page.mouse.down();
       try {
-        await page.mouse.move(geometry.x, geometry.bottom + 15, { steps: 6 });
-        await page.evaluate('window.settle(48)');
-        if ((await page.evaluate('window.requests.at(-1)')) !== 'newest') {
-          await page.mouse.move(geometry.x, geometry.bottom - 15, { steps: 4 });
-          await page.mouse.move(geometry.x, geometry.bottom + 15, { steps: 4 });
-        }
-        await page.getByText('NEWEST 11', { exact: true }).waitFor();
-        await page.evaluate('window.settle(48)');
-        await reverseHeldNativeScrollbar(page, geometry, reverseSteps);
+        await page.mouse.move(
+          geometry.x,
+          direction === 'older' ? geometry.top - 5 : geometry.bottom + 5,
+          { steps: 1 },
+        );
+        await page.waitForFunction(
+          (cursor) => (window as unknown as { requests: string[] }).requests.at(-1) === cursor,
+          direction === 'older' ? 'oldest' : 'newest',
+        );
       } finally {
         await page.mouse.up();
       }
-      assert.deepEqual(await page.evaluate('window.requests'), [
-        'newest',
-        'middle',
-        'oldest',
-        'middle',
-        'newest',
-        'middle',
-        'oldest',
-      ]);
       assert.deepEqual(errors, []);
     },
   );
+
+// Retained rows give the viewport a stable identity even after content height changes.
+test(
+  'prepending retains the visible row and its offset across a delayed layout change',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    await page.evaluate('window.middle()');
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await page.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await page.evaluate('window.settle(48)');
+    await scroller.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.evaluate('window.settle()');
+    const row = page.locator('[data-source-item="MIDDLE0"]');
+    const before = await row.evaluate((element) => element.getBoundingClientRect().top);
+    await page.evaluate('window.hold=true');
+    await scroller.hover();
+    await page.mouse.wheel(0, -300);
+    await page.waitForFunction('window.requests.at(-1)==="oldest"');
+    await page.evaluate('window.release()');
+    await page.getByText('OLDEST 11', { exact: true }).waitFor();
+    await page.evaluate('window.settle(8)');
+    await page.locator('[data-source-item="OLDEST0"]').evaluate((element) => {
+      (element as HTMLElement).style.paddingTop = '100px';
+    });
+    await page.evaluate('window.settle(48)');
+    assert.ok(
+      Math.abs((await row.evaluate((element) => element.getBoundingClientRect().top)) - before) <=
+        2,
+    );
+    assert.equal(await page.getByText('MIDDLE 11', { exact: true }).count(), 1);
+    assert.deepEqual(errors, []);
+  },
+);
 
 test(
   'the first native edge is not determined by an earlier opposite relayout offset',
@@ -837,45 +716,3 @@ test(
     assert.deepEqual(errors, []);
   },
 );
-
-for (const direction of ['older', 'newer'] as const)
-  test(
-    `a short history viewport confirms its first native ${direction} boundary`,
-    { skip: !browserAvailable },
-    async (t) => {
-      const { page, errors } = await openHistoryFixture(t, true);
-      await page.addStyleTag({
-        content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
-      });
-      await page.evaluate('window.middle()');
-      await page.getByText('MIDDLE 11', { exact: true }).waitFor();
-      await page.evaluate('window.settle(48)');
-      const range = await page.getByTestId('conversation-scroll-container').evaluate((element) => {
-        const content = element.firstElementChild;
-        if (!(content instanceof HTMLElement)) throw new Error('Expected history content');
-        content.style.height = `${element.clientHeight + 200}px`;
-        content.style.overflow = 'hidden';
-        element.scrollTop = 100;
-        return element.scrollHeight - element.clientHeight;
-      });
-      assert.equal(range, 200);
-      await page.evaluate('window.settle()');
-      const geometry = await nativeHistoryScrollbarGeometry(page);
-      await page.mouse.move(geometry.x, geometry.y);
-      await page.mouse.down();
-      try {
-        await page.mouse.move(
-          geometry.x,
-          direction === 'older' ? geometry.top - 5 : geometry.bottom + 5,
-          { steps: 1 },
-        );
-        await page.waitForFunction(
-          (cursor) => (window as unknown as { requests: string[] }).requests.at(-1) === cursor,
-          direction === 'older' ? 'oldest' : 'newest',
-        );
-      } finally {
-        await page.mouse.up();
-      }
-      assert.deepEqual(errors, []);
-    },
-  );

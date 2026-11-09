@@ -1195,7 +1195,11 @@ export function ConversationStreamV2(): JSX.Element {
     | ((
         scroller: HTMLDivElement,
         snapshot: ScrollSnapshot,
-        missingAnchorFallback?: 'ratio' | 'older-window-seam' | 'newer-window-seam',
+        missingAnchorFallback?:
+          | 'ratio'
+          | 'older-window-seam'
+          | 'retained-prepend'
+          | 'retained-append',
       ) => boolean)
     | null
   >(null);
@@ -1553,22 +1557,23 @@ export function ConversationStreamV2(): JSX.Element {
   function restoreScrollSnapshot(
     scroller: HTMLDivElement,
     snapshot: ScrollSnapshot,
-    missingAnchorFallback: 'ratio' | 'older-window-seam' | 'newer-window-seam' = 'ratio',
+    missingAnchorFallback:
+      | 'ratio'
+      | 'older-window-seam'
+      | 'retained-prepend'
+      | 'retained-append' = 'ratio',
   ): boolean {
     if (snapshot.atBottom) return false;
     if (restoreViewportScrollAnchor(scroller, snapshot.anchor)) return true;
 
-    if (
-      missingAnchorFallback === 'older-window-seam' ||
-      missingAnchorFallback === 'newer-window-seam'
-    ) {
+    if (missingAnchorFallback === 'older-window-seam') {
       // A bounded older window can intentionally have no canonical row in common with the page
       // it replaces. The semantic seam is the bottom/newest edge of that older window, not the
       // same scroll-height ratio (which would jump a user loading at top to another arbitrary top).
-      const nextMaxTop =
-        missingAnchorFallback === 'newer-window-seam'
-          ? 0
-          : olderHistoryWindowSeamScrollTop(scroller.scrollHeight, scroller.clientHeight);
+      const nextMaxTop = olderHistoryWindowSeamScrollTop(
+        scroller.scrollHeight,
+        scroller.clientHeight,
+      );
       markProgrammaticScroll();
       scroller.scrollTop = nextMaxTop;
       wasAtBottomRef.current = false;
@@ -1582,7 +1587,13 @@ export function ConversationStreamV2(): JSX.Element {
     const previousMaxTop = Math.max(1, snapshot.scrollHeight - snapshot.clientHeight);
     const nextMaxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
     const ratio = Math.max(0, Math.min(1, snapshot.scrollTop / previousMaxTop));
-    const nextTop = Math.max(0, Math.min(nextMaxTop, nextMaxTop * ratio));
+    const retainedTop =
+      missingAnchorFallback === 'retained-prepend'
+        ? snapshot.scrollTop + scroller.scrollHeight - snapshot.scrollHeight
+        : missingAnchorFallback === 'retained-append'
+          ? snapshot.scrollTop
+          : nextMaxTop * ratio;
+    const nextTop = Math.max(0, Math.min(nextMaxTop, retainedTop));
     markProgrammaticScroll();
     scroller.scrollTop = nextTop;
     wasAtBottomRef.current = nextMaxTop - nextTop < BOTTOM_DISTANCE_PX;
@@ -1703,7 +1714,7 @@ export function ConversationStreamV2(): JSX.Element {
       currentSessionId === null ||
       !(direction === 'older'
         ? historyPaging.hasMore || canOpenSavedPage
-        : historyPaging.hasNewer) ||
+        : historyPaging.hasNewer && (!productTranscript || !!historyPaging.newerCursor)) ||
       latestJumpRequest !== null ||
       historyPaging.phase === 'loading' ||
       prependAnchorRestoreRef.current !== null
@@ -1801,7 +1812,11 @@ export function ConversationStreamV2(): JSX.Element {
               restoreScrollSnapshotRef.current?.(
                 scroller,
                 direction === 'newer' ? { ...snapshot, atBottom: false } : snapshot,
-                direction === 'older' ? 'older-window-seam' : 'newer-window-seam',
+                direction === 'older'
+                  ? canOpenSavedPage
+                    ? 'older-window-seam'
+                    : 'retained-prepend'
+                  : 'retained-append',
               );
             }
           }

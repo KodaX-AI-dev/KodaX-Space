@@ -37,6 +37,20 @@ test('long user queries keep a four-line preview and can expand or collapse in p
       .last();
     await expect(bubble).toBeVisible({ timeout: 10_000 });
 
+    const label = bubble.getByTestId('user-query-label');
+    await expect(label).toHaveText('You');
+    for (const theme of ['light', 'dark']) {
+      await space.page.locator('html').evaluate((element, theme) => {
+        element.classList.toggle('dark', theme === 'dark');
+      }, theme);
+      const style = await bubble.locator('.conversation-user-content').evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { border: style.borderLeftWidth, background: style.backgroundColor };
+      });
+      expect(style.border).toBe('3px');
+      expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
+      await expect(label).toBeVisible();
+    }
     const content = bubble.getByTestId('user-query-content');
     const toggle = bubble.getByTestId('user-query-toggle');
     await expect(toggle).toBeVisible();
@@ -71,6 +85,11 @@ test('long user queries keep a four-line preview and can expand or collapse in p
       )
       .toBeLessThanOrEqual(1);
 
+    await bubble.getByRole('button', { name: 'Copy message', exact: true }).click();
+    await expect
+      .poll(() => space.page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(LONG_QUERY);
+    await expect(label).toHaveText('You');
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(toggle).toHaveAccessibleName('Expand query');

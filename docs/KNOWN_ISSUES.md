@@ -16046,6 +16046,8 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 - **Changed files / tests**: `productConversation.ts`, `composeMessages.ts`, `messages/bubbles.tsx`, `i18n/messages.ts`, `sessionHistoryPaging.ts`, `ConversationStreamV2.tsx`, `runtime-host-adapter.ts`; colocated projection/notice/paging/Adapter tests, `conversationHistoryNavigation.browser.test.ts`, and packaged `sdk-history-navigation.spec.ts`. The first newest read now establishes SDK observation before capturing a history cursor, preventing immediate source invalidation. Validation: 107 related tests and the full Adapter suite pass; final package cold-load replay passes 3/3. Installer, Portable and final package results/hashes are in the [investigation](research/renderer-185-agent-notices-and-history-navigation-2026-10-28.md).
 - **Resolution date**: 2026-10-28. See [regression guide](test-guides/ISSUE_234_0.1.47-alpha.3_REGRESSION_GUIDE.md).
 
+- **2026-11-09 follow-up**: beta.4 continuous browsing now retains adjacent saved pages within one revision/sourceRevision instead of rereading visited pages through breadcrumbs. Only unread edge cursors fetch; normal downward browsing retains the saved source until the explicit bottom action. Search returns restore the original collection. See the [alpha.4 regression guide](test-guides/ISSUE_234_0.1.47-alpha.4_REGRESSION_GUIDE.md) and the final branch recovery record for executed validation.
+
 ## Issue 236 — macOS native notifications and Dock badge permissions
 
 - Created / fixed: 2026-11-04; priority Medium, resolved in source and included in alpha.4.

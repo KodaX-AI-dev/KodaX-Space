@@ -2,6 +2,7 @@ import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { useAppStore } from '../../renderer/src/store/appStore.js';
 import {
+  installProductItemContent,
   productTranscriptSnapshot,
   replaceProductSessionView,
 } from '../../renderer/src/store/productSessionView.js';
@@ -17,6 +18,7 @@ import {
   loadOlderSessionHistory,
   loadNewerSessionHistory,
   olderHistoryWindowSeamScrollTop,
+  openLocatedHistory,
   PREPEND_ANCHOR_CORRECTION_FRAME_OFFSETS,
   preservesPrependAnchorForBoundaryInput,
   reconcileTerminalSessionHistory,
@@ -5761,7 +5763,7 @@ test('an identical newest read is an idempotent no-op (fold not re-run)', async 
   assert.equal(useAppStore.getState().userMessagesBySession[sessionId], firstMessages);
 });
 
-test('visited SDK history pages can be read in both directions and newest selects the advancing live view', async () => {
+test('adjacent SDK pages stay continuous and only explicit newest selects the advancing live view', async () => {
   const sessionId = 'sdk-product-bidirectional';
   seedPagingStore(sessionId);
   const requested: (string | undefined)[] = [];
@@ -5787,6 +5789,7 @@ test('visited SDK history pages can be read in both directions and newest select
                 windowMode: 'replace',
                 hasMore: index < 2,
                 hasNewer: index > 0,
+                ...(index > 0 ? { newerCursor: index === 2 ? 'middle' : 'newest' } : {}),
                 ...(index < 2 ? { nextCursor: index === 0 ? 'middle' : 'oldest' } : {}),
               },
             },
@@ -5800,7 +5803,7 @@ test('visited SDK history pages can be read in both directions and newest select
   await loadOlderSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['oldest'],
+    ['oldest', 'middle', 'newest'],
   );
   replaceProductSessionView({
     sessionId,
@@ -5811,33 +5814,30 @@ test('visited SDK history pages can be read in both directions and newest select
   await loadNewerSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['middle'],
+    ['oldest', 'middle', 'newest'],
   );
   await loadOlderSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['oldest'],
+    ['oldest', 'middle', 'newest'],
   );
   await loadNewerSessionHistory(sessionId);
   await loadNewerSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['newest'],
+    ['oldest', 'middle', 'newest'],
   );
   await loadNewerSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['oldest', 'middle', 'newest'],
+  );
+  await restoreNewestSessionHistory(sessionId, 'code');
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
     ['live-new'],
   );
-  assert.deepEqual(requested, [
-    undefined,
-    'middle',
-    'oldest',
-    'middle',
-    'oldest',
-    'middle',
-    undefined,
-  ]);
+  assert.deepEqual(requested, [undefined, 'middle', 'oldest', undefined]);
   assert.deepEqual(useAppStore.getState().eventsBySession[sessionId] ?? [], []);
 });
 
@@ -5852,39 +5852,51 @@ test('failed and superseded forward reads retain the selected page and navigatio
     writable: true,
     value: {
       kodaxSpace: {
-        invoke: mockHistoryInvoke(async (_channel: string, input: { cursor?: string }) => {
-          if (forward && input.cursor === 'middle') {
-            if (rejectForward) throw new Error('history temporarily unavailable');
-            await new Promise<void>((resolve) => {
-              release = resolve;
-            });
-          }
-          const index = input.cursor === 'oldest' ? 2 : input.cursor === 'middle' ? 1 : 0;
-          return {
-            ok: true,
-            data: {
-              items: [],
-              productItems: [
-                { id: ['newest', 'middle', 'oldest'][index], type: 'user', text: 'prompt' },
-              ],
-              page: {
-                outcome: 'ready',
-                revision: 'r',
-                sourceRevision: 's',
-                windowMode: 'replace',
-                hasMore: index < 2,
-                hasNewer: index > 0,
-                ...(index < 2 ? { nextCursor: index === 0 ? 'middle' : 'oldest' } : {}),
+        invoke: mockHistoryInvoke(
+          async (
+            _channel: string,
+            input: { cursor?: string; around?: { searchItemId?: string } },
+          ) => {
+            if (forward && input.cursor === 'middle') {
+              if (rejectForward) throw new Error('history temporarily unavailable');
+              await new Promise<void>((resolve) => {
+                release = resolve;
+              });
+            }
+            const index =
+              input.around || input.cursor === 'oldest' ? 2 : input.cursor === 'middle' ? 1 : 0;
+            return {
+              ok: true,
+              data: {
+                items: [],
+                productItems: [
+                  {
+                    id: ['newest', 'middle', 'oldest'][index],
+                    type: 'user',
+                    text: 'prompt',
+                    historyBoundary: { entryId: 'found', sourceRevision: 's' },
+                  },
+                ],
+                page: {
+                  outcome: 'ready',
+                  locatedBoundaryId: 'found',
+                  revision: 'r',
+                  sourceRevision: 's',
+                  windowMode: 'replace',
+                  hasMore: index < 2,
+                  hasNewer: index > 0,
+                  ...(index > 0 ? { newerCursor: index === 2 ? 'middle' : 'newest' } : {}),
+                  ...(index < 2 ? { nextCursor: index === 0 ? 'middle' : 'oldest' } : {}),
+                },
               },
-            },
-          };
-        }),
+            };
+          },
+        ),
       },
     },
   });
   await restoreNewestSessionHistory(sessionId, 'code');
-  await loadOlderSessionHistory(sessionId);
-  await loadOlderSessionHistory(sessionId);
+  await openLocatedHistory(sessionId, { searchItemId: 'oldest' }, new AbortController().signal);
   forward = true;
   rejectForward = true;
   await assert.rejects(loadNewerSessionHistory(sessionId), /temporarily unavailable/);
@@ -5958,18 +5970,18 @@ test('SDK paging keeps history as a separate frozen window and never folds its t
   await loadOlderSessionHistory(sessionId);
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['old-history'],
+    ['old-history', 'new-history'],
   );
   await revalidateNewestSessionHistory(sessionId, 'code');
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['old-history'],
+    ['old-history', 'new-history'],
   );
   assert.equal(sessionHistoryPagingSnapshot(sessionId).hasNewer, true);
   replaceProductSessionView({ sessionId, runtimeId: 'runtime', revision: 2, items: [] });
   assert.deepEqual(
     productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
-    ['old-history'],
+    ['old-history', 'new-history'],
   );
   await restoreNewestSessionHistory(sessionId, 'code');
   assert.deepEqual(productTranscriptSnapshot(sessionId)?.items, []);
@@ -6011,4 +6023,132 @@ test('evicting a history session also releases its SDK output and completed body
   for (let index = 0; index < 33; index += 1)
     await restoreNewestSessionHistory(`sdk-product-cache-${index}`, 'code');
   assert.equal(productTranscriptSnapshot(sessionId), undefined);
+});
+
+for (const changed of ['data_changed', 'revision', 'sourceRevision', 'epoch'] as const)
+  test(`continuous saved pages reject ${changed} changes without losing their retained suffix`, async () => {
+    const sessionId = `continuous-${changed}`;
+    seedPagingStore(sessionId);
+    let change = false;
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      writable: true,
+      value: {
+        kodaxSpace: {
+          invoke: mockHistoryInvoke(async (_channel: string, input: { cursor?: string }) => {
+            if (change && changed === 'epoch') invalidateSessionHistoryPaging(sessionId);
+            return {
+              ok: true,
+              data: {
+                items: [],
+                productItems: [{ id: input.cursor ?? 'newest', type: 'user', text: 'same prompt' }],
+                page:
+                  change && changed === 'data_changed'
+                    ? { outcome: 'data_changed' }
+                    : {
+                        outcome: 'ready',
+                        revision: change && changed === 'revision' ? 'r2' : 'r',
+                        sourceRevision: change && changed === 'sourceRevision' ? 's2' : 's',
+                        hasMore: true,
+                        nextCursor: input.cursor ? 'oldest' : 'middle',
+                        hasNewer: !!input.cursor,
+                        windowMode: 'replace',
+                      },
+              },
+            };
+          }),
+        },
+      },
+    });
+    await restoreNewestSessionHistory(sessionId, 'code');
+    await loadOlderSessionHistory(sessionId);
+    const before = productTranscriptSnapshot(sessionId)?.items;
+    assert.deepEqual(
+      before?.map((item) => item.id),
+      ['middle', 'newest'],
+    );
+    change = true;
+    await loadOlderSessionHistory(sessionId);
+    assert.equal(productTranscriptSnapshot(sessionId)?.items, before);
+    assert.equal(sessionHistoryPagingSnapshot(sessionId).savedPageChanged, true);
+    assert.equal(sessionHistoryPagingSnapshot(sessionId).phase, 'error');
+  });
+
+test('located history extends both edges, retains completed bodies, deduplicates IDs only and restores its origin', async () => {
+  const sessionId = 'continuous-located-edges';
+  seedPagingStore(sessionId);
+  const requests: (string | undefined)[] = [];
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(
+          async (_channel: string, input: { cursor?: string; around?: unknown }) => {
+            requests.push(input.cursor);
+            const located = !!input.around;
+            const ids = located
+              ? ['middle']
+              : input.cursor === 'older'
+                ? ['oldest', 'middle']
+                : input.cursor === 'newer'
+                  ? ['middle', 'newest']
+                  : ['origin'];
+            return {
+              ok: true,
+              data: {
+                items: [],
+                productItems: ids.map((id) => ({
+                  id,
+                  type: 'assistant',
+                  text: 'same preview',
+                  totalTextLength: 80,
+                  historyBoundary: { entryId: 'found', sourceRevision: 's' },
+                })),
+                page: {
+                  outcome: 'ready',
+                  revision: 'r',
+                  sourceRevision: 's',
+                  windowMode: 'replace',
+                  hasMore: located,
+                  hasNewer: located,
+                  ...(located
+                    ? { locatedBoundaryId: 'found', nextCursor: 'older', newerCursor: 'newer' }
+                    : {}),
+                },
+              },
+            };
+          },
+        ),
+      },
+    },
+  });
+  await restoreNewestSessionHistory(sessionId, 'code');
+  const located = await openLocatedHistory(
+    sessionId,
+    { searchItemId: 'middle' },
+    new AbortController().signal,
+  );
+  assert.ok(located && located !== 'stale');
+  const middle = productTranscriptSnapshot(sessionId)!.items[0]!;
+  installProductItemContent(sessionId, middle, 'text', 'x'.repeat(80));
+  await loadOlderSessionHistory(sessionId);
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).newerCursor, 'newer');
+  await loadNewerSessionHistory(sessionId);
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['oldest', 'middle', 'newest'],
+  );
+  assert.equal(productTranscriptSnapshot(sessionId)?.items[1]?.text, 'x'.repeat(80));
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).hasMore, false);
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).newerCursor, undefined);
+  const count = requests.length;
+  await loadNewerSessionHistory(sessionId);
+  assert.equal(requests.length, count);
+  located.restore();
+  assert.deepEqual(
+    productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+    ['origin'],
+  );
+  assert.equal(sessionHistoryPagingSnapshot(sessionId).hasNewer, false);
 });

@@ -6,7 +6,7 @@
 
 - **SDK 当前 view**：Host 提供的有序显示项快照；每次回调完整替换前一份当前窗口。
 - **SDK 显示项（item）**：SDK 给定 opaque item ID 的正文、思考、工具或提示项；Space 不解析其 ID，不按正文去重。
-- **历史浏览窗口**：SDK readHistory 给出的单一修订分页窗口；与当前 view 分开选择显示，不把两者正文拼接。
+- **历史浏览窗口**：SDK readHistory 在同一 revision/sourceRevision 下连续读取的相邻保存页集合；保留已读页和两端未读游标，与当前 view 分开选择显示，不把两者正文拼接。
 - **历史边界（historyBoundary）**：SDK 给定 entryId 与 sourceRevision 的变更锚点，用于 Fork/Retry/Rewind，不是显示项身份。
 - **输入身份（inputId）**：Host 接受的一次输入意图；可用来结束 Space 的发送占位，相同正文的不同输入仍是不同意图。
 - **输出身份（outputId）**：一个 assistant 消息的 Host 身份；同一消息的正文与思考可有多个独立显示项。
