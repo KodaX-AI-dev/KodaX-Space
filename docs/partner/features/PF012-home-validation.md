@@ -1,5 +1,11 @@
 # PF012 默认冷启动首页
 
+## 2026-11-09 主线修复：场景切换替换草稿
+
+从 `0627cfa4` 提取场景预填修复，并适配当前 Lexical 输入框。真实任务卡、专家 Provider 与 BottomBar 的浏览器回归先复现研究/数据模板拼接，再确认切换、重复点击、六类场景、普通方法插入、绑定失败和跨项目异步返回均通过。每次成功选择用一个模板替换当前草稿，不创建会话或自动发送。
+
+以下 2026-09-08 记录保留历史语境；其中旧的纯插入、不绑定专家描述由当前专家 revision 绑定与上述替换行为取代。
+
 2026-09-08，Completed / Local。用户希望参考 WorkBuddy 设计默认首页。本机 WorkBuddy 画面读取返回系统捕捉错误，参考了此前用户提供的专家截图，以及 [WorkBuddy 官方新建任务首页说明](https://www.codebuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Buddy-App)。官方将任务输入、场景入口与专家结合，本次转化为符合 Partner 已有能力的首页。
 
 ## 页面与交互
