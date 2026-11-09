@@ -361,6 +361,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const leftSidebarOpen = useAppStore((s) => s.leftSidebarOpen);
   const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen);
   const currentSessionIdForPlan = useAppStore((s) => s.currentSessionId);
+  const welcomeDraftSessionId = useAppStore((s) => s.welcomeDraftSessionId);
   const currentProjectPathForPartnerDetail = useAppStore((s) => s.currentProjectPath);
   const { snapshot: extensionCatalog } = useSpaceExtensions();
   const [extensionSelection, setExtensionSelection] = useState<ExtensionViewSelection | null>(null);
@@ -1663,7 +1664,13 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
                       </span>
                     </div>
                   )}
-                  <ConversationStreamV2 key={currentSessionIdForPlan ?? 'no-session'} />
+                  <ConversationStreamV2
+                    key={
+                      currentSessionIdForPlan === welcomeDraftSessionId
+                        ? 'no-session'
+                        : (currentSessionIdForPlan ?? 'no-session')
+                    }
+                  />
 
                   {activePopout !== null && (
                     <PopoutOverlay

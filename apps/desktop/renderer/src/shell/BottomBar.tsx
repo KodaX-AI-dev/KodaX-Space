@@ -860,6 +860,8 @@ export function BottomBar(): JSX.Element {
               connectorSnapshots: data.partnerConnectors ?? [],
             })));
       if (shouldActivate) {
+        if (currentSurface === 'code')
+          useAppStore.setState({ welcomeDraftSessionId: stub.sessionId });
         setCurrentSession(stub.sessionId);
       }
       setPendingProviderId(null);

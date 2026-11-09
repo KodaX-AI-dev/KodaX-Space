@@ -86,14 +86,18 @@ export function LeftSidebar({
   const sessions = useAppStore((s) => s.sessions);
   const projects = useAppStore((s) => s.projects);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const welcomeDraftSessionId = useAppStore((s) => s.welcomeDraftSessionId);
   const setCurrentSession = useAppStore((s) => s.setCurrentSession);
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   // F045: 当前工作面（Coder / Partner）。session 列表按 surface 分面——切 surface 重新拉。
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
   const shellChrome = projectShellChrome(currentSurface);
   const visibleSessions = useMemo(
-    () => sessions.filter((s) => (s.surface ?? 'code') === currentSurface),
-    [sessions, currentSurface],
+    () =>
+      sessions.filter(
+        (s) => (s.surface ?? 'code') === currentSurface && s.sessionId !== welcomeDraftSessionId,
+      ),
+    [sessions, currentSurface, welcomeDraftSessionId],
   );
 
   const [sessionLoadStateByScope, setSessionLoadStateByScope] = useState<

@@ -2208,6 +2208,8 @@ export class RuntimeHostAdapter {
     string,
     { readonly identityKey: string; readonly promise: Promise<boolean> }
   >();
+  /** Only explicit draft admissions can skip persisted history before their first saved input. */
+  private readonly unsentDrafts = new Map<string, string>();
   /** One immutable full-history materialization per Session at a time; never a stale result cache. */
   private readonly transcriptPromises = new Map<
     string,
@@ -3741,6 +3743,7 @@ export class RuntimeHostAdapter {
       throw new Error('Coder daemon connection changed while creating a Session.');
     }
     this.sessionSurfaces.set(session.id, input.surface);
+    if (!input.ephemeral) this.unsentDrafts.set(session.id, runtime.identity.runtimeId);
     if (input.surface === 'partner') {
       const current = await runtime.sessions.getSettingsVersioned(session.id);
       await runtime.sessions.updateSettingsVersioned(
@@ -4447,6 +4450,7 @@ export class RuntimeHostAdapter {
     this.runtimeSessionIds.delete(sessionId);
     this.liveProjectionRevisions.delete(sessionId);
     this.productViews.delete(sessionId);
+    this.unsentDrafts.delete(sessionId);
     this.acceptedInputObservationDemands.delete(sessionId);
     invalidatePersistedSessionCache(sessionId);
     this.scheduleProfileRefresh(this.currentProfileCursor());
@@ -4722,6 +4726,7 @@ export class RuntimeHostAdapter {
     if (around && runtimeCapabilityVersion(runtime, 'productHistoryLocation') < 2) return null;
     if (cursor === undefined && refreshView && !around)
       await this.readSessionProductView(sessionId);
+    if (this.unsentDrafts.get(sessionId) === runtime.identity.runtimeId) return null;
     const page = await runtime.sessions.readHistory(
       sessionId,
       around
@@ -4901,6 +4906,11 @@ export class RuntimeHostAdapter {
       this.productImageReader(state.runtime, state.sessionId, 'view'),
     );
     if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
+    if (
+      (view.session.msgCount ?? 0) > 0 ||
+      view.items.some((item) => item.type === 'user' && item.outputState === 'committed')
+    )
+      this.unsentDrafts.delete(state.sessionId);
     if (
       previous?.runtimeId !== state.runtime.identity.runtimeId ||
       !isDeepStrictEqual(previous.items, items) ||
@@ -9247,6 +9257,7 @@ export class RuntimeHostAdapter {
     this.outOfPageVerificationWarnings.clear();
     this.liveProjectionRevisions.clear();
     this.productViews.clear();
+    this.unsentDrafts.clear();
     this.acceptedInputObservationDemands.clear();
     this.runtimeProfileSnapshotPromise = null;
     this.integrationHealth = undefined;

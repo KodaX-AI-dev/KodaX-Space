@@ -869,6 +869,7 @@ export function ConversationStreamV2(): JSX.Element {
   const { t } = useI18n();
   const isStreaming = useIsStreaming();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const welcomeDraftSessionId = useAppStore((s) => s.welcomeDraftSessionId);
   const actionSession = useAppStore((s) =>
     s.sessions.find((session) => session.sessionId === s.currentSessionId),
   );
@@ -2481,7 +2482,10 @@ export function ConversationStreamV2(): JSX.Element {
     [currentSessionId, t],
   );
 
-  if (!currentSessionId) {
+  if (
+    !currentSessionId ||
+    (currentSessionId === welcomeDraftSessionId && displayMessages.length === 0 && !isStreaming)
+  ) {
     return <WelcomeDashboard />;
   }
 

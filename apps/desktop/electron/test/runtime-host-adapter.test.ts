@@ -861,6 +861,62 @@ test('SDK product history maps expired cursor boundaries to data_changed without
   }
 });
 
+test('an admitted unsent draft has no persisted history to retry, but saved empty sessions still read history', async (t) => {
+  const fake = createFakeRuntime('rt_test', false);
+  Object.assign(fake.runtime.capabilities!, {
+    sharedSessionSettings: { version: 2, keys: ['workMode'] },
+  });
+  const adapter = new RuntimeHostAdapter({
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  t.after(() => adapter.close());
+  const id = await adapter.createSession({
+    projectRoot: 'C:\\repo',
+    surface: 'code',
+    ephemeral: false,
+  });
+  const mode = await adapter.readWorkMode(id);
+  await adapter.updateWorkMode({
+    sessionId: id,
+    workMode: 'agent',
+    expectedRevision: mode.revision,
+  });
+  let reads = 0;
+  fake.runtime.sessions.readHistory = async () => {
+    reads++;
+    throw Object.assign(new Error('Session moved before page preparation'), {
+      code: 'resync_required',
+    });
+  };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    assert.deepEqual(await adapter.readProductHistory(id), { outcome: 'ready', page: null });
+  }
+  assert.equal(reads, 0, 'a known unsent draft must not enter persisted history');
+  fake.sessions.add('saved-empty');
+  assert.deepEqual(await adapter.readProductHistory('saved-empty'), { outcome: 'data_changed' });
+  assert.equal(reads, 1, 'zero messages alone must never identify a Session as a draft');
+  fake.runtime.sessions.observeView = async (sessionId, listener) =>
+    viewReader(
+      [{ id: 'first-input', type: 'user', text: 'First saved input', outputState: 'committed' }],
+      sessionId,
+    ).observeView(sessionId, listener);
+  fake.runtime.sessions.readHistory = async () => {
+    reads++;
+    return {
+      revision: 'saved',
+      sourceRevision: 'saved',
+      status: 'resolved',
+      issues: [],
+      items: [],
+      oversized: [],
+    };
+  };
+  await adapter.readSessionProductView(id);
+  await adapter.readProductHistory(id);
+  assert.equal(reads, 2, 'the first canonical user input must release draft history suppression');
+});
+
 test('newest history returns a usable cursor after initial SDK observation updates its source', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_first_history');
