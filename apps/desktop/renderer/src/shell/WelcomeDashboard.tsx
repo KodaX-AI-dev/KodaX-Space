@@ -53,6 +53,7 @@ function dayKey(d: Date): string {
 export function WelcomeDashboard(): JSX.Element {
   const { effectiveLocale, t } = useI18n();
   const sessions = useAppStore((s) => s.sessions);
+  const welcomeDraftSessionId = useAppStore((s) => s.welcomeDraftSessionId);
   const userMessagesBySession = useAppStore((s) => s.userMessagesBySession);
   // tokensBySession 是派生稳定表 (只在 iteration_end / session_complete 时变)，避免订阅
   // raw eventsBySession 让 dashboard 每个 text_delta 都重算 stats。
@@ -91,11 +92,12 @@ export function WelcomeDashboard(): JSX.Element {
 
   // 时间范围过滤
   const filteredSessions = useMemo(() => {
+    const savedSessions = sessions.filter((session) => session.sessionId !== welcomeDraftSessionId);
     const days = RANGE_DAYS[range];
-    if (days === null) return sessions;
+    if (days === null) return savedSessions;
     const cutoff = Date.now() - days * 24 * 3600 * 1000;
-    return sessions.filter((s) => s.lastActivityAt >= cutoff);
-  }, [sessions, range]);
+    return savedSessions.filter((s) => s.lastActivityAt >= cutoff);
+  }, [sessions, range, welcomeDraftSessionId]);
 
   const stats = useMemo(() => {
     let messages = 0;

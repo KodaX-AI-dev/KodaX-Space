@@ -110,3 +110,6 @@ pnpm-lock.yaml
 
 # Local packaged-app build outputs
 /artifacts/
+
+# Local design prototypes (not product source)
+design-demos/

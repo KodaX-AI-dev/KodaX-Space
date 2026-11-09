@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-08
+Last Updated: 2026-11-09
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
@@ -222,7 +222,7 @@ Last Updated: 2026-11-08
 | 222 | High     | Resolved; Registry alpha.9 Windows verified                                                                  | A conflicting shared Session Host blocks all Coder history with no actionable recovery flow                                                                                                                | Observed v0.1.47-alpha.2 / SDK 0.7.97-alpha.6                             | 2026-10-16 |
 | 223 | Medium   | Resolved in source; local Windows package verified                                                           | Titlebar diagnostics retain startup state and obsolete version/dependency information                                                                                                                      | Observed v0.1.47-alpha.3; first affected version unknown                  | 2026-10-21 |
 | 224 | High     | Resolved                                                                                                     | Complete exit during cold Runtime startup times out instead of releasing startup admission                                                                                                                 | Observed v0.1.47-alpha.3                                                  | 2026-10-25 |
-| 225 | Medium   | needs-info                                                                                                   | Intermittent packaged Runtime cold startup exceeds its readiness deadline                                                                                                                                  | Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9                             | 2026-10-25 |
+| 225 | Medium   | ready                                                                                                        | Intermittent packaged Runtime cold startup exceeds its readiness deadline                                                                                                                                  | Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9                             | 2026-10-25 |
 | 226 | High     | Resolved in source                                                                                           | Retired SA mode can still be selected or restored and fails on unavailable collaboration tools                                                                                                             | Reported v0.1.47-alpha.1                                                  | 2026-10-28 |
 | 227 | High     | Resolved in source                                                                                           | Idle questions time out as errors and dismissal interrupts instead of reporting unanswered                                                                                                                 | Reported v0.1.47-alpha.1 / SDK alpha.9                                    | 2026-10-28 |
 | 228 | Medium   | Resolved in source                                                                                           | Historical unknown client cleanup permanently blocks safe Windows restart                                                                                                                                  | Reported v0.1.47-alpha.1 / SDK alpha.9                                    | 2026-10-28 |
@@ -235,7 +235,7 @@ Last Updated: 2026-11-08
 | 235 | Medium   | Resolved in source                                                                                           | Downward history scrolling and the bottom arrow stop at a frozen older window                                                                                                                              | Reported local v0.1.47-alpha.3 / SDK alpha.10                             | 2026-10-28 |
 | 236 | Medium   | Resolved                                                                                                     | macOS notifications require signed sender, delivery confirmation and permission-aware badge refresh                                                                                                        | Electron 42 upgrade                                                       | 2026-11-04 |
 | 237 | Medium   | Resolved in source                                                                                           | Legacy SDK view body reads fail and repeated per-item warnings flood the conversation                                                                                                                      | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.2                         | 2026-11-07 |
-| 238 | Low      | Open                                                                                                         | AgentModeSelector browser test intermittently times out after the work-mode rollback step                                                                                                                  | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4                         | 2026-11-08 |
+| 238 | Low      | Resolved                                                                                                     | AgentModeSelector browser test intermittently times out after the work-mode rollback step                                                                                                                  | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4                         | 2026-11-08 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -15937,10 +15937,10 @@ the intentional delayed-start fixture). Startup-wait screenshot was visually che
 ## Issue 225: Intermittent packaged Runtime cold startup exceeds its readiness deadline
 
 - Priority: Medium
-- Status: needs-info
+- Status: ready (fix owned by the KodaX SDK; no Space change applied)
 - Introduced: Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9; first affected version unknown
 - Created: 2026-10-25
-- Missing: a repeatable trigger or per-stage timing from another slow first launch
+- Information completed: 2026-11-09, from per-stage timing that the automatic recorder retained for four further slow launches
 
 ### Original Problem
 
@@ -16010,6 +16010,61 @@ SDK acceptance cases. Both automatic-diagnostics and startup-exit tests passed a
 package (16.2 s and 22.9 s, including intentional startup delays). Issue 225 remains `needs-info`:
 the recorder is verified; the intermittent original timeout is not claimed fixed.
 
+### Recorder evidence and localisation (2026-11-09)
+
+The real-profile `diagnostics/space-main.jsonl` now holds four automatically retained slow cold
+starts. A second readiness timeout, `daemon_startup_failed`, was also recorded on 2026-10-22. In
+every slow start, `runtime_factory_connect` dominates, and inside it the SDK launcher's
+`initializing:recovery` phase dominates:
+
+| Start (UTC)      | SDK      | Total   | `runtime_factory_connect` | `recovery` (launcher) |
+| ---------------- | -------- | ------- | ------------------------- | --------------------- |
+| 2026-10-28 03:13 | alpha.10 | 12.76 s | 11.59 s                   | 10.13 s               |
+| 2026-11-03 09:46 | alpha.10 | 12.79 s | 11.62 s                   | 9.71 s                |
+| 2026-11-06 14:55 | alpha.10 | 11.06 s | 10.02 s                   | 7.96 s                |
+| 2026-11-07 05:09 | beta.2   | 12.90 s | 10.71 s                   | 7.64 s                |
+
+All other launcher phases total about 1.5 s; Space-side stages after connection total about 1 s.
+The 2026-11-07 daemon `bootstrap.log` has timestamps and splits that recovery: 6.44 s before the
+`runtime` phase and 0.98 s of Session recovery after it. In SDK source (`src/sdk-runtime.ts`, shared
+daemon Host path), the pre-`runtime` recovery phase is exactly `cleanupRegisteredManagedChildren()`
+over the real `~/.kodax/runtime/processes/children` registry. It runs synchronously before the
+Runtime is constructed, so its cost directly consumes the readiness deadline. The earlier real-profile
+`createKodaXRuntime` probe (0.948 s) used embedded mode, which never runs this sweep, so it could not
+see this cost.
+
+Registry state on 2026-11-09:
+
+- 1,356 top-level records from 278 owner PIDs. Every record still has `runCleanupRequired` set, and
+  `processTreeComplete` is `false` on all of them. The registry has grown from about 988 records on
+  2026-10-25. Records from September remain, so startup skips them rather than pruning them, and
+  every daemon start pays for them again.
+- About 53% (715) have cwds in KodaX test or eval temp workspaces, for example
+  `kodax-child-command-recovery-*`, `kodax-eval-dumps-*` and `kodax-edit-runtime-*`. Another 33,918
+  records were quarantined into `.unresolved` (66 MB). Startup does not read those, but more than
+  half are also fixtures such as `/test/repo`. KodaX SDK tests and evals therefore register managed
+  children into the real user registry, a test-isolation defect analogous to Issue 025.
+- The existing safe replay `artifacts/diagnostics/managed-children-startup-probe.mjs` uses an
+  isolated home and impossible identities, and asserts that nothing is killed. Against today's
+  1,356 records it finished in 0.36–0.40 s with one 0.25–0.29 s PowerShell CIM snapshot; with absent
+  PIDs it took 0.11 s. The in-daemon sweep took 6.4–10 s, so the slow part depends on real process
+  identities, live-PID reuse and/or the system state during app launch. Those paths can spawn
+  further per-record PowerShell captures or kill probes.
+- Windows boot events do not line up with the failures (2026-10-25 failed two days after the last
+  boot; 2026-10-28 03:13 preceded that day's boot), so a post-boot cold WMI is not supported as the
+  trigger. The sweep emits no internal timing, and the daemon log is silent between its start and
+  `Runtime daemon starting`.
+
+Not done: no records were deleted, no real-identity replay was run because it could terminate real
+processes, and no Space timeout or SDK file was changed.
+
+Proposed SDK follow-up:
+
+1. Emit sweep timing (records, spawned probes and their durations, outcome counts).
+2. Keep the historical sweep from blocking readiness, or bound it.
+3. Prune or settle records whose owner is proven gone, instead of skipping them forever.
+4. Isolate SDK tests and evals from the real `~/.kodax` registry.
+
 ## Issues 226–229 — Runtime and builtin Skill integration
 
 - **Created**: 2026-10-28.
@@ -16066,8 +16121,9 @@ the recorder is verified; the intermittent original timeout is not claimed fixed
 
 ## Issue 238 — AgentModeSelector browser test intermittently times out
 
-- Priority: Low (test reliability only; no product behavior observed failing)
-- Status: Open
+- Priority: Low (a real but self-correcting UI race; first seen as a test timeout)
+- Status: Resolved
+- Fixed: 0.1.47-alpha.4 source (publication pending)
 - Introduced: Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4 working tree; first affected version unknown
 - Created: 2026-11-08
 - Context: Full Desktop `npm test` during the beta.4 SDK adaptation.
@@ -16082,15 +16138,24 @@ Expected: the case passes deterministically, or fails with an assertion that nam
 
 From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 --import ../../scripts/test/isolated-credential-profile.mjs --import tsx renderer/src/shell/AgentModeSelector.browser.test.ts` until it times out. Suspected area: ordering between clearing `window.fail`/`window.defer` and the keyboard selection, or focus not being on the radio group when `Home` is pressed. Root cause not yet confirmed.
 
+#### Resolution
+
+- **Root cause (confirmed)**: a failed mode change calls `setRefresh`, so `useWorkModeState` issues a reconcile `session.workMode` read from a React passive effect. That commit is a default-priority update, so the effect runs in a later scheduler task. If the next mode keydown arrives before that task, the successful `agent` write (rev 5) is applied first. The reconcile read is issued afterwards and returns the older `coding` rev 4. Its unconditional `setState` reverted the selection, so Agent never became checked and the test hit its 30 s timeout. This is a product race, not only a test artifact: a stale read could make the selector show a mode older than the Host's saved mode until the next refresh.
+- **Evidence**: a temporary copy of the original case dispatched the `Home` keydown from a `MutationObserver` the moment the radios re-enabled, before the passive effect ran. It failed 3/3 with the full-suite symptom. The call log ended `setWorkMode(agent, expectedRevision 4)` → `session.workMode`, and the radios showed Coding checked and enabled. Earlier attempts without that window passed (sequential 20/20, 12 parallel, CPU throttle ×20 10/10). This shows the failure depends only on event timing, not on the beta.4 SDK.
+- **Fix**: `AgentModeSelector.tsx` accepts a read only when its `revision` is not older than the current state's. A read with an equal revision, such as a lock change, still applies.
+- **Files changed**: `apps/desktop/renderer/src/shell/AgentModeSelector.tsx`, `apps/desktop/renderer/src/shell/AgentModeSelector.browser.test.ts`.
+- **Tests added**: "a reconcile read that resolves after a newer saved mode cannot revert the selection" holds the reconcile read until after a newer successful write, then releases it. Before the fix it failed 3/3 (`aria-checked` `false`); after the fix it passes 3/3. The race-window copy of the original case also passes 3/3 after the fix. Desktop `tsc` and ESLint pass for the changed files.
+- **Resolution date**: 2026-11-09.
+
 ## Summary
 
 - Total: 225
-- Open: 2
-- Ready: 3
-- Needs info: 1
+- Open: 1
+- Ready: 4
+- Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 208
+- Resolved (including source-only fixes): 209
 - High: 116
 - Medium: 96
 - Low: 13

@@ -59,7 +59,11 @@ import {
   readVisualQuality,
   applyVisualQualityToDocument,
 } from '../lib/visualQuality.js';
-import { replaceSessionsInScope, type SessionScope } from '../lib/sessionScope.js';
+import {
+  replaceSessionsInScope,
+  sessionMatchesScope,
+  type SessionScope,
+} from '../lib/sessionScope.js';
 import {
   clearLastOpenedFileViewerSnapshotForSession,
   collectTransientArtifactsFromEvents,
@@ -543,6 +547,8 @@ interface AppState {
   /** session.delete 已成功、行收起动画播放中；动画结束后由流程 helper 调 removeSession 收尾。*/
   removingSessionIds: ReadonlySet<string>;
   currentSessionId: string | null;
+  /** Keep the landing page for a composer-created Session until its first send. */
+  welcomeDraftSessionId: string | null;
   /** 每个 sessionId 一桶事件；append-only。Map 用 plain object 避免 zustand referential 问题。*/
   eventsBySession: Readonly<Record<string, readonly SessionEvent[]>>;
   /**
@@ -965,6 +971,7 @@ interface AppState {
     content: string,
     options?: number | { readonly sentAt?: number; readonly variant?: 'echo' | 'output' },
   ): Promise<void>;
+  restoreLocalNotices(sessionId: string, notices: readonly LocalNoticeMessage[]): void;
   appendQueuedUserMessage(
     sessionId: string,
     input: {
@@ -6367,6 +6374,7 @@ export const useAppStore = create<AppState>((setState) => {
     deletingSessionIds: new Set<string>(),
     removingSessionIds: new Set<string>(),
     currentSessionId: null,
+    welcomeDraftSessionId: null,
     eventsBySession: {},
     errorSeenAtBySession: {},
     errorSeenRunIdBySession: {},
@@ -6495,8 +6503,16 @@ export const useAppStore = create<AppState>((setState) => {
     setCurrentProject: (path) => {
       lsSet(LS_KEY_PROJECT, path);
       set((state) => {
+        const sessions = state.welcomeDraftSessionId
+          ? state.sessions.filter((session) => session.sessionId !== state.welcomeDraftSessionId)
+          : state.sessions;
         if (path === null) {
-          return { currentProjectPath: null, currentSessionId: null };
+          return {
+            currentProjectPath: null,
+            currentSessionId: null,
+            welcomeDraftSessionId: null,
+            sessions,
+          };
         }
         const nextCanon = canonProjectRootShared(path, IS_WIN_RENDERER);
         const currentCanon = state.currentProjectPath
@@ -6507,6 +6523,8 @@ export const useAppStore = create<AppState>((setState) => {
         return {
           currentProjectPath: path,
           currentSessionId: null,
+          welcomeDraftSessionId: null,
+          sessions,
           lastDiffPath: null,
           pendingToolPaths: {},
         };
@@ -6518,7 +6536,17 @@ export const useAppStore = create<AppState>((setState) => {
       })),
     replaceSessionsForScope: (sessions, scope) =>
       set((state) => {
-        const replaced = replaceSessionsInScope(state.sessions, sessions, scope, IS_WIN_RENDERER);
+        // Host-local drafts intentionally do not appear in the persisted Session list.
+        const draft = state.sessions.find(
+          (session) => session.sessionId === state.welcomeDraftSessionId,
+        );
+        const incoming =
+          draft &&
+          sessionMatchesScope(draft, scope, IS_WIN_RENDERER) &&
+          !sessions.some((session) => session.sessionId === draft.sessionId)
+            ? [...sessions, draft]
+            : sessions;
+        const replaced = replaceSessionsInScope(state.sessions, incoming, scope, IS_WIN_RENDERER);
         return {
           sessions: mergeRuntimeActivityIntoSessions(
             replaced,
@@ -6535,7 +6563,18 @@ export const useAppStore = create<AppState>((setState) => {
         // 下"用户从 KodaX 项目点 KodaX-Space 的 session" 时仍指着 KodaX,显示错的 git changes /
         // 错的发送目录。
         // sessionId=null → 回 dashboard,不动 currentProjectPath (用户还能继续看当前项目)。
-        if (sessionId === null) return { currentSessionId: null };
+        const leavingDraft = state.welcomeDraftSessionId !== sessionId;
+        const draftPatch = {
+          welcomeDraftSessionId: leavingDraft ? null : state.welcomeDraftSessionId,
+          ...(leavingDraft && state.welcomeDraftSessionId
+            ? {
+                sessions: state.sessions.filter(
+                  (session) => session.sessionId !== state.welcomeDraftSessionId,
+                ),
+              }
+            : {}),
+        };
+        if (sessionId === null) return { currentSessionId: null, ...draftPatch };
         const readFlags = setSessionFlagValue(state.sessionFlags, sessionId, 'unread', false);
         const found = state.sessions.find((s) => s.sessionId === sessionId);
         // 查看即确认：记下当前事件长度，让已看过的 error 状态点熄灭（新 error 会再亮）。
@@ -6564,6 +6603,7 @@ export const useAppStore = create<AppState>((setState) => {
             : state.errorSeenRunIdsBySession;
         seenBySessionToPersist = errorSeenRunIdsBySession;
         const patch = {
+          ...draftPatch,
           ...(readFlags === state.sessionFlags ? {} : { sessionFlags: readFlags }),
           errorSeenAtBySession: {
             ...state.errorSeenAtBySession,
@@ -6921,6 +6961,15 @@ export const useAppStore = create<AppState>((setState) => {
         };
       }),
 
+    restoreLocalNotices: (sessionId, notices) => {
+      if (notices.length === 0) return;
+      set((state) => ({
+        localNoticesBySession: {
+          ...state.localNoticesBySession,
+          [sessionId]: mergeLocalNotices([notices, state.localNoticesBySession[sessionId] ?? []]),
+        },
+      }));
+    },
     appendLocalNotice: (sessionId, content, options) => {
       let persistedNotice: LocalNoticeMessage | null = null;
       set((state) => {
@@ -9467,6 +9516,8 @@ export const useAppStore = create<AppState>((setState) => {
           requestGeneration = ++pendingSendGenerationCounter;
           const baseline = pendingSendRuntimeBaseline(state, sessionId, requestGeneration);
           return {
+            welcomeDraftSessionId:
+              state.welcomeDraftSessionId === sessionId ? null : state.welcomeDraftSessionId,
             pendingSendBySession: { ...state.pendingSendBySession, [sessionId]: true as const },
             pendingSendRuntimeBaselineBySession: {
               ...state.pendingSendRuntimeBaselineBySession,
@@ -9654,6 +9705,7 @@ export const useAppStore = create<AppState>((setState) => {
       resetSessionViewLifecycles();
       set({
         currentSessionId: null,
+        welcomeDraftSessionId: null,
         eventsBySession: {},
         compactingBySession: {},
         transientArtifactsBySession: {},

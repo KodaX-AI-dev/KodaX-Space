@@ -351,6 +351,20 @@ test('setRuntimeDefaults merges and persists runtime defaults', async () => {
   assert.deepEqual(reloaded.runtimeDefaults, merged.runtimeDefaults);
 });
 
+test('work mode defaults survive a settings reload and unrelated default changes', async () => {
+  const store = new SettingsStore(settingsFile, tmpDir);
+  await store.setRuntimeDefaults({ workMode: 'agent', reasoningMode: 'high' });
+  const reloaded = new SettingsStore(settingsFile, tmpDir);
+  assert.equal((await reloaded.load()).runtimeDefaults.workMode, 'agent');
+  const changed = await reloaded.setRuntimeDefaults({ permissionMode: 'auto' });
+  assert.equal(changed.runtimeDefaults.workMode, 'agent');
+  await reloaded.setRuntimeDefaults({ workMode: 'script' });
+  assert.equal(
+    (await new SettingsStore(settingsFile, tmpDir).load()).runtimeDefaults.workMode,
+    'script',
+  );
+});
+
 test('load preserves valid runtime default fields when one field is invalid', async () => {
   const workspace = path.join(tmpDir, 'workspace');
   await fs.mkdir(tmpDir, { recursive: true });

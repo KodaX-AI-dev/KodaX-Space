@@ -923,6 +923,11 @@ async function requestHistory(
     }
     const installsPrepend = continueFromCurrentBoundary && page?.windowMode === 'prepend';
     if (result.productItems !== undefined && page?.outcome === 'ready') {
+      // Product history owns SDK bodies; its early return must still restore Space's receipts.
+      useAppStore.getState().restoreLocalNotices(
+        sessionId,
+        result.items.filter((item) => item.kind === 'local_notice'),
+      );
       // Only adjacent pages proven to share this revision may extend the saved source.
       const extendsHistory = continueFromCurrentBoundary || newerPage !== undefined;
       const retained = extendsHistory

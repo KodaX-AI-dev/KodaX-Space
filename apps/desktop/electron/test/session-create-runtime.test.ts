@@ -26,7 +26,9 @@ registerSessionChannels();
 test('disconnected shared Host notices stay in the Space side-store without a canonical writer fallback', async (t) => {
   t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
   t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => false);
+  let hostWrites = 0;
   t.mock.method(runtimeHostAdapter, 'appendNotice', async () => {
+    hostWrites++;
     throw new Error('Host disconnected');
   });
   let directWrites = 0;
@@ -57,6 +59,7 @@ test('disconnected shared Host notices stay in the Space side-store without a ca
   >;
   assert.equal(result.ok, true);
   assert.equal(directWrites, 0);
+  assert.equal(hostWrites, 0, 'Space receipts must not also become SDK display items');
   assert.ok(
     (await getSessionLocalNoticeStore().list(sessionId)).some((row) => row.id === notice.id),
   );
@@ -71,11 +74,13 @@ test('session.create uses daemon allocation for both real surfaces without trust
   t.mock.method(settingsStore, 'load', async () => ({}));
   t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
   const created: unknown[] = [];
+  const workModes: (string | undefined)[] = [];
   t.mock.method(
     runtimeHostAdapter,
     'createSession',
-    async (identity: Parameters<typeof runtimeHostAdapter.createSession>[0]) => {
+    async (identity: Parameters<typeof runtimeHostAdapter.createSession>[0], workMode?: string) => {
       created.push(identity);
+      workModes.push(workMode);
       return 's_daemon_allocated';
     },
   );
@@ -126,4 +131,19 @@ test('session.create uses daemon allocation for both real surfaces without trust
     2,
     'Both product surfaces allocate through Host; mock and injected legacy fixtures stay local',
   );
+  t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
+  for (const workMode of ['agent', 'script', 'coding'] as const) {
+    t.mock.method(settingsStore, 'load', async () => ({ runtimeDefaults: { workMode } }));
+    const next = (await invoke({}, { ...input, ephemeral: false })) as IpcResult<
+      ChannelOutput<'session.create'>
+    >;
+    assert.equal(next.ok, true);
+    assert.equal(workModes.at(-1), workMode, 'new Coder Sessions must receive the saved work mode');
+    const partnerNext = (await invoke(
+      {},
+      { ...input, surface: 'partner', ephemeral: false },
+    )) as IpcResult<ChannelOutput<'session.create'>>;
+    assert.equal(partnerNext.ok, true);
+    assert.equal(workModes.at(-1), undefined, 'Partner keeps its Host-owned Agent mode');
+  }
 });

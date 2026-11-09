@@ -33,6 +33,7 @@ export type CoderRuntimeModeT = z.infer<typeof coderRuntimeModeSchema>;
 
 const spaceRuntimeDefaultsSchema = z
   .object({
+    workMode: z.enum(['agent', 'coding', 'script']).optional(),
     permissionMode: permissionModeSchema.optional(),
     reasoningMode: reasoningModeSchema.optional(),
     agentMode: agentModeSchema.optional(),

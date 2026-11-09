@@ -124,10 +124,24 @@ for (const revokeQueuedLease of [false, true])
         const skills = await attached!.catalog.skills({ projectRoot });
         assert.ok(skills.some((skill) => skill.name === 'visual-review'));
         assert.equal('verifierLog' in (await attached!.config.readEffective()).entries, false);
-        const sessionId = await adapter.createSession({
-          projectRoot,
-          surface: 'code',
-          ephemeral: false,
+        const sessionId = await adapter.createSession(
+          {
+            projectRoot,
+            surface: 'code',
+            ephemeral: false,
+          },
+          'agent',
+        );
+        const initialMode = await adapter.readWorkMode(sessionId);
+        assert.equal(
+          initialMode.workMode,
+          'agent',
+          'new drafts receive the requested default before their first input',
+        );
+        await adapter.updateWorkMode({
+          sessionId,
+          workMode: 'coding',
+          expectedRevision: initialMode.revision,
         });
         await adapter.updateSessionSettings(sessionId, {
           provider: 'space-offline',
@@ -145,6 +159,10 @@ for (const revokeQueuedLease of [false, true])
           sessionId,
           'the unsubmitted draft remains observable through the Host',
         );
+        assert.deepEqual(await adapter.readProductHistory(sessionId), {
+          outcome: 'ready',
+          page: null,
+        });
         const input = {
           sessionId,
           inputId: 'stable-space-input',
@@ -157,7 +175,10 @@ for (const revokeQueuedLease of [false, true])
           workflow?: { maxConcurrency?: number };
         };
         assert.equal(hostConfig.workflow?.maxConcurrency, workflowPolicyStore.get().maxConcurrency);
-        const page = await attached!.sessions.readHistory(sessionId);
+        const history = await adapter.readProductHistory(sessionId);
+        assert.equal(history.outcome, 'ready');
+        assert.ok(history.outcome === 'ready' && history.page);
+        const page = history.page;
         assert.deepEqual(
           page.items
             .filter((item) => item.type === 'user')

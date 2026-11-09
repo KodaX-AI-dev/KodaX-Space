@@ -41,6 +41,7 @@ beforeEach(() => {
   useAppStore.setState({
     currentProjectPath: 'C:\\project-a',
     currentSessionId: null,
+    welcomeDraftSessionId: null,
     sessions: [session('a1', 'C:\\project-a'), session('b1', 'C:\\project-b')],
   });
   fakeStorage.setItem(LS_KEY_PROJECT, 'C:\\project-a');
@@ -63,4 +64,30 @@ test('opening a session of the current project keeps the persisted selection', (
   useAppStore.getState().setCurrentSession('a1');
   assert.equal(useAppStore.getState().currentSessionId, 'a1');
   assert.equal(fakeStorage.getItem(LS_KEY_PROJECT), 'C:\\project-a');
+});
+
+test('leaving an unsent composer draft removes its local list entry without losing saved Sessions', () => {
+  for (const leave of [
+    () => useAppStore.getState().setCurrentSession(null),
+    () => useAppStore.getState().setCurrentSession('b1'),
+    () => useAppStore.getState().setCurrentProject('C:\\project-b'),
+    () => useAppStore.getState().setCurrentProject(null),
+  ]) {
+    useAppStore.setState({
+      currentProjectPath: 'C:\\project-a',
+      currentSessionId: 'draft',
+      welcomeDraftSessionId: 'draft',
+      sessions: [
+        session('a1', 'C:\\project-a'),
+        session('b1', 'C:\\project-b'),
+        session('draft', 'C:\\project-a'),
+      ],
+    });
+    leave();
+    assert.equal(useAppStore.getState().welcomeDraftSessionId, null);
+    assert.deepEqual(
+      useAppStore.getState().sessions.map((row) => row.sessionId),
+      ['a1', 'b1'],
+    );
+  }
 });

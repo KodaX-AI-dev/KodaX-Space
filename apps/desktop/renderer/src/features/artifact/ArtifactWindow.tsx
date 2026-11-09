@@ -8,11 +8,14 @@
 // composer, which this window can't reach).
 
 import { useEffect, useMemo, useState } from 'react';
-import { FileOutput, Copy, Check, Download } from 'lucide-react';
+import { FileOutput, Copy, Check, Download, FolderOpen, Ellipsis } from 'lucide-react';
 import { ArtifactView } from './ArtifactView';
 import { useArtifactRead } from './useArtifacts';
 import { toArtifactContent } from './toArtifactContent';
 import { TEXT_COPY_KINDS } from './artifactKind';
+import { saveArtifactAs } from './artifactActions.js';
+import { ArtifactActionsMenu } from './ArtifactActionsMenu.js';
+import { revealPath } from '../../lib/openPath.js';
 import { useI18n } from '../../i18n/I18nProvider';
 
 export interface ArtifactHashParams {
@@ -99,7 +102,9 @@ export function ArtifactWindow({ params }: { params: ArtifactHashParams }): JSX.
   }, [displayTitle]);
 
   const canCopy = payload?.content !== undefined && ref !== null && TEXT_COPY_KINDS.has(ref.kind);
-  const canSave = payload?.content !== undefined || payload?.fileSource === 'artifact-store';
+  const canSave = payload?.content !== undefined || payload?.path !== undefined;
+  const workspacePath = payload?.fileSource === 'workspace' ? payload.path : undefined;
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const effectiveVersion = version ?? ref?.currentVersion;
 
   async function onCopy(): Promise<void> {
@@ -114,26 +119,7 @@ export function ArtifactWindow({ params }: { params: ArtifactHashParams }): JSX.
   }
 
   async function onSave(): Promise<void> {
-    const bridge = window.kodaxSpace;
-    if (!bridge) return;
-    setActionMsg(null);
-    const r = await bridge.invoke(
-      'artifact.export',
-      effectiveVersion !== undefined
-        ? { id: params.id, version: effectiveVersion }
-        : { id: params.id },
-    );
-    if (!r.ok) {
-      setActionMsg(t('artifact.saveFailed'));
-      return;
-    }
-    if (r.data.ok)
-      setActionMsg(
-        r.data.path ? t('artifact.savedPath', { path: r.data.path }) : t('artifact.saved'),
-      );
-    else if (!r.data.canceled) setActionMsg(r.data.error ?? t('artifact.saveFailed'));
-    else return; // user cancelled — leave the toolbar quiet
-    setTimeout(() => setActionMsg(null), 2500);
+    await saveArtifactAs(params.id, effectiveVersion);
   }
 
   return (
@@ -190,13 +176,52 @@ export function ArtifactWindow({ params }: { params: ArtifactHashParams }): JSX.
               onClick={() => void onSave()}
               title={t('artifact.saveAs')}
               aria-label={t('artifact.saveAsAria')}
-              className="w-7 h-7 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-surface-3"
+              className="h-7 inline-flex items-center justify-center gap-1 rounded px-2 text-fg-secondary hover:text-fg-primary hover:bg-surface-3"
             >
               <Download className="w-4 h-4" strokeWidth={1.75} />
+              <span className="whitespace-nowrap text-xs">{t('artifact.saveAs')}</span>
+            </button>
+          )}
+          {workspacePath && (
+            <button
+              type="button"
+              onClick={() => void revealPath(workspacePath, params.projectRoot)}
+              title={t('fileActions.revealInFileManager')}
+              aria-label={t('fileActions.revealInFileManager')}
+              className="inline-flex h-7 w-7 items-center justify-center rounded text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+            >
+              <FolderOpen size={16} />
+            </button>
+          )}
+          {canSave && (
+            <button
+              type="button"
+              aria-label={t('artifact.actions')}
+              title={t('artifact.actions')}
+              aria-haspopup="menu"
+              aria-expanded={menu !== null}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setMenu({ x: rect.left, y: rect.bottom });
+              }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+            >
+              <Ellipsis size={16} />
             </button>
           )}
         </div>
       </header>
+      {menu && (
+        <ArtifactActionsMenu
+          id={params.id}
+          version={effectiveVersion}
+          title={displayTitle}
+          path={workspacePath}
+          projectRoot={params.projectRoot}
+          {...menu}
+          onClose={() => setMenu(null)}
+        />
+      )}
       <div className="flex-1 min-h-0 flex flex-col">
         {loading && !content ? (
           <Centered>{t('artifact.loading')}</Centered>

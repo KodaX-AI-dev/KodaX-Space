@@ -12,6 +12,7 @@ import {
   providerIsConfigured,
 } from '../kodax/host.js';
 import { projectStore } from '../projects/store.js';
+import { settingsStore } from '../settings/store.js';
 
 // v0.1.5: canonProjectRoot 抽到 schema 包共享 util（renderer + main 同一实现），
 // 修 F040/F041 review MED-3 的 normalize 不一致。
@@ -61,7 +62,6 @@ import {
 import { isBuiltinId } from '../providers/catalog.js';
 import { providerConfigStore } from '../providers/config.js';
 import {
-  appendPersistedClientNotice,
   loadPersistedConversationHistory,
   loadPersistedSession,
   loadPersistedTranscript,
@@ -85,10 +85,7 @@ import type { SpaceExpertCatalog } from '../space-extensions/experts.js';
 import type { ManagedSession } from '../kodax/session-adapter.js';
 import { assertSpaceExtensionSender } from './space-extensions.js';
 import { pushToRenderer } from './push.js';
-import {
-  appendSpaceOwnedLocalNotice,
-  getSessionLocalNoticeStore,
-} from '../kodax/session-local-notice-store.js';
+import { getSessionLocalNoticeStore } from '../kodax/session-local-notice-store.js';
 import {
   assertArtifactPathInClipboardSandbox,
   finalizePendingClipboardArtifacts,
@@ -788,15 +785,22 @@ export async function createSessionForIpc(
         agentMode: input.agentMode,
       },
     });
+    const defaultWorkMode =
+      input.surface !== 'partner' && !input.ephemeral
+        ? (await settingsStore.load()).runtimeDefaults?.workMode
+        : undefined;
     const allocatedSessionId =
       input.provider !== 'mock' &&
       process.env.KODAX_FORCE_MOCK !== '1' &&
       runtimeHostAdapter.isRuntimeSelected()
-        ? await runtimeHostAdapter.createSession({
-            projectRoot,
-            surface: input.surface ?? 'code',
-            ephemeral: input.ephemeral ?? false,
-          })
+        ? await runtimeHostAdapter.createSession(
+            {
+              projectRoot,
+              surface: input.surface ?? 'code',
+              ephemeral: input.ephemeral ?? false,
+            },
+            defaultWorkMode,
+          )
         : await generateKodaxSessionId();
     const { sessionId, createdAt } = kodaxHost.createSession({
       sessionId: allocatedSessionId,
@@ -1602,25 +1606,9 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
   // tool_call item,result 字段缺失 → renderer 会渲染为 "running" 状态卡片。
   registerChannel('session.localNotice.append', (input) =>
     runWithCoderAdmission(options, async () => {
-      const payload: Record<string, string> = { id: input.notice.id };
-      if (input.notice.variant !== undefined) payload.variant = input.notice.variant;
-      const usesRuntimeConversation = runtimeHostAdapter.isRuntimeSelected();
-      await appendSpaceOwnedLocalNotice(input.sessionId, input.notice, async () => {
-        if (usesRuntimeConversation) {
-          await runtimeHostAdapter.appendNotice({
-            sessionId: input.sessionId,
-            source: 'space-local-notice',
-            content: input.notice.content,
-          });
-        } else {
-          await appendPersistedClientNotice(input.sessionId, {
-            source: 'space-local-notice',
-            content: input.notice.content,
-            timestamp: isoTimestampFromSentAt(input.notice.sentAt),
-            payload,
-          });
-        }
-      });
+      // The durable Space receipt is the single owner. Host appendNotice also publishes a
+      // display item, so writing an audit copy there duplicates commands in the conversation.
+      await getSessionLocalNoticeStore().append(input.sessionId, input.notice);
       return { ok: true };
     }),
   );
@@ -1704,7 +1692,10 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         return sessionHistoryChannel.output.parse({
           sessionId: input.sessionId,
           requestId: input.requestId,
-          items: [],
+          items: limitSessionHistoryWithLocalNotices(
+            [],
+            await getSessionLocalNoticeStore().list(input.sessionId),
+          ),
           productItems: page.items,
           productOversized: [...page.oversized],
           conversation: {
@@ -2099,11 +2090,6 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
  *  fallback rather than stamping NaN. */
 const MAX_HISTORY_TEXT = 262_144;
 const MAX_HISTORY_TOOL_RESULT = 524_288;
-
-function isoTimestampFromSentAt(sentAt: number): string {
-  const date = new Date(sentAt);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

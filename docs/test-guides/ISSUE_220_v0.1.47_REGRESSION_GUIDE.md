@@ -22,6 +22,28 @@
 
 ## 自动入口与发布边界
 
+### 新会话切换工作模式（2026-11-09）
+
+1. 在 Coder 点击「新对话」，在统计页选择一个统计标签和时间范围。
+2. 连续选择 Agent、Script、Coding。统计页及已选标签、范围保持可见，未发送草稿不计入统计或侧栏历史。
+3. 停留数秒，确认没有在「正在加载对话」骨架和空会话提示之间闪烁。
+4. 发送第一条消息，确认进入对话，沿用刚选的工作模式及同一草稿 Session，不再创建第二个 Session。
+5. 打开已有的命名空会话、有旧分支的零消息会话，确认继续读取真实历史，不把它们判断为新草稿。
+
+根因：模式控件需要创建可设置的 Host 草稿，但旧 UI 把有 Session ID 等同于已进入对话；Registry SDK `0.7.97-beta.4` 对未落盘草稿的 `readHistory` 持续抛出 `resync_required: Session moved before page preparation`，触发前端加载/空态重试。Space 仅对自身显式创建、尚无 SDK canonical 用户输入的草稿跳过持久化历史读取；首条 canonical 输入出现后恢复 SDK 历史。已有会话的真实读取错误继续上报。
+
+自动回归：`newConversationWorkMode.browser.test.ts` 覆盖模式切换、统计页保留及首次发送复用草稿；`runtime-host-adapter.test.ts` 覆盖草稿空历史、旧空会话和首次输入解除草稿抑制；`runtime-sdk-migration.test.ts` 用真实发布 SDK 验证草稿到持久化历史的转换。此为源码修复，需后续构建发布后进入安装版。
+
+### 工作模式记为新会话默认值（2026-11-09，源码未发布）
+
+1. 在尚可修改模式的 Coder 会话中切换到 Agent，点击「新对话」。统计页保留，模式预选 Agent；直接发送时，实际 Host 会话也是 Agent。
+2. 完整退出并重启 Space，新对话仍预选并使用 Agent。分别切换 Script、Coding，重复验证。
+3. 打开以前使用其他模式的会话，确认仍显示该会话的实际模式；仅打开旧会话不覆盖默认值。
+4. 切换到 Partner，确认仍使用 Agent；回到 Coder，新对话仍使用保存的 Coder 默认模式。
+5. 模式修改被 Host 拒绝时默认值不变；模拟设置写入失败时应有错误提示，当前 Host 模式可以已改变，但下次默认值仍保留上次成功保存的值。
+
+工作模式保存在现有 Space `runtimeDefaults.workMode` 中，首次没有偏好时沿用 Coding。Main 在创建普通 Coder 草稿时应用默认值，Partner 固定 Agent，临时 Quick Ask 不继承 Coder 默认模式。回归入口为 `AgentModeSelector.browser.test.ts`、`settings-store.test.ts`、`session-create-runtime.test.ts` 和真实发布 SDK 的 `runtime-sdk-migration.test.ts`。
+
 - SDK：`sdk-runtime.session-drafts.test.ts`、`sdk-client.inputs.test.ts`，验证生产 REPL 绑定与真实共享 Host 输入接受。
 - SDK 存储边界：`packages/repl/src/interactive/storage.drafts.test.ts`，验证草稿编辑、不可变读取边界、跨实例不可见与有效输入保存。
 - Space：`session-empty-records.test.ts`、RuntimeHostAdapter 草稿准入回归、`session-empty-records.spec.ts`，验证历史保留、列表额度、侧栏名称和刷新。

@@ -419,7 +419,7 @@ export function registerArtifactChannels(): void {
     return { deleted };
   });
 
-  // Save a content-backed or generated store-owned artifact version to a user-chosen file.
+  // Save the selected artifact version, including validated workspace file references.
   registerChannel('artifact.export', async (input) => {
     await adminPolicyAuditStore.assertArtifactExportAllowed({
       artifactId: input.id,
@@ -429,8 +429,18 @@ export function registerArtifactChannels(): void {
     if (!res) throw new Error(`artifact not found: ${input.id}`);
     const kind = res.ref.kind;
     let ext: string;
-    let bytes: Buffer;
-    if (res.content === undefined) {
+    let bytes: Buffer | undefined;
+    let sourceFile: string | undefined;
+    if (res.content === undefined && res.fileSource === 'workspace' && res.path !== undefined) {
+      let session = kodaxHost.get(res.ref.sessionId);
+      if (!session && (await kodaxHost.tryResume(res.ref.sessionId)))
+        session = kodaxHost.get(res.ref.sessionId);
+      if (!session) throw new Error('session not found for artifact path validation');
+      const projectRoot = await projectStore.assertAllowed(session.projectRoot);
+      sourceFile = await resolveInsideProject(projectRoot, res.path);
+      if (!(await fs.stat(sourceFile)).isFile()) throw new Error('artifact source is not a file');
+      ext = path.extname(sourceFile).slice(1) || extForKind(kind);
+    } else if (res.content === undefined) {
       const generated = await artifactStore.readGeneratedFile(input.id, input.version);
       if (!generated) {
         await adminPolicyAuditStore.record({
@@ -465,12 +475,15 @@ export function registerArtifactChannels(): void {
     }
     const { dialog, BrowserWindow } = getElectron();
     const parent = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
-    const defaultPath = `${sanitizeFilename(res.ref.title) || 'artifact'}.${ext}`;
+    const defaultPath = sourceFile
+      ? path.basename(sourceFile)
+      : `${sanitizeFilename(res.ref.title) || 'artifact'}.${ext}`;
     const r = parent
       ? await dialog.showSaveDialog(parent, { defaultPath })
       : await dialog.showSaveDialog({ defaultPath });
     if (r.canceled || !r.filePath) return { ok: false, canceled: true };
-    await fs.writeFile(r.filePath, bytes);
+    if (sourceFile !== undefined) await fs.copyFile(sourceFile, r.filePath);
+    else await fs.writeFile(r.filePath, bytes!);
     await adminPolicyAuditStore.record({
       category: 'artifact',
       action: 'artifact.export',
