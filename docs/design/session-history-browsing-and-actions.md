@@ -1,6 +1,8 @@
 # 共享 Coder 会话的历史浏览、搜索、Fork 与回退
 
-**已接入 Registry SDK beta.4 · 2026-11-09**　本文记录 Space 桌面端共享 Coder 会话与配套 KodaX SDK 的设计约定。开发构建、Windows 桌面包、旧 Host 的兼容表现及性能测量见[实施验收记录](../test-guides/ISSUE_237_0.1.47-alpha.4_REGRESSION_GUIDE.md)。正式 SDK 的安装和成品结果见 [beta.3 接入记录](../releases/kodax-beta3-space-adaptation.md)。
+**已接入 Registry SDK beta.4 · 2026-11-09**　本文记录 Space 桌面端共享 Coder 会话与配套 KodaX SDK 的设计约定。开发构建、Windows 桌面包、旧 Host 的兼容表现及性能测量见[实施验收记录](../test-guides/ISSUE_237_0.1.47-alpha.4_REGRESSION_GUIDE.md)。正式 SDK 的安装和成品结果见 [beta.4 接入记录](../releases/kodax-beta4-space-adaptation.md)。
+
+连续保存页与用户提问强调的补充验收见[alpha.4 回归指南](../test-guides/ISSUE_234_0.1.47-alpha.4_REGRESSION_GUIDE.md)。
 
 ## 一、用户体验
 
