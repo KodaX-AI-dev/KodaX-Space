@@ -28,6 +28,8 @@ import {
   SquarePen,
 } from 'lucide-react';
 import { SurfaceTabs } from './SurfaceTabs.js';
+import { moveItem } from './sortPreview.js';
+import { useDragSort } from './useDragSort.js';
 import { useAppStore } from '../store/appStore.js';
 import { startNewConversation } from '../store/newConversation.js';
 import { useSurfaceStore } from '../store/surface.js';
@@ -277,6 +279,10 @@ export function LeftSidebar({
  *     这不应发生（projectStore 用 SDK listSessions 来源 + project.recent.add），
  *     如果真发生说明 SDK 给了脏数据，安全做法是隐藏不暴露
  */
+// 拖动中的项目行抬起显示。按住鼠标期间 button 一直 :active,全局按钮光泽会停在行上,拖动时关掉。
+const DRAG_SOURCE_ROW_CLASS =
+  'bg-surface-3 shadow-lg ring-1 ring-border-default/60 [&_button]:before:hidden';
+
 function ProjectTree({
   sessions,
   currentSessionId,
@@ -299,7 +305,7 @@ function ProjectTree({
   const toggleProjectExpanded = useAppStore((s) => s.toggleProjectExpanded);
   // v0.1.9 Step 7 — 拖排顺序 + archived 折叠状态 (持久化)
   const projectOrder = useAppStore((s) => s.projectOrder);
-  const reorderProjects = useAppStore((s) => s.reorderProjects);
+  const setProjectOrder = useAppStore((s) => s.setProjectOrder);
   const archivedExpanded = useAppStore((s) => s.archivedProjectsExpanded);
   const setArchivedExpanded = useAppStore((s) => s.setArchivedProjectsExpanded);
 
@@ -308,9 +314,6 @@ function ProjectTree({
     null,
   );
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
-  // v0.1.9 Step 7 — DnD: 拖动中的 source canon path (UI 高亮 + drop 时算位置)
-  const [dragSrcCanon, setDragSrcCanon] = useState<string | null>(null);
-  const [dragOverCanon, setDragOverCanon] = useState<string | null>(null);
   // v0.1.9: "+N more sessions" picker overlay — 哪个项目正在浏览全量
   const [pickerProject, setPickerProject] = useState<Project | null>(null);
   const [projectSessionLimits, setProjectSessionLimits] = useState<Record<string, number>>({});
@@ -386,6 +389,21 @@ function ProjectTree({
     [projects],
   );
 
+  // 拖排 / 置顶都基于用户当前看到的顺序计算,store 只持久化结果。
+  const moveProject = useCallback(
+    (from: number, to: number): void => {
+      setProjectOrder(
+        moveItem(
+          ordered.map((p) => canonProjectRootBrowser(p.path)),
+          from,
+          to,
+        ),
+      );
+    },
+    [ordered, setProjectOrder],
+  );
+  const dragSort = useDragSort(ordered.length, moveProject);
+
   // 按 projectRoot 把 sessions 分组（用 canonProjectRoot 比较，避免 windows 大小写 / trailing
   // slash / 分隔符差异）。reviewer MED-2: 用不可变 spread 而非 push 原地改，遵循项目 immutability 规则。
   const sessionsByProject = useMemo(() => {
@@ -430,7 +448,11 @@ function ProjectTree({
   //    这是个反复踩过的坑：新增 hook 一律加在这行之前。
   if (ordered.length === 0 && archived.length === 0) return null;
 
-  const renderProject = (proj: Project, treatAsCurrent: boolean): JSX.Element => {
+  const renderProject = (
+    proj: Project,
+    treatAsCurrent: boolean,
+    sortIndex?: number,
+  ): JSX.Element => {
     const projCanon = canonProjectRootBrowser(proj.path);
     const defaultExpanded = treatAsCurrent;
     const explicit = proj.path in expandedProjects ? expandedProjects[proj.path] : undefined;
@@ -451,62 +473,29 @@ function ProjectTree({
     );
     const isRenaming = renamingPath === proj.path;
 
-    // v0.1.9 Step 7 — DnD: 项目 row 整行 draggable。archived 项目不参与排序(语义上"已归档"
-    // 用户的 mental model 跟主列表不同),只对 active list 启用。
-    // review HIGH-3: 上下文菜单开着时禁拖 — 用户右键打开菜单后随手 mousedown 可能误触
-    // dragstart,造成菜单 + drag 状态打架。
-    const isArchivedRow = proj.archived === true;
+    // 项目 row 整行可拖排 (指针拖动,见 useDragSort)。archived 项目不参与排序;重命名中 /
+    // 上下文菜单开着时禁拖,避免和输入框选字、菜单交互打架。
     const isCtxMenuOnRow = projCtxMenu?.project.path === proj.path;
-    const isDragSource = dragSrcCanon === projCanon;
-    const isDragOverTarget = dragOverCanon === projCanon && dragSrcCanon !== null && !isDragSource;
+    const canDrag = sortIndex !== undefined && !isRenaming && !isCtxMenuOnRow;
+    const isDragSource = sortIndex !== undefined && dragSort.draggingIndex === sortIndex;
     return (
-      <div key={proj.path} className={`mb-1 ${isDragSource ? 'opacity-40' : ''}`}>
+      <div
+        key={proj.path}
+        ref={sortIndex !== undefined ? dragSort.itemRef(sortIndex) : undefined}
+        style={sortIndex !== undefined ? dragSort.itemStyle(sortIndex) : undefined}
+        className="mb-1"
+      >
         <div
-          draggable={!isArchivedRow && !isRenaming && !isCtxMenuOnRow}
-          onDragStart={(e) => {
-            if (isArchivedRow) return;
-            setDragSrcCanon(projCanon);
-            e.dataTransfer.effectAllowed = 'move';
-            // 必须 setData 才能在 Firefox / 某些 Linux 上触发 drag (Chrome 不严要求,但写上更稳)
-            try {
-              e.dataTransfer.setData('text/plain', proj.path);
-            } catch {
-              /* fail silently */
-            }
-          }}
-          onDragEnd={() => {
-            setDragSrcCanon(null);
-            setDragOverCanon(null);
-          }}
-          onDragOver={(e) => {
-            if (isArchivedRow || dragSrcCanon === null || dragSrcCanon === projCanon) return;
-            e.preventDefault(); // 允许 drop
-            e.dataTransfer.dropEffect = 'move';
-            if (dragOverCanon !== projCanon) setDragOverCanon(projCanon);
-          }}
-          onDragLeave={(e) => {
-            // review HIGH-1: onDragLeave 也会在 cursor 移入 row 内子元素时触发(button / span 等),
-            // 直接清 dragOverCanon 会让 outline 在 row 内闪烁。只有 cursor 真的离开整个 row
-            // (relatedTarget 不在 row DOM 之内) 时才清。
-            if (dragOverCanon !== projCanon) return;
-            const related = e.relatedTarget as Node | null;
-            if (related && (e.currentTarget as HTMLElement).contains(related)) return;
-            setDragOverCanon(null);
-          }}
-          onDrop={(e) => {
-            if (isArchivedRow) return;
-            e.preventDefault();
-            const src = dragSrcCanon;
-            setDragSrcCanon(null);
-            setDragOverCanon(null);
-            if (!src || src === projCanon) return;
-            reorderProjects(src, projCanon);
+          onPointerDown={(e) => {
+            if (sortIndex === undefined || !canDrag) return;
+            if ((e.target as HTMLElement).closest('[data-drag-ignore]')) return;
+            dragSort.onHandlePointerDown(sortIndex, e);
           }}
           className={`group/projectrow w-full text-xs px-2 py-1 rounded flex items-center gap-1.5 ${
             treatAsCurrent
               ? 'text-fg-primary font-semibold'
               : 'text-fg-secondary hover:bg-hover-bg hover:text-fg-primary'
-          } ${isDragOverTarget ? 'outline outline-1 outline-info/60' : ''}`}
+          } ${isDragSource ? DRAG_SOURCE_ROW_CLASS : ''}`}
           onContextMenu={(e) => {
             e.preventDefault();
             (e.target as HTMLElement).closest('button')?.focus();
@@ -574,6 +563,7 @@ function ProjectTree({
           {/* F132: Codex-aligned project actions — menu first, then new task. */}
           {!isRenaming && (
             <span
+              data-drag-ignore
               className={`flex shrink-0 items-center gap-0.5 transition-opacity ${
                 treatAsCurrent
                   ? 'opacity-100'
@@ -654,28 +644,13 @@ function ProjectTree({
   };
 
   return (
-    // review HIGH-2: 包一个 wrapper 让 onDragLeave / onDragEnd 兜底 — 用户拖出 sidebar
-    // 整个 area 后 (浏览器有时不会发 row 的 onDragLeave),outline 不会被永久 stuck。
-    <div
-      onDragLeave={(e) => {
-        const related = e.relatedTarget as Node | null;
-        // related 不在 wrapper 内 = 拖出本 list
-        if (related && (e.currentTarget as HTMLElement).contains(related)) return;
-        if (dragOverCanon !== null) setDragOverCanon(null);
-      }}
-      onDragEnd={() => {
-        // 浏览器有时只在 source 上发 onDragEnd,有时在 document 上 — wrapper 多挂一道,
-        // 兜底清掉拖动状态。
-        if (dragSrcCanon !== null) setDragSrcCanon(null);
-        if (dragOverCanon !== null) setDragOverCanon(null);
-      }}
-    >
-      {ordered.map((proj) => {
+    <div onClickCapture={dragSort.onClickCapture}>
+      {ordered.map((proj, index) => {
         const projCanon = canonProjectRootBrowser(proj.path);
         const isCurrent = currentProjectPath
           ? projCanon === canonProjectRootBrowser(currentProjectPath)
           : false;
-        return renderProject(proj, isCurrent);
+        return renderProject(proj, isCurrent, index);
       })}
 
       {archived.length > 0 && (
@@ -702,12 +677,8 @@ function ProjectTree({
           y={projCtxMenu.y}
           onClose={() => setProjCtxMenu(null)}
           onPinProject={() => {
-            const first = ordered[0];
-            if (!first) return;
-            reorderProjects(
-              canonProjectRootBrowser(projCtxMenu.project.path),
-              canonProjectRootBrowser(first.path),
-            );
+            const index = ordered.findIndex((p) => p.path === projCtxMenu.project.path);
+            if (index > 0) moveProject(index, 0);
           }}
           onStartRename={() => {
             setRenamingPath(projCtxMenu.project.path);

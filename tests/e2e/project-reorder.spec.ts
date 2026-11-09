@@ -1,8 +1,8 @@
 // F040 v0.1.9 Step 7 — project drag-sort + Archived fold-state persistence e2e.
 //
-// 不模拟真 HTML5 DnD (Playwright 在 Electron + Windows 里原生 dragstart/drop
-// 链路 dispatch 复杂且不稳),改用 localStorage 写入测持久化通路。
-// 真 DnD 行为靠 9 个 reducer unit test 覆盖。
+// 不在 Electron 里模拟拖动,只测 localStorage 持久化通路。
+// 拖排交互 (指针拖动 + 落点预览) 由 renderer/src/shell/projectDragSort.browser.test.ts
+// 和 sortPreview.test.ts 覆盖。
 
 import { test, expect } from '@playwright/test';
 import { launchSpace } from './fixtures.js';
