@@ -16,6 +16,7 @@ const saved={sessionId:'saved',projectRoot:'/project',provider:'anthropic',surfa
 window.kodaxSpace={platform:'win32',on:()=>()=>{},invoke:async(channel,input)=>{
 window.calls.push({channel,input});
 if(channel==='settings.get')return{ok:true,data:{languageMode:'en-US',effectiveLocale:'en-US'}};
+if(channel==='settings.setRuntimeDefaults')return{ok:true,data:{runtimeDefaults:input.runtimeDefaults}};
 if(channel==='session.create')return{ok:true,data:{sessionId:'draft',createdAt:Date.now(),reasoningMode:'auto',permissionMode:'accept-edits',agentMode:'ama'}};
 if(channel==='session.workMode')return{ok:true,data:{supported:true,locked:false,workMode:window.mode,revision:window.revision}};
 if(channel==='session.setWorkMode'){window.mode=input.workMode;window.revision++;setTimeout(()=>useAppStore.setState({liveProjectionBySession:{draft:{sessionId:'draft',cursor:{runtimeId:'host',seq:window.revision},todos:[],interactions:[],queuedRuns:[],settings:{revision:window.revision,value:{workMode:window.mode}}}}}),0);return{ok:true,data:{supported:true,locked:false,workMode:window.mode,revision:window.revision}};}

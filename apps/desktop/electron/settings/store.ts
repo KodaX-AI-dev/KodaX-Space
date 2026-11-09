@@ -48,6 +48,7 @@ const SETTINGS_FILE = path.join(SPACE_DATA_DIR, 'settings.json');
 const MAX_SETTINGS_MIGRATION_BYTES = 1024 * 1024;
 
 const runtimeDefaultFieldSchemas = {
+  workMode: z.enum(['agent', 'coding', 'script']).optional(),
   permissionMode: z.enum(['plan', 'accept-edits', 'auto', 'full-access']).optional(),
   /** Legacy input accepted only so normalizeRawSettings can remove it. */
   autoModeEngine: z.enum(['llm', 'rules']).optional(),
@@ -202,6 +203,11 @@ function cleanRuntimeDefaults(defaults: unknown): SpaceRuntimeDefaultsT {
   if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) return {};
   const raw = defaults as Record<string, unknown>;
   const cleaned: SpaceRuntimeDefaultsT = {};
+
+  if (raw.workMode !== undefined) {
+    const parsed = runtimeDefaultFieldSchemas.workMode.safeParse(raw.workMode);
+    if (parsed.success) cleaned.workMode = parsed.data;
+  }
 
   if (raw.permissionMode !== undefined) {
     const parsed = runtimeDefaultFieldSchemas.permissionMode.safeParse(raw.permissionMode);

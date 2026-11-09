@@ -692,8 +692,12 @@ test('Space creates Coder drafts when the SDK advertises draft admission', async
     identityStore: testIdentityStore,
   });
   try {
-    await adapter.createSession({ projectRoot: 'C:\\repo', surface: 'code', ephemeral: false });
+    const id = await adapter.createSession(
+      { projectRoot: 'C:\\repo', surface: 'code', ephemeral: false },
+      'script',
+    );
     assert.equal(draft, true);
+    assert.equal((await fake.runtime.sessions.getSettingsVersioned(id)).value.workMode, 'script');
   } finally {
     await adapter.close();
   }

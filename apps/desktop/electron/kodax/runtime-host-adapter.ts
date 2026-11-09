@@ -3721,7 +3721,10 @@ export class RuntimeHostAdapter {
     return true;
   }
 
-  async createSession(input: Omit<RuntimeSessionIdentity, 'sessionId'>): Promise<string> {
+  async createSession(
+    input: Omit<RuntimeSessionIdentity, 'sessionId'>,
+    defaultWorkMode?: ChannelInput<'session.setWorkMode'>['workMode'],
+  ): Promise<string> {
     const runtime = await this.requireRuntime();
     this.assertSurfaceCapability(runtime, input.surface);
     // Omitting sessionId selects the SDK's generated-session storage path. Supplying a newly
@@ -3744,11 +3747,12 @@ export class RuntimeHostAdapter {
     }
     this.sessionSurfaces.set(session.id, input.surface);
     if (!input.ephemeral) this.unsentDrafts.set(session.id, runtime.identity.runtimeId);
-    if (input.surface === 'partner') {
+    const workMode = input.surface === 'partner' ? 'agent' : defaultWorkMode;
+    if (workMode !== undefined) {
       const current = await runtime.sessions.getSettingsVersioned(session.id);
       await runtime.sessions.updateSettingsVersioned(
         session.id,
-        { workMode: 'agent' },
+        { workMode },
         { expectedRevision: current.revision },
       );
     }

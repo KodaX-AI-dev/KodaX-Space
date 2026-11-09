@@ -12,6 +12,7 @@ import {
   providerIsConfigured,
 } from '../kodax/host.js';
 import { projectStore } from '../projects/store.js';
+import { settingsStore } from '../settings/store.js';
 
 // v0.1.5: canonProjectRoot 抽到 schema 包共享 util（renderer + main 同一实现），
 // 修 F040/F041 review MED-3 的 normalize 不一致。
@@ -788,15 +789,22 @@ export async function createSessionForIpc(
         agentMode: input.agentMode,
       },
     });
+    const defaultWorkMode =
+      input.surface !== 'partner' && !input.ephemeral
+        ? (await settingsStore.load()).runtimeDefaults?.workMode
+        : undefined;
     const allocatedSessionId =
       input.provider !== 'mock' &&
       process.env.KODAX_FORCE_MOCK !== '1' &&
       runtimeHostAdapter.isRuntimeSelected()
-        ? await runtimeHostAdapter.createSession({
-            projectRoot,
-            surface: input.surface ?? 'code',
-            ephemeral: input.ephemeral ?? false,
-          })
+        ? await runtimeHostAdapter.createSession(
+            {
+              projectRoot,
+              surface: input.surface ?? 'code',
+              ephemeral: input.ephemeral ?? false,
+            },
+            defaultWorkMode,
+          )
         : await generateKodaxSessionId();
     const { sessionId, createdAt } = kodaxHost.createSession({
       sessionId: allocatedSessionId,

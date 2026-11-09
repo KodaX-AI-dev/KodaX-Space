@@ -157,7 +157,14 @@ function useWorkModeControl(sessionId: string | null, props: WorkModeControlProp
       if (!result.ok) {
         pushToast(result.error.message, 'warning');
         setRefresh((value) => value + 1);
-      } else if (stillSelected()) setState(result.data);
+      } else if (stillSelected()) {
+        setState(result.data);
+        const saved = await window.kodaxSpace.invoke('settings.setRuntimeDefaults', {
+          runtimeDefaults: { workMode: result.data.workMode },
+        });
+        if (!saved.ok) throw new Error(saved.error.message);
+        useAppStore.getState().setRuntimeDefaults(saved.data.runtimeDefaults);
+      }
     } catch (error) {
       pushToast(String(error), 'warning');
       setRefresh((value) => value + 1);
@@ -177,6 +184,7 @@ function WorkModeSelector({
   const { t } = useI18n();
   const active = useIsStreaming();
   const project = useAppStore((s) => s.currentProjectPath);
+  const defaultWorkMode = useAppStore((s) => s.runtimeDefaults.workMode ?? 'coding');
   const { state, connection, busy, change } = useWorkModeControl(sessionId, props);
   const unavailable = !project || (!!sessionId && !state?.supported) || connection !== 'ready';
   if (state?.supported && state.locked) {
@@ -200,7 +208,7 @@ function WorkModeSelector({
   return (
     <div className="work-mode-control">
       <WorkModeSegments
-        value={state?.workMode ?? (sessionId === null ? 'coding' : undefined)}
+        value={state?.workMode ?? (sessionId === null ? defaultWorkMode : undefined)}
         disabled={unavailable || active || busy || props.disabled}
         title={
           !state?.supported && state
