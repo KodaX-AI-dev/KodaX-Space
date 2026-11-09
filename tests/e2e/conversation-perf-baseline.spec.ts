@@ -261,6 +261,21 @@ async function pageStep(page: Page, direction: 'older' | 'newer'): Promise<PageS
   };
 }
 
+/** What the paging UI showed when a wheel produced no page, so a stop is explainable. */
+function noLoadEvidence(page: Page) {
+  return page.evaluate((selector) => {
+    const scroller = document.querySelector(selector)!;
+    const text = (id: string) =>
+      document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim() ?? null;
+    return {
+      pagingStatus: text('history-paging-status'),
+      pagingError: text('history-paging-error'),
+      scrollTop: scroller.scrollTop,
+      scrollHeight: scroller.scrollHeight,
+    };
+  }, SCROLLER);
+}
+
 async function prependToOldest(page: Page, cdp: CDPSession) {
   const steps: PageStep[] = [];
   const heap: { rows: number; heapMb: number }[] = [];
@@ -279,7 +294,8 @@ async function prependToOldest(page: Page, cdp: CDPSession) {
     steps.push(step);
     if (steps.length % 25 === 0) heap.push({ rows: step.rows, heapMb: await heapMb(cdp) });
   }
-  return { steps, heap, stop, wallMs: Date.now() - started };
+  const evidence = stop === 'no-load' ? await noLoadEvidence(page) : null;
+  return { steps, heap, stop, evidence, wallMs: Date.now() - started };
 }
 
 async function appendToNewest(page: Page, corpus: PerfCorpusSpec) {
@@ -297,7 +313,7 @@ async function appendToNewest(page: Page, corpus: PerfCorpusSpec) {
     }
     steps.push(step);
   }
-  return { steps, stop };
+  return { steps, stop, evidence: stop === 'no-load' ? await noLoadEvidence(page) : null };
 }
 
 /** Programmatic fixed-speed scroll across the mounted transcript; rAF deltas + long tasks. */
@@ -596,8 +612,7 @@ async function jumpToBottom(page: Page, cdp: CDPSession, corpus: PerfCorpusSpec)
   return { jumpMs, rowsBefore, rowsAfter: await mountedRows(page), heapMb: await heapMb(cdp) };
 }
 
-/** Browse saved history from the newest page and prepend every older page. */
-async function prependPhase(page: Page, cdp: CDPSession, corpus: PerfCorpusSpec) {
+async function browseFromNewest(page: Page, corpus: PerfCorpusSpec) {
   const seq = await lastSeq(page);
   await page
     .getByTestId('conversation-stream')
@@ -609,8 +624,33 @@ async function prependPhase(page: Page, cdp: CDPSession, corpus: PerfCorpusSpec)
     })
     .toBe(true);
   await settle(page);
-  const browse = { rows: await mountedRows(page), splits: await readSplits(page, seq) };
-  const prepend = await prependToOldest(page, cdp);
+  return { rows: await mountedRows(page), splits: await readSplits(page, seq) };
+}
+
+/**
+ * A cold-opened large Session can answer its first older page with "Saved history changed"
+ * (a product finding, recorded as `staleFirstAttempt`). The user's recovery is "Return to
+ * newest messages"; the baseline does the same once, then browses again.
+ */
+async function recoverStaleBrowse(page: Page, corpus: PerfCorpusSpec) {
+  await page.getByRole('button', { name: 'Return to newest messages', exact: true }).click();
+  await expect(page.getByTestId('history-paging-error')).toHaveCount(0, { timeout: PAGE_WAIT_MS });
+  await settle(page);
+  return browseFromNewest(page, corpus);
+}
+
+/** Browse saved history from the newest page and prepend every older page. */
+async function prependPhase(page: Page, cdp: CDPSession, corpus: PerfCorpusSpec) {
+  let browse = await browseFromNewest(page, corpus);
+  let prepend = await prependToOldest(page, cdp);
+  const staleFirstAttempt =
+    prepend.stop === 'no-load' && prepend.evidence?.pagingError?.includes('changed')
+      ? { loads: prepend.steps.length, evidence: prepend.evidence }
+      : null;
+  if (staleFirstAttempt) {
+    browse = await recoverStaleBrowse(page, corpus);
+    prepend = await prependToOldest(page, cdp);
+  }
   const atMax = { rows: await mountedRows(page), heapMb: await heapMb(cdp) };
   const giant = corpus.giantBodyChars
     ? await giantTimings(page, Math.floor(corpus.turns / 2))
@@ -618,8 +658,10 @@ async function prependPhase(page: Page, cdp: CDPSession, corpus: PerfCorpusSpec)
   const scroll = await longScroll(page);
   return {
     browse,
+    staleFirstAttempt,
     prepend: {
       stop: prepend.stop,
+      evidence: prepend.evidence,
       wallMs: prepend.wallMs,
       heap: prepend.heap,
       ...stepSummary(prepend.steps),
@@ -649,7 +691,7 @@ async function appendPhase(space: SpaceInstance, cdp: CDPSession, corpus: PerfCo
   return {
     reopened,
     located,
-    append: { stop: append.stop, ...stepSummary(append.steps) },
+    append: { stop: append.stop, evidence: append.evidence, ...stepSummary(append.steps) },
     jumpFromAppended: await jumpToBottom(space.page, cdp, corpus),
     rawSteps: append.steps,
   };
@@ -681,6 +723,11 @@ async function runCorpus(corpus: PerfCorpusSpec) {
   );
   const pageErrors: string[] = [];
   space.page.on('pageerror', (error) => pageErrors.push(error.message));
+  const consoleProblems: string[] = [];
+  space.page.on('console', (message) => {
+    if (['error', 'warning'].includes(message.type()) && consoleProblems.length < 50)
+      consoleProblems.push(`${message.type()}: ${message.text().slice(0, 400)}`);
+  });
   try {
     const browserWindow = await space.app.browserWindow(space.page);
     await browserWindow.evaluate((window) => window.setContentSize(1280, 900));
@@ -702,6 +749,7 @@ async function runCorpus(corpus: PerfCorpusSpec) {
       rawPrependSteps,
       rawAppendSteps,
       errors: pageErrors,
+      consoleProblems,
       modelRequests: provider.requests.length,
     };
     await mkdir(RESULTS_DIR, { recursive: true });
