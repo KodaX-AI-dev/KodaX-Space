@@ -5,13 +5,16 @@
 // session from appStore; artifacts are the current session's (any surface).
 
 import { useEffect, useMemo, useState } from 'react';
-import { FileOutput, Copy, Check, Download, RefreshCw } from 'lucide-react';
+import { FileOutput, Copy, Check, Download, RefreshCw, FolderOpen, Ellipsis } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { ArtifactView } from './ArtifactView';
 import { useArtifacts, useArtifactContent } from './useArtifacts';
 import { useTranscriptArtifacts } from './useTranscriptArtifacts';
 import { toArtifactContent, type ArtifactVersionPayload } from './toArtifactContent';
 import { TEXT_COPY_KINDS } from './artifactKind';
+import { saveArtifactAs } from './artifactActions.js';
+import { ArtifactActionsMenu } from './ArtifactActionsMenu.js';
+import { revealPath } from '../../lib/openPath.js';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { ArtifactRefT } from '@kodax-space/space-ipc-schema';
 import {
@@ -73,6 +76,7 @@ function ArtifactViewer({
   const payload = payloadOverride ?? loadedPayload;
   const [copied, setCopied] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const setActivePopoutKind = useAppStore((s) => s.setActivePopoutKind);
 
   const content = useMemo(
@@ -87,8 +91,8 @@ function ArtifactViewer({
   );
 
   const canCopy = payload?.content !== undefined && TEXT_COPY_KINDS.has(artifact.kind);
-  const canSave =
-    !isTransient && (payload?.content !== undefined || payload?.fileSource === 'artifact-store');
+  const canSave = !isTransient && (payload?.content !== undefined || payload?.path !== undefined);
+  const workspacePath = payload?.fileSource === 'workspace' ? payload.path : undefined;
 
   async function onCopy(): Promise<void> {
     if (payload?.content == null) return;
@@ -103,23 +107,7 @@ function ArtifactViewer({
   }
 
   async function onSave(): Promise<void> {
-    const bridge = window.kodaxSpace;
-    if (!bridge) return;
-    const r = await bridge.invoke('artifact.export', {
-      id: artifact.id,
-      version: effectiveVersion,
-    });
-    if (!r.ok) {
-      // IPC-level failure (e.g. fs.writeFile threw: permission denied / disk full)
-      setActionMsg(t('artifact.saveFailed'));
-      setTimeout(() => setActionMsg(null), 2500);
-    } else if (r.data.ok) {
-      setActionMsg(t('artifact.saved'));
-      setTimeout(() => setActionMsg(null), 1500);
-    } else if (!r.data.canceled) {
-      setActionMsg(r.data.error ?? t('artifact.saveFailed'));
-      setTimeout(() => setActionMsg(null), 2500);
-    } // canceled → no message
+    await saveArtifactAs(artifact.id, effectiveVersion);
   }
 
   // "再改一版": prefill the composer with a revision instruction referencing this
@@ -188,13 +176,52 @@ function ArtifactViewer({
               onClick={() => void onSave()}
               title={t('artifact.saveAs')}
               aria-label={t('artifact.saveAsAria')}
-              className="w-6 h-6 inline-flex items-center justify-center rounded text-fg-muted hover:text-fg-primary hover:bg-surface-3"
+              className="h-6 inline-flex items-center justify-center gap-1 rounded px-2 text-fg-secondary hover:text-fg-primary hover:bg-surface-3"
             >
               <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
+              <span className="whitespace-nowrap text-[11px]">{t('artifact.saveAs')}</span>
+            </button>
+          )}
+          {workspacePath && (
+            <button
+              type="button"
+              onClick={() => void revealPath(workspacePath, projectRoot)}
+              title={t('fileActions.revealInFileManager')}
+              aria-label={t('fileActions.revealInFileManager')}
+              className="inline-flex h-6 w-6 items-center justify-center rounded text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+            >
+              <FolderOpen size={14} />
+            </button>
+          )}
+          {canSave && (
+            <button
+              type="button"
+              aria-label={t('artifact.actions')}
+              title={t('artifact.actions')}
+              aria-haspopup="menu"
+              aria-expanded={menu !== null}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setMenu({ x: rect.left, y: rect.bottom });
+              }}
+              className="inline-flex h-6 w-6 items-center justify-center rounded text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+            >
+              <Ellipsis size={14} />
             </button>
           )}
         </div>
       </div>
+      {menu && (
+        <ArtifactActionsMenu
+          id={artifact.id}
+          version={effectiveVersion}
+          title={artifact.title}
+          path={workspacePath}
+          projectRoot={projectRoot}
+          {...menu}
+          onClose={() => setMenu(null)}
+        />
+      )}
       {loading && !content ? (
         <div className="flex-1 flex items-center justify-center text-[11px] text-fg-muted">
           {t('artifact.loading')}

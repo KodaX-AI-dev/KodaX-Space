@@ -107,7 +107,8 @@ import { Caret } from '../components/Caret.js';
 import { Reveal } from '../components/Reveal.js';
 import { Collapse } from '../components/Collapse.js';
 import { ScrollCapBox } from '../components/ScrollCapBox.js';
-import { ChevronDown, FileOutput, LoaderCircle, Maximize2 } from 'lucide-react';
+import { ChevronDown, FileOutput, LoaderCircle, Maximize2, Ellipsis } from 'lucide-react';
+import { ArtifactActionsMenu } from '../features/artifact/ArtifactActionsMenu.js';
 import { shouldActivateSessionForCurrentScope } from '../lib/sessionActivation.js';
 import { useSurfaceStore } from '../store/surface.js';
 import { requestConfirm } from '../store/confirmStore.js';
@@ -3229,11 +3230,16 @@ function TimelineMarker({
 
 function ArtifactInlineCallout({ artifact }: { artifact: ArtifactMessage }): JSX.Element {
   const { t } = useI18n();
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const projectRoot = useAppStore((s) => {
     const cur = s.currentSessionId;
     return cur ? (s.sessions.find((x) => x.sessionId === cur)?.projectRoot ?? null) : null;
   });
   const canOpen = artifact.status === 'done' && Boolean(artifact.artifactId);
+  const workspacePath =
+    artifact.snapshot?.fileSource === undefined || artifact.snapshot.fileSource === 'workspace'
+      ? artifact.snapshot?.path
+      : undefined;
   const kindLabel = artifact.artifactKind.trim() ? artifact.artifactKind.toUpperCase() : 'ARTIFACT';
   const meta = [kindLabel, artifact.version !== undefined ? `v${artifact.version}` : null]
     .filter(Boolean)
@@ -3248,8 +3254,8 @@ function ArtifactInlineCallout({ artifact }: { artifact: ArtifactMessage }): JSX
     );
   }
 
-  function openWindow(e: MouseEvent<HTMLButtonElement>): void {
-    e.stopPropagation();
+  function openWindow(e?: MouseEvent<HTMLButtonElement>): void {
+    e?.stopPropagation();
     if (!artifact.artifactId) return;
     window.kodaxSpace
       ?.invoke('artifact.openWindow', {
@@ -3258,62 +3264,102 @@ function ArtifactInlineCallout({ artifact }: { artifact: ArtifactMessage }): JSX
         ...(projectRoot ? { projectRoot } : {}),
         title: artifact.title,
       })
-      .catch(() => {});
+      .then((result) => {
+        if (!result.ok) pushToast(result.error.message, 'error');
+      })
+      .catch((error: unknown) => pushToast(String(error), 'error'));
   }
 
   return (
-    <div
-      className={[
-        'group/artifact flex min-h-11 w-full items-center gap-1 rounded-md border px-1 py-1 text-xs',
-        canOpen
-          ? 'border-border-default bg-surface-2/45 hover:border-accent/45 hover:bg-surface-3/55 transition-colors'
-          : 'border-border-default bg-surface-2/35',
-      ].join(' ')}
-    >
-      <button
-        type="button"
-        onClick={focusInPanel}
-        disabled={!canOpen}
-        className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left disabled:cursor-default"
-        title={canOpen ? t('conversation.viewArtifact') : t('conversation.creatingArtifact')}
+    <>
+      <div
+        onContextMenu={(event) => {
+          if (!canOpen) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setMenu({ x: event.clientX, y: event.clientY });
+        }}
+        className={[
+          'group/artifact flex min-h-11 w-full items-center gap-1 rounded-md border px-1 py-1 text-xs',
+          canOpen
+            ? 'border-border-default bg-surface-2/45 hover:border-accent/45 hover:bg-surface-3/55 transition-colors'
+            : 'border-border-default bg-surface-2/35',
+        ].join(' ')}
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-accent/30 bg-accent/10 text-accent-ink">
-          {canOpen ? (
-            <FileOutput className="h-4 w-4" strokeWidth={1.8} aria-hidden />
-          ) : (
-            <span className="activity-spinner-comet" aria-hidden />
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[10px] font-medium uppercase tracking-wide text-fg-muted">
-            {canOpen ? t('conversation.artifactCreated') : t('conversation.creatingArtifact')}
-          </span>
-          <span className="block truncate text-sm font-medium text-fg-primary">
-            {artifact.title}
-          </span>
-          <span className="block truncate text-[11px] text-fg-muted">
-            <span className="uppercase tracking-wide">{meta}</span>
-            {artifact.summary ? <span> / {artifact.summary}</span> : null}
-          </span>
-        </span>
-        {canOpen && (
-          <span className="shrink-0 pr-1 text-[11px] font-medium text-accent-ink opacity-85 group-hover/artifact:opacity-100">
-            {t('conversation.open')}
-          </span>
-        )}
-      </button>
-      {canOpen && (
         <button
           type="button"
-          onClick={openWindow}
-          title={t('conversation.openArtifactWindow')}
-          aria-label={t('conversation.openArtifactWindow')}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+          onClick={focusInPanel}
+          disabled={!canOpen}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left disabled:cursor-default"
+          title={canOpen ? t('conversation.viewArtifact') : t('conversation.creatingArtifact')}
         >
-          <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-accent/30 bg-accent/10 text-accent-ink">
+            {canOpen ? (
+              <FileOutput className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+            ) : (
+              <span className="activity-spinner-comet" aria-hidden />
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[10px] font-medium uppercase tracking-wide text-fg-muted">
+              {canOpen ? t('conversation.artifactCreated') : t('conversation.creatingArtifact')}
+            </span>
+            <span className="block truncate text-sm font-medium text-fg-primary">
+              {artifact.title}
+            </span>
+            <span className="block truncate text-[11px] text-fg-muted">
+              <span className="uppercase tracking-wide">{meta}</span>
+              {artifact.summary ? <span> / {artifact.summary}</span> : null}
+            </span>
+          </span>
+          {canOpen && (
+            <span className="shrink-0 pr-1 text-[11px] font-medium text-accent-ink opacity-85 group-hover/artifact:opacity-100">
+              {t('conversation.open')}
+            </span>
+          )}
         </button>
+        {canOpen && (
+          <button
+            type="button"
+            aria-label={t('artifact.actions')}
+            title={t('artifact.actions')}
+            aria-haspopup="menu"
+            aria-expanded={menu !== null}
+            onClick={(event) => {
+              event.stopPropagation();
+              const rect = event.currentTarget.getBoundingClientRect();
+              setMenu({ x: rect.left, y: rect.bottom });
+            }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+          >
+            <Ellipsis className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )}
+        {canOpen && (
+          <button
+            type="button"
+            onClick={openWindow}
+            title={t('conversation.openArtifactWindow')}
+            aria-label={t('conversation.openArtifactWindow')}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+          >
+            <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          </button>
+        )}
+      </div>
+      {menu && artifact.artifactId && (
+        <ArtifactActionsMenu
+          id={artifact.artifactId}
+          version={artifact.version}
+          title={artifact.title}
+          path={workspacePath}
+          projectRoot={projectRoot}
+          {...menu}
+          onClose={() => setMenu(null)}
+          onOpenWindow={() => openWindow()}
+        />
       )}
-    </div>
+    </>
   );
 }
 /**

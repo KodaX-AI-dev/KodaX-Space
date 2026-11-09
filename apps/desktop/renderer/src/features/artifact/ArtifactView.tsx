@@ -9,6 +9,7 @@
 
 import { MonacoViewer } from '../code/MonacoViewer';
 import { RichPreview } from '../preview/RichPreview';
+import { ProjectWebPreview } from '../preview/ProjectWebPreview.js';
 import { detectKind } from '../preview/binaryUtils';
 import { HtmlArtifact, InteractiveHtmlArtifact } from './renderers/HtmlArtifact';
 import { MarkdownArtifact } from './renderers/MarkdownArtifact';
@@ -93,6 +94,19 @@ export function ArtifactView(props: ArtifactContent): JSX.Element {
         </div>
       );
     case 'file': {
+      if (
+        props.projectRoot &&
+        (props.fileSource === undefined || props.fileSource === 'workspace') &&
+        /\.html?$/i.test(props.path)
+      )
+        return (
+          <ProjectWebPreview
+            projectRoot={props.projectRoot}
+            path={props.path}
+            revision={props.version ?? 1}
+            networkAccess={false}
+          />
+        );
       const deliveryText = props.fileSource === 'delivery-store' && isTextPreviewPath(props.path);
       const kind = detectKind(props.path) ?? (deliveryText ? 'text' : null);
       return kind === null ? (
