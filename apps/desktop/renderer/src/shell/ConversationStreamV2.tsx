@@ -1131,7 +1131,7 @@ export function ConversationStreamV2(): JSX.Element {
   const queryJumpAnchors = useMemo<readonly QueryJumpAnchor[]>(() => {
     const anchors: QueryJumpAnchor[] = [];
     for (const m of displayMessages) {
-      if (m.kind !== 'user' && !(m.kind === 'local_notice' && m.variant === 'echo')) continue;
+      if (m.kind !== 'user') continue;
       const content = compactInlineText(m.content);
       if (!content) continue;
       anchors.push({ id: m.id, content });
@@ -3112,12 +3112,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
       );
       break;
     case 'local_notice':
-      inner =
-        message.variant === 'echo' ? (
-          <UserBubble content={message.content} sentAt={message.sentAt} />
-        ) : (
-          <LocalNoticeBubble {...message} />
-        );
+      inner = <LocalNoticeBubble {...message} />;
       break;
     case 'queued_user':
       inner = <QueuedUserBubble {...message} />;
@@ -3200,7 +3195,7 @@ function messageMarkerTone(message: StandardViewMessage): MarkerTone {
     case 'user':
       return 'user';
     case 'local_notice':
-      return message.variant === 'echo' ? 'user' : 'system';
+      return 'system';
     case 'queued_user':
       return 'queued';
     case 'assistant_text':

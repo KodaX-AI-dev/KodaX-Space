@@ -12,7 +12,6 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  FileText,
   GitFork,
   ImageOff,
   Info,
@@ -244,38 +243,56 @@ function FileReferenceLink({ file }: { file: ParsedFileReference }): JSX.Element
     <button
       type="button"
       onClick={() => void openFileSmart(file.path)}
-      className={[
-        'mx-0.5 my-0.5 inline-flex max-w-full items-center gap-1.5 align-middle',
-        'rounded-md border border-info/35 bg-info/10 px-2 py-1 text-left text-info',
-        'hover:bg-info/15 hover:border-info/55 transition-colors',
-      ].join(' ')}
+      className="composer-token conversation-reference !cursor-pointer"
+      data-composer-token="file"
       title={file.path}
       aria-label={t('message.openFile', { label: file.label })}
     >
-      <FileText className="h-3.5 w-3.5 shrink-0 text-info/75" strokeWidth={1.8} aria-hidden />
-      <span className="min-w-0 max-w-[360px]">
-        <FileNameText name={file.label} className="text-[12px] font-medium leading-4" />
-        <span className="block truncate text-[10px] leading-3 text-info/70">{file.detail}</span>
-      </span>
+      {file.label}
     </button>
   );
+}
+
+/** Read-only wire references: no editor, catalog fetch or prompt expansion in message history. */
+function InlineTextReferences({ text, leading }: { text: string; leading: boolean }): JSX.Element {
+  const pattern =
+    /(^|\s)(\/skill:[\w.-]+|@[^\s<>()[\]"'`,;!?，。；！？]+)|^\/[a-zA-Z][\w-]*(?=\s|$)/g;
+  const nodes: React.ReactNode[] = [];
+  let end = 0;
+  for (const match of text.matchAll(pattern)) {
+    const prefix = match[1] ?? '';
+    const value = match[2] ?? match[0];
+    const start = match.index + prefix.length;
+    if (!match[2] && !leading) continue;
+    nodes.push(text.slice(end, start));
+    const kind = value.startsWith('@') ? 'file' : value.startsWith('/skill:') ? 'skill' : 'command';
+    nodes.push(
+      <span
+        key={start}
+        className="composer-token conversation-reference"
+        data-composer-token={kind}
+        title={value}
+      >
+        {value}
+      </span>,
+    );
+    end = start + value.length;
+  }
+  nodes.push(text.slice(end));
+  return <>{nodes}</>;
 }
 
 function UserMessageContent({ content }: { content: string }): JSX.Element {
   const platform =
     typeof window === 'undefined' ? 'win32' : (window.kodaxSpace?.platform ?? 'win32');
   const parts = useMemo(() => parseFileReferences(content, platform), [content, platform]);
-  const hasFileReference = parts.some((part) => part.kind === 'file');
-
-  if (!hasFileReference) return <>{content}</>;
-
   return (
     <>
       {parts.map((part, idx) =>
         part.kind === 'file' ? (
           <FileReferenceLink key={`${part.href}:${idx}`} file={part} />
         ) : part.text.length > 0 ? (
-          <span key={`text:${idx}`}>{part.text}</span>
+          <InlineTextReferences key={`text:${idx}`} text={part.text} leading={idx === 0} />
         ) : null,
       )}
     </>
@@ -518,7 +535,9 @@ export function LocalNoticeBubble({
         <div className="mb-1 text-[10px] font-mono uppercase tracking-[0.12em] text-warn">
           {label}
         </div>
-        <pre className="font-mono leading-relaxed whitespace-pre-wrap break-words">{content}</pre>
+        <div className="font-mono leading-relaxed whitespace-pre-wrap break-words">
+          {variant === 'echo' ? <UserMessageContent content={content} /> : content}
+        </div>
       </div>
       <MessageFooter text={content} sentAt={sentAt} />
     </div>

@@ -1225,7 +1225,7 @@ export function BottomBar(): JSX.Element {
     try {
       if (immediateEcho) {
         const echoPersisted = appendUserMessage(sessionId, commandEcho);
-        // The compact preflight reads this same Session; wait until its echo releases the writer.
+        // Persist the command receipt before compaction can change the visible session window.
         if (name === 'compact') await echoPersisted;
       }
       if (optimisticWorkflow) {

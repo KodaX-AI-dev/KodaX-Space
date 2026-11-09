@@ -26,7 +26,9 @@ registerSessionChannels();
 test('disconnected shared Host notices stay in the Space side-store without a canonical writer fallback', async (t) => {
   t.mock.method(runtimeHostAdapter, 'isRuntimeSelected', () => true);
   t.mock.method(runtimeHostAdapter, 'hasReadyRuntime', () => false);
+  let hostWrites = 0;
   t.mock.method(runtimeHostAdapter, 'appendNotice', async () => {
+    hostWrites++;
     throw new Error('Host disconnected');
   });
   let directWrites = 0;
@@ -57,6 +59,7 @@ test('disconnected shared Host notices stay in the Space side-store without a ca
   >;
   assert.equal(result.ok, true);
   assert.equal(directWrites, 0);
+  assert.equal(hostWrites, 0, 'Space receipts must not also become SDK display items');
   assert.ok(
     (await getSessionLocalNoticeStore().list(sessionId)).some((row) => row.id === notice.id),
   );

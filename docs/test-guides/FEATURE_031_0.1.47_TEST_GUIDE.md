@@ -12,6 +12,16 @@ Source enhancement, 2026-11-06; not a published release. The approved [design](.
 
 ## Automated acceptance
 
+### 2026-11-09 command history regression
+
+- Local slash echoes now render as command receipts, outside the user-query navigation. Their durable owner is the Space local-notice store. `session.localNotice.append` no longer also calls SDK `appendNotice`, which publishes a second visible info item.
+- The product-history response now includes the bounded Space notices, and its renderer installation restores them independently of SDK bodies. Previously both product-history branches bypassed local-notice recovery, so reload could hide an otherwise durable receipt. Repeated restoration merges only by notice ID; two actual executions with identical text remain distinct.
+- User history and command receipts reuse the composer reference CSS: leading slash commands, explicit `/skill:name`, simple `@path`, and escaped Markdown file links. File links retain their open action; copy-message continues to use the original wire string. This is read-only presentation with no editor instance, catalog request, prompt expansion or added model input.
+- RED/GREEN: `userBubble.test.tsx` failed on missing reference markup; `session-create-runtime.test.ts` failed because one local receipt also invoked the Host notice writer. Both pass after the change. The projection and durable local-notice tests cover unchanged SDK item identity/order and persistence.
+- `tests/e2e/command-history.spec.ts` exercises a real shared SDK Host with an isolated local provider: one `/compact` receipt, no SDK duplicate or extra query, restored receipt after reload, canonical copy for commands and mixed references, no additional provider request for the small-session no-op compaction, and light/dark screenshots under local `artifacts/command-history/`. A browser geometry assertion first failed on `/compact` being truncated; history references now use the available width while retaining the 280px long-reference cap.
+- Manual: submit `/compact`, confirm one amber command receipt and separate execution feedback; ordinary messages remain queries. Copy command and mixed file/skill messages and verify the original text. Check escaped filenames, long paths, narrow windows and both themes.
+- Existing SDK info records written by older versions are retained. The public view does not expose their local-notice provenance, so this fix does not delete saved conversation items by matching text.
+
 - `ComposerEditor.test.ts`: actual Chromium input, canonical copy/internal paste, atomic Backspace, undo, external clear/restore, newline, read-only deletion and Ctrl+Backspace word navigation.
 - `projectFileReference.test.ts`: unchanged simple `@path`, escaped spaces/brackets/Chinese names and Windows drive/UNC native path round trips.
 - `composer-tokens.spec.ts`: actual isolated Electron completion → token → delete/undo → IPC send → rejected-send restoration. The Main handler captures exactly `Inspect @src/composer-demo.ts`; it returns a deterministic rejection without calling a model. Token labels, categories and local detail metadata are not appended to the prompt.
@@ -38,7 +48,6 @@ Measure typing with representative long drafts and many references in the actual
 The initial complete Desktop run reported 4,158 passed / 3 failed / 13 skipped. The three failures were old Partner textarea selectors; after migration all six affected Partner tests passed. The subsequent complete renderer run passed 380/380. Final focused editor/path/Partner/slash tests passed 24/24. The actual Windows Electron suite passed 9/9 (command/skill/file selection, delete/undo, exact IPC prompt/rejected-send restore, compact clear/spinner, session deletion, file/image attachments, send/reply and retry). The final token pair was rebuilt and passed again after whitespace reuse and filename disambiguation changes. Typecheck, root lint, build:smoke and diff whitespace checks passed. Both independent review axes cleared their findings. Do not reinterpret the initial full run as an unqualified all-green run.
 
 Optional browser V8 byte coverage: `COMPOSER_COVERAGE=1 node --import tsx --test apps/desktop/renderer/src/shell/ComposerEditor.test.ts`. The generated `artifacts/composer/browser-coverage.json` records 86.69% across the four executable editor modules (84.74 / 86.84 / 89.04 / 88.00%). This is generated-JavaScript byte coverage mapped by module boundaries, not repository-wide statement/branch coverage. Light, dark, narrow-window and grouped-menu screenshots are captured by `composer-tokens.spec.ts` and were visually inspected.
-
 
 ### Standards review
 

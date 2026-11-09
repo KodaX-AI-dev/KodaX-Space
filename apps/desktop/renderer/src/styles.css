@@ -159,6 +159,10 @@
   background: rgb(var(--composer-token-ink) / 0.2);
   color: rgb(var(--fg-primary));
 }
+/* History receipts can shrink to their contents; a composer-relative 60% clips short commands. */
+.composer-token.conversation-reference {
+  max-width: min(100%, 280px);
+}
 .composer-completions {
   display: flex;
   flex-direction: column;

@@ -2,6 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { useAppStore } from './appStore.js';
 
+test('product history restores command receipts by identity without changing SDK or live messages', () => {
+  const sessionId = 's_product_notice_restore';
+  const current = { id: 'new', content: '/compact', sentAt: 3, variant: 'echo' as const };
+  useAppStore.setState({ localNoticesBySession: { [sessionId]: [current] } });
+  const users = useAppStore.getState().userMessagesBySession;
+  const restored = { id: 'old', content: '/compact', sentAt: 1, variant: 'echo' as const };
+  useAppStore.getState().restoreLocalNotices(sessionId, [restored]);
+  useAppStore.getState().restoreLocalNotices(sessionId, [restored]);
+  assert.deepEqual(useAppStore.getState().localNoticesBySession[sessionId], [restored, current]);
+  assert.equal(useAppStore.getState().userMessagesBySession, users);
+});
+
 test('awaiting a compact echo waits for its durable write while showing it immediately', async () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   const sessionId = 's_compact_echo';

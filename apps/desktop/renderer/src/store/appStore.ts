@@ -971,6 +971,7 @@ interface AppState {
     content: string,
     options?: number | { readonly sentAt?: number; readonly variant?: 'echo' | 'output' },
   ): Promise<void>;
+  restoreLocalNotices(sessionId: string, notices: readonly LocalNoticeMessage[]): void;
   appendQueuedUserMessage(
     sessionId: string,
     input: {
@@ -6960,6 +6961,15 @@ export const useAppStore = create<AppState>((setState) => {
         };
       }),
 
+    restoreLocalNotices: (sessionId, notices) => {
+      if (notices.length === 0) return;
+      set((state) => ({
+        localNoticesBySession: {
+          ...state.localNoticesBySession,
+          [sessionId]: mergeLocalNotices([notices, state.localNoticesBySession[sessionId] ?? []]),
+        },
+      }));
+    },
     appendLocalNotice: (sessionId, content, options) => {
       let persistedNotice: LocalNoticeMessage | null = null;
       set((state) => {
