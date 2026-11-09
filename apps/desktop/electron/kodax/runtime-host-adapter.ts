@@ -188,6 +188,7 @@ import {
   createRuntimeStartupTiming,
   type RuntimeStartupTimingFactory,
 } from './runtime-startup-timing.js';
+import { getDiagnosticsLogger } from '../diagnostics/runtime.js';
 import {
   listKnownProviderIds,
   readProviderCredential,
@@ -4728,26 +4729,33 @@ export class RuntimeHostAdapter {
     // First observation can update SDK-owned Session metadata. Establish it before capturing
     // the newest history revision so its continuation cursor is not stale on arrival.
     if (around && runtimeCapabilityVersion(runtime, 'productHistoryLocation') < 2) return null;
+    const startedAt = performance.now();
     if (cursor === undefined && refreshView && !around)
       await this.readSessionProductView(sessionId);
     if (this.unsentDrafts.get(sessionId) === runtime.identity.runtimeId) return null;
+    const readAt = performance.now();
     const page = await runtime.sessions.readHistory(
       sessionId,
       around
         ? { around, limit: 30, timeoutMs: RUNTIME_READ_TIMEOUT_MS }
         : { ...(cursor ? { cursor } : {}), limit: 150, timeoutMs: RUNTIME_READ_TIMEOUT_MS },
     );
-    return page
-      ? {
-          ...page,
-          items: await projectProductItems(
-            sessionId,
-            page.items,
-            [],
-            this.productImageReader(runtime, sessionId, 'history'),
-          ),
-        }
-      : null;
+    if (!page) return null;
+    const projectAt = performance.now();
+    const items = await projectProductItems(
+      sessionId,
+      page.items,
+      [],
+      this.productImageReader(runtime, sessionId, 'history'),
+    );
+    // F144 baseline: separates the SDK read (daemon IPC + KodaX parse) from Space projection.
+    getDiagnosticsLogger()?.debug('session-history', 'page_read', undefined, {
+      items: items.length,
+      viewMs: Math.round(readAt - startedAt),
+      sdkReadMs: Math.round(projectAt - readAt),
+      projectMs: Math.round(performance.now() - projectAt),
+    });
+    return { ...page, items };
   }
 
   async sessionGoal(

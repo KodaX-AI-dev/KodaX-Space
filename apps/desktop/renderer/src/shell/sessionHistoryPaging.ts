@@ -12,6 +12,7 @@ import {
   type SettledRuntimeHistoryRun,
 } from '../store/appStore.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
+import { startHistoryLoadTrace } from '../lib/historyLoadDiagnostics.js';
 import {
   installProductHistory,
   productTranscriptSnapshot,
@@ -820,6 +821,9 @@ async function requestHistory(
     if (!(retainReadyProjection && boundary.phase === 'ready')) {
       publish(sessionId, { ...boundary, phase: 'loading', ...(surface ? { surface } : {}) });
     }
+    const trace = startHistoryLoadTrace(
+      newerPage ? 'newer' : continueFromCurrentBoundary ? 'older' : 'newest',
+    );
     const invokeHistoryPage = async (
       pageBoundary?: HistoryPageReference,
     ): Promise<HistoryResultData> => {
@@ -838,6 +842,7 @@ async function requestHistory(
           : {}),
       });
       if (!response.ok) throw new Error(response.error?.message ?? 'Session history load failed.');
+      trace.received();
       if (response.data.sessionId !== sessionId || response.data.requestId !== requestId) {
         console.error('[session.history] rejected a response with foreign ownership', {
           requestedSessionId: sessionId,
@@ -958,6 +963,7 @@ async function requestHistory(
         ...(newerCursor ? { newerCursor } : {}),
         ...(result.conversation ? { conversationStatus: result.conversation.status } : {}),
       });
+      trace.installed(result.productItems.length);
       return;
     }
     if (!installsPrepend && previous.phase === 'ready' && sessionHasOpenLiveTurn(sessionId)) {
@@ -1173,6 +1179,7 @@ async function requestHistory(
         ? { conversationStatus: result.conversation.status }
         : {}),
     });
+    trace.installed(result.items.length);
   })()
     .catch((error: unknown) => {
       if (activeTokens.get(sessionId) === activeToken) {
@@ -1332,12 +1339,14 @@ export async function openLocatedHistory(
   if (state.phase === 'loading') return;
   const epoch = invalidationEpochs.get(sessionId) ?? 0;
   const requestId = nextHistoryRequestId();
+  const trace = startHistoryLoadTrace('around');
   const reply = await invokeWithTimeout(bridge, 'session.history', {
     sessionId,
     requestId,
     expectedSurface: 'code',
     around,
   });
+  trace.received();
   if (
     signal.aborted ||
     activeTokens.get(sessionId) !== token ||
@@ -1378,6 +1387,7 @@ export async function openLocatedHistory(
     nextCursor: page.nextCursor,
     newerCursor: page.newerCursor,
   });
+  trace.installed(data.productItems.length);
   return {
     itemId: item.id,
     itemIds: locatedItems.map((candidate) => candidate.id),

@@ -95,6 +95,7 @@ import { clearSlashGoalForSession } from '../slash/builtin.js';
 import { ensureProviderKeyInjected } from './provider.js';
 import { buildAttachmentPathOverlay } from '../kodax/attachment-path-overlay.js';
 import { issueSessionImageAttachment } from '../window/session-attachment-protocol.js';
+import { getDiagnosticsLogger } from '../diagnostics/runtime.js';
 import { sessionHistoryChannel } from '@kodax-space/space-ipc-schema';
 import type {
   AgentsFileMeta,
@@ -1675,6 +1676,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         return withLocalNotices([], undefined, { outcome: 'runtime_unavailable' });
       }
       if (historyBackend === 'runtime') {
+        const startedAt = performance.now();
         const result = await runtimeHostAdapter.readProductHistory(
           input.sessionId,
           input.cursor,
@@ -1689,7 +1691,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         ) {
           return withLocalNotices([], undefined, { outcome: 'data_changed' });
         }
-        return sessionHistoryChannel.output.parse({
+        const output = sessionHistoryChannel.output.parse({
           sessionId: input.sessionId,
           requestId: input.requestId,
           items: limitSessionHistoryWithLocalNotices(
@@ -1720,6 +1722,12 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
             hasNewer: page.newerCursor !== undefined,
           },
         });
+        // F144 baseline: main-side share of the renderer's history IPC round trip.
+        getDiagnosticsLogger()?.debug('session-history', 'handler', undefined, {
+          items: page.items.length,
+          handlerMs: Math.round(performance.now() - startedAt),
+        });
+        return output;
       }
       /* Legacy persisted/Partner projection below; shared Coder display uses SDK items above. */
       {
