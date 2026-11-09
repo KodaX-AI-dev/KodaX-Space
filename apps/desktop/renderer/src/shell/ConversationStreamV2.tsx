@@ -1074,6 +1074,14 @@ export function ConversationStreamV2(): JSX.Element {
         : viewMessages,
     [viewMessages, readingView],
   );
+  const savedHistorySelected = !productTranscript?.view || productTranscript.browsingOlder;
+  const showHistoryBoundary =
+    historyPaging.phase === 'ready' &&
+    (canOpenSavedPage ||
+      historyPaging.hasMore ||
+      (savedHistorySelected &&
+        displayMessages.length > 0 &&
+        historyPaging.conversationStatus !== undefined));
   const historyBoundaryLoading =
     historyPaging.phase === 'loading' &&
     displayMessages.some(
@@ -2517,16 +2525,45 @@ export function ConversationStreamV2(): JSX.Element {
             />
           )}
           <div className="space-y-3">
-            {canOpenSavedPage && (
-              <button
-                type="button"
-                className="text-xs text-fg-muted hover:text-fg-primary"
-                onClick={() => {
-                  if (scrollRef.current) requestAdjacentHistory(scrollRef.current, 'older', true);
-                }}
+            {showHistoryBoundary && (
+              <div
+                data-testid="conversation-history-boundary"
+                className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-md border border-border-default bg-surface-2/60 px-4 py-3 text-sm"
               >
-                {t('conversation.openSavedPage')}
-              </button>
+                {canOpenSavedPage || historyPaging.hasMore ? (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-md border border-border-strong bg-surface-3 px-3 py-2 font-medium text-fg-primary hover:bg-surface-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      onClick={() => {
+                        if (scrollRef.current)
+                          requestAdjacentHistory(scrollRef.current, 'older', canOpenSavedPage);
+                      }}
+                    >
+                      {t(
+                        canOpenSavedPage
+                          ? 'conversation.openSavedPage'
+                          : 'conversation.loadEarlier',
+                      )}
+                    </button>
+                    <span className="text-xs text-fg-secondary">
+                      {t(
+                        canOpenSavedPage
+                          ? 'conversation.savedPageDestination'
+                          : 'conversation.scrollForEarlier',
+                      )}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-fg-secondary">
+                    {t(
+                      historyPaging.conversationStatus === 'resolved'
+                        ? 'conversation.historyStart'
+                        : 'conversation.availableHistory',
+                    )}
+                  </span>
+                )}
+              </div>
             )}
             {(olderHistoryFeedback?.sessionId === currentSessionId ||
               historyBoundaryLoading ||
@@ -2690,7 +2727,7 @@ export function ConversationStreamV2(): JSX.Element {
           className={
             locatedSearchItem
               ? 'hidden'
-              : 'absolute top-2 right-4 z-30 flex items-center gap-1 bg-surface-2 border border-border-strong rounded shadow-xl px-2 py-1'
+              : 'absolute top-2 right-4 z-30 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-1 bg-surface-2 border border-border-strong rounded shadow-xl px-2 py-1'
           }
         >
           <input
@@ -2783,6 +2820,18 @@ export function ConversationStreamV2(): JSX.Element {
           >
             ✕
           </button>
+          {!sessionSearch && productTranscript && searchQuery.trim() && matchIds.length === 0 && (
+            <button
+              type="button"
+              className="basis-full rounded px-2 py-1 text-left text-xs text-info hover:bg-surface-3"
+              onClick={() => {
+                setSearchScope('session');
+                searchInputRef.current?.focus();
+              }}
+            >
+              {t('conversation.findSession')}
+            </button>
+          )}
         </div>
       )}
 
@@ -2810,7 +2859,7 @@ export function ConversationStreamV2(): JSX.Element {
         </button>
       )}
       {(showJumpToBottom || historyPaging.hasNewer || latestJumpRequest !== null) && (
-        <div className="reveal-marker absolute bottom-4 left-1/2 -ml-4 z-10">
+        <div className="reveal-marker absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
           <button
             type="button"
             onClick={jumpToBottom}
@@ -2818,13 +2867,14 @@ export function ConversationStreamV2(): JSX.Element {
             title={t('conversation.returnToNewest')}
             disabled={latestJumpRequest !== null}
             aria-busy={latestJumpRequest !== null}
-            className="ix-pop w-8 h-8 rounded-full flex items-center justify-center bg-surface-4 border border-border-default lift text-fg-secondary hover:text-fg-primary hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-border-strong"
+            className="ix-pop h-9 rounded-full flex items-center justify-center gap-2 px-3 text-xs bg-surface-4 border border-border-default lift text-fg-secondary hover:text-fg-primary hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-border-strong"
           >
             {latestJumpRequest !== null ? (
               <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />
             ) : (
               <ChevronDown className="w-4 h-4" strokeWidth={2.5} aria-hidden />
             )}
+            <span>{t('conversation.returnToNewest')}</span>
           </button>
         </div>
       )}

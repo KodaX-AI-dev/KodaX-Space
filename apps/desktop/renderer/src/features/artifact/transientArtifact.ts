@@ -44,6 +44,12 @@ export interface FocusArtifactEventDetail {
   snapshot?: TransientArtifactSnapshot;
 }
 
+export interface ArtifactFocusRequest {
+  readonly sessionId: string | null;
+  readonly projectRoot: string | null;
+  readonly detail: FocusArtifactEventDetail;
+}
+
 export interface OpenFileViewerEventDetail {
   snapshot: TransientArtifactSnapshot;
 }

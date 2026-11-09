@@ -38,7 +38,6 @@ const DYNAMIC_ARG_COMPLETION_COMMANDS = new Set([
   'model',
   'provider',
   'rewind',
-  'sessions',
   'tree',
 ]);
 
@@ -151,7 +150,10 @@ function shouldOpenStaticArgCompletion(query: string): boolean {
     return STATIC_ARG_OPTIONS[command]?.includes(first) ?? false;
   }
   if (nested && argIndex >= 1) {
-    return prefix === '' || nested.some((option) => option.startsWith(prefix) && option !== prefix);
+    return (
+      argIndex === 1 &&
+      (prefix === '' || nested.some((option) => option.startsWith(prefix) && option !== prefix))
+    );
   }
   if (endsWithSpace && spans.length > 0) return false;
 
@@ -163,7 +165,17 @@ function shouldOpenStaticArgCompletion(query: string): boolean {
 function shouldOpenDynamicArgCompletion(query: string): boolean {
   const command = commandNameOf(query);
   if (!command || !DYNAMIC_ARG_COMPLETION_COMMANDS.has(command)) return false;
-  return /^\/[^\s]+\s+.*$/i.test(query.trimStart());
+  const match = query.trimStart().match(/^\/[^\s]+\s+(.*)$/);
+  if (!match) return false;
+  const spans = scanArgSpans(match[1] ?? '');
+  const endsWithSpace = /\s$/.test(query);
+  const argIndex = endsWithSpace ? spans.length : Math.max(0, spans.length - 1);
+  const first = spans[0]?.value.toLowerCase();
+  if (command === 'tree' && (first === 'label' || first === 'unlabel')) {
+    return argIndex <= 1;
+  }
+  // Help's topic is optional. Suggest it only when the user starts typing one.
+  return argIndex === 0 && (command !== 'help' || spans.length > 0);
 }
 
 export function shouldOpenWorkflowSlashCompletion(query: string): boolean {

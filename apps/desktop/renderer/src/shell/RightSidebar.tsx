@@ -53,11 +53,10 @@ import { FileViewer } from '../features/preview/FileViewer.js';
 import { useArtifacts, useArtifactCreated } from '../features/artifact/useArtifacts.js';
 import { useTranscriptArtifacts } from '../features/artifact/useTranscriptArtifacts.js';
 import {
-  FOCUS_ARTIFACT_EVENT,
   OPEN_FILE_VIEWER_EVENT,
   getLastOpenedFileViewerSnapshot,
   isFileViewerSnapshot,
-  type FocusArtifactEventDetail,
+  type ArtifactFocusRequest,
   type OpenFileViewerEventDetail,
   type TransientArtifactSnapshot,
 } from '../features/artifact/transientArtifact.js';
@@ -113,6 +112,8 @@ interface RightSidebarProps {
   readonly onMaxWidth?: () => void;
   readonly onClose?: () => void;
   readonly shellFocusRequest?: TaskDockFocusState;
+  readonly artifactFocusRequest?: ArtifactFocusRequest | null;
+  readonly onArtifactFocusConsumed?: (request: ArtifactFocusRequest) => void;
 }
 
 export function RightSidebar({
@@ -123,6 +124,8 @@ export function RightSidebar({
   onMaxWidth,
   onClose,
   shellFocusRequest,
+  artifactFocusRequest,
+  onArtifactFocusConsumed,
 }: RightSidebarProps = {}): JSX.Element {
   const { t } = useI18n();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
@@ -193,23 +196,34 @@ export function RightSidebar({
   // New agent-created artifact: switch to Artifact mode. Updates, deletes, and session switches
   // should not trigger this path.
   useArtifactCreated(currentSessionId, () => setTab('artifact'));
-  // Transcript artifact card click: switch to Artifact mode and remember the target id.
+  // Restore the previous file before applying a newer explicit artifact target on this mount.
   useEffect(() => {
-    const onFocus = (e: Event): void => {
+    const snapshot = getLastOpenedFileViewerSnapshot(currentProjectPath, currentSessionId);
+    if (!snapshot) return;
+    setFileViewerSnapshot(snapshot);
+    setTab('file');
+  }, [currentProjectPath, currentSessionId]);
+  // Shell owns requests while this panel is unmounted; consume only the current context's target.
+  useEffect(() => {
+    if (
+      !artifactFocusRequest ||
+      artifactFocusRequest.sessionId !== currentSessionId ||
+      artifactFocusRequest.projectRoot !== currentProjectPath
+    ) {
+      return;
+    }
+    const { detail } = artifactFocusRequest;
+    if (isFileViewerSnapshot(detail.snapshot)) {
+      setFileViewerSnapshot(detail.snapshot ?? null);
+      setTab('file');
+    } else {
       setTab('artifact');
-      const detail = (e as CustomEvent<FocusArtifactEventDetail>).detail;
-      if (isFileViewerSnapshot(detail?.snapshot)) {
-        setFileViewerSnapshot(detail.snapshot ?? null);
-        setTab('file');
-        return;
-      }
-      const id = detail?.id;
+      const id = detail.id ?? detail.snapshot?.id;
       if (id) setFocusedArtifactId(id);
-      setFocusedArtifactSnapshot(detail?.snapshot ?? null);
-    };
-    window.addEventListener(FOCUS_ARTIFACT_EVENT, onFocus);
-    return () => window.removeEventListener(FOCUS_ARTIFACT_EVENT, onFocus);
-  }, []);
+      setFocusedArtifactSnapshot(detail.snapshot ?? null);
+    }
+    onArtifactFocusConsumed?.(artifactFocusRequest);
+  }, [artifactFocusRequest, currentSessionId, currentProjectPath, onArtifactFocusConsumed]);
   useEffect(() => {
     const onOpenFile = (event: Event): void => {
       const detail = (event as CustomEvent<OpenFileViewerEventDetail>).detail;
@@ -220,12 +234,6 @@ export function RightSidebar({
     window.addEventListener(OPEN_FILE_VIEWER_EVENT, onOpenFile);
     return () => window.removeEventListener(OPEN_FILE_VIEWER_EVENT, onOpenFile);
   }, []);
-  useEffect(() => {
-    const snapshot = getLastOpenedFileViewerSnapshot(currentProjectPath, currentSessionId);
-    if (!snapshot) return;
-    setFileViewerSnapshot(snapshot);
-    setTab('file');
-  }, [currentProjectPath, currentSessionId]);
 
   // If artifacts disappear, overview is the safe fallback.
   const showArtifact = hasArtifactSurface && tab === 'artifact';

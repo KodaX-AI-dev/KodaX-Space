@@ -25,13 +25,13 @@ test('workflow slash create sends on Enter and shows immediate progress', async 
     await textarea.press('Enter');
 
     await expect(
-      stream.getByTestId('user-message-bubble').filter({ hasText: command }),
+      stream.getByTestId('local-notice-bubble').filter({ hasText: command }),
     ).toBeVisible({
       timeout: 2_000,
     });
     await expect(
       stream.locator('[data-testid="system-notice"][data-notice-variant="workflow"]', {
-        hasText: '[workflow] generating workflow...',
+        hasText: /\[workflow\] generating workflow\.\.\./i,
       }),
     ).toBeVisible({ timeout: 2_000 });
     await expect(
@@ -58,13 +58,13 @@ test('workflow slash create send button shows immediate progress', async () => {
     await space.page.getByLabel('Send message').click();
 
     await expect(
-      stream.getByTestId('user-message-bubble').filter({ hasText: command }),
+      stream.getByTestId('local-notice-bubble').filter({ hasText: command }),
     ).toBeVisible({
       timeout: 2_000,
     });
     await expect(
       stream.locator('[data-testid="system-notice"][data-notice-variant="workflow"]', {
-        hasText: '[workflow] generating workflow...',
+        hasText: /\[workflow\] generating workflow\.\.\./i,
       }),
     ).toBeVisible({ timeout: 2_000 });
     await expect(

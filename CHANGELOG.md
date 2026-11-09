@@ -14,6 +14,9 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+- Open the selected Artifact with one click from a collapsed Coder sidebar, preserving the latest target across mounting and keeping restored File Viewer content from overriding an explicit request.
+- Finish slash completion after optional help commands and terminal argument values, retain real subcommand continuation, and let ready no-match input reach normal validation while preserving discovery loading/error guards.
+- Make conversation history boundaries and return destinations visible, preserve single-page access, distinguish loaded-content find from saved search, and open saved search results directly in context with an original-text fallback.
 - Keep already-read saved history pages together while browsing older or newer records within the same SDK revision. Preserve search return positions and completed bodies; use the bottom action to return to live output.
 - Mark user queries with a localized sender label, a tinted background and an accent edge while preserving long-query collapse, attachments and full-text copy.
 - Restore standalone Artifact rendering by allowing client-side routes on the packaged renderer document while retaining query, asset-fragment and traversal rejection.

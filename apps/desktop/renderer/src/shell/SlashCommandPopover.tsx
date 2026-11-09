@@ -707,7 +707,7 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
           onPick(null);
           return true;
         }
-        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (loadState !== 'ready' && e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           return true;
         }
@@ -741,7 +741,7 @@ export function SlashCommandPopover(props: SlashCommandPopoverProps): JSX.Elemen
     };
     registerKeyHandler?.(onKey);
     return () => registerKeyHandler?.(null);
-  }, [filtered, selectedIdx, onPick, registerKeyHandler]);
+  }, [filtered, selectedIdx, loadState, onPick, registerKeyHandler]);
 
   // 选中项 scroll-into-view
   useEffect(() => {

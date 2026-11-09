@@ -72,6 +72,7 @@ function useProductHistorySearch(sessionId: string, query: string) {
   const openHit = async (hit: SearchHit): Promise<void> => {
     const expected = ++generation.current;
     setSelected(hit);
+    setBody(null);
     setError(null);
     setPending(true);
     try {
@@ -91,6 +92,13 @@ function useProductHistorySearch(sessionId: string, query: string) {
     openHit,
     pending,
     selected,
+    select: (hit: SearchHit) => {
+      generation.current++;
+      setSelected(hit);
+      setBody(null);
+      setError(null);
+      setPending(false);
+    },
     retrySearch: () => setRetry((value) => value + 1),
     back: () => {
       generation.current++;
@@ -113,7 +121,7 @@ export function ProductHistorySearch({
   onLocate: (itemId: string, signal: AbortSignal) => Promise<'located' | 'missing' | 'stale'>;
 }): JSX.Element | null {
   const { t } = useI18n();
-  const { hits, body, error, openHit, pending, selected, retrySearch, back } =
+  const { hits, body, error, openHit, pending, selected, select, retrySearch, back } =
     useProductHistorySearch(sessionId, query);
   const listRef = useRef<HTMLDivElement>(null);
   const locationRequest = useRef<AbortController | null>(null);
@@ -122,13 +130,17 @@ export function ProductHistorySearch({
   >(null);
   useEffect(() => {
     setLocationStatus(null);
+    return () => locationRequest.current?.abort();
+  }, [sessionId, query]);
+  useEffect(() => {
     if (selected)
       listRef.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
-    return () => locationRequest.current?.abort();
-  }, [sessionId, query, selected]);
+  }, [selected]);
   function backToResults(): void {
     if (!selected) return;
     const id = selected.itemId;
+    locationRequest.current?.abort();
+    setLocationStatus(null);
     back();
     requestAnimationFrame(() =>
       listRef.current
@@ -136,11 +148,38 @@ export function ProductHistorySearch({
         ?.focus({ preventScroll: true }),
     );
   }
+  async function locateHit(hit: SearchHit): Promise<void> {
+    locationRequest.current?.abort();
+    const controller = new AbortController();
+    locationRequest.current = controller;
+    select(hit);
+    setLocationStatus('pending');
+    try {
+      const located = await onLocate(hit.itemId, controller.signal);
+      if (controller.signal.aborted) return;
+      if (located === 'located') {
+        setLocationStatus(null);
+        back();
+        return;
+      }
+      setLocationStatus(located);
+      if (located === 'missing') await openHit(hit);
+    } catch {
+      if (controller.signal.aborted) return;
+      setLocationStatus('failed');
+      await openHit(hit);
+    }
+  }
+  function readOriginal(hit: SearchHit): void {
+    locationRequest.current?.abort();
+    setLocationStatus(null);
+    void openHit(hit);
+  }
   if (!query.trim()) return null;
   return (
     <div
       ref={listRef}
-      aria-busy={pending}
+      aria-busy={pending || locationStatus === 'pending'}
       className="absolute right-0 top-full mt-1 max-h-96 w-[min(34rem,75vw)] overflow-auto rounded border border-border-default bg-surface-2 p-2 shadow-xl"
       onKeyDown={(event) => {
         if (event.key === 'Escape' && selected) {
@@ -181,23 +220,15 @@ export function ProductHistorySearch({
           <button
             type="button"
             disabled={locationStatus === 'pending'}
-            onClick={async () => {
-              locationRequest.current?.abort();
-              const controller = new AbortController();
-              locationRequest.current = controller;
-              setLocationStatus('pending');
-              try {
-                const located = await onLocate(selected.itemId, controller.signal);
-                if (controller.signal.aborted) return;
-                if (located === 'located') back();
-                else setLocationStatus(located);
-              } catch {
-                if (!controller.signal.aborted) setLocationStatus('failed');
-              }
-            }}
+            onClick={() => void locateHit(selected)}
           >
             {t('conversation.openContext')}
           </button>
+          {body === null && !pending && (
+            <button type="button" onClick={() => readOriginal(selected)}>
+              {t('conversation.readOriginal')}
+            </button>
+          )}
           {locationStatus && (
             <p role="status">
               {t(
@@ -228,16 +259,24 @@ export function ProductHistorySearch({
       ) : (
         !selected &&
         hits.map((hit) => (
-          <button
-            key={hit.itemId}
-            type="button"
-            data-testid="sdk-history-search-result"
-            data-hit-id={hit.itemId}
-            onClick={() => void openHit(hit)}
-            className="block w-full truncate rounded px-2 py-1 text-left text-xs hover:bg-surface-3"
-          >
-            {hit.snippet}
-          </button>
+          <div key={hit.itemId} className="flex items-center gap-1">
+            <button
+              type="button"
+              data-testid="sdk-history-search-result"
+              data-hit-id={hit.itemId}
+              onClick={() => void locateHit(hit)}
+              className="min-w-0 flex-1 truncate rounded px-2 py-1 text-left text-xs hover:bg-surface-3"
+            >
+              {hit.snippet}
+            </button>
+            <button
+              type="button"
+              onClick={() => readOriginal(hit)}
+              className="shrink-0 rounded px-2 py-1 text-xs text-fg-muted hover:bg-surface-3 hover:text-fg-primary"
+            >
+              {t('conversation.readOriginal')}
+            </button>
+          </div>
         ))
       )}
     </div>

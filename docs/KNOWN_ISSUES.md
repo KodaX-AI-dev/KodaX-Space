@@ -236,6 +236,9 @@ Last Updated: 2026-11-09
 | 236 | Medium   | Resolved                                                                                                     | macOS notifications require signed sender, delivery confirmation and permission-aware badge refresh                                                                                                        | Electron 42 upgrade                                                       | 2026-11-04 |
 | 237 | Medium   | Resolved in source                                                                                           | Legacy SDK view body reads fail and repeated per-item warnings flood the conversation                                                                                                                      | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.2                         | 2026-11-07 |
 | 238 | Low      | Resolved                                                                                                     | AgentModeSelector browser test intermittently times out after the work-mode rollback step                                                                                                                  | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4                         | 2026-11-08 |
+| 239 | Medium | Resolved in source | Artifact cards require two clicks when the Coder sidebar is collapsed | Reported Space 0.1.47-alpha.4; exact introduction unconfirmed | 2026-11-09 |
+| 240 | Medium | Resolved in source | Accepted slash commands reopen optional suggestions and intercept submission | Reported Space 0.1.47-alpha.4; exact introduction unconfirmed | 2026-11-09 |
+| 241 | Medium | Resolved in source | History boundaries are hard to discover and saved search requires an extra navigation step | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4 | 2026-11-09 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16147,16 +16150,42 @@ From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 
 - **Tests added**: "a reconcile read that resolves after a newer saved mode cannot revert the selection" holds the reconcile read until after a newer successful write, then releases it. Before the fix it failed 3/3 (`aria-checked` `false`); after the fix it passes 3/3. The race-window copy of the original case also passes 3/3 after the fix. Desktop `tsc` and ESLint pass for the changed files.
 - **Resolution date**: 2026-11-09.
 
+## Issue 239 — Artifact cards require a second click after opening the sidebar
+
+- **Priority / status**: Medium; resolved in source, Space 0.1.47-alpha.4. Created, made ready and fixed in source 2026-11-09; no release publication is implied.
+- **Original problem**: with the Coder sidebar collapsed, clicking a PDF/HTML artifact opens the sidebar without selecting the artifact. A second click is required. Expected: one action expands and selects the requested artifact.
+- **Root cause**: Shell received the synchronous focus event but only opened the sidebar. The unmounted RightSidebar missed that event. A second, review-discovered case let restored File Viewer state overwrite the newly selected artifact on mount.
+- **Resolution**: Shell retains a context-scoped request until RightSidebar consumes it. Cached file restoration runs before the explicit request. Newer file requests still work; session/project changes invalidate pending targets. Partner and standalone-window paths keep their existing owners.
+- **Files / tests**: `Shell.tsx`, `RightSidebar.tsx`, `features/artifact/transientArtifact.ts`, `shell/artifactOpen.browser.test.ts`. Real-Shell UI regressions were verified RED against the previous source and GREEN after both fixes; include nondefault artifact selection, remount, delayed lists, A→B→A context changes and old-file/new-artifact priority.
+- **Evidence / validation**: [diagnosis](research/artifact-single-click-open-diagnosis-2026-11-09.md), [executed checks](research/ui-interaction-fixes-validation-2026-11-09.md), [regression guide](test-guides/ISSUE_239_0.1.47-alpha.4_REGRESSION_GUIDE.md).
+
+## Issue 240 — Slash completion retains optional parameters and intercepts Enter
+
+- **Priority / status**: Medium; resolved in source, Space 0.1.47-alpha.4. Created, made ready and fixed in source 2026-11-09.
+- **Original problem**: `/hel` → Tab → Space → Enter becomes `/help agent-mode ` rather than submitting help; another Enter repeats the topic. No-match lists also intercept submission. `/help [command]` is valid, but accepting the command does not request an unsolicited topic.
+- **Root cause**: the dynamic argument opener accepted arbitrary argument positions, including completed values; the empty-candidate branch always consumed Enter.
+- **Resolution**: optional help topics start only with an explicit topic prefix, dynamic values and nested options stop at their real terminal position, and ready/no-match Enter follows normal submission/validation. Discovery loading/error protection, skills, IME, Shift+Enter, aliases and legitimate next layers remain covered.
+- **Files / tests**: `slashInput.ts`, `SlashCommandPopover.tsx`, adjacent `slashInput.test.ts` and `SlashCommandCompletion.browser.test.ts`; existing Electron slash/skill tests. Public Composer cases were run RED→GREEN, including loading/error protection and completed nested arguments.
+- **Evidence / validation**: [diagnosis](research/slash-completion-interaction-diagnosis-2026-11-09.md), [executed checks](research/ui-interaction-fixes-validation-2026-11-09.md), [regression guide](test-guides/ISSUE_239_0.1.47-alpha.4_REGRESSION_GUIDE.md).
+
+## Issue 241 — History entry and saved-result navigation obscure reachable content
+
+- **Priority / status**: Medium; resolved in source, Space 0.1.47-alpha.4 / SDK beta.4. Created, made ready and fixed in source 2026-11-09.
+- **Original problem**: a muted “查看已保存记录” entry does not explain which messages can be read or where it will navigate. Saved search requires reading an original and clicking a second action before reaching context. Users can mistake the current view boundary for the conversation beginning.
+- **Resolution**: a visible history boundary explains the saved-page destination, offers explicit earlier loading and preserves return-to-reading. Only verified resolved history with no older page claims the conversation start; partial/ambiguous history remains qualified. Ctrl+F keeps loaded-content search, ready zero matches offer explicit saved search, and saved results locate context first with original fallback and cancellation/return handling. The bottom latest action has visible text; narrow search controls wrap. SDK source ownership, saved-page accumulation, tool grouping and F144 scheduling are retained.
+- **Files / tests**: `ConversationStreamV2.tsx`, `ProductHistorySearch.tsx`, `i18n/messages.ts`, `conversationHistoryNavigation.browser.test.ts`, `ProductHistorySearch.browser.test.ts`, adapted `tests/e2e/sdk-history-navigation.spec.ts`, user and in-app manuals. Public UI tests cover single-page reachability, partial ranges, failure/retry, frozen reading, native gestures, direct search, original fallback and late replies.
+- **Evidence / validation**: [accepted cross-review](research/session-history-product-cross-review-2026-11-09.md), [executed checks](research/ui-interaction-fixes-validation-2026-11-09.md), [regression guide](test-guides/ISSUE_239_0.1.47-alpha.4_REGRESSION_GUIDE.md).
+
 ## Summary
 
-- Total: 225
+- Total: 228
 - Open: 1
 - Ready: 4
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 209
+- Resolved (including source-only fixes): 212
 - High: 116
-- Medium: 96
+- Medium: 99
 - Low: 13
 - Next ready to resolve: 222

@@ -39,7 +39,8 @@ const index=boundary==='oldest'?2:boundary==='middle'?1:0;
 const label=['NEWEST','MIDDLE','OLDEST'][index];
 const tool={id:'tool-'+label,type:'tool',text:'concealed tool result',historyBoundary:{entryId:'found',sourceRevision:'s'},tool:{name:'read',callId:'call-'+label,status:'success',resultRecorded:true}};
 return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'}]),
-page:{outcome:'ready',revision:'r',sourceRevision:'s',hasMore:index<2,hasNewer:index>0,locatedBoundaryId:'found',windowMode:'replace',...(index>0?{newerCursor:index===2?'middle':'newest'}:{}),...(index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
+conversation:window.historyStatus?{status:window.historyStatus}:undefined,
+page:{outcome:'ready',revision:'r',sourceRevision:'s',hasMore:!window.singlePage&&index<2,hasNewer:index>0,locatedBoundaryId:'found',windowMode:'replace',...(index>0?{newerCursor:index===2?'middle':'newest'}:{}),...(!window.singlePage&&index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
 }};
 useAppStore.setState({currentSessionId:'s',currentProjectPath:'/project',sessions:[{sessionId:'s',title:'History',surface:'code',projectRoot:'/project'}]});
 function App(){const id=useAppStore(state=>state.currentSessionId);return <ConversationStreamV2 key={id}/>}
@@ -114,6 +115,98 @@ async function openHistoryFixture(t: TestContext, showScrollbars = false) {
 }
 
 test(
+  'saved history boundary explains single-page navigation and preserves the return position',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    page.setDefaultTimeout(3500);
+    await page.evaluate(
+      'window.singlePage=true;window.historyStatus="resolved";window.primeLive()',
+    );
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await page.getByText('Live 0', { exact: true }).waitFor();
+    await scroller.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    const browse = page.getByRole('button', { name: 'Browse history messages', exact: true });
+    await browse.waitFor({ timeout: 3000 });
+    await page.getByText('Opens at the most recent saved messages.', { exact: true }).waitFor();
+    assert.equal(await page.getByText('Start of this conversation', { exact: true }).count(), 0);
+    await browse.click();
+    await page.getByText('NEWEST 0', { exact: true }).waitFor();
+    await page.getByText('Start of this conversation', { exact: true }).waitFor();
+    assert.deepEqual(await page.evaluate('window.requests'), ['newest']);
+    await page.getByRole('button', { name: 'Return to reading position' }).click();
+    await page.getByText('Live 0', { exact: true }).waitFor();
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="conversation-scroll-container"]')!.scrollTop < 30,
+    );
+    await page.keyboard.press('Control+f');
+    const search = page.getByTestId('transcript-search-bar');
+    assert.equal(await search.getByRole('combobox').inputValue(), 'page');
+    assert.equal(
+      await search.getByRole('option', { name: 'Loaded content', exact: true }).count(),
+      1,
+    );
+    await search.getByRole('searchbox').fill('not in the loaded content');
+    await search.getByRole('button', { name: 'Search saved conversation', exact: true }).click();
+    assert.equal(await search.getByRole('combobox').inputValue(), 'session');
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'earlier-history boundary keeps readable messages during failure and offers a working retry',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    page.setDefaultTimeout(3500);
+    await page.evaluate('window.historyStatus="resolved";window.middle()');
+    await page.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await page.evaluate('window.settle(48);window.hold=true');
+    await page.getByRole('button', { name: 'Load earlier messages', exact: true }).click();
+    await page.waitForFunction('window.requests.at(-1)==="oldest"');
+    await page.getByTestId('history-paging-status').waitFor();
+    await page.evaluate('window.fail=true;window.release()');
+    const error = page.getByTestId('history-paging-error');
+    await error.waitFor();
+    assert.equal(await page.getByText('MIDDLE 0', { exact: true }).count(), 1);
+    assert.equal(await page.getByText('Start of this conversation', { exact: true }).count(), 0);
+    await page.evaluate('window.fail=false;window.hold=false');
+    await error.getByRole('button', { name: 'Retry', exact: true }).click();
+    await page.getByText('OLDEST 0', { exact: true }).waitFor();
+    await page.getByText('Start of this conversation', { exact: true }).waitFor();
+    assert.equal(await page.getByText('MIDDLE 0', { exact: true }).count(), 1);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'partial and unverified saved histories never claim to be the conversation start',
+  { skip: !browserAvailable },
+  async (t) => {
+    for (const status of ['partial', 'ambiguous', undefined]) {
+      const { page, errors } = await openHistoryFixture(t);
+      page.setDefaultTimeout(3500);
+      await page.evaluate((value) => {
+        Object.assign(window, { singlePage: true, historyStatus: value });
+      }, status);
+      await page.evaluate('window.primeLive()');
+      await page.getByRole('button', { name: 'Browse history messages', exact: true }).click();
+      await page.getByText('NEWEST 0', { exact: true }).waitFor();
+      assert.equal(await page.getByText('Start of this conversation', { exact: true }).count(), 0);
+      if (status)
+        await page
+          .getByText('Showing available history; its full range could not be verified.', {
+            exact: true,
+          })
+          .waitFor();
+      assert.deepEqual(errors, []);
+    }
+  },
+);
+
+test(
   'one bottom control returns from frozen history to the real latest message and downward gestures visit adjacent pages',
   { skip: !browserAvailable },
   async (t) => {
@@ -160,9 +253,7 @@ test(
     const scope = search.getByRole('combobox');
     await scope.selectOption('session', { timeout: 1500 });
     await search.getByText('Archived needle', { exact: true }).click();
-    await search.getByText('Archived needle detail').waitFor();
     assert.equal(await search.getByText('0/0').count(), 0);
-    await search.getByRole('button', { name: 'View in conversation' }).click();
     await stream.getByText('Located record', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back to results' }).click();
     await stream.getByText('OLDEST 11', { exact: true }).waitFor();
@@ -184,7 +275,6 @@ test(
         detail(value);
       }, mode);
       await search.getByText('Archived needle', { exact: true }).click();
-      await search.getByRole('button', { name: 'View in conversation' }).click();
       await stream
         .getByText(`Located ${kind === 'mixed' ? 'tool' : kind} detail`, { exact: true })
         .waitFor({ timeout: 3000 });
@@ -291,7 +381,7 @@ test(
       'an unmounted Session owner cannot report failure after A to B to A',
     );
     await page.evaluate('window.primeLive()');
-    const saved = page.getByRole('button', { name: 'View saved conversation' });
+    const saved = page.getByRole('button', { name: 'Browse history messages' });
     await saved.waitFor();
     await saved.focus();
     await scroller.evaluate((element) => {
@@ -335,7 +425,6 @@ test(
     await search.getByRole('searchbox').fill('needle');
     await search.getByRole('combobox').selectOption('session');
     await search.getByText('Archived needle', { exact: true }).click();
-    await search.getByRole('button', { name: 'View in conversation' }).click();
     await stream.getByText('concealed tool result', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back to results' }).click();
     await reusedTool.waitFor();

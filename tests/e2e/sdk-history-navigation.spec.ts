@@ -275,7 +275,7 @@ test('native scrollbar stays held across SDK history windows in both directions'
           .locator('[data-msg-id]')
           .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
       const newestIds = await ids();
-      await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
+      await stream.getByRole('button', { name: 'Browse history messages', exact: true }).click();
       await expect.poll(ids).not.toEqual(newestIds);
       await expect(stream).toContainText('HISTORY_QUESTION_259');
       await dragNativeHistoryWindow(space.page, 'older');
@@ -289,7 +289,6 @@ test('native scrollbar stays held across SDK history windows in both directions'
         .getByTestId('sdk-history-search-result')
         .filter({ hasText: 'HISTORY_QUESTION_0' })
         .click();
-      await search.getByRole('button', { name: 'View in conversation' }).click();
       await expect(stream).toContainText('HISTORY_QUESTION_0');
       await dragNativeHistoryWindow(space.page, 'newer');
       await expect(stream).toContainText('HISTORY_QUESTION_0');
@@ -329,9 +328,10 @@ test('saved history search locates a question outside the live window and restor
     await search.getByRole('combobox').selectOption('session');
     const hit = search.getByTestId('sdk-history-search-result').filter({ hasText: query });
     await expect(hit).toHaveCount(1);
-    await search.getByRole('searchbox').press('Enter');
+    await hit.locator('..').getByRole('button', { name: 'Read original', exact: true }).click();
     await expect(search.getByTestId('sdk-history-search-body')).toContainText(query);
-    await search.getByRole('button', { name: 'View in conversation' }).click();
+    await search.getByRole('button', { name: 'Back to results', exact: true }).click();
+    await search.getByRole('searchbox').press('Enter');
     await expect(
       stream.locator('[data-msg-id]').filter({ hasText: query }).first(),
     ).toBeInViewport();
@@ -346,7 +346,6 @@ test('saved history search locates a question outside the live window and restor
       const detailHit = search.getByTestId('sdk-history-search-result').filter({ hasText: needle });
       await expect(detailHit).toHaveCount(1);
       await detailHit.click();
-      await search.getByRole('button', { name: 'View in conversation' }).click();
       await expect(stream.getByText(body, { exact: true })).toBeVisible();
       await expect(stream.getByText('HISTORY_THINKING_NEEDLE_109', { exact: true })).toBeVisible();
       await expect(stream.locator('[data-source-item]:focus')).toBeInViewport();
@@ -416,7 +415,7 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
         .locator('[data-msg-id]')
         .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
     const newest = await ids();
-    await stream.getByRole('button', { name: 'View saved conversation', exact: true }).click();
+    await stream.getByRole('button', { name: 'Browse history messages', exact: true }).click();
     await expect.poll(ids).not.toEqual(newest);
     await expect(stream).toContainText('HISTORY_QUESTION_259');
     const moveToOlder = async () => {

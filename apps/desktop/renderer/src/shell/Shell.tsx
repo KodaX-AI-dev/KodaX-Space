@@ -34,6 +34,7 @@ import { LeftSidebar } from './LeftSidebar.js';
 import { ResizeHandle } from './ResizeHandle.js';
 import { useSmartPopoutDirector } from '../features/popout-director/useSmartPopoutDirector.js';
 import type {
+  ArtifactFocusRequest,
   FocusArtifactEventDetail,
   OpenFileViewerEventDetail,
 } from '../features/artifact/transientArtifact.js';
@@ -468,6 +469,20 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     section: null,
     nonce: 0,
   });
+  const [artifactFocusRequest, setArtifactFocusRequest] = useState<ArtifactFocusRequest | null>(
+    null,
+  );
+  const consumeArtifactFocusRequest = useCallback((request: ArtifactFocusRequest): void => {
+    setArtifactFocusRequest((current) => (current === request ? null : current));
+  }, []);
+  useEffect(() => {
+    setArtifactFocusRequest(null);
+  }, [currentSessionIdForPlan, currentProjectPathForPartnerDetail, currentSurface]);
+  const visibleArtifactFocusRequest =
+    artifactFocusRequest?.sessionId === currentSessionIdForPlan &&
+    artifactFocusRequest.projectRoot === currentProjectPathForPartnerDetail
+      ? artifactFocusRequest
+      : null;
   const [partnerDetailOpenRequest, setPartnerDetailOpenRequest] =
     useState<PartnerDetailOpenRequest | null>(null);
   const partnerDetailOpenRevisionRef = useRef(0);
@@ -1044,6 +1059,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
 
   useEffect(() => {
     const onTaskDockFocus = (event: Event): void => {
+      setArtifactFocusRequest(null);
       const section = (event as CustomEvent<TaskDockFocusRequest>).detail?.section;
       if (isTaskDockSectionId(section)) {
         setTaskDockFocusRequest((current) => ({ section, nonce: current.nonce + 1 }));
@@ -1114,8 +1130,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
     setRightSidebarOpenForCurrentSurface,
   ]);
 
-  // F059c: 对话里点 artifact 卡片 → 若右侧栏关着先打开它（RightSidebar 内部再切到 Artifact
-  // tab + 选中）。否则点了卡片"什么都没发生"。
+  // Retain the target until RightSidebar mounts; a synchronous event cannot reach a closed panel.
   useEffect(() => {
     const openCoderDetail = (): void => {
       openRightSidebarAtBalancedWidth();
@@ -1133,6 +1148,11 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
         });
         return;
       }
+      setArtifactFocusRequest({
+        sessionId: currentSessionIdForPlan,
+        projectRoot: currentProjectPathForPartnerDetail,
+        detail: (event as CustomEvent<FocusArtifactEventDetail>).detail ?? {},
+      });
       openCoderDetail();
     };
     const onOpenFileViewer = (event: Event): void => {
@@ -1143,6 +1163,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
         }
         return;
       }
+      setArtifactFocusRequest(null);
       openCoderDetail();
     };
     window.addEventListener('kodax-space.focus-artifact', onFocusArtifact);
@@ -1151,7 +1172,13 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
       window.removeEventListener('kodax-space.focus-artifact', onFocusArtifact);
       window.removeEventListener('kodax-space.open-file-viewer', onOpenFileViewer);
     };
-  }, [currentSessionIdForPlan, currentSurface, openPartnerDetail, openRightSidebarAtBalancedWidth]);
+  }, [
+    currentSessionIdForPlan,
+    currentProjectPathForPartnerDetail,
+    currentSurface,
+    openPartnerDetail,
+    openRightSidebarAtBalancedWidth,
+  ]);
 
   useEffect(() => {
     const onOpenFilesWorkspace = (): void => {
@@ -1715,6 +1742,8 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
                 onMaxWidth={openRightSidebarAtMaxWidth}
                 onClose={() => setRightSidebarOpenForCurrentSurface(false)}
                 shellFocusRequest={taskDockFocusRequest}
+                artifactFocusRequest={visibleArtifactFocusRequest}
+                onArtifactFocusConsumed={consumeArtifactFocusRequest}
               />
             )}
             {mountedPartnerDetailContext && (

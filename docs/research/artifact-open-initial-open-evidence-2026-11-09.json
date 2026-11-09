@@ -1,0 +1,26 @@
+{
+  "before": {
+    "open": true,
+    "artifactTab": "false",
+    "reads": []
+  },
+  "first": {
+    "open": true,
+    "artifactTab": "true",
+    "reads": [
+      {
+        "id": "anatomy"
+      }
+    ]
+  },
+  "second": {
+    "open": true,
+    "artifactTab": "true",
+    "reads": [
+      {
+        "id": "anatomy"
+      }
+    ]
+  },
+  "errors": []
+}
