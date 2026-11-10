@@ -1,4 +1,5 @@
 import { useTranscriptFind, type FindReveal } from './transcriptFind.js';
+import { useTranscriptWindow } from './useTranscriptWindow.js';
 import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 // ConversationStreamV2 — alpha.1
 //
@@ -1262,6 +1263,33 @@ export function ConversationStreamV2(): JSX.Element {
   );
   const matchIds = useMemo(() => findMatches.map((match) => match.id), [findMatches]);
   const [findJump, setFindJump] = useState<{ readonly id: string } | null>(null);
+
+  // F144: with the gate on, only rows near the viewport are mounted; spacers stand for the rest.
+  const windowing = window.kodaxSpace?.transcriptWindowing === true;
+  const windowRef = useRef<HTMLDivElement | null>(null);
+  const windowRows = useMemo(
+    () =>
+      windowing
+        ? renderItems.map((item) => ({
+            id: item.id,
+            kind: item.kind === 'receipts' ? 'receipts' : item.message.kind,
+            estimate: estimateRenderItemHeight(
+              item,
+              expanded,
+              clustersForceExpand,
+              thinkingForceExpand,
+            ),
+          }))
+        : [],
+    [windowing, renderItems, expanded, clustersForceExpand, thinkingForceExpand],
+  );
+  const windowParts = useTranscriptWindow({
+    enabled: windowing,
+    scrollRef,
+    windowRef,
+    rows: windowRows,
+    layoutKey: currentSessionId,
+  });
 
   const captureViewportScrollAnchor = useCallback(
     (scroller: HTMLDivElement): ViewportScrollAnchor | null => {
@@ -2544,6 +2572,47 @@ export function ConversationStreamV2(): JSX.Element {
     return <WelcomeDashboard />;
   }
 
+  const renderRow = (item: ConversationRenderItem, index: number): JSX.Element => {
+    const sdkItem =
+      usesSavedTurns &&
+      item.kind === 'message' &&
+      (item.message.kind === 'user' || item.message.kind === 'assistant_text')
+        ? productItemsById.get(item.message.sourceItemId ?? item.message.id)
+        : undefined;
+    return (
+      <ConversationRenderRow
+        key={item.id}
+        item={item}
+        index={index}
+        animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
+        liveTail={isStreaming && index === renderItems.length - 1}
+        queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
+        expanded={expanded}
+        clustersForceExpand={clustersForceExpand}
+        thinkingForceExpand={thinkingForceExpand}
+        currentMatchId={currentMatchId}
+        matchSet={matchSet}
+        userMessages={userMessages}
+        onToggle={toggleGroup}
+        onForkTurn={forkFromTurn}
+        onProductTurn={usesSavedTurns ? productTurnAction : undefined}
+        productItemId={sdkItem?.outputState === 'draft' ? undefined : sdkItem?.id}
+        sourceRevision={
+          selectedSource === 'history'
+            ? historyPaging.revision
+            : sdkItem?.historyBoundary?.sourceRevision
+        }
+        inputId={
+          selectedSource === 'view' && !sdkItem?.historyBoundary ? sdkItem?.inputId : undefined
+        }
+        outputId={
+          selectedSource === 'view' && !sdkItem?.historyBoundary ? sdkItem?.outputId : undefined
+        }
+        onRewindTurn={rewindToTurn}
+      />
+    );
+  };
+
   return (
     <div
       className="relative flex-1 overflow-hidden"
@@ -2570,7 +2639,11 @@ export function ConversationStreamV2(): JSX.Element {
               aria-hidden
             />
           )}
-          <div className="space-y-3">
+          <div
+            ref={windowRef}
+            className="space-y-3"
+            data-transcript-window={windowing ? 'true' : undefined}
+          >
             {showHistoryBoundary && (
               <div
                 data-testid="conversation-history-boundary"
@@ -2702,50 +2775,21 @@ export function ConversationStreamV2(): JSX.Element {
               ))}
             <RowDisclosureSession sessionId={currentSessionId}>
               <ProductBodyOwnerContext.Provider value={bodyOwner}>
-                {renderItems.map((item, index) => {
-                  const sdkItem =
-                    usesSavedTurns &&
-                    item.kind === 'message' &&
-                    (item.message.kind === 'user' || item.message.kind === 'assistant_text')
-                      ? productItemsById.get(item.message.sourceItemId ?? item.message.id)
-                      : undefined;
-                  return (
-                    <ConversationRenderRow
-                      key={item.id}
-                      item={item}
-                      index={index}
-                      animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
-                      liveTail={isStreaming && index === renderItems.length - 1}
-                      queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
-                      expanded={expanded}
-                      clustersForceExpand={clustersForceExpand}
-                      thinkingForceExpand={thinkingForceExpand}
-                      currentMatchId={currentMatchId}
-                      matchSet={matchSet}
-                      userMessages={userMessages}
-                      onToggle={toggleGroup}
-                      onForkTurn={forkFromTurn}
-                      onProductTurn={usesSavedTurns ? productTurnAction : undefined}
-                      productItemId={sdkItem?.outputState === 'draft' ? undefined : sdkItem?.id}
-                      sourceRevision={
-                        selectedSource === 'history'
-                          ? historyPaging.revision
-                          : sdkItem?.historyBoundary?.sourceRevision
-                      }
-                      inputId={
-                        selectedSource === 'view' && !sdkItem?.historyBoundary
-                          ? sdkItem?.inputId
-                          : undefined
-                      }
-                      outputId={
-                        selectedSource === 'view' && !sdkItem?.historyBoundary
-                          ? sdkItem?.outputId
-                          : undefined
-                      }
-                      onRewindTurn={rewindToTurn}
-                    />
-                  );
-                })}
+                {(windowParts ?? [{ kind: 'rows', start: 0, end: renderItems.length }]).flatMap(
+                  (part) =>
+                    part.kind === 'spacer' ? (
+                      <div
+                        key={`spacer:${renderItems[part.start].id}`}
+                        aria-hidden
+                        data-window-spacer={renderItems[part.start].id}
+                        style={{ height: part.height, overflowAnchor: 'none' }}
+                      />
+                    ) : (
+                      renderItems
+                        .slice(part.start, part.end)
+                        .map((item, offset) => renderRow(item, part.start + offset))
+                    ),
+                )}
               </ProductBodyOwnerContext.Provider>
             </RowDisclosureSession>
             {/* 流式 spinner —— v0.1.4：从 BottomBar 搬到这里，把"正在做什么"
@@ -3159,6 +3203,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
         className="relative"
         data-query-anchor-id={queryOwnerId}
         data-testid="conversation-render-row"
+        data-window-row={item.id}
       >
         <TimelineMarker tone={receiptMarkerTone(item.receipts)} animate={animate} />
         <div
@@ -3249,6 +3294,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
         className="relative"
         data-query-anchor-id={queryOwnerId}
         data-testid="conversation-render-row"
+        data-window-row={item.id}
       >
         <TimelineMarker tone={messageMarkerTone(message)} animate={animate} />
         <div

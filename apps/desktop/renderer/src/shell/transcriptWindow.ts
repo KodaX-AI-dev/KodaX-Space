@@ -17,7 +17,10 @@ export interface TranscriptWindowInput {
   readonly measured: ReadonlyMap<string, number>;
   /** Vertical gap the container puts before every child (rows and spacers alike). */
   readonly gap: number;
+  /** Used when there is no anchor or its row is gone; past the end means "at the bottom". */
   readonly scrollTop: number;
+  /** Viewport top as a row identity plus the distance into that row; survives prepends. */
+  readonly anchor?: { readonly id: string; readonly offset: number };
   readonly viewportHeight: number;
   readonly overscanBefore: number;
   readonly overscanAfter: number;
@@ -55,13 +58,23 @@ function rowHeights(rows: readonly WindowRow[], measured: ReadonlyMap<string, nu
   });
 }
 
+function viewportTop(input: TranscriptWindowInput, tops: readonly number[]): number {
+  const anchorIndex = input.anchor
+    ? input.rows.findIndex((row) => row.id === input.anchor?.id)
+    : -1;
+  const top =
+    anchorIndex >= 0 && input.anchor ? tops[anchorIndex] + input.anchor.offset : input.scrollTop;
+  return Math.max(0, Math.min(top, tops[tops.length - 1] - input.viewportHeight));
+}
+
 /** Half-open index ranges to mount, sorted and merged when they touch. */
 function mountedRanges(
   input: TranscriptWindowInput,
   tops: readonly number[],
 ): Array<[number, number]> {
-  const from = input.scrollTop - input.overscanBefore;
-  const to = input.scrollTop + input.viewportHeight + input.overscanAfter;
+  const top = viewportTop(input, tops);
+  const from = top - input.overscanBefore;
+  const to = top + input.viewportHeight + input.overscanAfter;
   const ranges: Array<[number, number]> = [];
   let start = -1;
   for (let index = 0; index < input.rows.length; index += 1) {

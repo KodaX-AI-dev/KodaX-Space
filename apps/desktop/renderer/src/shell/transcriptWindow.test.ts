@@ -99,3 +99,19 @@ test('pinned rows stay mounted outside the window, merging with neighbouring run
   );
   assert.equal(layoutHeight(parts, list), 1000 * 100);
 });
+
+test('an anchor row positions the window by row identity, so prepended rows do not move it', () => {
+  const list = rows(1000);
+  const anchored = { anchor: { id: 'r500', offset: 30 }, overscanBefore: 0, overscanAfter: 0 };
+  const before = windowFor(list, anchored);
+  const prepended = [...rows(200).map((row) => ({ ...row, id: `old${row.id}` })), ...list];
+  const after = windowFor(prepended, anchored);
+  assert.deepEqual(before[1], { kind: 'rows', start: 500, end: 511 });
+  assert.deepEqual(after[1], { kind: 'rows', start: 700, end: 711 });
+});
+
+test('a position past the end clamps to the bottom, which is how following the live tail works', () => {
+  const list = rows(1000);
+  const parts = windowFor(list, { scrollTop: Number.POSITIVE_INFINITY, overscanAfter: 0 });
+  assert.deepEqual(parts.at(-1), { kind: 'rows', start: 980, end: 1000 });
+});

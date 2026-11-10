@@ -865,3 +865,94 @@ test(
     assert.deepEqual(errors, []);
   },
 );
+
+async function openWindowedTranscript(t: TestContext) {
+  const opened = await openHistoryFixture(t);
+  await opened.page.evaluate(`window.kodaxSpace.transcriptWindowing=true;window.singlePage=true;
+window.extraItems=Array.from({length:3000},(_,i)=>({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(i%7)}));
+window.start()`);
+  await opened.page.getByText('Bulk 2999', { exact: true }).waitFor();
+  await opened.page.evaluate('window.settle(24)');
+  return opened;
+}
+
+const mountedRows = (page: Page): Promise<number> => page.locator('[data-window-row]').count();
+
+test(
+  'windowing mounts a bounded slice of a long transcript and follows the reader',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    // Following the bottom must be a fixed point: auto-follow's own scrolls do not reshape it.
+    const bottomFrames = await scroller.evaluate(async (element) => {
+      const frames = new Set<string>();
+      for (let frame = 0; frame < 12; frame += 1) {
+        const rows = element.querySelectorAll('[data-window-row]').length;
+        frames.add(`${element.scrollTop}:${rows}`);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+      return [...frames];
+    });
+    assert.equal(bottomFrames.length, 1, `the bottom kept changing: ${bottomFrames.join(' ')}`);
+    assert.ok((await mountedRows(page)) <= 80, `mounted ${await mountedRows(page)} rows`);
+    assert.equal(await page.getByText('Bulk 0', { exact: true }).count(), 0);
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    const middle = await scroller.evaluate((element) => {
+      const frame = element.getBoundingClientRect();
+      const visible = [...element.querySelectorAll('[data-window-row]')].filter((row) => {
+        const box = row.getBoundingClientRect();
+        return box.bottom > frame.top && box.top < frame.bottom;
+      });
+      return {
+        visible: visible.length,
+        scrollTop: element.scrollTop,
+        half: element.scrollHeight / 2,
+      };
+    });
+    assert.ok(middle.visible > 0, 'the middle of the transcript is mounted, not a blank spacer');
+    assert.ok(Math.abs(middle.scrollTop - middle.half) < 2000, 'the reader stays in the middle');
+    await scroller.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.getByText('NEWEST 0', { exact: true }).waitFor();
+    assert.ok((await mountedRows(page)) <= 80);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing keeps the row being read in place while rows above mount',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    const id = await scroller.evaluate((element) => {
+      const frame = element.getBoundingClientRect();
+      const row = [...element.querySelectorAll<HTMLElement>('[data-window-row]')].find(
+        (candidate) => candidate.getBoundingClientRect().top >= frame.top,
+      );
+      return row!.dataset.windowRow!;
+    });
+    const row = page.locator(`[data-window-row="${id}"]`);
+    const top = (): Promise<number> =>
+      row.evaluate((element) => element.getBoundingClientRect().top);
+    const before = await top();
+    await scroller.hover();
+    for (let step = 0; step < 4; step += 1) {
+      await page.mouse.wheel(0, -100);
+      await page.evaluate('window.settle(4)');
+    }
+    await page.evaluate('window.settle(24)');
+    const moved = (await top()) - before;
+    assert.ok(Math.abs(moved - 400) <= 2, `read row moved ${moved}px for a 400px scroll`);
+    assert.deepEqual(errors, []);
+  },
+);

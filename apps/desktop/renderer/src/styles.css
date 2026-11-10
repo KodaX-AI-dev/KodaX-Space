@@ -1362,6 +1362,18 @@ html.q-full .aurora-b3 {
   content-visibility: visible;
 }
 
+/* F144 windowing already unmounts off-screen rows, and it needs real heights of the mounted
+   overscan rows, not their intrinsic-size placeholders. */
+[data-transcript-window] .conversation-occlusion-item {
+  content-visibility: visible;
+}
+
+/* A row's border box must be its whole layout height, so child margins may not collapse
+   through it into the gap. */
+[data-transcript-window] > [data-window-row] {
+  display: flow-root;
+}
+
 /* The full-height timeline otherwise wins native scroll-anchor selection: its top never moves
    when offscreen rows reflow, so the browser cannot preserve the text being read. */
 .conversation-timeline-decoration {
