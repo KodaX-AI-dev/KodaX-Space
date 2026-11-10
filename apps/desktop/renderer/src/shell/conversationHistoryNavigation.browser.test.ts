@@ -11,9 +11,10 @@ import{ConversationStreamV2}from'./ConversationStreamV2.tsx';
 import{I18nProvider}from'../i18n/I18nProvider.tsx';import{useAppStore}from'../store/appStore.ts';
 import{restoreNewestSessionHistory,loadOlderSessionHistory,activateSessionHistoryPaging,deactivateSessionHistoryPaging,openLocatedHistory}from'./sessionHistoryPaging.ts';
 import{useToastStore}from'../store/toastStore.ts';
-import{replaceProductSessionView}from'../store/productSessionView.ts';
+import{replaceProductSessionView,productTranscriptSnapshot}from'../store/productSessionView.ts';
+window.loaded=()=>productTranscriptSnapshot(useAppStore.getState().currentSessionId)?.items.map(item=>item.id)??[];
 window.requests=[];window.hold=false;window.fail=false;window.release=()=>{};window.toasts=()=>useToastStore.getState().toasts;
-window.kodaxSpace={platform:'win32',on:()=>()=>{},invoke:async(channel,input)=>{
+window.kodaxSpace={platform:'win32',transcriptWindowing:window.windowingGate===true,on:()=>()=>{},invoke:async(channel,input)=>{
 if(channel==='session.resolveHistoryTurn'){window.selectedTurn=input.selector;return{ok:true,data:{status:'unavailable',reason:'no_turns'}}}
 if(channel==='session.productSearch')return{ok:true,data:{revision:'r',hits:[{itemId:'unique-hit',entryIndex:6,role:'user',snippet:'Archived needle'}]}};
 if(channel==='session.productItem')return{ok:true,data:{id:input.itemId,text:'Archived needle detail',offset:0,totalLength:22}};
@@ -93,6 +94,24 @@ const bundled = browserAvailable
     })
   : undefined;
 
+// F144 tickets 4-7: every history test also runs with transcript windowing on; ticket 8 removes
+// the gate and with it the unwindowed pass.
+const WINDOWED = ' [windowed]';
+function historyTest(name: string, run: (t: TestContext) => Promise<void>): void {
+  for (const suffix of ['', WINDOWED]) test(name + suffix, { skip: !browserAvailable }, run);
+}
+
+// Loaded is not mounted: with windowing a loaded row far from the reader is a spacer.
+const loadedIds = (page: Page): Promise<string[]> => page.evaluate<string[]>('window.loaded()');
+const isLoaded = async (page: Page, id: string): Promise<boolean> =>
+  (await loadedIds(page)).includes(id);
+async function waitLoaded(page: Page, id: string): Promise<void> {
+  await page.waitForFunction(
+    (target) => (window as unknown as { loaded(): string[] }).loaded().includes(target),
+    id,
+  );
+}
+
 async function openHistoryFixture(t: TestContext, showScrollbars = false) {
   const browser = await chromium.launch({
     headless: true,
@@ -110,13 +129,13 @@ async function openHistoryFixture(t: TestContext, showScrollbars = false) {
   );
   await page.goto('http://history.test/');
   await page.evaluate(() => localStorage.setItem('kodax-space.languageMode', 'en-US'));
+  await page.evaluate(`window.windowingGate=${t.name.endsWith(WINDOWED)}`);
   await page.addScriptTag({ content: bundled!.outputFiles[0].text });
   return { page, errors };
 }
 
-test(
+historyTest(
   'saved history boundary explains single-page navigation and preserves the return position',
-  { skip: !browserAvailable },
   async (t) => {
     const { page, errors } = await openHistoryFixture(t);
     page.setDefaultTimeout(3500);
@@ -155,14 +174,13 @@ test(
   },
 );
 
-test(
+historyTest(
   'earlier-history boundary keeps readable messages during failure and offers a working retry',
-  { skip: !browserAvailable },
   async (t) => {
     const { page, errors } = await openHistoryFixture(t);
     page.setDefaultTimeout(3500);
     await page.evaluate('window.historyStatus="resolved";window.middle()');
-    await page.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await waitLoaded(page, 'MIDDLE0');
     await page.evaluate('window.settle(48);window.hold=true');
     await page.getByRole('button', { name: 'Load earlier messages', exact: true }).click();
     await page.waitForFunction('window.requests.at(-1)==="oldest"');
@@ -170,20 +188,19 @@ test(
     await page.evaluate('window.fail=true;window.release()');
     const error = page.getByTestId('history-paging-error');
     await error.waitFor();
-    assert.equal(await page.getByText('MIDDLE 0', { exact: true }).count(), 1);
+    assert.ok(await isLoaded(page, 'MIDDLE0'), 'the read page stays during the failure');
     assert.equal(await page.getByText('Start of this conversation', { exact: true }).count(), 0);
     await page.evaluate('window.fail=false;window.hold=false');
     await error.getByRole('button', { name: 'Retry', exact: true }).click();
     await page.getByText('OLDEST 0', { exact: true }).waitFor();
     await page.getByText('Start of this conversation', { exact: true }).waitFor();
-    assert.equal(await page.getByText('MIDDLE 0', { exact: true }).count(), 1);
+    assert.ok(await isLoaded(page, 'MIDDLE0'), 'the read page is retained');
     assert.deepEqual(errors, []);
   },
 );
 
-test(
+historyTest(
   'partial and unverified saved histories never claim to be the conversation start',
-  { skip: !browserAvailable },
   async (t) => {
     for (const status of ['partial', 'ambiguous', undefined]) {
       const { page, errors } = await openHistoryFixture(t);
@@ -206,16 +223,15 @@ test(
   },
 );
 
-test(
+historyTest(
   'one bottom control returns from frozen history to the real latest message and downward gestures visit adjacent pages',
-  { skip: !browserAvailable },
   async (t) => {
     const { page, errors } = await openHistoryFixture(t);
     const cdp = await page.context().newCDPSession(page);
     await page.evaluate('window.start()');
     const stream = page.getByTestId('conversation-stream');
     const scroller = page.getByTestId('conversation-scroll-container');
-    await stream.getByText('OLDEST 11', { exact: true }).waitFor();
+    await waitLoaded(page, 'OLDEST11');
     assert.deepEqual(await page.evaluate('window.requests'), ['newest', 'middle', 'oldest']);
     await page.keyboard.press('Control+f');
     const search = page.getByTestId('transcript-search-bar');
@@ -256,7 +272,7 @@ test(
     assert.equal(await search.getByText('0/0').count(), 0);
     await stream.getByText('Located record', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back to results' }).click();
-    await stream.getByText('OLDEST 11', { exact: true }).waitFor();
+    await waitLoaded(page, 'OLDEST11');
     await search.getByText('Archived needle', { exact: true }).waitFor();
     await page.waitForFunction(
       () => document.activeElement?.getAttribute('data-hit-id') === 'unique-hit',
@@ -314,11 +330,11 @@ test(
     });
     await scroller.hover();
     await page.mouse.wheel(0, 300);
-    await stream.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await waitLoaded(page, 'MIDDLE0');
     await page.evaluate('window.settle(48)');
     assert.deepEqual(await page.evaluate('window.requests'), ['newest', 'middle', 'oldest']);
-    assert.equal(await stream.getByText('OLDEST 11', { exact: true }).count(), 1);
-    assert.equal(await stream.getByText('NEWEST 11', { exact: true }).count(), 1);
+    assert.ok(await isLoaded(page, 'OLDEST11'));
+    assert.ok(await isLoaded(page, 'NEWEST11'));
     await latest.click();
     await stream.getByText('NEWEST 11', { exact: true }).waitFor();
     const reportMarker = await stream
@@ -339,7 +355,9 @@ test(
       return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
     });
     await page.evaluate('window.middle()');
-    await stream.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await waitLoaded(page, 'MIDDLE0');
+    // A direct scrollTop write is not a user gesture, so it must wait out the page's own scrolls.
+    await page.evaluate('window.settle(48)');
     await page.evaluate('window.hold=true');
     await scroller.evaluate((element) => {
       element.scrollTop = 0;
@@ -354,9 +372,8 @@ test(
       const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
       return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
     });
-    assert.equal(
-      await stream.getByText('OLDEST 0', { exact: true }).count(),
-      0,
+    assert.ok(
+      !(await isLoaded(page, 'OLDEST0')),
       'late older replies cannot replace the selected newest window',
     );
     assert.deepEqual(
@@ -365,7 +382,7 @@ test(
       'obsolete navigation failures cannot raise notices',
     );
     await page.evaluate('window.hold=false;window.middle()');
-    await stream.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await waitLoaded(page, 'MIDDLE0');
     await page.evaluate('window.holdNewest=true');
     await latest.click();
     await page.waitForFunction('window.newestHeld');
@@ -485,7 +502,8 @@ async function dispatchHistoryGesture(
 ): Promise<void> {
   const stream = page.getByTestId('conversation-stream');
   if (input === 'keyboard') {
-    await stream.getByTestId('process-receipt-tool_cluster').getByRole('button').first().focus();
+    // Any mounted row: key presses from inside the transcript page it.
+    await stream.locator('[data-msg-id]').first().focus();
     await page.keyboard.press(direction === 'newer' ? 'End' : 'Home');
     return;
   }
@@ -529,9 +547,8 @@ async function nativeHistoryScrollbarGeometry(page: Page) {
 }
 
 for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
-  test(
+  historyTest(
     `${input} reads unread adjacent pages and keeps every already-read page`,
-    { skip: !browserAvailable },
     async (t) => {
       const { page, errors } = await openHistoryFixture(t, input === 'scrollbar');
       const scroller = page.getByTestId('conversation-scroll-container');
@@ -548,27 +565,18 @@ for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
           (count) => (window as unknown as { requests: string[] }).requests.length > count,
           before,
         );
-        await page.getByText('MIDDLE 11', { exact: true }).waitFor();
-        await page
-          .getByText(direction === 'older' ? 'NEWEST 11' : 'OLDEST 11', { exact: true })
-          .waitFor();
+        await waitLoaded(page, 'MIDDLE11');
+        await waitLoaded(page, direction === 'older' ? 'NEWEST11' : 'OLDEST11');
         await page.evaluate('window.settle(48)');
         if (input === 'scrollbar') await sendHistoryPointer(page, 'pointerup');
         // Reversing over already-read content must not refetch or change source.
         const requests = await page.evaluate('window.requests');
-        const ids = await page
-          .locator('[data-source-item]')
-          .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-source-item')));
+        const ids = await loadedIds(page);
         await dispatchHistoryGesture(page, input, direction === 'older' ? 'newer' : 'older');
         await page.evaluate('window.settle(48)');
         if (input === 'scrollbar') await sendHistoryPointer(page, 'pointercancel');
         assert.deepEqual(await page.evaluate('window.requests'), requests);
-        assert.deepEqual(
-          await page
-            .locator('[data-source-item]')
-            .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-source-item'))),
-          ids,
-        );
+        assert.deepEqual(await loadedIds(page), ids);
       }
       assert.deepEqual(errors, []);
     },
@@ -577,9 +585,8 @@ for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
 
 for (const direction of ['older', 'newer'] as const)
   for (const restorationFrames of [48, 8])
-    test(
+    historyTest(
       `a held native scrollbar ${direction} retains pages after ${restorationFrames} frames`,
-      { skip: !browserAvailable },
       async (t) => {
         const { page, errors } = await openHistoryFixture(t, true);
         await page.addStyleTag({
@@ -620,16 +627,14 @@ for (const direction of ['older', 'newer'] as const)
             edge + sign * (30 + remaining * geometry.scale * 1.25),
             { steps: 6 },
           );
-          await page
-            .getByText(direction === 'older' ? 'OLDEST 11' : 'NEWEST 11', { exact: true })
-            .waitFor();
+          await waitLoaded(page, direction === 'older' ? 'OLDEST11' : 'NEWEST11');
           await page.evaluate('window.settle(48)');
           assert.deepEqual((await page.evaluate<string[]>('window.requests')).slice(count), [
             'middle',
             direction === 'older' ? 'oldest' : 'newest',
           ]);
           for (const label of ['OLDEST', 'MIDDLE', 'NEWEST'])
-            assert.equal(await page.getByText(label + ' 11', { exact: true }).count(), 1);
+            assert.ok(await isLoaded(page, label + '11'), `${label} is retained`);
           // A held reversal now traverses retained rows; neither edge should reread them.
           const requests = await page.evaluate('window.requests');
           await page.mouse.move(
@@ -647,9 +652,8 @@ for (const direction of ['older', 'newer'] as const)
     );
 
 for (const phase of ['stable', 'restoring'] as const)
-  test(
+  historyTest(
     `holding a scrollbar during ${phase} does not turn programmatic search scrolling into paging`,
-    { skip: !browserAvailable },
     async (t) => {
       const { page, errors } = await openHistoryFixture(t, true);
       await startUnread(page, 'newer');
@@ -691,9 +695,8 @@ for (const phase of ['stable', 'restoring'] as const)
   );
 
 for (const direction of ['older', 'newer'] as const)
-  test(
+  historyTest(
     `a short history viewport confirms its first native ${direction} boundary`,
-    { skip: !browserAvailable },
     async (t) => {
       const { page, errors } = await openHistoryFixture(t, true);
       await page.evaluate('window.middle()');
@@ -731,9 +734,8 @@ for (const direction of ['older', 'newer'] as const)
   );
 
 // Retained rows give the viewport a stable identity even after content height changes.
-test(
+historyTest(
   'prepending retains the visible row and its offset across a delayed layout change',
-  { skip: !browserAvailable },
   async (t) => {
     const { page, errors } = await openHistoryFixture(t);
     await page.evaluate('window.middle()');
@@ -753,7 +755,8 @@ test(
     await page.evaluate('window.release()');
     await page.getByText('OLDEST 11', { exact: true }).waitFor();
     await page.evaluate('window.settle(8)');
-    await page.locator('[data-source-item="OLDEST0"]').evaluate((element) => {
+    // The row directly above the reader; with windowing, rows further up are a spacer.
+    await page.locator('[data-source-item="OLDEST11"]').evaluate((element) => {
       (element as HTMLElement).style.paddingTop = '100px';
     });
     await page.evaluate('window.settle(48)');
@@ -761,14 +764,13 @@ test(
       Math.abs((await row.evaluate((element) => element.getBoundingClientRect().top)) - before) <=
         2,
     );
-    assert.equal(await page.getByText('MIDDLE 11', { exact: true }).count(), 1);
+    assert.ok(await isLoaded(page, 'MIDDLE11'));
     assert.deepEqual(errors, []);
   },
 );
 
-test(
+historyTest(
   'the first native edge is not determined by an earlier opposite relayout offset',
-  { skip: !browserAvailable },
   async (t) => {
     const { page, errors } = await openHistoryFixture(t, true);
     await page.addStyleTag({
@@ -806,9 +808,8 @@ test(
   },
 );
 
-test(
+historyTest(
   'appending a newer page from a located window keeps the visible row at the bottom edge',
-  { skip: !browserAvailable },
   async (t) => {
     const { page, errors } = await openHistoryFixture(t);
     await page.evaluate('window.middle()');
@@ -836,35 +837,31 @@ test(
   },
 );
 
-test(
-  'find counts collapsed thinking and opens it on jump',
-  { skip: !browserAvailable },
-  async (t) => {
-    const { page, errors } = await openHistoryFixture(t);
-    await page.evaluate(
-      `window.extraItems=[{id:'pondered',type:'thinking',text:'Pondered the hidden route',historyBoundary:{entryId:'found',sourceRevision:'s'}}];window.start()`,
-    );
-    const stream = page.getByTestId('conversation-stream');
-    await stream.getByText('OLDEST 11', { exact: true }).waitFor();
-    const thought = stream.getByText('Pondered the hidden route');
-    assert.equal(await thought.count(), 0, 'thinking starts collapsed in the normal view');
-    await page.keyboard.press('Control+f');
-    const search = page.getByTestId('transcript-search-bar');
-    await search.getByRole('searchbox').fill('hidden route');
-    await search.getByText('1/1').waitFor();
-    await thought.waitFor();
-    await page.evaluate('window.settle(48)');
-    assert.ok(await thought.isVisible());
-    const inView = await thought.evaluate((element) => {
-      const scroller = document.querySelector('[data-testid="conversation-scroll-container"]')!;
-      const box = element.getBoundingClientRect();
-      const frame = scroller.getBoundingClientRect();
-      return box.bottom > frame.top && box.top < frame.bottom;
-    });
-    assert.ok(inView, 'the opened hit is scrolled into view');
-    assert.deepEqual(errors, []);
-  },
-);
+historyTest('find counts collapsed thinking and opens it on jump', async (t) => {
+  const { page, errors } = await openHistoryFixture(t);
+  await page.evaluate(
+    `window.extraItems=[{id:'pondered',type:'thinking',text:'Pondered the hidden route',historyBoundary:{entryId:'found',sourceRevision:'s'}}];window.start()`,
+  );
+  const stream = page.getByTestId('conversation-stream');
+  await waitLoaded(page, 'OLDEST11');
+  const thought = stream.getByText('Pondered the hidden route');
+  assert.equal(await thought.count(), 0, 'thinking starts collapsed in the normal view');
+  await page.keyboard.press('Control+f');
+  const search = page.getByTestId('transcript-search-bar');
+  await search.getByRole('searchbox').fill('hidden route');
+  await search.getByText('1/1').waitFor();
+  await thought.waitFor();
+  await page.evaluate('window.settle(48)');
+  assert.ok(await thought.isVisible());
+  const inView = await thought.evaluate((element) => {
+    const scroller = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+    const box = element.getBoundingClientRect();
+    const frame = scroller.getBoundingClientRect();
+    return box.bottom > frame.top && box.top < frame.bottom;
+  });
+  assert.ok(inView, 'the opened hit is scrolled into view');
+  assert.deepEqual(errors, []);
+});
 
 async function openWindowedTranscript(t: TestContext) {
   const opened = await openHistoryFixture(t);
