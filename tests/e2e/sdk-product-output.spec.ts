@@ -342,8 +342,10 @@ test('real SDK items replace live output, survive reload, and retain repeated di
       .getByTestId('transcript-search-bar')
       .getByRole('combobox')
       .selectOption('session');
-    await expect(space.page.getByTestId('sdk-history-search-result').first()).toBeVisible();
-    await space.page.getByTestId('sdk-history-search-result').first().click();
+    const hit = space.page.getByTestId('sdk-history-search-result').first();
+    await expect(hit).toBeVisible();
+    // A result click locates the message (Issue 241); the original body sits behind Read original.
+    await hit.locator('..').getByRole('button', { name: 'Read original', exact: true }).click();
     await expect(space.page.getByTestId('sdk-history-search-body')).toContainText(
       'ONE_DISPLAY_INTENT',
     );
