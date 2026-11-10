@@ -355,6 +355,22 @@ function makeReceiptRowId(receipts: readonly ProcessReceiptMessage[]): string {
   return `receipts_${receipts.map((receipt) => receipt.id).join('_')}`;
 }
 
+/** Whether a row renders the message, receipt, tool or source item with this id. */
+function renderItemContains(item: ConversationRenderItem, id: string): boolean {
+  if (item.kind === 'message')
+    return (
+      item.message.id === id || ('sourceItemId' in item.message && item.message.sourceItemId === id)
+    );
+  return item.receipts.some((receipt) =>
+    receipt.kind === 'thinking'
+      ? receipt.id === id || receipt.sourceItemId === id
+      : receipt.id === id ||
+        receipt.subClusters.some((step) => step.tools.some((tool) => tool.id === id)),
+  );
+}
+
+const EMPTY_PINS: ReadonlySet<string> = new Set();
+
 function buildConversationRenderItems(messages: readonly ViewMessage[]): ConversationRenderItem[] {
   const items: ConversationRenderItem[] = [];
   let pendingReceipts: ProcessReceiptMessage[] = [];
@@ -1057,6 +1073,8 @@ export function ConversationStreamV2(): JSX.Element {
     [eventMessages, runtimeLive, runtimeProfileSession, productConversation],
   );
   const [locatedSearchItem, setLocatedSearchItem] = useState<string | null>(null);
+  // The reading position "Back to results" restores; kept mounted until the restore has run.
+  const [returnAnchorId, setReturnAnchorId] = useState<string | null>(null);
   const pendingSearchFocus = useRef<{
     readonly itemId: string;
     readonly itemIds: readonly string[];
@@ -1283,12 +1301,25 @@ export function ConversationStreamV2(): JSX.Element {
         : [],
     [windowing, renderItems, expanded, clustersForceExpand, thinkingForceExpand],
   );
+  // The streaming row and the rows a search jump or its return targets stay mounted, so the
+  // code that scrolls to them finds their element.
+  const pinnedRows = useMemo(() => {
+    if (!windowing) return EMPTY_PINS;
+    const targets = [findJump?.id, locatedSearchItem, returnAnchorId].flatMap((id) => {
+      const row = id ? renderItems.find((item) => renderItemContains(item, id)) : undefined;
+      return row ? [row.id] : [];
+    });
+    const tail = renderItems.at(-1);
+    if (isStreaming && tail) targets.push(tail.id);
+    return targets.length === 0 ? EMPTY_PINS : new Set(targets);
+  }, [windowing, findJump, locatedSearchItem, returnAnchorId, renderItems, isStreaming]);
   const windowParts = useTranscriptWindow({
     enabled: windowing,
     scrollRef,
     windowRef,
     rows: windowRows,
     layoutKey: currentSessionId,
+    pinned: pinnedRows,
   });
 
   const captureViewportScrollAnchor = useCallback(
@@ -1378,15 +1409,21 @@ export function ConversationStreamV2(): JSX.Element {
       scrollbarDragRef.current = null;
       const pendingPrepend = prependAnchorRestoreRef.current;
       const loadingPrepend = pendingPrepend?.phase === 'loading';
+      // A smooth scroll aims at a position computed from spacer estimates; it would land beside
+      // a far hit once the rows on the way mount at their real heights.
+      const instant = loadingPrepend || windowing;
+      // The jump's own scroll is ignored as programmatic, so it must leave the bottom explicitly;
+      // otherwise the next content resize (windowing, streaming) follows back to the bottom.
+      wasAtBottomRef.current = false;
       markProgrammaticScroll(
-        loadingPrepend ? INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS : SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS,
+        instant ? INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS : SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS,
       );
-      el.scrollIntoView({ block: 'center', behavior: loadingPrepend ? 'auto' : 'smooth' });
+      el.scrollIntoView({ block: 'center', behavior: instant ? 'auto' : 'smooth' });
       if (loadingPrepend && pendingPrepend.scroller === scrollRef.current) {
         pendingPrepend.snapshot = rememberScrollSnapshot(pendingPrepend.scroller);
       }
     }
-  }, [findJump, rememberScrollSnapshot, handlePrependUserScrollIntent]);
+  }, [findJump, windowing, rememberScrollSnapshot, handlePrependUserScrollIntent]);
 
   function nextMatch(): void {
     if (matchIds.length === 0) return;
@@ -1464,8 +1501,12 @@ export function ConversationStreamV2(): JSX.Element {
       pendingSearchFocus.current = null;
       setLocatedSearchItem(null);
       setExpanded(previousExpansion);
+      setReturnAnchorId(
+        snapshot.anchor ? (snapshot.anchor.savedItemId ?? snapshot.anchor.id) : null,
+      );
       returnFromLocatedSearch.current = null;
       requestAnimationFrame(() => {
+        setReturnAnchorId(null);
         if (
           scrollRef.current !== scroller ||
           useAppStore.getState().currentSessionId !== currentSessionId

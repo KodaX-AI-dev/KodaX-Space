@@ -20,7 +20,9 @@ if(channel==='session.productSearch')return{ok:true,data:{revision:'r',hits:[{it
 if(channel==='session.productItem')return{ok:true,data:{id:input.itemId,text:'Archived needle detail',offset:0,totalLength:22}};
 if(channel!=='session.history')return{ok:false,error:{message:'Unexpected '+channel}};
 if(input.around?.searchItemId==='unique-hit')return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],
-productItems:window.locatedKind==='same-page'?window.samePageItems:window.locatedKind==='mixed'
+productItems:window.locatedKind==='same-page'?window.samePageItems:window.locatedKind==='far'
+?[...window.extraItems.slice(0,1500),{id:'located-input',type:'user',text:'Located record',historyBoundary:{entryId:'found',sourceRevision:'s'}},...window.extraItems.slice(1500)].map((item,i)=>item.type==='user'?item:{...item,historyBoundary:undefined})
+:window.locatedKind==='mixed'
 ?[{id:'located-thinking',type:'thinking',text:'Located thinking detail',historyBoundary:{entryId:'found',sourceRevision:'s'}},
 {id:'located-answer',type:'assistant',text:'Located answer',historyBoundary:{entryId:'found',sourceRevision:'s'}},
 {id:'located-tool',type:'tool',text:'Located tool detail',tool:{name:'read',callId:'located-call',status:'success',resultRecorded:true},historyBoundary:{entryId:'found',sourceRevision:'s'}},
@@ -51,6 +53,7 @@ window.locate=async(id)=>{await restoreNewestSessionHistory('s','code');await op
 window.middle=()=>window.locate('middle');
 window.settle=(count=12)=>new Promise(resolve=>{let frames=0;const tick=()=>++frames<count?requestAnimationFrame(tick):resolve();requestAnimationFrame(tick)});
 window.select=id=>{deactivateSessionHistoryPaging(useAppStore.getState().currentSessionId);useAppStore.setState({currentSessionId:id});activateSessionHistoryPaging(id)};
+window.streaming=on=>useAppStore.setState({pendingSendBySession:on?{s:true}:{}});
 window.detail=mode=>useAppStore.getState().setTranscriptView(mode);
 window.primeLive=async()=>{
   window.holdNewest=false;
@@ -192,7 +195,7 @@ historyTest(
     assert.equal(await page.getByText('Start of this conversation', { exact: true }).count(), 0);
     await page.evaluate('window.fail=false;window.hold=false');
     await error.getByRole('button', { name: 'Retry', exact: true }).click();
-    await page.getByText('OLDEST 0', { exact: true }).waitFor();
+    await waitLoaded(page, 'OLDEST0');
     await page.getByText('Start of this conversation', { exact: true }).waitFor();
     assert.ok(await isLoaded(page, 'MIDDLE0'), 'the read page is retained');
     assert.deepEqual(errors, []);
@@ -442,7 +445,12 @@ historyTest(
     await search.getByRole('searchbox').fill('needle');
     await search.getByRole('combobox').selectOption('session');
     await search.getByText('Archived needle', { exact: true }).click();
-    await stream.getByText('concealed tool result', { exact: true }).waitFor();
+    await page.waitForFunction(
+      () => document.activeElement?.getAttribute('data-source-item') === 'NEWEST0',
+    );
+    // The revealed tool row is a page below the located row; with windowing it is not mounted.
+    if (!t.name.endsWith(WINDOWED))
+      await stream.getByText('concealed tool result', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back to results' }).click();
     await reusedTool.waitFor();
     assert.equal(await page.evaluate('window.requests.at(-1)'), 'newest');
@@ -863,17 +871,28 @@ historyTest('find counts collapsed thinking and opens it on jump', async (t) => 
   assert.deepEqual(errors, []);
 });
 
-async function openWindowedTranscript(t: TestContext) {
+async function openWindowedTranscript(t: TestContext, count = 3000) {
   const opened = await openHistoryFixture(t);
   await opened.page.evaluate(`window.kodaxSpace.transcriptWindowing=true;window.singlePage=true;
-window.extraItems=Array.from({length:3000},(_,i)=>({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(i%7)}));
+window.extraItems=Array.from({length:${count}},(_,i)=>({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(i%7)}));
 window.start()`);
-  await opened.page.getByText('Bulk 2999', { exact: true }).waitFor();
+  await opened.page.getByText(`Bulk ${count - 1}`, { exact: true }).waitFor({ timeout: 60_000 });
   await opened.page.evaluate('window.settle(24)');
   return opened;
 }
 
 const mountedRows = (page: Page): Promise<number> => page.locator('[data-window-row]').count();
+
+/** Distinct scrollTop:mounted-row states over 12 frames; a settled window has exactly one. */
+const windowFrames = (page: Page): Promise<string[]> =>
+  page.getByTestId('conversation-scroll-container').evaluate(async (element) => {
+    const frames = new Set<string>();
+    for (let frame = 0; frame < 12; frame += 1) {
+      frames.add(`${element.scrollTop}:${element.querySelectorAll('[data-window-row]').length}`);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    return [...frames];
+  });
 
 test(
   'windowing mounts a bounded slice of a long transcript and follows the reader',
@@ -882,15 +901,7 @@ test(
     const { page, errors } = await openWindowedTranscript(t);
     const scroller = page.getByTestId('conversation-scroll-container');
     // Following the bottom must be a fixed point: auto-follow's own scrolls do not reshape it.
-    const bottomFrames = await scroller.evaluate(async (element) => {
-      const frames = new Set<string>();
-      for (let frame = 0; frame < 12; frame += 1) {
-        const rows = element.querySelectorAll('[data-window-row]').length;
-        frames.add(`${element.scrollTop}:${rows}`);
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      }
-      return [...frames];
-    });
+    const bottomFrames = await windowFrames(page);
     assert.equal(bottomFrames.length, 1, `the bottom kept changing: ${bottomFrames.join(' ')}`);
     assert.ok((await mountedRows(page)) <= 80, `mounted ${await mountedRows(page)} rows`);
     assert.equal(await page.getByText('Bulk 0', { exact: true }).count(), 0);
@@ -950,6 +961,115 @@ test(
     await page.evaluate('window.settle(24)');
     const moved = (await top()) - before;
     assert.ok(Math.abs(moved - 400) <= 2, `read row moved ${moved}px for a 400px scroll`);
+    assert.deepEqual(errors, []);
+  },
+);
+
+const inView = (page: Page, selector: string): Promise<boolean> =>
+  page.locator(selector).evaluate((element) => {
+    const frame = document
+      .querySelector('[data-testid="conversation-scroll-container"]')!
+      .getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+    return box.bottom > frame.top && box.top < frame.bottom;
+  });
+
+test(
+  'windowing keeps the rows in use mounted while the reader scrolls away',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await page.evaluate('window.streaming(true)');
+    await page.evaluate('window.settle(24)');
+    await page.locator('[data-source-item="bulk2998"]').focus();
+    // Stands in for an open popup menu trigger inside the row.
+    await page.locator('[data-source-item="bulk2996"]').evaluate((element) => {
+      element.setAttribute('aria-haspopup', 'menu');
+      element.setAttribute('aria-expanded', 'true');
+    });
+    await page.locator('[data-source-item="bulk2997"]').evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      document.getSelection()!.removeAllRanges();
+      document.getSelection()!.addRange(range);
+    });
+    await scroller.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.getByText('NEWEST 0', { exact: true }).waitFor();
+    await page.evaluate('window.settle(24)');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.getAttribute('data-source-item')),
+      'bulk2998',
+      'the focused row keeps focus',
+    );
+    assert.match(await page.evaluate(() => document.getSelection()!.toString()), /Bulk 2997/);
+    assert.equal(await page.locator('[data-source-item="bulk2996"]').count(), 1, 'open menu');
+    assert.equal(await page.locator('[data-source-item="bulk2999"]').count(), 1, 'live tail');
+    assert.ok((await mountedRows(page)) <= 80);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing mounts a far find hit before jumping to it',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    await page.keyboard.press('Control+f');
+    const search = page.getByTestId('transcript-search-bar');
+    await search.getByRole('searchbox').fill('NEWEST 3');
+    await search.getByText('1/1').waitFor();
+    await page.locator('[data-source-item="NEWEST3"]').waitFor();
+    await page.evaluate('window.settle(48)');
+    assert.ok(await inView(page, '[data-source-item="NEWEST3"]'), 'the hit is in view');
+    assert.equal((await windowFrames(page)).length, 1, 'the window settles after a far jump');
+    assert.ok((await mountedRows(page)) <= 80);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing mounts a far located search hit before jumping to it',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    await page.evaluate('window.locatedKind="far"');
+    await page.keyboard.press('Control+f');
+    const search = page.getByTestId('transcript-search-bar');
+    await search.getByRole('searchbox').fill('needle');
+    await search.getByRole('combobox').selectOption('session');
+    await search.getByText('Archived needle', { exact: true }).click();
+    await page.waitForFunction(
+      () => document.activeElement?.getAttribute('data-source-item') === 'located-input',
+    );
+    await page.evaluate('window.settle(48)');
+    assert.ok(await inView(page, '[data-source-item="located-input"]'), 'the hit is in view');
+    assert.ok((await mountedRows(page)) <= 80);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing keeps a 10k-row transcript under 500 mounted rows end to end',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t, 10_000);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    const counts = [await mountedRows(page)];
+    for (const position of [0.5, 0]) {
+      await scroller.evaluate((element, ratio) => {
+        element.scrollTop = element.scrollHeight * ratio;
+      }, position);
+      await page.evaluate('window.settle(24)');
+      counts.push(await mountedRows(page));
+    }
+    await page.getByText('NEWEST 0', { exact: true }).waitFor();
+    assert.ok(
+      counts.every((count) => count > 0 && count <= 500),
+      `mounted ${counts.join('/')}`,
+    );
     assert.deepEqual(errors, []);
   },
 );

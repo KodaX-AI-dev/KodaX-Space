@@ -4,19 +4,22 @@
 // is within BOTTOM_SLACK_PX of the end. The hook never writes scrollTop. Spacers opt out of native
 // scroll anchoring, so the browser keeps the row being read in place while spacers and newly
 // mounted rows change height.
+//
+// Rows in use stay mounted wherever they are: the caller's pins plus focus, an open popup menu and
+// every row a text selection spans, read from the DOM whenever the window is about to move.
 
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { computeTranscriptWindow, type WindowPart, type WindowRow } from './transcriptWindow.js';
 
 const BOTTOM_SLACK_PX = 32;
 const NOTHING_PINNED: ReadonlySet<string> = new Set();
+const OPEN_MENU_ROWS = ':scope > [data-window-row]:has([aria-haspopup][aria-expanded="true"])';
 
 interface View {
   readonly anchor?: { readonly id: string; readonly offset: number };
   /** `Infinity` is the bottom. */
   readonly scrollTop: number;
   readonly viewportHeight: number;
-  readonly direction: 'up' | 'down' | null;
 }
 
 interface WindowState {
@@ -24,13 +27,12 @@ interface WindowState {
   view: View;
   measured: Map<string, number>;
   gap: number;
-  lastScrollTop: number;
+  inUse: ReadonlySet<string>;
 }
 
 const bottomView = (viewportHeight: number): View => ({
   scrollTop: Number.POSITIVE_INFINITY,
   viewportHeight,
-  direction: null,
 });
 
 function freshState(layoutKey: string | null): WindowState {
@@ -39,11 +41,15 @@ function freshState(layoutKey: string | null): WindowState {
     view: bottomView(window.innerHeight),
     measured: new Map(),
     gap: 0,
-    lastScrollTop: 0,
+    inUse: NOTHING_PINNED,
   };
 }
 
-function windowParts(state: WindowState, rows: readonly WindowRow[]): WindowPart[] {
+function windowParts(
+  state: WindowState,
+  rows: readonly WindowRow[],
+  pinned: ReadonlySet<string>,
+): WindowPart[] {
   const { view } = state;
   return computeTranscriptWindow({
     rows,
@@ -52,9 +58,11 @@ function windowParts(state: WindowState, rows: readonly WindowRow[]): WindowPart
     scrollTop: view.scrollTop,
     ...(view.anchor ? { anchor: view.anchor } : {}),
     viewportHeight: view.viewportHeight,
-    overscanBefore: view.viewportHeight * (view.direction === 'up' ? 2 : 1),
-    overscanAfter: view.viewportHeight * (view.direction === 'down' ? 2 : 1),
-    pinned: NOTHING_PINNED,
+    // Symmetric on purpose: a scroll-direction bias lets the browser's own anchoring correction
+    // (a few px of scrollTop) flip the direction, reshape the window and oscillate.
+    overscanBefore: view.viewportHeight,
+    overscanAfter: view.viewportHeight,
+    pinned: state.inUse.size === 0 ? pinned : new Set([...pinned, ...state.inUse]),
   });
 }
 
@@ -73,14 +81,9 @@ function sameParts(left: readonly WindowPart[], right: readonly WindowPart[]): b
 }
 
 /** Where the reader is, read from the mounted rows and spacers. */
-function readView(
-  scroller: HTMLElement,
-  container: HTMLElement,
-  direction: View['direction'],
-): View {
+function readView(scroller: HTMLElement, container: HTMLElement): View {
   const viewportHeight = scroller.clientHeight;
   if (scroller.scrollHeight - scroller.scrollTop - viewportHeight <= BOTTOM_SLACK_PX)
-    // No direction bias at the bottom: auto-follow's own scrolls must not reshape the window.
     return bottomView(viewportHeight);
   const top = scroller.getBoundingClientRect().top;
   for (const child of container.children) {
@@ -89,9 +92,32 @@ function readView(
     if (id === undefined) continue;
     const rect = child.getBoundingClientRect();
     if (rect.bottom <= top) continue;
-    return { anchor: { id, offset: top - rect.top }, scrollTop: 0, viewportHeight, direction };
+    return { anchor: { id, offset: top - rect.top }, scrollTop: 0, viewportHeight };
   }
-  return { scrollTop: 0, viewportHeight, direction };
+  return { scrollTop: 0, viewportHeight };
+}
+
+/** Rows the reader is using in the DOM: focus, an open popup menu, and a text selection's span. */
+function rowsInUse(container: HTMLElement, rows: readonly WindowRow[]): ReadonlySet<string> {
+  const rowOf = (node: Node | null | undefined): string | undefined => {
+    const element = node instanceof Element ? node : node?.parentElement;
+    const row = element?.closest<HTMLElement>('[data-window-row]');
+    return row?.parentElement === container ? row.dataset.windowRow : undefined;
+  };
+  const ids = [rowOf(document.activeElement)];
+  for (const row of container.querySelectorAll<HTMLElement>(OPEN_MENU_ROWS))
+    ids.push(row.dataset.windowRow);
+  const selection = document.getSelection();
+  if (selection && !selection.isCollapsed) {
+    const ends = [rowOf(selection.anchorNode), rowOf(selection.focusNode)]
+      .map((id) => rows.findIndex((row) => row.id === id))
+      .filter((index) => index >= 0);
+    if (ends.length > 0)
+      for (let index = Math.min(...ends); index <= Math.max(...ends); index += 1)
+        ids.push(rows[index].id);
+  }
+  const inUse = ids.filter((id): id is string => id !== undefined);
+  return inUse.length === 0 ? NOTHING_PINNED : new Set(inUse);
 }
 
 /** Records changed row heights; true when any changed. */
@@ -141,27 +167,32 @@ export function useTranscriptWindow({
   windowRef,
   rows,
   layoutKey,
+  pinned,
 }: {
   readonly enabled: boolean;
   readonly scrollRef: RefObject<HTMLElement | null>;
   readonly windowRef: RefObject<HTMLElement | null>;
   readonly rows: readonly WindowRow[];
   readonly layoutKey: string | null;
+  /** Rows the caller needs mounted, such as the streaming row or a search jump target. */
+  readonly pinned: ReadonlySet<string>;
 }): readonly WindowPart[] | null {
   const stateRef = useRef<WindowState | null>(null);
   const rowsRef = useRef(rows);
+  const pinnedRef = useRef(pinned);
   const partsRef = useRef<readonly WindowPart[] | null>(null);
   const bindingRef = useRef<Binding | null>(null);
   const [version, setVersion] = useState(0);
   rowsRef.current = rows;
+  pinnedRef.current = pinned;
 
   const parts = useMemo(() => {
     if (!enabled) return null;
     if (stateRef.current?.layoutKey !== layoutKey) stateRef.current = freshState(layoutKey);
-    return windowParts(stateRef.current, rows);
-    // `version` re-reads the view and measurements kept in stateRef.
+    return windowParts(stateRef.current, rows, pinned);
+    // `version` re-reads the view, measurements and rows in use kept in stateRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, rows, layoutKey, version]);
+  }, [enabled, rows, layoutKey, pinned, version]);
   partsRef.current = parts;
 
   function bind(scroller: HTMLElement): Binding {
@@ -171,18 +202,11 @@ export function useTranscriptWindow({
       const state = stateRef.current;
       const container = windowRef.current;
       if (!state || !container) return;
-      const scrollTop = scroller.scrollTop;
-      const direction =
-        scrollTop === state.lastScrollTop
-          ? state.view.direction
-          : scrollTop < state.lastScrollTop
-            ? 'up'
-            : 'down';
-      state.lastScrollTop = scrollTop;
-      state.view = readView(scroller, container, direction);
+      state.view = readView(scroller, container);
       state.gap = readGap(container) ?? state.gap;
+      state.inUse = rowsInUse(container, rowsRef.current);
       const previous = partsRef.current;
-      if (!previous || !sameParts(previous, windowParts(state, rowsRef.current)))
+      if (!previous || !sameParts(previous, windowParts(state, rowsRef.current, pinnedRef.current)))
         setVersion((value) => value + 1);
     };
     const schedule = (): void => {
