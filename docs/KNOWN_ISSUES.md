@@ -239,8 +239,8 @@ Last Updated: 2026-11-10
 | 239 | Medium | Resolved in source | Artifact cards require two clicks when the Coder sidebar is collapsed | Reported Space 0.1.47-alpha.4; exact introduction unconfirmed | 2026-11-09 |
 | 240 | Medium | Resolved in source | Accepted slash commands reopen optional suggestions and intercept submission | Reported Space 0.1.47-alpha.4; exact introduction unconfirmed | 2026-11-09 |
 | 241 | Medium | Resolved in source | History boundaries are hard to discover and saved search requires an extra navigation step | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4 | 2026-11-09 |
-| 242 | Medium | ready | First older page after cold-opening a very large Session is rejected as changed saved history | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4 | 2026-11-10 |
-| 243 | Medium | ready | Loading newer pages from a located (`around`) window drifts the reading anchor by about 54 px | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4 | 2026-11-10 |
+| 242 | Medium | Resolved | First older page after cold-opening a very large Session is rejected as changed saved history | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; fixed in source 0.1.47-alpha.5 | 2026-11-10 |
+| 243 | Medium | Resolved | Loading newer pages from a located (`around`) window drifts the reading anchor by about 54 px | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; fixed in source 0.1.47-alpha.5 | 2026-11-10 |
 | 244 | Low | ready | Cold-open newest history read grows with Session file size | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4 | 2026-11-10 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
@@ -16181,25 +16181,32 @@ From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 
 
 ## Issue 242 — First older page after cold-opening a very large Session is rejected as changed saved history
 
-- **Priority / status**: Medium; ready. Created 2026-11-10 from the F144 ticket 1 real-chain baseline.
+- **Priority / status**: Medium; resolved in source, Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4. Created and fixed 2026-11-10 from the F144 ticket 1 real-chain baseline.
 - **Original problem**: after a cold open of a 30k-message Coder Session (25.5 MB), Browse then scrolling up shows "Saved history changed while you were reading" and stops at 157 rows. Reproduced in 3/3 runs; 1k and 10k corpora do not reproduce. "Return to newest messages" rereads newest and paging then works. Expected: the first older page loads from the cursor issued with the cold-open newest page.
 - **Reproduction**: `node scripts/perf-baseline.mjs --grep coder-30k` (records the failure as `staleFirstAttempt`), or open the same SDK-written corpus manually.
 - **Evidence**: main logs no `session-history page_read` for the rejected request, so SDK `readHistory(cursor)` rejects before projection. The cold-open view read (`readSessionProductView`, first observation) took 1.9 s.
-- **Suspected cause (unconfirmed)**: first observation advances SDK Session metadata after the newest revision/cursor was captured, so the cursor is stale on arrival. Must be confirmed as Space-side ordering vs SDK behavior before fixing.
+- **Root cause (confirmed)**: Session observation attaches Actor telemetry without awaiting it (`ensureObserved` → `void ensureActorObserved`). Its first `agents.tree` claims the Actor runtime, which rewrites the Session meta line with `actorSnapshot`; the SDK documents that "a cold Runtime's Actor claim can also change this revision". On a 26 MB Session the rewrite landed ~1 s after the newest page was served, so the SDK rejected the continuation with `resync_required` "Conversation history changed; request a fresh page". Small Sessions finish the rewrite before the read.
+- **Resolution**: `readSessionProductView` now awaits the in-flight Actor attach before returning, so the newest page (and its cursor) is captured after the claim. Attach failures stay reported at the attach site. The rejected-continuation path now logs a `session-history read_data_changed` warning with the SDK code/message instead of mapping it silently. Cost: the 30k cold newest read rises from ~2.3 s to ~3.9 s because the claim rewrite now precedes the first page (see Issue 244).
+- **Files / tests**: `electron/kodax/runtime-host-adapter.ts`; `electron/test/runtime-host-adapter.test.ts` (`newest history waits for the observation Actor claim before capturing its cursor`, RED→GREEN). Real-chain `coder-30k` rerun: no stale first attempt, continuous older paging; `coder-1k` rerun `staleFirstAttempt: null`.
+- **Resolution date**: 2026-11-10.
 - Source: [F144 ticket 1 baseline](perf-baselines/f144-ticket1-baseline.md#发现与决策门无关需要单独跟进).
 
 ## Issue 243 — Loading newer pages from a located (`around`) window drifts the reading anchor
 
-- **Priority / status**: Medium; ready. Created 2026-11-10 from the F144 ticket 1 real-chain baseline.
+- **Priority / status**: Medium; resolved in source, Space 0.1.47-alpha.5. Created and fixed 2026-11-10 from the F144 ticket 1 real-chain baseline.
 - **Original problem**: after locating a saved search result (`around` window) and scrolling down to append newer pages, the active row moves by about 54 px (1k p50 53.6 px; 10k / 30k max 133 / 55 px). Expected: drift ≤ 2 px after layout settles, as for prepends (≤ 0.4 px).
 - **Reproduction**: `node scripts/perf-baseline.mjs --grep coder-1k` (append drift in the result JSON). Wheel delta −600 vs −120 gives the same drift, so it is real layout displacement rather than wheel momentum.
+- **Root cause**: while a newer page loads, the history boundary box hides, shrinking content above the reading position. At the bottom edge the browser clamps `scrollTop`; that scroll event refreshed the pending snapshot as an at-bottom snapshot without an anchor, and the `retained-append` restore applied the raw `scrollTop`, offset by the boundary height once it reappeared.
+- **Resolution**: pending snapshots for newer loads always carry a row anchor (`capturePendingHistorySnapshot`), both at request time and when refreshed during loading.
+- **Files / tests**: `renderer/src/shell/ConversationStreamV2.tsx`; `conversationHistoryNavigation.browser.test.ts` (`appending a newer page from a located window keeps the visible row at the bottom edge`, RED 23 px → GREEN). Real-chain `coder-1k` rerun: append drift p50 / max 0 / 0 px over 7 loads (was 53.6 / 54.6).
+- **Resolution date**: 2026-11-10.
 - Source: [F144 ticket 1 baseline](perf-baselines/f144-ticket1-baseline.md#发现与决策门无关需要单独跟进).
 
 ## Issue 244 — Cold-open newest history read grows with Session file size
 
 - **Priority / status**: Low; ready. Created 2026-11-10 from the F144 ticket 1 real-chain baseline.
 - **Original problem**: cold opening the newest page costs 494 / 1377 / 2326 ms renderer-side for 1 / 8.6 / 25.5 MB Sessions; main view read is 178 / 618 / 1875 ms and SDK read 298 / 684 / 271 ms. Warm reopen is 173–224 ms. Expected: first paint of the newest page does not scale with total Session size.
-- **Context**: cold-start / first-observation path only; per-page loads stay flat (~15 ms main side) and the F144 decision gate is unaffected.
+- **Context**: cold-start / first-observation path only; since the Issue 242 fix the first newest read also includes the cold Actor-claim metadata rewrite (30k: ~3.9 s); per-page loads stay flat (~15 ms main side) and the F144 decision gate is unaffected.
 - **Reproduction**: `npm run test:perf-baseline` (first-paint cold column).
 - Source: [F144 ticket 1 baseline](perf-baselines/f144-ticket1-baseline.md#发现与决策门无关需要单独跟进).
 
@@ -16207,11 +16214,11 @@ From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 
 
 - Total: 231
 - Open: 1
-- Ready: 7
+- Ready: 5
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 212
+- Resolved (including source-only fixes): 214
 - High: 116
 - Medium: 101
 - Low: 14
