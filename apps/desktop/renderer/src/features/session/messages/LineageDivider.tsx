@@ -6,6 +6,7 @@ import {
   GitBranch,
   type LucideIcon,
 } from 'lucide-react';
+import { DisclosurePart, useRowDisclosure } from './rowDisclosure.js';
 
 export type LineageKind = 'branch_summary' | 'compaction' | 'history_truncation';
 
@@ -42,6 +43,7 @@ export function LineageDivider({
   readonly detail?: string;
 }): JSX.Element {
   const Icon = LINEAGE_ICON[kind];
+  const [detailOpen, setDetailOpen] = useRowDisclosure(DisclosurePart.lineageDetail, false);
   const content = (
     <>
       <Icon className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} aria-hidden />
@@ -65,7 +67,11 @@ export function LineageDivider({
   }
   return (
     <div {...frame}>
-      <details className="group">
+      <details
+        className="group"
+        open={detailOpen}
+        onToggle={(event) => setDetailOpen(event.currentTarget.open)}
+      >
         <summary className="list-none [&::-webkit-details-marker]:hidden">
           <DividerRow>
             <span className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-hover-bg hover:text-fg-secondary group-open:bg-hover-bg group-open:text-fg-secondary">

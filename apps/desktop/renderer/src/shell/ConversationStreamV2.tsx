@@ -1,4 +1,4 @@
-import { usePageFindMatches } from '../features/session/usePageFindMatches.js';
+import { useTranscriptFind, type FindReveal } from './transcriptFind.js';
 import { isSurfaceInteractive } from '../lib/surfaceVisibility.js';
 // ConversationStreamV2 — alpha.1
 //
@@ -102,6 +102,7 @@ import {
   QueuedUserBubble,
 } from '../features/session/messages/bubbles.js';
 import {
+  openRowDisclosure,
   RowDisclosureOwner,
   RowDisclosureSession,
   useRevealOnce,
@@ -1253,7 +1254,14 @@ export function ConversationStreamV2(): JSX.Element {
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const matchIds = usePageFindMatches(scrollRef, searchOpen && !sessionSearch ? searchQuery : '');
+  // Matches loaded rows, mounted or not; verbose view also matches the tool details it shows.
+  const findMatches = useTranscriptFind(
+    renderItems,
+    searchOpen && !sessionSearch ? searchQuery : '',
+    clustersForceExpand,
+  );
+  const matchIds = useMemo(() => findMatches.map((match) => match.id), [findMatches]);
+  const [findJump, setFindJump] = useState<{ readonly id: string } | null>(null);
 
   const captureViewportScrollAnchor = useCallback(
     (scroller: HTMLDivElement): ViewportScrollAnchor | null => {
@@ -1314,11 +1322,29 @@ export function ConversationStreamV2(): JSX.Element {
   }, [searchQuery]);
 
   const visibleMatchIndex = Math.min(currentMatchIdx, matchIds.length - 1);
-  // 当前匹配滚到中间
+  // Open whatever folds the current hit; the jump below runs once that expansion has rendered.
   useEffect(() => {
-    if (matchIds.length === 0) return;
-    const id = matchIds[visibleMatchIndex];
-    const el = scrollRef.current?.querySelector(`[data-msg-id="${CSS.escape(id)}"]`);
+    const match = findMatches[visibleMatchIndex];
+    if (!match) {
+      setFindJump(null);
+      return;
+    }
+    if (match.reveal) revealFindMatch(match.reveal);
+    setFindJump({ id: match.id });
+    function revealFindMatch(reveal: FindReveal): void {
+      if (reveal.kind === 'receipt') {
+        setExpanded((previous) =>
+          previous.has(reveal.id) ? previous : new Set(previous).add(reveal.id),
+        );
+      } else if (currentSessionId) {
+        openRowDisclosure(currentSessionId, reveal.ownerId, reveal.part);
+      }
+    }
+  }, [visibleMatchIndex, findMatches, currentSessionId]);
+  // 当前匹配滚到中间
+  useLayoutEffect(() => {
+    if (!findJump) return;
+    const el = scrollRef.current?.querySelector(`[data-msg-id="${CSS.escape(findJump.id)}"]`);
     if (el && el instanceof HTMLElement) {
       handlePrependUserScrollIntent();
       scrollbarDragRef.current = null;
@@ -1332,7 +1358,7 @@ export function ConversationStreamV2(): JSX.Element {
         pendingPrepend.snapshot = rememberScrollSnapshot(pendingPrepend.scroller);
       }
     }
-  }, [visibleMatchIndex, matchIds, rememberScrollSnapshot, handlePrependUserScrollIntent]);
+  }, [findJump, rememberScrollSnapshot, handlePrependUserScrollIntent]);
 
   function nextMatch(): void {
     if (matchIds.length === 0) return;

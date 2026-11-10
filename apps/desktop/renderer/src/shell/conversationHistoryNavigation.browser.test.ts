@@ -38,7 +38,7 @@ const boundary=input.cursor??input.around?.searchItemId;
 const index=boundary==='oldest'?2:boundary==='middle'?1:0;
 const label=['NEWEST','MIDDLE','OLDEST'][index];
 const tool={id:'tool-'+label,type:'tool',text:'concealed tool result',historyBoundary:{entryId:'found',sourceRevision:'s'},tool:{name:'read',callId:'call-'+label,status:'success',resultRecorded:true}};
-return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'}]),
+return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'},...(index===0?window.extraItems??[]:[])]),
 conversation:window.historyStatus?{status:window.historyStatus}:undefined,
 page:{outcome:'ready',revision:'r',sourceRevision:'s',hasMore:!window.singlePage&&index<2,hasNewer:index>0,locatedBoundaryId:'found',windowMode:'replace',...(index>0?{newerCursor:index===2?'middle':'newest'}:{}),...(!window.singlePage&&index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
 }};
@@ -221,9 +221,9 @@ test(
     const search = page.getByTestId('transcript-search-bar');
     await search.getByRole('searchbox').fill('concealed tool result');
     await search.getByText('0/0').waitFor();
+    // Verbose view shows tool details, so every loaded tool result counts, mounted or not.
     await page.evaluate('window.detail("verbose")');
-    await stream.getByTestId('tool-call-card').getByRole('button').first().click();
-    await search.getByText('1/1').waitFor();
+    await search.getByText('1/3').waitFor();
     // Slow rendering must not turn a programmatic search jump into history paging.
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 12 });
     await search.getByRole('searchbox').fill('no current-page match');
@@ -236,7 +236,7 @@ test(
     );
     await page.evaluate('window.settle()');
     await search.getByRole('searchbox').fill('concealed tool result');
-    await search.getByText('1/1').waitFor();
+    await search.getByText('1/3').waitFor();
     await page.evaluate('window.settle()');
     await page.evaluate('window.settle()');
     assert.deepEqual(
@@ -832,6 +832,36 @@ test(
     await page.evaluate('window.settle(48)');
     const after = await row.evaluate((element) => element.getBoundingClientRect().top);
     assert.ok(Math.abs(after - before) <= 2, `visible row drifted ${after - before}px`);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'find counts collapsed thinking and opens it on jump',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    await page.evaluate(
+      `window.extraItems=[{id:'pondered',type:'thinking',text:'Pondered the hidden route',historyBoundary:{entryId:'found',sourceRevision:'s'}}];window.start()`,
+    );
+    const stream = page.getByTestId('conversation-stream');
+    await stream.getByText('OLDEST 11', { exact: true }).waitFor();
+    const thought = stream.getByText('Pondered the hidden route');
+    assert.equal(await thought.count(), 0, 'thinking starts collapsed in the normal view');
+    await page.keyboard.press('Control+f');
+    const search = page.getByTestId('transcript-search-bar');
+    await search.getByRole('searchbox').fill('hidden route');
+    await search.getByText('1/1').waitFor();
+    await thought.waitFor();
+    await page.evaluate('window.settle(48)');
+    assert.ok(await thought.isVisible());
+    const inView = await thought.evaluate((element) => {
+      const scroller = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+      const box = element.getBoundingClientRect();
+      const frame = scroller.getBoundingClientRect();
+      return box.bottom > frame.top && box.top < frame.bottom;
+    });
+    assert.ok(inView, 'the opened hit is scrolled into view');
     assert.deepEqual(errors, []);
   },
 );

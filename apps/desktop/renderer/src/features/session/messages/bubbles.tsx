@@ -39,7 +39,7 @@ import type { MessageKey } from '../../../i18n/messages.js';
 import { dispatchOpenFileViewer } from '../../artifact/transientArtifact.js';
 // OC-21: side-effect import 让内置 tool renderers (write/edit/multi_edit) 注册到 registry
 import './toolRenderers.js';
-import { RowDisclosureOwner, useRowDisclosure } from './rowDisclosure.js';
+import { DisclosurePart, RowDisclosureOwner, useRowDisclosure } from './rowDisclosure.js';
 import { getToolInputRenderer, getToolResultRenderer } from './toolRegistry.js';
 
 // ---- P4c: tool result 收窄渲染 ----
@@ -320,7 +320,7 @@ function CollapsibleUserMessageContent({ content }: { content: string }): JSX.El
   const { t } = useI18n();
   const contentId = useId();
   const measuredContentRef = useRef<HTMLDivElement>(null);
-  const [expandedChoice, setExpanded] = useRowDisclosure('user-expanded', false);
+  const [expandedChoice, setExpanded] = useRowDisclosure(DisclosurePart.userQuery, false);
   const [layout, setLayout] = useState({
     fullHeight: 0,
     previewHeight: 0,
@@ -657,7 +657,7 @@ export function AssistantBubble({
   onRewindTurn?: (turnIndex: number) => void;
 }): JSX.Element {
   const { t } = useI18n();
-  const [showThinking, setShowThinking] = useState(false);
+  const [showThinking, setShowThinking] = useRowDisclosure(DisclosurePart.assistantThinking, false);
   const thinkingTokenLabel = t('transcript.view.thinking');
   const turnActions =
     completed === true && turnIndex !== undefined && (onForkTurn || onRewindTurn)
@@ -770,7 +770,7 @@ function ToolCallCardBody({
   status,
 }: ToolCallCardProps): JSX.Element {
   const { t } = useI18n();
-  const [manualExpanded, setManualExpanded] = useRowDisclosure('tool-expanded', () =>
+  const [manualExpanded, setManualExpanded] = useRowDisclosure(DisclosurePart.toolDetails, () =>
     FILE_MUTATION_TOOLS_DEFAULT_EXPANDED.has(toolName),
   );
   const [revealedExpanded, setRevealedExpanded] = useState(true);
@@ -1010,7 +1010,7 @@ type RuntimeFailureDetailsProps = Pick<
   'failureDetail' | 'failureKind' | 'runtimeRunId' | 'terminal'
 >;
 
-function runtimeFailureRows(message: RuntimeFailureDetailsProps): RuntimeFailureRow[] {
+export function runtimeFailureRows(message: RuntimeFailureDetailsProps): RuntimeFailureRow[] {
   const { failureDetail, failureKind, runtimeRunId, terminal } = message;
   const rows: RuntimeFailureRow[] = [];
   const add = (label: MessageKey, value: string | number | undefined): void => {
@@ -1074,6 +1074,7 @@ function InformationNotice({
   const { t } = useI18n();
   const report = taskResult !== undefined;
   const collapsed = report || text.length > 1000 || text.split('\n').length > 8;
+  const [detailsOpen, setDetailsOpen] = useRowDisclosure(DisclosurePart.noticeDetails, false);
   const body = text;
   return (
     <div
@@ -1086,7 +1087,10 @@ function InformationNotice({
       <Info className={`h-4 w-4 shrink-0 text-fg-muted ${collapsed ? 'mt-0.5' : ''}`} aria-hidden />
       <div className="min-w-0 flex-1">
         {collapsed ? (
-          <details>
+          <details
+            open={detailsOpen}
+            onToggle={(event) => setDetailsOpen(event.currentTarget.open)}
+          >
             <summary className="cursor-pointer">
               {t(report ? 'message.taskReport' : 'message.information')}
               {taskResult && (
@@ -1166,7 +1170,7 @@ export function SystemNotice(message: SystemNoticeMessage): JSX.Element {
 function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
   const { text, action, retryAvailableAt, terminal } = message;
   const { t } = useI18n();
-  const [detailsOpen, setDetailsOpen] = useRowDisclosure('error-details', false);
+  const [detailsOpen, setDetailsOpen] = useRowDisclosure(DisclosurePart.errorDetails, false);
   const detailsId = useId();
   const rows = runtimeFailureRows(message);
   const actionDef = action ? ACTION_BUTTONS[action] : undefined;

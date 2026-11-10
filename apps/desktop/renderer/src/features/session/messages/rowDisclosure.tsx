@@ -24,10 +24,25 @@ interface RowDisclosureScope {
 
 const RowDisclosureContext = createContext<RowDisclosureScope | null>(null);
 
+/** Disclosures that transcript search opens to show a hit inside collapsed content. */
+export const DisclosurePart = {
+  userQuery: 'user-expanded',
+  assistantThinking: 'assistant-thinking',
+  noticeDetails: 'notice-details',
+  lineageDetail: 'lineage-detail',
+  errorDetails: 'error-details',
+  toolDetails: 'tool-expanded',
+} as const;
+
 const choicesBySession = new Map<string, Map<string, boolean>>();
+const openersByChoice = new Map<string, Set<() => void>>();
 
 function choiceKey(ownerId: string, part: string): string {
   return `${ownerId}\u0000${part}`;
+}
+
+function openerKey(sessionId: string, ownerId: string, part: string): string {
+  return `${sessionId}\u0000${choiceKey(ownerId, part)}`;
 }
 
 export function readRowDisclosure(
@@ -50,6 +65,12 @@ export function writeRowDisclosure(
     choicesBySession.set(sessionId, choices);
   }
   choices.set(choiceKey(ownerId, part), open);
+}
+
+/** Opens a disclosure on behalf of the user, including on rows that are mounted right now. */
+export function openRowDisclosure(sessionId: string, ownerId: string, part: string): void {
+  writeRowDisclosure(sessionId, ownerId, part, true);
+  for (const open of openersByChoice.get(openerKey(sessionId, ownerId, part)) ?? []) open();
 }
 
 /** Transcript-level scope; `null` keeps every disclosure local. */
@@ -90,6 +111,18 @@ export function useRowDisclosure(
     const stored = sessionId && ownerId ? readRowDisclosure(sessionId, ownerId, part) : undefined;
     return stored ?? (typeof initial === 'function' ? initial() : initial);
   });
+  useEffect(() => {
+    if (!sessionId || !ownerId) return;
+    const key = openerKey(sessionId, ownerId, part);
+    const openers = openersByChoice.get(key) ?? new Set();
+    const open = (): void => setOpen(true);
+    openers.add(open);
+    openersByChoice.set(key, openers);
+    return () => {
+      openers.delete(open);
+      if (openers.size === 0) openersByChoice.delete(key);
+    };
+  }, [sessionId, ownerId, part]);
   const update = useCallback(
     (next: DisclosureUpdate) => {
       const resolved = typeof next === 'function' ? next(open) : next;
