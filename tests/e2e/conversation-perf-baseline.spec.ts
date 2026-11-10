@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createSessionManager } from '@kodax-ai/kodax/session';
 import { createLocalSdkProvider, launchRealSdkSpace } from './sdk-provider-fixture.js';
-import type { SpaceInstance } from './fixtures.js';
+import { transcriptWindowing, type SpaceInstance } from './fixtures.js';
 import { buildPerfCorpus } from './helpers/perfCorpus.js';
 import { summarize } from './helpers/perfStats.js';
 import { HISTORY_LOAD_MEASURE_PREFIX } from '../../apps/desktop/renderer/src/lib/historyLoadDiagnostics.js';
@@ -241,13 +241,21 @@ async function clickTimerMs(page: Page): Promise<number> {
   );
 }
 
-async function pageStep(page: Page, direction: 'older' | 'newer'): Promise<PageStep> {
+/** One page toward `direction`, or null when `edgeMarker` is already at that edge. */
+async function pageStep(
+  page: Page,
+  direction: 'older' | 'newer',
+  edgeMarker: string,
+): Promise<PageStep | null> {
   const scroller = page.locator(SCROLLER);
   const seq = await lastSeq(page);
   await scroller.evaluate((element, direction) => {
     element.scrollTop = direction === 'older' ? 0 : element.scrollHeight;
   }, direction);
-  await settle(page, 2);
+  // Checked at the edge: with transcript windowing only the rows near the viewport are mounted.
+  await settle(page, 3);
+  if (await edgeRowsInclude(page, edgeMarker, direction === 'older' ? 'first' : 'last'))
+    return null;
   const before = await anchorTop(page);
   await scroller.hover();
   await page.mouse.wheel(0, direction === 'older' ? -120 : 120);
@@ -281,12 +289,13 @@ async function prependToOldest(page: Page, cdp: CDPSession) {
   const heap: { rows: number; heapMb: number }[] = [];
   const started = Date.now();
   let stop: 'oldest' | 'budget' | 'no-load' = 'oldest';
-  while (!(await edgeRowsInclude(page, 'PERF_Q_0 ', 'first'))) {
+  for (;;) {
     if (Date.now() - started > PREPEND_BUDGET_MS) {
       stop = 'budget';
       break;
     }
-    const step = await pageStep(page, 'older');
+    const step = await pageStep(page, 'older', 'PERF_Q_0 ');
+    if (!step) break;
     if (!step.split) {
       stop = 'no-load';
       break;
@@ -302,11 +311,11 @@ async function appendToNewest(page: Page, corpus: PerfCorpusSpec) {
   const steps: PageStep[] = [];
   let stop: 'newest' | 'cap' | 'no-load' = 'cap';
   for (let index = 0; index < corpus.maxAppends; index++) {
-    if (await edgeRowsInclude(page, `PERF_A_${corpus.turns - 1}`, 'last')) {
+    const step = await pageStep(page, 'newer', `PERF_A_${corpus.turns - 1}`);
+    if (!step) {
       stop = 'newest';
       break;
     }
-    const step = await pageStep(page, 'newer');
     if (!step.split) {
       stop = 'no-load';
       break;
@@ -543,6 +552,7 @@ async function environment(space: SpaceInstance) {
     node: process.version,
     ...versions,
     window: '1280x900 content',
+    transcriptWindowing: await transcriptWindowing(space.page),
   };
 }
 
@@ -754,8 +764,9 @@ async function runCorpus(corpus: PerfCorpusSpec) {
     };
     await mkdir(RESULTS_DIR, { recursive: true });
     const body = JSON.stringify(result, null, 2);
-    await writeFile(path.join(RESULTS_DIR, `${corpus.id}.json`), body);
-    await test.info().attach(`${corpus.id}.json`, { body, contentType: 'application/json' });
+    const name = `${corpus.id}${result.environment.transcriptWindowing ? '-windowed' : ''}.json`;
+    await writeFile(path.join(RESULTS_DIR, name), body);
+    await test.info().attach(name, { body, contentType: 'application/json' });
     await cdp.detach();
     expect(pageErrors).toEqual([]);
     expect(provider.requests).toEqual([]);

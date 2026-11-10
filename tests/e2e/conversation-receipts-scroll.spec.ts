@@ -1,9 +1,9 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import type { SessionEvent } from '@kodax-space/space-ipc-schema';
-import { launchSpace, type SpaceInstance } from './fixtures.js';
+import { launchSpace, transcriptWindowing, type SpaceInstance } from './fixtures.js';
 
 interface SessionListEnvelope {
   ok: boolean;
@@ -266,6 +266,20 @@ async function getScrollSnapshot(page: Page): Promise<ScrollSnapshot> {
   });
 }
 
+/** A windowed transcript mounts only rows near the reader: scroll up a screen at a time to the row. */
+async function scrollUpUntilMounted(page: Page, row: Locator): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  await expect
+    .poll(async () => {
+      if ((await row.count()) > 0) return true;
+      await scroller.evaluate((element) => {
+        element.scrollTop -= element.clientHeight;
+      });
+      return false;
+    })
+    .toBe(true);
+}
+
 async function centerLastReceipt(page: Page): Promise<void> {
   await page.evaluate(() => {
     const scroller = document.querySelector('[data-testid="conversation-scroll-container"]');
@@ -329,6 +343,7 @@ test('conversation receipt strip stays top-anchored on expand and preserves scro
       await page.getByLabel('Show right sidebar').click();
     }
     await expect(page.getByTestId('right-sidebar')).toBeVisible({ timeout: 8_000 });
+    if (await transcriptWindowing(page)) await scrollUpUntilMounted(page, receiptPairRow(page));
     await expect(receiptPairRow(page)).toBeVisible({ timeout: 8_000 });
 
     await centerLastReceipt(page);
@@ -429,8 +444,15 @@ test('conversation receipt strip stays top-anchored on expand and preserves scro
     ).toBeLessThan(90);
 
     await page.getByLabel('Jump to bottom').click();
+    // At the bottom the receipt row may be windowed away; read the scroller alone.
     await expect
-      .poll(async () => (await getScrollSnapshot(page)).distanceFromBottom, { timeout: 3_000 })
+      .poll(
+        () =>
+          page
+            .getByTestId('conversation-scroll-container')
+            .evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight),
+        { timeout: 3_000 },
+      )
       .toBeLessThan(8);
   } finally {
     await space.close();

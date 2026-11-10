@@ -1200,6 +1200,10 @@ export function ConversationStreamV2(): JSX.Element {
   const autoFollowRafRef = useRef<number | null>(null);
   const jumpToBottomRafRef = useRef<number | null>(null);
   const scrollSyncRafRef = useRef<number | null>(null);
+  const windowing = window.kodaxSpace?.transcriptWindowing === true;
+  // With windowing, the row a pending history restore returns to stays mounted until it has: a
+  // viewport move before the restore (Chromium on some appends) would otherwise window it away.
+  const [historyRestoreAnchor, setHistoryRestoreAnchor] = useState<string | null>(null);
   const prependAnchorRestoreRef = useRef<{
     readonly token: symbol;
     readonly direction: 'older' | 'newer';
@@ -1209,13 +1213,19 @@ export function ConversationStreamV2(): JSX.Element {
     snapshot: ScrollSnapshot;
     readonly scroller: HTMLDivElement;
   } | null>(null);
+  const syncHistoryRestorePin = useCallback((): void => {
+    if (!windowing) return;
+    const anchor = prependAnchorRestoreRef.current?.snapshot.anchor;
+    setHistoryRestoreAnchor(anchor ? (anchor.savedItemId ?? anchor.id) : null);
+  }, [windowing]);
   const cancelPrependAnchorRestore = useCallback((): void => {
     const active = prependAnchorRestoreRef.current;
     if (active?.rafId !== null && active?.rafId !== undefined) {
       cancelAnimationFrame(active.rafId);
     }
     prependAnchorRestoreRef.current = null;
-  }, []);
+    syncHistoryRestorePin();
+  }, [syncHistoryRestorePin]);
 
   const handlePrependUserScrollIntent = useCallback((): void => {
     const active = prependAnchorRestoreRef.current;
@@ -1283,7 +1293,6 @@ export function ConversationStreamV2(): JSX.Element {
   const [findJump, setFindJump] = useState<{ readonly id: string } | null>(null);
 
   // F144: with the gate on, only rows near the viewport are mounted; spacers stand for the rest.
-  const windowing = window.kodaxSpace?.transcriptWindowing === true;
   const windowRef = useRef<HTMLDivElement | null>(null);
   const windowRows = useMemo(
     () =>
@@ -1301,18 +1310,27 @@ export function ConversationStreamV2(): JSX.Element {
         : [],
     [windowing, renderItems, expanded, clustersForceExpand, thinkingForceExpand],
   );
-  // The streaming row and the rows a search jump or its return targets stay mounted, so the
-  // code that scrolls to them finds their element.
+  // The streaming row and the rows a search jump, its return or a history restore target stay
+  // mounted, so the code that scrolls to them finds their element.
   const pinnedRows = useMemo(() => {
     if (!windowing) return EMPTY_PINS;
-    const targets = [findJump?.id, locatedSearchItem, returnAnchorId].flatMap((id) => {
+    const ids = [findJump?.id, locatedSearchItem, returnAnchorId, historyRestoreAnchor];
+    const targets = ids.flatMap((id) => {
       const row = id ? renderItems.find((item) => renderItemContains(item, id)) : undefined;
       return row ? [row.id] : [];
     });
     const tail = renderItems.at(-1);
     if (isStreaming && tail) targets.push(tail.id);
     return targets.length === 0 ? EMPTY_PINS : new Set(targets);
-  }, [windowing, findJump, locatedSearchItem, returnAnchorId, renderItems, isStreaming]);
+  }, [
+    windowing,
+    findJump,
+    locatedSearchItem,
+    returnAnchorId,
+    historyRestoreAnchor,
+    renderItems,
+    isStreaming,
+  ]);
   const windowParts = useTranscriptWindow({
     enabled: windowing,
     scrollRef,
@@ -1421,9 +1439,16 @@ export function ConversationStreamV2(): JSX.Element {
       el.scrollIntoView({ block: 'center', behavior: instant ? 'auto' : 'smooth' });
       if (loadingPrepend && pendingPrepend.scroller === scrollRef.current) {
         pendingPrepend.snapshot = rememberScrollSnapshot(pendingPrepend.scroller);
+        syncHistoryRestorePin();
       }
     }
-  }, [findJump, windowing, rememberScrollSnapshot, handlePrependUserScrollIntent]);
+  }, [
+    findJump,
+    windowing,
+    rememberScrollSnapshot,
+    handlePrependUserScrollIntent,
+    syncHistoryRestorePin,
+  ]);
 
   function nextMatch(): void {
     if (matchIds.length === 0) return;
@@ -1625,6 +1650,7 @@ export function ConversationStreamV2(): JSX.Element {
     const pending = prependAnchorRestoreRef.current;
     if (pending?.phase === 'loading' && pending.scroller === scroller) {
       pending.snapshot = capturePendingHistorySnapshot(scroller, pending.direction);
+      syncHistoryRestorePin();
     }
   }
 
@@ -1890,6 +1916,7 @@ export function ConversationStreamV2(): JSX.Element {
       liveReadingPosition.current = origin;
     }
     prependAnchorRestoreRef.current = restoreState;
+    syncHistoryRestorePin();
     if (direction === 'older')
       setOlderHistoryFeedback({ sessionId: requestedSessionId, phase: 'loading' });
     wasAtBottomRef.current = false;
@@ -1947,11 +1974,17 @@ export function ConversationStreamV2(): JSX.Element {
           }
           restoreState.positionRestored = true;
           const finalSettleFrame = correctionFrames[correctionFrames.length - 1];
-          if (settleFrame < finalSettleFrame) {
+          // A held thumb pulls the view back under it a frame after a restore write; while that
+          // write's guard lasts, stay restoring so the pull still counts as the drag.
+          const holdsThumb =
+            scrollbarDragRef.current !== null &&
+            performance.now() < programmaticScrollIgnoreUntilRef.current;
+          if (settleFrame < finalSettleFrame || holdsThumb) {
             settleFrame += 1;
             restoreState.rafId = requestAnimationFrame(restoreAfterLayout);
           } else {
             prependAnchorRestoreRef.current = null;
+            syncHistoryRestorePin();
           }
         };
         restoreState.rafId = requestAnimationFrame(restoreAfterLayout);

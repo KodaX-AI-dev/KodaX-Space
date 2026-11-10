@@ -41,7 +41,7 @@ const boundary=input.cursor??input.around?.searchItemId;
 const index=boundary==='oldest'?2:boundary==='middle'?1:0;
 const label=['NEWEST','MIDDLE','OLDEST'][index];
 const tool={id:'tool-'+label,type:'tool',text:'concealed tool result',historyBoundary:{entryId:'found',sourceRevision:'s'},tool:{name:'read',callId:'call-'+label,status:'success',resultRecorded:true}};
-return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'},...(index===0?window.extraItems??[]:[])]),
+return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'},...(index===0?window.extraItems??[]:[]),...(window.pageExtra?.[label]??[])]),
 conversation:window.historyStatus?{status:window.historyStatus}:undefined,
 page:{outcome:'ready',revision:'r',sourceRevision:'s',hasMore:!window.singlePage&&index<2,hasNewer:index>0,locatedBoundaryId:'found',windowMode:'replace',...(index>0?{newerCursor:index===2?'middle':'newest'}:{}),...(!window.singlePage&&index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
 }};
@@ -659,6 +659,43 @@ for (const direction of ['older', 'newer'] as const)
       },
     );
 
+historyTest(
+  'a held scrollbar the browser pulls back to the top right after a restore keeps reading older',
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t, true);
+    page.setDefaultTimeout(5000);
+    // A tall newest page: the jump to its top lands far from the rows the reader had mounted.
+    await page.evaluate(
+      `window.extraItems=Array.from({length:200},(_,i)=>({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(4)}))`,
+    );
+    await page.evaluate('window.locate("newest")');
+    await waitLoaded(page, 'NEWEST11');
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await scroller.evaluate((element) => {
+      element.scrollTop = (element.scrollHeight - element.clientHeight) / 2;
+    });
+    await page.evaluate('window.settle(48)');
+    await sendHistoryPointer(page, 'pointerdown');
+    try {
+      // The thumb is held at the top: whenever the restore moves the view down, Chromium puts it
+      // back under the thumb on a following frame.
+      await page.evaluate(`{
+        const element = document.querySelector('[data-testid="conversation-scroll-container"]');
+        const hold = () => {
+          if (window.requests.includes('oldest')) return;
+          if (element.scrollTop !== 0) element.scrollTop = 0;
+          requestAnimationFrame(hold);
+        };
+        hold();
+      }`);
+      await waitLoaded(page, 'OLDEST11');
+    } finally {
+      await sendHistoryPointer(page, 'pointerup');
+    }
+    assert.deepEqual(errors, []);
+  },
+);
+
 for (const phase of ['stable', 'restoring'] as const)
   historyTest(
     `holding a scrollbar during ${phase} does not turn programmatic search scrolling into paging`,
@@ -837,7 +874,7 @@ historyTest(
     await page.waitForFunction('window.requests.at(-1)==="newest"');
     await page.evaluate('window.settle(4)');
     await page.evaluate('window.release()');
-    await page.getByText('NEWEST 11', { exact: true }).waitFor();
+    await waitLoaded(page, 'NEWEST11');
     await page.evaluate('window.settle(48)');
     const after = await row.evaluate((element) => element.getBoundingClientRect().top);
     assert.ok(Math.abs(after - before) <= 2, `visible row drifted ${after - before}px`);
@@ -932,8 +969,48 @@ test(
   },
 );
 
+for (const nativeAnchoring of [true, false])
+  test(
+    `windowing keeps the row being read in place while rows above mount${nativeAnchoring ? '' : ' without native anchoring'}`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openWindowedTranscript(t);
+      const scroller = page.getByTestId('conversation-scroll-container');
+      // Chromium keeps a coarse anchor it picked while the viewport held only a spacer, until the
+      // next scroll; the window must not depend on native anchoring to keep its own changes still.
+      if (!nativeAnchoring)
+        await scroller.evaluate((element) => {
+          element.style.overflowAnchor = 'none';
+        });
+      await scroller.evaluate((element) => {
+        element.scrollTop = element.scrollHeight / 2;
+      });
+      await page.evaluate('window.settle(24)');
+      const id = await scroller.evaluate((element) => {
+        const frame = element.getBoundingClientRect();
+        const row = [...element.querySelectorAll<HTMLElement>('[data-window-row]')].find(
+          (candidate) => candidate.getBoundingClientRect().top >= frame.top,
+        );
+        return row!.dataset.windowRow!;
+      });
+      const row = page.locator(`[data-window-row="${id}"]`);
+      const top = (): Promise<number> =>
+        row.evaluate((element) => element.getBoundingClientRect().top);
+      const before = await top();
+      await scroller.hover();
+      for (let step = 0; step < 4; step += 1) {
+        await page.mouse.wheel(0, -100);
+        await page.evaluate('window.settle(4)');
+      }
+      await page.evaluate('window.settle(24)');
+      const moved = (await top()) - before;
+      assert.ok(Math.abs(moved - 400) <= 2, `read row moved ${moved}px for a 400px scroll`);
+      assert.deepEqual(errors, []);
+    },
+  );
+
 test(
-  'windowing keeps the row being read in place while rows above mount',
+  'windowing keeps the reader in place while the transcript pane is hidden and shown',
   { skip: !browserAvailable },
   async (t) => {
     const { page, errors } = await openWindowedTranscript(t);
@@ -942,28 +1019,159 @@ test(
       element.scrollTop = element.scrollHeight / 2;
     });
     await page.evaluate('window.settle(24)');
-    const id = await scroller.evaluate((element) => {
-      const frame = element.getBoundingClientRect();
-      const row = [...element.querySelectorAll<HTMLElement>('[data-window-row]')].find(
-        (candidate) => candidate.getBoundingClientRect().top >= frame.top,
-      );
-      return row!.dataset.windowRow!;
-    });
-    const row = page.locator(`[data-window-row="${id}"]`);
-    const top = (): Promise<number> =>
-      row.evaluate((element) => element.getBoundingClientRect().top);
-    const before = await top();
-    await scroller.hover();
-    for (let step = 0; step < 4; step += 1) {
-      await page.mouse.wheel(0, -100);
-      await page.evaluate('window.settle(4)');
-    }
+    const read = () =>
+      scroller.evaluate((element) => {
+        const frame = element.getBoundingClientRect();
+        const row = [...element.querySelectorAll<HTMLElement>('[data-window-row]')].find(
+          (candidate) => candidate.getBoundingClientRect().bottom > frame.top,
+        );
+        return row ? `${row.dataset.windowRow}@${row.getBoundingClientRect().top - frame.top}` : '';
+      });
+    const before = await read();
+    // Max width mode takes the pane out of layout (`display: none`) and later restores it.
+    const pane = (display: string) =>
+      scroller.evaluate((element, display) => {
+        element.parentElement!.style.display = display;
+      }, display);
+    await pane('none');
     await page.evaluate('window.settle(24)');
-    const moved = (await top()) - before;
-    assert.ok(Math.abs(moved - 400) <= 2, `read row moved ${moved}px for a 400px scroll`);
+    await pane('');
+    await page.evaluate('window.settle(24)');
+    assert.equal(await read(), before);
     assert.deepEqual(errors, []);
   },
 );
+
+test(
+  "windowing keeps the reader's row mounted when content above moves it without a scroll",
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    // A caller inserting content above a reader at scrollTop 0 moves the rows without native
+    // anchoring or a scroll event, then restores its own anchor a frame later. A row measurement
+    // landing in between must not re-read the reader as wherever the shifted rows now are.
+    await scroller.evaluate((element) => {
+      element.style.overflowAnchor = 'none';
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    const id = await scroller.evaluate((element) => {
+      const frame = element.getBoundingClientRect();
+      const rows = [...element.querySelectorAll<HTMLElement>('[data-window-row]')];
+      const row = rows.find((candidate) => candidate.getBoundingClientRect().bottom > frame.top)!;
+      row.parentElement!.style.paddingTop = '20000px';
+      row.style.minHeight = `${row.offsetHeight + 1}px`;
+      return row.dataset.windowRow!;
+    });
+    await page.evaluate('window.settle(24)');
+    assert.equal(await page.locator(`[data-window-row="${id}"]`).count(), 1);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing follows a caller scroll to the bottom that lands before its scroll event',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    // A row measurement queues the window's next frame; the caller jumps to the bottom earlier in
+    // that frame (as "Browse history messages" does), so the window runs before the scroll event.
+    await scroller.evaluate((element) => {
+      const frame = element.getBoundingClientRect();
+      const rows = [...element.querySelectorAll<HTMLElement>('[data-window-row]')];
+      const row = rows.find((candidate) => candidate.getBoundingClientRect().bottom > frame.top)!;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          element.scrollTop = element.scrollHeight;
+        }),
+      );
+      row.style.minHeight = `${row.offsetHeight + 3000}px`;
+    });
+    await page.evaluate('window.settle(24)');
+    const gap = await scroller.evaluate(
+      (element) => element.scrollHeight - element.clientHeight - element.scrollTop,
+    );
+    assert.ok(gap <= 32, `${gap}px from the bottom`);
+    assert.deepEqual(errors, []);
+  },
+);
+
+for (const jump of [false, true])
+  test(
+    `windowing keeps a reader at the bottom on their rows when a newer page lands below${jump ? ' and the viewport jumps before the restore' : ''}`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t);
+      await page.evaluate(() => {
+        const fixture = window as unknown as {
+          kodaxSpace: { transcriptWindowing: boolean };
+          pageExtra: Record<string, unknown[]>;
+        };
+        fixture.kodaxSpace.transcriptWindowing = true;
+        // A newer page several viewports tall, so its rows cannot all be mounted with the reader's.
+        fixture.pageExtra = {
+          MIDDLE: Array.from({ length: 160 }, (_, index) => ({
+            id: `extra${index}`,
+            type: 'assistant',
+            historyBoundary: { entryId: 'found', sourceRevision: 's' },
+            text: `Extra ${index}\n\n${'Varying paragraph.\n\n'.repeat(index % 7)}`,
+          })),
+        };
+      });
+      await startUnread(page, 'newer');
+      const scroller = page.getByTestId('conversation-scroll-container');
+      const count = await page.evaluate<number>('window.requests.length');
+      await page.evaluate('window.hold=true');
+      await scroller.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.evaluate('window.settle()');
+      await scroller.hover();
+      await page.mouse.wheel(0, 120);
+      await page.waitForFunction(
+        (count) => (window as unknown as { requests: string[] }).requests.length > count,
+        count,
+      );
+      // The window reads "the bottom" while the page is in flight.
+      await scroller.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.evaluate('window.settle(24)');
+      const row = page.locator('[data-source-item="OLDEST11"]');
+      const before = await row.evaluate((element) => element.getBoundingClientRect().top);
+      // Mounted in every frame: a row that leaves the DOM comes back wherever spacer estimates say.
+      // The jump variant moves the viewport in the frame the page lands, before the caller restores
+      // its anchor (Chromium does this on some appends). The window then re-reads the reader there,
+      // but the row the caller restores to (the message at 42% of the viewport) must stay mounted.
+      const tracked = jump
+        ? await scroller.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+              box.left + box.width / 2,
+              box.top + box.height * 0.42,
+            );
+            return `[data-msg-id="${hit!.closest<HTMLElement>('[data-msg-id]')!.dataset.msgId}"]`;
+          })
+        : '[data-source-item="OLDEST11"]';
+      await page.evaluate(
+        `window.mounted=[];{let n=0,jump=${jump};const tick=()=>{if(jump&&window.loaded().includes('extra0')){jump=false;document.querySelector('[data-testid="conversation-scroll-container"]').scrollTop+=3000}window.mounted.push(!!document.querySelector('${tracked}'));if(++n<40)requestAnimationFrame(tick)};requestAnimationFrame(tick)}`,
+      );
+      await page.evaluate('window.release()');
+      await waitLoaded(page, 'extra159');
+      await page.evaluate('window.settle(48)');
+      const mounted = await page.evaluate<boolean[]>('window.mounted');
+      assert.ok(mounted.every(Boolean), `${tracked} left the DOM: ${mounted.join(',')}`);
+      const moved = (await row.evaluate((element) => element.getBoundingClientRect().top)) - before;
+      assert.ok(Math.abs(moved) <= 1, `the row being read moved ${moved}px`);
+      assert.deepEqual(errors, []);
+    },
+  );
 
 const inView = (page: Page, selector: string): Promise<boolean> =>
   page.locator(selector).evaluate((element) => {
@@ -973,6 +1181,35 @@ const inView = (page: Page, selector: string): Promise<boolean> =>
     const box = element.getBoundingClientRect();
     return box.bottom > frame.top && box.top < frame.bottom;
   });
+
+test(
+  'windowing keeps a reader who jumps to the bottom there while the last rows mount',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await scroller.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.getByText('NEWEST 0', { exact: true }).waitFor();
+    await page.evaluate('window.settle(24)');
+    // An inactive window does not auto-follow, so only the window itself can keep the bottom.
+    await page.evaluate(() => {
+      document.hasFocus = () => false;
+    });
+    // The bottom of the estimated layout: the last rows mount there at their real heights.
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await page.evaluate('window.settle(48)');
+    const gap = await scroller.evaluate(
+      (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+    );
+    assert.ok(gap <= 1, `the reader ended ${gap}px above the bottom`);
+    assert.ok(await inView(page, '[data-source-item="bulk2999"]'), 'the last row is in view');
+    assert.deepEqual(errors, []);
+  },
+);
 
 test(
   'windowing keeps the rows in use mounted while the reader scrolls away',

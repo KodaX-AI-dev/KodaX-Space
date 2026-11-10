@@ -3,7 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createSessionManager, type KodaXSessionUiHistoryItem } from '@kodax-ai/kodax/session';
 import type { KodaXMessage } from '@kodax-ai/kodax/agent';
-import type { SpaceInstance } from './fixtures.js';
+import { transcriptWindowing, type SpaceInstance } from './fixtures.js';
 import {
   createLocalSdkProvider,
   launchRealSdkSpace,
@@ -154,6 +154,11 @@ test('published SDK checkpoint window retains the preceding turn after browse an
     expect(view.items.some((item) => item.text === 'SAVED_ANSWER_54')).toBe(true);
     expect(view.items.length).toBeLessThanOrEqual(150);
     expect(new Set(view.items.map((item) => item.id)).size).toBe(view.items.length);
+    // The reader is still up in history; a windowed transcript mounts the preceding turn only near it.
+    if (await transcriptWindowing(space.page))
+      await scroller.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
     await expect(space.page.getByTestId('conversation-stream')).toContainText('SAVED_ANSWER_54');
     provider.release('HOLD_QUEUE');
     await waitSdkIdle(space, 'checkpoint-history');
