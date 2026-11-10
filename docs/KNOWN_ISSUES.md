@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-09
+Last Updated: 2026-11-10
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
@@ -239,6 +239,9 @@ Last Updated: 2026-11-09
 | 239 | Medium | Resolved in source | Artifact cards require two clicks when the Coder sidebar is collapsed | Reported Space 0.1.47-alpha.4; exact introduction unconfirmed | 2026-11-09 |
 | 240 | Medium | Resolved in source | Accepted slash commands reopen optional suggestions and intercept submission | Reported Space 0.1.47-alpha.4; exact introduction unconfirmed | 2026-11-09 |
 | 241 | Medium | Resolved in source | History boundaries are hard to discover and saved search requires an extra navigation step | Observed Space 0.1.47-alpha.4 / SDK 0.7.97-beta.4 | 2026-11-09 |
+| 242 | Medium | ready | First older page after cold-opening a very large Session is rejected as changed saved history | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4 | 2026-11-10 |
+| 243 | Medium | ready | Loading newer pages from a located (`around`) window drifts the reading anchor by about 54 px | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4 | 2026-11-10 |
+| 244 | Low | ready | Cold-open newest history read grows with Session file size | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4 | 2026-11-10 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16176,16 +16179,40 @@ From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 
 - **Files / tests**: `ConversationStreamV2.tsx`, `ProductHistorySearch.tsx`, `i18n/messages.ts`, `conversationHistoryNavigation.browser.test.ts`, `ProductHistorySearch.browser.test.ts`, adapted `tests/e2e/sdk-history-navigation.spec.ts`, user and in-app manuals. Public UI tests cover single-page reachability, partial ranges, failure/retry, frozen reading, native gestures, direct search, original fallback and late replies.
 - **Evidence / validation**: [accepted cross-review](research/session-history-product-cross-review-2026-11-09.md), [executed checks](research/ui-interaction-fixes-validation-2026-11-09.md), [regression guide](test-guides/ISSUE_239_0.1.47-alpha.4_REGRESSION_GUIDE.md).
 
+## Issue 242 — First older page after cold-opening a very large Session is rejected as changed saved history
+
+- **Priority / status**: Medium; ready. Created 2026-11-10 from the F144 ticket 1 real-chain baseline.
+- **Original problem**: after a cold open of a 30k-message Coder Session (25.5 MB), Browse then scrolling up shows "Saved history changed while you were reading" and stops at 157 rows. Reproduced in 3/3 runs; 1k and 10k corpora do not reproduce. "Return to newest messages" rereads newest and paging then works. Expected: the first older page loads from the cursor issued with the cold-open newest page.
+- **Reproduction**: `node scripts/perf-baseline.mjs --grep coder-30k` (records the failure as `staleFirstAttempt`), or open the same SDK-written corpus manually.
+- **Evidence**: main logs no `session-history page_read` for the rejected request, so SDK `readHistory(cursor)` rejects before projection. The cold-open view read (`readSessionProductView`, first observation) took 1.9 s.
+- **Suspected cause (unconfirmed)**: first observation advances SDK Session metadata after the newest revision/cursor was captured, so the cursor is stale on arrival. Must be confirmed as Space-side ordering vs SDK behavior before fixing.
+- Source: [F144 ticket 1 baseline](perf-baselines/f144-ticket1-baseline.md#发现与决策门无关需要单独跟进).
+
+## Issue 243 — Loading newer pages from a located (`around`) window drifts the reading anchor
+
+- **Priority / status**: Medium; ready. Created 2026-11-10 from the F144 ticket 1 real-chain baseline.
+- **Original problem**: after locating a saved search result (`around` window) and scrolling down to append newer pages, the active row moves by about 54 px (1k p50 53.6 px; 10k / 30k max 133 / 55 px). Expected: drift ≤ 2 px after layout settles, as for prepends (≤ 0.4 px).
+- **Reproduction**: `node scripts/perf-baseline.mjs --grep coder-1k` (append drift in the result JSON). Wheel delta −600 vs −120 gives the same drift, so it is real layout displacement rather than wheel momentum.
+- Source: [F144 ticket 1 baseline](perf-baselines/f144-ticket1-baseline.md#发现与决策门无关需要单独跟进).
+
+## Issue 244 — Cold-open newest history read grows with Session file size
+
+- **Priority / status**: Low; ready. Created 2026-11-10 from the F144 ticket 1 real-chain baseline.
+- **Original problem**: cold opening the newest page costs 494 / 1377 / 2326 ms renderer-side for 1 / 8.6 / 25.5 MB Sessions; main view read is 178 / 618 / 1875 ms and SDK read 298 / 684 / 271 ms. Warm reopen is 173–224 ms. Expected: first paint of the newest page does not scale with total Session size.
+- **Context**: cold-start / first-observation path only; per-page loads stay flat (~15 ms main side) and the F144 decision gate is unaffected.
+- **Reproduction**: `npm run test:perf-baseline` (first-paint cold column).
+- Source: [F144 ticket 1 baseline](perf-baselines/f144-ticket1-baseline.md#发现与决策门无关需要单独跟进).
+
 ## Summary
 
-- Total: 228
+- Total: 231
 - Open: 1
-- Ready: 4
+- Ready: 7
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
 - Resolved (including source-only fixes): 212
 - High: 116
-- Medium: 99
-- Low: 13
+- Medium: 101
+- Low: 14
 - Next ready to resolve: 222
