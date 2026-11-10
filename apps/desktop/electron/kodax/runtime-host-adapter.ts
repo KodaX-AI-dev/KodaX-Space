@@ -4647,6 +4647,10 @@ export class RuntimeHostAdapter {
 
   async readSessionProductView(sessionId: string): Promise<SessionProductView> {
     await this.ensureObserved(sessionId);
+    // Observation also attaches Actor telemetry, whose first tree read claims the Actor runtime.
+    // A cold claim rewrites Session metadata and so the history revision; on large Sessions it
+    // lands after this read unless awaited. Attach failures are reported at the attach site.
+    await this.actorObservations.get(sessionId)?.ready.catch(() => undefined);
     const state = this.observations.get(sessionId);
     if (state) {
       const readCurrent = async (): Promise<void> => {
@@ -4711,7 +4715,16 @@ export class RuntimeHostAdapter {
             throw new Error('Runtime changed while refreshing Session history.');
           continue;
         }
-        if (isRuntimeResyncRequired(error)) return { outcome: 'data_changed' };
+        if (isRuntimeResyncRequired(error)) {
+          getDiagnosticsLogger()?.warn('session-history', 'read_data_changed', undefined, {
+            continuation: cursor !== undefined,
+            located: around !== undefined,
+            attempt,
+            code: runtimeErrorCode(error),
+            message: error instanceof Error ? error.message : String(error),
+          });
+          return { outcome: 'data_changed' };
+        }
         if (isSessionNotFoundError(error)) return { outcome: 'ready', page: null };
         throw error;
       }

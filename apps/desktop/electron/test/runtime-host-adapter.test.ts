@@ -953,6 +953,44 @@ test('newest history returns a usable cursor after initial SDK observation updat
   }
 });
 
+test('newest history waits for the observation Actor claim before capturing its cursor', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_claim_history');
+  let revision = 'before-claim';
+  const agents = fake.runtime.agents as unknown as {
+    tree(sessionId: string): Promise<unknown>;
+  };
+  const originalTree = agents.tree.bind(agents);
+  agents.tree = async (sessionId) => {
+    // SDK contract: a cold Runtime's Actor claim rewrites Session metadata and so the revision.
+    // Large Sessions make that rewrite land well after the view observation settles.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    revision = 'after-claim';
+    return originalTree(sessionId);
+  };
+  fake.runtime.sessions.readHistory = async () => ({
+    revision,
+    sourceRevision: revision,
+    status: 'resolved',
+    issues: [],
+    items: [],
+    oversized: [],
+    nextCursor: `cursor-${revision}`,
+  });
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    const result = await adapter.readProductHistory('s_claim_history');
+    assert.equal(result.outcome === 'ready' && result.page?.nextCursor, 'cursor-after-claim');
+  } finally {
+    await adapter.close();
+  }
+});
+
 test('a cold newest-history topology conflict reloads through the Host once without replaying input', async () => {
   const fake = createFakeRuntime();
   fake.sessions.add('s_cold_history');
