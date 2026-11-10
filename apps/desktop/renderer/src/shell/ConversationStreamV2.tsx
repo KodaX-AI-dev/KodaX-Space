@@ -1182,6 +1182,7 @@ export function ConversationStreamV2(): JSX.Element {
   const scrollSyncRafRef = useRef<number | null>(null);
   const prependAnchorRestoreRef = useRef<{
     readonly token: symbol;
+    readonly direction: 'older' | 'newer';
     phase: 'loading' | 'restoring';
     positionRestored: boolean;
     rafId: number | null;
@@ -1528,8 +1529,20 @@ export function ConversationStreamV2(): JSX.Element {
   function refreshPendingPrependSnapshot(scroller: HTMLDivElement): void {
     const pending = prependAnchorRestoreRef.current;
     if (pending?.phase === 'loading' && pending.scroller === scroller) {
-      pending.snapshot = rememberScrollSnapshot(scroller);
+      pending.snapshot = capturePendingHistorySnapshot(scroller, pending.direction);
     }
+  }
+
+  function capturePendingHistorySnapshot(
+    scroller: HTMLDivElement,
+    direction: 'older' | 'newer',
+  ): ScrollSnapshot {
+    const snapshot = rememberScrollSnapshot(scroller);
+    // A newer page is usually requested at the bottom edge, where snapshots carry no anchor.
+    // Retaining raw scrollTop would let any height change above the reading position (e.g. the
+    // history boundary hiding while loading) move the rows, so appends anchor on a row too.
+    if (direction === 'older' || snapshot.anchor !== null) return snapshot;
+    return { ...snapshot, anchor: captureViewportScrollAnchor(scroller) };
   }
 
   function scrollToBottomNow(
@@ -1740,6 +1753,7 @@ export function ConversationStreamV2(): JSX.Element {
     const token = Symbol(`prepend-anchor:${requestedSessionId}`);
     const restoreState: {
       readonly token: symbol;
+      readonly direction: 'older' | 'newer';
       phase: 'loading' | 'restoring';
       positionRestored: boolean;
       rafId: number | null;
@@ -1747,10 +1761,11 @@ export function ConversationStreamV2(): JSX.Element {
       readonly scroller: HTMLDivElement;
     } = {
       token,
+      direction,
       phase: 'loading',
       positionRestored: false,
       rafId: null,
-      snapshot: rememberScrollSnapshot(scroller),
+      snapshot: capturePendingHistorySnapshot(scroller, direction),
       scroller,
     };
     if (direction === 'older' && canOpenSavedPage) {

@@ -805,3 +805,33 @@ test(
     assert.deepEqual(errors, []);
   },
 );
+
+test(
+  'appending a newer page from a located window keeps the visible row at the bottom edge',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    await page.evaluate('window.middle()');
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await page.getByText('MIDDLE 11', { exact: true }).waitFor();
+    await page.evaluate('window.settle(48)');
+    assert.equal(await page.getByTestId('conversation-history-boundary').count(), 1);
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await page.evaluate('window.settle()');
+    const row = page.locator('[data-source-item="MIDDLE11"]');
+    const before = await row.evaluate((element) => element.getBoundingClientRect().top);
+    await page.evaluate('window.hold=true');
+    await scroller.hover();
+    await page.mouse.wheel(0, 120);
+    await page.waitForFunction('window.requests.at(-1)==="newest"');
+    await page.evaluate('window.settle(4)');
+    await page.evaluate('window.release()');
+    await page.getByText('NEWEST 11', { exact: true }).waitFor();
+    await page.evaluate('window.settle(48)');
+    const after = await row.evaluate((element) => element.getBoundingClientRect().top);
+    assert.ok(Math.abs(after - before) <= 2, `visible row drifted ${after - before}px`);
+    assert.deepEqual(errors, []);
+  },
+);
