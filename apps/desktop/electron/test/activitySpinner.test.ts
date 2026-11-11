@@ -1228,6 +1228,38 @@ test('Runtime sandbox presentation distinguishes applied and unselected decision
   });
 });
 
+test('Runtime sandbox presentation warns about unreadable setup roots and pending fallbacks', () => {
+  assert.deepEqual(
+    presentRuntimeSandbox({
+      version: 1,
+      state: 'applied',
+      backend: 'windows-restricted-user',
+      policyId: 'kodax-workspace-shell-v1',
+      degradedReadRoots: ['C:\\Users\\me\\.cargo', 'C:\\Users\\me\\.rustup'],
+    }),
+    {
+      label: 'Sandbox degraded',
+      title:
+        'Sandbox active (windows-restricted-user) but cannot read C:\\Users\\me\\.cargo, C:\\Users\\me\\.rustup; run `kodax sandbox setup`.',
+      tone: 'warning',
+    },
+  );
+  for (const [reason, text] of [
+    ['session_reset_pending', 'sandbox session is resetting'],
+    ['acl_transition_pending', 'sandbox access is being updated'],
+  ] as const) {
+    assert.equal(
+      presentRuntimeSandbox({
+        version: 1,
+        state: 'fallback',
+        reason,
+        execution: 'normal_permission_policy',
+      }).title,
+      `${text}; this tool continues under the normal permission policy.`,
+    );
+  }
+});
+
 test('iteration bridge ignores a previous journal epoch after snapshot recovery', () => {
   const projection: SpaceSessionLiveProjectionT = {
     ...idleProjection(),

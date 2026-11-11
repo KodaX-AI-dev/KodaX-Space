@@ -347,8 +347,9 @@ flowchart TD
 不要只看按钮颜色。允许前检查：工具名称、命令、目标路径、是否访问网络、是否会删除/覆盖数据。Auto[LLM] 提示会显示经脱敏、限长的 classifier reason，帮助解释本次 allow/ask，但不会显示 classifier prompt、完整响应或凭据。`Allow always` 仅在 Runtime 为当前安全操作给出具体授权建议时显示；它只记住所示的精确命令/工作目录/解释器/后台组合，或精确工具/路径范围，危险或动态 shell 操作仍只能单次确认。Auto 不是 OS 安全沙箱，也不是“允许一切”。
 
 Coder 工具活动条会显示结构化沙箱结果：`Sandboxed` 表示本次工具已应用
-Runtime containment；`Sandbox fallback` 表示沙箱未准备好或 backend 失败，本次工具仍按
-普通权限策略继续执行；`No sandbox` 表示本次没有选择沙箱。该状态只用于解释当前工具，
+Runtime containment；`Sandbox degraded` 表示命令仍在沙箱内，但读不到悬停提示里列出的
+Windows setup 目录，运行 `kodax sandbox setup` 可恢复；`Sandbox fallback` 表示沙箱未准备好、
+正在重置或 backend 失败，本次工具仍按普通权限策略继续执行；`No sandbox` 表示本次没有选择沙箱。该状态只用于解释当前工具，
 不会写入对话正文，也不把命令级 containment 夸大为完整应用隔离。
 
 当前开发版可在 **Settings → Runtime → 命令沙箱（ASRT）** 查看机器级 readiness：

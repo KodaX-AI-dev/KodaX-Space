@@ -1676,6 +1676,41 @@ test('tool sandbox events update active-tool diagnostics without creating transc
   });
 });
 
+test('tool sandbox events keep degraded read roots and every Runtime fallback reason', () => {
+  const reducer = new CoderSessionProjectionReducer(
+    projectRuntimeSessionSnapshot(observation, [askUser]),
+    observation.runs,
+  );
+  const sandboxEvent = (seq: number, sandbox: Record<string, unknown>) =>
+    ({
+      id: `event_sandbox_${seq}`,
+      seq,
+      time: '2026-07-14T08:04:00.000Z',
+      sessionId: 's_code',
+      runId: 'run_active',
+      type: 'tool.sandbox',
+      payload: { update: { id: 'tool_1', observation: sandbox }, meta: { toolCallId: 'tool_1' } },
+    }) as unknown as RuntimeTypedEvent;
+  const degraded = {
+    version: 1,
+    state: 'applied',
+    backend: 'windows-restricted-user',
+    policyId: 'kodax-workspace-shell-v1',
+    degradedReadRoots: ['C:\\Users\\me\\.cargo'],
+  };
+
+  assert.ok(reducer.apply(sandboxEvent(42, degraded)));
+  assert.deepEqual(reducer.snapshot().activeTools[0]?.sandbox, degraded);
+  for (const [seq, reason] of [
+    [43, 'session_reset_pending'],
+    [44, 'acl_transition_pending'],
+  ] as const) {
+    const fallback = { version: 1, state: 'fallback', reason, execution: 'normal_permission_policy' };
+    assert.ok(reducer.apply(sandboxEvent(seq, fallback)));
+    assert.deepEqual(reducer.snapshot().activeTools[0]?.sandbox, fallback);
+  }
+});
+
 test('event reducer advances one semantic domain per Runtime cursor', () => {
   const reducer = new CoderSessionProjectionReducer(
     projectRuntimeSessionSnapshot(observation, [askUser]),

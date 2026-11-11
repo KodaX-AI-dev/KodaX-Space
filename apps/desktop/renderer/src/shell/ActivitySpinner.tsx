@@ -55,10 +55,26 @@ export interface RuntimeSandboxPresentation {
   readonly tone: 'safe' | 'warning' | 'muted';
 }
 
+const SANDBOX_FALLBACK_REASONS = {
+  not_ready: 'sandbox is not ready',
+  prepare_failed: 'sandbox preparation failed',
+  backend_failed: 'sandbox backend failed',
+  session_reset_pending: 'sandbox session is resetting',
+  acl_transition_pending: 'sandbox access is being updated',
+} as const;
+
 export function presentRuntimeSandbox(
   sandbox: SpaceRuntimeToolSandboxT,
 ): RuntimeSandboxPresentation {
   if (sandbox.state === 'applied') {
+    const degraded = sandbox.degradedReadRoots ?? [];
+    if (degraded.length > 0) {
+      return {
+        label: 'Sandbox degraded',
+        title: `Sandbox active (${sandbox.backend}) but cannot read ${degraded.join(', ')}; run \`kodax sandbox setup\`.`,
+        tone: 'warning',
+      };
+    }
     return {
       label: 'Sandboxed',
       title: `Sandbox active (${sandbox.backend}).`,
@@ -66,15 +82,9 @@ export function presentRuntimeSandbox(
     };
   }
   if (sandbox.state === 'fallback') {
-    const reason =
-      sandbox.reason === 'not_ready'
-        ? 'sandbox is not ready'
-        : sandbox.reason === 'prepare_failed'
-          ? 'sandbox preparation failed'
-          : 'sandbox backend failed';
     return {
       label: 'Sandbox fallback',
-      title: `${reason}; this tool continues under the normal permission policy.`,
+      title: `${SANDBOX_FALLBACK_REASONS[sandbox.reason]}; this tool continues under the normal permission policy.`,
       tone: 'warning',
     };
   }

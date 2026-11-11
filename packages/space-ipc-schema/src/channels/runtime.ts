@@ -767,13 +767,21 @@ export const spaceRuntimeToolSandboxSchema = z.discriminatedUnion('state', [
         'unsupported',
       ]),
       policyId: z.literal('kodax-workspace-shell-v1'),
+      /** Windows setup roots the sandboxed command could not read; `kodax sandbox setup` restores them. */
+      degradedReadRoots: z.array(z.string().min(1).max(4096)).max(64).optional(),
     })
     .strict(),
   z
     .object({
       version: z.literal(1),
       state: z.literal('fallback'),
-      reason: z.enum(['not_ready', 'prepare_failed', 'backend_failed']),
+      reason: z.enum([
+        'not_ready',
+        'prepare_failed',
+        'backend_failed',
+        'session_reset_pending',
+        'acl_transition_pending',
+      ]),
       execution: z.literal('normal_permission_policy'),
     })
     .strict(),
