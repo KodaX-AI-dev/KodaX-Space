@@ -271,6 +271,9 @@ test('native scrollbar stays held across SDK history windows in both directions'
         stream
           .locator('[data-msg-id]')
           .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-msg-id')));
+      // The stream text can arrive before the newest window has mounted its last rows.
+      await expect.poll(async () => (await ids()).at(-1)).toContain(':task-result:');
+      await settleNativeHistoryLayout(space.page);
       const newestIds = await ids();
       await stream.getByRole('button', { name: 'Browse history messages', exact: true }).click();
       await expect.poll(ids).not.toEqual(newestIds);

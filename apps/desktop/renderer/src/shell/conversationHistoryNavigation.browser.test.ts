@@ -319,9 +319,13 @@ historyTest(
     const saved = page.getByRole('button', { name: 'Browse history messages' });
     await saved.waitFor();
     await saved.focus();
+    // A direct scrollTop write is not a user gesture, so it must wait out the page's own scrolls;
+    // the reading position saved on Enter is wherever the reader then is.
+    await page.evaluate('window.settle(48)');
     await scroller.evaluate((element) => {
       element.scrollTop = 0;
     });
+    await stream.getByText('Live 0', { exact: true }).waitFor();
     await page.keyboard.press('ArrowUp');
     await saved.waitFor();
     await page.keyboard.press('Enter');
