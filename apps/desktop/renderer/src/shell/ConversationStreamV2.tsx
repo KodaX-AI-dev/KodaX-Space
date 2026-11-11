@@ -1593,6 +1593,9 @@ export function ConversationStreamV2(): JSX.Element {
   //   监测短时间间隔 (<1s) 必须用单调 monotonic clock.
   // ResizeObserver 的 instant follow 只需要短守卫；jumpToBottom 的 smooth scroll 用 400ms。
   const programmaticScrollIgnoreUntilRef = useRef<number>(0);
+  // A gesture lifts the guard before the scroll event its last guarded write still owes. That
+  // event reports the pre-gesture position and must not re-engage follow.
+  const owedProgrammaticScrollRef = useRef<{ top: number; until: number } | null>(null);
   // Scroll events alone do not authorize crossing a history window boundary.
   const historyScrollIntentRef = useRef<'older' | 'newer' | null>(null);
   const scrollbarDragRef = useRef<{
@@ -1636,6 +1639,19 @@ export function ConversationStreamV2(): JSX.Element {
 
   function clearProgrammaticScrollGuard(): void {
     programmaticScrollIgnoreUntilRef.current = 0;
+  }
+
+  function liftProgrammaticScrollGuardForGesture(scroller: HTMLDivElement): void {
+    const until = programmaticScrollIgnoreUntilRef.current;
+    owedProgrammaticScrollRef.current =
+      performance.now() < until ? { top: scroller.scrollTop, until } : null;
+    clearProgrammaticScrollGuard();
+  }
+
+  function isOwedProgrammaticScroll(scroller: HTMLDivElement): boolean {
+    const owed = owedProgrammaticScrollRef.current;
+    owedProgrammaticScrollRef.current = null;
+    return owed !== null && performance.now() < owed.until && scroller.scrollTop === owed.top;
   }
 
   function cancelJumpToBottomAnimation(): void {
@@ -2052,6 +2068,7 @@ export function ConversationStreamV2(): JSX.Element {
     // 不视为用户上滚
     if (performance.now() < programmaticScrollIgnoreUntilRef.current) return;
     const scroller = e.currentTarget;
+    if (isOwedProgrammaticScroll(scroller)) return;
     if (scrollSyncRafRef.current !== null) return;
     scrollSyncRafRef.current = requestAnimationFrame(() => {
       scrollSyncRafRef.current = null;
@@ -2100,8 +2117,8 @@ export function ConversationStreamV2(): JSX.Element {
       return;
     }
     cancelJumpToBottomAnimation();
-    clearProgrammaticScrollGuard();
     const scroller = e.currentTarget;
+    liftProgrammaticScrollGuardForGesture(scroller);
     const deltaY = e.deltaY;
     if (deltaY !== 0) historyScrollIntentRef.current = deltaY < 0 ? 'older' : 'newer';
     const scrollTopBefore = scroller.scrollTop;
@@ -2141,7 +2158,7 @@ export function ConversationStreamV2(): JSX.Element {
       case 'PageUp':
       case 'Home':
         historyScrollIntentRef.current = 'older';
-        clearProgrammaticScrollGuard();
+        liftProgrammaticScrollGuardForGesture(scroller);
         if (
           !preservesPrependAnchorForBoundaryInput(
             prependAnchorRestoreRef.current?.phase,
@@ -2156,7 +2173,7 @@ export function ConversationStreamV2(): JSX.Element {
         break;
       case ' ':
         historyScrollIntentRef.current = e.shiftKey ? 'older' : 'newer';
-        clearProgrammaticScrollGuard();
+        liftProgrammaticScrollGuardForGesture(scroller);
         if (e.shiftKey) {
           if (
             !preservesPrependAnchorForBoundaryInput(
@@ -2177,7 +2194,7 @@ export function ConversationStreamV2(): JSX.Element {
       case 'PageDown':
       case 'End':
         historyScrollIntentRef.current = 'newer';
-        clearProgrammaticScrollGuard();
+        liftProgrammaticScrollGuardForGesture(scroller);
         handlePrependUserScrollIntent();
         followUserScrollTowardNewer(scroller);
         break;
@@ -2194,7 +2211,7 @@ export function ConversationStreamV2(): JSX.Element {
     const rect = scroller.getBoundingClientRect();
     if (e.clientX >= rect.right - scrollbarWidth) {
       scrollbarDragRef.current = { pointerId: e.pointerId, direction: null };
-      clearProgrammaticScrollGuard();
+      liftProgrammaticScrollGuardForGesture(scroller);
       handlePrependUserScrollIntent();
       disengageFollowForUserScrollIntent(scroller);
     }
@@ -2217,7 +2234,7 @@ export function ConversationStreamV2(): JSX.Element {
     lastTouchYRef.current = currentY;
     if (deltaY > 0) {
       historyScrollIntentRef.current = 'older';
-      clearProgrammaticScrollGuard();
+      liftProgrammaticScrollGuardForGesture(scroller);
       if (
         !preservesPrependAnchorForBoundaryInput(
           prependAnchorRestoreRef.current?.phase,
@@ -2230,7 +2247,7 @@ export function ConversationStreamV2(): JSX.Element {
       disengageFollowForUserScrollIntent(scroller);
     } else {
       historyScrollIntentRef.current = 'newer';
-      clearProgrammaticScrollGuard();
+      liftProgrammaticScrollGuardForGesture(scroller);
       handlePrependUserScrollIntent();
       followUserScrollTowardNewer(scroller);
     }

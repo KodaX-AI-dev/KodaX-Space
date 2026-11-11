@@ -762,6 +762,73 @@ test(
   },
 );
 
+// The app's Ctrl+wheel zoom listens without `passive`, so a wheel (like a key) is handled before
+// its scroll lands, a frame later. Here the gesture arrives just after a follow's scrollTop write,
+// before that write's scroll event, which every frame of a streaming tail offers.
+for (const gesture of ['wheel', 'ArrowUp'] as const)
+  test(
+    `a reader's ${gesture} leaves a tail that grows every frame`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t);
+      const scroller = page.getByTestId('conversation-scroll-container');
+      const gap = () =>
+        scroller.evaluate(
+          (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+        );
+      await page.evaluate(
+        'window.singlePage=true;window.primeLive().then(()=>window.streaming(true))',
+      );
+      await page.evaluate(`window.live(20,'Streaming tail\\n\\n')`);
+      await page.getByText('Streaming tail', { exact: true }).waitFor();
+      await page.evaluate(`(() => {
+        let lines = 0;
+        const grow = () => {
+          if (window.stopGrowing) return;
+          lines += 1;
+          // One short line per frame stays within the bottom threshold, as a streaming reply does.
+          window.live(20, 'Streaming tail\\n\\n' + 'Growing line.  \\n'.repeat(lines));
+          requestAnimationFrame(grow);
+        };
+        requestAnimationFrame(grow);
+      })()`);
+      await page.evaluate('window.settle(12)');
+      assert.ok((await gap()) < 2, `the growing tail is followed (gap ${await gap()})`);
+      const event =
+        gesture === 'wheel'
+          ? "new WheelEvent('wheel',{deltaY:-200,bubbles:true,cancelable:true})"
+          : `new KeyboardEvent('keydown',{key:'${gesture}',bubbles:true,cancelable:true})`;
+      // The gesture runs right after a follow's write, before that write's scroll event; the
+      // gesture's own scroll lands two frames later.
+      await page.evaluate(`new Promise((resolve) => {
+        const element = document.querySelector('[data-testid="conversation-scroll-container"]');
+        const native = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop');
+        Object.defineProperty(element, 'scrollTop', {
+          configurable: true,
+          get: () => native.get.call(element),
+          set: (value) => {
+            native.set.call(element, value);
+            if (value < element.scrollHeight) return;
+            delete element.scrollTop;
+            queueMicrotask(() => {
+              element.dispatchEvent(${event});
+              const top = element.scrollTop;
+              requestAnimationFrame(() => requestAnimationFrame(() => {
+                element.scrollTop = top - 200;
+                resolve();
+              }));
+            });
+          },
+        });
+      })`);
+      await page.evaluate('window.settle(12)');
+      const left = await gap();
+      await page.evaluate('window.stopGrowing=true');
+      assert.ok(left > 150, `the reader left the growing tail (gap ${left})`);
+      assert.deepEqual(errors, []);
+    },
+  );
+
 test(
   'windowing shows rows, not a spacer, when the live view is replaced under a reader',
   { skip: !browserAvailable },
