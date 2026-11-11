@@ -77,6 +77,28 @@ test(
 );
 
 test(
+  'the query rail shrinks its run to fit a short transcript',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t, 1000, { queryEvery: 5 });
+    const markers = railMarkers(page);
+    assert.equal(await markers.count(), 31);
+    // The fixture has no stylesheet, so give the stream and its overlaid rail their app layout.
+    // At the shortest window the transcript has less room than a full run of markers needs.
+    await page.addStyleTag({
+      content:
+        '[data-testid="conversation-stream"]{position:relative;height:300px;overflow:hidden}' +
+        '[data-testid="conversation-stream"]>nav{position:absolute;top:0}',
+    });
+    await page.evaluate('window.settle(24)');
+    // 19 markers and their gaps fit in 300px; 21 would not.
+    assert.equal(await markers.count(), 19);
+    assert.equal(await markers.last().getAttribute('aria-current'), 'location');
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
   'a query rail jump reaches a query whose row is not mounted',
   { skip: !browserAvailable },
   async (t) => {

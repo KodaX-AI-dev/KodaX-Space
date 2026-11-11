@@ -267,6 +267,9 @@ const QUERY_JUMP_TITLE_CHARS = 44;
 const QUERY_JUMP_BODY_CHARS = 116;
 // Odd, so the reader's marker sits in the middle; a long transcript shows this run around it.
 const QUERY_JUMP_MAX_MARKERS = 31;
+/** A marker and the gap after it (`h-2.5`, `gap-1`); the rail's `py-2` less the last marker's gap. */
+const QUERY_JUMP_MARKER_PITCH_PX = 14;
+const QUERY_JUMP_RAIL_PADDING_PX = 12;
 /** Markers kept between the active marker and a cut end before the run recentres. */
 const QUERY_JUMP_EDGE_MARKERS = 5;
 const RESTORED_REVEAL_TAIL_ITEMS = 24;
@@ -3093,7 +3096,12 @@ function QueryJumpRail({
   onJump,
 }: QueryJumpRailProps): JSX.Element | null {
   const { t } = useI18n();
-  const span = Math.min(anchors.length, QUERY_JUMP_MAX_MARKERS);
+  const railRef = useRef<HTMLElement>(null);
+  // A rail taller than the transcript would overflow it, so the run shrinks to the odd count that fits.
+  const room = useParentHeight(railRef) + QUERY_JUMP_MARKER_PITCH_PX - QUERY_JUMP_RAIL_PADDING_PX;
+  const fit = Math.max(1, 2 * Math.floor(room / (2 * QUERY_JUMP_MARKER_PITCH_PX)) - 1);
+  const span = Math.min(anchors.length, QUERY_JUMP_MAX_MARKERS, fit);
+  const edgeMarkers = Math.min(QUERY_JUMP_EDGE_MARKERS, span >> 1);
   const activeIndex = anchors.findIndex((anchor) => anchor.id === activeId);
   const current = activeIndex >= 0 ? activeIndex : anchors.length - 1;
   const clampStart = (value: number) => Math.max(0, Math.min(anchors.length - span, value));
@@ -3104,8 +3112,8 @@ function QueryJumpRail({
   const start = clampStart(heldStart);
   const end = start + span;
   const nearCut =
-    (start > 0 && current < start + QUERY_JUMP_EDGE_MARKERS) ||
-    (end < anchors.length && current >= end - QUERY_JUMP_EDGE_MARKERS) ||
+    (start > 0 && current < start + edgeMarkers) ||
+    (end < anchors.length && current >= end - edgeMarkers) ||
     current < start ||
     current >= end;
   if (hoverId === null && nearCut) setHeldStart(clampStart(current - (span >> 1)));
@@ -3115,6 +3123,7 @@ function QueryJumpRail({
 
   return (
     <nav
+      ref={railRef}
       className="absolute left-3 top-1/2 z-20 -translate-y-1/2"
       aria-label={t('conversation.queryJumpPoints')}
       onMouseLeave={() => onHover(null)}
@@ -3168,6 +3177,21 @@ function QueryJumpRail({
       </div>
     </nav>
   );
+}
+
+/** The client height of the element's parent, kept current; unbounded until first measured. */
+function useParentHeight(ref: React.RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(Number.POSITIVE_INFINITY);
+  useLayoutEffect(() => {
+    const parent = ref.current?.parentElement;
+    if (!parent) return;
+    const update = () => setHeight(parent.clientHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(parent);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
 }
 
 function searchRingClassFor(
