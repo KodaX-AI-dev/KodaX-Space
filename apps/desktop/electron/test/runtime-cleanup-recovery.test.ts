@@ -17,12 +17,12 @@ import { buildTaskDockRunView } from '../../renderer/src/shell/taskDockProjectio
 import { composerRunControls } from '../../renderer/src/shell/composerInvoke.js';
 
 async function shutdownOwner(runtime: Awaited<ReturnType<typeof createKodaXRuntime>>, root: string): Promise<void> {
-  const state = await getKodaXRuntimeOwnerState({ homeDir: root, profile: 'default' });
+  const state = await getKodaXRuntimeOwnerState({ homeDir: root });
   assert.ok(state.owner);
   assert.equal(state.owner.runtimeId, runtime.identity.runtimeId, 'never stop a replacement Host');
   await runtime.daemon.shutdown();
   await runtime.close();
-  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), profile: 'default', owner: state.owner, timeoutMs: 15000 });
+  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), owner: state.owner, timeoutMs: 15000 });
   assert.equal(verified.status, 'succeeded');
 }
 

@@ -125,12 +125,11 @@ test('safe daemon stop launches the published CLI against the active KODAX_HOME'
   assert.equal(result.stopped, true);
   assert.equal(calls.length, 1);
   assert.equal(calls[0]?.executable, process.execPath);
-  assert.deepEqual(calls[0]?.args.slice(-8), [
+  // One Host serves each KODAX_HOME; the CLI finds it without a Host profile (ADR-075).
+  assert.deepEqual(calls[0]?.args.slice(-6), [
     path.resolve('fake-kodax-cli.js'),
     'daemon',
     'stop',
-    '--profile',
-    'coder',
     '--timeout-ms',
     '15000',
     '--json',

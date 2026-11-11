@@ -1320,7 +1320,11 @@ let runtime;
 let daemonRuntime;
 let daemonClientInfo;
 let providerServer;
-const daemonProfile = 'space-pack-lifecycle';
+// One Host serves each data root (ADR-075). The lifecycle probe stops and restarts its
+// Host while the worker Host stays attached, so it owns a separate root.
+const lifecycleHomeDir = path.join(homeDir, 'lifecycle');
+const lifecycleConfigHome = path.join(lifecycleHomeDir, '.kodax');
+await mkdir(lifecycleHomeDir, { recursive: true });
 const workerClientInfo = { name: 'kodax-space-pack-smoke', version: ${JSON.stringify(SPACE_VERSION)}, instanceId: randomUUID(), instanceSecret: randomUUID() + randomUUID() };
 const providerName = 'space-pack-shell-probe';
 const providerModel = 'space-pack-shell-model';
@@ -1560,15 +1564,19 @@ function daemonRequirements() {
 function createDaemonProbeRuntime(clientName) {
   daemonClientInfo = { name: clientName, version: ${JSON.stringify(SPACE_VERSION)}, instanceId: randomUUID(), instanceSecret: randomUUID() + randomUUID() };
   return ensureKodaXRuntime({
-    profile: daemonProfile,
-    homeDir,
+    homeDir: lifecycleHomeDir,
     sessionsDir: path.join(homeDir, 'daemon-sessions'),
     daemonOrphanExitMs: 1_000,
     requirements: daemonRequirements(),
     clientInfo: daemonClientInfo,
   });
 }
-async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo }) {
+async function settleProbeClientExit({
+  runtime,
+  clientInfo = daemonClientInfo,
+  homeDir: probeHomeDir = homeDir,
+  configHome = process.env.KODAX_HOME,
+}) {
   const requestId = randomUUID();
   const identity = runtime.identity;
   let receipt = await runtime.lifecycle.requestExit({ requestId, shutdownHost: true });
@@ -1577,7 +1585,7 @@ async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo })
     if (receipt.cleanup.state === 'succeeded' && receipt.host.state === 'succeeded') {
       if (receipt.runtimeId !== identity.runtimeId || receipt.host.owner?.runtimeId !== identity.runtimeId || receipt.host.replacementRunning === true)
         throw new Error('Packaged SDK exit owner changed or a replacement is running.');
-      const stopped = await waitForRuntimeDaemonShutdown({ configHome: process.env.KODAX_HOME, profile: identity.profile,
+      const stopped = await waitForRuntimeDaemonShutdown({ configHome,
         owner: receipt.host.owner, timeoutMs: 20_000 });
       if (stopped.status !== 'succeeded') throw new Error('Packaged Host shutdown unverified: ' + JSON.stringify(stopped));
       await runtime.close();
@@ -1587,7 +1595,7 @@ async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo })
     try {
       receipt = await runtime.lifecycle.readExit(requestId) ?? receipt;
     } catch (error) {
-      const offline = (await readKodaXClientExits({ homeDir, profile: identity.profile, clientInfo })).find((item) => item.requestId === requestId);
+      const offline = (await readKodaXClientExits({ homeDir: probeHomeDir, clientInfo })).find((item) => item.requestId === requestId);
       if (!offline) throw error;
       receipt = offline;
     }
@@ -1686,7 +1694,6 @@ try {
   }
   runtime = await ensureKodaXRuntime({
     homeDir,
-    profile: 'space-pack-worker',
     daemonOrphanExitMs: 1_000,
     sessionsDir: path.join(homeDir, 'sessions'),
     clientInfo: workerClientInfo,
@@ -1850,8 +1857,8 @@ try {
     );
   }
   const firstExitSettlement = await settleProbeClientExit({
-    configHome: process.env.KODAX_HOME,
-    profile: daemonProfile,
+    homeDir: lifecycleHomeDir,
+    configHome: lifecycleConfigHome,
     runtime: daemonRuntime,
   });
   if (firstExitSettlement.status !== 'clean') {
@@ -1876,8 +1883,8 @@ try {
     );
   }
   const restartedExitSettlement = await settleProbeClientExit({
-    configHome: process.env.KODAX_HOME,
-    profile: daemonProfile,
+    homeDir: lifecycleHomeDir,
+    configHome: lifecycleConfigHome,
     runtime: daemonRuntime,
   });
   if (restartedExitSettlement.status !== 'clean') {
@@ -1936,9 +1943,7 @@ try {
   await settleProbeClientExit({ runtime, clientInfo: workerClientInfo });
   runtime = undefined;
   await closeProviderServer();
-  if (ownsHomeDir) {
-    await rm(homeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  }
+  await rm(ownsHomeDir ? homeDir : lifecycleHomeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   await new Promise((resolve) => {
     process.stdout.write(${JSON.stringify(marker)} + JSON.stringify(result), resolve);
   });
@@ -1950,10 +1955,10 @@ try {
   try {
     const bootstrapLog = await readFile(
       path.join(
-        process.env.KODAX_HOME,
+        lifecycleConfigHome,
         'runtime',
         'daemon',
-        daemonProfile,
+        'default',
         'bootstrap.log',
       ),
       'utf8',
@@ -1971,8 +1976,8 @@ try {
   if (daemonRuntime) {
     try {
       const cleanupSettlement = await settleProbeClientExit({
-        configHome: process.env.KODAX_HOME,
-        profile: daemonProfile,
+        homeDir: lifecycleHomeDir,
+        configHome: lifecycleConfigHome,
         runtime: daemonRuntime,
       });
       if (cleanupSettlement.status === 'blocked') {

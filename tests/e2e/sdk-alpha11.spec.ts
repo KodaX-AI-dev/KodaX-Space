@@ -198,12 +198,11 @@ test('work modes use Host CAS before the first Run and remain fixed afterwards',
         return reply.ok ? reply.data.workMode : 'failed';
       })
       .toBe('agent');
-    const daemon = path.join(space.testDataDir, 'runtime/daemon/coder');
+    const daemon = path.join(space.testDataDir, 'runtime/daemon/default');
     const descriptor = JSON.parse(await readFile(path.join(daemon, 'daemon.json'), 'utf8')) as {
       endpoint: string;
     };
     peer = await connectKodaXClient({
-      profile: 'coder',
       endpoint: descriptor.endpoint,
       token: (await readFile(path.join(daemon, 'daemon.token'), 'utf8')).trim(),
       clientInfo: {
@@ -214,7 +213,6 @@ test('work modes use Host CAS before the first Run and remain fixed afterwards',
     });
     const before = await peer.sessions.getSettingsVersioned(sessionId);
     const observer = await connectKodaXRuntime({
-      profile: 'coder',
       endpoint: descriptor.endpoint,
       daemonToken: (await readFile(path.join(daemon, 'daemon.token'), 'utf8')).trim(),
     });

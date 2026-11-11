@@ -339,7 +339,6 @@ for (const revokeQueuedLease of [false, true])
         };
         const peer = await clientSdk.connectKodaXClient({
           homeDir,
-          profile: 'coder',
           clientInfo: peerInfo,
         });
         try {
@@ -388,7 +387,6 @@ for (const revokeQueuedLease of [false, true])
           const lastExit = await settleRuntimeClientExit({
             configHome: path.join(homeDir, '.kodax'),
             homeDir,
-            profile: 'coder',
             runtime: { lifecycle: peer.lifecycle },
             clientInfo: peerInfo,
           });

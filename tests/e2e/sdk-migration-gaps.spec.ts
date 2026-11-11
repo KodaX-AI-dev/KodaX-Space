@@ -31,12 +31,11 @@ test('Workflow execution and Memory management share the actual Host with anothe
     );
     const sessionId = await currentSdkSession(space);
     await waitSdkIdle(space, sessionId);
-    const daemonDir = path.join(space.testDataDir, 'runtime/daemon/coder');
+    const daemonDir = path.join(space.testDataDir, 'runtime/daemon/default');
     const descriptor = JSON.parse(await readFile(path.join(daemonDir, 'daemon.json'), 'utf8')) as {
       endpoint: string;
     };
     peer = await connectKodaXClient({
-      profile: 'coder',
       endpoint: descriptor.endpoint,
       clientInfo: {
         name: 'Space migration E2E',

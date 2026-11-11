@@ -185,8 +185,6 @@ export async function stopCoderDaemonWhenSafe(
       cliPath,
       'daemon',
       'stop',
-      '--profile',
-      'coder',
       '--timeout-ms',
       String(timeoutMs),
       '--json',

@@ -18,14 +18,14 @@ test('test daemon cleanup accepts only a descriptor owned by the exact fixture d
   const root = path.join(os.tmpdir(), 'kodax-owned-daemon');
   assert.equal(
     parseOwnedTestDaemonPid(
-      JSON.stringify({ pid: 4242, profile: 'coder', configHome: root }),
+      JSON.stringify({ pid: 4242, profile: 'default', configHome: root }),
       root,
     ),
     4242,
   );
   assert.equal(
     parseOwnedTestDaemonPid(
-      JSON.stringify({ pid: 4242, profile: 'coder', configHome: `${root}-other` }),
+      JSON.stringify({ pid: 4242, profile: 'default', configHome: `${root}-other` }),
       root,
     ),
     undefined,
@@ -43,12 +43,12 @@ test('test daemon cleanup accepts only a descriptor owned by the exact fixture d
 test('test daemon cleanup signals the validated isolated PID and ignores missing state', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'kodax-fixture-daemon-cleanup-'));
   roots.push(root);
-  const descriptorDir = path.join(root, 'runtime', 'daemon', 'coder');
+  const descriptorDir = path.join(root, 'runtime', 'daemon', 'default');
   await mkdir(descriptorDir, { recursive: true });
   const daemonPid = process.pid + 1;
   await writeFile(
     path.join(descriptorDir, 'daemon.json'),
-    JSON.stringify({ pid: daemonPid, profile: 'coder', configHome: root }),
+    JSON.stringify({ pid: daemonPid, profile: 'default', configHome: root }),
     'utf8',
   );
 
@@ -69,13 +69,13 @@ test('test daemon cleanup recognizes its physical profile through a temporary pa
   roots.push(parent);
   const profile = path.join(parent, 'profile');
   const alias = path.join(parent, 'alias');
-  const descriptorDir = path.join(profile, 'runtime', 'daemon', 'coder');
+  const descriptorDir = path.join(profile, 'runtime', 'daemon', 'default');
   await mkdir(descriptorDir, { recursive: true });
   await symlink(profile, alias, process.platform === 'win32' ? 'junction' : 'dir');
   const daemonPid = process.pid + 1;
   await writeFile(
     path.join(descriptorDir, 'daemon.json'),
-    JSON.stringify({ pid: daemonPid, profile: 'coder', configHome: await realpath(profile) }),
+    JSON.stringify({ pid: daemonPid, profile: 'default', configHome: await realpath(profile) }),
   );
   const signalled: number[] = [];
   assert.equal(

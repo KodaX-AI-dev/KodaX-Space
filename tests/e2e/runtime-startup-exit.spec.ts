@@ -19,7 +19,7 @@ test('complete exit cancels a cold startup without requiring force close', async
     await expect
       .poll(
         () =>
-          readFile(path.join(space.testDataDir, 'runtime/daemon/coder/daemon.json'), 'utf8')
+          readFile(path.join(space.testDataDir, 'runtime/daemon/default/daemon.json'), 'utf8')
             .then((value) => (JSON.parse(value) as { status: string }).status)
             .catch(() => 'missing'),
         { timeout: 10_000 },

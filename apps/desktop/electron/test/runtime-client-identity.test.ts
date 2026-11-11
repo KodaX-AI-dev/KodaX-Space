@@ -28,7 +28,6 @@ test('accepted exit rotates the fenced identity and retains its offline recovery
   await store.retireInstance(first.instanceId, {
     requestId: 'exit-fixture',
     runtimeId: 'host-fixture',
-    profile: 'default',
   });
   const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, secrets);
   const next = await restarted.openInstance(metadata);
@@ -38,10 +37,26 @@ test('accepted exit rotates the fenced identity and retains its offline recovery
   assert.notEqual(next.instanceSecret, first.instanceSecret);
   assert.equal(recovery?.instanceId, first.instanceId);
   assert.equal(recovery?.instanceSecret, first.instanceSecret);
-  assert.equal(recovery?.profile, 'default');
+  assert.equal(recovery !== undefined && 'profile' in recovery, false, 'One Host serves each KODAX_HOME');
   assert.doesNotMatch(await fs.readFile(file, 'utf8'), new RegExp(first.instanceSecret));
   await restarted.clearExitRecovery(first.instanceId);
   assert.equal(await restarted.openExitRecovery(metadata), undefined);
+});
+
+test('an exit recovery recorded with a Host profile before ADR-075 still opens without it', async (t) => {
+  const { dir, file, secrets, store } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const metadata = { name: 'Space', version: 'fixture' };
+  const first = await store.openInstance(metadata);
+  await store.retireInstance(first.instanceId, { requestId: 'exit-fixture', runtimeId: 'host-fixture' });
+  const stored = JSON.parse(await fs.readFile(file, 'utf8')) as { exitRecovery: Record<string, unknown> };
+  stored.exitRecovery.profile = 'coder';
+  await fs.writeFile(file, JSON.stringify(stored));
+
+  const recovery = await new RuntimeClientIdentityStore(file, dir, randomUUID, secrets).openExitRecovery(metadata);
+
+  assert.equal(recovery?.instanceSecret, first.instanceSecret);
+  assert.equal(recovery !== undefined && 'profile' in recovery, false);
 });
 
 async function tempStore(): Promise<{

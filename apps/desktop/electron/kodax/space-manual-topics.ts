@@ -84,7 +84,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '核心能力：多 provider/model 切换，本地项目会话，Coder 与 Partner 工作区，权限确认，计划/Diff/任务/终端/预览/MCP/Memory/Workflow popout，图片与文件输入，Artifact/Outputs 产物，repo-intelligence，以及显式单次调用的 workflow。',
       '',
-      'Coder 默认使用 profile-scoped shared daemon；会话、运行、共享设置和交互由 KodaX Runtime 持有。完整退出使用 SDK Product lifecycle：lifecycle.requestExit 提交请求，lifecycle.readExit 读取同一回执，启动恢复通过 readKodaXClientExits 读取持久回执。只清理本客户端工作，保护其他在线客户端；工作清理与 Host 退出证明分开，unknown 保留恢复身份。Space 不按缓存 PID/PGID 强杀进程，也不为退出启动 replacement daemon；stale inline owner reconciliation 由 SDK 判定。Partner 同样由共享 Host 持有，Space 通过工具 lease 提供业务能力。',
+      'Coder 使用当前 KODAX_HOME 唯一的共享 Host（每个数据根只有一个 Host，ADR-075）；会话、运行、共享设置和交互由 KodaX Runtime 持有。完整退出使用 SDK Product lifecycle：lifecycle.requestExit 提交请求，lifecycle.readExit 读取同一回执，启动恢复通过 readKodaXClientExits 读取持久回执。只清理本客户端工作，保护其他在线客户端；工作清理与 Host 退出证明分开，unknown 保留恢复身份。Space 不按缓存 PID/PGID 强杀进程，也不为退出启动 replacement daemon；stale inline owner reconciliation 由 SDK 判定。Partner 同样由共享 Host 持有，Space 通过工具 lease 提供业务能力。',
       '',
       'v0.1.44 把未读结果与待处理权限/AskUser 按唯一 Session 计数投影到 Windows 任务栏/托盘、macOS Dock 和受支持 Linux launcher。已准入的 Windows 完整退出可在托盘后台继续，同一进度可重开查看；普通成功退出保持安静，失败恢复窗口。Task Dock、Repointel 与历史页头使用当前 live/canonical 事实，历史 Session 的 External tasks 能区分正常空态与可重试错误。v0.1.45 再把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡：全部待答卡并存可答，composer 上方有带计数与定位闪光的召回停靠条，队首卡支持 1-9/Enter/Esc 键盘操作。',
       '',
@@ -228,7 +228,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'KodaX 的 daemonOrphanExit v1 能力为 Space 新拉起的 daemon 配置 30 秒 orphan grace：Space 崩溃或被强杀导致最后客户端断开后，daemon 在没有其他客户端且 governed work 空闲时自停；若任务仍在运行则等待终态后再自停。普通 CLI 常驻 daemon 未配置该选项，不改变原有常驻语义。',
       '',
-      '旧版 0.1.32/0.1.33 若已经留下 daemon，优先运行 `kodax daemon stop --profile coder --timeout-ms 10000 --json` 做协作式停止。若 CLI 无法确认停止，不要根据 daemon.json 的缓存 PID/PGID 直接发送信号，也不要使用 `killall KodaX Space`：进程号可能复用，而且应用、helper 与 daemon 可能共享进程名。请先关闭所有使用该 profile 的客户端并升级到 v0.1.46-alpha.11 构建（KodaX 0.7.96-rc.1）或更高兼容版本；若没有持有原始进程句柄的服务管理器或 supervisor 可证明整棵树退出，保留恢复票据并重启操作系统，然后正常启动 Space 让 SDK 自动结算。不要手工删除 effect/exit lock、profile 或 Session 数据。',
+      '旧版 0.1.32/0.1.33 若已经留下 daemon，优先运行 `kodax daemon stop --timeout-ms 10000 --json` 做协作式停止（KodaX CLI 0.7.97 及更早版本需加 `--profile coder`）。若 CLI 无法确认停止，不要根据 daemon.json 的缓存 PID/PGID 直接发送信号，也不要使用 `killall KodaX Space`：进程号可能复用，而且应用、helper 与 daemon 可能共享进程名。请先关闭所有使用该 KODAX_HOME 的客户端并升级到 v0.1.46-alpha.11 构建（KodaX 0.7.96-rc.1）或更高兼容版本；若没有持有原始进程句柄的服务管理器或 supervisor 可证明整棵树退出，保留恢复票据并重启操作系统，然后正常启动 Space 让 SDK 自动结算。不要手工删除 effect/exit lock、profile 或 Session 数据。',
     ),
     aliases: [
       'tray',

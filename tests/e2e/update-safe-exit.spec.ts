@@ -83,14 +83,13 @@ for (const blocker of ['none', 'peer', 'active task'] as const) {
       );
       const sessionId = await currentSdkSession(space);
       await waitSdkIdle(space, sessionId);
-      const daemonDir = path.join(space.testDataDir, 'runtime/daemon/coder');
+      const daemonDir = path.join(space.testDataDir, 'runtime/daemon/default');
       const raw = await readFile(path.join(daemonDir, 'daemon.json'), 'utf8');
       const daemonPid = parseOwnedTestDaemonPid(raw, space.testDataDir);
       expect(daemonPid).toBeDefined();
       const evidence = await prepareUpdate(space, daemonPid!);
       if (blocker === 'peer') {
         peer = await connectKodaXClient({
-          profile: 'coder',
           endpoint: (JSON.parse(raw) as { endpoint: string }).endpoint,
           token: (await readFile(path.join(daemonDir, 'daemon.token'), 'utf8')).trim(),
           clientInfo: {

@@ -38,7 +38,6 @@ export type RuntimeExitSettlement = (
 export interface RuntimeExitSettlementInput {
   readonly configHome: string;
   readonly homeDir?: string;
-  readonly profile?: string;
   readonly runtime?: Pick<KodaXDaemonRuntime, 'lifecycle'>;
   readonly clientInfo?: RuntimeClientInfo;
   readonly requestId?: string;
@@ -190,7 +189,6 @@ export async function settleRuntimeClientExit(
           () =>
             readKodaXClientExits({
               homeDir: input.homeDir,
-              profile: input.profile,
               clientInfo,
             }),
           deadline,
@@ -209,7 +207,6 @@ export async function settleRuntimeClientExit(
   const { readKodaXClientExits } = await import('@kodax-ai/kodax/client');
   const receipts = await readKodaXClientExits({
     homeDir: input.homeDir,
-    profile: input.profile,
     clientInfo: input.clientInfo,
   });
   const latest = [...receipts].sort((left, right) =>

@@ -1406,19 +1406,17 @@ export interface RuntimeInlineOwnerHandle {
   readonly ownerPolicy: RuntimeOwnerPolicyState;
   close(): void;
 }
+/** One Host serves each KODAX_HOME; the data root alone names it (ADR-075). */
 interface RuntimeOwnerControl {
   acquireInline(input: {
     readonly homeDir?: string;
-    readonly profile: string;
     readonly enableRollback?: boolean;
   }): Promise<RuntimeInlineOwnerHandle>;
   getState(input: {
     readonly homeDir?: string;
-    readonly profile: string;
   }): Promise<RuntimeOwnerState>;
   enableDaemon(input: {
     readonly homeDir?: string;
-    readonly profile: string;
   }): Promise<RuntimeOwnerPolicyState>;
 }
 
@@ -2168,7 +2166,6 @@ export class RuntimeHostAdapter {
   private readonly runtimeReadyObservers = new Set<(revision: number) => void>();
   private clientExitSettlement: Promise<RuntimeExitSettlement> | undefined;
   private startupExitSettlement: Promise<RuntimeExitSettlement> | undefined;
-  private runtimeProfile = 'coder';
   /** Exact Run identities accepted through this Space process, retained for child-workflow provenance. */
   private readonly spaceOwnedRunIds = new Set<string>();
   /** Exact Runtime Agent turn identities started through this Space process. */
@@ -2475,7 +2472,6 @@ export class RuntimeHostAdapter {
     autoStart: boolean,
   ): SpaceRuntimeConnectOptions {
     return {
-      profile: autoStart ? 'coder' : this.runtimeProfile,
       autoStart,
       ...(autoStart ? { daemonLifecycle: 'interactive' as const } : {}),
       ...(this.runtimeHomeDir !== undefined ? { homeDir: this.runtimeHomeDir } : {}),
@@ -2683,7 +2679,6 @@ export class RuntimeHostAdapter {
         this.hostToolLeaseIds.add(hostToolLease.id);
         this.hostToolAttachments.set(runtime.hostTools, new Set([hostToolLease.id]));
         this.runtime = runtime;
-        this.runtimeProfile = runtime.identity.profile;
         this.integrationHealth = undefined;
         this.integrationHealthFingerprint = '';
         activeStage = 'connection_validate';
@@ -7938,7 +7933,6 @@ export class RuntimeHostAdapter {
         this.runtimeExitSettler ?? ((input) => this.settlePublishedRuntimeExit(input))
       )({
         configHome: this.runtimeConfigHome(),
-        profile: runtime?.identity.profile ?? this.runtimeProfile,
         ...(runtime ? { runtime } : {}),
       });
     }
@@ -8836,7 +8830,6 @@ export class RuntimeHostAdapter {
     try {
       const settlement = await this.settlePublishedRuntimeExit({
         configHome: this.runtimeConfigHome(),
-        profile: runtime.identity.profile,
         runtime,
         requestId: operationId,
       });
@@ -8924,15 +8917,11 @@ export class RuntimeHostAdapter {
     try {
       const result = await settleRuntimeClientExit({
         ...input,
-        profile: passive?.identity.profile ?? recovery?.profile ?? input.profile,
         runtime: input.runtime ?? passive,
         homeDir: this.runtimeHomeDir,
         clientInfo: identity,
         onAccepted: async (receipt) => {
-          await this.identityStore.retireInstance?.(identity.instanceId, {
-            ...receipt,
-            profile: passive?.identity.profile ?? recovery?.profile ?? input.profile,
-          });
+          await this.identityStore.retireInstance?.(identity.instanceId, receipt);
         },
       });
       if (result.status !== 'blocked' && !input.runtime) {
@@ -8965,7 +8954,6 @@ export class RuntimeHostAdapter {
     try {
       const settlement = await settler({
         configHome: this.runtimeConfigHome(),
-        profile: 'coder',
         recoverOnly: true,
       });
       return settlement;
@@ -9343,9 +9331,8 @@ export class RuntimeHostAdapter {
     }
   }
 
-  private runtimeOwnerTarget(): { readonly homeDir?: string; readonly profile: string } {
+  private runtimeOwnerTarget(): { readonly homeDir?: string } {
     return {
-      profile: this.runtimeProfile,
       ...(this.runtimeHomeDir !== undefined ? { homeDir: this.runtimeHomeDir } : {}),
     };
   }

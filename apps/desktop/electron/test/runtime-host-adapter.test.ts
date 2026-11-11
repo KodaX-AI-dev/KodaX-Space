@@ -3011,6 +3011,7 @@ test('daemon startup reconciles an unowned inline policy before Runtime initiali
     data?: Readonly<Record<string, unknown>>;
   }> = [];
   const fake = createFakeRuntime();
+  const ownerTargets: object[] = [];
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
     profileRoot: 'C:\\isolated-profile',
@@ -3023,17 +3024,21 @@ test('daemon startup reconciles an unowned inline policy before Runtime initiali
       acquireInline: async () => {
         throw new Error('not used');
       },
-      getState: async () => ({
-        profile: 'coder',
-        policy: {
-          mode: 'inline',
-          revision: 3,
-          updatedAt: '2026-07-28T00:00:00.000Z',
-        },
-        ownerStatus: 'unowned',
-        owner: null,
-      }),
-      enableDaemon: async () => {
+      getState: async (target) => {
+        ownerTargets.push(target);
+        return {
+          profile: 'coder',
+          policy: {
+            mode: 'inline',
+            revision: 3,
+            updatedAt: '2026-07-28T00:00:00.000Z',
+          },
+          ownerStatus: 'unowned',
+          owner: null,
+        };
+      },
+      enableDaemon: async (target) => {
+        ownerTargets.push(target);
         calls.push('enable-daemon');
         return {
           mode: 'daemon',
@@ -3053,6 +3058,8 @@ test('daemon startup reconciles an unowned inline policy before Runtime initiali
   await adapter.reconcileStartupOwnerPolicy();
   await adapter.initialize('0.1.33');
   assert.deepEqual(calls, ['enable-daemon', 'runtime']);
+  // The SDK rejects a Host profile; the data root alone names the Host (ADR-075).
+  assert.deepEqual(ownerTargets, [{}, {}]);
   assert.deepEqual(
     timingEvents.map(({ scope, stage, phase }) => `${scope}:${stage}:${phase}`),
     [
@@ -3796,7 +3803,7 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
 
   await Promise.all([adapter.initialize('0.1.30'), adapter.initialize('ignored-after-start')]);
   assert.equal(options.length, 1);
-  assert.equal(options[0]?.profile, 'coder');
+  assert.equal(options[0] !== undefined && 'profile' in options[0], false, 'One Host serves each KODAX_HOME');
   assert.equal(options[0]?.autoStart, true);
   assert.equal(
     options[0]?.homeDir,
@@ -5671,13 +5678,13 @@ test('transport recovery stops retrying when the SDK reports a permanent incompa
   }
 });
 
-test('a shared default Host keeps its actual profile for passive reconnect and complete exit', async () => {
+test('a shared Host reconnects passively and settles exit without a Host profile (ADR-075)', async () => {
   const first = createFakeRuntime('rt_shared_default_first');
   const second = createFakeRuntime('rt_shared_default_second');
   Object.assign(first.runtime.identity, { profile: 'default' });
   Object.assign(second.runtime.identity, { profile: 'default' });
   let attempts = 0;
-  let exitProfile: string | undefined;
+  let exitInput: import('../kodax/runtime-host-adapter.js').RuntimeExitSettlementInput | undefined;
   const adapter = new RuntimeHostAdapter({
     mode: 'runtime',
     profileRoot: path.resolve('C:/isolated-profile'),
@@ -5685,7 +5692,7 @@ test('a shared default Host keeps its actual profile for passive reconnect and c
     runtimeEventParser: testRuntimeEventParser,
     runtimeFactory: async (options) => {
       if (++attempts === 1) return first.runtime;
-      assert.equal(options.profile, 'default');
+      assert.equal('profile' in options, false);
       assert.equal(options.autoStart, false, 'transport recovery stays passive');
       assert.equal(
         options.daemonLifecycle,
@@ -5695,7 +5702,7 @@ test('a shared default Host keeps its actual profile for passive reconnect and c
       return second.runtime;
     },
     runtimeExitSettler: async (input) => {
-      exitProfile = input.profile;
+      exitInput = input;
       return { status: 'clean', repairs: [] };
     },
   });
@@ -5707,7 +5714,8 @@ test('a shared default Host keeps its actual profile for passive reconnect and c
       2_500,
     );
     await adapter.stopDaemonForCompleteExit();
-    assert.equal(exitProfile, 'default');
+    assert.ok(exitInput);
+    assert.equal('profile' in exitInput, false);
   } finally {
     await adapter.close();
   }
@@ -5854,7 +5862,7 @@ test('production complete exit delegates the exact lifecycle settlement to the S
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0]?.configHome, path.join(path.resolve('C:\\runtime-base'), '.kodax'));
-  assert.equal(calls[0]?.profile, 'coder');
+  assert.equal(calls[0] !== undefined && 'profile' in calls[0], false);
   assert.equal(calls[0]?.runtime, fake.runtime);
   assert.equal(fake.calls.daemonStops.length, 0);
   assert.equal(fake.calls.close, 1);

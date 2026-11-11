@@ -20,13 +20,11 @@ async function fixture(t) {
   const root = await realpath(await mkdtemp(path.join(scratch, 'space-daemon-control-')));
   const workspace = path.join(root, 'workspace');
   await mkdir(workspace);
-  const profile = 'control-regression';
   const packageRoot = path.dirname(
     createRequire(import.meta.url).resolve('@kodax-ai/kodax/package.json'),
   );
   const runtime = await ensureKodaXRuntime({
     homeDir: path.join(root, 'home'),
-    profile,
     defaultProvider: 'anthropic',
     daemonOrphanExitMs: 30000,
   });
@@ -40,8 +38,6 @@ async function fixture(t) {
         'stop',
         '--home',
         path.join(root, 'home'),
-        '--profile',
-        profile,
         '--timeout-ms',
         '10000',
         '--force',

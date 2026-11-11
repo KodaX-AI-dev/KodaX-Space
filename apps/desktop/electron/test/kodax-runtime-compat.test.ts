@@ -29,8 +29,8 @@ const KODAX_CLI_PATH = path.join(
   'kodax_cli.js',
 );
 
+/** The isolated temp home alone names the probe Host (ADR-075). */
 interface SharedDaemonProbeContext {
-  readonly profile: string;
   readonly homeDir: string;
 }
 
@@ -95,8 +95,6 @@ function isSharedDaemonProbeContext(
       : '';
   const relativeToTemp = resolvedHome ? path.relative(path.resolve(tmpdir()), resolvedHome) : '';
   return (
-    typeof parsed?.profile === 'string' &&
-    parsed.profile.startsWith('space-f121-') &&
     resolvedHome.length > 0 &&
     relativeToTemp.length > 0 &&
     !relativeToTemp.startsWith('..') &&
@@ -226,13 +224,10 @@ function commandLineMatchesProbeOwner(
   const daemonIndex = normalizedArgs.findIndex(
     (arg, index) => arg === 'daemon' && normalizedArgs[index + 1] === 'serve',
   );
-  const profileIndex = normalizedArgs.indexOf('--profile');
   const homeIndex = normalizedArgs.indexOf('--home');
   return (
     args.some((arg) => normalizePath(arg) === normalizePath(KODAX_CLI_PATH)) &&
     daemonIndex >= 0 &&
-    profileIndex >= 0 &&
-    normalizedArgs[profileIndex + 1] === owner.profile.toLowerCase() &&
     homeIndex >= 0 &&
     args[homeIndex + 1] !== undefined &&
     normalizePath(args[homeIndex + 1]!) === normalizePath(owner.homeDir)
@@ -255,8 +250,6 @@ async function stopOwnedSharedDaemon(
           KODAX_CLI_PATH,
           'daemon',
           'stop',
-          '--profile',
-          owner.profile,
           '--home',
           owner.homeDir,
           '--timeout-ms',
@@ -286,7 +279,7 @@ async function stopOwnedSharedDaemon(
   if (commandLine === undefined || !commandLineMatchesProbeOwner(commandLine, owner)) {
     throw new Error(
       `Refused to terminate PID ${owner.pid}: compatibility daemon identity no longer matches ` +
-        `${owner.profile} at ${owner.homeDir}. daemon stop: ${stopResult.stderr || stopResult.stdout}`,
+        `${owner.homeDir}. daemon stop: ${stopResult.stderr || stopResult.stdout}`,
     );
   }
 
@@ -306,8 +299,6 @@ async function stopSharedDaemonContext(context: SharedDaemonProbeContext): Promi
     KODAX_CLI_PATH,
     'daemon',
     'stop',
-    '--profile',
-    context.profile,
     '--home',
     context.homeDir,
     '--timeout-ms',
@@ -317,7 +308,7 @@ async function stopSharedDaemonContext(context: SharedDaemonProbeContext): Promi
   ]);
   if (result.code !== 0) {
     throw new Error(
-      `Could not stop compatibility daemon ${context.profile}: ${result.stderr || result.stdout}`,
+      `Could not stop compatibility daemon at ${context.homeDir}: ${result.stderr || result.stdout}`,
     );
   }
   await removeSharedDaemonHome(context.homeDir);
@@ -374,7 +365,6 @@ let observation;
 let readinessSubscription;
 try {
   runtime = await connectKodaXRuntime({
-    profile: process.env.KODAX_PROBE_PROFILE,
     autoStart: false,
     homeDir: process.env.KODAX_PROBE_HOME,
     sessionsDir: path.join(process.env.KODAX_PROBE_HOME, 'sessions'),
@@ -493,9 +483,8 @@ import { connectKodaXRuntime, ensureKodaXRuntime } from '@kodax-ai/kodax/runtime
 
 const requirements = JSON.parse(process.env.KODAX_PROBE_REQUIREMENTS);
 const homeDir = await mkdtemp(path.join(tmpdir(), 'kodax-space-shared-daemon-'));
-const profile = 'space-f121-' + process.pid;
 process.stdout.write(
-  'KODAX_SHARED_DAEMON_CONTEXT=' + JSON.stringify({ profile, homeDir }) + '\n',
+  'KODAX_SHARED_DAEMON_CONTEXT=' + JSON.stringify({ homeDir }) + '\n',
 );
 process.env.KODAX_INTERNAL_DAEMON_TEST_PARENT_PID = String(process.pid);
 
@@ -506,7 +495,6 @@ function runPeer(sessionId) {
       env: {
         ...process.env,
         KODAX_PROBE_HOME: homeDir,
-        KODAX_PROBE_PROFILE: profile,
         KODAX_PROBE_SESSION_ID: sessionId,
         KODAX_PROBE_INSTANCE_ID: randomUUID(),
         KODAX_PROBE_INSTANCE_SECRET: randomBytes(32).toString('base64url'),
@@ -551,7 +539,6 @@ let managementBaseline;
 let daemonPid;
 try {
   runtime = await ensureKodaXRuntime({
-    profile,
     daemonOrphanExitMs: 30_000,
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
@@ -569,7 +556,7 @@ try {
   daemonPid = managementBaseline.owner.pid;
   process.stdout.write(
     'KODAX_SHARED_DAEMON_OWNER=' +
-      JSON.stringify({ pid: daemonPid, profile, homeDir }) +
+      JSON.stringify({ pid: daemonPid, homeDir }) +
       '\n',
   );
   if (process.env.KODAX_SHARED_DAEMON_FAILURE_MODE === 'hang-after-owner') {
@@ -712,11 +699,11 @@ import {
 } from '@kodax-ai/kodax/a2a';
 
 async function closeProbeOwner(value, root) {
-  const state = await getKodaXRuntimeOwnerState({ homeDir: root, profile: 'default' });
+  const state = await getKodaXRuntimeOwnerState({ homeDir: root });
   if (!state.owner || state.owner.runtimeId !== value.identity.runtimeId) throw new Error('Probe owner changed');
   await value.daemon.shutdown();
   await value.close();
-  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), profile: 'default', owner: state.owner, timeoutMs: 15000 });
+  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), owner: state.owner, timeoutMs: 15000 });
   if (verified.status !== 'succeeded') throw new Error('Probe owner shutdown was not verified');
 }
 
@@ -1313,7 +1300,7 @@ test(
       assert.equal(JSON.stringify(transcript.messages).includes(executionPrompt), false);
     } finally {
       if (runtime) {
-        const state = await sdk.getKodaXRuntimeOwnerState({ homeDir, profile: 'default' });
+        const state = await sdk.getKodaXRuntimeOwnerState({ homeDir });
         assert.equal(
           state.owner?.runtimeId,
           runtime.identity.runtimeId,
@@ -1323,7 +1310,6 @@ test(
         await runtime.close();
         const verified = await sdk.waitForRuntimeDaemonShutdown({
           configHome: path.join(homeDir, '.kodax'),
-          profile: 'default',
           owner: state.owner!,
           timeoutMs: 15000,
         });
@@ -1486,7 +1472,6 @@ test(`KodaX ${EXPECTED_KODAX_VERSION} exports a bounded non-empty auto-resume se
 test('shared daemon cleanup accepts only complete, scoped compatibility ownership markers', () => {
   const owner: SharedDaemonOwnerMarker = {
     pid: 12345,
-    profile: 'space-f121-987',
     homeDir: path.join(tmpdir(), 'kodax-space-shared-daemon-test-owner'),
   };
   const prefix = `${SHARED_DAEMON_OWNER_MARKER}${JSON.stringify(owner)}`;
@@ -1497,35 +1482,35 @@ test('shared daemon cleanup accepts only complete, scoped compatibility ownershi
     parseSharedDaemonOwner(
       `${SHARED_DAEMON_OWNER_MARKER}${JSON.stringify({
         ...owner,
-        profile: 'coder',
+        homeDir: path.join(tmpdir(), 'kodax-user-home'),
       })}\n`,
     ),
     undefined,
   );
   assert.equal(
     commandLineMatchesProbeOwner(
-      `"node" "${KODAX_CLI_PATH}" daemon serve --profile ${owner.profile} --home "${owner.homeDir}"`,
+      `"node" "${KODAX_CLI_PATH}" daemon serve --home "${owner.homeDir}" --config-home "${owner.homeDir}/.kodax"`,
       owner,
     ),
     true,
   );
   assert.equal(
     commandLineMatchesProbeOwner(
-      `"node" "${KODAX_CLI_PATH}" daemon serve --profile coder --home "${owner.homeDir}"`,
+      `"node" "${KODAX_CLI_PATH}" daemon serve --home "${owner.homeDir}-other"`,
       owner,
     ),
     false,
   );
   assert.equal(
     commandLineMatchesProbeOwner(
-      `"node" "other-cli.js" daemon serve --profile ${owner.profile} --home "${owner.homeDir}"`,
+      `"node" "other-cli.js" daemon serve --home "${owner.homeDir}"`,
       owner,
     ),
     false,
   );
   assert.equal(
     commandLineMatchesProbeOwner(
-      `"node" "${KODAX_CLI_PATH}" daemon serve --profile=${owner.profile} --home "${owner.homeDir}"`,
+      `"node" "${KODAX_CLI_PATH}" daemon serve --home="${owner.homeDir}"`,
       owner,
     ),
     false,

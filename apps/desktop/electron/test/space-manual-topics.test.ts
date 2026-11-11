@@ -344,3 +344,13 @@ test('Space kodax_manual describes the v0.1.45 inline ask-user conversation card
   assert.match(uiMap, /ask_user 与 guardrail 提问卡不是浮层/);
   assert.match(uiMap, /对话历史保持可滚动/);
 });
+
+test('Space manual names one Host per KODAX_HOME instead of a Host profile (ADR-075)', () => {
+  const spaceText = SPACE_MANUAL_TOPICS.map(
+    (topic) => topic.body.split('## Inherited KodaX SDK mechanism')[0],
+  ).join('\n');
+  assert.doesNotMatch(spaceText, /profile-scoped|使用该 profile 的客户端/);
+  const exit = SPACE_MANUAL_TOPICS.find((topic) => topic.id === 'background-runtime')?.body ?? '';
+  assert.match(exit, /kodax daemon stop --timeout-ms 10000 --json/);
+  assert.match(exit, /0\.7\.97.*--profile coder/);
+});

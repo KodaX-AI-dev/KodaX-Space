@@ -38,7 +38,7 @@ export async function startConflictingHistoryHost(
         { role: 'assistant', content: [{ type: 'text', text: 'saved answer ' + label }] },
       ],
     });
-    const runtime = await ensureKodaXRuntime({ profile: 'default', sessionsDir: path.join(root, 'sessions'),
+    const runtime = await ensureKodaXRuntime({ sessionsDir: path.join(root, 'sessions'),
       ...(process.argv[5] === 'persistent' ? { daemonLifecycle: 'persistent' } : {}) });
     let run;
     if (process.argv[2]) {
@@ -161,7 +161,7 @@ export async function startConflictingHistoryHost(
       } finally {
         await runFile(
           process.execPath,
-          [cli, 'daemon', 'stop', '--profile', 'default', '--timeout-ms', '5000', '--json'],
+          [cli, 'daemon', 'stop', '--timeout-ms', '5000', '--json'],
           {
             env: { ...process.env, KODAX_HOME: root },
             windowsHide: true,

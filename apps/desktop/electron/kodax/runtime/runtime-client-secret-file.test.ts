@@ -30,7 +30,7 @@ test('migrates active and exit-recovery secrets with all stable identity bytes u
     const metadata = { name: 'Space', version: 'fixture' };
     const original = new RuntimeClientIdentityStore(identityFile, path.dirname(identityFile), randomUUID, legacy);
     const first = await original.openInstance(metadata);
-    await original.retireInstance(first.instanceId, { requestId: 'exit', runtimeId: 'old-host', profile: 'coder' });
+    await original.retireInstance(first.instanceId, { requestId: 'exit', runtimeId: 'old-host' });
     const active = await original.openInstance(metadata), before = await readFile(identityFile, 'utf8');
     const secrets = createRuntimeClientFileSecretStore({ authFile: path.join(root, 'auth.json'), legacy });
     const restored = new RuntimeClientIdentityStore(identityFile, path.dirname(identityFile), randomUUID, secrets);

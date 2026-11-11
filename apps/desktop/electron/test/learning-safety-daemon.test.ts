@@ -40,7 +40,6 @@ let runtime;
 try {
   const { ensureKodaXRuntime } = await import('@kodax-ai/kodax/runtime');
   runtime = await ensureKodaXRuntime({
-    profile: process.env.F118_PROFILE,
     daemonOrphanExitMs: 30000,
     homeDir: process.env.F118_HOME,
     sessionsDir: path.join(process.env.F118_HOME, 'sessions'),
@@ -98,7 +97,7 @@ function appendDiagnosticTail(previous: string, chunk: string): string {
     : next;
 }
 
-function startDaemonHost(homeDir: string, profile: string) {
+function startDaemonHost(homeDir: string) {
   const child = spawn(process.execPath, ['--input-type=module', '-'], {
     cwd: process.cwd(),
     env: {
@@ -107,7 +106,6 @@ function startDaemonHost(homeDir: string, profile: string) {
       // the Unix socket path limit used by the published daemon auto-start.
       ...(process.platform === 'darwin' ? { TMPDIR: '/tmp' } : {}),
       F118_HOME: homeDir,
-      F118_PROFILE: profile,
       F118_REQUIREMENTS: JSON.stringify(requirements),
     },
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -157,7 +155,7 @@ async function closeHost(child: ChildProcessWithoutNullStreams): Promise<void> {
   await closed;
 }
 
-function stopDaemon(homeDir: string, profile: string): Promise<void> {
+function stopDaemon(homeDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -165,8 +163,6 @@ function stopDaemon(homeDir: string, profile: string): Promise<void> {
         KODAX_CLI_PATH,
         'daemon',
         'stop',
-        '--profile',
-        profile,
         '--home',
         homeDir,
         '--timeout-ms',
@@ -200,7 +196,6 @@ test(
   async () => {
     const homeDir = await mkdtemp(path.join(tmpdir(), 'kodax-space-f118-service-'));
     const configHome = path.join(homeDir, '.kodax');
-    const profile = `space-f118-service-${process.pid}`;
     const scopeIdentity = {
       tenantId: 'space-f118-service-tenant',
       projectId: 'space-f118-service-project',
@@ -245,12 +240,11 @@ test(
       const primary = await seed('f118-service-primary', 'd');
       const rejectCandidate = await seed('f118-service-reject', 'e');
 
-      host = startDaemonHost(homeDir, profile);
+      host = startDaemonHost(homeDir);
       const runtimeId = await host.ready;
       assert.ok(runtimeId);
       runtime = await withDarwinRuntimeDaemonTmpdir(process.platform, () =>
         connectKodaXRuntime({
-          profile,
           autoStart: false,
           homeDir,
           sessionsDir: path.join(homeDir, 'sessions'),
@@ -340,7 +334,7 @@ test(
     } finally {
       await runtime?.close();
       if (host) await closeHost(host.child).catch(() => {});
-      await stopDaemon(homeDir, profile).catch(() => {});
+      await stopDaemon(homeDir).catch(() => {});
       await rm(homeDir, { recursive: true, force: true });
     }
   },

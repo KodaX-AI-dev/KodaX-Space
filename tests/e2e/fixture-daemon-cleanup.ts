@@ -15,7 +15,8 @@ function comparablePath(value: string): string {
 }
 
 /**
- * Accept only the Coder daemon descriptor owned by this exact isolated E2E data directory.
+ * Accept only the Host descriptor owned by this exact isolated E2E data directory.
+ * One Host serves each data root from the canonical `default` slot (ADR-075).
  * The ownership check prevents a corrupt or stale fixture file from targeting a user daemon.
  */
 export function parseOwnedTestDaemonPid(raw: string, testDataDir: string): number | undefined {
@@ -26,7 +27,7 @@ export function parseOwnedTestDaemonPid(raw: string, testDataDir: string): numbe
     return undefined;
   }
   if (
-    descriptor.profile !== 'coder' ||
+    descriptor.profile !== 'default' ||
     typeof descriptor.configHome !== 'string' ||
     comparablePath(descriptor.configHome) !== comparablePath(testDataDir) ||
     typeof descriptor.pid !== 'number' ||
@@ -48,7 +49,7 @@ export async function stopOwnedTestDaemon(
   testDataDir: string,
   killProcess: KillProcess = process.kill,
 ): Promise<boolean> {
-  const descriptorPath = path.join(testDataDir, 'runtime', 'daemon', 'coder', 'daemon.json');
+  const descriptorPath = path.join(testDataDir, 'runtime', 'daemon', 'default', 'daemon.json');
   const raw = await fs.readFile(descriptorPath, 'utf8').catch(() => null);
   if (raw === null) return false;
   // The child uses the physical macOS temp path while the fixture may retain
