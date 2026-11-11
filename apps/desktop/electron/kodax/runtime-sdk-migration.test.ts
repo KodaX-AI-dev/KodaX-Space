@@ -433,13 +433,20 @@ async function verifyRuntimePngAttachment(
   });
   assert.equal((await handle.result).phase, 'completed');
   const view = await readRuntimeSessionView(runtime.sessions, sessionId);
+  const expectedImageSha256 = createHash('sha256').update(bytes).digest('hex');
+  // KodaX 0.7.97-beta.5+ pins accepted images: the attachment is the Host's
+  // `<sessions>/.media/<owner>/<sha256>` copy, so later edits to the file cannot change it.
   const item = view.items.find(
     (candidate) =>
       candidate.sourceRunId === handle.runId &&
-      candidate.attachments?.some((attachment) => attachment.path === imagePath),
+      candidate.attachments?.some(
+        (attachment) =>
+          attachment.path !== imagePath &&
+          path.basename(attachment.path) === expectedImageSha256 &&
+          attachment.path.includes(`${path.sep}.media${path.sep}`),
+      ),
   );
-  assert.ok(item, 'the actual tool result must retain its PNG attachment');
-  const expectedImageSha256 = createHash('sha256').update(bytes).digest('hex');
+  assert.ok(item, 'the actual tool result must retain its pinned PNG attachment');
   const content = await runtime.sessions.readViewItem(sessionId, item.id, {
     part: 'attachment',
     attachmentIndex: 0,

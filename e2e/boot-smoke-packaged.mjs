@@ -196,10 +196,17 @@ try {
   if (path.resolve(daemon.configHome) !== path.resolve(profileDir)) {
     throw new Error(`packaged daemon used the wrong config home: ${daemon.configHome}`);
   }
+  // KodaX 0.7.97-beta.5+ (Issue 398) moves records whose owner and processes are gone,
+  // unchanged, to `.unresolved/`; either place keeps the cleanup evidence intact.
+  let movedRecords = 0;
   for (const { file, contents } of historicalRecords) {
-    if ((await readFile(file, 'utf8')) !== contents) {
+    const moved = path.join(path.dirname(file), '.unresolved', path.basename(file));
+    const kept = await readFile(file, 'utf8').catch(() => undefined);
+    const current = kept ?? (await readFile(moved, 'utf8').catch(() => undefined));
+    if (current !== contents) {
       throw new Error('Startup changed unresolved historical Run cleanup evidence');
     }
+    if (kept === undefined) movedRecords += 1;
   }
   const finalDiagnostics = await readDiagnostics();
   if (
@@ -222,7 +229,7 @@ try {
   console.log(
     `[boot-smoke] PASS | renderer ready in ${rendererReadyMs}ms | ` +
       `KodaX ${expectedKodaxVersion} Runtime ready in ${runtimeReadyMs}ms after deterministic hold; ` +
-      `${historicalRecords.length} historical child records preserved`,
+      `${historicalRecords.length} historical child records preserved (${movedRecords} in .unresolved/)`,
   );
 } catch (error) {
   console.error('[boot-smoke] FAIL:', error instanceof Error ? error.message : String(error));
