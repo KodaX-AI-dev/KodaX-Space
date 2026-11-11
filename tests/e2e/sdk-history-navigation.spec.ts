@@ -187,6 +187,10 @@ async function moveNativeHistoryPages(
   await expect.poll(count, { message: `${direction} first native page` }).toBeGreaterThanOrEqual(1);
   await settleNativeHistoryLayout(page);
   if ((await count()) < 2) {
+    // A page landing while the pointer rests can leave Chromium (on CI runners) mapping the drag
+    // from where it was pressed, so moving on past the edge does not scroll until the pointer
+    // passes back over that point.
+    await page.mouse.move(geometry.x, geometry.y - sign * 30, { steps: 6 });
     const remaining = await scroller.evaluate(
       (element, direction) =>
         direction === 'older'
