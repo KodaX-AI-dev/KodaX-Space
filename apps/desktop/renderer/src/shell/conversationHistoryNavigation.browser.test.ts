@@ -43,7 +43,7 @@ const label=['NEWEST','MIDDLE','OLDEST'][index];
 const tool={id:'tool-'+label,type:'tool',text:'concealed tool result',historyBoundary:{entryId:'found',sourceRevision:'s'},tool:{name:'read',callId:'call-'+label,status:'success',resultRecorded:true}};
 return{ok:true,data:{sessionId:input.sessionId,requestId:input.requestId,items:[],productItems:(window.samePageItems=[...Array.from({length:12},(_,i)=>({id:label+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:label+' '+i+'\\n\\n'+('Readable report paragraph.\\n\\n').repeat(8)})),tool,{id:'info-'+label,type:'info',text:'Informational report'},...(index===0?window.extraItems??[]:[]),...(window.pageExtra?.[label]??[])]),
 conversation:window.historyStatus?{status:window.historyStatus}:undefined,
-page:{outcome:'ready',revision:'r',sourceRevision:'s',hasMore:!window.singlePage&&index<2,hasNewer:index>0,locatedBoundaryId:'found',windowMode:'replace',...(index>0?{newerCursor:index===2?'middle':'newest'}:{}),...(!window.singlePage&&index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
+page:{outcome:'ready',revision:window.revision??'r',sourceRevision:'s',hasMore:!window.singlePage&&index<2,hasNewer:index>0,locatedBoundaryId:'found',windowMode:'replace',...(index>0?{newerCursor:index===2?'middle':'newest'}:{}),...(!window.singlePage&&index<2?{nextCursor:index===0?'middle':'oldest'}:{})}}};
 }};
 useAppStore.setState({currentSessionId:'s',currentProjectPath:'/project',sessions:[{sessionId:'s',title:'History',surface:'code',projectRoot:'/project'}]});
 function App(){const id=useAppStore(state=>state.currentSessionId);return <ConversationStreamV2 key={id}/>}
@@ -56,6 +56,8 @@ window.select=id=>{deactivateSessionHistoryPaging(useAppStore.getState().current
 window.streaming=on=>useAppStore.setState({pendingSendBySession:on?{s:true}:{}});
 window.detail=mode=>useAppStore.getState().setTranscriptView(mode);
 window.fontSize=size=>useAppStore.getState().setTranscriptFontSize(size);
+window.live=(count,tail,prefix='view-')=>replaceProductSessionView({sessionId:'s',runtimeId:'rt',revision:window.liveRevision=(window.liveRevision??1)+1,
+items:Array.from({length:count},(_,i)=>({id:prefix+i,type:'assistant',outputId:'output-'+i,text:i===count-1?tail:'Live '+i+'\\n\\n'+('Current paragraph.\\n\\n').repeat(i%5)}))});
 window.primeLive=async()=>{
   window.holdNewest=false;
   await restoreNewestSessionHistory('s','code');
@@ -115,6 +117,19 @@ async function waitLoaded(page: Page, id: string): Promise<void> {
     id,
   );
 }
+
+/** The first message row crossing the viewport, and its distance below the viewport top. */
+const rowInView = (page: Page, id?: string): Promise<{ id: string; offset: number }> =>
+  page.getByTestId('conversation-scroll-container').evaluate((scroller, target) => {
+    const frame = scroller.getBoundingClientRect();
+    const row = [...scroller.querySelectorAll<HTMLElement>('[data-msg-id]')].find((element) =>
+      target === undefined
+        ? element.getBoundingClientRect().bottom > frame.top + 1
+        : element.dataset.msgId === target,
+    );
+    if (!row) throw new Error(`no row ${target ?? 'in view'}`);
+    return { id: row.dataset.msgId!, offset: row.getBoundingClientRect().top - frame.top };
+  }, id);
 
 async function openHistoryFixture(t: TestContext, showScrollbars = false) {
   const browser = await chromium.launch({
@@ -206,6 +221,44 @@ historyTest(
     await waitLoaded(page, 'OLDEST0');
     await page.getByText('Start of this conversation', { exact: true }).waitFor();
     assert.ok(await isLoaded(page, 'MIDDLE0'), 'the read page is retained');
+    assert.deepEqual(errors, []);
+  },
+);
+
+historyTest(
+  'a saved-history revision change keeps the read rows in place and returns to newest without them',
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    page.setDefaultTimeout(3500);
+    await page.evaluate('window.middle()');
+    await waitLoaded(page, 'MIDDLE0');
+    await page.evaluate('window.settle(48)');
+    const stream = page.getByTestId('conversation-stream');
+    const before = await rowInView(page);
+    await page.evaluate('window.revision="r2"');
+    // A pointer click would first scroll the button at the top into view.
+    await page
+      .getByRole('button', { name: 'Load earlier messages', exact: true })
+      .evaluate((button: HTMLElement) => button.click());
+    await page
+      .getByText('Saved history changed while you were reading. This page is still available.')
+      .waitFor();
+    await page.evaluate('window.settle(24)');
+    assert.ok(await isLoaded(page, 'MIDDLE0'), 'the read page stays');
+    assert.equal(await isLoaded(page, 'OLDEST0'), false, 'no page of the new revision is mixed in');
+    const after = await rowInView(page, before.id);
+    assert.ok(
+      Math.abs(after.offset - before.offset) <= 2,
+      `${before.id} moved from ${before.offset} to ${after.offset}`,
+    );
+    await page.getByRole('button', { name: 'Return to newest messages', exact: true }).click();
+    await stream.getByText('NEWEST 11', { exact: true }).waitFor();
+    await page.evaluate('window.settle(24)');
+    assert.equal(await isLoaded(page, 'MIDDLE0'), false, 'the stale page is not revived');
+    await page.waitForFunction(() => {
+      const element = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+      return element.scrollHeight - element.scrollTop - element.clientHeight < 2;
+    });
     assert.deepEqual(errors, []);
   },
 );
@@ -1543,6 +1596,90 @@ test(
     assert.ok(
       heights.every((height) => height > 0),
       `remounted image heights ${heights.join(',')}`,
+    );
+    assert.deepEqual(errors, []);
+  },
+);
+
+for (const windowing of [false, true])
+  test(
+    `a growing live tail stays followed at the bottom and a reader above it stays in place${windowing ? ' [windowed]' : ''}`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openHistoryFixture(t);
+      const scroller = page.getByTestId('conversation-scroll-container');
+      const gap = () =>
+        scroller.evaluate(
+          (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+        );
+      const grow = async (step: number) => {
+        await page.evaluate(
+          `window.live(2000,'Streaming ${step}\\n\\n'+'Growing line.\\n\\n'.repeat(${step * 3}))`,
+        );
+        await page.getByText(`Streaming ${step}`, { exact: true }).waitFor();
+        await page.evaluate('window.settle(8)');
+      };
+      await page.evaluate(
+        `window.kodaxSpace.transcriptWindowing=${windowing};window.singlePage=true;window.primeLive().then(()=>window.streaming(true))`,
+      );
+      for (let step = 1; step <= 4; step += 1) {
+        await grow(step);
+        assert.ok((await gap()) < 2, `step ${step} follows the tail (gap ${await gap()})`);
+      }
+      if (windowing) assert.ok((await mountedRows(page)) <= 80);
+      // A reader gesture: a scrollTop write while streaming is not the reader leaving the bottom.
+      await scroller.hover();
+      await page.mouse.wheel(0, -3000);
+      await page.evaluate('window.settle(24)');
+      const before = await rowInView(page);
+      for (let step = 5; step <= 7; step += 1) await grow(step);
+      const after = await rowInView(page, before.id);
+      assert.ok(
+        Math.abs(after.offset - before.offset) <= 2,
+        `${before.id} moved from ${before.offset} to ${after.offset}`,
+      );
+      await page.getByRole('button', { name: 'Jump to bottom', exact: true }).click();
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+        return element.scrollHeight - element.scrollTop - element.clientHeight < 2;
+      });
+      await grow(8);
+      assert.ok((await gap()) < 2, 'the tail is followed again after the jump');
+      assert.ok(await page.getByText('Streaming 8', { exact: true }).isVisible());
+      assert.deepEqual(errors, []);
+    },
+  );
+
+test(
+  'windowing shows rows, not a spacer, when the live view is replaced under a reader',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await page.evaluate(
+      `window.kodaxSpace.transcriptWindowing=true;window.primeLive().then(()=>window.live(2000,'Tail'))`,
+    );
+    await page.getByText('Tail', { exact: true }).waitFor();
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    // A resynced view: the same transcript under new item identities.
+    await page.evaluate(`window.live(2000,'Tail','resynced-')`);
+    await page.locator('[data-source-item^="resynced-"]').first().waitFor();
+    await page.evaluate('window.settle(24)');
+    const covered = await scroller.evaluate((element) => {
+      const frame = element.getBoundingClientRect();
+      const middle = frame.top + frame.height / 2;
+      return [...element.querySelectorAll('[data-window-row]')].some((row) => {
+        const box = row.getBoundingClientRect();
+        return box.top <= middle && box.bottom >= middle;
+      });
+    });
+    assert.ok(covered, 'a mounted row covers the middle of the view');
+    assert.ok(
+      (await scroller.evaluate((element) => element.scrollTop)) > 1000,
+      'the reader is not sent to the top',
     );
     assert.deepEqual(errors, []);
   },

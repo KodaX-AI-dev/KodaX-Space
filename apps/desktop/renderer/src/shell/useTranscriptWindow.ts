@@ -4,9 +4,11 @@
 // is within BOTTOM_SLACK_PX of the end.
 //
 // Where the reader is gets re-read only on a scroll (including one whose event is still pending)
-// or a viewport resize. Content moving under a still reader (a caller inserting rows above before
-// restoring its own anchor, a row growing) keeps the row they were reading mounted. "The bottom" holds only for the rows it was read
-// against: rows arriving below a reader who has not scrolled since keep the window where it was.
+// or a viewport resize, and once more after rows replace a spacer it was read inside (a place in a
+// spacer is an estimate the next rescale would move). Content moving under a still reader (a
+// caller inserting rows above before restoring its own anchor, a row growing) keeps the row they
+// were reading mounted. "The bottom" holds only for the rows it was read against: rows arriving
+// below a reader who has not scrolled since keep the window where it was.
 //
 // Spacers opt out of native scroll anchoring, so the browser keeps the row being read in place
 // while spacers and newly mounted rows change height. Native anchoring is not guaranteed (Chromium
@@ -43,6 +45,8 @@ interface View {
   /** `Infinity` is the bottom. */
   readonly scrollTop: number;
   readonly viewportHeight: number;
+  /** The anchor was a spacer: the reader's place is an estimate until rows replace it. */
+  readonly estimated?: true;
 }
 
 interface WindowState {
@@ -128,7 +132,8 @@ function readView(scroller: HTMLElement, container: HTMLElement): View {
     if (id === undefined) continue;
     const rect = child.getBoundingClientRect();
     if (rect.bottom <= top) continue;
-    return { ...view, anchor: { id, offset: top - rect.top } };
+    const anchored = { ...view, anchor: { id, offset: top - rect.top } };
+    return child.dataset.windowSpacer === undefined ? anchored : { ...anchored, estimated: true };
   }
   return view;
 }
@@ -323,8 +328,10 @@ export function useTranscriptWindow({
       const state = stateRef.current;
       const container = windowRef.current;
       if (!state || !container || hidden()) return;
-      // A scrollTop write earlier in this frame has not dispatched its scroll event yet.
-      if (reread || scroller.scrollTop !== readTop) {
+      // A scrollTop write earlier in this frame has not dispatched its scroll event yet. A place
+      // read inside a spacer is re-read once rows replace it: new measurements rescale the
+      // estimates it was read from and would move the reader.
+      if (reread || scroller.scrollTop !== readTop || state.view.estimated) {
         state.view = readView(scroller, container);
         state.viewRows = rowsRef.current;
         readTop = scroller.scrollTop;

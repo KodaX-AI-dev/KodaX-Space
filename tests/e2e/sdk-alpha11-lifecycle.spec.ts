@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
@@ -75,7 +75,8 @@ test('multiple long task reports preserve order full bodies and unknown status t
         .getByTestId('conversation-stream')
         .getByTestId('system-notice')
         .filter({ hasText: 'Task report' });
-      await expect(reports).toHaveCount(4, { timeout: 30_000 });
+      // The SDK items below carry all four reports; the transcript mounts the ones near the reader.
+      await expect(reports.last()).toBeVisible({ timeout: 30_000 });
       const view = await readSdkProductView(space, sessionId);
       const history = await readSdkHistoryPage(space, sessionId);
       for (const [source, items] of [
@@ -113,8 +114,31 @@ test('multiple long task reports preserve order full bodies and unknown status t
           );
         }
       }
-      for (const [index, status] of ['failed', 'cancelled', 'completed', 'unknown'].entries()) {
-        const report = reports.nth(index);
+      // A preview body is read once it is in view, and a report keeps its disclosure across the
+      // Host restart, so each report is scrolled to rather than revealed by its summary click.
+      // Rows far from the reader are not mounted: the first report mounts from the top, each
+      // later one once the reader reaches the end of the one before it.
+      let previous: Locator | undefined;
+      for (const [status, label] of [
+        ['failed', 'Failed'],
+        ['cancelled', 'Cancelled'],
+        ['completed', 'Completed'],
+        ['unknown', 'Status unknown'],
+      ]) {
+        const report = reports.filter({
+          has: space.page.locator('summary', { hasText: `Task report · ${label}` }),
+        });
+        if ((await report.count()) === 0) {
+          await (previous ?? space.page.getByTestId('conversation-scroll-container')).evaluate(
+            (element, top) => {
+              if (top) element.scrollTop = 0;
+              else element.scrollIntoView({ block: 'end' });
+            },
+            previous === undefined,
+          );
+        }
+        await report.scrollIntoViewIfNeeded();
+        previous = report;
         if ((await report.locator('details').getAttribute('open')) === null)
           await report.locator('summary').click();
         await expect(report).toContainText(`END_${status}`, { timeout: 30_000 });
