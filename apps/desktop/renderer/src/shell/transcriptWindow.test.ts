@@ -102,6 +102,24 @@ test('held scales keep unmeasured rows at their earlier scale whatever is measur
   ]);
 });
 
+test('held scales leave a kind they have no scale for unscaled, as it was when they were taken', () => {
+  const list = rows(4);
+  const parts = windowFor(list, {
+    measured: new Map([['r0', 176]]),
+    scales: new Map(),
+    scrollTop: 176 + GAP,
+    viewportHeight: 10,
+    overscanBefore: 0,
+    overscanAfter: 0,
+  });
+  assert.deepEqual(parts.at(-1), {
+    kind: 'spacer',
+    start: 2,
+    end: 4,
+    height: (88 + GAP) * 2 - GAP,
+  });
+});
+
 test('pinned rows stay mounted outside the window, merging with neighbouring runs', () => {
   const list = rows(1000);
   const parts = windowFor(list, {

@@ -59,14 +59,11 @@ export function estimateScales(
   return scales;
 }
 
-/** Measured height, else the estimate scaled by its kind. */
+/** Measured height, else the estimate scaled by its kind (unscaled where the kind has no scale). */
 function rowHeights(input: TranscriptWindowInput): number[] {
-  const { rows, measured, scales: held } = input;
-  const scales = estimateScales(rows, measured);
-  return rows.map(
-    (row) =>
-      measured.get(row.id) ?? row.estimate * (held?.get(row.kind) ?? scales.get(row.kind) ?? 1),
-  );
+  const { rows, measured } = input;
+  const scales = input.scales ?? estimateScales(rows, measured);
+  return rows.map((row) => measured.get(row.id) ?? row.estimate * (scales.get(row.kind) ?? 1));
 }
 
 function viewportTop(input: TranscriptWindowInput, tops: readonly number[]): number {

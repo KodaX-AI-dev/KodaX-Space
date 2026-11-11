@@ -4,10 +4,11 @@
 //
 // Where the reader is gets re-read only on a scroll (including one whose event is still pending)
 // or a viewport resize, and once more after rows replace a spacer it was read inside (a place in a
-// spacer is an estimate the next rescale would move). Content moving under a still reader (a
-// caller inserting rows above before restoring its own anchor, a row growing) keeps the row they
-// were reading mounted. "The bottom" holds only for the rows it was read against: rows arriving
-// below a reader who has not scrolled since keep the window where it was.
+// spacer is an estimate the next rescale would move; until then the window keeps the scales that
+// spacer was painted with, so the rows it mounts land where the reader is). Content moving under a
+// still reader (a caller inserting rows above before restoring its own anchor, a row growing) keeps
+// the row they were reading mounted. "The bottom" holds only for the rows it was read against:
+// rows arriving below a reader who has not scrolled since keep the window where it was.
 //
 // Spacers opt out of native scroll anchoring, so the browser keeps the row being read in place
 // while spacers and newly mounted rows change height. Native anchoring is not guaranteed (Chromium
@@ -58,6 +59,8 @@ interface WindowState {
   viewRows: readonly WindowRow[] | null;
   /** Kind scales kept while the scrollbar thumb is held, so the scroll height holds still. */
   heldScales: ReadonlyMap<string, number> | null;
+  /** Kind scales of the last rendered window, which its spacers were painted with. */
+  paintedScales: ReadonlyMap<string, number> | null;
 }
 
 const bottomView = (viewportHeight: number): View => ({
@@ -74,6 +77,7 @@ function freshState(layoutKey: string | null): WindowState {
     inUse: NOTHING_PINNED,
     viewRows: null,
     heldScales: null,
+    paintedScales: null,
   };
 }
 
@@ -82,6 +86,13 @@ const followsBottom = (state: WindowState, rows: readonly WindowRow[]): boolean 
   state.view.scrollTop === Number.POSITIVE_INFINITY &&
   (state.viewRows === null || state.viewRows === rows);
 
+/**
+ * A place read inside a spacer is a distance into that spacer as painted: measurements since then
+ * would rescale it to other rows (and past the end near the bottom, which reads as the bottom).
+ */
+const windowScales = (state: WindowState): ReadonlyMap<string, number> | null =>
+  state.heldScales ?? (state.view.estimated ? state.paintedScales : null);
+
 function windowParts(
   state: WindowState,
   rows: readonly WindowRow[],
@@ -89,6 +100,7 @@ function windowParts(
 ): WindowPart[] {
   const { view } = state;
   const anchor = followsBottom(state, rows) ? undefined : view.anchor;
+  const scales = windowScales(state);
   return computeTranscriptWindow({
     rows,
     measured: state.measured,
@@ -101,7 +113,7 @@ function windowParts(
     overscanBefore: view.viewportHeight,
     overscanAfter: view.viewportHeight,
     pinned: state.inUse.size === 0 ? pinned : new Set([...pinned, ...state.inUse]),
-    ...(state.heldScales ? { scales: state.heldScales } : {}),
+    ...(scales ? { scales } : {}),
   });
 }
 
@@ -306,8 +318,11 @@ export function useTranscriptWindow({
   pinnedRef.current = pinned;
 
   const parts = useMemo(() => {
-    if (stateRef.current?.layoutKey !== layoutKey) stateRef.current = freshState(layoutKey);
-    return windowParts(stateRef.current, rows, pinned);
+    const state =
+      stateRef.current?.layoutKey === layoutKey ? stateRef.current : freshState(layoutKey);
+    stateRef.current = state;
+    state.paintedScales = windowScales(state) ?? estimateScales(rows, state.measured);
+    return windowParts(state, rows, pinned);
     // `version` re-reads the view, measurements and rows in use kept in stateRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, layoutKey, pinned, version]);
