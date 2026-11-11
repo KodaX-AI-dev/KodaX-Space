@@ -38,9 +38,18 @@ test('long user queries keep a four-line preview and can expand or collapse in p
     await expect.poll(() => provider.requests.length).toBe(1);
     await waitSdkIdle(space, await currentSdkSession(space));
     // Only rows near the viewport are mounted; a long answer can leave the query above them.
-    await space.page.getByTestId('conversation-scroll-container').evaluate((element) => {
-      element.scrollTop = 0;
-    });
+    // Scroll up the way a reader does: only a gesture releases auto-follow, and a scrollTop write
+    // is either ignored as programmatic or followed back down by the next content resize. A
+    // follow already queued for a resize can still pull the first wheel back before its handler
+    // runs; that handler releases follow, so the next wheel stays.
+    const scroller = space.page.getByTestId('conversation-scroll-container');
+    await scroller.hover();
+    await expect(async () => {
+      await space.page.mouse.wheel(0, -100_000);
+      await expect
+        .poll(() => scroller.evaluate((element) => element.scrollTop), { timeout: 2_000 })
+        .toBe(0);
+    }).toPass({ timeout: 15_000 });
     await bubble.scrollIntoViewIfNeeded();
     const label = bubble.getByTestId('user-query-label');
     await expect(label).toHaveText('You');
