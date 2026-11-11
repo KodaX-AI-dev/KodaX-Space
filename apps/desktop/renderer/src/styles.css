@@ -1374,6 +1374,31 @@ html.q-full .aurora-b3 {
   display: flow-root;
 }
 
+/* Rows the window has not mounted yet read as placeholder lines, not blank space, in a frame the
+   compositor scrolls before the window catches up. */
+[data-window-spacer] {
+  --placeholder-line: rgb(var(--surface-3) / 0.6);
+  background-image:
+    repeating-linear-gradient(to bottom, var(--placeholder-line) 0 12px, transparent 12px 80px),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 20px,
+      var(--placeholder-line) 20px 32px,
+      transparent 32px 80px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 40px,
+      var(--placeholder-line) 40px 52px,
+      transparent 52px 80px
+    );
+  background-repeat: no-repeat;
+  background-size:
+    75% 100%,
+    66% 100%,
+    50% 100%;
+}
+
 /* The full-height timeline otherwise wins native scroll-anchor selection: its top never moves
    when offscreen rows reflow, so the browser cannot preserve the text being read. */
 .conversation-timeline-decoration {

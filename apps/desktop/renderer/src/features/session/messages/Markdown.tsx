@@ -318,6 +318,34 @@ export function markdownUrlTransform(url: string): string {
       : defaultUrlTransform(url);
 }
 
+type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & { readonly node?: unknown };
+
+// Sizes of images already shown, by source. A row that mounts again (transcript windowing) reserves
+// the image's box before it decodes, instead of growing under the reader once it does.
+const IMAGE_SIZE_CAP = 500;
+const imageSizes = new Map<string, { readonly width: number; readonly height: number }>();
+
+function MarkdownImage({ node, src, ...props }: MarkdownImageProps): JSX.Element {
+  void node;
+  const size = typeof src === 'string' ? imageSizes.get(src) : undefined;
+  return (
+    <img
+      {...props}
+      {...size}
+      src={src}
+      className="h-auto max-w-full"
+      onLoad={(event) => {
+        const { naturalWidth: width, naturalHeight: height } = event.currentTarget;
+        if (typeof src !== 'string' || width === 0 || height === 0) return;
+        imageSizes.delete(src);
+        imageSizes.set(src, { width, height });
+        const oldest = imageSizes.keys().next().value;
+        if (imageSizes.size > IMAGE_SIZE_CAP && oldest !== undefined) imageSizes.delete(oldest);
+      }}
+    />
+  );
+}
+
 type MarkdownCodeProps = ComponentPropsWithoutRef<'code'> & { readonly node?: unknown };
 
 function MarkdownCode({ className, children, node, ...props }: MarkdownCodeProps): JSX.Element {
@@ -398,6 +426,7 @@ function MarkdownInner({ content }: MarkdownProps): JSX.Element {
           // group/codeblock 让 CopyCodeButton 的 hover 作用域限定到本 pre 而非整个消息
           pre: MarkdownPre,
           code: MarkdownCode,
+          img: MarkdownImage,
 
           // ---- 链接 ----
           // http(s) 链接经 shell.openExternal 走系统浏览器（http 也放行，不止 https）；

@@ -26,6 +26,8 @@ export interface TranscriptWindowInput {
   readonly overscanAfter: number;
   /** Rows that must stay mounted wherever they are (selection, focus, menus, editing, streaming). */
   readonly pinned: ReadonlySet<string>;
+  /** Kind scales held from an earlier `estimateScales`, so new measurements do not rescale the rest. */
+  readonly scales?: ReadonlyMap<string, number>;
 }
 
 export type WindowPart =
@@ -37,8 +39,11 @@ export type WindowPart =
       readonly height: number;
     };
 
-/** Measured height, else the estimate scaled by how its kind's measured rows compared to theirs. */
-function rowHeights(rows: readonly WindowRow[], measured: ReadonlyMap<string, number>): number[] {
+/** Per kind, how its measured rows compared to their estimates (measured / estimated). */
+export function estimateScales(
+  rows: readonly WindowRow[],
+  measured: ReadonlyMap<string, number>,
+): Map<string, number> {
   const calibration = new Map<string, { measured: number; estimated: number }>();
   for (const row of rows) {
     const height = measured.get(row.id);
@@ -48,14 +53,20 @@ function rowHeights(rows: readonly WindowRow[], measured: ReadonlyMap<string, nu
     kind.estimated += row.estimate;
     calibration.set(row.kind, kind);
   }
-  return rows.map((row) => {
-    const height = measured.get(row.id);
-    if (height !== undefined) return height;
-    const kind = calibration.get(row.kind);
-    return kind && kind.estimated > 0
-      ? (row.estimate * kind.measured) / kind.estimated
-      : row.estimate;
-  });
+  const scales = new Map<string, number>();
+  for (const [kind, sums] of calibration)
+    if (sums.estimated > 0) scales.set(kind, sums.measured / sums.estimated);
+  return scales;
+}
+
+/** Measured height, else the estimate scaled by its kind. */
+function rowHeights(input: TranscriptWindowInput): number[] {
+  const { rows, measured, scales: held } = input;
+  const scales = estimateScales(rows, measured);
+  return rows.map(
+    (row) =>
+      measured.get(row.id) ?? row.estimate * (held?.get(row.kind) ?? scales.get(row.kind) ?? 1),
+  );
 }
 
 function viewportTop(input: TranscriptWindowInput, tops: readonly number[]): number {
@@ -100,7 +111,7 @@ function mountedRanges(
 }
 
 export function computeTranscriptWindow(input: TranscriptWindowInput): WindowPart[] {
-  const heights = rowHeights(input.rows, input.measured);
+  const heights = rowHeights(input);
   // tops[i] is where row i starts (its gap included above it); tops[n] is the total extent.
   const tops = [0];
   for (const height of heights) tops.push(tops[tops.length - 1] + height + input.gap);

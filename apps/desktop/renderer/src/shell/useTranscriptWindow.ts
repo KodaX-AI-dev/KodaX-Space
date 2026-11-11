@@ -16,11 +16,23 @@
 // reader off the bottom even where the caller does not auto-follow (an inactive window). Nothing
 // else here writes scrollTop.
 //
+// A window change commits in the frame that read it (`flushSync` in the frame callback), so a
+// scrolled frame paints rows rather than the spacers they replace. While the scrollbar thumb is
+// held the pointer owns scrollTop: neither the re-pin nor native anchoring corrects it, and new
+// measurements do not rescale the unmounted rows (the scroll height would move the thumb), until
+// the thumb is released.
+//
 // Rows in use stay mounted wherever they are: the caller's pins plus focus, an open popup menu and
 // every row a text selection spans, read from the DOM whenever the window is about to move.
 
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { computeTranscriptWindow, type WindowPart, type WindowRow } from './transcriptWindow.js';
+import { flushSync } from 'react-dom';
+import {
+  computeTranscriptWindow,
+  estimateScales,
+  type WindowPart,
+  type WindowRow,
+} from './transcriptWindow.js';
 
 const BOTTOM_SLACK_PX = 32;
 const NOTHING_PINNED: ReadonlySet<string> = new Set();
@@ -41,6 +53,8 @@ interface WindowState {
   inUse: ReadonlySet<string>;
   /** The rows `view` was read against; null before the first read. */
   viewRows: readonly WindowRow[] | null;
+  /** Kind scales kept while the scrollbar thumb is held, so the scroll height holds still. */
+  heldScales: ReadonlyMap<string, number> | null;
 }
 
 const bottomView = (viewportHeight: number): View => ({
@@ -56,6 +70,7 @@ function freshState(layoutKey: string | null): WindowState {
     gap: 0,
     inUse: NOTHING_PINNED,
     viewRows: null,
+    heldScales: null,
   };
 }
 
@@ -83,6 +98,7 @@ function windowParts(
     overscanBefore: view.viewportHeight,
     overscanAfter: view.viewportHeight,
     pinned: state.inUse.size === 0 ? pinned : new Set([...pinned, ...state.inUse]),
+    ...(state.heldScales ? { scales: state.heldScales } : {}),
   });
 }
 
@@ -217,6 +233,44 @@ function observeRows(binding: Binding, container: HTMLElement): void {
   }
 }
 
+/** Follows the scrollbar thumb; native anchoring is off while it is held (the pointer owns scrollTop). */
+function trackThumb(
+  scroller: HTMLElement,
+  onChange: (held: boolean) => void,
+): { readonly held: () => boolean; readonly dispose: () => void } {
+  let thumb: { readonly pointerId: number; readonly overflowAnchor: string } | null = null;
+  const release = (): void => {
+    if (thumb) scroller.style.overflowAnchor = thumb.overflowAnchor;
+    thumb = null;
+  };
+  const onDown = (event: PointerEvent): void => {
+    const track = scroller.offsetWidth - scroller.clientWidth;
+    const right = scroller.getBoundingClientRect().right;
+    if (event.button !== 0 || track <= 0 || event.clientX < right - track) return;
+    release();
+    thumb = { pointerId: event.pointerId, overflowAnchor: scroller.style.overflowAnchor };
+    scroller.style.overflowAnchor = 'none';
+    onChange(true);
+  };
+  const onUp = (event: PointerEvent): void => {
+    if (thumb?.pointerId !== event.pointerId) return;
+    release();
+    onChange(false);
+  };
+  scroller.addEventListener('pointerdown', onDown, true);
+  window.addEventListener('pointerup', onUp, true);
+  window.addEventListener('pointercancel', onUp, true);
+  return {
+    held: () => thumb !== null,
+    dispose: () => {
+      scroller.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('pointerup', onUp, true);
+      window.removeEventListener('pointercancel', onUp, true);
+      release();
+    },
+  };
+}
+
 /** The container gap is the margin above any row that follows a sibling. */
 function readGap(container: HTMLElement): number | null {
   const row = container.querySelector<HTMLElement>(':scope > * + [data-window-row]');
@@ -281,8 +335,8 @@ export function useTranscriptWindow({
       const previous = partsRef.current;
       if (previous && sameParts(previous, windowParts(state, rowsRef.current, pinnedRef.current)))
         return;
-      holdRef.current = readHold(scroller, container, state, rowsRef.current);
-      setVersion((value) => value + 1);
+      holdRef.current = thumb.held() ? null : readHold(scroller, container, state, rowsRef.current);
+      flushSync(() => setVersion((value) => value + 1));
     };
     const schedule = (): void => {
       frame ??= requestAnimationFrame(update);
@@ -299,6 +353,12 @@ export function useTranscriptWindow({
       if (entries.some((entry) => entry.target === scroller)) reread = true;
       if (measuredChange || reread) schedule();
     });
+    const thumb = trackThumb(scroller, (held) => {
+      const state = stateRef.current;
+      if (state) state.heldScales = held ? estimateScales(rowsRef.current, state.measured) : null;
+      reread = true;
+      schedule();
+    });
     observer.observe(scroller);
     scroller.addEventListener('scroll', onScroll, { passive: true });
     return {
@@ -307,6 +367,8 @@ export function useTranscriptWindow({
       observed: new Set(),
       dispose: () => {
         scroller.removeEventListener('scroll', onScroll);
+        if (thumb.held() && stateRef.current) stateRef.current.heldScales = null;
+        thumb.dispose();
         observer.disconnect();
         if (frame !== null) cancelAnimationFrame(frame);
       },

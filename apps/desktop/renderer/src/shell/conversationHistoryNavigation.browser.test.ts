@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { chromium, type Page } from 'playwright';
@@ -55,6 +55,7 @@ window.settle=(count=12)=>new Promise(resolve=>{let frames=0;const tick=()=>++fr
 window.select=id=>{deactivateSessionHistoryPaging(useAppStore.getState().currentSessionId);useAppStore.setState({currentSessionId:id});activateSessionHistoryPaging(id)};
 window.streaming=on=>useAppStore.setState({pendingSendBySession:on?{s:true}:{}});
 window.detail=mode=>useAppStore.getState().setTranscriptView(mode);
+window.fontSize=size=>useAppStore.getState().setTranscriptFontSize(size);
 window.primeLive=async()=>{
   window.holdNewest=false;
   await restoreNewestSessionHistory('s','code');
@@ -124,6 +125,12 @@ async function openHistoryFixture(t: TestContext, showScrollbars = false) {
   const page = await browser.newPage({ viewport: { width: 1100, height: 700 } });
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  await page.route('http://history.test/chart.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#888"/></svg>',
+    }),
+  );
   await page.route('http://history.test/', (route) =>
     route.fulfill({
       contentType: 'text/html',
@@ -146,7 +153,8 @@ historyTest(
       'window.singlePage=true;window.historyStatus="resolved";window.primeLive()',
     );
     const scroller = page.getByTestId('conversation-scroll-container');
-    await page.getByText('Live 0', { exact: true }).waitFor();
+    // The newest live row: with windowing the first one is not mounted at the bottom.
+    await page.getByText('Live 19', { exact: true }).waitFor();
     await scroller.evaluate((element) => {
       element.scrollTop = 0;
     });
@@ -785,7 +793,7 @@ historyTest(
     const { page, errors } = await openHistoryFixture(t);
     await page.evaluate('window.middle()');
     const scroller = page.getByTestId('conversation-scroll-container');
-    await page.getByText('MIDDLE 0', { exact: true }).waitFor();
+    await waitLoaded(page, 'MIDDLE0');
     await page.evaluate('window.settle(48)');
     await scroller.evaluate((element) => {
       element.scrollTop = 0;
@@ -912,13 +920,13 @@ historyTest('find counts collapsed thinking and opens it on jump', async (t) => 
 async function openWindowedTranscript(
   t: TestContext,
   count = 3000,
-  { queryEvery = 0, windowing = true } = {},
+  { queryEvery = 0, windowing = true, before = '', scrollbars = false } = {},
 ) {
-  const opened = await openHistoryFixture(t);
+  const opened = await openHistoryFixture(t, scrollbars);
   await opened.page
     .evaluate(`window.kodaxSpace.transcriptWindowing=${windowing};window.singlePage=true;
 window.extraItems=Array.from({length:${count}},(_,i)=>${queryEvery}&&i%${queryEvery}===1?{id:'query'+i,type:'user',text:'Query '+i}:({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(i%7)}));
-window.start()`);
+${before};window.start()`);
   await opened.page.getByText(`Bulk ${count - 1}`, { exact: true }).waitFor({ timeout: 60_000 });
   await opened.page.evaluate('window.settle(24)');
   return opened;
@@ -961,6 +969,16 @@ for (const windowing of [false, true])
       );
       const count = await markers.count();
       assert.ok(current > 5 && current < count - 6, `current marker ${current} of ${count}`);
+      // Reading on to the next query moves the marker, not the run.
+      const first = await markers.first().getAttribute('aria-label');
+      const label = (await currentMarker(page).getAttribute('aria-label'))!;
+      const next = Number(label.replace('Query ', '')) + 5;
+      await page.locator(`[data-msg-id="query${next}"]`).evaluate((element) => {
+        element.scrollIntoView({ block: 'start' });
+      });
+      await page.evaluate('window.settle(24)');
+      assert.equal(await currentMarker(page).getAttribute('aria-label'), `Query ${next}`);
+      assert.equal(await markers.first().getAttribute('aria-label'), first);
       assert.deepEqual(errors, []);
     },
   );
@@ -1362,6 +1380,170 @@ test(
     await page.evaluate('window.settle(48)');
     assert.ok(await inView(page, '[data-source-item="located-input"]'), 'the hit is in view');
     assert.ok((await mountedRows(page)) <= 80);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing paints rows, not blank spacers, in the frame of a fast scroll',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    // The probe listens after the window, so its frame callback runs after the window's own.
+    const blank = await page.evaluate(`(async () => {
+      const element = document.querySelector('[data-testid="conversation-scroll-container"]');
+      const covered = () => {
+        const frame = element.getBoundingClientRect();
+        const middle = frame.top + frame.height / 2;
+        return [...element.querySelectorAll('[data-window-row]')].some((row) => {
+          const box = row.getBoundingClientRect();
+          return box.top <= middle + 12 && box.bottom >= middle - 12;
+        });
+      };
+      const blank = [];
+      for (let step = 0; step < 12; step += 1) {
+        await new Promise((resolve) => {
+          element.addEventListener('scroll', () => requestAnimationFrame(() => {
+            if (!covered()) blank.push(Math.round(element.scrollTop));
+            resolve();
+          }), { once: true });
+          element.scrollTop -= element.clientHeight * 3;
+        });
+      }
+      return blank;
+    })()`);
+    assert.deepEqual(blank, [], 'frames painted with a spacer across the middle of the view');
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing leaves a held scrollbar where the pointer puts it',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t, 3000, { scrollbars: true });
+    await page.addStyleTag({
+      content: '[data-testid="conversation-scroll-container"]::-webkit-scrollbar{width:12px}',
+    });
+    await sendHistoryPointer(page, 'pointerdown');
+    try {
+      const moved = await page.evaluate(`(async () => {
+        const element = document.querySelector('[data-testid="conversation-scroll-container"]');
+        const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        const moved = [];
+        for (let step = 0; step < 12; step += 1) {
+          element.scrollTop -= element.clientHeight * 1.5;
+          const set = element.scrollTop;
+          for (let wait = 0; wait < 3; wait += 1) {
+            await frame();
+            if (element.scrollTop !== set) {
+              moved.push(Math.round(set) + '->' + Math.round(element.scrollTop));
+              break;
+            }
+          }
+        }
+        return moved;
+      })()`);
+      assert.deepEqual(moved, [], 'the window moved the scroller under a held thumb');
+    } finally {
+      await sendHistoryPointer(page, 'pointerup');
+    }
+    await page.evaluate('window.settle(24)');
+    assert.equal((await windowFrames(page)).length, 1, 'the window settles once released');
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'windowing spacers show placeholder lines rather than blank space',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t);
+    // The app stylesheet, less the imports the fixture origin cannot serve.
+    const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+    await page.addStyleTag({ content: styles.replace(/^@import .*$/gm, '') });
+    const spacer = page.locator('[data-window-spacer]').first();
+    assert.notEqual(
+      await spacer.evaluate((element) => getComputedStyle(element).backgroundImage),
+      'none',
+    );
+    assert.deepEqual(errors, []);
+  },
+);
+
+for (const change of ['font', 'resize'] as const)
+  test(
+    `windowing keeps the reader's row in place across a ${change} change`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openWindowedTranscript(t);
+      await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+        element.scrollTop = element.scrollHeight / 2;
+      });
+      await page.evaluate('window.settle(24)');
+      const reader = `(() => {
+        const element = document.querySelector('[data-testid="conversation-scroll-container"]');
+        const top = element.getBoundingClientRect().top;
+        const row = [...element.querySelectorAll('[data-window-row]')]
+          .find((row) => row.getBoundingClientRect().bottom > top);
+        return { id: row.dataset.windowRow, offset: row.getBoundingClientRect().top - top };
+      })()`;
+      const before: { id: string; offset: number } = await page.evaluate(reader);
+      if (change === 'font') await page.evaluate('window.fontSize("lg")');
+      else await page.setViewportSize({ width: 900, height: 700 });
+      await page.evaluate('window.settle(24)');
+      const offset = await page.locator(`[data-window-row="${before.id}"]`).evaluate((row) => {
+        const scroller = row.closest('[data-testid="conversation-scroll-container"]')!;
+        return row.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      });
+      assert.ok(
+        Math.abs(offset - before.offset) <= 2,
+        `${before.id} moved from ${before.offset} to ${offset}`,
+      );
+      assert.equal((await windowFrames(page)).length, 1, 'the window settles');
+      assert.deepEqual(errors, []);
+    },
+  );
+
+test(
+  'windowing remounts a loaded image at its size, not at zero height',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t, 3000, {
+      before: `window.extraItems.forEach((item,i)=>{if(i%4===0)item.text+='\\n\\n![chart](http://history.test/chart.svg)'})`,
+    });
+    await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    await page.waitForFunction(`(() => {
+      const images = [...document.querySelectorAll('[data-window-row] img')];
+      return images.length > 0 && images.every((image) => image.complete && image.naturalHeight);
+    })()`);
+    const heights: number[] = await page.evaluate(`(async () => {
+      const element = document.querySelector('[data-testid="conversation-scroll-container"]');
+      const heights = [];
+      const observer = new MutationObserver((records) => {
+        for (const record of records)
+          for (const node of record.addedNodes)
+            if (node instanceof HTMLElement)
+              for (const image of node.querySelectorAll('img'))
+                heights.push(image.getBoundingClientRect().height);
+      });
+      observer.observe(element, { childList: true, subtree: true });
+      const back = element.scrollTop;
+      element.scrollTop = back - element.clientHeight * 6;
+      await window.settle(24);
+      element.scrollTop = back;
+      await window.settle(24);
+      observer.disconnect();
+      return heights;
+    })()`);
+    assert.ok(heights.length > 0, 'images remounted');
+    assert.ok(
+      heights.every((height) => height > 0),
+      `remounted image heights ${heights.join(',')}`,
+    );
     assert.deepEqual(errors, []);
   },
 );

@@ -267,6 +267,8 @@ const QUERY_JUMP_TITLE_CHARS = 44;
 const QUERY_JUMP_BODY_CHARS = 116;
 // Odd, so the reader's marker sits in the middle; a long transcript shows this run around it.
 const QUERY_JUMP_MAX_MARKERS = 31;
+/** Markers kept between the active marker and a cut end before the run recentres. */
+const QUERY_JUMP_EDGE_MARKERS = 5;
 const RESTORED_REVEAL_TAIL_ITEMS = 24;
 function compactInlineText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
@@ -3115,15 +3117,21 @@ function QueryJumpRail({
   const { t } = useI18n();
   const span = Math.min(anchors.length, QUERY_JUMP_MAX_MARKERS);
   const activeIndex = anchors.findIndex((anchor) => anchor.id === activeId);
-  const centered = (activeIndex >= 0 ? activeIndex : anchors.length - 1) - (span >> 1);
+  const current = activeIndex >= 0 ? activeIndex : anchors.length - 1;
+  const clampStart = (value: number) => Math.max(0, Math.min(anchors.length - span, value));
   // The run stays put while the pointer is on it: a click moves the active marker, and a run
-  // recentred under the pointer would hand the hover to another query.
-  const [heldStart, setHeldStart] = useState(centered);
-  if (hoverId === null && heldStart !== centered) setHeldStart(centered);
-  if (anchors.length < QUERY_JUMP_MIN_ANCHORS) return null;
-
-  const start = Math.max(0, Math.min(anchors.length - span, heldStart));
+  // recentred under the pointer would hand the hover to another query. Otherwise it recentres
+  // only once the active marker nears a cut end, so reading moves the marker, not the run.
+  const [heldStart, setHeldStart] = useState(() => clampStart(current - (span >> 1)));
+  const start = clampStart(heldStart);
   const end = start + span;
+  const nearCut =
+    (start > 0 && current < start + QUERY_JUMP_EDGE_MARKERS) ||
+    (end < anchors.length && current >= end - QUERY_JUMP_EDGE_MARKERS) ||
+    current < start ||
+    current >= end;
+  if (hoverId === null && nearCut) setHeldStart(clampStart(current - (span >> 1)));
+  if (anchors.length < QUERY_JUMP_MIN_ANCHORS) return null;
   const rawHoverIndex = anchors.findIndex((anchor) => anchor.id === hoverId);
   const hoverIndex = rawHoverIndex >= 0 ? rawHoverIndex : null;
 

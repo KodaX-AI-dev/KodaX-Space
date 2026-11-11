@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { computeTranscriptWindow, type WindowPart, type WindowRow } from './transcriptWindow.js';
+import {
+  computeTranscriptWindow,
+  estimateScales,
+  type WindowPart,
+  type WindowRow,
+} from './transcriptWindow.js';
 
 const GAP = 12;
 const rows = (count: number, estimate = 88, kind = 'message'): WindowRow[] =>
@@ -75,6 +80,25 @@ test('measured heights win, and a kind calibrates the estimates of its unmeasure
     { kind: 'spacer', start: 0, end: 4, height: (176 + GAP) * 4 - GAP },
     { kind: 'rows', start: 4, end: 5 },
     { kind: 'spacer', start: 5, end: 8, height: (34 + GAP) * 3 - GAP },
+  ]);
+});
+
+test('held scales keep unmeasured rows at their earlier scale whatever is measured since', () => {
+  const list = rows(4);
+  const measured = new Map([['r0', 176]]);
+  assert.deepEqual(estimateScales(list, measured), new Map([['message', 2]]));
+  const parts = windowFor(list, {
+    measured,
+    scales: new Map([['message', 1]]),
+    scrollTop: 176 + GAP,
+    viewportHeight: 10,
+    overscanBefore: 0,
+    overscanAfter: 0,
+  });
+  assert.deepEqual(parts, [
+    { kind: 'spacer', start: 0, end: 1, height: 176 },
+    { kind: 'rows', start: 1, end: 2 },
+    { kind: 'spacer', start: 2, end: 4, height: (88 + GAP) * 2 - GAP },
   ]);
 });
 
