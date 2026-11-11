@@ -37,6 +37,10 @@ test('long user queries keep a four-line preview and can expand or collapse in p
 
     await expect.poll(() => provider.requests.length).toBe(1);
     await waitSdkIdle(space, await currentSdkSession(space));
+    // Only rows near the viewport are mounted; a long answer can leave the query above them.
+    await space.page.getByTestId('conversation-scroll-container').evaluate((element) => {
+      element.scrollTop = 0;
+    });
     await bubble.scrollIntoViewIfNeeded();
     const label = bubble.getByTestId('user-query-label');
     await expect(label).toHaveText('You');
