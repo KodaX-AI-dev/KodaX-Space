@@ -265,6 +265,8 @@ const QUERY_JUMP_MIN_ANCHORS = 3;
 const QUERY_JUMP_TOP_PADDING_PX = 10;
 const QUERY_JUMP_TITLE_CHARS = 44;
 const QUERY_JUMP_BODY_CHARS = 116;
+// Odd, so the reader's marker sits in the middle; a long transcript shows this run around it.
+const QUERY_JUMP_MAX_MARKERS = 31;
 const RESTORED_REVEAL_TAIL_ITEMS = 24;
 function compactInlineText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
@@ -1291,6 +1293,8 @@ export function ConversationStreamV2(): JSX.Element {
   );
   const matchIds = useMemo(() => findMatches.map((match) => match.id), [findMatches]);
   const [findJump, setFindJump] = useState<{ readonly id: string } | null>(null);
+  // A rail target the window had not mounted: pinned, then scrolled to once it renders.
+  const [queryJump, setQueryJump] = useState<{ readonly id: string } | null>(null);
 
   // F144: with the gate on, only rows near the viewport are mounted; spacers stand for the rest.
   const windowRef = useRef<HTMLDivElement | null>(null);
@@ -1314,7 +1318,13 @@ export function ConversationStreamV2(): JSX.Element {
   // mounted, so the code that scrolls to them finds their element.
   const pinnedRows = useMemo(() => {
     if (!windowing) return EMPTY_PINS;
-    const ids = [findJump?.id, locatedSearchItem, returnAnchorId, historyRestoreAnchor];
+    const ids = [
+      findJump?.id,
+      queryJump?.id,
+      locatedSearchItem,
+      returnAnchorId,
+      historyRestoreAnchor,
+    ];
     const targets = ids.flatMap((id) => {
       const row = id ? renderItems.find((item) => renderItemContains(item, id)) : undefined;
       return row ? [row.id] : [];
@@ -1325,6 +1335,7 @@ export function ConversationStreamV2(): JSX.Element {
   }, [
     windowing,
     findJump,
+    queryJump,
     locatedSearchItem,
     returnAnchorId,
     historyRestoreAnchor,
@@ -2459,12 +2470,23 @@ export function ConversationStreamV2(): JSX.Element {
     if (!scroller) return;
     handlePrependUserScrollIntent();
     const target = scroller.querySelector(`[data-msg-id="${CSS.escape(id)}"]`);
-    if (!(target instanceof HTMLElement)) return;
+    if (target instanceof HTMLElement) scrollToQueryAnchor(scroller, target, id);
+    else if (windowing) {
+      setActiveQueryAnchorId(id);
+      setQueryJump({ id });
+    }
+  }
 
+  function scrollToQueryAnchor(scroller: HTMLDivElement, target: HTMLElement, id: string): void {
     const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
     const targetTop = messageTopWithinScroller(scroller, target);
     const top = Math.max(0, Math.min(maxTop, targetTop - QUERY_JUMP_TOP_PADDING_PX));
-    markProgrammaticScroll(SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS);
+    const loadingPrepend = prependAnchorRestoreRef.current?.phase === 'loading';
+    // A windowed smooth scroll aims at spacer estimates; rows mounting on the way move the target.
+    const instant = loadingPrepend || windowing;
+    markProgrammaticScroll(
+      instant ? INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS : SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS,
+    );
     wasAtBottomRef.current = maxTop - top < BOTTOM_DISTANCE_PX;
     const anchor = wasAtBottomRef.current ? null : { id, offsetTop: targetTop - top };
     viewportScrollAnchorRef.current = anchor;
@@ -2477,10 +2499,18 @@ export function ConversationStreamV2(): JSX.Element {
     };
     setShowJumpToBottom(maxTop - top >= BOTTOM_DISTANCE_PX);
     setActiveQueryAnchorId(id);
-    const loadingPrepend = prependAnchorRestoreRef.current?.phase === 'loading';
-    scroller.scrollTo({ top, behavior: loadingPrepend ? 'auto' : 'smooth' });
+    scroller.scrollTo({ top, behavior: instant ? 'auto' : 'smooth' });
     if (loadingPrepend) refreshPendingPrependSnapshot(scroller);
   }
+  const scrollToQueryAnchorRef = useRef(scrollToQueryAnchor);
+  scrollToQueryAnchorRef.current = scrollToQueryAnchor;
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current;
+    if (!queryJump || !scroller) return;
+    const target = scroller.querySelector(`[data-msg-id="${CSS.escape(queryJump.id)}"]`);
+    if (target instanceof HTMLElement)
+      scrollToQueryAnchorRef.current(scroller, target, queryJump.id);
+  }, [queryJump]);
 
   const toggleGroup = useCallback((id: string): void => {
     setExpanded((prev) => {
@@ -2661,6 +2691,7 @@ export function ConversationStreamV2(): JSX.Element {
         animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
         liveTail={isStreaming && index === renderItems.length - 1}
         queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
+        feedSize={windowing ? renderItems.length : undefined}
         expanded={expanded}
         clustersForceExpand={clustersForceExpand}
         thinkingForceExpand={thinkingForceExpand}
@@ -2717,6 +2748,8 @@ export function ConversationStreamV2(): JSX.Element {
             ref={windowRef}
             className="space-y-3"
             data-transcript-window={windowing ? 'true' : undefined}
+            // Windowed rows come and go; a feed tells assistive tech each row's place in the whole.
+            role={windowing ? 'feed' : undefined}
           >
             {showHistoryBoundary && (
               <div
@@ -3080,8 +3113,17 @@ function QueryJumpRail({
   onJump,
 }: QueryJumpRailProps): JSX.Element | null {
   const { t } = useI18n();
+  const span = Math.min(anchors.length, QUERY_JUMP_MAX_MARKERS);
+  const activeIndex = anchors.findIndex((anchor) => anchor.id === activeId);
+  const centered = (activeIndex >= 0 ? activeIndex : anchors.length - 1) - (span >> 1);
+  // The run stays put while the pointer is on it: a click moves the active marker, and a run
+  // recentred under the pointer would hand the hover to another query.
+  const [heldStart, setHeldStart] = useState(centered);
+  if (hoverId === null && heldStart !== centered) setHeldStart(centered);
   if (anchors.length < QUERY_JUMP_MIN_ANCHORS) return null;
 
+  const start = Math.max(0, Math.min(anchors.length - span, heldStart));
+  const end = start + span;
   const rawHoverIndex = anchors.findIndex((anchor) => anchor.id === hoverId);
   const hoverIndex = rawHoverIndex >= 0 ? rawHoverIndex : null;
 
@@ -3092,10 +3134,13 @@ function QueryJumpRail({
       onMouseLeave={() => onHover(null)}
     >
       <div className="flex flex-col items-start gap-1 py-2">
-        {anchors.map((anchor, index) => {
+        {anchors.slice(start, end).map((anchor, offset) => {
+          const index = start + offset;
           const isActive = anchor.id === activeId;
           const isHovered = anchor.id === hoverId;
           const metrics = queryAnchorMetrics(index, hoverIndex, isActive);
+          // An end marker with more queries beyond it fades, so the run reads as cut off.
+          const cut = (index === start && start > 0) || (index === end - 1 && end < anchors.length);
           const previewTitle = truncateText(anchor.content, QUERY_JUMP_TITLE_CHARS);
           const previewBody = truncateText(anchor.content, QUERY_JUMP_BODY_CHARS);
           return (
@@ -3115,7 +3160,10 @@ function QueryJumpRail({
                   'h-px rounded-full transition-all duration-150 ease-out',
                   isHovered || isActive ? 'bg-fg-primary' : 'bg-fg-muted group-hover:bg-fg-primary',
                 ].join(' ')}
-                style={{ width: `${metrics.width}px`, opacity: metrics.opacity }}
+                style={{
+                  width: `${metrics.width}px`,
+                  opacity: cut ? metrics.opacity / 2 : metrics.opacity,
+                }}
                 aria-hidden
               />
               {isHovered && (
@@ -3223,6 +3271,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   animateEntry,
   liveTail,
   queryOwnerId,
+  feedSize,
   expanded,
   clustersForceExpand,
   thinkingForceExpand,
@@ -3243,6 +3292,8 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly animateEntry: boolean;
   readonly liveTail: boolean;
   readonly queryOwnerId: string | undefined;
+  /** Rows in the whole transcript when a window mounts only some of them. */
+  readonly feedSize: number | undefined;
   readonly expanded: ReadonlySet<string>;
   readonly clustersForceExpand: boolean;
   readonly thinkingForceExpand: boolean;
@@ -3259,6 +3310,10 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly onRewindTurn: (turnIndex: number) => Promise<void>;
 }): JSX.Element {
   const animate = useRevealOnce(item.id, animateEntry);
+  const feedPosition =
+    feedSize === undefined
+      ? {}
+      : { role: 'article', 'aria-posinset': index + 1, 'aria-setsize': feedSize };
   const intrinsicStyle = useMemo<ConversationIntrinsicStyle>(
     () => ({
       '--conversation-intrinsic-size': `${estimateRenderItemHeight(
@@ -3278,6 +3333,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
         data-query-anchor-id={queryOwnerId}
         data-testid="conversation-render-row"
         data-window-row={item.id}
+        {...feedPosition}
       >
         <TimelineMarker tone={receiptMarkerTone(item.receipts)} animate={animate} />
         <div
@@ -3369,6 +3425,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
         data-query-anchor-id={queryOwnerId}
         data-testid="conversation-render-row"
         data-window-row={item.id}
+        {...feedPosition}
       >
         <TimelineMarker tone={messageMarkerTone(message)} animate={animate} />
         <div

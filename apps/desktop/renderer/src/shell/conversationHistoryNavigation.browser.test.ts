@@ -908,10 +908,16 @@ historyTest('find counts collapsed thinking and opens it on jump', async (t) => 
   assert.deepEqual(errors, []);
 });
 
-async function openWindowedTranscript(t: TestContext, count = 3000) {
+/** A long single-page transcript; every `queryEvery`-th row (offset 1) is a user query. */
+async function openWindowedTranscript(
+  t: TestContext,
+  count = 3000,
+  { queryEvery = 0, windowing = true } = {},
+) {
   const opened = await openHistoryFixture(t);
-  await opened.page.evaluate(`window.kodaxSpace.transcriptWindowing=true;window.singlePage=true;
-window.extraItems=Array.from({length:${count}},(_,i)=>({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(i%7)}));
+  await opened.page
+    .evaluate(`window.kodaxSpace.transcriptWindowing=${windowing};window.singlePage=true;
+window.extraItems=Array.from({length:${count}},(_,i)=>${queryEvery}&&i%${queryEvery}===1?{id:'query'+i,type:'user',text:'Query '+i}:({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(i%7)}));
 window.start()`);
   await opened.page.getByText(`Bulk ${count - 1}`, { exact: true }).waitFor({ timeout: 60_000 });
   await opened.page.evaluate('window.settle(24)');
@@ -930,6 +936,78 @@ const windowFrames = (page: Page): Promise<string[]> =>
     }
     return [...frames];
   });
+
+const railMarkers = (page: Page) =>
+  page.getByRole('navigation', { name: 'User query jump points' }).getByRole('button');
+const currentMarker = (page: Page) =>
+  page.getByRole('navigation', { name: 'User query jump points' }).locator('[aria-current]');
+
+for (const windowing of [false, true])
+  test(
+    `the query rail shows a bounded run of markers around the reader${windowing ? ' [windowed]' : ''}`,
+    { skip: !browserAvailable },
+    async (t) => {
+      const { page, errors } = await openWindowedTranscript(t, 1000, { queryEvery: 5, windowing });
+      const markers = railMarkers(page);
+      assert.ok((await markers.count()) <= 31, `${await markers.count()} markers for 200 queries`);
+      assert.equal(await markers.last().getAttribute('aria-current'), 'location');
+      await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+        element.scrollTop = element.scrollHeight / 2;
+      });
+      await page.evaluate('window.settle(24)');
+      assert.equal(await currentMarker(page).count(), 1);
+      const current = await markers.evaluateAll((buttons) =>
+        buttons.findIndex((button) => button.hasAttribute('aria-current')),
+      );
+      const count = await markers.count();
+      assert.ok(current > 5 && current < count - 6, `current marker ${current} of ${count}`);
+      assert.deepEqual(errors, []);
+    },
+  );
+
+test(
+  'a query rail jump reaches a query whose row is not mounted',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t, 1000, { queryEvery: 5 });
+    await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    const marker = railMarkers(page).first();
+    const label = (await marker.getAttribute('aria-label'))!;
+    // The rail labels its markers with the query text; `Query 6` is row `query6`.
+    const row = page.locator(`[data-msg-id="${label.replace('Query ', 'query')}"]`);
+    assert.equal(await row.count(), 0, `${label} starts unmounted`);
+    await marker.click();
+    await page.evaluate('window.settle(48)');
+    const offset = await row.evaluate((element) => {
+      const scroller = element.closest('[data-testid="conversation-scroll-container"]')!;
+      return element.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    });
+    assert.ok(offset >= 0 && offset < 80, `${label} is ${offset}px below the top`);
+    assert.equal(await currentMarker(page).getAttribute('aria-label'), label);
+    // The run holds still under the pointer that clicked it.
+    assert.equal(await railMarkers(page).first().getAttribute('aria-label'), label);
+    // Mounted rows announce their place in the whole transcript, not in the window.
+    const positions = await page
+      .getByRole('feed')
+      .getByRole('article')
+      .evaluateAll((rows) =>
+        rows.map((row) => [row.getAttribute('aria-posinset'), row.getAttribute('aria-setsize')]),
+      );
+    const sizes = new Set(positions.map(([, size]) => size));
+    assert.equal(sizes.size, 1);
+    assert.ok(Number([...sizes][0]) > 1000, `set size ${[...sizes][0]}`);
+    const starts = positions.map(([position]) => Number(position));
+    assert.ok(starts[0] > 1, `first mounted row ${starts[0]}`);
+    assert.ok(
+      starts.every((position, index) => index === 0 || position > starts[index - 1]),
+      'positions ascend',
+    );
+    assert.deepEqual(errors, []);
+  },
+);
 
 test(
   'windowing mounts a bounded slice of a long transcript and follows the reader',
