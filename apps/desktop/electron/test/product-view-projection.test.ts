@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { projectProductItems } from '../kodax/runtime/product-view.js';
 import {
   handleSessionAttachmentProtocolRequest,
@@ -62,6 +65,60 @@ test('Host tool images are read lazily by item identity and revoked with the Ses
     (await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET'))?.status,
     404,
   );
+});
+
+test('Host-pinned input images stay visible without their model-facing labels', async () => {
+  const bytes = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64',
+  );
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'space-pinned-input-'));
+  const mediaDir = path.join(root, 'sessions', '.media', 'owner');
+  const outside = path.join(root, 'elsewhere', sha256);
+  try {
+    await mkdir(mediaDir, { recursive: true });
+    await mkdir(path.dirname(outside), { recursive: true });
+    await writeFile(path.join(mediaDir, sha256), bytes);
+    await writeFile(outside, bytes);
+    const label = (id: string) =>
+      `obs_${id}; source=user; observedAt=2026-11-11T14:19:56.580Z; historical; 1x1; sha256=${sha256}`;
+    const [item] = await projectProductItems(
+      'pinned-input',
+      [
+        {
+          id: 'input-item',
+          type: 'user',
+          inputId: 'input',
+          // KodaX 0.7.97-beta.5+ stores one observation label per pinned input image.
+          text: [
+            'Compare these',
+            'source=user stays',
+            label('39c25e8e-a18f-473f-b984-fc4df3ec3eb5'),
+            label('4b1d6f0e-0f6a-4c55-8d2c-2f7c1f3e9a10'),
+          ].join('\n'),
+          attachments: [
+            { kind: 'image', path: path.join(mediaDir, sha256), mediaType: 'image/png' },
+            { kind: 'image', path: outside, mediaType: 'image/png' },
+          ],
+        },
+      ],
+      [],
+      undefined,
+      mediaDir,
+    );
+    assert.equal(item!.text, 'Compare these\nsource=user stays');
+    const [pinned, foreign] = item!.imageAttachments!;
+    assert.equal(pinned!.status, 'available');
+    if (pinned!.status !== 'available') throw new Error('missing preview');
+    const response = await handleSessionAttachmentProtocolRequest(pinned!.previewUrl, 'GET');
+    assert.equal(response?.status, 200);
+    assert.deepEqual(Buffer.from(await response!.arrayBuffer()), bytes);
+    assert.equal(foreign!.status, 'unsupported', "only this Session's Host media is readable");
+  } finally {
+    revokeSessionAttachmentPreviews('pinned-input');
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('Main preserves the official input and output blocks without requiring turn IDs', async () => {

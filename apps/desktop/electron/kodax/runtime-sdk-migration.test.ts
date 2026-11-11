@@ -14,6 +14,7 @@ import { workflowPolicyStore } from './workflow-policy.js';
 import { RuntimeClientIdentityStore } from './runtime/runtime-client-identity.js';
 import { settleRuntimeClientExit } from './runtime/runtime-client-exit.js';
 import { RuntimeInputAuthorizationStore } from './runtime/runtime-input-authorization-store.js';
+import { getKodaxRuntimeDir } from './data-paths.js';
 
 test('Space accepts the installed unified SDK capability contract', async () => {
   const sdk = await import('@kodax-ai/kodax/runtime');
@@ -110,6 +111,7 @@ for (const revokeQueuedLease of [false, true])
               protocol: 'openai',
               model: 'fixture',
               apiKeyEnv: 'SPACE_NO_AMBIENT_TEST_KEY',
+              imageInput: true,
               baseUrl: `http://127.0.0.1:${address.port}/v1`,
             });
             return attached;
@@ -211,6 +213,7 @@ for (const revokeQueuedLease of [false, true])
           ),
         );
         await verifyRuntimePngAttachment(attached!, adapter, sessionId, projectRoot);
+        await verifyRuntimeUserImage(adapter, sessionId);
         await adapter.updateSessionSettings(sessionId, { agentMode: 'ama' });
         const active = await adapter.startManagedRun({
           ...input,
@@ -463,4 +466,34 @@ async function verifyRuntimePngAttachment(
     }),
     /hash changed/,
   );
+}
+
+/** KodaX 0.7.97-beta.5+ pins input images into `<sessions>/.media`; Space must still show them. */
+async function verifyRuntimeUserImage(adapter: RuntimeHostAdapter, sessionId: string): Promise<void> {
+  const bytes = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64',
+  );
+  const dir = path.join(getKodaxRuntimeDir(), 'space', 'session-attachments', sessionId);
+  await mkdir(dir, { recursive: true });
+  const imagePath = path.join(dir, 'pasted.png');
+  await writeFile(imagePath, bytes);
+  const handle = await adapter.startManagedRun({
+    sessionId,
+    inputId: 'space-user-image',
+    prompt: 'Describe this image',
+    input: [
+      { type: 'text', text: 'Describe this image' },
+      { type: 'image', path: imagePath, mediaType: 'image/png' },
+    ],
+  });
+  const result = await handle.result;
+  assert.equal(result.phase, 'completed', JSON.stringify(result));
+  const history = await adapter.readProductHistory(sessionId);
+  assert.ok(history.outcome === 'ready' && history.page);
+  const item = history.page.items.find((candidate) => candidate.inputId === 'space-user-image');
+  const shown = JSON.stringify({ text: item?.text, imageAttachments: item?.imageAttachments });
+  assert.equal(item?.text, 'Describe this image', shown);
+  assert.equal(item?.imageAttachments?.length, 1, shown);
+  assert.equal(item?.imageAttachments?.[0]?.status, 'available', shown);
 }

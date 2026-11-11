@@ -11,6 +11,7 @@ type PreviewCapability =
   | {
       readonly sessionId: string;
       readonly artifactPath: string;
+      readonly hostMediaDir?: string;
     }
   | { readonly sessionId: string; readonly read: () => Promise<Uint8Array> };
 
@@ -69,6 +70,8 @@ export async function issueSessionImageAttachment(input: {
   readonly declaredMediaType?: 'image/png' | 'image/jpeg' | 'image/webp';
   readonly ordinal: number;
   readonly label?: string;
+  /** This Session's Host directory for pinned input images, readable besides Space's sandbox. */
+  readonly hostMediaDir?: string;
 }): Promise<SessionImageAttachment> {
   const base = {
     id: stableAttachmentId(input.sessionId, input.artifactPath, input.ordinal),
@@ -77,10 +80,15 @@ export async function issueSessionImageAttachment(input: {
     ...(input.label !== undefined ? { label: input.label } : {}),
   };
   try {
-    const resolved = await resolveSessionAttachmentPreviewFile(input.sessionId, input.artifactPath);
+    const resolved = await resolveSessionAttachmentPreviewFile(
+      input.sessionId,
+      input.artifactPath,
+      input.hostMediaDir,
+    );
     const token = issueToken({
       sessionId: input.sessionId,
       artifactPath: input.artifactPath,
+      ...(input.hostMediaDir !== undefined ? { hostMediaDir: input.hostMediaDir } : {}),
     });
     const root = `${APP_PROTOCOL_ORIGIN}${ROUTE_PREFIX}${token}`;
     return {
@@ -172,6 +180,7 @@ export async function handleSessionAttachmentProtocolRequest(
     const resolved = await resolveSessionAttachmentPreviewFile(
       capability.sessionId,
       capability.artifactPath,
+      capability.hostMediaDir,
     );
     if (method === 'HEAD') {
       return new Response(null, {

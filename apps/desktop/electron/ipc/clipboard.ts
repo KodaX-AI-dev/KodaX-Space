@@ -595,9 +595,13 @@ function detectPreviewImageMediaType(
 export async function resolveSessionAttachmentPreviewFile(
   sessionId: string,
   artifactPath: string,
+  hostMediaDir?: string,
 ): Promise<SessionAttachmentPreviewFile> {
-  const location = await resolveArtifactLocation(sessionId, artifactPath);
-  const handle = await fs.open(location.realArtifact, 'r');
+  const filePath =
+    hostMediaDir !== undefined && isPathInside(hostMediaDir, path.normalize(artifactPath))
+      ? await resolveHostMediaFile(hostMediaDir, artifactPath)
+      : (await resolveArtifactLocation(sessionId, artifactPath)).realArtifact;
+  const handle = await fs.open(filePath, 'r');
   try {
     const stat = await handle.stat();
     if (!stat.isFile() || stat.size <= 0 || stat.size > MAX_NORMALIZED_IMAGE_BYTES) {
@@ -609,10 +613,22 @@ export async function resolveSessionAttachmentPreviewFile(
     if (mediaType === null) {
       throw new Error('Session attachment preview file is not a supported image');
     }
-    return { filePath: location.realArtifact, mediaType, bytes: stat.size };
+    return { filePath, mediaType, bytes: stat.size };
   } finally {
     await handle.close();
   }
+}
+
+/** A Host-pinned input image must stay a file inside the Session's Host media directory. */
+async function resolveHostMediaFile(hostMediaDir: string, artifactPath: string): Promise<string> {
+  const [realRoot, realArtifact] = await Promise.all([
+    fs.realpath(hostMediaDir),
+    fs.realpath(artifactPath),
+  ]);
+  if (!isPathInside(realRoot, realArtifact)) {
+    throw new Error(`artifact path outside Host media: ${artifactPath}`);
+  }
+  return realArtifact;
 }
 
 function isPathInside(parent: string, candidate: string): boolean {
