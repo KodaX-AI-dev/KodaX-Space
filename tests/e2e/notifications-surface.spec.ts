@@ -172,6 +172,10 @@ test('todo drift notification close affordance is stable and dismissible', async
     await expect(page.getByTestId('notifications-surface')).toBeVisible();
 
     const dismiss = row.getByTestId('notification-dismiss');
+    // The notice slides in (`notice-in`); geometry read mid-animation is not its resting place.
+    await row.evaluate((element) =>
+      Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+    );
     const rowBox = await requireBox(row, 'notification row');
     const buttonBox = await requireBox(dismiss, 'notification dismiss button');
 
