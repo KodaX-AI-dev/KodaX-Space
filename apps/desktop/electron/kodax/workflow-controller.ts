@@ -14,12 +14,11 @@ import type { ClientWorkflowStartInput } from '@kodax-ai/kodax/client';
 // ~/.kodax/space/workflow-origins.json,进程重启仍可归属。SDK 补 origin 字段后此映射可下线。
 
 import { promises as fs, readFileSync, readdirSync, statSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import type { WorkflowRunT, WorkflowEventPayload } from '@kodax-space/space-ipc-schema';
-import { getSpaceDataDir } from './data-paths.js';
+import { getKodaxRuntimeDir, getSpaceDataDir } from './data-paths.js';
 import { pushToRenderer } from '../ipc/push.js';
 import { artifactStore } from '../artifact/store.js';
 import { detectArtifactKind } from '../artifact/workflow-artifact-bridge.js';
@@ -1351,7 +1350,7 @@ export class WorkflowController {
 
   // ---- F063 库 / 启动 / preflight ----
 
-  /** 列出可启动的工作流:built-in(内置)+ saved(用户/项目 ~/.kodax/workflows)。*/
+  /** 列出可启动的工作流:built-in(内置)+ saved(个人 <agent home>/workflows + 项目 .kodax/workflows)。*/
   async listLibrary(projectRoot?: string): Promise<WorkflowLibrary> {
     const sdk = await loadCodingSdk();
     if (!sdk) return { builtin: [], patterns: [], saved: [] };
@@ -2284,10 +2283,10 @@ async function loadCodingSdk(): Promise<CodingSdkSubset | null> {
   }
 }
 
-/** saved 工作流搜索目录:个人 ~/.kodax/workflows + 项目 <root>/.kodax/workflows。*/
+/** Saved workflow dirs: personal `<agent home>/workflows`, where the SDK also reads them, plus project. */
 function savedWorkflowDirs(projectRoot?: string): { personal: string; project?: string } {
   return {
-    personal: path.join(os.homedir(), '.kodax', 'workflows'),
+    personal: path.join(getKodaxRuntimeDir(), 'workflows'),
     ...(projectRoot ? { project: path.join(projectRoot, '.kodax', 'workflows') } : {}),
   };
 }

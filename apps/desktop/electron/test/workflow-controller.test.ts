@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ClientWorkflowStartInput } from '@kodax-ai/kodax/client';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   WorkflowController,
@@ -13,6 +13,7 @@ import {
   withDefaultWorkflowAgentTarget,
 } from '../kodax/workflow-controller.js';
 import { _setRepoIntelEntitlementForTesting } from '../kodax/repo-intel-gate.js';
+import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import type {
   WorkflowRunManagerLike,
   WorkflowLifecycleLike,
@@ -1233,6 +1234,33 @@ test('listLibrary: real SDK returns parallel-investigation among built-ins', asy
     assert.ok(Array.isArray(lib.patterns));
     assert.ok(Array.isArray(lib.saved));
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('listLibrary reads personal workflows from the SDK agent home', async () => {
+  const { dir, file } = freshFile();
+  const searched: { personal: string; project?: string }[] = [];
+  try {
+    _setCodingSdkForTesting({
+      async discoverSavedWorkflows(dirs: { personal: string; project?: string }) {
+        searched.push(dirs);
+        return [];
+      },
+    });
+    const ctrl = new WorkflowController(() => {}, file);
+    await ctrl.init(fakeManager());
+    await ctrl.listLibrary(dir);
+    // KodaX 0.7.97-beta.5+ reads personal workflows from KODAX_HOME, not ~/.kodax.
+    assert.deepEqual(searched, [
+      {
+        personal: join(getKodaxRuntimeDir(), 'workflows'),
+        project: join(dir, '.kodax', 'workflows'),
+      },
+    ]);
+    assert.notEqual(getKodaxRuntimeDir(), join(homedir(), '.kodax'));
+  } finally {
+    _setCodingSdkForTesting(null);
     rmSync(dir, { recursive: true, force: true });
   }
 });
