@@ -6,6 +6,8 @@ import { getKodaxRuntimeDir } from '../data-paths.js';
 
 // Compatibility reader for the rc.2 Windows migration. Read-only: never start
 // a daemon to "validate" a secret, since that accepts a different bridge identity.
+// Legacy secrets were only ever used with the old Space `coder` Host, so its slot holds the
+// only evidence; Hosts started after ADR-075 never see them and the slot is never retired.
 const journalSchema = z.object({
   version: z.literal(1),
   clients: z.array(z.object({ key: z.string(), invocations: z.array(z.unknown()) })),
