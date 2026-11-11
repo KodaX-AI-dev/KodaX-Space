@@ -1350,24 +1350,6 @@ html.q-full .aurora-b3 {
   will-change: auto;
 }
 
-/* Long transcript performance: Chromium keeps the native scroll range and DOM anchors, but skips
-   style/layout/paint for off-screen conversation bodies. The active stream tail stays visible so
-   token-by-token growth and bottom-follow remain immediate. */
-.conversation-occlusion-item {
-  content-visibility: auto;
-  contain-intrinsic-size: auto var(--conversation-intrinsic-size, 96px);
-}
-
-.conversation-occlusion-item[data-live-tail='true'] {
-  content-visibility: visible;
-}
-
-/* F144 windowing already unmounts off-screen rows, and it needs real heights of the mounted
-   overscan rows, not their intrinsic-size placeholders. */
-[data-transcript-window] .conversation-occlusion-item {
-  content-visibility: visible;
-}
-
 /* A row's border box must be its whole layout height, so child margins may not collapse
    through it into the gap. */
 [data-transcript-window] > [data-window-row] {

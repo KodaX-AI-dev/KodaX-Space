@@ -88,14 +88,6 @@ async function attachRootFailure(app: ElectronApplication, page: Page): Promise<
 }
 
 /** Wait for DOM ownership, independently of whether Electron is painting. */
-/**
- * F144 tickets 4-7 gate (`KODAX_SPACE_TRANSCRIPT_WINDOWING=1`): the transcript mounts only rows near
- * the reader, so DOM text no longer lists every loaded row. Ticket 8 deletes the gate and this.
- */
-export function transcriptWindowing(page: Page): Promise<boolean> {
-  return page.evaluate(() => window.kodaxSpace?.transcriptWindowing === true);
-}
-
 export async function waitForRendererRoot(app: ElectronApplication, page: Page): Promise<void> {
   // Windows can suspend painting while the renderer is hidden or covered.
   try {

@@ -14,7 +14,7 @@ import{useToastStore}from'../store/toastStore.ts';
 import{replaceProductSessionView,productTranscriptSnapshot}from'../store/productSessionView.ts';
 window.loaded=()=>productTranscriptSnapshot(useAppStore.getState().currentSessionId)?.items.map(item=>item.id)??[];
 window.requests=[];window.hold=false;window.fail=false;window.release=()=>{};window.toasts=()=>useToastStore.getState().toasts;
-window.kodaxSpace={platform:'win32',transcriptWindowing:window.windowingGate===true,on:()=>()=>{},invoke:async(channel,input)=>{
+window.kodaxSpace={platform:'win32',on:()=>()=>{},invoke:async(channel,input)=>{
 if(channel==='session.resolveHistoryTurn'){window.selectedTurn=input.selector;return{ok:true,data:{status:'unavailable',reason:'no_turns'}}}
 if(channel==='session.productSearch')return{ok:true,data:{revision:'r',hits:[{itemId:'unique-hit',entryIndex:6,role:'user',snippet:'Archived needle'}]}};
 if(channel==='session.productItem')return{ok:true,data:{id:input.itemId,text:'Archived needle detail',offset:0,totalLength:22}};
@@ -100,14 +100,11 @@ const bundled = browserAvailable
     })
   : undefined;
 
-// F144 tickets 4-7: every history test also runs with transcript windowing on; ticket 8 removes
-// the gate and with it the unwindowed pass.
-const WINDOWED = ' [windowed]';
 function historyTest(name: string, run: (t: TestContext) => Promise<void>): void {
-  for (const suffix of ['', WINDOWED]) test(name + suffix, { skip: !browserAvailable }, run);
+  test(name, { skip: !browserAvailable }, run);
 }
 
-// Loaded is not mounted: with windowing a loaded row far from the reader is a spacer.
+// Loaded is not mounted: a loaded row far from the reader is a spacer.
 const loadedIds = (page: Page): Promise<string[]> => page.evaluate<string[]>('window.loaded()');
 const isLoaded = async (page: Page, id: string): Promise<boolean> =>
   (await loadedIds(page)).includes(id);
@@ -154,7 +151,6 @@ async function openHistoryFixture(t: TestContext, showScrollbars = false) {
   );
   await page.goto('http://history.test/');
   await page.evaluate(() => localStorage.setItem('kodax-space.languageMode', 'en-US'));
-  await page.evaluate(`window.windowingGate=${t.name.endsWith(WINDOWED)}`);
   await page.addScriptTag({ content: bundled!.outputFiles[0].text });
   return { page, errors };
 }
@@ -168,7 +164,7 @@ historyTest(
       'window.singlePage=true;window.historyStatus="resolved";window.primeLive()',
     );
     const scroller = page.getByTestId('conversation-scroll-container');
-    // The newest live row: with windowing the first one is not mounted at the bottom.
+    // The newest live row: the first one is not mounted at the bottom.
     await page.getByText('Live 19', { exact: true }).waitFor();
     await scroller.evaluate((element) => {
       element.scrollTop = 0;
@@ -509,9 +505,6 @@ historyTest(
     await page.waitForFunction(
       () => document.activeElement?.getAttribute('data-source-item') === 'NEWEST0',
     );
-    // The revealed tool row is a page below the located row; with windowing it is not mounted.
-    if (!t.name.endsWith(WINDOWED))
-      await stream.getByText('concealed tool result', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back to results' }).click();
     await reusedTool.waitFor();
     assert.equal(await page.evaluate('window.requests.at(-1)'), 'newest');
@@ -973,11 +966,10 @@ historyTest('find counts collapsed thinking and opens it on jump', async (t) => 
 async function openWindowedTranscript(
   t: TestContext,
   count = 3000,
-  { queryEvery = 0, windowing = true, before = '', scrollbars = false } = {},
+  { queryEvery = 0, before = '', scrollbars = false } = {},
 ) {
   const opened = await openHistoryFixture(t, scrollbars);
-  await opened.page
-    .evaluate(`window.kodaxSpace.transcriptWindowing=${windowing};window.singlePage=true;
+  await opened.page.evaluate(`window.singlePage=true;
 window.extraItems=Array.from({length:${count}},(_,i)=>${queryEvery}&&i%${queryEvery}===1?{id:'query'+i,type:'user',text:'Query '+i}:({id:'bulk'+i,type:'assistant',historyBoundary:{entryId:'found',sourceRevision:'s'},text:'Bulk '+i+'\\n\\n'+('Varying paragraph.\\n\\n').repeat(i%7)}));
 ${before};window.start()`);
   await opened.page.getByText(`Bulk ${count - 1}`, { exact: true }).waitFor({ timeout: 60_000 });
@@ -1003,38 +995,37 @@ const railMarkers = (page: Page) =>
 const currentMarker = (page: Page) =>
   page.getByRole('navigation', { name: 'User query jump points' }).locator('[aria-current]');
 
-for (const windowing of [false, true])
-  test(
-    `the query rail shows a bounded run of markers around the reader${windowing ? ' [windowed]' : ''}`,
-    { skip: !browserAvailable },
-    async (t) => {
-      const { page, errors } = await openWindowedTranscript(t, 1000, { queryEvery: 5, windowing });
-      const markers = railMarkers(page);
-      assert.ok((await markers.count()) <= 31, `${await markers.count()} markers for 200 queries`);
-      assert.equal(await markers.last().getAttribute('aria-current'), 'location');
-      await page.getByTestId('conversation-scroll-container').evaluate((element) => {
-        element.scrollTop = element.scrollHeight / 2;
-      });
-      await page.evaluate('window.settle(24)');
-      assert.equal(await currentMarker(page).count(), 1);
-      const current = await markers.evaluateAll((buttons) =>
-        buttons.findIndex((button) => button.hasAttribute('aria-current')),
-      );
-      const count = await markers.count();
-      assert.ok(current > 5 && current < count - 6, `current marker ${current} of ${count}`);
-      // Reading on to the next query moves the marker, not the run.
-      const first = await markers.first().getAttribute('aria-label');
-      const label = (await currentMarker(page).getAttribute('aria-label'))!;
-      const next = Number(label.replace('Query ', '')) + 5;
-      await page.locator(`[data-msg-id="query${next}"]`).evaluate((element) => {
-        element.scrollIntoView({ block: 'start' });
-      });
-      await page.evaluate('window.settle(24)');
-      assert.equal(await currentMarker(page).getAttribute('aria-label'), `Query ${next}`);
-      assert.equal(await markers.first().getAttribute('aria-label'), first);
-      assert.deepEqual(errors, []);
-    },
-  );
+test(
+  'the query rail shows a bounded run of markers around the reader',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openWindowedTranscript(t, 1000, { queryEvery: 5 });
+    const markers = railMarkers(page);
+    assert.ok((await markers.count()) <= 31, `${await markers.count()} markers for 200 queries`);
+    assert.equal(await markers.last().getAttribute('aria-current'), 'location');
+    await page.getByTestId('conversation-scroll-container').evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    await page.evaluate('window.settle(24)');
+    assert.equal(await currentMarker(page).count(), 1);
+    const current = await markers.evaluateAll((buttons) =>
+      buttons.findIndex((button) => button.hasAttribute('aria-current')),
+    );
+    const count = await markers.count();
+    assert.ok(current > 5 && current < count - 6, `current marker ${current} of ${count}`);
+    // Reading on to the next query moves the marker, not the run.
+    const first = await markers.first().getAttribute('aria-label');
+    const label = (await currentMarker(page).getAttribute('aria-label'))!;
+    const next = Number(label.replace('Query ', '')) + 5;
+    await page.locator(`[data-msg-id="query${next}"]`).evaluate((element) => {
+      element.scrollIntoView({ block: 'start' });
+    });
+    await page.evaluate('window.settle(24)');
+    assert.equal(await currentMarker(page).getAttribute('aria-label'), `Query ${next}`);
+    assert.equal(await markers.first().getAttribute('aria-label'), first);
+    assert.deepEqual(errors, []);
+  },
+);
 
 test(
   'a query rail jump reaches a query whose row is not mounted',
@@ -1259,10 +1250,8 @@ for (const jump of [false, true])
       const { page, errors } = await openHistoryFixture(t);
       await page.evaluate(() => {
         const fixture = window as unknown as {
-          kodaxSpace: { transcriptWindowing: boolean };
           pageExtra: Record<string, unknown[]>;
         };
-        fixture.kodaxSpace.transcriptWindowing = true;
         // A newer page several viewports tall, so its rows cannot all be mounted with the reader's.
         fixture.pageExtra = {
           MIDDLE: Array.from({ length: 160 }, (_, index) => ({
@@ -1601,54 +1590,53 @@ test(
   },
 );
 
-for (const windowing of [false, true])
-  test(
-    `a growing live tail stays followed at the bottom and a reader above it stays in place${windowing ? ' [windowed]' : ''}`,
-    { skip: !browserAvailable },
-    async (t) => {
-      const { page, errors } = await openHistoryFixture(t);
-      const scroller = page.getByTestId('conversation-scroll-container');
-      const gap = () =>
-        scroller.evaluate(
-          (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
-        );
-      const grow = async (step: number) => {
-        await page.evaluate(
-          `window.live(2000,'Streaming ${step}\\n\\n'+'Growing line.\\n\\n'.repeat(${step * 3}))`,
-        );
-        await page.getByText(`Streaming ${step}`, { exact: true }).waitFor();
-        await page.evaluate('window.settle(8)');
-      };
+test(
+  'a growing live tail stays followed at the bottom and a reader above it stays in place',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    const scroller = page.getByTestId('conversation-scroll-container');
+    const gap = () =>
+      scroller.evaluate(
+        (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+      );
+    const grow = async (step: number) => {
       await page.evaluate(
-        `window.kodaxSpace.transcriptWindowing=${windowing};window.singlePage=true;window.primeLive().then(()=>window.streaming(true))`,
+        `window.live(2000,'Streaming ${step}\\n\\n'+'Growing line.\\n\\n'.repeat(${step * 3}))`,
       );
-      for (let step = 1; step <= 4; step += 1) {
-        await grow(step);
-        assert.ok((await gap()) < 2, `step ${step} follows the tail (gap ${await gap()})`);
-      }
-      if (windowing) assert.ok((await mountedRows(page)) <= 80);
-      // A reader gesture: a scrollTop write while streaming is not the reader leaving the bottom.
-      await scroller.hover();
-      await page.mouse.wheel(0, -3000);
-      await page.evaluate('window.settle(24)');
-      const before = await rowInView(page);
-      for (let step = 5; step <= 7; step += 1) await grow(step);
-      const after = await rowInView(page, before.id);
-      assert.ok(
-        Math.abs(after.offset - before.offset) <= 2,
-        `${before.id} moved from ${before.offset} to ${after.offset}`,
-      );
-      await page.getByRole('button', { name: 'Jump to bottom', exact: true }).click();
-      await page.waitForFunction(() => {
-        const element = document.querySelector('[data-testid="conversation-scroll-container"]')!;
-        return element.scrollHeight - element.scrollTop - element.clientHeight < 2;
-      });
-      await grow(8);
-      assert.ok((await gap()) < 2, 'the tail is followed again after the jump');
-      assert.ok(await page.getByText('Streaming 8', { exact: true }).isVisible());
-      assert.deepEqual(errors, []);
-    },
-  );
+      await page.getByText(`Streaming ${step}`, { exact: true }).waitFor();
+      await page.evaluate('window.settle(8)');
+    };
+    await page.evaluate(
+      'window.singlePage=true;window.primeLive().then(()=>window.streaming(true))',
+    );
+    for (let step = 1; step <= 4; step += 1) {
+      await grow(step);
+      assert.ok((await gap()) < 2, `step ${step} follows the tail (gap ${await gap()})`);
+    }
+    assert.ok((await mountedRows(page)) <= 80);
+    // A reader gesture: a scrollTop write while streaming is not the reader leaving the bottom.
+    await scroller.hover();
+    await page.mouse.wheel(0, -3000);
+    await page.evaluate('window.settle(24)');
+    const before = await rowInView(page);
+    for (let step = 5; step <= 7; step += 1) await grow(step);
+    const after = await rowInView(page, before.id);
+    assert.ok(
+      Math.abs(after.offset - before.offset) <= 2,
+      `${before.id} moved from ${before.offset} to ${after.offset}`,
+    );
+    await page.getByRole('button', { name: 'Jump to bottom', exact: true }).click();
+    await page.waitForFunction(() => {
+      const element = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+      return element.scrollHeight - element.scrollTop - element.clientHeight < 2;
+    });
+    await grow(8);
+    assert.ok((await gap()) < 2, 'the tail is followed again after the jump');
+    assert.ok(await page.getByText('Streaming 8', { exact: true }).isVisible());
+    assert.deepEqual(errors, []);
+  },
+);
 
 test(
   'windowing shows rows, not a spacer, when the live view is replaced under a reader',
@@ -1656,9 +1644,7 @@ test(
   async (t) => {
     const { page, errors } = await openHistoryFixture(t);
     const scroller = page.getByTestId('conversation-scroll-container');
-    await page.evaluate(
-      `window.kodaxSpace.transcriptWindowing=true;window.primeLive().then(()=>window.live(2000,'Tail'))`,
-    );
+    await page.evaluate(`window.primeLive().then(()=>window.live(2000,'Tail'))`);
     await page.getByText('Tail', { exact: true }).waitFor();
     await scroller.evaluate((element) => {
       element.scrollTop = element.scrollHeight / 2;

@@ -197,7 +197,16 @@ test(
       `window.show(Array.from({length:40},(_,i)=>({id:'row-'+i,type:'assistant',text:'tail',textOffset:4,totalTextLength:8,textRevision:0})));window.settle()`,
     );
     assert.equal(await page.evaluate("window.reads.includes('row-20')"), false);
-    await page.locator('[data-msg-id="row-20"]').scrollIntoViewIfNeeded();
+    const row = page.locator('[data-msg-id="row-20"]');
+    const scroller = page.getByTestId('conversation-scroll-container');
+    // The transcript window mounts only rows near the reader: page up until row 20 mounts.
+    for (let step = 0; step < 60 && (await row.count()) === 0; step += 1) {
+      await scroller.evaluate((element) => {
+        element.scrollTop -= element.clientHeight;
+      });
+      await page.evaluate('window.settle()');
+    }
+    await row.scrollIntoViewIfNeeded();
     await page.waitForFunction("window.reads.includes('row-20')");
     await page.evaluate(
       `window.show([{id:'draft',type:'assistant',text:'tail',textOffset:4,totalTextLength:8,textRevision:1,outputState:'draft'}]);window.settle()`,

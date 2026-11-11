@@ -3,7 +3,7 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import type { SessionEvent } from '@kodax-space/space-ipc-schema';
-import { launchSpace, transcriptWindowing, type SpaceInstance } from './fixtures.js';
+import { launchSpace, type SpaceInstance } from './fixtures.js';
 
 interface SessionListEnvelope {
   ok: boolean;
@@ -343,7 +343,7 @@ test('conversation receipt strip stays top-anchored on expand and preserves scro
       await page.getByLabel('Show right sidebar').click();
     }
     await expect(page.getByTestId('right-sidebar')).toBeVisible({ timeout: 8_000 });
-    if (await transcriptWindowing(page)) await scrollUpUntilMounted(page, receiptPairRow(page));
+    await scrollUpUntilMounted(page, receiptPairRow(page));
     await expect(receiptPairRow(page)).toBeVisible({ timeout: 8_000 });
 
     await centerLastReceipt(page);

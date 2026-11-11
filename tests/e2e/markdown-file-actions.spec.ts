@@ -1,8 +1,40 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launchSpace } from './fixtures.js';
+
+/**
+ * The transcript mounts only rows near the reader: wheel up a screen at a time, then down, until
+ * `target` mounts. A wheel, not a scrollTop write, so a following transcript lets go of the
+ * bottom; each step waits out the wheel's smooth scroll.
+ */
+async function scrollToMount(page: Page, target: Locator): Promise<void> {
+  const scroller = page.getByTestId('conversation-scroll-container');
+  const settle = () =>
+    scroller.evaluate(async (element) => {
+      for (let still = 0, last = Number.NaN; still < 3; ) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        still = element.scrollTop === last ? still + 1 : 0;
+        last = element.scrollTop;
+      }
+      const end = element.scrollHeight - element.clientHeight;
+      return {
+        above: element.scrollTop,
+        below: end - element.scrollTop,
+        page: element.clientHeight,
+      };
+    });
+  await scroller.hover();
+  let at = await settle();
+  for (const direction of [-1, 1])
+    for (let step = 0; step < 50 && (await target.count()) === 0; step += 1) {
+      if ((direction < 0 ? at.above : at.below) <= 1) break;
+      await page.mouse.wheel(0, direction * at.page);
+      at = await settle();
+    }
+  await expect(target).not.toHaveCount(0);
+}
 
 test('conversation file paths reuse the complete file action menu', async () => {
   test.setTimeout(60_000);
@@ -48,22 +80,26 @@ test('conversation file paths reuse the complete file action menu', async () => 
     await send(`\`${outsidePath}\``);
     await expect(outsideFile).toBeVisible({ timeout: 10_000 });
 
+    await scrollToMount(space.page, linkedFile);
     await linkedFile.click();
     const viewer = space.page.getByTestId('file-viewer');
     await expect(viewer).toBeVisible();
     await expect(viewer).toContainText('right-click.md');
 
     for (const excluded of [webLink, deliveryLink, evidenceLink, outsideFile]) {
+      await scrollToMount(space.page, excluded);
       await excluded.click({ button: 'right' });
       await expect(space.page.getByRole('menu')).toHaveCount(0);
     }
 
+    await scrollToMount(space.page, linkedFile);
     await linkedFile.click({ button: 'right' });
     await expect(
       space.page.getByRole('menu').getByRole('menuitem', { name: 'Open in File Viewer' }),
     ).toBeVisible();
     await space.page.keyboard.press('Escape');
 
+    await scrollToMount(space.page, filePath);
     await filePath.click({ button: 'right' });
 
     const menu = space.page.getByRole('menu');

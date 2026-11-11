@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createSessionManager } from '@kodax-ai/kodax/session';
 import { createLocalSdkProvider, launchRealSdkSpace } from './sdk-provider-fixture.js';
-import { transcriptWindowing, type SpaceInstance } from './fixtures.js';
+import { type SpaceInstance } from './fixtures.js';
 import { buildPerfCorpus } from './helpers/perfCorpus.js';
 import { summarize } from './helpers/perfStats.js';
 import { HISTORY_LOAD_MEASURE_PREFIX } from '../../apps/desktop/renderer/src/lib/historyLoadDiagnostics.js';
@@ -54,6 +54,8 @@ const IPC_PROBE_PAGES = 30;
 const RESULTS_DIR = path.resolve('artifacts/perf-baselines/f144');
 const SCROLLER = '[data-testid="conversation-scroll-container"]';
 const ROW = '[data-testid="conversation-render-row"]';
+// F144 acceptance: mounted rows stay bounded however much history is loaded.
+const MAX_MOUNTED_ROWS = 500;
 const PHASES = ['ipc', 'install', 'commit', 'layout', 'paint'] as const;
 
 declare global {
@@ -252,7 +254,7 @@ async function pageStep(
   await scroller.evaluate((element, direction) => {
     element.scrollTop = direction === 'older' ? 0 : element.scrollHeight;
   }, direction);
-  // Checked at the edge: with transcript windowing only the rows near the viewport are mounted.
+  // Checked at the edge: transcript windowing mounts only the rows near the viewport.
   await settle(page, 3);
   if (await edgeRowsInclude(page, edgeMarker, direction === 'older' ? 'first' : 'last'))
     return null;
@@ -552,7 +554,7 @@ async function environment(space: SpaceInstance) {
     node: process.version,
     ...versions,
     window: '1280x900 content',
-    transcriptWindowing: await transcriptWindowing(space.page),
+    packaged: process.env.SPACE_E2E_EXECUTABLE !== undefined,
   };
 }
 
@@ -764,12 +766,14 @@ async function runCorpus(corpus: PerfCorpusSpec) {
     };
     await mkdir(RESULTS_DIR, { recursive: true });
     const body = JSON.stringify(result, null, 2);
-    const name = `${corpus.id}${result.environment.transcriptWindowing ? '-windowed' : ''}.json`;
+    const name = `${corpus.id}${result.environment.packaged ? '-packaged' : ''}.json`;
     await writeFile(path.join(RESULTS_DIR, name), body);
     await test.info().attach(name, { body, contentType: 'application/json' });
     await cdp.detach();
     expect(pageErrors).toEqual([]);
     expect(provider.requests).toEqual([]);
+    const mounted = [...rawPrependSteps, ...rawAppendSteps, older.atMax].map((step) => step.rows);
+    expect(Math.max(...mounted)).toBeLessThanOrEqual(MAX_MOUNTED_ROWS);
   } finally {
     await space.close();
     await provider.close();

@@ -46,9 +46,6 @@ declare global {
 
     platform: BridgePlatform;
 
-    /** Temporary F144 gate: render only the transcript rows near the viewport. */
-    transcriptWindowing?: boolean;
-
     /** Notify main that React committed and the first app frame should be paintable. */
     rendererReady(): void;
 

@@ -11,8 +11,6 @@ const ALLOWED_LISTEN_CHANNELS = PUSH_CHANNEL_NAMES;
 
 // Freeze process.platform into a primitive before exposing it through the bridge.
 const platformValue: NodeJS.Platform = process.platform;
-// F144 tickets 4-7: windowed transcript while the gate is on; ticket 8 removes the gate.
-const transcriptWindowingValue = process.env.KODAX_SPACE_TRANSCRIPT_WINDOWING === '1';
 
 const kodaxSpaceBridge = {
   /**
@@ -41,9 +39,6 @@ const kodaxSpaceBridge = {
    * Renderer platform metadata for UI adaptation.
    */
   platform: platformValue,
-
-  /** Temporary F144 gate (`KODAX_SPACE_TRANSCRIPT_WINDOWING=1`). */
-  transcriptWindowing: transcriptWindowingValue,
 
   /**
    * Narrow boot signal: renderer calls this after React commits and a frame has

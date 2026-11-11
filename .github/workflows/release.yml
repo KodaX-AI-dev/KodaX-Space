@@ -209,7 +209,8 @@ jobs:
     name: Packaged acceptance (${{ matrix.os }})
     needs: build
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    # The F144 10k-row windowing baseline adds a few minutes on the slowest runners.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -258,7 +259,7 @@ jobs:
         env:
           SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
         run: |
-          specs=(tests/e2e/renderer-boot.spec.ts tests/e2e/native-notifications.spec.ts tests/e2e/partner-bundled.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/shared-host-history-recovery.spec.ts tests/e2e/sdk-migration-gaps.spec.ts)
+          specs=(tests/e2e/renderer-boot.spec.ts tests/e2e/native-notifications.spec.ts tests/e2e/partner-bundled.spec.ts tests/e2e/sdk-unified-contract.spec.ts tests/e2e/sdk-product-output.spec.ts tests/e2e/sdk-restored-history.spec.ts tests/e2e/sdk-history-navigation.spec.ts tests/e2e/shared-host-history-recovery.spec.ts tests/e2e/sdk-migration-gaps.spec.ts)
           if [[ "$RUNNER_OS" == Linux ]]; then
             dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" bash -euo pipefail -c '
               printf "%s\n" "kodax-space-ci" |
@@ -267,6 +268,24 @@ jobs:
             ' -- "${specs[@]}"
           else
             npm run e2e:run -- "${specs[@]}" --retries=2 --max-failures=1
+          fi
+
+      # F144: the windowed transcript on each packaged platform. Fails when mounted rows exceed the
+      # bound; the recorded first paint, heap, prepend latency, drift and long-scroll frames are
+      # uploaded with the acceptance evidence.
+      - name: Packaged transcript windowing baseline
+        shell: bash
+        env:
+          SPACE_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+        run: |
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            dbus-run-session -- xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" bash -euo pipefail -c '
+              printf "%s\n" "kodax-space-ci" |
+                gnome-keyring-daemon --unlock --components=secrets >/dev/null
+              node scripts/perf-baseline.mjs --grep coder-10k
+            '
+          else
+            node scripts/perf-baseline.mjs --grep coder-10k
           fi
 
       - name: Record accepted candidate
@@ -289,6 +308,7 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            artifacts/perf-baselines/f144/
           retention-days: 14
           if-no-files-found: ignore
 

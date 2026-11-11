@@ -73,9 +73,15 @@ test('acceptance receipts require success and retry evidence survives a green ru
   const acceptanceIndex = steps.findIndex(
     (step) => step.name === 'Packaged SDK consumer acceptance',
   );
+  const windowingIndex = steps.findIndex(
+    (step) => step.name === 'Packaged transcript windowing baseline',
+  );
   const receiptIndex = steps.findIndex((step) => step.name === 'Record accepted candidate');
   assert.ok(receiptIndex > acceptanceIndex);
-  assert.equal(steps[acceptanceIndex]['continue-on-error'], undefined);
+  assert.ok(windowingIndex > acceptanceIndex && receiptIndex > windowingIndex);
+  assert.match(steps[windowingIndex].run, /perf-baseline\.mjs --grep coder-10k/);
+  for (const index of [acceptanceIndex, windowingIndex])
+    assert.equal(steps[index]['continue-on-error'], undefined);
   assert.equal(steps[receiptIndex].if, undefined, 'default success condition must guard receipts');
   for (const job of [ci.jobs.test, release.jobs.acceptance]) {
     assert.ok(

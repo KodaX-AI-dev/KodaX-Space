@@ -1,7 +1,6 @@
-// Mounts only the transcript rows near the viewport (F144 ticket 4, behind
-// `KODAX_SPACE_TRANSCRIPT_WINDOWING=1`). The window follows the reader by row identity: the
-// first row crossing the viewport top plus the distance into it, or "the bottom" when the reader
-// is within BOTTOM_SLACK_PX of the end.
+// Mounts only the transcript rows near the viewport (F144). The window follows the reader by row
+// identity: the first row crossing the viewport top plus the distance into it, or "the bottom"
+// when the reader is within BOTTOM_SLACK_PX of the end.
 //
 // Where the reader is gets re-read only on a scroll (including one whose event is still pending)
 // or a viewport resize, and once more after rows replace a spacer it was read inside (a place in a
@@ -283,21 +282,19 @@ function readGap(container: HTMLElement): number | null {
 }
 
 export function useTranscriptWindow({
-  enabled,
   scrollRef,
   windowRef,
   rows,
   layoutKey,
   pinned,
 }: {
-  readonly enabled: boolean;
   readonly scrollRef: RefObject<HTMLElement | null>;
   readonly windowRef: RefObject<HTMLElement | null>;
   readonly rows: readonly WindowRow[];
   readonly layoutKey: string | null;
   /** Rows the caller needs mounted, such as the streaming row or a search jump target. */
   readonly pinned: ReadonlySet<string>;
-}): readonly WindowPart[] | null {
+}): readonly WindowPart[] {
   const stateRef = useRef<WindowState | null>(null);
   const rowsRef = useRef(rows);
   const pinnedRef = useRef(pinned);
@@ -309,12 +306,11 @@ export function useTranscriptWindow({
   pinnedRef.current = pinned;
 
   const parts = useMemo(() => {
-    if (!enabled) return null;
     if (stateRef.current?.layoutKey !== layoutKey) stateRef.current = freshState(layoutKey);
     return windowParts(stateRef.current, rows, pinned);
     // `version` re-reads the view, measurements and rows in use kept in stateRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, rows, layoutKey, pinned, version]);
+  }, [rows, layoutKey, pinned, version]);
   partsRef.current = parts;
 
   function bind(scroller: HTMLElement): Binding {
@@ -386,7 +382,7 @@ export function useTranscriptWindow({
   // mounts after the welcome screen), observe the rows the commit mounted and stop observing the
   // ones it unmounted.
   useLayoutEffect(() => {
-    const scroller = enabled ? scrollRef.current : null;
+    const scroller = scrollRef.current;
     const hold = holdRef.current;
     holdRef.current = null;
     if (hold && scroller) restoreHold(hold, scroller, rows);

@@ -1204,9 +1204,7 @@ export function ConversationStreamV2(): JSX.Element {
   const autoFollowRafRef = useRef<number | null>(null);
   const jumpToBottomRafRef = useRef<number | null>(null);
   const scrollSyncRafRef = useRef<number | null>(null);
-  const windowing = window.kodaxSpace?.transcriptWindowing === true;
-  // With windowing, the row a pending history restore returns to stays mounted until it has: a
-  // viewport move before the restore (Chromium on some appends) would otherwise window it away.
+  // The row a pending history restore returns to stays mounted until it has: a viewport move before the restore (Chromium on some appends) would otherwise window it away.
   const [historyRestoreAnchor, setHistoryRestoreAnchor] = useState<string | null>(null);
   const prependAnchorRestoreRef = useRef<{
     readonly token: symbol;
@@ -1218,10 +1216,9 @@ export function ConversationStreamV2(): JSX.Element {
     readonly scroller: HTMLDivElement;
   } | null>(null);
   const syncHistoryRestorePin = useCallback((): void => {
-    if (!windowing) return;
     const anchor = prependAnchorRestoreRef.current?.snapshot.anchor;
     setHistoryRestoreAnchor(anchor ? (anchor.savedItemId ?? anchor.id) : null);
-  }, [windowing]);
+  }, []);
   const cancelPrependAnchorRestore = useCallback((): void => {
     const active = prependAnchorRestoreRef.current;
     if (active?.rafId !== null && active?.rafId !== undefined) {
@@ -1298,28 +1295,25 @@ export function ConversationStreamV2(): JSX.Element {
   // A rail target the window had not mounted: pinned, then scrolled to once it renders.
   const [queryJump, setQueryJump] = useState<{ readonly id: string } | null>(null);
 
-  // F144: with the gate on, only rows near the viewport are mounted; spacers stand for the rest.
+  // F144: only rows near the viewport are mounted; spacers stand for the rest.
   const windowRef = useRef<HTMLDivElement | null>(null);
   const windowRows = useMemo(
     () =>
-      windowing
-        ? renderItems.map((item) => ({
-            id: item.id,
-            kind: item.kind === 'receipts' ? 'receipts' : item.message.kind,
-            estimate: estimateRenderItemHeight(
-              item,
-              expanded,
-              clustersForceExpand,
-              thinkingForceExpand,
-            ),
-          }))
-        : [],
-    [windowing, renderItems, expanded, clustersForceExpand, thinkingForceExpand],
+      renderItems.map((item) => ({
+        id: item.id,
+        kind: item.kind === 'receipts' ? 'receipts' : item.message.kind,
+        estimate: estimateRenderItemHeight(
+          item,
+          expanded,
+          clustersForceExpand,
+          thinkingForceExpand,
+        ),
+      })),
+    [renderItems, expanded, clustersForceExpand, thinkingForceExpand],
   );
   // The streaming row and the rows a search jump, its return or a history restore target stay
   // mounted, so the code that scrolls to them finds their element.
   const pinnedRows = useMemo(() => {
-    if (!windowing) return EMPTY_PINS;
     const ids = [
       findJump?.id,
       queryJump?.id,
@@ -1335,7 +1329,6 @@ export function ConversationStreamV2(): JSX.Element {
     if (isStreaming && tail) targets.push(tail.id);
     return targets.length === 0 ? EMPTY_PINS : new Set(targets);
   }, [
-    windowing,
     findJump,
     queryJump,
     locatedSearchItem,
@@ -1345,7 +1338,6 @@ export function ConversationStreamV2(): JSX.Element {
     isStreaming,
   ]);
   const windowParts = useTranscriptWindow({
-    enabled: windowing,
     scrollRef,
     windowRef,
     rows: windowRows,
@@ -1439,29 +1431,19 @@ export function ConversationStreamV2(): JSX.Element {
       handlePrependUserScrollIntent();
       scrollbarDragRef.current = null;
       const pendingPrepend = prependAnchorRestoreRef.current;
-      const loadingPrepend = pendingPrepend?.phase === 'loading';
-      // A smooth scroll aims at a position computed from spacer estimates; it would land beside
-      // a far hit once the rows on the way mount at their real heights.
-      const instant = loadingPrepend || windowing;
       // The jump's own scroll is ignored as programmatic, so it must leave the bottom explicitly;
       // otherwise the next content resize (windowing, streaming) follows back to the bottom.
       wasAtBottomRef.current = false;
-      markProgrammaticScroll(
-        instant ? INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS : SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS,
-      );
-      el.scrollIntoView({ block: 'center', behavior: instant ? 'auto' : 'smooth' });
-      if (loadingPrepend && pendingPrepend.scroller === scrollRef.current) {
+      markProgrammaticScroll(INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS);
+      // Instant: a smooth scroll aims at a position computed from spacer estimates; it would land
+      // beside a far hit once the rows on the way mount at their real heights.
+      el.scrollIntoView({ block: 'center', behavior: 'auto' });
+      if (pendingPrepend?.phase === 'loading' && pendingPrepend.scroller === scrollRef.current) {
         pendingPrepend.snapshot = rememberScrollSnapshot(pendingPrepend.scroller);
         syncHistoryRestorePin();
       }
     }
-  }, [
-    findJump,
-    windowing,
-    rememberScrollSnapshot,
-    handlePrependUserScrollIntent,
-    syncHistoryRestorePin,
-  ]);
+  }, [findJump, rememberScrollSnapshot, handlePrependUserScrollIntent, syncHistoryRestorePin]);
 
   function nextMatch(): void {
     if (matchIds.length === 0) return;
@@ -1963,8 +1945,8 @@ export function ConversationStreamV2(): JSX.Element {
             return;
           }
           if (correctionFrames.some((frame) => frame === settleFrame)) {
-            // `content-visibility` can replace intrinsic estimates only after the first restored
-            // scroll exposes the seam. Re-apply the original canonical anchor at sparse checkpoints
+            // Windowed rows replace spacer estimates with real heights only after the first
+            // restored scroll exposes the seam. Re-apply the original canonical anchor at sparse checkpoints
             // across a bounded settling window so delayed corrections cannot move the user's view.
             if (snapshot.atBottom && direction === 'older') {
               markProgrammaticScroll();
@@ -2473,7 +2455,7 @@ export function ConversationStreamV2(): JSX.Element {
     handlePrependUserScrollIntent();
     const target = scroller.querySelector(`[data-msg-id="${CSS.escape(id)}"]`);
     if (target instanceof HTMLElement) scrollToQueryAnchor(scroller, target, id);
-    else if (windowing) {
+    else {
       setActiveQueryAnchorId(id);
       setQueryJump({ id });
     }
@@ -2484,11 +2466,7 @@ export function ConversationStreamV2(): JSX.Element {
     const targetTop = messageTopWithinScroller(scroller, target);
     const top = Math.max(0, Math.min(maxTop, targetTop - QUERY_JUMP_TOP_PADDING_PX));
     const loadingPrepend = prependAnchorRestoreRef.current?.phase === 'loading';
-    // A windowed smooth scroll aims at spacer estimates; rows mounting on the way move the target.
-    const instant = loadingPrepend || windowing;
-    markProgrammaticScroll(
-      instant ? INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS : SMOOTH_PROGRAMMATIC_SCROLL_GUARD_MS,
-    );
+    markProgrammaticScroll(INSTANT_PROGRAMMATIC_SCROLL_GUARD_MS);
     wasAtBottomRef.current = maxTop - top < BOTTOM_DISTANCE_PX;
     const anchor = wasAtBottomRef.current ? null : { id, offsetTop: targetTop - top };
     viewportScrollAnchorRef.current = anchor;
@@ -2501,7 +2479,8 @@ export function ConversationStreamV2(): JSX.Element {
     };
     setShowJumpToBottom(maxTop - top >= BOTTOM_DISTANCE_PX);
     setActiveQueryAnchorId(id);
-    scroller.scrollTo({ top, behavior: instant ? 'auto' : 'smooth' });
+    // Instant: a smooth scroll aims at spacer estimates; rows mounting on the way move the target.
+    scroller.scrollTo({ top, behavior: 'auto' });
     if (loadingPrepend) refreshPendingPrependSnapshot(scroller);
   }
   const scrollToQueryAnchorRef = useRef(scrollToQueryAnchor);
@@ -2693,7 +2672,7 @@ export function ConversationStreamV2(): JSX.Element {
         animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
         liveTail={isStreaming && index === renderItems.length - 1}
         queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
-        feedSize={windowing ? renderItems.length : undefined}
+        feedSize={renderItems.length}
         expanded={expanded}
         clustersForceExpand={clustersForceExpand}
         thinkingForceExpand={thinkingForceExpand}
@@ -2749,9 +2728,9 @@ export function ConversationStreamV2(): JSX.Element {
           <div
             ref={windowRef}
             className="space-y-3"
-            data-transcript-window={windowing ? 'true' : undefined}
+            data-transcript-window="true"
             // Windowed rows come and go; a feed tells assistive tech each row's place in the whole.
-            role={windowing ? 'feed' : undefined}
+            role="feed"
           >
             {showHistoryBoundary && (
               <div
@@ -2884,20 +2863,19 @@ export function ConversationStreamV2(): JSX.Element {
               ))}
             <RowDisclosureSession sessionId={currentSessionId}>
               <ProductBodyOwnerContext.Provider value={bodyOwner}>
-                {(windowParts ?? [{ kind: 'rows', start: 0, end: renderItems.length }]).flatMap(
-                  (part) =>
-                    part.kind === 'spacer' ? (
-                      <div
-                        key={`spacer:${renderItems[part.start].id}`}
-                        aria-hidden
-                        data-window-spacer={renderItems[part.start].id}
-                        style={{ height: part.height, overflowAnchor: 'none' }}
-                      />
-                    ) : (
-                      renderItems
-                        .slice(part.start, part.end)
-                        .map((item, offset) => renderRow(item, part.start + offset))
-                    ),
+                {windowParts.flatMap((part) =>
+                  part.kind === 'spacer' ? (
+                    <div
+                      key={`spacer:${renderItems[part.start].id}`}
+                      aria-hidden
+                      data-window-spacer={renderItems[part.start].id}
+                      style={{ height: part.height, overflowAnchor: 'none' }}
+                    />
+                  ) : (
+                    renderItems
+                      .slice(part.start, part.end)
+                      .map((item, offset) => renderRow(item, part.start + offset))
+                  ),
                 )}
               </ProductBodyOwnerContext.Provider>
             </RowDisclosureSession>
@@ -3269,10 +3247,6 @@ function ProcessReceiptRow({
   );
 }
 
-type ConversationIntrinsicStyle = CSSProperties & {
-  readonly '--conversation-intrinsic-size': string;
-};
-
 const ConversationRenderRow = memo(function ConversationRenderRow({
   item,
   index,
@@ -3300,8 +3274,8 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly animateEntry: boolean;
   readonly liveTail: boolean;
   readonly queryOwnerId: string | undefined;
-  /** Rows in the whole transcript when a window mounts only some of them. */
-  readonly feedSize: number | undefined;
+  /** Rows in the whole transcript; the window mounts only some of them. */
+  readonly feedSize: number;
   readonly expanded: ReadonlySet<string>;
   readonly clustersForceExpand: boolean;
   readonly thinkingForceExpand: boolean;
@@ -3318,21 +3292,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly onRewindTurn: (turnIndex: number) => Promise<void>;
 }): JSX.Element {
   const animate = useRevealOnce(item.id, animateEntry);
-  const feedPosition =
-    feedSize === undefined
-      ? {}
-      : { role: 'article', 'aria-posinset': index + 1, 'aria-setsize': feedSize };
-  const intrinsicStyle = useMemo<ConversationIntrinsicStyle>(
-    () => ({
-      '--conversation-intrinsic-size': `${estimateRenderItemHeight(
-        item,
-        expanded,
-        clustersForceExpand,
-        thinkingForceExpand,
-      )}px`,
-    }),
-    [item, expanded, clustersForceExpand, thinkingForceExpand],
-  );
+  const feedPosition = { role: 'article', 'aria-posinset': index + 1, 'aria-setsize': feedSize };
 
   if (item.kind === 'receipts') {
     return (
@@ -3344,22 +3304,16 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
         {...feedPosition}
       >
         <TimelineMarker tone={receiptMarkerTone(item.receipts)} animate={animate} />
-        <div
-          className="conversation-occlusion-item"
-          data-live-tail={liveTail ? 'true' : undefined}
-          style={intrinsicStyle}
-        >
-          <ProcessReceiptRow
-            receipts={item.receipts}
-            followTail={liveTail}
-            expanded={expanded}
-            clustersForceExpand={clustersForceExpand}
-            thinkingForceExpand={thinkingForceExpand}
-            currentMatchId={currentMatchId}
-            matchSet={matchSet}
-            onToggle={onToggle}
-          />
-        </div>
+        <ProcessReceiptRow
+          receipts={item.receipts}
+          followTail={liveTail}
+          expanded={expanded}
+          clustersForceExpand={clustersForceExpand}
+          thinkingForceExpand={thinkingForceExpand}
+          currentMatchId={currentMatchId}
+          matchSet={matchSet}
+          onToggle={onToggle}
+        />
       </div>
     );
   }
@@ -3441,9 +3395,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
           data-source-item={'sourceItemId' in message ? message.sourceItemId : message.id}
           tabIndex={-1}
           data-stable-scroll-anchor="true"
-          data-live-tail={liveTail ? 'true' : undefined}
-          className={`conversation-occlusion-item search-ring-anim ${ringClass}`}
-          style={intrinsicStyle}
+          className={`search-ring-anim ${ringClass}`}
         >
           <Reveal index={index} animate={animate} className="conversation-message-body">
             <ProductItemBody item={'productItem' in message ? message.productItem : undefined}>

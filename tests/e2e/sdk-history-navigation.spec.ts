@@ -4,7 +4,6 @@ import path from 'node:path';
 import { createSessionManager } from '@kodax-ai/kodax/session';
 import type { KodaXMessage } from '@kodax-ai/kodax/agent';
 import { captureWithEvidenceBudget } from '../../scripts/e2e-evidence-budget.mjs';
-import { transcriptWindowing } from './fixtures.js';
 import { createLocalSdkProvider, launchRealSdkSpace } from './sdk-provider-fixture.js';
 
 test.setTimeout(120_000);
@@ -94,59 +93,31 @@ async function nativeHistoryGeometry(page: Page) {
   });
 }
 
-async function watchNativeHistoryWindows(page: Page, direction: 'older' | 'newer'): Promise<void> {
-  await page.getByTestId('conversation-scroll-container').evaluate((element, direction) => {
-    const stream = document.querySelector('[data-testid="conversation-stream"]');
-    if (!stream) throw new Error('Expected conversation stream');
-    const firstIndex = () => {
-      const indexes = [...stream.querySelectorAll('[data-msg-id]')]
-        .map((row) => Number(row.textContent?.match(/HISTORY_(?:QUESTION|ANSWER)_(\d+)/)?.[1]))
-        .filter(Number.isFinite);
-      return direction === 'older' ? Math.min(...indexes) : Math.max(...indexes);
-    };
+// The mounted rows follow the reader, not the loaded edge: record each painted page load, signed
+// by its direction.
+async function watchNativeHistoryWindows(page: Page): Promise<void> {
+  await page.getByTestId('conversation-scroll-container').evaluate((element) => {
     const markers: number[] = [];
     const record = (marker: number) => {
       markers.push(marker);
       element.setAttribute('data-native-page-markers', JSON.stringify(markers));
     };
-    // Windowed, the mounted rows follow the reader, not the loaded edge: record each painted page
-    // load instead, signed by its direction.
-    if (window.kodaxSpace?.transcriptWindowing === true) {
-      record(0);
-      const loads = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.name !== 'kodax.history.paint') continue;
-          const { seq, kind } = (entry as PerformanceMeasure).detail as {
-            seq: number;
-            kind: string;
-          };
-          if (kind === 'older' || kind === 'newer') record(kind === 'older' ? -seq : seq);
-        }
-      });
-      loads.observe({ type: 'measure' });
-      element.addEventListener('finish-native-history-test', () => loads.disconnect(), {
-        once: true,
-      });
-      return;
-    }
-    const initial = firstIndex();
-    if (!Number.isFinite(initial)) throw new Error('Expected seeded history marker');
-    record(initial);
-    const observer = new MutationObserver(() => {
-      const next = firstIndex();
-      if (Number.isFinite(next) && next !== markers.at(-1)) record(next);
+    record(0);
+    const loads = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.name !== 'kodax.history.paint') continue;
+        const { seq, kind } = (entry as PerformanceMeasure).detail as {
+          seq: number;
+          kind: string;
+        };
+        if (kind === 'older' || kind === 'newer') record(kind === 'older' ? -seq : seq);
+      }
     });
-    observer.observe(stream, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ['data-msg-id'],
-    });
-    element.addEventListener('finish-native-history-test', () => observer.disconnect(), {
+    loads.observe({ type: 'measure' });
+    element.addEventListener('finish-native-history-test', () => loads.disconnect(), {
       once: true,
     });
-  }, direction);
+  });
 }
 
 async function nativeHistoryMarkers(page: Page): Promise<number[]> {
@@ -244,7 +215,7 @@ async function dragNativeHistoryWindow(page: Page, direction: 'older' | 'newer')
   });
   await settleNativeHistoryLayout(page);
   const geometry = await nativeHistoryGeometry(page);
-  await watchNativeHistoryWindows(page, direction);
+  await watchNativeHistoryWindows(page);
   await page.mouse.move(geometry.x, geometry.y);
   await page.mouse.down();
   let failed = false;
@@ -301,10 +272,8 @@ test('native scrollbar stays held across SDK history windows in both directions'
       await expect.poll(ids).not.toEqual(newestIds);
       await expect(stream).toContainText('HISTORY_QUESTION_259');
       await dragNativeHistoryWindow(space.page, 'older');
-      // Loaded rows far from the reader stay loaded but unmounted when windowed; the history browser
-      // tests check retention against the transcript model with the gate on and off.
-      const windowed = await transcriptWindowing(space.page);
-      if (!windowed) await expect(stream).toContainText('HISTORY_QUESTION_259');
+      // Loaded rows far from the reader stay loaded but unmounted; the history browser tests check
+      // retention against the transcript model.
       // Locate an unread oldest window through the real search entry before appending newer pages.
       await space.page.keyboard.press('Control+f');
       const search = space.page.getByTestId('transcript-search-bar');
@@ -316,7 +285,6 @@ test('native scrollbar stays held across SDK history windows in both directions'
         .click();
       await expect(stream).toContainText('HISTORY_QUESTION_0');
       await dragNativeHistoryWindow(space.page, 'newer');
-      if (!windowed) await expect(stream).toContainText('HISTORY_QUESTION_0');
       const bottom = space.page.getByRole('button', { name: 'Jump to bottom', exact: true });
       if (await bottom.count()) await bottom.click();
       await expect.poll(ids).toEqual(newestIds);
@@ -443,8 +411,7 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     await stream.getByRole('button', { name: 'Browse history messages', exact: true }).click();
     await expect.poll(ids).not.toEqual(newest);
     await expect(stream).toContainText('HISTORY_QUESTION_259');
-    // Windowed, the mounted ids follow the reader instead of listing every loaded row.
-    const windowed = await transcriptWindowing(space.page);
+    // The mounted ids follow the reader instead of listing every loaded row.
     const moveToOlder = async () => {
       const before = await ids();
       await scroller.evaluate((element) => {
@@ -462,8 +429,6 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
       try {
         await expect.poll(ids, { timeout: 10_000 }).not.toEqual(before);
         await settleNativeHistoryLayout(space.page);
-        const after = await ids();
-        if (!windowed) expect(before.every((id) => after.includes(id))).toBe(true);
         expect(
           Math.abs(
             (await stream
@@ -507,7 +472,6 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     await scroller.hover();
     await space.page.mouse.wheel(0, await scroller.evaluate((element) => element.scrollHeight));
     await settleNativeHistoryLayout(space.page);
-    if (!windowed) expect(await ids()).toEqual(oldest);
     await expect(stream).toContainText('HISTORY_QUESTION_259');
     await expect(
       space.page.getByRole('button', { name: 'Return to newest messages', exact: true }),

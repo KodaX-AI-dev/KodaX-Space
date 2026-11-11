@@ -491,8 +491,8 @@ export function olderHistoryWindowSeamScrollTop(
 }
 
 /**
- * `content-visibility: auto` can replace several intrinsic row estimates after the first restored
- * paint. Recheck the canonical anchor sparsely for a bounded half-second window: this covers the
+ * Transcript windowing can replace several estimated row heights with real ones after the first
+ * restored paint. Recheck the canonical anchor sparsely for a bounded half-second window: this covers the
  * delayed materialization without forcing layout on every animation frame.
  */
 export const PREPEND_ANCHOR_CORRECTION_FRAME_OFFSETS = [0, 1, 2, 4, 6, 9, 13, 18, 24, 32] as const;

@@ -18,6 +18,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Finish slash completion after optional help commands and terminal argument values, retain real subcommand continuation, and let ready no-match input reach normal validation while preserving discovery loading/error guards.
 - Make conversation history boundaries and return destinations visible, preserve single-page access, distinguish loaded-content find from saved search, and open saved search results directly in context with an original-text fallback.
 - Preview where a dragged sidebar project will land: the row follows the pointer, other projects slide aside, and it settles into place on release. Dropping at the end works, dragging down no longer lands one slot short, and Escape cancels.
+- Keep very long conversations fast: only the messages near the viewport are mounted, so scrolling, loading older or newer history and jumping to the newest message stay smooth however much history is loaded. Search and question-rail jumps now scroll instantly.
 
 ## [0.1.47-alpha.5] - 2026-11-09
 
