@@ -140,7 +140,8 @@ Workflow source Run，不把 Session ID 当作客户端所有权。安全准备�
 
 `daemonOrphanExit:1` 仅对 Space 新拉起的 daemon 启用 30 秒 orphan idle-exit。
 最后一个客户端异常断开后，daemon 在没有其他客户端且任务空闲时自停；仍有任务则等到终态后重试。
-旧版残留优先执行 `kodax daemon stop --profile coder --timeout-ms 10000 --json`。CLI
+旧版残留优先执行 `kodax daemon stop --timeout-ms 10000 --json`（KodaX CLI 0.7.97 及更早
+加 `--profile coder`）。CLI
 不可用时从 `${KODAX_HOME:-~/.kodax}/runtime/daemon/coder/daemon.json` 读取 PID，
 用 `ps` 核验 `daemon serve --profile coder` 后发送 `kill -TERM <PID>`；不要按共享
 进程名执行 `killall`。

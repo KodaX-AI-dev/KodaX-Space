@@ -85,7 +85,7 @@ echo.
 echo If this command exits, the real exception and exit code will be printed.
 echo.
 
-"%APP_EXE%" --import "%SCRUB_IMPORT%" "%KODAX_CLI%" daemon serve --profile coder --home "%USERPROFILE%" --config-home "%CONFIG_HOME%" --sessions-dir "%SESSIONS_DIR%" >>"%DIAG_LOG%" 2>&1
+"%APP_EXE%" --import "%SCRUB_IMPORT%" "%KODAX_CLI%" daemon serve --home "%USERPROFILE%" --config-home "%CONFIG_HOME%" --sessions-dir "%SESSIONS_DIR%" >>"%DIAG_LOG%" 2>&1
 set "DAEMON_EXIT=%ERRORLEVEL%"
 
 >>"%DIAG_LOG%" echo.

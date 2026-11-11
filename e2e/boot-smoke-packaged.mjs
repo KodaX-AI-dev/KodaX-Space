@@ -26,7 +26,8 @@ const diagnosticsPath = path.join(
   'diagnostics',
   'space-main.jsonl',
 );
-const daemonPath = path.join(profileDir, 'runtime', 'daemon', 'coder', 'daemon.json');
+// One Host serves each data root from the canonical default slot (ADR-075).
+const daemonPath = path.join(profileDir, 'runtime', 'daemon', 'default', 'daemon.json');
 const packageLock = JSON.parse(await readFile(path.join(rootDir, 'package-lock.json'), 'utf8'));
 const expectedKodaxVersion = String(
   packageLock.packages?.['node_modules/@kodax-ai/kodax']?.version ?? '',
