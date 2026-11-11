@@ -310,7 +310,7 @@ Space 通过 KodaX 的 `daemonOrphanExit:1` 能力为 **Space 新拉起** 的 da
 kodax daemon stop --timeout-ms 10000 --json
 ```
 
-每个 KODAX_HOME 只有一个 Host，新版 CLI 会找到这个旧 daemon。KodaX CLI 0.7.97 及更早版本需加
+每个 KODAX_HOME 只有一个 Host，新版 CLI 会找到这个旧 daemon。KodaX CLI 0.7.97-beta.5 及更早版本需加
 `--profile coder`。
 
 如果 CLI 不可用，状态文件是
@@ -753,7 +753,7 @@ flowchart TD
 | 完整退出长时间进行中        | Windows 可从托盘重开查看同一条已用时；普通成功退出不弹通知，失败会恢复窗口并显示诊断                                                     |
 | 启动被 Windows ACL 阻断     | 先按阻断页重启；仍失败时打开诊断目录并提交脱敏日志，不要删锁、手工改 ACL、触发 Setup 或 UAC                                              |
 | 原生数字角标没有清除        | 打开对应 Session；未读结果会清除，权限/AskUser 必须实际解决或取消；部分 Linux 桌面不支持数字角标                                         |
-| macOS/Linux 留下 daemon     | 先用 `kodax daemon stop --timeout-ms 10000 --json`（CLI 0.7.97 及更早加 `--profile coder`）；无法确认时保留恢复票据，按完整退出指引处理；不要按缓存 PID/PGID 强杀 |
+| macOS/Linux 留下 daemon     | 先用 `kodax daemon stop --timeout-ms 10000 --json`（CLI 0.7.97-beta.5 及更早加 `--profile coder`）；无法确认时保留恢复票据，按完整退出指引处理；不要按缓存 PID/PGID 强杀 |
 | Terminal 找不到命令         | Settings → Preferences → Terminal Shell；确认所选 shell 的登录环境包含该命令                                                             |
 | Partner 没有浏览器/邮件发送 | 通用浏览器未提供；服务操作需在连接组件中核对支持能力与账号授权                                                                           |
 | External Agent 不可选       | Reference 注册需 enabled 且 preflight 通过；A2A 还需显式配置及 daemon 能力协商                                                           |

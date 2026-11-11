@@ -352,5 +352,5 @@ test('Space manual names one Host per KODAX_HOME instead of a Host profile (ADR-
   assert.doesNotMatch(spaceText, /profile-scoped|使用该 profile 的客户端/);
   const exit = SPACE_MANUAL_TOPICS.find((topic) => topic.id === 'background-runtime')?.body ?? '';
   assert.match(exit, /kodax daemon stop --timeout-ms 10000 --json/);
-  assert.match(exit, /0\.7\.97.*--profile coder/);
+  assert.match(exit, /0\.7\.97-beta\.5 及更早版本需加 `--profile coder`/);
 });

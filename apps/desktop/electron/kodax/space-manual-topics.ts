@@ -228,7 +228,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'KodaX 的 daemonOrphanExit v1 能力为 Space 新拉起的 daemon 配置 30 秒 orphan grace：Space 崩溃或被强杀导致最后客户端断开后，daemon 在没有其他客户端且 governed work 空闲时自停；若任务仍在运行则等待终态后再自停。普通 CLI 常驻 daemon 未配置该选项，不改变原有常驻语义。',
       '',
-      '旧版 0.1.32/0.1.33 若已经留下 daemon，优先运行 `kodax daemon stop --timeout-ms 10000 --json` 做协作式停止（KodaX CLI 0.7.97 及更早版本需加 `--profile coder`）。若 CLI 无法确认停止，不要根据 daemon.json 的缓存 PID/PGID 直接发送信号，也不要使用 `killall KodaX Space`：进程号可能复用，而且应用、helper 与 daemon 可能共享进程名。请先关闭所有使用该 KODAX_HOME 的客户端并升级到 v0.1.46-alpha.11 构建（KodaX 0.7.96-rc.1）或更高兼容版本；若没有持有原始进程句柄的服务管理器或 supervisor 可证明整棵树退出，保留恢复票据并重启操作系统，然后正常启动 Space 让 SDK 自动结算。不要手工删除 effect/exit lock、profile 或 Session 数据。',
+      '旧版 0.1.32/0.1.33 若已经留下 daemon，优先运行 `kodax daemon stop --timeout-ms 10000 --json` 做协作式停止（KodaX CLI 0.7.97-beta.5 及更早版本需加 `--profile coder`）。若 CLI 无法确认停止，不要根据 daemon.json 的缓存 PID/PGID 直接发送信号，也不要使用 `killall KodaX Space`：进程号可能复用，而且应用、helper 与 daemon 可能共享进程名。请先关闭所有使用该 KODAX_HOME 的客户端并升级到 v0.1.46-alpha.11 构建（KodaX 0.7.96-rc.1）或更高兼容版本；若没有持有原始进程句柄的服务管理器或 supervisor 可证明整棵树退出，保留恢复票据并重启操作系统，然后正常启动 Space 让 SDK 自动结算。不要手工删除 effect/exit lock、profile 或 Session 数据。',
     ),
     aliases: [
       'tray',
