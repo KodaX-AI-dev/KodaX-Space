@@ -421,6 +421,47 @@ test(
 );
 
 test(
+  'windowing keeps a reader who scrolls to the top there while the first row mounts taller',
+  { skip: !browserAvailable },
+  async (t) => {
+    // Grown, the first row mounts far taller than the spacer that stood for it, as a long query
+    // does before it collapses.
+    const before = `document.head.insertAdjacentHTML('beforeend', '<style>.grown [data-window-row]:has([data-source-item="NEWEST0"]) { padding-bottom: 2000px }</style>')`;
+    const { page, errors } = await openWindowedTranscript(t, 40, { before });
+    const scroller = page.getByTestId('conversation-scroll-container');
+    // Walk up from the bottom to where the second row is mounted and the first is not.
+    const steps = (await page.evaluate(`(async () => {
+      const element = document.querySelector('[data-testid="conversation-scroll-container"]');
+      const steps = [];
+      for (let top = element.scrollHeight; top > 0; top -= 100) {
+        element.scrollTop = top;
+        await window.settle(4);
+        steps.push(Math.round(element.scrollTop));
+        const first = element.querySelector('[data-source-item="NEWEST0"]');
+        if (!first && element.querySelector('[data-source-item="NEWEST1"]')) return steps;
+      }
+      return [...steps, 'none'];
+    })()`)) as Array<number | string>;
+    assert.equal(typeof steps.at(-1), 'number', `steps ${steps.join(',')}`);
+    await page.evaluate(() => document.body.classList.add('grown'));
+    // At the top the first row is a spacer, with the mounted second row below it in view.
+    assert.ok(
+      await scroller.evaluate((element) => {
+        element.scrollTop = 0;
+        const second = element.querySelector('[data-source-item="NEWEST1"]')!;
+        const offset = second.getBoundingClientRect().top - element.getBoundingClientRect().top;
+        return offset > 0 && offset < element.clientHeight;
+      }),
+      'the second row is in view from the top',
+    );
+    await page.evaluate('window.settle(48)');
+    assert.equal(await scroller.evaluate((element) => element.scrollTop), 0);
+    assert.ok(await inView(page, '[data-source-item="NEWEST0"]'), 'the first row is in view');
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
   'windowing keeps the rows in use mounted while the reader scrolls away',
   { skip: !browserAvailable },
   async (t) => {

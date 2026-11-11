@@ -15,8 +15,9 @@
 // keeps a coarse anchor it picked while only a spacer was in view, until the next scroll), so a
 // window change also re-pins the row being read, or the bottom, itself; that write is a no-op
 // whenever native anchoring already held it. Rows mounting at their real heights must not move a
-// reader off the bottom even where the caller does not auto-follow (an inactive window). Nothing
-// else here writes scrollTop.
+// reader off the bottom even where the caller does not auto-follow (an inactive window), nor off
+// the top: there the reader is at the first row, even while it is still a spacer. Nothing else
+// here writes scrollTop.
 //
 // A window change commits in the frame that read it (`flushSync` in the frame callback), so a
 // scrolled frame paints rows rather than the spacers they replace. While the scrollbar thumb is
@@ -172,9 +173,9 @@ function rowsInUse(container: HTMLElement, rows: readonly WindowRow[]): Readonly
   return inUse.length === 0 ? NOTHING_PINNED : new Set(inUse);
 }
 
-/** What a window change keeps still: the first mounted row in view, or (null) the bottom. */
+/** What a window change keeps still: the first mounted row in view, the top or the bottom. */
 interface Hold {
-  readonly row: HTMLElement | null;
+  readonly row: HTMLElement | 'top' | 'bottom';
   readonly offset: number;
   readonly rows: readonly WindowRow[];
 }
@@ -185,7 +186,8 @@ function readHold(
   state: WindowState,
   rows: readonly WindowRow[],
 ): Hold | null {
-  if (followsBottom(state, rows)) return { row: null, offset: 0, rows };
+  if (followsBottom(state, rows)) return { row: 'bottom', offset: 0, rows };
+  if (scroller.scrollTop <= 0.5) return { row: 'top', offset: 0, rows };
   const box = scroller.getBoundingClientRect();
   for (const row of container.querySelectorAll<HTMLElement>(':scope > [data-window-row]')) {
     const rect = row.getBoundingClientRect();
@@ -203,9 +205,13 @@ function readHold(
  */
 function restoreHold(hold: Hold, scroller: HTMLElement, rows: readonly WindowRow[]): void {
   if (hold.rows !== rows) return;
-  if (hold.row === null) {
+  if (hold.row === 'bottom') {
     if (scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop > 0.5)
       scroller.scrollTop = scroller.scrollHeight;
+    return;
+  }
+  if (hold.row === 'top') {
+    if (scroller.scrollTop > 0.5) scroller.scrollTop = 0;
     return;
   }
   if (!hold.row.isConnected) return;
