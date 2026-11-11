@@ -1,6 +1,6 @@
 # Provider upgrade and account preservation — FEATURE_302 T12-H
 
-Release baseline: Space `0.1.47-alpha.5` / Registry KodaX `0.7.97-beta.4`, 2026-11-09. The published alpha.4 / beta.1 record (2026-11-04) remains historical.
+Release baseline: Space `0.1.47-alpha.5` / Registry KodaX `0.7.97-beta.4`, 2026-11-09. Current source pins `0.7.97-beta.6` (2026-11-11); provider credential leases now bind to the authenticated Host, not a profile name. The published alpha.4 / beta.1 record (2026-11-04) remains historical.
 Provider and stable client/exit-recovery credentials use SDK permission-protected auth.json.
 Production packaging verifies exact Registry bytes and rejects development links.
 Earlier implementation references below retain their dated evidence; current qualification and

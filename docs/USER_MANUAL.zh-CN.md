@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树（`0.1.47-alpha.5` 候选）的 Registry SDK `0.7.97-beta.4` 适配，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树（`0.1.47-alpha.5` 候选）的 Registry SDK `0.7.97-beta.6` 适配，见 [beta.6 接入记录](releases/kodax-beta6-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -237,7 +237,7 @@ flowchart LR
 唯一会话执行与历史写入者]
 ```
 
-Space 工作树锁定 KodaX SDK 0.7.97-beta.4。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
+Space 工作树锁定 KodaX SDK 0.7.97-beta.6。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
 
 Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 

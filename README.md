@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**The working tree pins Registry SDK `0.7.97-beta.4` exactly.** See the [beta.4 adaptation](docs/releases/kodax-beta4-space-adaptation.md) and the earlier [beta.3](docs/releases/kodax-beta3-space-adaptation.md) / [beta.2](docs/releases/kodax-beta2-space-adaptation.md) integration records. The published Space `0.1.47-alpha.4` uses the original beta.1 build; its [qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md) records that release. Root and Desktop resolve the same SDK; package gates verify Registry integrity.
+**The working tree pins Registry SDK `0.7.97-beta.6` exactly.** See the [beta.6 adaptation](docs/releases/kodax-beta6-space-adaptation.md) and the earlier [beta.4](docs/releases/kodax-beta4-space-adaptation.md) / [beta.3](docs/releases/kodax-beta3-space-adaptation.md) / [beta.2](docs/releases/kodax-beta2-space-adaptation.md) integration records. The published Space `0.1.47-alpha.4` uses the original beta.1 build; its [qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md) records that release. Root and Desktop resolve the same SDK; package gates verify Registry integrity.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.

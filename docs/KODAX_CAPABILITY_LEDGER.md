@@ -1,5 +1,7 @@
 # KodaX Capability Ledger
 
+> 2026-11-11：当前工作树已升级为 Registry SDK `0.7.97-beta.6`，见 [beta.6 适配](releases/kodax-beta6-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
+
 > 2026-11-09：Space `0.1.47-alpha.5` 精确接入 Registry SDK `0.7.97-beta.4`，覆盖历史契约 v2（整轮 Fork/Rewind、`resync_required`、`newerCursor`）、规则独立加载与精确 AGENTS.md 路径编辑。当前验证和 SDK/外部限制见 [alpha.5](releases/v0.1.47-alpha.5-release-readiness.md)与[beta.4 适配](releases/kodax-beta4-space-adaptation.md)；alpha.4/beta.1 记录保留为已发布历史。
 
 > 2026-11-04：Space `0.1.47-alpha.4` 精确接入 Registry SDK `0.7.97-beta.1`，覆盖共享 Host 双 Surface、工作模式、SDK 原文/报告/用量及凭据文件。当前验证和 SDK/外部限制见 [alpha.4](releases/v0.1.47-alpha.4-release-readiness.md)与[补审记录](releases/kodax-beta1-claude-followup.md)。
@@ -11,10 +13,10 @@
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
 > Last reviewed: 2026-11-09
-> Release baseline: Space `0.1.47-alpha.5` / SDK `0.7.97-beta.4`; latest stable stays v0.1.46 / KodaX 0.7.96. See [release status](releases/v0.1.47-alpha.5-release-readiness.md).
-> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-beta.4` (`sha512-yFW6U+NHpIflGmKX7p8I/jxMyPYbgTFIbG7sLtSDqSMvXWKidIXy5ixHda/BrGmaoqmPvqdW44Xi5wbEgfWOnA==`).
+> Release baseline: Space `0.1.47-alpha.5` / SDK `0.7.97-beta.4`; current source pins SDK `0.7.97-beta.6`; latest stable stays v0.1.46 / KodaX 0.7.96. See [release status](releases/v0.1.47-alpha.5-release-readiness.md).
+> Source SDK baseline: npm Registry `@kodax-ai/kodax@0.7.97-beta.6` (`sha512-4SZmAXEgEjwp+p+ILjFs3uMKtMQjvx07p9zuguPosFSJsaqPuitEfVjPLva+ggFlgsLUPSWenwAmch2T0Mt8zA==`). See [beta.6 adaptation](releases/kodax-beta6-space-adaptation.md).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
-> Workspace dependency: Root/Desktop/lockfile pin one Registry beta.4; Space workspaces share alpha.5. Package, source and actual Host capabilities are checked separately. Earlier release evidence retains its original fingerprints.
+> Workspace dependency: Root/Desktop/lockfile pin one Registry beta.6; Space workspaces share alpha.5. Package, source and actual Host capabilities are checked separately. Earlier release evidence retains its original fingerprints.
 > Package/source evidence: a formal release requires both workspaces to resolve one deduplicated exact Registry package whose root/desktop manifests, lock views, installed package, tarball URL, and integrity agree. Release acceptance also imports every public KodaX facade, verifies ancestor-aware transitive dependencies, loads packaged `better-sqlite3`from unpacked native bytes, and boots the packaged application.
 > Published KodaX review: all earlier compaction/history/Actor/usage/learning/external-agent contracts plus 0.7.78 ownership/integration/sandbox contracts, 0.7.80`managedRunDurability:1`, 0.7.81 canonical delivered-interrupt `entryId`, 0.7.83 active-run/session-recovery and exact-shutdown fixes, 0.7.84 same-owner Actor settlement recovery, 0.7.85 `actorSettlementConvergence:1`plus`sessionEventJournal:1`, 0.7.87 `sandboxRuntime:3`, 0.7.88 `actorSettlementConvergence:2`, 0.7.89 `runBoundHostTools:2`plus`materializedAgentTools`, and 0.7.91 `runtimeExitSettlement:1`plus`liveOutputSegments:1`have been reviewed. F118 is released; broader F117/F138 work remains planned.
 > Published 0.7.94 adds`conversationHistory:2`, typed daemon disconnect facts, credential-safe Run failure classification, fail-closed Run/sandbox finalization hardening, and the explicit-Skill contract in which legacy `user-invocable`no longer gates execution while`disable-model-invocation`gates only model discovery/tool use. Space treats lifecycle support as capability contracts, not SemVer inference.
