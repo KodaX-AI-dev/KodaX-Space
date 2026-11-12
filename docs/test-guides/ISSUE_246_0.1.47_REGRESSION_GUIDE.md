@@ -6,7 +6,7 @@
 
 - SDK `process-admission.test.ts`：并发准入串行；排队超时/取消及时返回且不能稍后启动；预取消没有后台未处理拒绝；已接管的启动取消必须等清理完成；readiness 与清理同时失败保留精确 supervisor 句柄，清理收敛前不能再启动。
 - SDK `process.owner-exit.test.ts`：旧 owner 停止后继续启动，不因串行队列递归而死锁。
-- SDK `process.test.ts` / `process.cleanup.test.ts` / `windows-job-supervisor.test.ts`：失败、取消、清理重试及 committed owner 保护。
+- SDK `process.test.ts` / `process.cleanup.test.ts` / `windows-job-supervisor.test.ts`：失败、取消、清理重试及 committed owner 保护；Job owner 现为内置原生可执行文件（`__daemon-job-supervise`），不再启动 PowerShell/`Add-Type`，测试覆盖暂停启动→入 Job→就绪文件、Job 清空后才退出、原生 supervisor 无法启动时回收临时文件。
 - SDK `windows-job-identity.test.ts` / `.integration.test.ts`：原生 Job 查询；身份格式与原 SDK 一致；拒绝 Job 外进程、无效元数据、异常退出和不完整身份。
 - Space adapter、taskDockAvailability、RuntimeStartupStatus：三次失败后进入“失败”状态并显示重试按钮，同时转入慢速后台重试（30 s、1 min、2 min、4 min，之后每 5 min）；显式重试清零并立即重来；所有不可用状态优先于空闲“就绪”。
 - `tests/e2e/runtime-startup-recovery.spec.ts`：真实 Electron + Windows Job + SDK，禁止公网、空 Provider/扩展配置、全新 native cache；覆盖正常冷启动、首次失败恢复、连续失败后按钮恢复、启动及清理双失败；故障未恢复时从设置导出诊断，恢复后添加本地 HTTP 模型并实际发送消息。

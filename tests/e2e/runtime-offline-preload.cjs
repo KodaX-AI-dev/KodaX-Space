@@ -11,7 +11,7 @@ const event = (kind) =>
     JSON.stringify({ kind, pid: process.pid, time: Date.now() }) + '\n',
   );
 if (
-  process.env.KODAX_INTERNAL_WINDOWS_JOB_SCRIPT_FILE &&
+  process.env.KODAX_INTERNAL_WINDOWS_JOB_SUPERVISOR_EXE &&
   fs.readFileSync(process.env.SPACE_TEST_JOB_FAULT, 'utf8').trim() === 'cleanup'
 ) {
   try {
@@ -67,7 +67,7 @@ if (fetch)
 const spawnSync = childProcess.spawnSync;
 const spawn = childProcess.spawn;
 childProcess.spawn = function (file, args, options) {
-  if (options?.env?.KODAX_INTERNAL_WINDOWS_JOB_SCRIPT_FILE) {
+  if (options?.env?.KODAX_INTERNAL_WINDOWS_JOB_SUPERVISOR_EXE) {
     // Electron's Node mode does not honor NODE_OPTIONS --require. Inject at the
     // test-owned launch boundary for both the supervisor and its contained target.
     const payload = JSON.parse(
@@ -87,7 +87,7 @@ childProcess.spawn = function (file, args, options) {
     args = ['--require', __filename, ...args];
   }
   const child = spawn(file, args, options);
-  if (options?.env?.KODAX_INTERNAL_WINDOWS_JOB_SCRIPT_FILE) {
+  if (options?.env?.KODAX_INTERNAL_WINDOWS_JOB_SUPERVISOR_EXE) {
     child.on('message', (message) => {
       // Observe the target's failure while retaining a still-live supervisor.
       if (message?.kind === 'fixture-target-exit') child.emit('exit', 1, null);
@@ -115,6 +115,9 @@ childProcess.spawnSync = function (file, args, options) {
       // A timeout is retried once inside the probe, so only the persistent mode uses it;
       // transient/cleanup inject a native refusal, which fails the whole startup at once.
       if (mode !== 'persistent') {
+        // The native supervisor starts so fast that an immediate refusal can exit the
+        // daemon before a busy Main polls readiness; fail after readiness was published.
+        if (mode === 'cleanup') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_500);
         return {
           pid: 0,
           status: 1,

@@ -16414,6 +16414,11 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
   kill-on-close and both creation identities. The probe deadline is 10 seconds; a probe
   that could not run (timeout, spawn error) is retried once, while a native refusal
   (non-zero exit) is final. Failure stays fail-closed and is never cached.
+- The Job owner that launches the daemon is the same bundled native executable (`__daemon-job-supervise`),
+  replacing the PowerShell + `Add-Type` supervisor (15 s startup cap). Nothing is compiled at startup, so a
+  scan or loaded machine no longer stalls the second PowerShell dependency on the start path. It creates the
+  named kill-on-close Job, starts the daemon suspended, assigns it before resume, publishes the ready file, and
+  exits only after the Job is empty; a failure before readiness is written to the ready file as `ERROR:`.
 - Retryable child failures retain ownership checks. Cleanup failure retains exact
   handles, and concurrent admissions for the same slot wait for cleanup; supervisor
   readiness failures use the same fence. A retained committed owner is re-observed.
@@ -16422,7 +16427,7 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
 - Space's public SDK calls no longer pass the retired Host `profile` selector. Observed
   legacy identities remain available for diagnostics. The local SDK candidate is based
   on beta.7; this is not a claim that the published beta.7 already contains this patch.
-- Five real Windows Electron E2E cases pass: failed-start export; offline/no-Provider
+- Five real Windows Electron E2E cases pass (re-run after the native supervisor swap: the recovery spec passed 16 of 16 repeats, diagnostic export passed; the cleanup case now fails the probe 1.5 s after readiness because the faster supervisor otherwise lets the daemon exit before a busy Main polls readiness): failed-start export; offline/no-Provider
   cold start; first failure auto-recovery; persistent failure plus ZIP/manual retry and
   local model request; startup plus delayed cleanup without overlapping replacement.
   Application transports reject public network; customer OS-level air-gap acceptance
