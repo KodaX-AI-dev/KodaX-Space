@@ -43,6 +43,7 @@ import {
   clipboardImageFiles,
   createPendingAttachmentGate,
   inlineImageMediaType,
+  type InlineImageMediaType,
   isSupportedInlineImage,
   type PendingAttachmentGate,
 } from './attachmentFiles.js';
@@ -937,7 +938,7 @@ export function BottomBar(): JSX.Element {
     setImageErr(null);
 
     // Validate before creating a session for pasted or dropped images.
-    const accepted: Array<{ file: File; mediaType: PendingImage['mediaType'] }> = [];
+    const accepted: Array<{ file: File; mediaType: InlineImageMediaType }> = [];
     for (const b of blobs) {
       const mediaType = inlineImageMediaType(b);
       if (!mediaType) {

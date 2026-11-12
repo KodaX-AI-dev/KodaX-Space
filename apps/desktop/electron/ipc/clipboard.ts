@@ -154,7 +154,7 @@ export async function saveClipboardImage(
   input: {
     readonly sessionId: string;
     readonly base64: string;
-    readonly mediaType: 'image/png' | 'image/jpeg' | 'image/webp';
+    readonly mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
   },
   sdk: Pick<MediaSdk, 'normalizePastedImage' | 'validateImageBytes'> | undefined = undefined,
 ): Promise<{
@@ -184,7 +184,7 @@ export async function saveClipboardImage(
   // 4K 截图会超规格发给模型。这里补跑 normalizePastedImage 对齐媒体契约。best-effort：媒体子包
   // 不可用或不支持某种格式时保留原始 buffer；新 SDK 在写盘前独立检查真实损坏。
   let outBuf: Buffer = rawBuf;
-  let outMediaType: 'image/png' | 'image/jpeg' | 'image/webp' = input.mediaType;
+  let outMediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif' = input.mediaType;
   let media = sdk;
   try {
     media ??= await loadMediaSdk();
@@ -232,10 +232,15 @@ export async function saveClipboardImage(
     );
   }
 
+  if (outMediaType === 'image/gif') {
+    // normalizePastedImage 把 GIF 重编码为静态 PNG；仍是 GIF 说明规范化失败，不原样保存。
+    throw new Error(
+      'clipboard.saveImage: GIF could not be converted to a static image. Use PNG, JPEG or WebP.',
+    );
+  }
   const ext = EXT_BY_MEDIA[outMediaType];
   if (!ext) {
-    // enum 已限三选一，且 normalizePastedImage 只输出 png/jpeg —— 到这里说明 enum 与
-    // EXT_BY_MEDIA 失配，是开发者改 schema 没改 handler 的 bug，不是用户输入。
+    // enum 已限定类型，到这里说明 enum 与 EXT_BY_MEDIA 失配，是开发者改 schema 没改 handler 的 bug，不是用户输入。
     throw new Error(`clipboard.saveImage: unsupported mediaType ${outMediaType}`);
   }
   monotonicCounter = (monotonicCounter + 1) & 0xffff;

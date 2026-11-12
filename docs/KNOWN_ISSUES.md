@@ -3322,7 +3322,7 @@ The composer action labeled "Add files or photos" invoked `project.openDialog`, 
 - Added a multi-select file input with no extension/MIME allowlist, so all local file types remain selectable.
 - Routed picker files through the same bounded processing used by drag-drop.
 - Made "Add folder" create a directory reference without changing the current project.
-- PNG/JPEG/WebP become sandboxed input artifacts with previews; SVG/GIF, documents, archives, and unknown formats remain file references.
+- PNG/JPEG/WebP/GIF become sandboxed input artifacts with previews (GIF is re-encoded as its first frame, a static PNG); SVG, documents, archives, and unknown formats remain file references.
 - Added MIME normalization and safe extension fallback only for missing/generic MIME metadata.
 - Added unit coverage and an Electron E2E covering menu wiring, PNG preview, SVG/PDF/unknown references, multi-select, and the absence of an `accept` filter.
 

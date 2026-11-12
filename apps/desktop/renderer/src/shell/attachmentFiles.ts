@@ -1,4 +1,4 @@
-export type InlineImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp';
+export type InlineImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
 
 const INLINE_IMAGE_MIME_TYPES: Readonly<Record<string, InlineImageMediaType>> = {
   'image/png': 'image/png',
@@ -7,6 +7,7 @@ const INLINE_IMAGE_MIME_TYPES: Readonly<Record<string, InlineImageMediaType>> = 
   'image/jpg': 'image/jpeg',
   'image/pjpeg': 'image/jpeg',
   'image/webp': 'image/webp',
+  'image/gif': 'image/gif',
 };
 
 const INLINE_IMAGE_EXTENSION_TYPES: Readonly<Record<string, InlineImageMediaType>> = {
@@ -15,6 +16,7 @@ const INLINE_IMAGE_EXTENSION_TYPES: Readonly<Record<string, InlineImageMediaType
   '.jpeg': 'image/jpeg',
   '.jfif': 'image/jpeg',
   '.webp': 'image/webp',
+  '.gif': 'image/gif',
 };
 
 /** Resolve the image type accepted by the KodaX input-artifact contract. */

@@ -124,6 +124,34 @@ test('saveImage: preserves valid WebP when normalization lacks its codec', async
   assert.deepEqual(await fs.readFile(saved.path), Buffer.from(base64, 'base64'));
 });
 
+// 2×2, two-frame animated GIF.
+const ANIMATED_GIF_BASE64 =
+  'R0lGODlhAgACAPAAAP8AAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAACAoRRACH5BAAKAAAALAAAAAACAAIAgAAA/wAAAAIChFEAOw==';
+
+test('saveImage: a GIF is stored as a static PNG so every provider can read it', async () => {
+  const saved = await saveClipboardImage({
+    sessionId: 'sess-gif',
+    base64: ANIMATED_GIF_BASE64,
+    mediaType: 'image/gif',
+  });
+  assert.equal(saved.mediaType, 'image/png');
+  assert.ok(saved.path.endsWith('.png'));
+  assert.equal((await fs.readFile(saved.path)).subarray(0, 4).toString('hex'), '89504e47');
+});
+
+test('saveImage: a GIF that cannot be converted is refused rather than stored raw', async () => {
+  await assert.rejects(
+    saveClipboardImage(
+      { sessionId: 'sess-gif-raw', base64: ANIMATED_GIF_BASE64, mediaType: 'image/gif' },
+      {
+        ...NORMALIZE_THROWS,
+        validateImageBytes: async () => ({ status: 'valid' as const, mediaType: 'image/gif' }),
+      },
+    ),
+    /GIF/,
+  );
+});
+
 test('saveImage: a missing validation backend preserves the existing attachment fallback', async () => {
   const saved = await saveClipboardImage(
     { sessionId: 'sess-no-codec', base64: TINY_PNG_BASE64, mediaType: 'image/png' },

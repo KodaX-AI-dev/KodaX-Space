@@ -147,7 +147,7 @@ function buildCapabilityLedger(
       label: 'Composer image artifacts',
       status: 'supported',
       detail:
-        'Space submits PNG/JPEG/WEBP images with SDK input, preserves clipboard and drag-drop provenance, and validates images against the selected provider/model before send.',
+        'Space submits PNG/JPEG/WEBP/GIF images (GIF as its first frame) with SDK input, preserves clipboard and drag-drop provenance, and validates images against the selected provider/model before send.',
       since: '0.1.24',
     },
     {

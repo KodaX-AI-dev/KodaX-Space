@@ -44,7 +44,8 @@ export const clipboardSaveImageChannel = {
       .string()
       .min(1)
       .max(MAX_SOURCE_IMAGE_BASE64_LENGTH),
-    mediaType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+    // GIF is accepted as input only: the SDK re-encodes it to a static PNG (first frame).
+    mediaType: z.enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif']),
   }),
   output: z.object({
     /** main 写盘后的绝对路径；renderer 后续把它塞进 session.send.artifacts[].path */

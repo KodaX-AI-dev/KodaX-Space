@@ -330,7 +330,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '- SDK 根据来源身份与压缩边界证据只读恢复旧历史，并自动重建旧页面缓存；无法证明的压缩边界显示部分可恢复历史与提示，保留原始记录，不阻塞继续发送消息。Space 不按文字或时间猜测去重，也不改写会话文件。',
       '- 当前共享 Coder 通过 SDK Product 输入提交与 view 读取确认消息。排队接收只确认 inputId，不预先分配未来 runId；后续 delivery 与有序 view 绑定实际轮次。steer、重连和重试保留原输入身份及授权；Space 保留 queued input 的可见状态，未确认交付时不靠正文或旧气泡猜测成功。拒绝或确认未送达时显示可恢复状态；诊断不含用户正文。',
       '- 输入 / 打开命令与技能补全，@ 打开项目文件补全。有候选时 Tab/Enter 插入；完成命令或末级参数后关闭，合法下一层才继续补全。/help 的可选主题在主动输入前缀后建议。候选已加载但无匹配时 Enter 走普通提交/参数校验；仍在加载或加载失败时可按 Esc 退出后提交。已选项显示行内标签，可整体删除/撤销；点击或 Alt+↓ 查看引用并移除。复制保留完整引用。补全与标签只在本地处理，不展开技能或追加隐藏提示。',
-      '- 粘贴或拖入 PNG/JPEG/WEBP 图片会生成图片 chip；当前 base64/IPC 路径的临时源文件处理上限为 12 MiB，Space 调用 KodaX 将最大边压到 2000 px，并要求最终文件不超过 6 MiB；单轮上限 8 张。',
+      '- 粘贴或拖入 PNG/JPEG/WEBP/GIF 图片会生成图片 chip（GIF 取首帧，作为静态 PNG 发送）；当前 base64/IPC 路径的临时源文件处理上限为 12 MiB，Space 调用 KodaX 将最大边压到 2000 px，并要求最终文件不超过 6 MiB；单轮上限 8 张。',
       '- 拖入或通过 + 菜单添加文件/文件夹：项目内优先插入 @relative/path，项目外插入 file:// 链接；可见消息保留链接，但发送给模型的是经 Electron 校验的原生绝对路径；草稿最多 32 个文件引用。',
       '- + 菜单还可插入 slash command、打开 connectors/MCP、查看 skills。Agent picker 会插入 @agent-name。',
       '- 底部控件可切 provider/model/reasoning、permission mode、agent mode；“上下文窗口”显示主 Agent 到自动压缩阈值的活动输入压力，旁边的“会话 Token 用量”累计根 Agent 与子 Agent 的 Provider 调用，两者不是同一个指标。',
@@ -964,11 +964,11 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'image-paste',
     title: 'Image paste',
-    summary: 'composer 可粘贴/拖入 PNG、JPEG、WEBP 图片，作为 multimodal 输入发送。',
+    summary: 'composer 可粘贴/拖入 PNG、JPEG、WEBP、GIF 图片（GIF 取首帧），作为 multimodal 输入发送。',
     body: text(
       '图片确认损坏时会提示重新提取或替换，不会反复把坏图发给模型。旧会话中的坏图在请求里改为说明文字，其他正常图片和文字保留，原会话和文件不被改写。替换文件后重新读取即可重新校验；有效 WebP 不会仅因归一化器缺少对应解码支持而被拒绝。',
       '',
-      '在 composer 中直接粘贴截图或拖入 PNG/JPEG/WEBP 图片，会显示缩略图 chip。发送时 Space 将图片作为 input artifact 传给 SDK，支持 vision 的 provider/model 会收到 multimodal content；若 SDK 将图片规范化为另一种格式，Space 使用持久化字节对应的最终 media type，而不会沿用旧的 PNG/JPEG 标签。',
+      '在 composer 中直接粘贴截图或拖入 PNG/JPEG/WEBP/GIF 图片（GIF 只发送首帧），会显示缩略图 chip。发送时 Space 将图片作为 input artifact 传给 SDK，支持 vision 的 provider/model 会收到 multimodal content；若 SDK 将图片规范化为另一种格式，Space 使用持久化字节对应的最终 media type，而不会沿用旧的 PNG/JPEG 标签。',
       '',
       '限制：当前 base64/IPC 路径的临时源文件处理上限为单张 12 MiB；它不是压缩能力阈值。Space 会先调用 KodaX 转换，再要求最终图片不超过 6 MiB。单轮最多 8 张。GIF/视频不保证作为动态图或视频处理。发送前可移除图片 chip。',
     ),

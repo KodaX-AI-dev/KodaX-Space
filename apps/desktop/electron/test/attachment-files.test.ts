@@ -26,6 +26,7 @@ test('inline image detection accepts the SDK image formats by MIME type', () => 
   assert.equal(inlineImageMediaType({ name: 'scan.bin', type: 'image/png' }), 'image/png');
   assert.equal(inlineImageMediaType({ name: 'photo', type: 'image/jpg' }), 'image/jpeg');
   assert.equal(inlineImageMediaType({ name: 'photo', type: 'image/webp' }), 'image/webp');
+  assert.equal(inlineImageMediaType({ name: 'clip', type: 'image/gif' }), 'image/gif');
 });
 
 test('inline image detection falls back to common extensions when MIME is missing or generic', () => {
@@ -35,11 +36,11 @@ test('inline image detection falls back to common extensions when MIME is missin
     'image/png',
   );
   assert.equal(inlineImageMediaType({ name: 'photo.jfif', type: '' }), 'image/jpeg');
+  assert.equal(inlineImageMediaType({ name: 'Loop.GIF', type: '' }), 'image/gif');
 });
 
 test('other image and document formats remain file references instead of inline images', () => {
   for (const file of [
-    { name: 'animation.gif', type: 'image/gif' },
     { name: 'diagram.svg', type: 'image/svg+xml' },
     { name: 'report.pdf', type: 'application/pdf' },
     { name: 'archive.unknown', type: '' },
@@ -49,7 +50,7 @@ test('other image and document formats remain file references instead of inline 
 });
 
 test('an explicit unsupported MIME type is not overridden by a misleading extension', () => {
-  assert.equal(inlineImageMediaType({ name: 'renamed.png', type: 'image/gif' }), null);
+  assert.equal(inlineImageMediaType({ name: 'renamed.png', type: 'image/svg+xml' }), null);
   assert.equal(inlineImageMediaType({ name: 'renamed.jpg', type: 'application/pdf' }), null);
 });
 
