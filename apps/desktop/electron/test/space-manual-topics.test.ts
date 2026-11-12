@@ -13,6 +13,7 @@ const manifest = createRequire(import.meta.url)('../../../../package.json') as {
   readonly version: string;
   readonly dependencies: { readonly '@kodax-ai/kodax': string };
 };
+const installedSdk = createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as { version: string };
 const sdkManual = buildSpaceManual({
   KODAX_UNDERLYING_CAPABILITY_TOPICS,
   MANUAL_REGISTRY,
@@ -35,7 +36,7 @@ test('Space product guidance uses current lifecycle, settings and management cap
   assert.doesNotMatch(read('overview'), /完整退出使用.*runtimeExitSettlement/);
   assert.ok(
     read('runtime-host').includes(
-      `v${manifest.version} 发行依赖声明 KodaX ${manifest.dependencies['@kodax-ai/kodax']}`,
+      `v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`,
     ),
   );
   assert.doesNotMatch(read('ui-map'), /浮层：[^。\n]*Settings/);
@@ -166,7 +167,7 @@ test('Space kodax_manual documents the required current KodaX capability boundar
     topics
       .get('runtime-host')
       ?.body.includes(
-        `v${manifest.version} 发行依赖声明 KodaX ${manifest.dependencies['@kodax-ai/kodax']}`,
+        `v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`,
       ),
     'The current manual must match the declared Space and SDK versions',
   );

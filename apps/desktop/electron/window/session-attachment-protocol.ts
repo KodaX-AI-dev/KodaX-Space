@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import type { SessionImageAttachment } from '@kodax-space/space-ipc-schema';
 import { resolveSessionAttachmentPreviewFile } from '../ipc/clipboard.js';
-import type { HostImage, HostImageMediaType } from '../kodax/runtime/host-image.js';
+import { HOST_IMAGE_MEDIA_TYPES, type HostImage } from '../kodax/runtime/host-image.js';
 import { APP_PROTOCOL_HOST, APP_PROTOCOL_ORIGIN } from './app-protocol-policy.js';
 
 const ROUTE_PREFIX = '/session-attachment/';
@@ -39,19 +39,24 @@ function issueToken(capability: PreviewCapability): string {
   return token;
 }
 
+function isHostImageMediaType(value: string): value is HostImage['mediaType'] {
+  return HOST_IMAGE_MEDIA_TYPES.has(value);
+}
+
 /** A lazy Host capability avoids reading binary bodies while restoring the transcript. */
 export function issueHostImageAttachment(
   sessionId: string,
   itemId: string,
   ordinal: number,
-  mediaType: HostImageMediaType,
   read: () => Promise<HostImage>,
+  mediaType: string,
 ): SessionImageAttachment {
+  const base = { id: stableAttachmentId(sessionId, itemId, ordinal), kind: 'image' as const };
+  if (!isHostImageMediaType(mediaType)) return { ...base, status: 'unsupported' };
   const token = issueToken({ sessionId, read });
   const root = `${APP_PROTOCOL_ORIGIN}${ROUTE_PREFIX}${token}`;
   return {
-    id: stableAttachmentId(sessionId, itemId, ordinal),
-    kind: 'image',
+    ...base,
     status: 'available',
     mediaType,
     thumbnailUrl: `${root}?variant=thumbnail`,

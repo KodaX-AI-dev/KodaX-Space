@@ -118,12 +118,16 @@ async function readDiagnostics() {
 }
 
 const launchedAt = Date.now();
+let processOutput = '';
 const child = spawn(exe, [], {
   cwd: path.dirname(exe),
   env,
-  stdio: 'ignore',
+  stdio: ['ignore', 'pipe', 'pipe'],
   windowsHide: true,
 });
+for (const stream of [child.stdout, child.stderr]) {
+  stream.on('data', (chunk) => { processOutput = `${processOutput}${chunk}`.slice(-16_384); });
+}
 
 try {
   const deadline = launchedAt + RUNTIME_READY_BUDGET_MS;
@@ -233,6 +237,7 @@ try {
   );
 } catch (error) {
   console.error('[boot-smoke] FAIL:', error instanceof Error ? error.message : String(error));
+  if (processOutput) console.error(`[boot-smoke] process output: ${processOutput}`);
   const diagnostics = await readDiagnostics();
   const runtimeFailure = diagnostics.find(
     (event) => event.component === 'runtime' && event.event === 'host_initialization_failed',

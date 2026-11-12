@@ -7,113 +7,67 @@ import {
   revokeSessionAttachmentPreviews,
 } from '../window/session-attachment-protocol.js';
 
-test('Host tool images are read lazily by item identity and revoked with the Session', async () => {
-  const bytes = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-    'base64',
-  );
-  let reads = 0;
-  const items = await projectProductItems(
-    'host-image',
-    [
-      {
-        id: 'opaque-tool',
-        type: 'tool',
-        text: 'image',
-        attachments: [
-          { kind: 'image', path: 'C:\\outside-clipboard\\evidence.png', mediaType: 'image/png' },
-        ],
-        tool: { callId: 'call', name: 'read', status: 'success' },
-      },
-    ],
-    [],
-    async (itemId, options) => {
-      reads++;
-      assert.equal(itemId, 'opaque-tool');
-      assert.equal(options.part, 'attachment');
-      assert.equal(options.attachmentIndex, 0);
-      return {
-        id: itemId,
-        text: '',
-        offset: 0,
-        totalLength: 0,
-        image: {
-          mediaType: 'image/png',
-          dataBase64: bytes.toString('base64'),
-          sha256: createHash('sha256').update(bytes).digest('hex'),
-          width: 1,
-          height: 1,
-          offset: 0,
-          totalLength: bytes.length,
+for (const itemType of ['tool', 'user'] as const) {
+  test(`Host ${itemType} images are read lazily by item identity and revoked with the Session`, async () => {
+    const bytes = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+      'base64',
+    );
+    let reads = 0;
+    const items = await projectProductItems(
+      'host-image',
+      [
+        {
+          id: 'opaque-tool',
+          type: itemType,
+          text: 'image',
+          attachments: [
+            { kind: 'image', path: 'C:\\outside-clipboard\\evidence.png', mediaType: 'image/png' },
+          ],
+          ...(itemType === 'tool'
+            ? { tool: { callId: 'call', name: 'read', status: 'success' as const } }
+            : {}),
         },
-      };
-    },
-  );
-  assert.equal(reads, 0, 'opening history must not fetch image bodies');
-  const image = items[0]!.imageAttachments![0]!;
-  assert.equal(image.status, 'available');
-  if (image.status !== 'available') throw new Error('missing preview');
-  const response = await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET');
-  assert.equal(response?.status, 200);
-  assert.deepEqual(Buffer.from(await response!.arrayBuffer()), bytes);
-  assert.equal(response?.headers.get('content-type'), 'image/png');
-  assert.equal(reads, 1);
-  revokeSessionAttachmentPreviews('host-image');
-  assert.equal(
-    (await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET'))?.status,
-    404,
-  );
-});
-
-test('a user image outside the Space sandbox is read through the Host with its real format', async () => {
-  const jpeg = Buffer.concat([Buffer.from('ffd8ffe0', 'hex'), Buffer.alloc(32, 7)]);
-  const items = await projectProductItems(
-    'pinned-input',
-    [
-      {
-        id: 'input-item',
-        type: 'user',
-        inputId: 'input',
-        text: 'Compare these',
-        attachments: [
-          { kind: 'image', path: '/host-only/.media/owner/pinned', mediaType: 'image/jpeg' },
-        ],
-      },
-    ],
-    [],
-    async (itemId, options) => {
-      assert.equal(itemId, 'input-item');
-      assert.equal(options.attachmentIndex, 0);
-      return {
-        id: itemId,
-        text: '',
-        offset: 0,
-        totalLength: 0,
-        image: {
-          mediaType: 'image/jpeg',
-          dataBase64: jpeg.toString('base64'),
-          sha256: createHash('sha256').update(jpeg).digest('hex'),
-          width: 1,
-          height: 1,
+      ],
+      [],
+      async (itemId, options) => {
+        reads++;
+        assert.equal(itemId, 'opaque-tool');
+        assert.equal(options.part, 'attachment');
+        assert.equal(options.attachmentIndex, 0);
+        return {
+          id: itemId,
+          text: '',
           offset: 0,
-          totalLength: jpeg.length,
-        },
-      };
-    },
-  );
-  try {
-    assert.equal(items[0]!.text, 'Compare these');
+          totalLength: 0,
+          image: {
+            mediaType: 'image/png',
+            dataBase64: bytes.toString('base64'),
+            sha256: createHash('sha256').update(bytes).digest('hex'),
+            width: 1,
+            height: 1,
+            offset: 0,
+            totalLength: bytes.length,
+          },
+        };
+      },
+    );
+    assert.equal(reads, 0, 'opening history must not fetch image bodies');
     const image = items[0]!.imageAttachments![0]!;
     assert.equal(image.status, 'available');
     if (image.status !== 'available') throw new Error('missing preview');
-    assert.equal(image.mediaType, 'image/jpeg');
     const response = await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET');
-    assert.equal(response?.headers.get('content-type'), 'image/jpeg');
-    assert.deepEqual(Buffer.from(await response!.arrayBuffer()), jpeg);
-  } finally {
-    revokeSessionAttachmentPreviews('pinned-input');
-  }
-});
+    assert.equal(response?.status, 200);
+    assert.deepEqual(Buffer.from(await response!.arrayBuffer()), bytes);
+    assert.equal(response?.headers.get('content-type'), 'image/png');
+    assert.equal(reads, 1);
+    revokeSessionAttachmentPreviews('host-image');
+    assert.equal(
+      (await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET'))?.status,
+      404,
+    );
+  });
+}
 
 test('Main preserves the official input and output blocks without requiring turn IDs', async () => {
   const items = [
@@ -160,45 +114,58 @@ test('SDK image references get safe preview status and reuse capabilities withou
   assert.deepEqual(second, first);
 });
 
-test('a Host GIF in history is previewed with its real format', async () => {
-  const gif = Buffer.concat([Buffer.from('GIF89a'), Buffer.alloc(32, 3)]);
-  const items = await projectProductItems(
-    'gif-history',
-    [
-      {
-        id: 'gif-item',
-        type: 'tool',
-        text: 'image',
-        attachments: [{ kind: 'image', path: '/host-only/.media/o/gif', mediaType: 'image/gif' }],
-        tool: { callId: 'call', name: 'read', status: 'success' },
-      },
-    ],
-    [],
-    async (itemId) => ({
-      id: itemId,
-      text: '',
-      offset: 0,
-      totalLength: 0,
-      image: {
-        mediaType: 'image/gif',
-        dataBase64: gif.toString('base64'),
-        sha256: createHash('sha256').update(gif).digest('hex'),
-        width: 1,
-        height: 1,
+// Real decodable files: the Host image check decodes with the SDK, so fake bytes are refused.
+const JPEG_BASE64 =
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAf/AABEIAC4AoAMBEQACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+gEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoLEQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/APznr/fA/wArwoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKAP/2Q==';
+const GIF_BASE64 =
+  'R0lGODlhAgACAPAAAP8AAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAACAoRRACH5BAAKAAAALAAAAAACAAIAgAAA/wAAAAIChFEAOw==';
+
+for (const [itemType, mediaType, base64] of [
+  ['user', 'image/jpeg', JPEG_BASE64],
+  ['tool', 'image/gif', GIF_BASE64],
+] as const) {
+  test(`a Host ${itemType} ${mediaType} image is previewed in its real format`, async () => {
+    const bytes = Buffer.from(base64, 'base64');
+    const items = await projectProductItems(
+      `format-${itemType}`,
+      [
+        {
+          id: 'format-item',
+          type: itemType,
+          text: 'image',
+          attachments: [{ kind: 'image', path: '/host-only/.media/owner/pinned', mediaType }],
+          ...(itemType === 'tool'
+            ? { tool: { callId: 'call', name: 'read', status: 'success' as const } }
+            : {}),
+        },
+      ],
+      [],
+      async (itemId) => ({
+        id: itemId,
+        text: '',
         offset: 0,
-        totalLength: gif.length,
-      },
-    }),
-  );
-  try {
-    const image = items[0]!.imageAttachments![0]!;
-    assert.equal(image.status, 'available');
-    if (image.status !== 'available') throw new Error('missing preview');
-    assert.equal(image.mediaType, 'image/gif');
-    const response = await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET');
-    assert.equal(response?.headers.get('content-type'), 'image/gif');
-    assert.deepEqual(Buffer.from(await response!.arrayBuffer()), gif);
-  } finally {
-    revokeSessionAttachmentPreviews('gif-history');
-  }
-});
+        totalLength: 0,
+        image: {
+          mediaType,
+          dataBase64: base64,
+          sha256: createHash('sha256').update(bytes).digest('hex'),
+          width: 1,
+          height: 1,
+          offset: 0,
+          totalLength: bytes.length,
+        },
+      }),
+    );
+    try {
+      const image = items[0]!.imageAttachments![0]!;
+      assert.equal(image.status, 'available');
+      if (image.status !== 'available') throw new Error('missing preview');
+      assert.equal(image.mediaType, mediaType);
+      const response = await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET');
+      assert.equal(response?.headers.get('content-type'), mediaType);
+      assert.deepEqual(Buffer.from(await response!.arrayBuffer()), bytes);
+    } finally {
+      revokeSessionAttachmentPreviews(`format-${itemType}`);
+    }
+  });
+}

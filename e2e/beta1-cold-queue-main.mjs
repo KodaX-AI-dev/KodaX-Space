@@ -179,7 +179,6 @@ async function shutdown() {
   await adapter.close();
   const stopped = await sdk.waitForRuntimeDaemonShutdown({
     configHome: input.profileRoot,
-    profile: runtime.identity.profile,
     owner,
   });
   assert.equal(stopped.status, 'succeeded', JSON.stringify(stopped));

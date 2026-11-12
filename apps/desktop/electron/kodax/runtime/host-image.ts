@@ -8,6 +8,14 @@ export type HostItemReader = (
 
 export type HostImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
 
+/** Formats Space previews; the SDK Host reads exactly these image types. */
+export const HOST_IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+]);
+
 export interface HostImage {
   readonly bytes: Uint8Array;
   readonly mediaType: HostImageMediaType;
@@ -41,9 +49,9 @@ export async function readHostImage(
         throw new Error('Invalid Host image continuation.');
       continue;
     }
-    const whole = Buffer.concat(chunks);
-    validateImage(whole, image);
-    return { bytes: whole, mediaType: image.mediaType as HostImageMediaType };
+    const complete = Buffer.concat(chunks);
+    await validateImage(complete, image);
+    return { bytes: complete, mediaType: image.mediaType as HostImageMediaType };
   }
   throw new Error('Host image exceeded the chunk limit.');
 }
@@ -59,6 +67,10 @@ function validateChunk(
     !image ||
     result?.id !== itemId ||
     !HOST_IMAGE_MEDIA_TYPES.has(image.mediaType) ||
+    !Number.isSafeInteger(image.width) ||
+    image.width <= 0 ||
+    !Number.isSafeInteger(image.height) ||
+    image.height <= 0 ||
     image.offset !== offset ||
     !Number.isSafeInteger(image.totalLength) ||
     image.totalLength <= 0 ||
@@ -71,6 +83,7 @@ function validateChunk(
   if (
     expected &&
     (image.sha256 !== expected.sha256 ||
+      image.mediaType !== expected.mediaType ||
       image.totalLength !== expected.totalLength ||
       image.width !== expected.width ||
       image.height !== expected.height)
@@ -79,31 +92,26 @@ function validateChunk(
   return image;
 }
 
-export const HOST_IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/gif',
-]);
-
-function hasImageSignature(bytes: Buffer, mediaType: string): boolean {
-  if (mediaType === 'image/png') return bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
-  if (mediaType === 'image/jpeg') return bytes.subarray(0, 3).toString('hex') === 'ffd8ff';
-  if (mediaType === 'image/gif') return /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString('latin1'));
-  return (
-    bytes.subarray(0, 4).toString('latin1') === 'RIFF' &&
-    bytes.subarray(8, 12).toString('latin1') === 'WEBP'
-  );
-}
-
-function validateImage(bytes: Buffer, image: NonNullable<ClientItemContent['image']>): void {
+async function validateImage(
+  bytes: Buffer,
+  image: NonNullable<ClientItemContent['image']>,
+): Promise<void> {
   if (
     bytes.length !== image.totalLength ||
-    createHash('sha256').update(bytes).digest('hex') !== image.sha256 ||
-    bytes.length < 24 ||
-    !hasImageSignature(bytes, image.mediaType) ||
-    (image.mediaType === 'image/png' &&
-      (bytes.readUInt32BE(16) !== image.width || bytes.readUInt32BE(20) !== image.height))
+    createHash('sha256').update(bytes).digest('hex') !== image.sha256
   )
+    throw new Error('Host image integrity check failed.');
+  if (image.mediaType === 'image/png') {
+    if (
+      bytes.length < 24 ||
+      bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' ||
+      bytes.readUInt32BE(16) !== image.width ||
+      bytes.readUInt32BE(20) !== image.height
+    )
+      throw new Error('Host image integrity check failed.');
+  }
+  const { validateImageBytes } = await import('@kodax-ai/kodax/media');
+  const validation = await validateImageBytes(bytes);
+  if (validation.status !== 'valid' || validation.mediaType !== image.mediaType)
     throw new Error('Host image integrity check failed.');
 }

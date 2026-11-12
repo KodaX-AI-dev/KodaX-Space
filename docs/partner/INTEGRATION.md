@@ -85,7 +85,7 @@ F146 <- PF001, PF002, PF003
 
 ## 6. 当前集成快照
 
-2026-11-11：当前源码升级为 Registry SDK `0.7.97-beta.7`，Partner 会话同样使用每个 `KODAX_HOME` 一个 Host，见 [beta.7 适配](../releases/kodax-beta7-space-adaptation.md)。此前主线为 Space `0.1.47-alpha.4` 源码 / Registry SDK `0.7.97-beta.4`，PF014 代码提交 `74f55ee8` 已集成；已发布的 Space alpha.4 仍使用原始 SDK beta.1。本轮源码及 Windows 目录包验证不创建新发布，也不将外部账号、Coder 共享或自动替换已有库视为已验收。见 [beta.4 主线整合验收](../releases/kodax-beta4-space-adaptation.md#本次主线整合与复验)。
+2026-11-11：当前源码升级为 SDK `0.7.97-beta.7`（本地候选包，见 beta.7 适配），Partner 会话同样使用每个 `KODAX_HOME` 一个 Host，见 [beta.7 适配](../releases/kodax-beta7-space-adaptation.md)。此前主线为 Space `0.1.47-alpha.4` 源码 / Registry SDK `0.7.97-beta.4`，PF014 代码提交 `74f55ee8` 已集成；已发布的 Space alpha.4 仍使用原始 SDK beta.1。本轮源码及 Windows 目录包验证不创建新发布，也不将外部账号、Coder 共享或自动替换已有库视为已验收。见 [beta.4 主线整合验收](../releases/kodax-beta4-space-adaptation.md#本次主线整合与复验)。
 
 此前 alpha.2 准备快照（历史）：宿主候选为 Space `0.1.47-alpha.2` / Registry SDK `0.7.97-alpha.6`，当时尚未发布。彼时最新稳定版为 Space `0.1.46`，已发布预发布版为 `0.1.47-alpha.1`。Partner 保留既有 inline owner、内置库和 Host API 边界；相关记录见 [alpha.2 readiness](../releases/v0.1.47-alpha.2-release-readiness.md)。beta.3 Release 撤回、beta.4 候选修复及以下集成记录均保留历史语境。
 

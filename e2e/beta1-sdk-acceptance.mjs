@@ -464,7 +464,6 @@ test('installed Registry SDK Space adapter acceptance', { timeout: 180_000 }, as
       await adapter.close();
       const stopped = await sdk.waitForRuntimeDaemonShutdown({
         configHome: profileRoot,
-        profile: attached.identity.profile,
         owner,
       });
       assert.equal(stopped.status, 'succeeded', JSON.stringify(stopped));

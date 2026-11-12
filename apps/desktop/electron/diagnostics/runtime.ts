@@ -19,11 +19,10 @@ let consoleBridgeInstalled = false;
 let initialized = false;
 let redactionOptions: DiagnosticRedactionOptions = {};
 
-function readSdkVersion(): string {
+export function readInstalledDiagnosticSdkVersion(): string {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const meta = typeof require !== 'undefined' ? null : (import.meta as any);
-    const req = meta ? createRequire(meta.url) : require;
+    const meta = import.meta;
+    const req = typeof require === 'function' ? require : createRequire(meta.url);
     const pkg = req('@kodax-ai/kodax/package.json') as { version?: unknown };
     return typeof pkg.version === 'string' ? pkg.version : 'unknown';
   } catch {
@@ -109,7 +108,7 @@ export function initializeDiagnostics(
   logger = new StructuredLogger({
     directory: logDirectory,
     version: options.spaceVersion,
-    sdkVersion: readSdkVersion(),
+    sdkVersion: readInstalledDiagnosticSdkVersion(),
     ...redactionOptions,
     fallback: (level, message) => {
       const target = level === 'error' ? originalConsole.error : originalConsole.warn;

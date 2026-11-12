@@ -1165,6 +1165,13 @@ export const runtimeProfileSnapshotChannel = {
   output: spaceRuntimeProfileProjectionSchema,
 } as const;
 
+export const runtimeRetryStartupChannel = {
+  name: 'runtime.retryStartup',
+  direction: 'invoke',
+  input: z.undefined(),
+  output: z.object({ accepted: z.literal(true) }).strict(),
+} as const;
+
 export const runtimeProfileChangedChannel = {
   name: 'runtime.profileChanged',
   direction: 'push',

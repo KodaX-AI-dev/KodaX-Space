@@ -5,11 +5,14 @@ import path from 'node:path';
 import { registerChannelWithEvent } from './register.js';
 import { isRendererTarget } from './push.js';
 import { buildDiagnosticBundle } from '../diagnostics/export.js';
+import { captureDiagnosticInspection } from '../diagnostics/inspection.js';
+import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import {
   flushDiagnostics,
   getDiagnosticLogDirectory,
   getDiagnosticRedactionOptions,
   getDiagnosticsLogger,
+  readInstalledDiagnosticSdkVersion,
 } from '../diagnostics/runtime.js';
 import { replaceFilePreservingExisting } from '../diagnostics/safe-write.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
@@ -69,64 +72,57 @@ export function registerDiagnosticsChannels(deps: DiagnosticsChannelDeps): void 
 
     await flushDiagnostics();
     const runtime = runtimeHostAdapter.snapshot();
-    let integrationHealth:
-      | Awaited<ReturnType<typeof runtimeHostAdapter.inspectDaemonStop>>['integrations']
-      | undefined;
-    let integrationHealthInspectionError: string | undefined;
-    let sessionDiagnostics:
-      | Awaited<ReturnType<typeof runtimeHostAdapter.diagnoseSession>>
-      | undefined;
-    let sessionDiagnosticsError: string | undefined;
-    if (runtime.state === 'ready') {
-      try {
-        integrationHealth = (await runtimeHostAdapter.inspectDaemonStop()).integrations;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        integrationHealthInspectionError = message.replace(/\s+/g, ' ').trim().slice(0, 512);
+    const [integrationInspection, sessionInspection] = await Promise.all([
+      captureDiagnosticInspection(
+        runtime.state === 'ready',
+        async () => (await runtimeHostAdapter.inspectDaemonStop()).integrations,
+      ),
+      input.sessionId
+        ? captureDiagnosticInspection(runtime.state === 'ready', () =>
+            runtimeHostAdapter.diagnoseSession({ sessionId: input.sessionId!, timeoutMs: 10_000 }),
+          )
+        : Promise.resolve({ status: 'not-requested' } as const),
+    ]);
+    const integrationHealth =
+      integrationInspection.status === 'available' ? integrationInspection.value : undefined;
+    const integrationHealthInspectionError =
+      integrationInspection.status === 'failed' ? integrationInspection.error : undefined;
+    const sessionDiagnostics =
+      sessionInspection.status === 'available' ? sessionInspection.value : undefined;
+    const sessionDiagnosticsError =
+      sessionInspection.status === 'failed' ? sessionInspection.error : undefined;
+    for (const [source, inspection] of [
+      ['integration-health', integrationInspection],
+      ['session-diagnostics', sessionInspection],
+    ] as const) {
+      if (inspection.status === 'failed')
         getDiagnosticsLogger()?.warn(
           'diagnostics',
-          'runtime.integration-health-unavailable',
-          'Runtime integration health inspection failed during export',
-          { error: integrationHealthInspectionError },
+          `runtime.${source}-unavailable`,
+          'Runtime diagnostic inspection failed during export',
+          { error: inspection.error },
         );
-      }
-      if (input.sessionId) {
-        try {
-          sessionDiagnostics = await runtimeHostAdapter.diagnoseSession({
-            sessionId: input.sessionId,
-            timeoutMs: 10_000,
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          sessionDiagnosticsError = message.replace(/\s+/g, ' ').trim().slice(0, 512);
-          getDiagnosticsLogger()?.warn(
-            'diagnostics',
-            'runtime.session-diagnostics-unavailable',
-            'Runtime session diagnostics capture failed during export',
-            { error: sessionDiagnosticsError },
-          );
-        }
-      }
     }
+    await flushDiagnostics();
     const redaction = getDiagnosticRedactionOptions();
     const bundle = await buildDiagnosticBundle({
       logDirectory:
         getDiagnosticLogDirectory() ?? path.join(app.getPath('userData'), 'diagnostics'),
       spaceVersion: deps.spaceVersion,
-      sdkVersion: runtime.identity?.version ?? 'unknown',
+      sdkVersion: readInstalledDiagnosticSdkVersion(),
+      hostSdkVersion: runtime.identity?.version,
+      runtimeDirectory: getKodaxRuntimeDir(),
+      runtimeProfile: runtime.identity?.profile,
       platform: process.platform,
       categories: input.categories,
       capabilities: {
         runtime,
         integrationHealth,
-        integrationHealthInspection: integrationHealthInspectionError
-          ? { status: 'failed', error: integrationHealthInspectionError }
-          : { status: runtime.state === 'ready' ? 'available' : 'not-required' },
-        sessionDiagnostics: sessionDiagnostics
-          ? { status: 'available', value: sessionDiagnostics }
-          : sessionDiagnosticsError
-            ? { status: 'failed', error: sessionDiagnosticsError }
-            : { status: input.sessionId ? 'runtime-unavailable' : 'not-requested' },
+        integrationHealthInspection:
+          integrationInspection.status === 'available'
+            ? { status: 'available' }
+            : integrationInspection,
+        sessionDiagnostics: sessionInspection,
         experimentalMemory: getExperimentalMemorySdkCapability(),
         sandbox: getSandboxSdkCapability(),
         applicationOrigin: 'app://space',
@@ -174,7 +170,7 @@ export function registerDiagnosticsChannels(deps: DiagnosticsChannelDeps): void 
         ) ?? []),
       ],
       secretValues: redaction.secretValues,
-      privatePathPrefixes: redaction.privatePathPrefixes,
+      privatePathPrefixes: [...(redaction.privatePathPrefixes ?? []), getKodaxRuntimeDir()],
     });
 
     const destination = path.resolve(result.filePath);

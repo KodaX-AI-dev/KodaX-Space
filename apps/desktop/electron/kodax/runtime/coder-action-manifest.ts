@@ -103,6 +103,7 @@ export const FROZEN_V0131_CODER_ENTRYPOINTS = [
   'provider.test',
   'provider.updateCustom',
   'runtime.profileSnapshot',
+  'runtime.retryStartup',
   'runtime.extensionHealth',
   'session.agentsMd',
   'session.agentsMd.save',

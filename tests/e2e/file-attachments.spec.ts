@@ -9,6 +9,12 @@ const TINY_PNG = Buffer.from(
   'base64',
 );
 
+// 2×2 animated GIF with two frames; Space sends only its first frame as a static PNG.
+const ANIMATED_GIF = Buffer.from(
+  'R0lGODlhAgACAPAAAP8AAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAgACAAACAoRRACH5BAAKAAAALAAAAAACAAIAgAAA/wAAAAIChFEAOw==',
+  'base64',
+);
+
 test('file picker accepts images, documents, and unknown file types', async () => {
   const testId = `file-attachments-${Date.now()}`;
   const projectDir = path.join(os.tmpdir(), `kodax-test-${testId}-project`);
@@ -125,6 +131,47 @@ test('sent image renders in the user bubble and opens in Task Dock', async () =>
       'src',
       /^app:\/\/space\/session-attachment\/[A-Za-z0-9_-]+\?variant=original$/,
     );
+  } finally {
+    await space.close();
+    await Promise.all([
+      fs.rm(projectDir, { recursive: true, force: true }),
+      fs.rm(selectedDir, { recursive: true, force: true }),
+    ]);
+  }
+});
+
+test('a picked GIF is sent as a static image and previews in the user bubble', async () => {
+  const testId = `sent-gif-preview-${Date.now()}`;
+  const projectDir = path.join(os.tmpdir(), `kodax-test-${testId}-project`);
+  const selectedDir = path.join(os.tmpdir(), `kodax-test-${testId}-selected`);
+  const gifPath = path.join(selectedDir, 'loop.gif');
+  await fs.mkdir(projectDir, { recursive: true });
+  await fs.mkdir(selectedDir, { recursive: true });
+  await fs.writeFile(gifPath, ANIMATED_GIF);
+
+  const space = await launchSpace(testId);
+  try {
+    const { page } = space;
+    await space.seedProject(projectDir);
+    const textarea = page.getByTestId('composer-input');
+    await expect(textarea).toBeEnabled({ timeout: 10_000 });
+    await page.getByTestId('file-attachment-input').setInputFiles(gifPath);
+    // A GIF becomes an image chip instead of a plain file reference.
+    await expect(page.getByRole('img', { name: 'loop.gif' })).toBeVisible({ timeout: 10_000 });
+    await textarea.fill('inspect the attached gif');
+    await expect(page.getByRole('button', { name: 'Send message', exact: true })).toBeEnabled();
+    await textarea.press('Enter');
+
+    const thumbnail = page.getByTestId('user-image-thumbnail');
+    await expect(thumbnail).toBeVisible({ timeout: 10_000 });
+    const image = thumbnail.locator('img');
+    await expect(image).toHaveAttribute(
+      'src',
+      /^app:\/\/space\/session-attachment\/[A-Za-z0-9_-]+\?variant=thumbnail$/,
+    );
+    await expect
+      .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
+      .toBe(2);
   } finally {
     await space.close();
     await Promise.all([

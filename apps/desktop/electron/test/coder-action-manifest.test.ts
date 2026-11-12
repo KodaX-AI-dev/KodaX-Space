@@ -25,6 +25,13 @@ test('Partner-only expert selection is excluded without hiding shared Session en
   assert.equal(isCoderEntrypointNamespace('skill.invoke'), true);
 });
 
+test('startup retry is owned by Space and remains available without a daemon', () => {
+  const action = CODER_ACTION_MANIFEST.find(entry => entry.entrypoint === 'runtime.retryStartup');
+  assert.equal(action?.targetOwner, 'space-host-provider');
+  assert.equal(action?.requiredCapability, undefined);
+  assert.equal(action?.unavailableBehavior, 'not-applicable');
+});
+
 test('Coder action manifest has one explicit non-inline disposition per entrypoint', () => {
   const entrypoints = CODER_ACTION_MANIFEST.map((entry) => entry.entrypoint);
   assert.equal(new Set(entrypoints).size, entrypoints.length);

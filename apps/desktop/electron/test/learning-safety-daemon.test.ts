@@ -64,7 +64,7 @@ try {
     '.kodax',
     'runtime',
     'daemon',
-    process.env.F118_PROFILE ?? '',
+    'default',
     'bootstrap.log',
   );
   const bootstrapTail = await readFile(bootstrapLogPath, 'utf8')

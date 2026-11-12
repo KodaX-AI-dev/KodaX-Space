@@ -1,6 +1,6 @@
 # Space 接入 KodaX 0.7.97-alpha.9
 
-> 当前工作树已接入 Registry SDK `0.7.97-beta.7`，见 [beta.7 适配](../releases/kodax-beta7-space-adaptation.md)：每个 `KODAX_HOME` 一个 Host（不再使用 `coder` profile），输入图片由 Host 固定保存，个人 workflow 从 Agent home 读取，沙箱降级可见。beta.4 历史契约 v2 与 AGENTS.md 精确路径编辑不变。下方 beta.4 及更早记录保留其历史语境。
+> 当前工作树已接入 SDK `0.7.97-beta.7`（本地候选包，见 beta.7 适配），见 [beta.7 适配](../releases/kodax-beta7-space-adaptation.md)：每个 `KODAX_HOME` 一个 Host（不再使用 `coder` profile），输入图片由 Host 固定保存，个人 workflow 从 Agent home 读取，沙箱降级可见。beta.4 历史契约 v2 与 AGENTS.md 精确路径编辑不变。下方 beta.4 及更早记录保留其历史语境。
 
 > 2026-11-08 当前工作树：Registry SDK `0.7.97-beta.3`，见 [完整适配与验收](../releases/kodax-beta3-space-adaptation.md)。工作模式仅首轮 Run 接纳前选择；历史定位与整轮操作按实际 Host 能力开放；规则片段保留独立来源。以下带日期的旧版本记录保持历史语境。
 

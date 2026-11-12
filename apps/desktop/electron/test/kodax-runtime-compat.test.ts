@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -1191,16 +1193,30 @@ test('installed KodaX version matches the exact Space dependency pin', () => {
   assert.equal(INSTALLED_KODAX_VERSION, EXPECTED_KODAX_VERSION);
 });
 
-test('Space uses the published beta.7 SDK in both dependency manifests', () => {
+test('Space pins the same SDK in both manifests and verifies local candidate integrity', () => {
   const root = require('../../../../package.json') as { dependencies: Record<string, string> };
   const desktop = require('../../package.json') as { dependencies: Record<string, string> };
   const lock = require('../../../../package-lock.json') as {
-    packages: Record<string, { version?: string; resolved?: string }>;
+    packages: Record<string, { version?: string; resolved?: string; integrity?: string }>;
   };
-  assert.equal(root.dependencies['@kodax-ai/kodax'], '0.7.97-beta.7');
-  assert.equal(desktop.dependencies['@kodax-ai/kodax'], '0.7.97-beta.7');
-  assert.equal(INSTALLED_KODAX_VERSION, '0.7.97-beta.7');
+  const expected = '0.7.97-beta.7';
+  const rootPin = root.dependencies['@kodax-ai/kodax']!;
+  const desktopPin = desktop.dependencies['@kodax-ai/kodax']!;
+  assert.equal(INSTALLED_KODAX_VERSION, expected);
   assert.equal(lock.packages['apps/desktop/node_modules/@kodax-ai/kodax'], undefined);
+  if (rootPin.startsWith('file:')) {
+    const rootPath = path.dirname(require.resolve('../../../../package.json'));
+    const candidate = path.resolve(rootPath, rootPin.slice(5));
+    assert.equal(path.basename(candidate), `kodax-ai-kodax-${expected}.tgz`);
+    assert.equal(path.resolve(rootPath, 'apps/desktop', desktopPin.slice(5)), candidate);
+    assert.equal(desktopPin.startsWith('file:'), true);
+    assert.equal(path.resolve(rootPath, lock.packages['node_modules/@kodax-ai/kodax']!.resolved!.slice(5)), candidate);
+    assert.equal(lock.packages['node_modules/@kodax-ai/kodax']?.integrity,
+      `sha512-${createHash('sha512').update(readFileSync(candidate)).digest('base64')}`);
+    return;
+  }
+  assert.equal(rootPin, expected);
+  assert.equal(desktopPin, expected);
   assert.match(
     lock.packages['node_modules/@kodax-ai/kodax']?.resolved ?? '',
     /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-beta\.7\.tgz$/,

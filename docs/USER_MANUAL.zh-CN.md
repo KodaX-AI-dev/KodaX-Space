@@ -728,44 +728,48 @@ flowchart TD
 
 ## 19. 常见问题
 
-| 问题                        | 建议检查                                                                                                                                 |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Provider 显示 No key        | Settings → Providers，检查已选来源、auth.json 权限、环境变量名及迁移状态；明确重试原凭证或选择新来源，不静默切换账号                     |
-| Test connection 失败        | Base URL、协议、模型名、网络代理、服务端鉴权                                                                                             |
-| AI 看不到文件               | 是否已打开正确项目、路径是否在 workspace、是否正确使用 `@path`                                                                           |
-| 为什么一直弹权限            | 当前 Mode、工具风险、Allow always 的 scope、项目是否可信                                                                                 |
-| 停止后仍看到旧输出          | 等待取消终态；若持续出现，记录 session、时间和日志报告问题                                                                               |
-| 排队气泡一直不消失          | 核对 transcript 是否已有对应用户消息或“未送达”状态；记录 session/run/inputId                                                             |
-| 子 Agent 进度反复唤醒父模型 | 普通 progress 不应结束 `wait_agent`；记录 actorPath/turnId 和 Runtime 日志                                                               |
-| 子 Agent 正文混入父回复     | 检查 Agents/Workflow 活动面；主 transcript 只应显示 root 内容                                                                            |
-| 上下文百分比与 1M 对不上    | 百分比按当前自动压缩阈值计算；弹窗中的模型最大上下文与阈值是两个独立事实                                                                 |
-| 上下文构成为空              | 先完成一次模型请求；只有收到当前 Provider/Model 的根上下文诊断后才显示分类                                                               |
-| 会话 Token 与上下文不同     | 正常：会话用量累计根/子 Agent 的全部物理调用，上下文窗口只看当前主 Agent 活动输入                                                        |
-| 历史看起来不完整            | 重开 session；检查是否 compact/rewind；确认 CLI 是否同时改写                                                                             |
-| 文件存在但无法定位          | 若提示“不在 KodaX 已授权目录”，请打开正确项目或先把文件纳入受支持的项目/Delivery 边界；不要把它当成文件丢失                              |
-| PowerShell 方括号路径被确认 | `-Path` 的 `[]` 是通配符；精确文件名改用 `-LiteralPath`/`-PSPath`                                                                        |
-| CLI 自动恢复到了空会话      | 新版会跳过空 ACP 占位；核对实际包 SHA256、版本和是否仍有旧进程                                                                           |
-| 普通 query 会闪出多个 cmd   | 0.7.77 保留非交互子进程隐藏；若仍出现，请记录 Space/KodaX 版本、进程名和触发操作，按回归问题报告                                         |
-| MCP 工具不可见              | MCP 面板 Refresh/Reload、server 状态、PATH、`integrations/mcp.json` 来源和 diagnostics                                                   |
-| 旧 MCP/Extension 配置未生效 | Settings → Runtime 查看 SDK 迁移计划并点击“迁移集成配置”；也可用 CLI dry-run/`--apply` 迁移                                              |
-| 集成配置校验失败            | 只修复错误点名的 `integrations/*.json`；不要删除整个目录，修复后 reload 或安全重启 Runtime owner                                         |
-| Daemon 模式无法使用         | 查看 Runtime 诊断并修复后重试；保留原任务身份，尊重其他客户端与所有权保护                                                                |
-| 关闭按钮行为不符合预期      | Settings → Preferences → Close button behavior；退出仅清理本客户端工作；共享 daemon 可为其他客户端保留，失败时 Space 会恢复界面          |
-| 完整退出长时间进行中        | Windows 可从托盘重开查看同一条已用时；普通成功退出不弹通知，失败会恢复窗口并显示诊断                                                     |
-| 启动被 Windows ACL 阻断     | 先按阻断页重启；仍失败时打开诊断目录并提交脱敏日志，不要删锁、手工改 ACL、触发 Setup 或 UAC                                              |
-| 原生数字角标没有清除        | 打开对应 Session；未读结果会清除，权限/AskUser 必须实际解决或取消；部分 Linux 桌面不支持数字角标                                         |
+本地 Coder 服务负责会话、模型调用和工具执行。它随应用本地启动，不要求连接公网、配置 Provider 或安装扩展；没有 `extensions` 目录是正常情况。离线环境可先打开设置，再配置可达的内网模型地址、协议、模型名和所需凭据。模型不可达或未配置应在模型调用时提示，不应导致本地服务启动失败。
+
+启动或重连期间，任务摘要显示服务当前状态；只有服务可用时才显示“就绪”。临时启动失败会自动重试，最多连续三次；仍失败时可点击“重试启动”，无需删除运行目录。重试会先处理上次启动遗留的清理，不能确认旧进程退出时不会创建竞争进程。持续失败请通过设置 → 诊断导出 ZIP：包含 Space 日志、Runtime 的 bootstrap/daemon 日志、实际安装 SDK 版本，以及各日志缺失、不可读、截断的原因；即使服务未启动也能导出。不要清空 `.kodax/runtime` 来跳过所有权或恢复检查。
+
+| 问题                        | 建议检查                                                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Provider 显示 No key        | Settings → Providers，检查已选来源、auth.json 权限、环境变量名及迁移状态；明确重试原凭证或选择新来源，不静默切换账号                                                     |
+| Test connection 失败        | Base URL、协议、模型名、网络代理、服务端鉴权                                                                                                                             |
+| AI 看不到文件               | 是否已打开正确项目、路径是否在 workspace、是否正确使用 `@path`                                                                                                           |
+| 为什么一直弹权限            | 当前 Mode、工具风险、Allow always 的 scope、项目是否可信                                                                                                                 |
+| 停止后仍看到旧输出          | 等待取消终态；若持续出现，记录 session、时间和日志报告问题                                                                                                               |
+| 排队气泡一直不消失          | 核对 transcript 是否已有对应用户消息或“未送达”状态；记录 session/run/inputId                                                                                             |
+| 子 Agent 进度反复唤醒父模型 | 普通 progress 不应结束 `wait_agent`；记录 actorPath/turnId 和 Runtime 日志                                                                                               |
+| 子 Agent 正文混入父回复     | 检查 Agents/Workflow 活动面；主 transcript 只应显示 root 内容                                                                                                            |
+| 上下文百分比与 1M 对不上    | 百分比按当前自动压缩阈值计算；弹窗中的模型最大上下文与阈值是两个独立事实                                                                                                 |
+| 上下文构成为空              | 先完成一次模型请求；只有收到当前 Provider/Model 的根上下文诊断后才显示分类                                                                                               |
+| 会话 Token 与上下文不同     | 正常：会话用量累计根/子 Agent 的全部物理调用，上下文窗口只看当前主 Agent 活动输入                                                                                        |
+| 历史看起来不完整            | 重开 session；检查是否 compact/rewind；确认 CLI 是否同时改写                                                                                                             |
+| 文件存在但无法定位          | 若提示“不在 KodaX 已授权目录”，请打开正确项目或先把文件纳入受支持的项目/Delivery 边界；不要把它当成文件丢失                                                              |
+| PowerShell 方括号路径被确认 | `-Path` 的 `[]` 是通配符；精确文件名改用 `-LiteralPath`/`-PSPath`                                                                                                        |
+| CLI 自动恢复到了空会话      | 新版会跳过空 ACP 占位；核对实际包 SHA256、版本和是否仍有旧进程                                                                                                           |
+| 普通 query 会闪出多个 cmd   | 0.7.77 保留非交互子进程隐藏；若仍出现，请记录 Space/KodaX 版本、进程名和触发操作，按回归问题报告                                                                         |
+| MCP 工具不可见              | MCP 面板 Refresh/Reload、server 状态、PATH、`integrations/mcp.json` 来源和 diagnostics                                                                                   |
+| 旧 MCP/Extension 配置未生效 | Settings → Runtime 查看 SDK 迁移计划并点击“迁移集成配置”；也可用 CLI dry-run/`--apply` 迁移                                                                              |
+| 集成配置校验失败            | 只修复错误点名的 `integrations/*.json`；不要删除整个目录，修复后 reload 或安全重启 Runtime owner                                                                         |
+| Daemon 模式无法使用         | 查看 Runtime 诊断并修复后重试；保留原任务身份，尊重其他客户端与所有权保护                                                                                                |
+| 关闭按钮行为不符合预期      | Settings → Preferences → Close button behavior；退出仅清理本客户端工作；共享 daemon 可为其他客户端保留，失败时 Space 会恢复界面                                          |
+| 完整退出长时间进行中        | Windows 可从托盘重开查看同一条已用时；普通成功退出不弹通知，失败会恢复窗口并显示诊断                                                                                     |
+| 启动被 Windows ACL 阻断     | 先按阻断页重启；仍失败时打开诊断目录并提交脱敏日志，不要删锁、手工改 ACL、触发 Setup 或 UAC                                                                              |
+| 原生数字角标没有清除        | 打开对应 Session；未读结果会清除，权限/AskUser 必须实际解决或取消；部分 Linux 桌面不支持数字角标                                                                         |
 | macOS/Linux 留下 daemon     | 先用 `kodax daemon stop --timeout-ms 10000 --json`（CLI 0.7.97-beta.5 及更早加 `--profile coder`）；无法确认时保留恢复票据，按完整退出指引处理；不要按缓存 PID/PGID 强杀 |
-| Terminal 找不到命令         | Settings → Preferences → Terminal Shell；确认所选 shell 的登录环境包含该命令                                                             |
-| Partner 没有浏览器/邮件发送 | 通用浏览器未提供；服务操作需在连接组件中核对支持能力与账号授权                                                                           |
-| External Agent 不可选       | Reference 注册需 enabled 且 preflight 通过；A2A 还需显式配置及 daemon 能力协商                                                           |
-| External Agent 任务区报错   | 无历史任务应显示空态；真正读取失败可点“重试”，主 Run 结果不因此变成失败                                                                  |
-| Quick Ask 不能打开          | 先打开项目；使用 `Mod+K`，不要与命令面板混淆                                                                                             |
-| 语言切换后仍有英文          | 模型输出、工具日志、文件内容和第三方数据不会被强制翻译                                                                                   |
-| UI 白屏或状态异常           | 记录版本、打开 DevTools、查看 `~/.kodax/space/logs`，不要直接删除整个 `~/.kodax`                                                         |
+| Terminal 找不到命令         | Settings → Preferences → Terminal Shell；确认所选 shell 的登录环境包含该命令                                                                                             |
+| Partner 没有浏览器/邮件发送 | 通用浏览器未提供；服务操作需在连接组件中核对支持能力与账号授权                                                                                                           |
+| External Agent 不可选       | Reference 注册需 enabled 且 preflight 通过；A2A 还需显式配置及 daemon 能力协商                                                                                           |
+| External Agent 任务区报错   | 无历史任务应显示空态；真正读取失败可点“重试”，主 Run 结果不因此变成失败                                                                                                  |
+| Quick Ask 不能打开          | 先打开项目；使用 `Mod+K`，不要与命令面板混淆                                                                                                                             |
+| 语言切换后仍有英文          | 模型输出、工具日志、文件内容和第三方数据不会被强制翻译                                                                                                                   |
+| UI 白屏或状态异常           | 记录版本、打开 DevTools、查看 `~/.kodax/space/logs`，不要直接删除整个 `~/.kodax`                                                                                         |
 
 ## 20. 当前限制与诚实边界
 
-- 当前构建默认让 Coder 连接 profile-scoped shared daemon；Partner 同样连接共享 Host，Space 以 lease 提供知识、连接器和交付工具；专家默认方法及排队绑定仍有候选接缝待验收。
+- 当前构建默认让 Coder 连接同一数据目录内的共享本地 Host；Partner 同样连接共享 Host，Space 以 lease 提供知识、连接器和交付工具；专家默认方法及排队绑定仍有候选接缝待验收。
 - 右侧 Task Dock 已提供 Learned Skills 管理：查看不可变修订、来源、canary 和诊断；根据记录状态提供 review、trust、reject、disable、rollback 与通知确认。该区域需 Runtime 能力协商通过；旧记录或策略禁写时只读，`SPACE_DISABLE_LEARNING_MUTATIONS=1` 禁用管理写操作。这不等于完整 Memory Episodes/Activity/纠正/清除界面已交付。
 - `daemonOrphanExit:1` 只证明当前 daemon host 启用了 orphan idle-exit，不证明异步 host cleanup 失败后一定重试成功；正式包 macOS/Linux process-level 验收和上游 cleanup retry/verification 缺口继续由 Issue 133 跟踪。
 - 当前 sandboxRuntime v11、已打包 helper 与显式 setup/readiness UI 提供受支持命令的隔离；Runtime Shell 在 sandbox 不可用时使用普通权限策略，且不会重放可能已启动的命令。普通权限执行仍取得同一 filesystem-effect fence。其边界未覆盖全部文档 staging、凭据与 native-resource 访问，不能视为整个应用的跨平台 OS 隔离。

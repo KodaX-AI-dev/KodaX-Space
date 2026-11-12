@@ -29,11 +29,50 @@ export function RuntimeStartupStatus() {
   const connection = useAppStore((state) => state.runtimeConnection);
   const { t } = useI18n();
   const progress = connection.startupProgress;
-  if (connection.state === 'incompatible') {
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string>();
+  async function retry() {
+    setRetrying(true);
+    setRetryError(undefined);
+    try {
+      if (!window.kodaxSpace) throw new Error(t('runtime.startup.unavailable'));
+      const result = await window.kodaxSpace.invoke('runtime.retryStartup', undefined);
+      if (!result.ok) setRetryError(result.error.message);
+    } catch (error) {
+      setRetryError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setRetrying(false);
+    }
+  }
+  if (connection.state === 'incompatible' || connection.state === 'disconnected') {
     return (
-      <div role="alert" className="flex items-center gap-2 px-3 py-2 text-xs text-danger">
+      <div
+        role="alert"
+        data-testid="runtime-startup-failed"
+        className="flex items-start gap-2 px-3 py-2 text-xs text-danger"
+      >
         <CircleAlert aria-hidden="true" className="h-4 w-4 shrink-0" />
-        <span>{t('runtime.startup.failed')}</span>
+        <div className="min-w-0 flex-1">
+          <p>{t('runtime.startup.failed')}</p>
+          <p className="mt-1 text-fg-muted">{t('runtime.startup.serviceDescription')}</p>
+          {connection.reason && (
+            <details className="mt-1 break-words text-fg-muted">
+              <summary>{t('runtime.startup.failureDetails')}</summary>
+              {connection.reason}
+            </details>
+          )}
+          {retryError && <p className="mt-1">{retryError}</p>}
+        </div>
+        <button
+          type="button"
+          disabled={retrying}
+          onClick={() => {
+            void retry();
+          }}
+          className="shrink-0 rounded border border-border-default px-2 py-1 disabled:opacity-50"
+        >
+          {t('runtime.startup.retry')}
+        </button>
       </div>
     );
   }

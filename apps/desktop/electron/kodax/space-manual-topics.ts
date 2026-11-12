@@ -12,14 +12,21 @@
 // a QA checklist by itself; it is the source the agent reads when explaining what
 // the product can do and how a user should operate it.
 
+import { createRequire } from 'node:module';
 import desktopPackage from '../../package.json';
 
 import type { KodaXManualSource, KodaXManualTopicInput } from '@kodax-ai/kodax/coding';
 
 export const SPACE_PRODUCT_NAME = 'KodaX Space';
 
+// The SDK is ESM-only; its package manifest is the one export read through require().
+const requireFromModule = typeof require === 'function' ? require : createRequire(import.meta.url);
+const sdkPackage = requireFromModule('@kodax-ai/kodax/package.json') as {
+  readonly version: string;
+};
+
 const text = (...lines: string[]) => lines.join('\n');
-const CURRENT_RUNTIME = `v${desktopPackage.version} 发行依赖声明 KodaX ${desktopPackage.dependencies['@kodax-ai/kodax']}。`;
+const CURRENT_RUNTIME = `v${desktopPackage.version} 发行依赖声明 KodaX ${sdkPackage.version}。${desktopPackage.dependencies['@kodax-ai/kodax'].startsWith('file:') ? '当前为本地联调候选，尚未正式发布。' : ''}`;
 
 type SdkCodingModule = typeof import('@kodax-ai/kodax/coding');
 type SdkManualModule = Pick<
@@ -1162,9 +1169,12 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     id: 'troubleshooting',
     title: 'Troubleshooting',
     summary:
-      '优先看 Settings/Providers、MCP diagnostics、DevTools console 和 ~/.kodax/space/logs。',
+      '优先看 Settings/Providers 和设置中的诊断导出；本地 Coder 服务故障可重试启动。',
     body: text(
       '常见问题：',
+      '- 本地 Coder 服务负责会话、模型调用和工具执行；启动不要求公网、Provider 或扩展。无 extensions 目录正常。离线可先进入设置，再配置可达的内网模型地址、协议、模型名和所需凭据。未配置模型应影响调用，不应阻止本地服务启动。',
+      '- 服务启动失败：临时失败最多连续自动重试三次，仍失败可点击“重试启动”。先验证并清理原启动进程再重试，不删除 runtime、锁或 owner-policy。服务启动、重连、失败时摘要不显示“就绪”。',
+      '- 设置 → 诊断导出 ZIP 在服务不可用时仍可用，包含 Space、Runtime bootstrap/daemon 日志、已安装 SDK 版本和日志收集清单；缺失、不可读或截断会明确标注，凭据脱敏。',
       '- No provider/key：到 Settings -> Providers 配 key，或确认环境变量。',
       '- AI 读不到文件：确认已打开项目目录，路径引用是否在 workspace 内。',
       '- Partner 不可点：当前构建已启用；检查版本、当前 surface 和本地状态，并查看 DevTools/logs。',
