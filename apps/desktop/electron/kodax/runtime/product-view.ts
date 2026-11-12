@@ -8,9 +8,12 @@ import {
   issueSessionImageAttachment,
   issueHostImageAttachment,
 } from '../../window/session-attachment-protocol.js';
-import { readHostImage, type HostImageMediaType, type HostItemReader } from './host-image.js';
-
-const HOST_IMAGE_TYPES: ReadonlySet<string> = new Set(['image/png', 'image/jpeg', 'image/webp']);
+import {
+  HOST_IMAGE_MEDIA_TYPES,
+  readHostImage,
+  type HostImageMediaType,
+  type HostItemReader,
+} from './host-image.js';
 
 /**
  * Only image capabilities are adapted; item IDs, text and order remain SDK-owned. Tool images
@@ -56,7 +59,7 @@ async function projectImage(
       sessionId,
       item.id,
       ordinal,
-      attachment.mediaType !== undefined && HOST_IMAGE_TYPES.has(attachment.mediaType)
+      attachment.mediaType !== undefined && HOST_IMAGE_MEDIA_TYPES.has(attachment.mediaType)
         ? (attachment.mediaType as HostImageMediaType)
         : 'image/png',
       () => readHostImage(readHostItem, item.id, ordinal),

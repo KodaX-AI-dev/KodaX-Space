@@ -159,3 +159,46 @@ test('SDK image references get safe preview status and reuse capabilities withou
   const second = await projectProductItems('image-session', items, first);
   assert.deepEqual(second, first);
 });
+
+test('a Host GIF in history is previewed with its real format', async () => {
+  const gif = Buffer.concat([Buffer.from('GIF89a'), Buffer.alloc(32, 3)]);
+  const items = await projectProductItems(
+    'gif-history',
+    [
+      {
+        id: 'gif-item',
+        type: 'tool',
+        text: 'image',
+        attachments: [{ kind: 'image', path: '/host-only/.media/o/gif', mediaType: 'image/gif' }],
+        tool: { callId: 'call', name: 'read', status: 'success' },
+      },
+    ],
+    [],
+    async (itemId) => ({
+      id: itemId,
+      text: '',
+      offset: 0,
+      totalLength: 0,
+      image: {
+        mediaType: 'image/gif',
+        dataBase64: gif.toString('base64'),
+        sha256: createHash('sha256').update(gif).digest('hex'),
+        width: 1,
+        height: 1,
+        offset: 0,
+        totalLength: gif.length,
+      },
+    }),
+  );
+  try {
+    const image = items[0]!.imageAttachments![0]!;
+    assert.equal(image.status, 'available');
+    if (image.status !== 'available') throw new Error('missing preview');
+    assert.equal(image.mediaType, 'image/gif');
+    const response = await handleSessionAttachmentProtocolRequest(image.previewUrl, 'GET');
+    assert.equal(response?.headers.get('content-type'), 'image/gif');
+    assert.deepEqual(Buffer.from(await response!.arrayBuffer()), gif);
+  } finally {
+    revokeSessionAttachmentPreviews('gif-history');
+  }
+});

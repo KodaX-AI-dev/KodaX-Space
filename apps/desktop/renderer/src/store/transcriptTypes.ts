@@ -9,7 +9,7 @@ export type UserImageAttachment =
   | {
       readonly id: string;
       readonly kind: 'image';
-      readonly mediaType: 'image/png' | 'image/jpeg' | 'image/webp';
+      readonly mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
       readonly label?: string;
       readonly bytes?: number;
       readonly status: 'available';
@@ -23,7 +23,7 @@ export type UserImageAttachment =
   | {
       readonly id: string;
       readonly kind: 'image';
-      readonly mediaType?: 'image/png' | 'image/jpeg' | 'image/webp';
+      readonly mediaType?: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
       readonly label?: string;
       readonly bytes?: number;
       readonly status: 'missing' | 'unsupported';

@@ -60,7 +60,7 @@ test('continuation pins the first hash and rejects replacement bytes', async () 
   assert.equal(calls, 2);
 });
 
-test('reads the actual format the Host returns and rejects bytes that contradict it', async () => {
+test('reads the actual format the Host returns (including GIF) and rejects bytes that contradict it', async () => {
   const frame = (head: Buffer) => Buffer.concat([head, Buffer.alloc(32, 7)]);
   const jpeg = frame(Buffer.from('ffd8ffe0', 'hex'));
   const webp = frame(Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBP')]));
@@ -79,5 +79,7 @@ test('reads the actual format the Host returns and rejects bytes that contradict
   assert.equal((await read(jpeg, 'image/jpeg')).mediaType, 'image/jpeg');
   assert.equal((await read(webp, 'image/webp')).mediaType, 'image/webp');
   await assert.rejects(read(jpeg, 'image/webp'), /integrity/);
-  await assert.rejects(read(frame(Buffer.from('GIF89a')), 'image/gif'), /Invalid Host image chunk/);
+  const gif = frame(Buffer.from('GIF89a'));
+  assert.equal((await read(gif, 'image/gif')).mediaType, 'image/gif');
+  await assert.rejects(read(jpeg, 'image/gif'), /integrity/);
 });

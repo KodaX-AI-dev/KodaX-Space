@@ -6,7 +6,7 @@ export type HostItemReader = (
   options: ClientItemReadOptions,
 ) => Promise<ClientItemContent | null>;
 
-export type HostImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp';
+export type HostImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
 
 export interface HostImage {
   readonly bytes: Uint8Array;
@@ -79,16 +79,17 @@ function validateChunk(
   return image;
 }
 
-// GIF is a Host-readable format, but Space previews only these three.
-const HOST_IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set([
+export const HOST_IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set([
   'image/png',
   'image/jpeg',
   'image/webp',
+  'image/gif',
 ]);
 
 function hasImageSignature(bytes: Buffer, mediaType: string): boolean {
   if (mediaType === 'image/png') return bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
   if (mediaType === 'image/jpeg') return bytes.subarray(0, 3).toString('hex') === 'ffd8ff';
+  if (mediaType === 'image/gif') return /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString('latin1'));
   return (
     bytes.subarray(0, 4).toString('latin1') === 'RIFF' &&
     bytes.subarray(8, 12).toString('latin1') === 'WEBP'

@@ -265,7 +265,7 @@ const sessionImageAttachmentBaseSchema = z.object({
     .max(6 * 1024 * 1024)
     .optional(),
 });
-const sessionImageMediaTypeSchema = z.enum(['image/png', 'image/jpeg', 'image/webp']);
+const sessionImageMediaTypeSchema = z.enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
 export const sessionImageAttachmentSchema = z.discriminatedUnion('status', [
   sessionImageAttachmentBaseSchema.extend({
