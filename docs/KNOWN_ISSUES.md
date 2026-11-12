@@ -16432,6 +16432,7 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
   local model request; startup plus delayed cleanup without overlapping replacement.
   Application transports reject public network; customer OS-level air-gap acceptance
   remains part of the human regression guide.
+- Native supervisor, verified 2026-11-12: a packaged `win-unpacked` candidate built with the local SDK tarball carries a byte-identical native executable and passed the recovery, diagnostic-export, startup-diagnostics and startup-exit E2E specs twice (7 of 7 each run). Eight parallel cold provisionings of the protected native artifact into a fresh `LOCALAPPDATA` succeeded in three rounds. Not measured: antivirus cold-start and CPU-stress timing; customer-machine acceptance.
 - Guide: `docs/test-guides/ISSUE_246_0.1.47_REGRESSION_GUIDE.md`.
 
 ### Additional evidence and fixes (2026-11-12, follow-up review)
