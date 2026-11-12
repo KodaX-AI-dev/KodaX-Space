@@ -559,6 +559,10 @@ function permissionInteraction(
     ? sanitizeForDisplay(persistentGrantSuggestion.label, 512)
     : '';
   const autoModeDiagnostics = projectAutoModeDiagnostics(request.autoModeDiagnostics);
+  const extensionAsks = (request.extensionAsks ?? []).slice(0, 16).map((ask) => ({
+    extension: sanitizeForDisplay(ask.extension, 128) || '(unnamed extension)',
+    reason: sanitizeForDisplay(ask.reason, 512),
+  }));
   return {
     source: 'coder-runtime',
     kind: 'permission',
@@ -571,6 +575,7 @@ function permissionInteraction(
       risk: assessment.dangerous ? 'danger' : (request.risk ?? assessment.risk),
       reason,
       ...(request.plan !== undefined ? { plan: request.plan } : {}),
+      ...(extensionAsks.length ? { extensionAsks } : {}),
       ...(autoModeDiagnostics ? { autoModeDiagnostics } : {}),
       toolCall: {
         toolId: request.toolCallId ?? request.id,

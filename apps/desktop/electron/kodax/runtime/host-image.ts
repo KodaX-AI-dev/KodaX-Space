@@ -6,12 +6,19 @@ export type HostItemReader = (
   options: ClientItemReadOptions,
 ) => Promise<ClientItemContent | null>;
 
+export type HostImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp';
+
+export interface HostImage {
+  readonly bytes: Uint8Array;
+  readonly mediaType: HostImageMediaType;
+}
+
 /** Read only the Host-authorized item, never a renderer-supplied file path. */
 export async function readHostImage(
   reader: HostItemReader,
   itemId: string,
   attachmentIndex: number,
-): Promise<Uint8Array> {
+): Promise<HostImage> {
   const chunks: Buffer[] = [];
   let offset = 0;
   let expected: NonNullable<ClientItemContent['image']> | undefined;
@@ -34,9 +41,9 @@ export async function readHostImage(
         throw new Error('Invalid Host image continuation.');
       continue;
     }
-    const png = Buffer.concat(chunks);
-    validatePng(png, image);
-    return png;
+    const whole = Buffer.concat(chunks);
+    validateImage(whole, image);
+    return { bytes: whole, mediaType: image.mediaType as HostImageMediaType };
   }
   throw new Error('Host image exceeded the chunk limit.');
 }
@@ -51,7 +58,7 @@ function validateChunk(
   if (
     !image ||
     result?.id !== itemId ||
-    image.mediaType !== 'image/png' ||
+    !HOST_IMAGE_MEDIA_TYPES.has(image.mediaType) ||
     image.offset !== offset ||
     !Number.isSafeInteger(image.totalLength) ||
     image.totalLength <= 0 ||
@@ -72,14 +79,30 @@ function validateChunk(
   return image;
 }
 
-function validatePng(png: Buffer, image: NonNullable<ClientItemContent['image']>): void {
+// GIF is a Host-readable format, but Space previews only these three.
+const HOST_IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+]);
+
+function hasImageSignature(bytes: Buffer, mediaType: string): boolean {
+  if (mediaType === 'image/png') return bytes.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
+  if (mediaType === 'image/jpeg') return bytes.subarray(0, 3).toString('hex') === 'ffd8ff';
+  return (
+    bytes.subarray(0, 4).toString('latin1') === 'RIFF' &&
+    bytes.subarray(8, 12).toString('latin1') === 'WEBP'
+  );
+}
+
+function validateImage(bytes: Buffer, image: NonNullable<ClientItemContent['image']>): void {
   if (
-    png.length !== image.totalLength ||
-    createHash('sha256').update(png).digest('hex') !== image.sha256 ||
-    png.length < 24 ||
-    png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' ||
-    png.readUInt32BE(16) !== image.width ||
-    png.readUInt32BE(20) !== image.height
+    bytes.length !== image.totalLength ||
+    createHash('sha256').update(bytes).digest('hex') !== image.sha256 ||
+    bytes.length < 24 ||
+    !hasImageSignature(bytes, image.mediaType) ||
+    (image.mediaType === 'image/png' &&
+      (bytes.readUInt32BE(16) !== image.width || bytes.readUInt32BE(20) !== image.height))
   )
     throw new Error('Host image integrity check failed.');
 }

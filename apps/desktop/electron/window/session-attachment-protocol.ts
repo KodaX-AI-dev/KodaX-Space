@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import type { SessionImageAttachment } from '@kodax-space/space-ipc-schema';
 import { resolveSessionAttachmentPreviewFile } from '../ipc/clipboard.js';
+import type { HostImage, HostImageMediaType } from '../kodax/runtime/host-image.js';
 import { APP_PROTOCOL_HOST, APP_PROTOCOL_ORIGIN } from './app-protocol-policy.js';
 
 const ROUTE_PREFIX = '/session-attachment/';
@@ -11,9 +12,8 @@ type PreviewCapability =
   | {
       readonly sessionId: string;
       readonly artifactPath: string;
-      readonly hostMediaDir?: string;
     }
-  | { readonly sessionId: string; readonly read: () => Promise<Uint8Array> };
+  | { readonly sessionId: string; readonly read: () => Promise<HostImage> };
 
 const previewCapabilities = new Map<string, PreviewCapability>();
 
@@ -44,7 +44,8 @@ export function issueHostImageAttachment(
   sessionId: string,
   itemId: string,
   ordinal: number,
-  read: () => Promise<Uint8Array>,
+  mediaType: HostImageMediaType,
+  read: () => Promise<HostImage>,
 ): SessionImageAttachment {
   const token = issueToken({ sessionId, read });
   const root = `${APP_PROTOCOL_ORIGIN}${ROUTE_PREFIX}${token}`;
@@ -52,7 +53,7 @@ export function issueHostImageAttachment(
     id: stableAttachmentId(sessionId, itemId, ordinal),
     kind: 'image',
     status: 'available',
-    mediaType: 'image/png',
+    mediaType,
     thumbnailUrl: `${root}?variant=thumbnail`,
     previewUrl: `${root}?variant=original`,
   };
@@ -70,8 +71,6 @@ export async function issueSessionImageAttachment(input: {
   readonly declaredMediaType?: 'image/png' | 'image/jpeg' | 'image/webp';
   readonly ordinal: number;
   readonly label?: string;
-  /** This Session's Host directory for pinned input images, readable besides Space's sandbox. */
-  readonly hostMediaDir?: string;
 }): Promise<SessionImageAttachment> {
   const base = {
     id: stableAttachmentId(input.sessionId, input.artifactPath, input.ordinal),
@@ -80,15 +79,10 @@ export async function issueSessionImageAttachment(input: {
     ...(input.label !== undefined ? { label: input.label } : {}),
   };
   try {
-    const resolved = await resolveSessionAttachmentPreviewFile(
-      input.sessionId,
-      input.artifactPath,
-      input.hostMediaDir,
-    );
+    const resolved = await resolveSessionAttachmentPreviewFile(input.sessionId, input.artifactPath);
     const token = issueToken({
       sessionId: input.sessionId,
       artifactPath: input.artifactPath,
-      ...(input.hostMediaDir !== undefined ? { hostMediaDir: input.hostMediaDir } : {}),
     });
     const root = `${APP_PROTOCOL_ORIGIN}${ROUTE_PREFIX}${token}`;
     return {
@@ -170,17 +164,16 @@ export async function handleSessionAttachmentProtocolRequest(
   if (capability === undefined) return failure(404, 'not-found');
   try {
     if ('read' in capability) {
-      const bytes = await capability.read();
+      const image = await capability.read();
       if (previewCapabilities.get(token) !== capability) return failure(404, 'not-found');
-      return new Response(method === 'HEAD' ? null : new Uint8Array(bytes), {
+      return new Response(method === 'HEAD' ? null : new Uint8Array(image.bytes), {
         status: 200,
-        headers: responseHeaders('image/png', bytes.length),
+        headers: responseHeaders(image.mediaType, image.bytes.length),
       });
     }
     const resolved = await resolveSessionAttachmentPreviewFile(
       capability.sessionId,
       capability.artifactPath,
-      capability.hostMediaDir,
     );
     if (method === 'HEAD') {
       return new Response(null, {

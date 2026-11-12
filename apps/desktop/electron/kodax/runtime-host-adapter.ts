@@ -4755,7 +4755,6 @@ export class RuntimeHostAdapter {
       page.items,
       [],
       this.productImageReader(runtime, sessionId, 'history'),
-      await this.hostInputMediaDir(sessionId),
     );
     // F144 baseline: separates the SDK read (daemon IPC + KodaX parse) from Space projection.
     getDiagnosticsLogger()?.debug('session-history', 'page_read', undefined, {
@@ -4925,7 +4924,6 @@ export class RuntimeHostAdapter {
       view.items,
       previous?.runtimeId === state.runtime.identity.runtimeId ? previous.items : [],
       this.productImageReader(state.runtime, state.sessionId, 'view'),
-      await this.hostInputMediaDir(state.sessionId),
     );
     if (this.runtime !== state.runtime || this.observations.get(state.sessionId) !== state) return;
     if (
@@ -4950,12 +4948,6 @@ export class RuntimeHostAdapter {
     }
     // Admission demand protects the asynchronous image projection as well as SDK delivery.
     await this.reconcileInputObservationDemands(state, view);
-  }
-
-  /** KodaX 0.7.97-beta.5+ pins input images under this Session's Host media directory. */
-  private async hostInputMediaDir(sessionId: string): Promise<string> {
-    const { sessionVisualMediaDirectory } = await import('@kodax-ai/kodax/media');
-    return sessionVisualMediaDirectory(path.join(this.profileRoot, 'sessions'), sessionId);
   }
 
   private productImageReader(

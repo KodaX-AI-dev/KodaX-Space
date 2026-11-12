@@ -2,11 +2,11 @@
 
 Last Updated: 2026-11-10
 
-> 2026-11-11：当前工作树已升级为 Registry SDK `0.7.97-beta.6`，见 [beta.6 适配](releases/kodax-beta6-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
+> 2026-11-11：当前工作树已升级为 Registry SDK `0.7.97-beta.7`，见 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
-> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-alpha.5 / Registry SDK 0.7.97-beta.6 ([beta.6 adaptation](releases/kodax-beta6-space-adaptation.md)); the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [alpha.5 release status](releases/v0.1.47-alpha.5-release-readiness.md); the published alpha.4 beta.1 record stays for that release. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
+> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-alpha.5 / Registry SDK 0.7.97-beta.7 ([beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [alpha.5 release status](releases/v0.1.47-alpha.5-release-readiness.md); the published alpha.4 beta.1 record stays for that release. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
 ## Issue Index
 

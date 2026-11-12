@@ -253,6 +253,19 @@ export function PermissionModal(): JSX.Element | null {
         <div className="px-5 py-4 space-y-3 flex-1 overflow-y-auto">
           <div className="text-xs text-fg-muted leading-relaxed">{truncate(head.reason, 256)}</div>
 
+          {head.extensionAsks?.map((ask) => (
+            <div
+              key={`${ask.extension}:${ask.reason}`}
+              className="text-xs text-fg-muted leading-relaxed"
+              data-testid="permission-extension-ask"
+            >
+              {t('permission.extensionAsk', {
+                extension: truncate(ask.extension, 64),
+                reason: truncate(ask.reason, 256),
+              })}
+            </div>
+          ))}
+
           <AutoModeDiagnosticsPanel diagnostics={head.autoModeDiagnostics} />
 
           {head.plan !== undefined && (

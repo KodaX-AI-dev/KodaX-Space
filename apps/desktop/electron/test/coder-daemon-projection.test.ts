@@ -1296,6 +1296,28 @@ test('permission projection never offers a persistent grant for dangerous comman
   }
 });
 
+test('permission projection keeps each asking extension and its own reason, even for dangerous commands', () => {
+  const asked = {
+    ...observation,
+    pendingPermissions: [
+      {
+        ...permission,
+        id: 'permission_extension_ask',
+        inputPreview: JSON.stringify({ command: 'rm -rf /' }),
+        extensionAsks: [{ extension: 'sandbox', reason: 'Recursive delete needs approval' }],
+      },
+    ],
+  } as unknown as RuntimeSessionObservationSnapshot;
+
+  const interaction = projectRuntimeSessionSnapshot(asked, []).interactions[0];
+  assert.equal(interaction?.kind, 'permission');
+  if (interaction?.kind !== 'permission') throw new Error('Expected permission');
+  assert.equal(interaction.request.risk, 'danger');
+  assert.deepEqual(interaction.request.extensionAsks, [
+    { extension: 'sandbox', reason: 'Recursive delete needs approval' },
+  ]);
+});
+
 test('permission projection hides Always allow when Runtime omits a persistent suggestion', () => {
   const sessionOnlyObservation = {
     ...observation,

@@ -5,7 +5,11 @@
 
 import { z } from 'zod';
 import { agentIterationProgressSchema } from './agent.js';
-import { autoModeDecisionDiagnosticsSchema, permissionPlanSchema } from './permission.js';
+import {
+  autoModeDecisionDiagnosticsSchema,
+  permissionExtensionAsksSchema,
+  permissionPlanSchema,
+} from './permission.js';
 
 const MAX_ID = 128;
 const MAX_REASON = 512;
@@ -535,6 +539,7 @@ const runtimePermissionRequestSchema = z.object({
   risk: z.enum(['low', 'medium', 'high', 'danger']),
   reason: z.string().max(512),
   plan: permissionPlanSchema.optional(),
+  extensionAsks: permissionExtensionAsksSchema.optional(),
   toolCall: runtimeInteractionToolCallSchema,
   autoModeDiagnostics: autoModeDecisionDiagnosticsSchema.optional(),
   suggestedPattern: z.string().min(1).max(512).optional(),
