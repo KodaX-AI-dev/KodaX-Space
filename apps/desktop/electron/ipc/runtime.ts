@@ -40,6 +40,10 @@ export function registerRuntimeProjectionChannels(
 }
 
 export function registerRuntimeStatisticsChannels(): void {
+  registerChannel('runtime.retryStartup', () => {
+    runtimeHostAdapter.requestStartupRetry();
+    return { accepted: true };
+  });
   registerChannel('runtime.extensionHealth', () => runtimeHostAdapter.extensionHealth());
   registerChannel('session.productSnapshot', ({ sessionId }) =>
     runtimeHostAdapter.selectedHost() === 'runtime'

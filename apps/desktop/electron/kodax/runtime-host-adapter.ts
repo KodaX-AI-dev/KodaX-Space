@@ -1739,6 +1739,7 @@ function runtimeStartupFailureData(error: unknown): Readonly<Record<string, unkn
       ? (error as { readonly code?: unknown }).code
       : undefined;
   return {
+    failure: error,
     errorType: error instanceof Error ? error.name : typeof error,
     ...(typeof code === 'string' || typeof code === 'number' ? { errorCode: code } : {}),
   };
@@ -1854,7 +1855,7 @@ const publishedRuntimeOwnerControl: RuntimeOwnerControl = {
   },
   async getState(input) {
     const sdk = await import('@kodax-ai/kodax/runtime');
-    return sdk.getKodaXRuntimeOwnerState(input);
+    return sdk.getKodaXRuntimeOwnerState({ homeDir: input.homeDir });
   },
   async enableDaemon() {
     throw new Error(
@@ -2289,6 +2290,10 @@ export class RuntimeHostAdapter {
   private integrationHealthPollWarningShown = false;
   private profileRefreshFailureWarningShown = false;
   private reconnectAttempt = 0;
+  private consecutiveStartupFailures = 0;
+  /** Fast retries used up: UI shows the failure and Retry; only the slow timer keeps trying. */
+  private startupRetryExhausted = false;
+  private slowRetryBaseMs = 30_000;
   private readonly runtimeEventParser?: RuntimeEventParser;
   private inlineOwner: RuntimeInlineOwnerHandle | undefined;
   /**
@@ -2475,7 +2480,6 @@ export class RuntimeHostAdapter {
     autoStart: boolean,
   ): SpaceRuntimeConnectOptions {
     return {
-      profile: autoStart ? 'coder' : this.runtimeProfile,
       autoStart,
       ...(autoStart ? { daemonLifecycle: 'interactive' as const } : {}),
       ...(this.runtimeHomeDir !== undefined ? { homeDir: this.runtimeHomeDir } : {}),
@@ -2548,7 +2552,22 @@ export class RuntimeHostAdapter {
     };
   }
 
-  initialize(clientVersion?: string, autoStart = true): Promise<void> {
+  requestStartupRetry(): void {
+    if (this.state === 'closed' || this.startupPausedForExit || this.rollbackInProgress) {
+      throw new Error('Runtime startup is unavailable during shutdown or owner transition.');
+    }
+    if (this.initializePromise !== null || this.state === 'ready') return;
+    this.startupRetryExhausted = false;
+    this.consecutiveStartupFailures = 0;
+    this.reconnectAttempt = 0;
+    if (this.reconnectTimer !== undefined) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
+    // initialize records the complete failure and publishes availability; IPC
+    // acknowledges admission immediately rather than waiting on a slow launch.
+    void this.initialize(undefined, true).catch(() => undefined);
+  }
+
+  initialize(clientVersion?: string, autoStart = true, slowRetry = false): Promise<void> {
     const requestedClientVersion = clientVersion?.trim();
     if (requestedClientVersion) this.clientVersion = requestedClientVersion;
     if (this.rollbackInProgress) {
@@ -2568,6 +2587,8 @@ export class RuntimeHostAdapter {
     }
     if (this.state === 'ready') return Promise.resolve();
     if (this.state === 'closed') return Promise.reject(new Error('Runtime host is closed'));
+    // Foreground callers must not spawn startups past the fast retries; only the slow timer may.
+    if (this.startupRetryExhausted && !slowRetry) return Promise.reject(new Error('Automatic startup retries paused; use Retry startup to try again.'));
     if (this.startupPausedForExit && this.initializePromise === null) {
       return Promise.reject(new Error('Runtime startup is paused for complete exit.'));
     }
@@ -2721,6 +2742,8 @@ export class RuntimeHostAdapter {
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         this.reconnectTimer = undefined;
         this.reconnectAttempt = 0;
+        this.consecutiveStartupFailures = 0;
+        this.startupRetryExhausted = false;
         activeStage = 'credential_leases_resume';
         const credentialLeaseCount = this.credentialLeases.size;
         timing.mark(activeStage, 'complete', {
@@ -2796,15 +2819,20 @@ export class RuntimeHostAdapter {
         if (this.state === 'closed') throw error;
         this.lastError = runtimeInitializationDiagnostic(error);
         const retryableFailure = isRunRecoveryInitializationFailure(error);
+        if (!startupAbort.signal.aborted && isRetryableDaemonStartupFailure(error)) {
+          this.consecutiveStartupFailures += 1;
+          this.startupRetryExhausted = this.consecutiveStartupFailures >= 3;
+        }
         this.state = startupAbort.signal.aborted ? 'uninitialized' : 'failed';
         this.publishUnavailable(
-          retryableFailure || startupAbort.signal.aborted ? 'reconnecting' : 'incompatible',
+          this.startupRetryExhausted ? 'disconnected' : retryableFailure || startupAbort.signal.aborted ? 'reconnecting' : 'incompatible',
           this.lastError,
         );
         // Restart authority stays in the SDK. Retry transient attach/startup failures
         // with startup enabled when a missing or retiring Host may need replacement.
         if (retryableFailure || startupAbort.signal.aborted)
           this.scheduleReconnect(autoStart || isDaemonEnsureRecoveryFailure(error));
+        if (this.startupRetryExhausted) this.rejectRunRecoveryWaiters(error);
         throw error;
       })
       .finally(() => {
@@ -2976,13 +3004,16 @@ export class RuntimeHostAdapter {
   private scheduleReconnect(ensureHost = false): void {
     if (this.state === 'closed' || this.rollbackInProgress || this.startupPausedForExit) return;
     if (this.reconnectTimer) return;
-    const delay = Math.min(30_000, 1_000 * 2 ** Math.min(this.reconnectAttempt, 5));
+    // 30 s, 1 min, 2 min, 4 min, then every 5 min once the fast retries are exhausted.
+    const delay = this.startupRetryExhausted
+      ? Math.min(300_000, this.slowRetryBaseMs * 2 ** Math.min(Math.max(0, this.consecutiveStartupFailures - 3), 4))
+      : Math.min(30_000, 1_000 * 2 ** Math.min(this.reconnectAttempt, 5));
     this.reconnectTimer = setTimeout(() => {
       if (this.state === 'closed') {
         this.reconnectTimer = undefined;
         return;
       }
-      void this.initialize(undefined, ensureHost)
+      void this.initialize(undefined, ensureHost, true)
         .then(() => {
           this.reconnectTimer = undefined;
           this.reconnectAttempt = 0;
@@ -2998,7 +3029,10 @@ export class RuntimeHostAdapter {
             this.rejectRunRecoveryWaiters(error);
             return;
           }
-          this.publishUnavailable('reconnecting', this.lastError ?? sanitizeDiagnosticError(error));
+          // Exhausted: initialize() already published `disconnected`; keep it.
+          if (!this.startupRetryExhausted) {
+            this.publishUnavailable('reconnecting', this.lastError ?? sanitizeDiagnosticError(error));
+          }
           this.scheduleReconnect(ensureHost || isDaemonEnsureRecoveryFailure(error));
         });
     }, delay);
@@ -8970,6 +9004,11 @@ export class RuntimeHostAdapter {
       });
       return settlement;
     } catch (error: unknown) {
+      this.startupTimingFactory('runtime-exit-recovery').mark(
+        'inspection',
+        'failed',
+        runtimeStartupFailureData(error),
+      );
       return {
         status: 'blocked',
         reason: 'cleanup_unverified',

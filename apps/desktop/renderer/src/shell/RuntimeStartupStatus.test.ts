@@ -54,5 +54,8 @@ test('startup status explains long waits and failures, and clears when Space is 
     capabilities: [],
     reason: 'startup failed',
   };
-  assert.match(render(), /startup failed|助手启动失败/);
+  assert.match(render(), /could not start|启动失败/);
+  assert.match(render(), /Retry startup|重试启动/);
+  initial.runtimeConnection = { ...initial.runtimeConnection, state: 'disconnected' };
+  assert.match(render(), /Retry startup|重试启动/);
 });

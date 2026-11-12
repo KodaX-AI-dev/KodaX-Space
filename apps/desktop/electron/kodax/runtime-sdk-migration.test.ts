@@ -339,7 +339,6 @@ for (const revokeQueuedLease of [false, true])
         };
         const peer = await clientSdk.connectKodaXClient({
           homeDir,
-          profile: 'coder',
           clientInfo: peerInfo,
         });
         try {
@@ -438,8 +437,10 @@ async function verifyRuntimePngAttachment(
   const item = view.items.find(
     (candidate) =>
       candidate.sourceRunId === handle.runId &&
-      candidate.attachments?.some((attachment) => attachment.path === imagePath),
+      candidate.attachments?.some((attachment) => attachment.kind === 'image' && attachment.mediaType === 'image/png'),
   );
+  // Current SDK persists immutable media; its attachment path is the owned copy,
+  // while the bytes and hash must still match the file read by this exact Run.
   assert.ok(item, 'the actual tool result must retain its PNG attachment');
   const expectedImageSha256 = createHash('sha256').update(bytes).digest('hex');
   const content = await runtime.sessions.readViewItem(sessionId, item.id, {

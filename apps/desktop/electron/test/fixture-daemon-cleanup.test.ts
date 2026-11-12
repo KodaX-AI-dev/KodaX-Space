@@ -64,6 +64,19 @@ test('test daemon cleanup signals the validated isolated PID and ignores missing
   assert.equal(await stopOwnedTestDaemon(`${root}-missing`, () => true), false);
 });
 
+test('test daemon cleanup supports the single-home SDK default slot', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'kodax-fixture-default-cleanup-'));
+  roots.push(root);
+  const directory = path.join(root, 'runtime', 'daemon', 'default');
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, 'daemon.json'), JSON.stringify({
+    pid: process.pid + 1, profile: 'default', configHome: root,
+  }));
+  const signalled: number[] = [];
+  assert.equal(await stopOwnedTestDaemon(root, pid => { signalled.push(pid); return true; }), true);
+  assert.deepEqual(signalled, [process.pid + 1]);
+});
+
 test('test daemon cleanup recognizes its physical profile through a temporary path alias', async () => {
   const parent = await mkdtemp(path.join(os.tmpdir(), 'kodax-fixture-daemon-cleanup-'));
   roots.push(parent);

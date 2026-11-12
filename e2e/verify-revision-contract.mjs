@@ -35,7 +35,6 @@ const record = (step, data) => {
 };
 
 const runtime = await connectKodaXRuntime({
-  profile: 'coder',
   autoStart: true,
   daemonOrphanExitMs: 30_000,
   homeDir,

@@ -2,6 +2,7 @@ import type {
   AgentActorTreeSnapshotT,
   SessionEvent,
   SpaceRuntimeRunPhaseT,
+  SpaceCoderConnectionStateT,
   WorkflowRunT,
 } from '@kodax-space/space-ipc-schema';
 import { summarizeTodoProgress } from '../lib/liveTaskProgress.js';
@@ -46,6 +47,7 @@ export interface TaskDockRunViewModel {
 }
 
 export interface BuildTaskDockRunInput {
+  readonly connectionState?: SpaceCoderConnectionStateT;
   readonly hasProject: boolean;
   readonly hasSession: boolean;
   readonly pendingSend: boolean;
@@ -64,6 +66,15 @@ export interface BuildTaskDockRunInput {
 
 export function buildTaskDockRunView(input: BuildTaskDockRunInput): TaskDockRunViewModel {
   const t = input.t ?? defaultTranslate;
+  if (input.connectionState !== undefined && input.connectionState !== 'ready') {
+    const pending =
+      input.connectionState === 'connecting' || input.connectionState === 'reconnecting';
+    return attention(
+      t(pending ? 'runtime.startup.starting' : 'runtime.startup.unavailable'),
+      t('runtime.startup.serviceDescription'),
+      'blocked',
+    );
+  }
   let agentStatuses: readonly AgentStatusViewModel[] | null = null;
   const getAgents = (): readonly AgentStatusViewModel[] => {
     if (agentStatuses === null) {

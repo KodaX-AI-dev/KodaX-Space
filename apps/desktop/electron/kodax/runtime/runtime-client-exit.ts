@@ -190,7 +190,6 @@ export async function settleRuntimeClientExit(
           () =>
             readKodaXClientExits({
               homeDir: input.homeDir,
-              profile: input.profile,
               clientInfo,
             }),
           deadline,
@@ -209,7 +208,6 @@ export async function settleRuntimeClientExit(
   const { readKodaXClientExits } = await import('@kodax-ai/kodax/client');
   const receipts = await readKodaXClientExits({
     homeDir: input.homeDir,
-    profile: input.profile,
     clientInfo: input.clientInfo,
   });
   const latest = [...receipts].sort((left, right) =>

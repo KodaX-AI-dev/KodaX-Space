@@ -79,7 +79,6 @@ for (const phase of ['completed', 'running']) {
     const { root, sessionId, sessionFile, content, releaseFile, counterFile } = await createHistoricalRun(t, phase);
     const runtime = await createOwnedTestRuntime({
       homeDir: root,
-      profile: 'coder',
       sharedDaemonHost: true,
     });
 

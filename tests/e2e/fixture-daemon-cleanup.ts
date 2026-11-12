@@ -26,7 +26,7 @@ export function parseOwnedTestDaemonPid(raw: string, testDataDir: string): numbe
     return undefined;
   }
   if (
-    descriptor.profile !== 'coder' ||
+    !['coder', 'default'].includes(String(descriptor.profile)) ||
     typeof descriptor.configHome !== 'string' ||
     comparablePath(descriptor.configHome) !== comparablePath(testDataDir) ||
     typeof descriptor.pid !== 'number' ||
@@ -48,8 +48,13 @@ export async function stopOwnedTestDaemon(
   testDataDir: string,
   killProcess: KillProcess = process.kill,
 ): Promise<boolean> {
-  const descriptorPath = path.join(testDataDir, 'runtime', 'daemon', 'coder', 'daemon.json');
-  const raw = await fs.readFile(descriptorPath, 'utf8').catch(() => null);
+  const descriptorPaths = ['default', 'coder'].map((slot) =>
+    path.join(testDataDir, 'runtime', 'daemon', slot, 'daemon.json'),
+  );
+  const contents = await Promise.all(
+    descriptorPaths.map((file) => fs.readFile(file, 'utf8').catch(() => null)),
+  );
+  const raw = contents.find((value) => value !== null) ?? null;
   if (raw === null) return false;
   // The child uses the physical macOS temp path while the fixture may retain
   // /var's alias. Accept only that same directory's canonical identity as well.

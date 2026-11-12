@@ -1094,7 +1094,12 @@ export const messages = {
     'runtime.startup.slow':
       'Startup is taking longer than usual. You can keep waiting, or exit Space and try again.',
     'runtime.startup.failed':
-      'Assistant startup failed. Exit Space and try again; check diagnostics if it keeps failing.',
+      'The local Coder service could not start. Retry here or export diagnostics from Settings.',
+    'runtime.startup.unavailable': 'Local Coder service unavailable',
+    'runtime.startup.serviceDescription':
+      'Conversations and tool execution need this local service. You can still open Settings.',
+    'runtime.startup.retry': 'Retry startup',
+    'runtime.startup.failureDetails': 'Failure details',
     'shell.runtime': 'Runtime',
     'shell.closeDiagnostics': 'Close diagnostics',
     'shell.license': 'license',
@@ -1413,7 +1418,7 @@ export const messages = {
       'Export bounded, locally generated troubleshooting information.',
     'settings.diagnostics.includesTitle': 'Included categories',
     'settings.diagnostics.includes':
-      'Redacted recent logs, Runtime capability state, selected-session Run lifecycle metadata, release/updater facts, and known degradation codes.',
+      'Recent app and assistant startup/runtime logs, collection status for missing or truncated logs, Runtime capability state, selected-session Run lifecycle metadata, and version/update information. Logs are redacted before export.',
     'settings.diagnostics.privacy':
       'Prompts, API keys, authorization values, document bodies, and tool payloads are excluded or redacted before disk and export. Nothing is uploaded automatically.',
     'settings.diagnostics.export': 'Export diagnostic ZIP',
@@ -4390,7 +4395,11 @@ export const messages = {
     'runtime.startup.elapsed': '已等待 {seconds} 秒',
     'runtime.startup.hint': '首次启动或恢复历史可能需要更久。你可以继续浏览或退出 Space。',
     'runtime.startup.slow': '启动耗时超出平常。你可以继续等待，或退出 Space 后重试。',
-    'runtime.startup.failed': '助手启动失败。请退出 Space 后重试；若持续失败，请查看诊断信息。',
+    'runtime.startup.failed': '本地 Coder 服务启动失败。可以在此重试，或从设置导出诊断包。',
+    'runtime.startup.unavailable': '本地 Coder 服务不可用',
+    'runtime.startup.serviceDescription': '对话和工具执行需要此本地服务。你仍可打开设置。',
+    'runtime.startup.retry': '重试启动',
+    'runtime.startup.failureDetails': '失败详情',
     'shell.runtime': '运行时',
     'shell.closeDiagnostics': '关闭诊断',
     'shell.license': '许可',
@@ -4694,7 +4703,7 @@ export const messages = {
     'settings.diagnostics.description': '导出有界、仅在本地生成的排障信息。',
     'settings.diagnostics.includesTitle': '包含内容',
     'settings.diagnostics.includes':
-      '近期脱敏日志、Runtime 能力状态、当前会话的 Run 生命周期元数据、版本/更新器信息和已知降级代码。',
+      '近期应用日志、助手启动与运行日志、日志缺失或截断的采集说明、Runtime 能力状态、当前会话的 Run 生命周期元数据和版本/更新信息。日志会在导出前脱敏。',
     'settings.diagnostics.privacy':
       'Prompt、API Key、Authorization、文档正文和工具载荷在写盘和导出前会被排除或脱敏；不会自动上传任何内容。',
     'settings.diagnostics.export': '导出诊断 ZIP',

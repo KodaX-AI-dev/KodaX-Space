@@ -11,7 +11,7 @@ export async function readHostImage(
   reader: HostItemReader,
   itemId: string,
   attachmentIndex: number,
-): Promise<Uint8Array> {
+): Promise<{ readonly bytes: Uint8Array; readonly mediaType: string }> {
   const chunks: Buffer[] = [];
   let offset = 0;
   let expected: NonNullable<ClientItemContent['image']> | undefined;
@@ -34,9 +34,9 @@ export async function readHostImage(
         throw new Error('Invalid Host image continuation.');
       continue;
     }
-    const png = Buffer.concat(chunks);
-    validatePng(png, image);
-    return png;
+    const complete = Buffer.concat(chunks);
+    await validateImage(complete, image);
+    return { bytes: complete, mediaType: image.mediaType };
   }
   throw new Error('Host image exceeded the chunk limit.');
 }
@@ -51,7 +51,11 @@ function validateChunk(
   if (
     !image ||
     result?.id !== itemId ||
-    image.mediaType !== 'image/png' ||
+    !['image/png', 'image/jpeg', 'image/webp'].includes(image.mediaType) ||
+    !Number.isSafeInteger(image.width) ||
+    image.width <= 0 ||
+    !Number.isSafeInteger(image.height) ||
+    image.height <= 0 ||
     image.offset !== offset ||
     !Number.isSafeInteger(image.totalLength) ||
     image.totalLength <= 0 ||
@@ -64,6 +68,7 @@ function validateChunk(
   if (
     expected &&
     (image.sha256 !== expected.sha256 ||
+      image.mediaType !== expected.mediaType ||
       image.totalLength !== expected.totalLength ||
       image.width !== expected.width ||
       image.height !== expected.height)
@@ -72,14 +77,26 @@ function validateChunk(
   return image;
 }
 
-function validatePng(png: Buffer, image: NonNullable<ClientItemContent['image']>): void {
+async function validateImage(
+  bytes: Buffer,
+  image: NonNullable<ClientItemContent['image']>,
+): Promise<void> {
   if (
-    png.length !== image.totalLength ||
-    createHash('sha256').update(png).digest('hex') !== image.sha256 ||
-    png.length < 24 ||
-    png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' ||
-    png.readUInt32BE(16) !== image.width ||
-    png.readUInt32BE(20) !== image.height
+    bytes.length !== image.totalLength ||
+    createHash('sha256').update(bytes).digest('hex') !== image.sha256
   )
+    throw new Error('Host image integrity check failed.');
+  if (image.mediaType === 'image/png') {
+    if (
+      bytes.length < 24 ||
+      bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' ||
+      bytes.readUInt32BE(16) !== image.width ||
+      bytes.readUInt32BE(20) !== image.height
+    )
+      throw new Error('Host image integrity check failed.');
+  }
+  const { validateImageBytes } = await import('@kodax-ai/kodax/media');
+  const validation = await validateImageBytes(bytes);
+  if (validation.status !== 'valid' || validation.mediaType !== image.mediaType)
     throw new Error('Host image integrity check failed.');
 }

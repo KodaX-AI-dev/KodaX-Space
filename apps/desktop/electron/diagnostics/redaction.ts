@@ -114,6 +114,10 @@ export function redactDiagnosticText(
     .replace(/(authorization\s*[:=]\s*)(?!Bearer|Basic)[^\s,;]+/gi, '$1[REDACTED]')
     .replace(/\b(?:sk|pk|api)[-_][A-Za-z0-9_-]{8,}\b/gi, '[REDACTED]');
   output = redactUrls(output);
+  output = output.replace(
+    /(?<![\w?&])([\w.-]*(?:api[_-]?key|token|secret|password|cookie|credential)[\w.-]*)(["']?\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;&]+)/gi,
+    '$1$2[REDACTED]',
+  );
   for (const secret of resolved.secretValues) {
     output = replaceAllLiteral(output, secret, '[REDACTED]');
   }
@@ -170,6 +174,8 @@ export function redactDiagnosticValue(
         'exitCode',
         'status',
         'timedOut',
+        'reason',
+        'retryable',
         'cause',
       ]) {
         if (!(field in value)) continue;
@@ -182,6 +188,7 @@ export function redactDiagnosticValue(
           result[field] = visit(detail, depth + 1, field);
         }
       }
+      if (value instanceof AggregateError) result.errors = visit(value.errors, depth + 1);
       return result;
     }
     if (value instanceof Uint8Array) return `[BINARY ${value.byteLength} BYTES]`;

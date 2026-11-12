@@ -294,7 +294,7 @@ try {
     90_000,
   );
   const daemon = JSON.parse(
-    await readFile(path.join(space.testDataDir, 'runtime/daemon/coder/daemon.json'), 'utf8'),
+    await readFile(path.join(space.testDataDir, 'runtime/daemon/default/daemon.json'), 'utf8'),
   );
   report.sdkVersion = daemon.version;
   assert.equal(daemon.version, '0.7.96-rc.10');

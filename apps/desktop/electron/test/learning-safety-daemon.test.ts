@@ -40,7 +40,6 @@ let runtime;
 try {
   const { ensureKodaXRuntime } = await import('@kodax-ai/kodax/runtime');
   runtime = await ensureKodaXRuntime({
-    profile: process.env.F118_PROFILE,
     daemonOrphanExitMs: 30000,
     homeDir: process.env.F118_HOME,
     sessionsDir: path.join(process.env.F118_HOME, 'sessions'),
@@ -65,7 +64,7 @@ try {
     '.kodax',
     'runtime',
     'daemon',
-    process.env.F118_PROFILE ?? '',
+    'default',
     'bootstrap.log',
   );
   const bootstrapTail = await readFile(bootstrapLogPath, 'utf8')
@@ -157,7 +156,7 @@ async function closeHost(child: ChildProcessWithoutNullStreams): Promise<void> {
   await closed;
 }
 
-function stopDaemon(homeDir: string, profile: string): Promise<void> {
+function stopDaemon(homeDir: string, _profile: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -165,8 +164,6 @@ function stopDaemon(homeDir: string, profile: string): Promise<void> {
         KODAX_CLI_PATH,
         'daemon',
         'stop',
-        '--profile',
-        profile,
         '--home',
         homeDir,
         '--timeout-ms',
@@ -250,7 +247,6 @@ test(
       assert.ok(runtimeId);
       runtime = await withDarwinRuntimeDaemonTmpdir(process.platform, () =>
         connectKodaXRuntime({
-          profile,
           autoStart: false,
           homeDir,
           sessionsDir: path.join(homeDir, 'sessions'),

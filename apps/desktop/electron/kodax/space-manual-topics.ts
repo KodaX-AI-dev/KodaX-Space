@@ -13,13 +13,14 @@
 // the product can do and how a user should operate it.
 
 import desktopPackage from '../../package.json';
+import sdkPackage from '@kodax-ai/kodax/package.json';
 
 import type { KodaXManualSource, KodaXManualTopicInput } from '@kodax-ai/kodax/coding';
 
 export const SPACE_PRODUCT_NAME = 'KodaX Space';
 
 const text = (...lines: string[]) => lines.join('\n');
-const CURRENT_RUNTIME = `v${desktopPackage.version} 发行依赖声明 KodaX ${desktopPackage.dependencies['@kodax-ai/kodax']}。`;
+const CURRENT_RUNTIME = `v${desktopPackage.version} 发行依赖声明 KodaX ${sdkPackage.version}。${desktopPackage.dependencies['@kodax-ai/kodax'].startsWith('file:') ? '当前为本地联调候选，尚未正式发布。' : ''}`;
 
 type SdkCodingModule = typeof import('@kodax-ai/kodax/coding');
 type SdkManualModule = Pick<
@@ -84,7 +85,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '核心能力：多 provider/model 切换，本地项目会话，Coder 与 Partner 工作区，权限确认，计划/Diff/任务/终端/预览/MCP/Memory/Workflow popout，图片与文件输入，Artifact/Outputs 产物，repo-intelligence，以及显式单次调用的 workflow。',
       '',
-      'Coder 默认使用 profile-scoped shared daemon；会话、运行、共享设置和交互由 KodaX Runtime 持有。完整退出使用 SDK Product lifecycle：lifecycle.requestExit 提交请求，lifecycle.readExit 读取同一回执，启动恢复通过 readKodaXClientExits 读取持久回执。只清理本客户端工作，保护其他在线客户端；工作清理与 Host 退出证明分开，unknown 保留恢复身份。Space 不按缓存 PID/PGID 强杀进程，也不为退出启动 replacement daemon；stale inline owner reconciliation 由 SDK 判定。Partner 同样由共享 Host 持有，Space 通过工具 lease 提供业务能力。',
+      'Coder 默认使用同一数据目录内共享的本地 Host；会话、运行、共享设置和交互由 KodaX Runtime 持有。完整退出使用 SDK Product lifecycle：lifecycle.requestExit 提交请求，lifecycle.readExit 读取同一回执，启动恢复通过 readKodaXClientExits 读取持久回执。只清理本客户端工作，保护其他在线客户端；工作清理与 Host 退出证明分开，unknown 保留恢复身份。Space 不按缓存 PID/PGID 强杀进程，也不为退出启动 replacement daemon；stale inline owner reconciliation 由 SDK 判定。Partner 同样由共享 Host 持有，Space 通过工具 lease 提供业务能力。',
       '',
       'v0.1.44 把未读结果与待处理权限/AskUser 按唯一 Session 计数投影到 Windows 任务栏/托盘、macOS Dock 和受支持 Linux launcher。已准入的 Windows 完整退出可在托盘后台继续，同一进度可重开查看；普通成功退出保持安静，失败恢复窗口。Task Dock、Repointel 与历史页头使用当前 live/canonical 事实，历史 Session 的 External tasks 能区分正常空态与可重试错误。v0.1.45 再把 ask_user 与 guardrail 授权从全屏模态改为对话流内的聚焦提问卡：全部待答卡并存可答，composer 上方有带计数与定位闪光的召回停靠条，队首卡支持 1-9/Enter/Esc 键盘操作。',
       '',
@@ -1162,9 +1163,12 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     id: 'troubleshooting',
     title: 'Troubleshooting',
     summary:
-      '优先看 Settings/Providers、MCP diagnostics、DevTools console 和 ~/.kodax/space/logs。',
+      '优先看 Settings/Providers 和设置中的诊断导出；本地 Coder 服务故障可重试启动。',
     body: text(
       '常见问题：',
+      '- 本地 Coder 服务负责会话、模型调用和工具执行；启动不要求公网、Provider 或扩展。无 extensions 目录正常。离线可先进入设置，再配置可达的内网模型地址、协议、模型名和所需凭据。未配置模型应影响调用，不应阻止本地服务启动。',
+      '- 服务启动失败：临时失败最多连续自动重试三次，仍失败可点击“重试启动”。先验证并清理原启动进程再重试，不删除 runtime、锁或 owner-policy。服务启动、重连、失败时摘要不显示“就绪”。',
+      '- 设置 → 诊断导出 ZIP 在服务不可用时仍可用，包含 Space、Runtime bootstrap/daemon 日志、已安装 SDK 版本和日志收集清单；缺失、不可读或截断会明确标注，凭据脱敏。',
       '- No provider/key：到 Settings -> Providers 配 key，或确认环境变量。',
       '- AI 读不到文件：确认已打开项目目录，路径引用是否在 workspace 内。',
       '- Partner 不可点：当前构建已启用；检查版本、当前 surface 和本地状态，并查看 DevTools/logs。',

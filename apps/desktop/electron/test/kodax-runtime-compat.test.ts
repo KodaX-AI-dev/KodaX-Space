@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -96,7 +98,7 @@ function isSharedDaemonProbeContext(
   const relativeToTemp = resolvedHome ? path.relative(path.resolve(tmpdir()), resolvedHome) : '';
   return (
     typeof parsed?.profile === 'string' &&
-    parsed.profile.startsWith('space-f121-') &&
+    (parsed.profile === 'default' || parsed.profile.startsWith('space-f121-')) &&
     resolvedHome.length > 0 &&
     relativeToTemp.length > 0 &&
     !relativeToTemp.startsWith('..') &&
@@ -231,8 +233,9 @@ function commandLineMatchesProbeOwner(
   return (
     args.some((arg) => normalizePath(arg) === normalizePath(KODAX_CLI_PATH)) &&
     daemonIndex >= 0 &&
-    profileIndex >= 0 &&
-    normalizedArgs[profileIndex + 1] === owner.profile.toLowerCase() &&
+    (profileIndex >= 0
+      ? normalizedArgs[profileIndex + 1] === owner.profile.toLowerCase()
+      : owner.profile === 'default') &&
     homeIndex >= 0 &&
     args[homeIndex + 1] !== undefined &&
     normalizePath(args[homeIndex + 1]!) === normalizePath(owner.homeDir)
@@ -255,8 +258,6 @@ async function stopOwnedSharedDaemon(
           KODAX_CLI_PATH,
           'daemon',
           'stop',
-          '--profile',
-          owner.profile,
           '--home',
           owner.homeDir,
           '--timeout-ms',
@@ -306,8 +307,6 @@ async function stopSharedDaemonContext(context: SharedDaemonProbeContext): Promi
     KODAX_CLI_PATH,
     'daemon',
     'stop',
-    '--profile',
-    context.profile,
     '--home',
     context.homeDir,
     '--timeout-ms',
@@ -374,7 +373,6 @@ let observation;
 let readinessSubscription;
 try {
   runtime = await connectKodaXRuntime({
-    profile: process.env.KODAX_PROBE_PROFILE,
     autoStart: false,
     homeDir: process.env.KODAX_PROBE_HOME,
     sessionsDir: path.join(process.env.KODAX_PROBE_HOME, 'sessions'),
@@ -493,7 +491,7 @@ import { connectKodaXRuntime, ensureKodaXRuntime } from '@kodax-ai/kodax/runtime
 
 const requirements = JSON.parse(process.env.KODAX_PROBE_REQUIREMENTS);
 const homeDir = await mkdtemp(path.join(tmpdir(), 'kodax-space-shared-daemon-'));
-const profile = 'space-f121-' + process.pid;
+const profile = 'default';
 process.stdout.write(
   'KODAX_SHARED_DAEMON_CONTEXT=' + JSON.stringify({ profile, homeDir }) + '\n',
 );
@@ -551,7 +549,6 @@ let managementBaseline;
 let daemonPid;
 try {
   runtime = await ensureKodaXRuntime({
-    profile,
     daemonOrphanExitMs: 30_000,
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
@@ -712,11 +709,11 @@ import {
 } from '@kodax-ai/kodax/a2a';
 
 async function closeProbeOwner(value, root) {
-  const state = await getKodaXRuntimeOwnerState({ homeDir: root, profile: 'default' });
+  const state = await getKodaXRuntimeOwnerState({ homeDir: root });
   if (!state.owner || state.owner.runtimeId !== value.identity.runtimeId) throw new Error('Probe owner changed');
   await value.daemon.shutdown();
   await value.close();
-  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), profile: 'default', owner: state.owner, timeoutMs: 15000 });
+  const verified = await waitForRuntimeDaemonShutdown({ configHome: path.join(root, '.kodax'), owner: state.owner, timeoutMs: 15000 });
   if (verified.status !== 'succeeded') throw new Error('Probe owner shutdown was not verified');
 }
 
@@ -1204,19 +1201,33 @@ test('installed KodaX version matches the exact Space dependency pin', () => {
   assert.equal(INSTALLED_KODAX_VERSION, EXPECTED_KODAX_VERSION);
 });
 
-test('Space uses the published beta.4 SDK in both dependency manifests', () => {
+test('Space pins the same SDK in both manifests and verifies local candidate integrity', () => {
   const root = require('../../../../package.json') as { dependencies: Record<string, string> };
   const desktop = require('../../package.json') as { dependencies: Record<string, string> };
   const lock = require('../../../../package-lock.json') as {
-    packages: Record<string, { version?: string; resolved?: string }>;
+    packages: Record<string, { version?: string; resolved?: string; integrity?: string }>;
   };
-  assert.equal(root.dependencies['@kodax-ai/kodax'], '0.7.97-beta.4');
-  assert.equal(desktop.dependencies['@kodax-ai/kodax'], '0.7.97-beta.4');
-  assert.equal(INSTALLED_KODAX_VERSION, '0.7.97-beta.4');
+  const expected = '0.7.97-beta.7';
+  const rootPin = root.dependencies['@kodax-ai/kodax']!;
+  const desktopPin = desktop.dependencies['@kodax-ai/kodax']!;
+  assert.equal(INSTALLED_KODAX_VERSION, expected);
   assert.equal(lock.packages['apps/desktop/node_modules/@kodax-ai/kodax'], undefined);
+  if (rootPin.startsWith('file:')) {
+    const rootPath = path.dirname(require.resolve('../../../../package.json'));
+    const candidate = path.resolve(rootPath, rootPin.slice(5));
+    assert.equal(path.basename(candidate), `kodax-ai-kodax-${expected}.tgz`);
+    assert.equal(path.resolve(rootPath, 'apps/desktop', desktopPin.slice(5)), candidate);
+    assert.equal(desktopPin.startsWith('file:'), true);
+    assert.equal(path.resolve(rootPath, lock.packages['node_modules/@kodax-ai/kodax']!.resolved!.slice(5)), candidate);
+    assert.equal(lock.packages['node_modules/@kodax-ai/kodax']?.integrity,
+      `sha512-${createHash('sha512').update(readFileSync(candidate)).digest('base64')}`);
+    return;
+  }
+  assert.equal(rootPin, expected);
+  assert.equal(desktopPin, expected);
   assert.match(
     lock.packages['node_modules/@kodax-ai/kodax']?.resolved ?? '',
-    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-beta\.4\.tgz$/,
+    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-beta\.7\.tgz$/,
   );
 });
 
@@ -1313,7 +1324,7 @@ test(
       assert.equal(JSON.stringify(transcript.messages).includes(executionPrompt), false);
     } finally {
       if (runtime) {
-        const state = await sdk.getKodaXRuntimeOwnerState({ homeDir, profile: 'default' });
+        const state = await sdk.getKodaXRuntimeOwnerState({ homeDir });
         assert.equal(
           state.owner?.runtimeId,
           runtime.identity.runtimeId,
@@ -1323,7 +1334,6 @@ test(
         await runtime.close();
         const verified = await sdk.waitForRuntimeDaemonShutdown({
           configHome: path.join(homeDir, '.kodax'),
-          profile: 'default',
           owner: state.owner!,
           timeoutMs: 15000,
         });

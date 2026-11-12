@@ -68,8 +68,6 @@ function stopDaemon() {
       process.env.KODAX_CLI_PATH,
       'daemon',
       'stop',
-      '--profile',
-      profile,
       '--home',
       homeDir,
       '--timeout-ms',
@@ -130,7 +128,6 @@ try {
   const rejected = await seed('f118-rejected-skill', 'b');
 
   space = await ensureKodaXRuntime({
-    profile,
     daemonOrphanExitMs: 30_000,
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),
@@ -174,7 +171,6 @@ try {
   const rejectedAfterAction = await space.learning.get(rejected.capabilityId);
 
   terminal = await connectKodaXRuntime({
-    profile,
     autoStart: false,
     homeDir,
     sessionsDir: path.join(homeDir, 'sessions'),

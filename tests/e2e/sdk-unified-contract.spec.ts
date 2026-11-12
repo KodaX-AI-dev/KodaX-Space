@@ -226,7 +226,7 @@ test('desktop complete exit settles the last real SDK Host without fixture proce
     );
     await waitSdkIdle(space, await currentSdkSession(space));
     const descriptor = JSON.parse(
-      await readFile(path.join(space.testDataDir, 'runtime/daemon/coder/daemon.json'), 'utf8'),
+      await readFile(path.join(space.testDataDir, 'runtime/daemon/default/daemon.json'), 'utf8'),
     ) as { pid: number; runtimeId: string };
     const applicationProcess = space.app.process();
     await writeFile(path.join(space.testDataDir, 'space/complete-exit.trigger'), 'exit');
@@ -431,11 +431,10 @@ test('Space complete exit protects another connected product client', async () =
       'SDK_REPLY:PEER_SESSION',
     );
     await waitSdkIdle(space, sessionId);
-    const daemonDir = path.join(space.testDataDir, 'runtime/daemon/coder');
+    const daemonDir = path.join(space.testDataDir, 'runtime/daemon/default');
     const descriptor = await readFile(path.join(daemonDir, 'daemon.json'), 'utf8');
     expect(parseOwnedTestDaemonPid(descriptor, space.testDataDir)).toBeDefined();
     peer = await connectKodaXClient({
-      profile: 'coder',
       endpoint: (JSON.parse(descriptor) as { endpoint: string }).endpoint,
       token: (await readFile(path.join(daemonDir, 'daemon.token'), 'utf8')).trim(),
       clientInfo: {

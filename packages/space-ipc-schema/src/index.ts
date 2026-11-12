@@ -57,6 +57,7 @@ export {
 
 export {
   runtimeProfileSnapshotChannel,
+  runtimeRetryStartupChannel,
   runtimeExtensionHealthChannel,
   runtimeProfileChangedChannel,
   runtimeConnectionChangedChannel,

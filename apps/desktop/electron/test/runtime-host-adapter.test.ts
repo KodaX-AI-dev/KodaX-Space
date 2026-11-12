@@ -4,8 +4,7 @@ import type {
 } from '../kodax/runtime-host-adapter.js';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { promises as fs } from 'node:fs';
-import test, { afterEach, beforeEach, type TestContext } from 'node:test';
+import test, { afterEach, beforeEach } from 'node:test';
 
 import type {
   ConnectKodaXRuntimeOptions,
@@ -41,7 +40,6 @@ import {
 } from '../kodax/runtime-host-adapter.js';
 import { kodaxHost } from '../kodax/host.js';
 import { _setRepoIntelEntitlementForTesting } from '../kodax/repo-intel-gate.js';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
 import {
   SessionRuntimeStore,
   setSessionRuntimeStoreForTesting,
@@ -3796,7 +3794,7 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
 
   await Promise.all([adapter.initialize('0.1.30'), adapter.initialize('ignored-after-start')]);
   assert.equal(options.length, 1);
-  assert.equal(options[0]?.profile, 'coder');
+  assert.equal('profile' in options[0]!, false, 'Host is selected by data home');
   assert.equal(options[0]?.autoStart, true);
   assert.equal(
     options[0]?.homeDir,
@@ -5685,7 +5683,7 @@ test('a shared default Host keeps its actual profile for passive reconnect and c
     runtimeEventParser: testRuntimeEventParser,
     runtimeFactory: async (options) => {
       if (++attempts === 1) return first.runtime;
-      assert.equal(options.profile, 'default');
+      assert.equal('profile' in options, false, 'observed profile is not a launcher selector');
       assert.equal(options.autoStart, false, 'transport recovery stays passive');
       assert.equal(
         options.daemonLifecycle,
@@ -5793,6 +5791,70 @@ test('transient startup retry stops if the daemon then reports a permanent incom
   assert.equal(factoryCalls, 2);
   assert.match(adapter.snapshot().error ?? '', /capability upgrade required/i);
   await adapter.close();
+});
+
+test('persistent startup failure pauses bounded retries and an explicit retry can recover without restarting Space', async () => {
+  const fake = createFakeRuntime();
+  const controller = createPendingSdkRuntimeProjection();
+  let calls = 0;
+  let repaired = false;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime', profileRoot: path.resolve('C:\\isolated-profile'),
+    projectionController: controller,
+    identityStore: testIdentityStore, runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async () => {
+      calls += 1;
+      if (!repaired) throw Object.assign(new Error('Windows Job verification unavailable'), {
+        code: 'daemon_startup_failed', reason: 'child_exit', retryable: true,
+      });
+      return fake.runtime;
+    },
+  });
+  try {
+    await assert.rejects(adapter.initialize(), /Job verification/);
+    await waitForTest(() => calls >= 3, 8_000);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(controller.profileSnapshot().connection.state, 'disconnected');
+    await assert.rejects(adapter.initialize(), /retry/i);
+    assert.equal(calls, 3, 'background requests must not bypass the retry limit');
+    repaired = true;
+    adapter.requestStartupRetry();
+    await waitForTest(() => adapter.hasReadyRuntime(), 2_000);
+    assert.equal(calls, 4);
+  } finally { await adapter.close(); }
+});
+
+test('after the fast retries are exhausted Space keeps retrying slowly and recovers on its own', async () => {
+  const fake = createFakeRuntime();
+  const controller = createPendingSdkRuntimeProjection();
+  let calls = 0;
+  let repaired = false;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime', profileRoot: path.resolve('C:\\isolated-profile'),
+    projectionController: controller,
+    identityStore: testIdentityStore, runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async () => {
+      calls += 1;
+      if (!repaired) throw Object.assign(new Error('Windows Job verification unavailable'), {
+        code: 'daemon_startup_failed', reason: 'child_exit', retryable: true,
+      });
+      return fake.runtime;
+    },
+  });
+  const tuning = adapter as unknown as { reconnectAttempt: number; slowRetryBaseMs: number };
+  tuning.reconnectAttempt = -10;
+  tuning.slowRetryBaseMs = 40;
+  try {
+    await assert.rejects(adapter.initialize(), /Job verification/);
+    await waitForTest(() => calls >= 3, 8_000);
+    await waitForTest(() => controller.profileSnapshot().connection.state === 'disconnected', 2_000);
+    await assert.rejects(adapter.initialize(), /retry/i);
+    // Slow background retries continue while the UI keeps the failed state and Retry action.
+    await waitForTest(() => calls >= 5, 4_000);
+    assert.equal(controller.profileSnapshot().connection.state, 'disconnected');
+    repaired = true;
+    await waitForTest(() => adapter.hasReadyRuntime(), 4_000);
+  } finally { await adapter.close(); }
 });
 
 test('Space leaves daemon capability replacement to the SDK and fails closed on rejection', async () => {
@@ -14431,36 +14493,11 @@ test('a batched input retires when its terminal Run is older than the current vi
   }
 });
 
-function holdInputImagePreview(t: TestContext) {
-  const artifact = path.join(
-    getKodaxRuntimeDir(),
-    'space',
-    'session-attachments',
-    's_admitting_input',
-    'held.png',
-  );
-  let enter!: () => void;
-  let release!: () => void;
-  const entered = new Promise<void>((resolve) => {
-    enter = resolve;
-  });
-  const released = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  t.mock.method(fs, 'realpath', async (file: string) => {
-    if (file === artifact) {
-      enter();
-      await released;
-      throw Object.assign(new Error('test image is absent'), { code: 'ENOENT' });
-    }
-    return file;
-  });
-  return { artifact, entered, release };
-}
-
 test('accepted input publishes its image projection before a concurrent idle read can retire it', async (t) => {
   const { fake, adapter, publish } = createInputObservationFixture();
-  const { artifact, entered, release } = holdInputImagePreview(t);
+  const reader = t.mock.method(fake.runtime.sessions, 'readViewItem', async () => {
+    throw new Error('Image bytes must be fetched lazily, after projection.');
+  });
   try {
     const result = await adapter.submitInput({
       sessionId: 's_admitting_input',
@@ -14476,21 +14513,18 @@ test('accepted input publishes its image projection before a concurrent idle rea
           type: 'user',
           inputId: result.inputId!,
           text: 'with image',
-          attachments: [{ kind: 'image', path: artifact, mediaType: 'image/png' }],
+          attachments: [{ kind: 'image', path: 'host-owned-immutable.png', mediaType: 'image/png' }],
         },
       ],
     });
-    await entered;
-    await adapter.readSessionLiveSnapshot(result.sessionId);
-    assert.equal(fake.calls.observationCloses, 0, 'image projection has not committed yet');
-    release();
-    assert.equal(
-      (await adapter.readSessionProductView(result.sessionId)).items[0]?.id,
-      'saved-image-input',
-    );
+    const idleRead = adapter.readSessionLiveSnapshot(result.sessionId);
+    const view = await adapter.readSessionProductView(result.sessionId);
+    await idleRead;
+    assert.equal(view.items[0]?.id, 'saved-image-input');
+    assert.equal(view.items[0]?.imageAttachments?.[0]?.status, 'available');
+    assert.equal(reader.mock.callCount(), 0, 'projection cannot wait for image I/O');
     assert.equal(fake.calls.observationCloses, 1);
   } finally {
-    release();
     await adapter.close();
   }
 });
@@ -15905,6 +15939,40 @@ test('identity repair forwards explicit delivery proof and never retries a chang
   try {
     await assert.rejects(adapter.confirmSessionIdentityAlias(input), /reload and revalidate/);
     assert.deepEqual(requests, [input]);
+  } finally {
+    await adapter.close();
+  }
+});
+
+test('startup timing retains the original aggregate for redacted export after every failed attempt', async () => {
+  const cause = Object.assign(new Error('startup timeout'), {
+    code: 'daemon_startup_failed',
+    retryable: true,
+  });
+  const failure = new AggregateError(
+    [cause, new Error('cleanup not verified')],
+    'startup and cleanup failed',
+  );
+  const failures: Readonly<Record<string, unknown>>[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => {
+      throw failure;
+    },
+    identityStore: testIdentityStore,
+    startupTimingFactory: () => ({
+      enabled: true,
+      mark: (_stage, phase, data) => {
+        if (phase === 'failed' && data) failures.push(data);
+      },
+    }),
+  });
+  try {
+    await assert.rejects(adapter.initialize(), (error: unknown) => error === failure);
+    await assert.rejects(adapter.initialize(), (error: unknown) => error === failure);
+    assert.equal(failures.length, 2);
+    for (const record of failures) assert.equal(record.failure, failure);
   } finally {
     await adapter.close();
   }

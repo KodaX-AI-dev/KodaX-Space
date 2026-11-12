@@ -1320,7 +1320,7 @@ let runtime;
 let daemonRuntime;
 let daemonClientInfo;
 let providerServer;
-const daemonProfile = 'space-pack-lifecycle';
+const daemonHomeDir = path.join(homeDir, 'lifecycle-home');
 const workerClientInfo = { name: 'kodax-space-pack-smoke', version: ${JSON.stringify(SPACE_VERSION)}, instanceId: randomUUID(), instanceSecret: randomUUID() + randomUUID() };
 const providerName = 'space-pack-shell-probe';
 const providerModel = 'space-pack-shell-model';
@@ -1560,15 +1560,14 @@ function daemonRequirements() {
 function createDaemonProbeRuntime(clientName) {
   daemonClientInfo = { name: clientName, version: ${JSON.stringify(SPACE_VERSION)}, instanceId: randomUUID(), instanceSecret: randomUUID() + randomUUID() };
   return ensureKodaXRuntime({
-    profile: daemonProfile,
-    homeDir,
+    homeDir: daemonHomeDir,
     sessionsDir: path.join(homeDir, 'daemon-sessions'),
     daemonOrphanExitMs: 1_000,
     requirements: daemonRequirements(),
     clientInfo: daemonClientInfo,
   });
 }
-async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo }) {
+async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo, home = homeDir }) {
   const requestId = randomUUID();
   const identity = runtime.identity;
   let receipt = await runtime.lifecycle.requestExit({ requestId, shutdownHost: true });
@@ -1577,7 +1576,7 @@ async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo })
     if (receipt.cleanup.state === 'succeeded' && receipt.host.state === 'succeeded') {
       if (receipt.runtimeId !== identity.runtimeId || receipt.host.owner?.runtimeId !== identity.runtimeId || receipt.host.replacementRunning === true)
         throw new Error('Packaged SDK exit owner changed or a replacement is running.');
-      const stopped = await waitForRuntimeDaemonShutdown({ configHome: process.env.KODAX_HOME, profile: identity.profile,
+      const stopped = await waitForRuntimeDaemonShutdown({ configHome: home === homeDir ? process.env.KODAX_HOME : path.join(home, '.kodax'),
         owner: receipt.host.owner, timeoutMs: 20_000 });
       if (stopped.status !== 'succeeded') throw new Error('Packaged Host shutdown unverified: ' + JSON.stringify(stopped));
       await runtime.close();
@@ -1587,7 +1586,7 @@ async function settleProbeClientExit({ runtime, clientInfo = daemonClientInfo })
     try {
       receipt = await runtime.lifecycle.readExit(requestId) ?? receipt;
     } catch (error) {
-      const offline = (await readKodaXClientExits({ homeDir, profile: identity.profile, clientInfo })).find((item) => item.requestId === requestId);
+      const offline = (await readKodaXClientExits({ homeDir: home, clientInfo })).find((item) => item.requestId === requestId);
       if (!offline) throw error;
       receipt = offline;
     }
@@ -1686,7 +1685,6 @@ try {
   }
   runtime = await ensureKodaXRuntime({
     homeDir,
-    profile: 'space-pack-worker',
     daemonOrphanExitMs: 1_000,
     sessionsDir: path.join(homeDir, 'sessions'),
     clientInfo: workerClientInfo,
@@ -1850,8 +1848,7 @@ try {
     );
   }
   const firstExitSettlement = await settleProbeClientExit({
-    configHome: process.env.KODAX_HOME,
-    profile: daemonProfile,
+    home: daemonHomeDir,
     runtime: daemonRuntime,
   });
   if (firstExitSettlement.status !== 'clean') {
@@ -1876,8 +1873,7 @@ try {
     );
   }
   const restartedExitSettlement = await settleProbeClientExit({
-    configHome: process.env.KODAX_HOME,
-    profile: daemonProfile,
+    home: daemonHomeDir,
     runtime: daemonRuntime,
   });
   if (restartedExitSettlement.status !== 'clean') {
@@ -1950,10 +1946,10 @@ try {
   try {
     const bootstrapLog = await readFile(
       path.join(
-        process.env.KODAX_HOME,
+        path.join(daemonHomeDir, '.kodax'),
         'runtime',
         'daemon',
-        daemonProfile,
+        'default',
         'bootstrap.log',
       ),
       'utf8',
@@ -1971,8 +1967,7 @@ try {
   if (daemonRuntime) {
     try {
       const cleanupSettlement = await settleProbeClientExit({
-        configHome: process.env.KODAX_HOME,
-        profile: daemonProfile,
+        home: daemonHomeDir,
         runtime: daemonRuntime,
       });
       if (cleanupSettlement.status === 'blocked') {

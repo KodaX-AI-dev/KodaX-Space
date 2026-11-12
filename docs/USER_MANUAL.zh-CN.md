@@ -724,6 +724,10 @@ flowchart TD
 
 ## 19. 常见问题
 
+本地 Coder 服务负责会话、模型调用和工具执行。它随应用本地启动，不要求连接公网、配置 Provider 或安装扩展；没有 `extensions` 目录是正常情况。离线环境可先打开设置，再配置可达的内网模型地址、协议、模型名和所需凭据。模型不可达或未配置应在模型调用时提示，不应导致本地服务启动失败。
+
+启动或重连期间，任务摘要显示服务当前状态；只有服务可用时才显示“就绪”。临时启动失败会自动重试，最多连续三次；仍失败时可点击“重试启动”，无需删除运行目录。重试会先处理上次启动遗留的清理，不能确认旧进程退出时不会创建竞争进程。持续失败请通过设置 → 诊断导出 ZIP：包含 Space 日志、Runtime 的 bootstrap/daemon 日志、实际安装 SDK 版本，以及各日志缺失、不可读、截断的原因；即使服务未启动也能导出。不要清空 `.kodax/runtime` 来跳过所有权或恢复检查。
+
 | 问题                        | 建议检查                                                                                                                                 |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Provider 显示 No key        | Settings → Providers，检查已选来源、auth.json 权限、环境变量名及迁移状态；明确重试原凭证或选择新来源，不静默切换账号                     |
@@ -761,7 +765,7 @@ flowchart TD
 
 ## 20. 当前限制与诚实边界
 
-- 当前构建默认让 Coder 连接 profile-scoped shared daemon；Partner 同样连接共享 Host，Space 以 lease 提供知识、连接器和交付工具；专家默认方法及排队绑定仍有候选接缝待验收。
+- 当前构建默认让 Coder 连接同一数据目录内的共享本地 Host；Partner 同样连接共享 Host，Space 以 lease 提供知识、连接器和交付工具；专家默认方法及排队绑定仍有候选接缝待验收。
 - 右侧 Task Dock 已提供 Learned Skills 管理：查看不可变修订、来源、canary 和诊断；根据记录状态提供 review、trust、reject、disable、rollback 与通知确认。该区域需 Runtime 能力协商通过；旧记录或策略禁写时只读，`SPACE_DISABLE_LEARNING_MUTATIONS=1` 禁用管理写操作。这不等于完整 Memory Episodes/Activity/纠正/清除界面已交付。
 - `daemonOrphanExit:1` 只证明当前 daemon host 启用了 orphan idle-exit，不证明异步 host cleanup 失败后一定重试成功；正式包 macOS/Linux process-level 验收和上游 cleanup retry/verification 缺口继续由 Issue 133 跟踪。
 - 当前 sandboxRuntime v11、已打包 helper 与显式 setup/readiness UI 提供受支持命令的隔离；Runtime Shell 在 sandbox 不可用时使用普通权限策略，且不会重放可能已启动的命令。普通权限执行仍取得同一 filesystem-effect fence。其边界未覆盖全部文档 staging、凭据与 native-resource 访问，不能视为整个应用的跨平台 OS 隔离。

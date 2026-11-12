@@ -29,6 +29,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
   const { t } = useI18n();
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const connectionState = useAppStore((s) => s.runtimeConnection.state);
   const pendingSend = useAppStore((s) =>
     currentSessionId ? (s.pendingSendBySession[currentSessionId] ?? false) : false,
   );
@@ -62,6 +63,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
   const view = useMemo(
     () =>
       getCachedTaskDockRunView({
+        connectionState,
         hasProject,
         hasSession,
         pendingSend,
@@ -78,6 +80,7 @@ export function useTaskDockRunView(): UseTaskDockRunViewResult {
         t,
       }),
     [
+      connectionState,
       hasProject,
       hasSession,
       pendingSend,
@@ -109,6 +112,7 @@ export function getCachedTaskDockRunView(input: BuildTaskDockRunInput): TaskDock
 
 function sameRunViewInput(a: BuildTaskDockRunInput, b: BuildTaskDockRunInput): boolean {
   return (
+    a.connectionState === b.connectionState &&
     a.hasProject === b.hasProject &&
     a.hasSession === b.hasSession &&
     a.pendingSend === b.pendingSend &&

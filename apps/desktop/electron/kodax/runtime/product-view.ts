@@ -23,9 +23,13 @@ export async function projectProductItems(
           ? retained.imageAttachments
           : await Promise.all(
               item.attachments.map((attachment, ordinal) =>
-                item.type === 'tool' && readHostItem
-                  ? issueHostImageAttachment(sessionId, item.id, ordinal, () =>
-                      readHostImage(readHostItem, item.id, ordinal),
+                readHostItem
+                  ? issueHostImageAttachment(
+                      sessionId,
+                      item.id,
+                      ordinal,
+                      () => readHostImage(readHostItem, item.id, ordinal),
+                      attachment.mediaType ?? 'image/png',
                     )
                   : issueSessionImageAttachment({
                       sessionId,

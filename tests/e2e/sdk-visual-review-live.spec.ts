@@ -203,12 +203,11 @@ async function captureTranscriptImages(space: SpaceInstance, sessionId: string) 
 }
 
 async function connectVisualEvidenceReader(space: SpaceInstance) {
-  const daemonDir = path.join(space.testDataDir, 'runtime/daemon/coder');
+  const daemonDir = path.join(space.testDataDir, 'runtime/daemon/default');
   const descriptor = JSON.parse(await readFile(path.join(daemonDir, 'daemon.json'), 'utf8')) as {
     endpoint: string;
   };
   return connectKodaXClient({
-    profile: 'coder',
     endpoint: descriptor.endpoint,
     token: (await readFile(path.join(daemonDir, 'daemon.token'), 'utf8')).trim(),
     clientInfo: {

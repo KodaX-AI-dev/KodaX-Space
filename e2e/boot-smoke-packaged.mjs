@@ -26,7 +26,7 @@ const diagnosticsPath = path.join(
   'diagnostics',
   'space-main.jsonl',
 );
-const daemonPath = path.join(profileDir, 'runtime', 'daemon', 'coder', 'daemon.json');
+const daemonPath = path.join(profileDir, 'runtime', 'daemon', 'default', 'daemon.json');
 const packageLock = JSON.parse(await readFile(path.join(rootDir, 'package-lock.json'), 'utf8'));
 const expectedKodaxVersion = String(
   packageLock.packages?.['node_modules/@kodax-ai/kodax']?.version ?? '',
@@ -117,12 +117,16 @@ async function readDiagnostics() {
 }
 
 const launchedAt = Date.now();
+let processOutput = '';
 const child = spawn(exe, [], {
   cwd: path.dirname(exe),
   env,
-  stdio: 'ignore',
+  stdio: ['ignore', 'pipe', 'pipe'],
   windowsHide: true,
 });
+for (const stream of [child.stdout, child.stderr]) {
+  stream.on('data', (chunk) => { processOutput = `${processOutput}${chunk}`.slice(-16_384); });
+}
 
 try {
   const deadline = launchedAt + RUNTIME_READY_BUDGET_MS;
@@ -196,7 +200,13 @@ try {
     throw new Error(`packaged daemon used the wrong config home: ${daemon.configHome}`);
   }
   for (const { file, contents } of historicalRecords) {
-    if ((await readFile(file, 'utf8')) !== contents) {
+    // SDK beta.7 isolates extinct, unresolved records to avoid rescanning them
+    // on every start. Their complete recovery evidence must still survive.
+    const actual = await readFile(file, 'utf8').catch((error) => {
+      if (error.code !== 'ENOENT') throw error;
+      return readFile(path.join(path.dirname(file), '.unresolved', path.basename(file)), 'utf8');
+    });
+    if (actual !== contents) {
       throw new Error('Startup changed unresolved historical Run cleanup evidence');
     }
   }
@@ -225,6 +235,7 @@ try {
   );
 } catch (error) {
   console.error('[boot-smoke] FAIL:', error instanceof Error ? error.message : String(error));
+  if (processOutput) console.error(`[boot-smoke] process output: ${processOutput}`);
   const diagnostics = await readDiagnostics();
   const runtimeFailure = diagnostics.find(
     (event) => event.component === 'runtime' && event.event === 'host_initialization_failed',

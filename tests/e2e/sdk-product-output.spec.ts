@@ -53,12 +53,11 @@ test('expired SDK history cursors request resync and leave the current view inta
       'SDK_REPLY:CURSOR_FIRST',
     );
     await waitSdkIdle(space, sessionId);
-    const daemonDir = path.join(space.testDataDir, 'runtime/daemon/coder');
+    const daemonDir = path.join(space.testDataDir, 'runtime/daemon/default');
     const descriptor = JSON.parse(await readFile(path.join(daemonDir, 'daemon.json'), 'utf8')) as {
       endpoint: string;
     };
     peer = await connectKodaXClient({
-      profile: 'coder',
       endpoint: descriptor.endpoint,
       token: (await readFile(path.join(daemonDir, 'daemon.token'), 'utf8')).trim(),
       clientInfo: {

@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-10
+Last Updated: 2026-11-12
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
@@ -242,6 +242,9 @@ Last Updated: 2026-11-10
 | 242 | Medium | Resolved | First older page after cold-opening a very large Session is rejected as changed saved history | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; fixed in source 0.1.47-alpha.5 | 2026-11-10 |
 | 243 | Medium | Resolved | Loading newer pages from a located (`around`) window drifts the reading anchor by about 54 px | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; fixed in source 0.1.47-alpha.5 | 2026-11-10 |
 | 244 | Low | ready | Cold-open newest history read grows with Session file size | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4 | 2026-11-10 |
+| 245 | Medium | Resolved (source; not released) | Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown | 2026-11-12 |
+| 246 | High | Resolved (source; not released) | Windows Job verification failure leaves Coder unavailable without an actionable recovery flow | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown | 2026-11-12 |
+| 247 | Medium | Resolved (source; not released) | New-conversation task summary says Ready while the Coder backend has failed to start | Observed Space 0.1.47-alpha.5; first affected version unknown | 2026-11-12 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16210,16 +16213,275 @@ From `apps/desktop`, repeat `node --test --test-force-exit --test-concurrency=1 
 - **Reproduction**: `npm run test:perf-baseline` (first-paint cold column).
 - Source: [F144 ticket 1 baseline](perf-baselines/f144-ticket1-baseline.md#发现与决策门无关需要单独跟进).
 
+## Issue 245 — Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize
+
+- **Priority**: Medium.
+- **Status**: Resolved in source; Windows packaged regression passed. Not released.
+- **Introduced**: Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4, Windows x64; first affected version unknown.
+- **Created**: 2026-11-12.
+
+### Original Problem
+
+A customer used Settings to export diagnostics while Coder remained on “正在重新连接助手”.
+The resulting bundle locates the failure at daemon startup but omits the daemon's own
+`runtime/daemon/coder/bootstrap.log`, even though the exported exception explicitly asks the
+reader to inspect that file. Support must ask the customer to find and send another file.
+This is a product diagnostic-coverage defect, not an incomplete customer submission.
+
+Expected: the Settings export captures the available evidence needed to investigate startup
+failure without requiring a healthy Runtime or manual collection from hidden directories.
+It cannot guarantee a root cause, but it must identify evidence that is missing or unreadable.
+
+### Reproduction and Evidence
+
+1. Start the affected packaged application with a Runtime that fails to become ready.
+2. Export the default diagnostic bundle from Settings while startup is failing.
+3. Inspect the ZIP: only `space-main.jsonl` is included under logs; there is no daemon bootstrap
+   log or explicit notice that this source was not collected.
+
+Customer bundle `kodax-space-diagnostics-20261112T065625Z(1)` was generated at
+2026-11-12 06:56:31 UTC. Its main log contains 12 failed connection attempts of approximately
+60 seconds each, all with last launcher progress `initializing:extensions`. One attempt records
+`AggregateError` and failure to reclaim the child; nested failure details are not retained there.
+`manifest.sdkVersion` is `unknown`, although main-log records identify SDK `0.7.97-beta.4`.
+`integrationHealthInspection.status` is `not-required` while Runtime is unavailable, and manifest
+`notices` is empty. After the customer cleared the Runtime directory, the UI changed to the generic
+startup-failed banner. Subsequently supplied bootstrap and daemon logs identify a Windows Job
+probe timeout on two starts (Issue 246); the original export did not contain either source.
+
+### Confirmed Export Cause and Scope
+
+- `apps/desktop/electron/diagnostics/export.ts` selects only `space-main(?:.N)?.jsonl` from the
+  Space diagnostics directory. It has no daemon-log input or collection status for that source.
+- `apps/desktop/electron/ipc/diagnostics.ts` obtains SDK version only from the connected Runtime
+  identity and otherwise writes `unknown`. It skips integration inspection unless Runtime is
+  ready, then labels the skipped inspection `not-required`.
+- Existing export tests assert the Space-only archive shape; they do not cover a failed-startup
+  bundle containing daemon evidence.
+
+The export defect is independently actionable. The original 60-second startup failures are not
+yet proven to share the later Job-probe cause; do not claim they are the recovery-stage latency
+tracked in Issue 225, or that deleting Runtime data fixes either issue.
+
+### Required Outcome and Acceptance
+
+- Collect bounded, redacted `bootstrap.log` and `daemon.log` tails for the actual configured Runtime home
+  and relevant profile, including during initialization/failure, without starting or restarting
+  a Host to export diagnostics. Do not archive the entire Runtime directory.
+- Report each expected source as collected, missing, unreadable, or truncated. Runtime-dependent
+  inspections skipped because startup failed must say unavailable, not `not-required`.
+- Preserve installed SDK version independently of successful attachment, distinguishing it from
+  a connected Host version when available; retain startup attempt IDs, phases, timing and bounded,
+  redacted structured causes, including nested startup/cleanup errors.
+- Add regression coverage for failed-startup export, custom Runtime home, absent/deleted and
+  unreadable logs, size limits and secret/path redaction. Verify the actual Settings export on a
+  packaged failed-startup scenario; export must finish even when the Host is unavailable.
+
+Follow-up evidence (2026-11-12): the customer supplied `bootstrap(1).log`, which identifies a
+Windows Job verification failure. The more specific `runtime:windows` / `job-membership` probe
+result is written to `daemon.log` by SDK beta.4, not bootstrap output. Include both sources in
+the same Settings export; requesting successive hidden log files is the gap this issue addresses.
+
+### Implementation and Verification (2026-11-12)
+
+- `diagnostics/log-collection.ts` collects current Space logs and bounded bootstrap/daemon tails
+  from the configured Runtime home and discovered profiles before older Space rotations.
+  Export manifests report collected, truncated, missing, unreadable and omitted sources.
+  Only the named logs are eligible; aliases escaping the configured home and non-regular files
+  are rejected. Defaults remain 1 MiB per file and 5 MiB total, with redaction before export.
+- The IPC export reads the installed SDK version without a connected Host, separately records
+  the attached Host version, and labels skipped inspections `runtime-unavailable`. Optional
+  live inspections have a ten-second deadline and do not run when Runtime is unavailable.
+- Startup attempt telemetry now retains the original error for structured redaction.
+  Aggregate startup/cleanup causes preserve bounded codes, reason and retryability while
+  excluding arbitrary child-process arguments/environment and masking credentials.
+- 16 diagnostics tests and six focused adapter startup/recovery tests pass. Electron and
+  renderer type checks, changed-code ESLint, renderer/main builds pass.
+- `node scripts/pack.mjs --win --dir` passes, including packaged dependency/boot checks
+  and all seven real-SDK lifecycle/complete-exit smoke tests.
+- The actual Settings export E2E passes in source Electron (11.7 s) and the newly built Windows
+  unpacked application (7.8 s), with SDK beta.4. An isolated real daemon exits before readiness;
+  export retains its bootstrap error and a seeded Windows probe record, masks the fixture
+  credential, records the installed SDK version and marks live inspection unavailable.
+  The seeded record is export coverage, not reproduction of the customer's OS timeout.
+- Regression guide: `docs/test-guides/ISSUE_245_0.1.47_REGRESSION_GUIDE.md`.
+
+This diagnostic change was followed by the startup and UI source fixes in Issues 246 and 247;
+no customer recovery or release is claimed by these export tests.
+
+## Issue 246 — Windows Job verification failure leaves Coder unavailable without an actionable recovery flow
+
+- **Priority**: High.
+- **Status**: Resolved in source, not released. Native membership verification and verified cleanup/retry replace the failing startup path. The reason the original PowerShell subprocess exceeded five seconds remains unknown.
+- **Introduced**: Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4, Windows x64; first affected version unknown.
+- **Created**: 2026-11-12.
+
+### Original Problem and Customer Evidence
+
+Coder repeatedly fails to start, then shows a generic instruction to restart Space. The initial
+diagnostic export contains 12 approximately 60-second failures, with last reported phase
+`extensions`; one failure is an `AggregateError` reporting that the startup child could not be
+reclaimed. The user subsequently reported clearing `.kodax/runtime` and seeing a red startup
+failure banner. The customer reports never installing SDK extensions and having no `extensions`
+directory. Clearing Runtime state is not an established repair for this failure.
+
+The subsequently supplied `bootstrap(1).log` records PID 29368, startup ID
+`90a174f6-59db-45c2-a480-407b2af9e09f`, at 2026-11-12 07:01:45 UTC:
+`extensions → mcp → extensions`, followed by
+`Could not verify the Windows Job containment; refusing to publish an unverified Host.`
+This proves the latest startup reached Windows Job verification and was rejected there.
+It does not prove that all preceding timeouts had the same cause, or that deleting the directory
+caused this OS verification failure. The fs.Stats deprecation warning is not the fatal error.
+
+Latest `bootstrap.log` and `daemon.log` supplied after another restart confirm the same path twice:
+
+| UTC time | Bootstrap PID | Job probe duration | Deadline | Outcome |
+| --- | --- | --- | --- | --- |
+| 2026-11-12 07:01:50.909 | 29368 | 5017 ms | 5000 ms | `ETIMEDOUT`, `exitCode=null`, `available=false` |
+| 2026-11-12 07:21:23.707 | 12832 | 5020 ms | 5000 ms | `ETIMEDOUT`, `exitCode=null`, `available=false` |
+
+Both probe records have `cached=false` and `stage=job-membership`. The second startup ID is
+`a9a71bab-eab7-40d2-a3c2-df3f0cfba2e5`. A fresh restart therefore reproduces the failure;
+this is not evidence of a missing extension or a proven negative Job-membership result.
+
+### Release-Code Trace
+
+Checked against SDK Git tag `v0.7.97-beta.4` and the installed published beta.4 bundle:
+
+1. `src/kodax_cli.ts` invokes `createDaemonOwnedExtensionRuntime` before acquiring the daemon
+   lease. Even with no extensions, startup emits the `extensions` phase. After integration setup,
+   owner verification runs before the next Runtime phase; a last phase of `extensions` is not
+   sufficient to attribute a failure to extension activation.
+2. `src/runtime-daemon/manager.ts:acquireRuntimeDaemonLease` calls
+   `readOwnerIdentityWithDiagnostics`. If startup advertises Windows Job containment but the
+   probe cannot verify it, it throws the exact error in the customer log before publishing a Host.
+3. `packages/agent/src/runtime/process-tree.ts:readCurrentProcessWindowsJobIdentity` runs
+   `powershell.exe -NoProfile -NonInteractive`, compiles a C# Job query via `Add-Type`, checks
+   membership and kill-on-close limits, and reads process identities. The subprocess has a
+   5,000 ms deadline and no retry in this call. Timeout, nonzero exit, unexpected output, or
+   negative membership evidence all produce an unavailable identity. Missing supervisor metadata
+   is another explicitly diagnosed failure. These alternatives must not be conflated.
+4. Before the Host is ready, the manager routes these probe diagnostics to
+   `.kodax/runtime/daemon/coder/daemon.log`: `source=runtime:windows`, `stage=job-membership`,
+   duration, availability, exit/error code or metadata reason. Issue 245 currently omits this log.
+5. In `src/runtime-daemon/process.ts`, early child exit maps to `RuntimeDaemonStartupError`
+   with `reason=child_exit`, which is not retryable. Timeout/unhealthy are retryable, but cleanup
+   failure wraps the original error in an untyped `AggregateError`.
+6. Space's adapter recognizes only selected top-level codes/flags; unrecognized initialization
+   failures publish `incompatible` and do not schedule a retry. The banner hides the specific
+   reason and offers no targeted verification/recovery action. Explicit later calls through
+   `requireRuntime()` can start another attempt, so this is not a claim of an irreversible latch.
+
+### Verification and Limits
+
+Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/`:
+
+- `node --import tsx artifacts/diagnostics/startup-recovery-20261112/windows-job-probe.mjs`
+  exercises the published SDK's real Job probe with injected subprocess results. Timeout,
+  exit 1 and membership 0 each yield unavailable after one probe; a successful control yields
+  an identity. No real customer processes or directories are touched. This reproduces the
+  error-classification seam, not the customer's Windows failure.
+- `node --import tsx artifacts/diagnostics/startup-recovery-20261112/probe.mjs` exercises
+  Space's actual initialization catch/retry path: timeout retries; timeout plus cleanup failure
+  and identity mismatch publish `incompatible` without automatic retry. Relevant adapter code
+  was compared with the alpha.5 tag and is identical.
+- Five existing adapter startup tests pass. They exercise recovery when the next factory call
+  succeeds and stopping on incompatibility. Existing slow-start E2E uses an 11-second ready delay;
+  it does not establish recovery from a failed Windows Job query. SDK containment tests explicitly
+  check refusal to publish on failed attestation, but not this complete Space recovery experience.
+- A separate published-SDK extension probe confirms `continueOnError` skips thrown activation
+  errors but does not unblock a pending activation. This is an independent fault-containment
+  concern, not an explanation of the customer's now-confirmed Job verification rejection.
+
+### Required Follow-up
+
+- The matching `daemon.log` is now available and establishes timeout. Determine which part of
+  PowerShell startup, C# `Add-Type` compilation or Job/process querying exceeds the deadline.
+  Do not attribute that latency to antivirus, permissions or customer configuration without evidence.
+- Preserve the SDK's verified-ownership requirement while defining bounded fresh verification
+  and safe recovery for transient probe failures. Do not blindly start another owner, mark
+  incomplete cleanup successful, or bypass Job validation.
+- Retain structured startup and cleanup causes across SDK/Space boundaries, distinguish
+  recovery-needed failures from version incompatibility, and provide a specific explanation
+  and supported recovery action when automatic recovery cannot proceed.
+- Add fault-injected packaged acceptance for transient probe failure followed by recovery,
+  persistent failure with actionable diagnostics, and startup plus cleanup failure. Include
+  the Settings export and unified availability display in the same acceptance path.
+
+### Implemented resolution and evidence (2026-11-12)
+
+- SDK uses the hash-verified bundled native executable to read named Job membership,
+  kill-on-close and both creation identities. The probe deadline is 10 seconds; a probe
+  that could not run (timeout, spawn error) is retried once, while a native refusal
+  (non-zero exit) is final. Failure stays fail-closed and is never cached.
+- Retryable child failures retain ownership checks. Cleanup failure retains exact
+  handles, and concurrent admissions for the same slot wait for cleanup; supervisor
+  readiness failures use the same fence. A retained committed owner is re-observed.
+- After three consecutive retryable failures Space shows the failure with Retry startup and switches to slow background retries (30 s, 1, 2, 4 min, then every 5 min); foreground callers still cannot start a new attempt.
+  Only the slow timer may start attempts past that point; manual retry resets the schedule and retries at once.
+- Space's public SDK calls no longer pass the retired Host `profile` selector. Observed
+  legacy identities remain available for diagnostics. The local SDK candidate is based
+  on beta.7; this is not a claim that the published beta.7 already contains this patch.
+- Five real Windows Electron E2E cases pass: failed-start export; offline/no-Provider
+  cold start; first failure auto-recovery; persistent failure plus ZIP/manual retry and
+  local model request; startup plus delayed cleanup without overlapping replacement.
+  Application transports reject public network; customer OS-level air-gap acceptance
+  remains part of the human regression guide.
+- Guide: `docs/test-guides/ISSUE_246_0.1.47_REGRESSION_GUIDE.md`.
+
+### Additional evidence and fixes (2026-11-12, follow-up review)
+
+- Customer follow-up: a reboot cleared the failure, and restoring the cleared `.kodax`
+  content afterwards did not bring it back; `Add-Type` measured 236 ms after the reboot.
+  So the failure was a transient machine condition before the reboot, not `.kodax` content.
+  What slowed PowerShell past five seconds is still unproven (no antivirus or load
+  attribution without evidence).
+- **Stale-lock masking (SDK launcher, reproduced).** `hasCompetingStartupOwner` treated any
+  PID in the owner lock as a competing owner without checking it was alive. With a dead owner
+  left in the lock, a startup child that exited immediately was not reported: the launcher
+  waited the full deadline and reported a generic `timeout` instead of `child_exit`. Reproduced
+  at the `waitForHealthyDaemonStartup` seam: 201 ms `child_exit` without a lock versus
+  4002 ms `timeout` with a dead-PID lock. Fixed by requiring the owner to be not-`gone`
+  (PID plus start identity); regression tests live in `src/runtime-daemon/process.test.ts`.
+- The `child_exit` error now carries the child's last `[Error]` line from `bootstrap.log`
+  (e.g. `Could not verify the Windows Job containment`), so Space's failure details name the
+  real cause instead of only a log path.
+- Boot-identity probing (PowerShell, `Get-CimInstance`) is not on the fail-closed path: the
+  daemon tolerates its absence. It can only add up to five seconds of startup latency.
+
+## Issue 247 — New-conversation task summary says Ready while the Coder backend has failed to start
+
+- **Priority**: Medium.
+- **Status**: Resolved in source, not released; confirmed by unit and real Electron failure/recovery regressions.
+- **Introduced**: Observed Space 0.1.47-alpha.5; first affected version unknown.
+- **Created**: 2026-11-12.
+- **Original problem**: a selected project with a new conversation shows “就绪” directly above
+  “助手启动失败”. Users cannot tell whether they can use Coder or what “助手” refers to.
+- **Reproduction**: select a project without an active Session while Runtime initialization
+  fails; the task summary and startup banner independently display contradictory statuses.
+- **Root cause**: `PinnedTaskSummary` renders `useTaskDockRunView()`;
+  `taskDockProjection.ts:buildTaskDockRunView` falls back to `taskDock.ready` when there is no
+  active task/Session. Its input and hook do not consume Runtime connection availability.
+  `RuntimeStartupStatus` separately reads `runtimeConnection.state`. `Shell.tsx` renders both.
+  All three projection/hook/banner files match the alpha.5 tag.
+- **Verification**: the isolated `windows-job-probe.mjs` above invokes the real Chinese task
+  projection for an idle new conversation and gets “就绪”, without a Runtime-ready check.
+- **Required outcome**: backend starting/reconnecting/unavailable state must take precedence
+  over idle-task readiness. Explain the affected function as the local Coder conversation/tool
+  service, expose the available recovery action, and do not imply a model/provider API error.
+  Add composed UI coverage for starting, failed, disconnected and recovered Runtime states,
+  including the new-conversation case, so contradictory availability labels cannot pass alone.
+
 ## Summary
 
-- Total: 231
+- Total: 234
 - Open: 1
 - Ready: 5
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 214
-- High: 116
-- Medium: 101
+- Resolved (including source-only fixes): 217
+- High: 117
+- Medium: 103
 - Low: 14
 - Next ready to resolve: 222

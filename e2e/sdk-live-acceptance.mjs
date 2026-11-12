@@ -118,7 +118,7 @@ try {
   const profile = await invoke('runtime.profileSnapshot', undefined);
   report.connection = profile.connection;
   const daemon = JSON.parse(
-    await readFile(path.join(space.testDataDir, 'runtime/daemon/coder/daemon.json'), 'utf8'),
+    await readFile(path.join(space.testDataDir, 'runtime/daemon/default/daemon.json'), 'utf8'),
   );
   assert.equal(daemon.version, report.sdk);
   report.actualSdkVersion = daemon.version;

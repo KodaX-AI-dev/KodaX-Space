@@ -389,7 +389,7 @@ test('blocked queued input is visible and taking it back preserves text beyond t
           '-e',
           `
         const {connectKodaXRuntime}=await import('@kodax-ai/kodax/runtime');const path=await import('node:path');
-        const runtime=await connectKodaXRuntime({profile:'coder',sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
+        const runtime=await connectKodaXRuntime({sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
         let view;let subscription;
         try{const sessionId=process.env.QUEUE_SESSION;subscription=await runtime.sessions.observeView(sessionId,value=>view=structuredClone(value));
           const inputs=await Promise.all(JSON.parse(process.env.QUEUE_IDS).map(id=>runtime.runs.getInput(sessionId,id)));

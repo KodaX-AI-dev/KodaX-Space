@@ -39,7 +39,6 @@ try {
   runtime = await ensureKodaXRuntime({
     homeDir: fixture,
     sessionsDir,
-    profile: 'space-history-diagnostic',
   });
   owner = (await runtime.daemon.inspect()).owner;
   assert.equal(owner?.runtimeId, runtime.identity.runtimeId);
@@ -76,7 +75,6 @@ try {
       await runtime.close();
       const stopped = await waitForRuntimeDaemonShutdown({
         configHome,
-        profile: runtime.identity.profile,
         owner,
       });
       assert.equal(stopped.status, 'succeeded', JSON.stringify(stopped));

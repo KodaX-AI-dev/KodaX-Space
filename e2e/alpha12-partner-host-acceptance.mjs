@@ -138,7 +138,6 @@ try {
     await adapter.close();
     const stopped = await sdk.waitForRuntimeDaemonShutdown({
       configHome: profileRoot,
-      profile: attached.identity.profile,
       owner,
     });
     assert.equal(stopped.status, 'succeeded', JSON.stringify(stopped));

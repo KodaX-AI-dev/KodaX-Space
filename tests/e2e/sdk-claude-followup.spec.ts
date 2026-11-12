@@ -98,7 +98,7 @@ test('goals are stored in the published Host and model default clears its overri
         `
       const {connectKodaXRuntime}=await import('@kodax-ai/kodax/runtime');
       const path=await import('node:path');
-      const runtime=await connectKodaXRuntime({profile:'coder',sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
+      const runtime=await connectKodaXRuntime({sessionsDir:path.join(process.env.KODAX_HOME,'sessions')});
       try {const id=process.env.FOLLOWUP_SESSION;const goal=await runtime.sessions.readGoal(id);const settings=await runtime.sessions.getSettingsVersioned(id);
         process.stdout.write(JSON.stringify({goal,model:settings.value.model??null,repoMode:settings.value.repoIntelligenceMode??null,repoTrace:settings.value.repoIntelligenceTrace??null}));
       }finally{await runtime.close();}`,

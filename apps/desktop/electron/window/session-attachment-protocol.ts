@@ -12,7 +12,10 @@ type PreviewCapability =
       readonly sessionId: string;
       readonly artifactPath: string;
     }
-  | { readonly sessionId: string; readonly read: () => Promise<Uint8Array> };
+  | {
+      readonly sessionId: string;
+      readonly read: () => Promise<{ readonly bytes: Uint8Array; readonly mediaType: string }>;
+    };
 
 const previewCapabilities = new Map<string, PreviewCapability>();
 
@@ -43,15 +46,18 @@ export function issueHostImageAttachment(
   sessionId: string,
   itemId: string,
   ordinal: number,
-  read: () => Promise<Uint8Array>,
+  read: () => Promise<{ readonly bytes: Uint8Array; readonly mediaType: string }>,
+  mediaType: string,
 ): SessionImageAttachment {
+  const base = { id: stableAttachmentId(sessionId, itemId, ordinal), kind: 'image' as const };
+  if (mediaType !== 'image/png' && mediaType !== 'image/jpeg' && mediaType !== 'image/webp')
+    return { ...base, status: 'unsupported' };
   const token = issueToken({ sessionId, read });
   const root = `${APP_PROTOCOL_ORIGIN}${ROUTE_PREFIX}${token}`;
   return {
-    id: stableAttachmentId(sessionId, itemId, ordinal),
-    kind: 'image',
+    ...base,
     status: 'available',
-    mediaType: 'image/png',
+    mediaType,
     thumbnailUrl: `${root}?variant=thumbnail`,
     previewUrl: `${root}?variant=original`,
   };
@@ -162,11 +168,11 @@ export async function handleSessionAttachmentProtocolRequest(
   if (capability === undefined) return failure(404, 'not-found');
   try {
     if ('read' in capability) {
-      const bytes = await capability.read();
+      const { bytes, mediaType } = await capability.read();
       if (previewCapabilities.get(token) !== capability) return failure(404, 'not-found');
       return new Response(method === 'HEAD' ? null : new Uint8Array(bytes), {
         status: 200,
-        headers: responseHeaders('image/png', bytes.length),
+        headers: responseHeaders(mediaType, bytes.length),
       });
     }
     const resolved = await resolveSessionAttachmentPreviewFile(
