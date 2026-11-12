@@ -24,4 +24,8 @@ beta.7 修复了 [beta.6 记录](kodax-beta6-space-adaptation.md)中向 SDK 反�
 | 类型、lint      | 通过                                                                                      |
 | 真实 Host 重建  | 3/3 通过，含带 PNG 的用户输入：正文无标签、图片经 Host 或沙箱预览可用                     |
 
-未重新打包：beta.7 与 beta.6 的打包相关文件相同，beta.6 的目录包验收见 [beta.6 记录](kodax-beta6-space-adaptation.md)。
+| Windows 目录包 | `node scripts/pack.mjs --win --dir` 通过：`smoke-pack` 全部检查通过，含打包后的 beta.7 Runtime 与 Worker 执行 |
+| 成品冷启动 | Renderer 5,394 ms 就绪；Runtime 27,105 ms 就绪；122 条历史子进程记录全部保留并移到 `.unresolved/` |
+| 成品完整退出 | 7/7 通过 |
+
+未运行源码 Electron E2E 全集，也未进行 macOS/Linux 实机验收，未创建标签或发布安装包。日志在 `%TEMP%/kodax-f305/` 的 `b7-*.log`。

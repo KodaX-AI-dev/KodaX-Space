@@ -24,7 +24,7 @@ lockfile 使用 npm Registry URL，SHA-512 为
 
 ## 观察到的 SDK 边界
 
-以下事项待反馈给 SDK，Space 本次不处理：
+以下事项已在 [beta.7](kodax-beta7-space-adaptation.md) 修复，Space 随之移除对应的变通处理：
 
 - view 的用户消息正文包含模型可见的观测标签，CLI 同样显示。Space 在投影层按标签格式去除。
 - `readItem` 的 `part:'attachment'` 只支持 PNG；Space 的 JPEG/WebP 用户图片继续读取本地文件。
