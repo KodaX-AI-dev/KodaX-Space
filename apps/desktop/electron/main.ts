@@ -5,6 +5,12 @@
 // - renderer 仅 UI，不直接 import LLM/KodaX runtime
 // - 安全基线：contextIsolation / nodeIntegration=false / sandbox / CSP
 
+// 必须是第一个 import:数据根(设置项 > KODAX_HOME > 默认)要在 store 模块求值、SDK 加载前定下。
+import {
+  getDataRootPointerFile,
+  getDeprecatedProfileDir,
+  getResolvedDataRoot,
+} from './kodax/data-root-bootstrap.js';
 import {
   app,
   BrowserWindow,
@@ -58,7 +64,9 @@ import {
   resolveSpaceBuiltinSkillsPath,
 } from './skill/space-builtins.js';
 import { hydrateShellEnvOnce } from './kodax/shell-env-hydrate.js';
-import { getKodaxDir, getScopedUserDataDir, applySdkHomeEnv } from './kodax/data-paths.js';
+import { getKodaxDir, getScopedUserDataDir } from './kodax/data-paths.js';
+import { dataRootStartupNotice } from './kodax/data-root-notice.js';
+import { writeDataRootPointer } from './kodax/data-root.js';
 import { registerProviderChannels, injectAllKeysToEnv } from './ipc/provider.js';
 import { syncSpaceCustomProvidersToRuntime } from './providers/runtime-catalog.js';
 import { customProviderMutationQueue } from './providers/custom-provider-mutations.js';
@@ -267,11 +275,8 @@ if (process.platform === 'win32') {
   app.setAppUserModelId(SPACE_APP_USER_MODEL_ID);
 }
 
-// 数据根只有 KODAX_HOME 一个(SDK 的 getAgentConfigHome 读它,不读 KODAX_SESSIONS_DIR);
-// 这里把 Space 解析出的根对齐回 KODAX_HOME。必须在任何 loadSdkModule() 动态 import 之前
-// (SDK 在模块加载时冻结 <KODAX_HOME>/sessions),所以放在 bootstrap 最早期。测试模式强制
-// 隔离到 tmpdir；默认/便携版下是 no-op。已弃用的 KODAX_PROFILE_DIR 在此转成 KODAX_HOME。
-const { deprecatedProfileDir } = applySdkHomeEnv();
+// 数据根已由 data-root-bootstrap(第一个 import)决定并对齐到 KODAX_HOME。
+const deprecatedProfileDir = getDeprecatedProfileDir();
 
 const scopedUserDataDir = getScopedUserDataDir();
 if (scopedUserDataDir !== null) {
@@ -1548,6 +1553,46 @@ async function showRuntimeStartupRecoveryBlocker(
   return false;
 }
 
+/**
+ * 设置的数据位置不可用(移动硬盘被拔、指针损坏)时弹出。bootstrap 已让本次回落到
+ * 环境变量/默认位置;这里只让用户选:本次继续 / 恢复默认(清指针) / 退出。返回 false 表示应退出。
+ */
+async function confirmDataRootFallback(): Promise<boolean> {
+  const resolved = getResolvedDataRoot();
+  const locale = (await resolveCurrentTrayLocale()) === 'zh-CN' ? 'zh-CN' : 'en';
+  const notice = dataRootStartupNotice(resolved, getKodaxDir(), locale);
+  if (notice === null) return true;
+  diagnosticsLogger?.warn('startup', 'data_root_fallback', notice.message, {
+    configuredRoot: resolved.problem?.root ?? null,
+    reason: resolved.problem?.reason ?? resolved.pointerError,
+    fallbackRoot: getKodaxDir(),
+  });
+  const zh = locale === 'zh-CN';
+  const response = await dialog.showMessageBox({
+    type: 'warning',
+    ...notice,
+    buttons: [
+      zh ? '本次使用临时位置' : 'Use it for this session',
+      zh ? '恢复默认位置' : 'Restore default location',
+      zh ? '退出' : 'Quit',
+    ],
+    defaultId: 0,
+    cancelId: 2,
+    noLink: true,
+  });
+  if (response.response === 2) return false;
+  if (response.response === 1) {
+    try {
+      writeDataRootPointer(getDataRootPointerFile(), null);
+    } catch (error) {
+      diagnosticsLogger?.warn('startup', 'data_root_pointer_clear_failed', undefined, {
+        error: error instanceof Error ? error.message.slice(0, 512) : String(error),
+      });
+    }
+  }
+  return true;
+}
+
 async function resolveCurrentTrayLocale(): Promise<BackgroundTrayLocale> {
   try {
     const settings = await settingsStore.load();
@@ -2207,6 +2252,10 @@ app.on('open-file', (event, filePath) => {
 const startupPromise = app
   .whenReady()
   .then(async () => {
+    if (!(await confirmDataRootFallback())) {
+      app.exit(0);
+      return;
+    }
     // Minimal application menu — App(mac) / Edit / View / Window。
     // Edit 菜单是 macOS 上 Cmd+C/V/X/A/Z 等编辑快捷键能工作的必要条件（经 role 分发），
     // 不构造则这些快捷键在 mac 上完全失效；Win/Linux 由 Chromium 原生处理，菜单仅作展示。

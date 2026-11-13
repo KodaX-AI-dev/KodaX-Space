@@ -46,12 +46,15 @@ function resolveTestKodaxDir(rawEnv: string): string {
 }
 
 /**
- * 一个环境变量里的绝对路径(规整后);未设或非绝对路径返回 null。path.resolve 顺手把
+ * 绝对路径(规整后);空值或非绝对路径返回 null。path.resolve 顺手把
  * Windows 上的 `c:/tools/kodax` 规整成 `C:\tools\kodax`。
  */
-function absoluteEnvDir(name: 'KODAX_HOME' | 'KODAX_PROFILE_DIR'): string | null {
-  const value = process.env[name];
+export function absoluteDir(value: string | undefined): string | null {
   return value && path.isAbsolute(value) ? path.resolve(value) : null;
+}
+
+function absoluteEnvDir(name: 'KODAX_HOME' | 'KODAX_PROFILE_DIR'): string | null {
+  return absoluteDir(process.env[name]);
 }
 
 /**
