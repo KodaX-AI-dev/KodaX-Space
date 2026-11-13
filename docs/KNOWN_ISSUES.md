@@ -16518,16 +16518,41 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
 - **Resolution (2026-11-13)**: `getPersistentKey` failures for an unavailable keychain carry
   `code: 'persistent_key_unavailable'`. `RuntimeClientIdentityStore.loadOrCreate` replaces the
   unreadable identity (new `instanceId` and secret account, same `clientId`) when no
-  `exitRecovery` depends on the old secret, so startup no longer needs the keyring. Startup
+  `exitRecovery` depends on the old secret, so a failed keyring probe no longer blocks startup
+  (other keyring failure modes: see the follow-up below). Startup
   recovery blockers log `reason`/`nextAction`/message to the structured diagnostics, and complete-exit
   failures print the wrapped causes.
 - **Files changed**: `apps/desktop/electron/kodax/runtime/runtime-client-identity.ts`,
-  `providers/keychain.ts`, `main.ts`, `test/runtime-client-identity.test.ts`.
+  `providers/keychain.ts`, `main.ts`, `test/runtime-client-identity.test.ts`; follow-up adds
+  `providers/keychain-linux.test.ts`.
 - **Tests added**: replacement of a legacy identity behind a locked keychain (red before the fix);
   a pending `exitRecovery` still blocks and is not discarded.
+- **Follow-up (2026-11-13, independent review)**: the first fix covered only a failed backend
+  probe. Three more paths still blocked startup the same way and are now fixed:
+  1. the probe succeeds but reading the item fails (locked collection, D-Bus error): the Linux
+     `getPassword` failure is now wrapped as `persistent_key_unavailable` with the native error as
+     `cause`;
+  2. the read never answers (Secret Service waiting on an unlock prompt nobody sees): Linux keyring
+     reads are bounded at 10 s and then reported the same way; the bound also covers provider-key
+     reads and legacy provider-key migration checks, which previously could hang the provider list;
+  3. the keyring answers but no longer holds the 0.1.46 secret (reset login keyring): the
+     "secret is missing" error now carries `client_secret_missing` and is replaced under the same
+     rule. This deliberately relaxes the Issue 216 guard (which kept an identity whose secret was
+     missing); a pending `exitRecovery` still blocks in every case, and no ephemeral secret is ever
+     minted.
+  Tests: `providers/keychain-linux.test.ts` (Linux bundle: read error, hang, absent item, migration
+  check) and two identity tests for the missing secret.
+- **Workaround for alpha.5 users until the fix ships**: unlock the login keyring (Seahorse
+  "Passwords and Keys" → right-click "Login" → Unlock, or log in with the password instead of
+  autologin), then relaunch Space. Once Space has started, the secret is in `auth.json` and the
+  keyring is no longer needed for the Runtime identity.
+- **Side effects of replacement**: the old `runtime_client_*` keychain item is left in place
+  (harmless); work of a still-running 0.1.46 Host that was owned by the old identity cannot be
+  settled by the new one. Legacy 0.1.46 **provider API keys** still live in the keyring: with it
+  locked they show as unavailable until it is unlocked and the provider is retried.
 - **Not covered**: no active unlock prompt (`@napi-rs/keyring` has no unlock API); a pending exit
   recovery created by 0.1.46 or earlier whose secret remains in a locked keyring still blocks;
-  Linux/Kylin upgrade not verified end to end.
+  replacement does not check for a live Host; Linux/Kylin upgrade not verified end to end.
 - **Coexistence review (no code change)**: Hosts from 0.7.96 (no build identity) are older than
   beta.4+, so `firstRequiredDaemonUpgrade` takes the `runtimeVersion` refresh path (idle → managed
   replacement via `daemonManagement`; busy → attach as compatible since SDK beta.6, Issue 405).

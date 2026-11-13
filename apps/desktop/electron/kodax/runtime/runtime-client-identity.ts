@@ -92,13 +92,15 @@ type IdentityReadResult =
 
 class RuntimeClientIdentityAliasError extends Error {}
 
-/** Set by providers/keychain.ts when the OS keychain is locked, absent or unreachable. */
-function isKeychainUnavailable(error: unknown): boolean {
-  return (
-    error !== null &&
-    typeof error === 'object' &&
-    (error as { readonly code?: unknown }).code === 'persistent_key_unavailable'
-  );
+/**
+ * The legacy secret cannot be obtained: the OS keychain is locked, absent or unreachable
+ * (`persistent_key_unavailable`, set by providers/keychain.ts) or answered without it
+ * (`client_secret_missing`, e.g. a reset login keyring).
+ */
+function isLegacySecretUnobtainable(error: unknown): boolean {
+  if (error === null || typeof error !== 'object') return false;
+  const code = (error as { readonly code?: unknown }).code;
+  return code === 'persistent_key_unavailable' || code === 'client_secret_missing';
 }
 
 function sha256(bytes: Buffer): string {
@@ -276,7 +278,7 @@ export class RuntimeClientIdentityStore {
           // A locked or missing OS keychain must not make every start fail. Without a
           // pending exit that needs the old secret, the legacy identity is unusable
           // and only protects a Host that no recovery record refers to.
-          if (!isKeychainUnavailable(error) || current.identity.exitRecovery) throw error;
+          if (!isLegacySecretUnobtainable(error) || current.identity.exitRecovery) throw error;
           console.warn(
             '[runtime-client] legacy client secret is unreadable; replacing the instance identity:',
             error instanceof Error ? error.message : String(error),
@@ -348,8 +350,11 @@ export class RuntimeClientIdentityStore {
           return existing;
         }
         if (!allowCreate) {
-          throw new Error(
-            'Existing Runtime client secret is missing; restore the credential before reconnecting.',
+          throw Object.assign(
+            new Error(
+              'Existing Runtime client secret is missing; restore the credential before reconnecting.',
+            ),
+            { code: 'client_secret_missing' },
           );
         }
         const candidate = `space_secret_${this.#uuid()}`;

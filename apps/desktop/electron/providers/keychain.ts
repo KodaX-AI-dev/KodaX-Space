@@ -250,9 +250,38 @@ async function readPersistentKey(
   }
   const keyring = await loadKeyring();
   if (!keyring) return undefined;
-  const legacy = await keyring.getPassword(SERVICE_NAME, account);
+  const legacy = await readKeyringItem(keyring, account);
   if (legacy === null) return undefined;
   return vault ? vault.importLegacy(account, legacy) : legacy;
+}
+
+/** Bound for one Linux Secret Service read; a locked item can wait on an unlock prompt nobody sees. */
+const LINUX_SECRET_READ_TIMEOUT_MS = 10_000;
+
+/**
+ * On Linux the backend probe can succeed while one item still fails (locked collection) or
+ * never answers. Both mean "cannot be read now", coded so the caller can decide instead of
+ * blocking startup on a raw native error or a hang. Other platforms keep their own semantics
+ * (macOS access prompts legitimately wait for the user).
+ */
+async function readKeyringItem(keyring: KeyringApi, account: string): Promise<string | null> {
+  if (process.platform !== 'linux') return keyring.getPassword(SERVICE_NAME, account);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Secret Service did not answer within ${LINUX_SECRET_READ_TIMEOUT_MS} ms.`)),
+      LINUX_SECRET_READ_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([keyring.getPassword(SERVICE_NAME, account), timeout]);
+  } catch (error) {
+    throw Object.assign(new Error('The OS keyring could not return the stored secret.', { cause: error }), {
+      code: 'persistent_key_unavailable',
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function setPersistentKey(account: string, secret: string): Promise<void> {
@@ -371,7 +400,7 @@ export async function getKey(account: string): Promise<string | undefined> {
   }
   const read = (async () => {
     try {
-      const value = await keyring.getPassword(SERVICE_NAME, account);
+      const value = await readKeyringItem(keyring, account);
       if (value !== null) keychainSecretCache.set(account, value);
       return value ?? undefined;
     } catch (err) {
@@ -605,7 +634,7 @@ export async function hasMigrationKey(account: string): Promise<boolean> {
   const keyring = await loadKeyring();
   if (!keyring) throw new Error('Legacy credential metadata is unavailable.');
   try {
-    return (await keyring.getPassword(SERVICE_NAME, account)) !== null;
+    return (await readKeyringItem(keyring, account)) !== null;
   } catch {
     throw new Error('Legacy credential metadata is unavailable.');
   }
