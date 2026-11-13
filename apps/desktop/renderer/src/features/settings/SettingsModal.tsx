@@ -46,6 +46,7 @@ import {
 import {
   KODAX_COMPACTION_TRIGGER_PERCENT_MAX,
   KODAX_COMPACTION_TRIGGER_PERCENT_MIN,
+  type DataRootGetOutput,
   type DispatchableAgentListingT,
   type KodaxConfigOverviewT,
   type KodaxIntegrationMigrationPlanT,
@@ -675,6 +676,8 @@ function PreferencesPanel(): JSX.Element {
       <TerminalShellSection />
       {window.kodaxSpace?.platform === 'win32' && <WindowCloseBehaviorSection />}
 
+      <DataRootSection />
+
       <SettingsSection
         title={t('settings.workspace.title')}
         description={t('settings.workspace.description')}
@@ -859,6 +862,198 @@ const WINDOW_CLOSE_BEHAVIOR_OPTIONS: readonly {
     labelKey: 'settings.windowCloseBehavior.quitCompletely',
   },
 ];
+
+interface PendingDataRoot {
+  readonly path: string;
+  readonly hasData: boolean;
+}
+
+function DataRootSection(): JSX.Element {
+  const { t } = useI18n();
+  const [info, setInfo] = useState<DataRootGetOutput | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<PendingDataRoot | null>(null);
+  const [copyData, setCopyData] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.kodaxSpace
+      ?.invoke('dataRoot.get', undefined)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) setInfo(result.data);
+        else pushToast(result.error.message, 'error');
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) pushToast(String(error), 'error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function reject(reason: string, detail: string | undefined): void {
+    const message = t(`settings.dataRoot.reject.${reason}` as MessageKey);
+    pushToast(detail ? `${message} (${detail})` : message, 'error');
+  }
+
+  // Copy is offered only into an empty folder; an existing KodaX folder is used as it is.
+  const canCopy = info?.copySupported === true && pending !== null && !pending.hasData;
+
+  async function apply(target: string | null, copy: boolean): Promise<void> {
+    if (!window.kodaxSpace) return;
+    const destination = target ?? info?.envRoot ?? info?.defaultRoot ?? '';
+    const confirmed = await requestConfirm({
+      title: t('settings.dataRoot.confirmTitle'),
+      message: t(
+        copy ? 'settings.dataRoot.confirmCopyMessage' : 'settings.dataRoot.confirmMessage',
+        {
+          path: destination,
+        },
+      ),
+      confirmLabel: t('settings.dataRoot.confirm'),
+    });
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      const result = await window.kodaxSpace.invoke('dataRoot.apply', {
+        path: target,
+        copyData: copy,
+      });
+      if (!result.ok) {
+        pushToast(`${t('settings.dataRoot.failed')} ${result.error.message}`, 'error');
+      } else if (result.data.status === 'rejected') {
+        reject(result.data.reason, result.data.detail);
+      } else if (result.data.status === 'blocked') {
+        pushToast(t('settings.dataRoot.blocked'), 'error');
+      }
+    } catch (error: unknown) {
+      pushToast(`${t('settings.dataRoot.failed')} ${String(error)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function change(): Promise<void> {
+    if (!window.kodaxSpace || busy) return;
+    const picked = await window.kodaxSpace
+      .invoke('dataRoot.choose', undefined)
+      .catch((error: unknown) => {
+        pushToast(`${t('settings.dataRoot.failed')} ${String(error)}`, 'error');
+        return null;
+      });
+    if (picked === null) return;
+    if (!picked.ok) {
+      pushToast(`${t('settings.dataRoot.failed')} ${picked.error.message}`, 'error');
+      return;
+    }
+    if (picked.data.status === 'cancelled') return;
+    if (picked.data.status === 'rejected') {
+      reject(picked.data.reason, picked.data.detail);
+      return;
+    }
+    setCopyData(true);
+    setPending({ path: picked.data.path, hasData: picked.data.hasData });
+  }
+
+  const buttonClass =
+    'inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border-default bg-surface-3 px-3 text-xs text-fg-primary hover:bg-hover-bg disabled:cursor-not-allowed disabled:opacity-50';
+
+  return (
+    <SettingsSection
+      title={t('settings.dataRoot.title')}
+      description={t('settings.dataRoot.description')}
+      icon={Database}
+    >
+      {info && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border-default bg-surface px-3 py-3 text-xs leading-5">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+              {t('settings.dataRoot.current')} ·{' '}
+              {t(`settings.dataRoot.source.${info.source}` as MessageKey)}
+            </div>
+            <div className="mt-1 break-all font-mono text-fg-primary">{info.current}</div>
+          </div>
+          {info.source === 'setting' && info.envRoot !== null && info.envRoot !== info.current && (
+            <div className="rounded-lg border border-info/30 bg-info/8 px-3 py-3 text-xs leading-5 text-fg-secondary">
+              {t('settings.dataRoot.envConflict', { path: info.envRoot })}
+            </div>
+          )}
+          {info.pointerRoot !== null && info.source !== 'setting' && info.source !== 'test' && (
+            <div className="rounded-lg border border-warn/30 bg-warn/8 px-3 py-3 text-xs leading-5 text-fg-secondary">
+              {t('settings.dataRoot.pointerUnavailable', { path: info.pointerRoot })}
+            </div>
+          )}
+          <p className="text-xs leading-5 text-fg-muted">{t('settings.dataRoot.note')}</p>
+          {pending !== null && (
+            <div className="space-y-2 rounded-lg border border-border-default bg-surface px-3 py-3 text-xs leading-5">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+                {t('settings.dataRoot.newLocation')}
+              </div>
+              <div className="break-all font-mono text-fg-primary">{pending.path}</div>
+              {canCopy && (
+                <label className="flex items-start gap-2 text-fg-secondary">
+                  <input
+                    type="checkbox"
+                    checked={copyData}
+                    onChange={(event) => setCopyData(event.target.checked)}
+                    disabled={busy}
+                    className="mt-1"
+                  />
+                  <span>{t('settings.dataRoot.copyOption')}</span>
+                </label>
+              )}
+              {pending.hasData && (
+                <p className="text-fg-muted">{t('settings.dataRoot.usesExisting')}</p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void apply(pending.path, canCopy && copyData)}
+                  disabled={busy}
+                  className={buttonClass}
+                >
+                  {t('settings.dataRoot.confirm')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPending(null)}
+                  disabled={busy}
+                  className={buttonClass}
+                >
+                  {t('settings.dataRoot.cancel')}
+                </button>
+              </div>
+            </div>
+          )}
+          {info.editable && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void change()}
+                disabled={busy}
+                className={buttonClass}
+              >
+                <FolderOpen className="h-3.5 w-3.5" strokeWidth={1.8} />
+                {t('settings.dataRoot.change')}
+              </button>
+              {info.pointerRoot !== null && (
+                <button
+                  type="button"
+                  onClick={() => void apply(null, false)}
+                  disabled={busy}
+                  className={buttonClass}
+                >
+                  {t('settings.dataRoot.restore')}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
 
 function WindowCloseBehaviorSection(): JSX.Element {
   const { t } = useI18n();

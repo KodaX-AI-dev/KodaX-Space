@@ -328,9 +328,13 @@ import {
   learningListChannel,
 } from './learning.js';
 import { diagnosticsExportChannel, diagnosticsReportChannel } from './diagnostics.js';
+import { dataRootApplyChannel, dataRootChooseChannel, dataRootGetChannel } from './data-root.js';
 import { spaceControlRequestedChannel, spaceControlResolveChannel } from './space-control.js';
 
 const extensionInvokeChannels = {
+  [dataRootGetChannel.name]: dataRootGetChannel,
+  [dataRootChooseChannel.name]: dataRootChooseChannel,
+  [dataRootApplyChannel.name]: dataRootApplyChannel,
   [spaceExtensionsListChannel.name]: spaceExtensionsListChannel,
   [spaceExtensionsInstallChannel.name]: spaceExtensionsInstallChannel,
   [spaceExtensionsSetEnabledChannel.name]: spaceExtensionsSetEnabledChannel,

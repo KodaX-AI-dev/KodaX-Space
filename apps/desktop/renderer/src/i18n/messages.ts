@@ -1424,6 +1424,52 @@ export const messages = {
     'settings.diagnostics.export': 'Export diagnostic ZIP',
     'settings.diagnostics.exported': 'Diagnostics saved as {fileName}',
     'settings.diagnostics.exportFailed': 'Failed to export diagnostics',
+    'settings.dataRoot.title': 'Data location',
+    'settings.dataRoot.description':
+      'Where Space keeps sessions, settings and credentials. Takes effect after Space restarts.',
+    'settings.dataRoot.current': 'Current location',
+    'settings.dataRoot.source.test': 'Test mode',
+    'settings.dataRoot.source.setting': 'Set here',
+    'settings.dataRoot.source.env': 'From the KODAX_HOME environment variable',
+    'settings.dataRoot.source.default': 'Default',
+    'settings.dataRoot.envConflict':
+      'The KODAX_HOME environment variable points to {path}. The location set here takes priority inside Space.',
+    'settings.dataRoot.pointerUnavailable':
+      'The location set here is unavailable: {path}. Space is using the location above for this session. Reconnect it and restart, or restore the default.',
+    'settings.dataRoot.note':
+      'Changing the location does not move or delete any data, and the KodaX CLI keeps using its own location, so sessions are no longer shared with it. Choose an empty folder (the current data can be copied into it) or an existing KodaX data folder (used as it is).',
+    'settings.dataRoot.change': 'Change location…',
+    'settings.dataRoot.restore': 'Restore default location',
+    'settings.dataRoot.confirmTitle': 'Change data location',
+    'settings.dataRoot.confirmMessage':
+      'Space will close and reopen using {path}. Your data in the current location stays where it is. Continue?',
+    'settings.dataRoot.confirm': 'Save and restart',
+    'settings.dataRoot.failed': 'Could not change the data location.',
+    'settings.dataRoot.blocked':
+      'Space could not restart: the restart was cancelled, work is still running, or another KodaX client (such as the CLI) is still connected to the current data. Nothing was changed.',
+    'settings.dataRoot.reject.not_absolute': 'Choose a full folder path.',
+    'settings.dataRoot.reject.same': 'That is already the current location.',
+    'settings.dataRoot.reject.nested':
+      'The new location cannot be inside the current one, or contain it.',
+    'settings.dataRoot.reject.unusable': 'That folder is not writable or is unavailable.',
+    'settings.dataRoot.reject.network':
+      'Network locations are not supported. Choose a folder on a local or removable drive.',
+    'settings.dataRoot.reject.unrecognized':
+      'That folder already has other files. Choose an empty folder or an existing KodaX data folder.',
+    'settings.dataRoot.newLocation': 'New location',
+    'settings.dataRoot.copyOption':
+      'Copy current data (sessions, settings, credentials) to the new location. The current location is left untouched.',
+    'settings.dataRoot.usesExisting':
+      'This folder already holds KodaX data, which Space will use as it is. Nothing is copied.',
+    'settings.dataRoot.cancel': 'Cancel',
+    'settings.dataRoot.confirmCopyMessage':
+      'Space will close, copy your data to {path}, and reopen using it. The current location stays where it is. Copying may take a while. Continue?',
+    'settings.dataRoot.reject.has_data':
+      'Data can only be copied into an empty folder. Use the folder as it is, or choose an empty one.',
+    'settings.dataRoot.reject.copy_unavailable':
+      'This build of Space cannot copy data yet. Choose without copying.',
+    'settings.dataRoot.reject.incomplete_copy':
+      'That folder holds an unfinished copy from an earlier attempt. Empty it or choose another folder.',
     'settings.license': 'License',
     'settings.license.description': 'Community status and offline enterprise activation.',
     'license.resolveFilePathError': 'Could not resolve the selected license file path.',
@@ -4710,6 +4756,48 @@ export const messages = {
     'settings.diagnostics.export': '导出诊断 ZIP',
     'settings.diagnostics.exported': '诊断包已保存为 {fileName}',
     'settings.diagnostics.exportFailed': '导出诊断包失败',
+    'settings.dataRoot.title': '数据位置',
+    'settings.dataRoot.description': 'Space 保存会话、设置和凭据的位置。重启 Space 后生效。',
+    'settings.dataRoot.current': '当前位置',
+    'settings.dataRoot.source.test': '测试模式',
+    'settings.dataRoot.source.setting': '在此处设置',
+    'settings.dataRoot.source.env': '来自环境变量 KODAX_HOME',
+    'settings.dataRoot.source.default': '默认位置',
+    'settings.dataRoot.envConflict':
+      '环境变量 KODAX_HOME 指向 {path}。在 Space 内以此处设置的位置为准。',
+    'settings.dataRoot.pointerUnavailable':
+      '此处设置的位置当前不可用：{path}。本次 Space 临时使用上方位置。请重新连接该位置后重启，或恢复默认位置。',
+    'settings.dataRoot.note':
+      '更改位置不会移动或删除任何数据；KodaX CLI 仍使用它自己的位置，因此不再与 CLI 共享会话。请选择空文件夹（可把当前数据复制进去）或已有的 KodaX 数据文件夹（按原样使用）。',
+    'settings.dataRoot.change': '更改位置…',
+    'settings.dataRoot.restore': '恢复默认位置',
+    'settings.dataRoot.confirmTitle': '更改数据位置',
+    'settings.dataRoot.confirmMessage':
+      'Space 将关闭并使用 {path} 重新打开。当前位置的数据保持原样。是否继续？',
+    'settings.dataRoot.confirm': '保存并重启',
+    'settings.dataRoot.failed': '无法更改数据位置。',
+    'settings.dataRoot.blocked':
+      'Space 未能重启：重启已取消、仍有任务在运行，或有其他 KodaX 客户端（例如 CLI）仍连接着当前数据。未做任何更改。',
+    'settings.dataRoot.reject.not_absolute': '请选择完整的文件夹路径。',
+    'settings.dataRoot.reject.same': '这已经是当前位置。',
+    'settings.dataRoot.reject.nested': '新位置不能位于当前位置内部，也不能包含当前位置。',
+    'settings.dataRoot.reject.unusable': '该文件夹不可写或不可用。',
+    'settings.dataRoot.reject.network': '不支持网络位置。请选择本机磁盘或移动磁盘上的文件夹。',
+    'settings.dataRoot.reject.unrecognized':
+      '该文件夹中已有其他文件。请选择空文件夹或已有的 KodaX 数据文件夹。',
+    'settings.dataRoot.newLocation': '新位置',
+    'settings.dataRoot.copyOption':
+      '将当前数据（会话、设置、凭据）复制到新位置。当前位置保持原样。',
+    'settings.dataRoot.usesExisting': '该文件夹中已有 KodaX 数据，Space 将直接使用，不会复制。',
+    'settings.dataRoot.cancel': '取消',
+    'settings.dataRoot.confirmCopyMessage':
+      'Space 将关闭、把数据复制到 {path} 并使用它重新打开。当前位置保持原样。复制可能需要一些时间。是否继续？',
+    'settings.dataRoot.reject.has_data':
+      '只能把数据复制到空文件夹。请直接使用该文件夹，或选择一个空文件夹。',
+    'settings.dataRoot.reject.copy_unavailable':
+      '当前版本的 Space 暂不支持复制数据。请选择不复制。',
+    'settings.dataRoot.reject.incomplete_copy':
+      '该文件夹中有上次未完成的复制。请清空它或选择其他文件夹。',
     'settings.license': '许可证',
     'settings.license.description': '社区状态与离线企业激活。',
     'license.resolveFilePathError': '无法解析所选许可证文件路径。',

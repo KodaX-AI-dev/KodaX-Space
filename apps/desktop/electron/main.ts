@@ -31,6 +31,7 @@ import { runtimeExitConfirmsHostStopped } from './kodax/runtime/runtime-client-e
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { registerVersionChannel } from './ipc/version.js';
+import { registerDataRootChannels } from './ipc/data-root.js';
 import { registerSandboxChannels } from './ipc/sandbox.js';
 import {
   registerRuntimeProjectionChannels,
@@ -67,6 +68,15 @@ import { hydrateShellEnvOnce } from './kodax/shell-env-hydrate.js';
 import { getKodaxDir, getScopedUserDataDir } from './kodax/data-paths.js';
 import { dataRootStartupNotice } from './kodax/data-root-notice.js';
 import { writeDataRootPointer } from './kodax/data-root.js';
+import {
+  commitDataRootChange,
+  loadSdkDataRootCopy,
+  type DataRootChange,
+} from './kodax/data-root-change.js';
+import {
+  openDataRootProgressWindow,
+  type DataRootProgressWindow,
+} from './window/data-root-progress-window.js';
 import { registerProviderChannels, injectAllKeysToEnv } from './ipc/provider.js';
 import { syncSpaceCustomProvidersToRuntime } from './providers/runtime-catalog.js';
 import { customProviderMutationQueue } from './providers/custom-provider-mutations.js';
@@ -515,13 +525,23 @@ function loadBootSplashBrandDataUrl(): string | undefined {
   return bootSplashBrandDataUrl;
 }
 
+/**
+ * 重启参数。AppImage / Windows 便携版的 process.execPath 是退出即失效的临时解包副本,
+ * 要重启外层可执行文件;恢复标记只在显式需要时追加,不从上一轮继承。
+ */
+function relaunchOptions(extraArgs: readonly string[] = []): Electron.RelaunchOptions {
+  const args = [
+    ...process.argv.slice(1).filter((arg) => arg !== RUNTIME_EXIT_RECOVERY_ARG),
+    ...extraArgs,
+  ];
+  const execPath = process.env.APPIMAGE || process.env.PORTABLE_EXECUTABLE_FILE;
+  return execPath ? { execPath, args } : { args };
+}
+
 function scheduleCoderRuntimeModeRestart(): void {
   if (coderRuntimeRestartScheduled) return;
   commitRelaunchBeforeDelayedQuit({
-    commitRelaunch: () =>
-      app.relaunch({
-        args: process.argv.slice(1).filter((arg) => arg !== RUNTIME_EXIT_RECOVERY_ARG),
-      }),
+    commitRelaunch: () => app.relaunch(relaunchOptions()),
     markCommitted: () => {
       coderRuntimeRestartScheduled = true;
     },
@@ -541,10 +561,7 @@ function scheduleStartupRecoveryRestart(): boolean {
   if (startupRecoveryRestartScheduled) return true;
   try {
     commitRelaunchBeforeDelayedQuit({
-      commitRelaunch: () =>
-        app.relaunch({
-          args: process.argv.slice(1).filter((arg) => arg !== RUNTIME_EXIT_RECOVERY_ARG),
-        }),
+      commitRelaunch: () => app.relaunch(relaunchOptions()),
       markCommitted: () => {
         startupRecoveryRestartScheduled = true;
       },
@@ -1395,12 +1412,7 @@ function hideExitControlSurfaceForBackgroundShutdown(): void {
 function scheduleRuntimeExitRecovery(reason: string): boolean {
   if (runtimeExitRecoveryScheduled) return true;
   try {
-    app.relaunch({
-      args: [
-        ...process.argv.slice(1).filter((arg) => arg !== RUNTIME_EXIT_RECOVERY_ARG),
-        RUNTIME_EXIT_RECOVERY_ARG,
-      ],
-    });
+    app.relaunch(relaunchOptions([RUNTIME_EXIT_RECOVERY_ARG]));
     runtimeExitRecoveryScheduled = true;
     console.warn(
       `[main] reopening Space because complete Runtime exit was not confirmed: ${reason}`,
@@ -1591,6 +1603,93 @@ async function confirmDataRootFallback(): Promise<boolean> {
     }
   }
   return true;
+}
+
+/**
+ * 安全退出之后执行数据根变更(可能先复制),然后无论成败都重启:成功则进入新根,失败则
+ * 指针未改、回到旧根并告知原因。复制期间主窗口已隐藏,所以开一个进度小窗。
+ * 这是 install 回调,退出流程不会等它;任何失败都必须在这里处理并最终重启。
+ */
+async function finishDataRootChange(change: DataRootChange): Promise<void> {
+  let progress: DataRootProgressWindow | null = null;
+  try {
+    const locale =
+      (await resolveCurrentTrayLocale().catch(() => 'en')) === 'zh-CN' ? 'zh-CN' : 'en';
+    try {
+      if (change.copyFrom !== null) progress = openDataRootProgressWindow(locale);
+    } catch (error) {
+      diagnosticsLogger?.warn(
+        'startup',
+        'data_root_progress_window_failed',
+        sanitizeForDialog(error),
+      );
+    }
+    try {
+      const copied = await commitDataRootChange(change, {
+        pointerFile: getDataRootPointerFile(),
+        copyRoot: change.copyFrom !== null ? await loadSdkDataRootCopy() : null,
+        onProgress: (p) => progress?.update(p),
+      });
+      diagnosticsLogger?.info('startup', 'data_root_changed', undefined, {
+        target: change.target,
+        ...(copied !== null
+          ? {
+              files: copied.files,
+              bytes: copied.bytes,
+              rebasedFiles: copied.rebasedFiles,
+              skipped: copied.skipped
+                .slice(0, 50)
+                .map((entry) => `${entry.path} (${entry.reason})`),
+            }
+          : {}),
+      });
+    } catch (error) {
+      progress?.close();
+      await reportDataRootChangeFailure(error, change, locale);
+    }
+  } finally {
+    progress?.close();
+    await flushDiagnostics().catch(() => undefined);
+    try {
+      app.relaunch(relaunchOptions());
+    } catch (error) {
+      // 指针已按结果写好;无法自动重新打开时,用户手动启动即可进入正确的位置。
+      diagnosticsLogger?.warn('startup', 'data_root_relaunch_failed', sanitizeForDialog(error));
+    }
+    app.exit(0);
+  }
+}
+
+async function reportDataRootChangeFailure(
+  error: unknown,
+  change: DataRootChange,
+  locale: 'zh-CN' | 'en',
+): Promise<void> {
+  const message = sanitizeForDialog(error);
+  diagnosticsLogger?.warn('startup', 'data_root_change_failed', message.slice(0, 512), {
+    target: change.target,
+    copied: change.copyFrom !== null,
+  });
+  const zh = locale === 'zh-CN';
+  const outcome = zh
+    ? '原位置的数据未被修改，Space 将继续使用原位置重新打开。'
+    : 'Nothing at the current location was modified. Space will reopen on it.';
+  await dialog
+    .showMessageBox({
+      type: 'error',
+      title: zh ? '数据位置未更改' : 'Data location not changed',
+      message: zh ? '无法切换到新的数据位置。' : 'Space could not switch to the new data location.',
+      detail: `${message}\n\n${outcome}`,
+      buttons: [zh ? '确定' : 'OK'],
+      noLink: true,
+    })
+    .catch((dialogError: unknown) => {
+      diagnosticsLogger?.warn(
+        'startup',
+        'data_root_failure_dialog_failed',
+        sanitizeForDialog(dialogError),
+      );
+    });
 }
 
 async function resolveCurrentTrayLocale(): Promise<BackgroundTrayLocale> {
@@ -1994,7 +2093,7 @@ async function requestCompleteExit(): Promise<void> {
         if (pendingUpdateInstallation && !hostStopped) {
           throw createCoderOwnerRecoveryRestartError(
             [new Error('Shared Host remains protected or its shutdown is unverified.')],
-            'Update installation requires verified Host shutdown; reconnect before retrying.',
+            'Installing an update or changing the data location requires a verified Host shutdown; reconnect before retrying.',
           );
         }
       },
@@ -2514,6 +2613,14 @@ const startupPromise = app
     registerDiagnosticsChannels({
       getMainWindow: () => mainWindow,
       spaceVersion: SPACE_VERSION,
+    });
+    registerDataRootChannels({
+      // Reuses the update-install exit path: the change runs only after the Host stop is
+      // verified, so the old root's Host is not left behind and is never copied while live.
+      requestRestart: (change) =>
+        requestUpdateInstallation(() => {
+          void finishDataRootChange(change);
+        }),
     });
     registerSpaceControlChannels();
     registerRepointelChannels();

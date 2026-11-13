@@ -121,6 +121,19 @@ export {
 } from './channels/runtime.js';
 
 export {
+  dataRootSourceSchema,
+  dataRootRejectionSchema,
+  dataRootGetChannel,
+  dataRootChooseChannel,
+  dataRootApplyChannel,
+  type DataRootSource,
+  type DataRootRejection,
+  type DataRootGetOutput,
+  type DataRootChooseOutput,
+  type DataRootApplyOutput,
+} from './channels/data-root.js';
+
+export {
   diagnosticsLevelSchema,
   diagnosticsComponentSchema,
   diagnosticsExportCategorySchema,

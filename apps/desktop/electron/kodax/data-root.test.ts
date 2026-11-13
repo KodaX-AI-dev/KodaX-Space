@@ -4,7 +4,15 @@
 // 全部用临时目录;路径一律用 path.join 动态构造,Windows/macOS/Linux 行为一致。
 
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
@@ -12,6 +20,10 @@ import {
   probeDataRoot,
   readDataRootPointer,
   resolveDataRoot,
+  KODAX_HOME_OVERRIDE_ENV,
+  kodaxHomeOverrideMark,
+  userKodaxHome,
+  validateDataRootCandidate,
   writeDataRootPointer,
 } from './data-root.js';
 
@@ -156,4 +168,113 @@ test('a corrupt pointer falls back and is reported', () => {
   const resolved = resolveDataRoot({ env: {}, pointerFile: pointerFile() });
   assert.equal(resolved.source, 'default');
   assert.match(resolved.pointerError ?? '', /\S/);
+});
+
+test('candidate validation rejects relative, identical and nested locations', () => {
+  const current = makeRoot('current');
+  assert.equal(validateDataRootCandidate(path.join('relative', 'x'), current).ok, false);
+  const same = validateDataRootCandidate(current, current);
+  assert.deepEqual(same, { ok: false, reason: 'same' });
+  const inside = path.join(current, 'sub');
+  mkdirSync(inside);
+  assert.deepEqual(validateDataRootCandidate(inside, current), { ok: false, reason: 'nested' });
+  assert.deepEqual(validateDataRootCandidate(scratch, current), { ok: false, reason: 'nested' });
+});
+
+test('candidate validation accepts an empty folder or an existing KodaX data folder, not an arbitrary one', () => {
+  const current = makeRoot('current');
+  const empty = makeRoot('empty');
+  assert.deepEqual(validateDataRootCandidate(empty, current), {
+    ok: true,
+    root: empty,
+    hasData: false,
+  });
+
+  const existing = makeRoot('existing');
+  mkdirSync(path.join(existing, 'space'));
+  assert.deepEqual(validateDataRootCandidate(existing, current), {
+    ok: true,
+    root: existing,
+    hasData: true,
+  });
+
+  const documents = makeRoot('documents');
+  writeFileSync(path.join(documents, 'report.docx'), 'x');
+  assert.deepEqual(validateDataRootCandidate(documents, current), {
+    ok: false,
+    reason: 'unrecognized',
+  });
+});
+
+test('candidate validation reports a missing folder without creating it', () => {
+  const current = makeRoot('current');
+  const missing = path.join(scratch, 'unplugged');
+  const result = validateDataRootCandidate(missing, current);
+  assert.equal(result.ok, false);
+  assert.equal(result.ok ? '' : result.reason, 'unusable');
+  assert.equal(existsSync(missing), false);
+});
+
+test('a KODAX_HOME injected by an earlier Space process is not mistaken for the user value', () => {
+  const settingRoot = makeRoot('setting');
+  const userRoot = makeRoot('user');
+  // Relaunch after "restore default": the old process had replaced an unset KODAX_HOME.
+  const inherited = (original: string | undefined) => ({
+    KODAX_HOME: settingRoot,
+    [KODAX_HOME_OVERRIDE_ENV]: kodaxHomeOverrideMark(original, settingRoot),
+  });
+  const inheritedUnset = inherited(undefined);
+  assert.equal(userKodaxHome(inheritedUnset), undefined);
+  // The user had their own KODAX_HOME, which Settings overrode.
+  assert.equal(userKodaxHome(inherited(userRoot)), userRoot);
+  // A value set after the override (e.g. exported in Space's terminal) is the user's.
+  assert.equal(userKodaxHome({ ...inheritedUnset, KODAX_HOME: userRoot }), userRoot);
+  assert.equal(userKodaxHome({ KODAX_HOME: userRoot }), userRoot);
+});
+
+test('a link to the current location is the same location, not a new one', (t) => {
+  const current = makeRoot('current');
+  const link = path.join(scratch, 'link');
+  try {
+    symlinkSync(current, link, 'junction');
+  } catch (error) {
+    t.skip(`cannot create a directory link here: ${(error as Error).message}`);
+    return;
+  }
+  assert.deepEqual(validateDataRootCandidate(link, current), { ok: false, reason: 'same' });
+});
+
+test('network locations are rejected', { skip: process.platform !== 'win32' }, () => {
+  const current = makeRoot('current');
+  for (const candidate of [
+    '\\\\server\\share\\kodax',
+    '//server/share/kodax',
+    '\\\\?\\UNC\\server\\share',
+  ]) {
+    const result = validateDataRootCandidate(candidate, current);
+    assert.equal(result.ok ? 'ok' : result.reason, 'network', candidate);
+  }
+});
+
+test('a fresh folder holding only OS housekeeping files counts as empty', () => {
+  const current = makeRoot('current');
+  const fresh = makeRoot('fresh');
+  writeFileSync(path.join(fresh, '.DS_Store'), '');
+  writeFileSync(path.join(fresh, 'desktop.ini'), '');
+  assert.deepEqual(validateDataRootCandidate(fresh, current), {
+    ok: true,
+    root: fresh,
+    hasData: false,
+  });
+});
+
+test('a folder holding an interrupted copy is neither empty nor usable', () => {
+  const current = makeRoot('current');
+  const interrupted = makeRoot('interrupted');
+  writeFileSync(path.join(interrupted, '.kodax-copy-incomplete'), '');
+  mkdirSync(path.join(interrupted, 'sessions'));
+  assert.deepEqual(validateDataRootCandidate(interrupted, current), {
+    ok: false,
+    reason: 'incomplete_copy',
+  });
 });
