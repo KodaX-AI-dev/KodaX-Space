@@ -200,7 +200,7 @@ const HOUSEKEEPING_ENTRIES = new Set([
  * SDK 复制期间留在目标里的标记(KODAX_DATA_ROOT_COPY_MARKER)。此处不能 import SDK:
  * 本模块在 SDK 加载前运行。带标记的目录是中断的复制,既不能按原样使用也不算空。
  */
-const COPY_MARKER = '.kodax-copy-incomplete';
+export const COPY_MARKER = '.kodax-copy-incomplete';
 
 /**
  * 用户在设置里选的新数据位置能否采用。必须是绝对路径、可写、不同于也不嵌套于当前根(复制迁移

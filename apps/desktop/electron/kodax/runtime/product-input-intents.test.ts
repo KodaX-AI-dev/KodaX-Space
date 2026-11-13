@@ -169,3 +169,26 @@ test('a damaged private recovery record refuses withdrawal without exposing its 
   }
   assert.equal(calls, 0);
 });
+
+test('an undelivered steer input is taken back with its target Run binding intact', async () => {
+  // SDK beta.9 lets inputs.withdraw take back a steer until its Run claims it at a safety point.
+  // Space submits text-only steers with an empty artifact list; the Host receipt omits it.
+  const receipt = {
+    sessionId: 'steer-take-back',
+    inputId: 'steer-input',
+    text: 'Use the smaller fixture instead.',
+    delivery: 'steer' as const,
+    targetRunId: 'run-active',
+  };
+  await captureProductInput('main-principal', { ...receipt, inputArtifacts: [] });
+  let calls = 0;
+  const runs = {
+    withdrawInput: async () => {
+      calls++;
+      return structuredClone(receipt);
+    },
+  };
+  assert.deepEqual(await takeBackProductInput(runs, 'main-principal', receipt), receipt);
+  assert.deepEqual(await takeBackProductInput(runs, 'main-principal', receipt), receipt);
+  assert.equal(calls, 1, 'the confirmed receipt answers a repeated take-back');
+});

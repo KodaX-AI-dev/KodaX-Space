@@ -13,7 +13,9 @@ const manifest = createRequire(import.meta.url)('../../../../package.json') as {
   readonly version: string;
   readonly dependencies: { readonly '@kodax-ai/kodax': string };
 };
-const installedSdk = createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as { version: string };
+const installedSdk = createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as {
+  version: string;
+};
 const sdkManual = buildSpaceManual({
   KODAX_UNDERLYING_CAPABILITY_TOPICS,
   MANUAL_REGISTRY,
@@ -166,9 +168,7 @@ test('Space kodax_manual documents the required current KodaX capability boundar
   assert.ok(
     topics
       .get('runtime-host')
-      ?.body.includes(
-        `v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`,
-      ),
+      ?.body.includes(`v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`),
     'The current manual must match the declared Space and SDK versions',
   );
   assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.46-alpha\.11 落地 FEATURE_275/);
@@ -358,23 +358,45 @@ test('Space manual names one Host per KODAX_HOME instead of a Host profile (ADR-
 
 test('Space manual describes the SDK beta.8 native startup path and recovery (Issues 245-247)', () => {
   const own = (id: string): string =>
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split('## Inherited KodaX SDK mechanism')[0] ?? '';
+    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
+      '## Inherited KodaX SDK mechanism',
+    )[0] ?? '';
   const runtime = own('runtime-host');
   assert.match(runtime, /__daemon-job-identity/);
   assert.match(runtime, /__daemon-job-supervise/);
   assert.match(runtime, /不再依赖 PowerShell|从 PowerShell 改为/);
   assert.match(runtime, /30 秒、1、2、4 分钟，之后每 5 分钟/);
-  assert.match(runtime, /没有放大任何超时/);
+  assert.match(runtime, /10 秒期限内验证（原 PowerShell 探针为 5 秒）/);
+  assert.match(runtime, /除 Job 身份探针期限外没有放大其他超时/);
   const troubleshooting = own('troubleshooting');
   assert.match(troubleshooting, /慢速后台重试/);
   assert.doesNotMatch(troubleshooting, /最多连续自动重试三次，仍失败可点击/);
-  assert.match(troubleshooting, /bootstrap\.log 中最后一条 \[Error\]/);
+  assert.match(troubleshooting, /bootstrap\.log 中写下的最后一条 \[Error\]/);
   assert.match(troubleshooting, /重启系统前记录进程列表/);
+});
+
+test('Space manual covers the SDK beta.9 behaviors Space adapted to', () => {
+  const own = (id: string): string =>
+    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
+      '## Inherited KodaX SDK mechanism',
+    )[0] ?? '';
+  const all = SPACE_MANUAL_TOPICS.map((topic) => own(topic.id)).join('\n');
+  assert.match(all, /copyKodaXDataRoot/);
+  assert.match(all, /\.kodax-copy-incomplete/);
+  assert.doesNotMatch(all, /当前 SDK 不支持复制/);
+  assert.match(all, /相对路径会被 Space 与 SDK 一致忽略/);
+  assert.match(all, /排队为中断消息（steer）.*取回消息/);
+  assert.match(
+    own('troubleshooting'),
+    /本次启动在子进程 bootstrap\.log 中写下的最后一条 \[Error\]/,
+  );
 });
 
 test('Space manual covers the SDK beta.5-beta.7 behaviors Space adapted to', () => {
   const own = (id: string): string =>
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split('## Inherited KodaX SDK mechanism')[0] ?? '';
+    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
+      '## Inherited KodaX SDK mechanism',
+    )[0] ?? '';
   assert.match(own('runtime-host'), /\.unresolved\//);
   assert.match(own('runtime-host'), /degradedReadRoots/);
   assert.match(own('permissions'), /扩展 X 要求确认：原因/);
@@ -385,7 +407,10 @@ test('Space manual covers the SDK beta.5-beta.7 behaviors Space adapted to', () 
 
 test('the installed SDK kodax_manual carries its own startup Job mechanism text, unmodified by Space', () => {
   // Space adds no overlay for the SDK sandbox topic, so kodax_manual serves this text as shipped.
-  assert.equal(SPACE_MANUAL_TOPICS.some((topic) => topic.id === 'sandbox'), false);
+  assert.equal(
+    SPACE_MANUAL_TOPICS.some((topic) => topic.id === 'sandbox'),
+    false,
+  );
   const sandbox = MANUAL_REGISTRY.sandbox.body;
   assert.match(sandbox, /__daemon-job-identity/);
   assert.match(sandbox, /__daemon-job-supervise/);

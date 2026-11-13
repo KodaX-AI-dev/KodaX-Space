@@ -11,7 +11,7 @@ import path from 'node:path';
 import { registerChannel } from './register.js';
 import { getKodaxDir } from '../kodax/data-paths.js';
 import { getDataRootPointerFile, getResolvedDataRoot } from '../kodax/data-root-bootstrap.js';
-import { loadSdkDataRootCopy, type DataRootChange } from '../kodax/data-root-change.js';
+import type { DataRootChange } from '../kodax/data-root-change.js';
 import {
   readDataRootPointer,
   validateDataRootCandidate,
@@ -45,7 +45,6 @@ export function registerDataRootChannels(options: DataRootChannelOptions): void 
       defaultRoot: path.join(os.homedir(), '.kodax'),
       envRoot: resolved.envRoot,
       pointerRoot: readDataRootPointer(getDataRootPointerFile()).pointer?.root ?? null,
-      copySupported: (await loadSdkDataRootCopy()) !== null,
       editable: resolved.source !== 'test',
     };
   });
@@ -73,9 +72,6 @@ export function registerDataRootChannels(options: DataRootChannelOptions): void 
       if (!checked.ok) return { status: 'rejected' as const, ...rejection(checked) };
       if (input.copyData && checked.hasData) {
         return { status: 'rejected' as const, reason: 'has_data' as const };
-      }
-      if (input.copyData && (await loadSdkDataRootCopy()) === null) {
-        return { status: 'rejected' as const, reason: 'copy_unavailable' as const };
       }
       change = { target: checked.root, copyFrom: input.copyData ? getKodaxDir() : null };
     }

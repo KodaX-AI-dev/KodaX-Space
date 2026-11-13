@@ -898,7 +898,7 @@ function DataRootSection(): JSX.Element {
   }
 
   // Copy is offered only into an empty folder; an existing KodaX folder is used as it is.
-  const canCopy = info?.copySupported === true && pending !== null && !pending.hasData;
+  const canCopy = pending !== null && !pending.hasData;
 
   async function apply(target: string | null, copy: boolean): Promise<void> {
     if (!window.kodaxSpace) return;

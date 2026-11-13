@@ -1466,8 +1466,6 @@ export const messages = {
       'Space will close, copy your data to {path}, and reopen using it. The current location stays where it is. Copying may take a while. Continue?',
     'settings.dataRoot.reject.has_data':
       'Data can only be copied into an empty folder. Use the folder as it is, or choose an empty one.',
-    'settings.dataRoot.reject.copy_unavailable':
-      'This build of Space cannot copy data yet. Choose without copying.',
     'settings.dataRoot.reject.incomplete_copy':
       'That folder holds an unfinished copy from an earlier attempt. Empty it or choose another folder.',
     'settings.license': 'License',
@@ -4794,8 +4792,6 @@ export const messages = {
       'Space 将关闭、把数据复制到 {path} 并使用它重新打开。当前位置保持原样。复制可能需要一些时间。是否继续？',
     'settings.dataRoot.reject.has_data':
       '只能把数据复制到空文件夹。请直接使用该文件夹，或选择一个空文件夹。',
-    'settings.dataRoot.reject.copy_unavailable':
-      '当前版本的 Space 暂不支持复制数据。请选择不复制。',
     'settings.dataRoot.reject.incomplete_copy':
       '该文件夹中有上次未完成的复制。请清空它或选择其他文件夹。',
     'settings.license': '许可证',

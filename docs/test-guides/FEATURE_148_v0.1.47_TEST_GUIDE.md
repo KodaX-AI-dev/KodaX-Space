@@ -6,18 +6,18 @@
 
 - 不要用真实用户数据。每台机器先备份 `~/.kodax` 与 `<appData>/KodaX Space/data-root.json`，或在专用测试账户中进行。
 - `<appData>`：Windows `%APPDATA%`；macOS `~/Library/Application Support`；Linux `~/.config`。
-- 复制场景需要带 `copyKodaXDataRoot` 的 SDK 构建。Registry beta.8 只能验证切换和 `copy_unavailable` 提示。
+- 复制场景使用 Registry SDK `0.7.97-beta.9` 的 `copyKodaXDataRoot`（Space 当前精确依赖该版本）。
 - 每次切换前后对旧位置做文件清单与哈希（例如 `find <root> -type f -exec sha256sum {} +`），用于确认旧位置未被修改。
 
 ## 自动化覆盖
 
-| 范围                       | 命令（在 `apps/desktop` 下）                                                                                            | 结果  |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----- |
-| 解析、指针、校验、环境标记 | `node --test --import ../../scripts/test/isolated-credential-profile.mjs --import tsx electron/kodax/data-root.test.ts` | 21/21 |
-| 切换、排除项、失败不写指针 | 同上，`electron/kodax/data-root-change.test.ts`                                                                         | 6/6   |
-| 启动对话框文案             | 同上，`electron/kodax/data-root-notice.test.ts`                                                                         | 通过  |
-| SDK 复制（KodaX 仓库）     | `npx vitest run src/data-root-copy.test.ts`                                                                             | 25/25 |
-| Space 驱动真实 SDK 构建    | 一次性集成脚本：复制、路径改写、排除项、指针、非空目标拒绝、标记识别                                                    | 通过  |
+| 范围                                                               | 命令（在 `apps/desktop` 下）                                                                                            | 结果  |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ----- |
+| 解析、指针、校验、环境标记                                         | `node --test --import ../../scripts/test/isolated-credential-profile.mjs --import tsx electron/kodax/data-root.test.ts` | 21/21 |
+| 切换、排除项、失败不写指针，真实 beta.9 复制（路径改写、标记拒绝） | 同上，`electron/kodax/data-root-change.test.ts`                                                                         | 通过  |
+| 启动对话框文案                                                     | 同上，`electron/kodax/data-root-notice.test.ts`                                                                         | 通过  |
+| SDK 复制（KodaX 仓库）                                             | `npx vitest run src/data-root-copy.test.ts`                                                                             | 25/25 |
+| Space 驱动真实 SDK 构建                                            | 一次性集成脚本：复制、路径改写、排除项、指针、非空目标拒绝、标记识别                                                    | 通过  |
 
 ## 人工场景
 
@@ -33,7 +33,7 @@
 2. Space 关闭并重新打开；当前位置为新目录，会话列表为空，Provider 需重新配置。
 3. 旧位置清单与哈希不变。
 
-### C. 复制到空目录（需要带复制导出的 SDK）
+### C. 复制到空目录
 
 1. 选择空目录（可含 `desktop.ini` / `.DS_Store`），勾选复制，确认。
 2. 进度窗口显示文件数；完成后重新打开，会话、设置、Provider 可用，历史会话中的图片与工具输出可打开。

@@ -2,10 +2,10 @@
 // 一段长时间"什么都没发生"。窗口只加载内联页面,页面不访问 IPC 或网络。
 
 import { BrowserWindow } from 'electron';
-import type { DataRootCopyProgress } from '../kodax/data-root-change.js';
+import type { CopyKodaXDataRootProgress } from '@kodax-ai/kodax/runtime';
 
 export interface DataRootProgressWindow {
-  update(progress: DataRootCopyProgress): void;
+  update(progress: CopyKodaXDataRootProgress): void;
   close(): void;
 }
 

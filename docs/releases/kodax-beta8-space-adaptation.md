@@ -1,5 +1,7 @@
 # SDK 0.7.97-beta.8 的 Space 适配
 
+> 2026-11-14：已被 [beta.9 适配](kodax-beta9-space-adaptation.md) 取代。补充更正：beta.8 SDK CHANGELOG 原称未放大超时，实际 Job 身份探针期限为 10 秒（原 PowerShell 探针 5 秒）；Space 自身没有放大超时。
+
 2026-11-13。Root 和 Desktop 精确依赖 `@kodax-ai/kodax@0.7.97-beta.8`，从 Registry 安装，不再使用本地候选包。
 
 | 包              | SHA-512                                                                                    |

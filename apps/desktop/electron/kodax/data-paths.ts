@@ -105,8 +105,8 @@ export function getScopedUserDataDir(): string | null {
  * - 测试模式:强制把 KODAX_HOME 指到隔离的 tmpdir/kodax-test-<id>，即使调用者 shell
  *   已经设置 KODAX_HOME 也不能让测试碰真实数据;KODAX_PROFILE_DIR 被忽略。
  * - 默认 / 便携版:KODAX_HOME 没设则不动,SDK 走它自己的 os.homedir()/.kodax 默认。
- * - KODAX_HOME 已设:规整回 getKodaxDir()。SDK 会原样接受相对路径而 Space 忽略它,
- *   不规整两边就会分叉到不同目录。
+ * - KODAX_HOME 已设:规整回 getKodaxDir()。SDK beta.9 起与 Space 一样忽略相对路径;
+ *   规整后子进程(内置终端里的旧版 CLI 等)也拿到同一个绝对根。
  * - KODAX_PROFILE_DIR(已弃用):没设 KODAX_HOME 时当作 KODAX_HOME;两者都设以 KODAX_HOME 为准。
  *   只要它是有效绝对路径就返回 deprecatedProfileDir,由调用方记录告警。
  */

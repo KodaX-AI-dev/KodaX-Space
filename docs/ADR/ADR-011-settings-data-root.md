@@ -14,7 +14,7 @@ Space 与 KodaX SDK 共享一个数据根（会话、设置、凭据、Runtime �
 2. **优先级**：测试模式 > Settings 指针 > `KODAX_HOME` > `~/.kodax`。指针存放在 `<appData>/KodaX Space/data-root.json`，即它描述的根之外，因此根不可用时仍可读取，也不会被复制。
 3. **启动前解析**：`data-root-bootstrap` 是 `main.ts` 的第一个 import，在 store 与 SDK 加载前写好 `KODAX_HOME`。指针指向的位置不可用时，本次回退并询问用户，从不自动创建该目录。
 4. **切换即重启**：复用更新安装的退出路径。Host 必须验证停止才继续；然后可选复制，再写指针，最后 relaunch。任何前置步骤失败都不写指针。
-5. **复制原位进行，旧根只读**：SDK `copyKodaXDataRoot` 只接受空目标（忽略系统杂项文件），先写 `.kodax-copy-incomplete` 标记，完成后删除；失败时清理。JSON/JSONL 中指向旧根的绝对路径被改写到新根。按根独立的 Space 客户端身份与 input intents 不复制。
+5. **复制原位进行，旧根只读**：SDK `copyKodaXDataRoot` 只接受空目标（忽略系统杂项文件），先写 `.kodax-copy-incomplete` 标记，完成后删除；失败时只删除本次写入的内容，带标记的残留目标会被拒绝而不是清空。JSON/JSONL 中指向旧根的绝对路径被改写到新根。按根独立的 Space 客户端身份与 input intents 不复制。
 
 ## 被否决方案
 
@@ -28,6 +28,6 @@ Space 与 KodaX SDK 共享一个数据根（会话、设置、凭据、Runtime �
 ## 后果与重审条件
 
 - 切换需要重启，并且要求没有其他 KodaX 客户端连接当前根。
-- 复制依赖 SDK 导出。没有该导出的 SDK 版本只提供“切换到空目录或已有数据目录”。
+- 复制依赖 SDK 导出 `copyKodaXDataRoot`（Registry `0.7.97-beta.9` 起发布）。Space 精确依赖该版本或更高版本，因此不再保留“SDK 不支持复制”的降级路径。
 - 不随根移动的状态（Linux 全局 keyring 中的 Partner 连接器密钥、`safeStorage` 密钥、沙箱 ACL）记录在 F148 已知限制中。
 - 若 SDK 提供运行中重定位会话目录与 Host 的公开契约，或改为以根内相对路径存储，重审“重启切换”与“复制时改写路径”。

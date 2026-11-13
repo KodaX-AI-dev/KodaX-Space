@@ -70,7 +70,7 @@ import { dataRootStartupNotice } from './kodax/data-root-notice.js';
 import { writeDataRootPointer } from './kodax/data-root.js';
 import {
   commitDataRootChange,
-  loadSdkDataRootCopy,
+  copyDataRootWithSdk,
   type DataRootChange,
 } from './kodax/data-root-change.js';
 import {
@@ -1627,7 +1627,7 @@ async function finishDataRootChange(change: DataRootChange): Promise<void> {
     try {
       const copied = await commitDataRootChange(change, {
         pointerFile: getDataRootPointerFile(),
-        copyRoot: change.copyFrom !== null ? await loadSdkDataRootCopy() : null,
+        copyRoot: copyDataRootWithSdk,
         onProgress: (p) => progress?.update(p),
       });
       diagnosticsLogger?.info('startup', 'data_root_changed', undefined, {

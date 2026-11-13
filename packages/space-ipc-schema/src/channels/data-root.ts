@@ -24,8 +24,6 @@ export const dataRootGetChannel = {
       envRoot: absolutePathSchema.nullable(),
       /** What the saved Settings pointer holds, even when it is currently unusable. */
       pointerRoot: absolutePathSchema.nullable(),
-      /** True when the bundled KodaX SDK can copy a data root (offered as "copy current data"). */
-      copySupported: z.boolean(),
       /** False in test mode, where the root is forced. */
       editable: z.boolean(),
     })
@@ -40,7 +38,6 @@ export const dataRootRejectionSchema = z.enum([
   'unusable',
   'unrecognized',
   'has_data',
-  'copy_unavailable',
   'incomplete_copy',
 ]);
 

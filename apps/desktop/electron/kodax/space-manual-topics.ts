@@ -146,7 +146,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'alpha.10 接入：普通提问默认一直等待，跳过返回未作答而不会停止任务，Stop 才中断。启动提示会显示实际初始化阶段；上下文容量不足时任务保持等待，可切换模型或停止。原 Main 仍存活时，Host 重启后符合检查点条件的原任务可继续，不重交输入。内置 Skill 缺失或策略加载失败显示本地技能问题，不提示为 Provider 请求失败。旧未知清理只有在 SDK 核验原 Host 已安全退出后才放行，未知工作结果仍保留。',
       'SDK beta.5 至 beta.8（Space 0.1.47 候选）的当前行为：每个 KODAX_HOME 只有一个共享 Host，Space 不再向启动器、owner 状态和退出结算传递 profile（ADR-075）；旧版以 coder profile 启动的 Host 由 SDK 经存储 owner 找到，按 profile 拆分的 Session 状态合并一次，旧 Host 中批准过的全局授权不会带入，需要重新批准。用户图片由 Host 固定为不可变副本，当前视图与历史预览经授权的 Host item reader 读取，支持 PNG/JPEG/WebP/GIF 并校验实际内容；用户消息正文不含模型可见的图片观测标签，观测信息在附件字段中。个人 workflow 从 SDK Agent home 读取，设置 KODAX_HOME 时不再列出 ~/.kodax/workflows。扩展 tool:before 返回 ask 时，审批卡逐条显示“扩展 X 要求确认：原因”，只能允许一次或拒绝；Space 判定为危险操作时同样保留扩展给出的原因。sandbox 观测可带 degradedReadRoots，活动条显示“沙箱降级”并提示 kodax sandbox setup。冷启动把已失效的 Run 子进程记录原样移到 .unresolved/，恢复证据完整保留。',
       '',
-      'SDK beta.8（Issues 245–247，Windows 客户启动失败）把 Coder 启动路径从 PowerShell 改为 SDK 内置、带哈希校验的原生程序：Job 成员关系、kill-on-close 与进程创建身份由原生 __daemon-job-identity 在原有期限内验证，探针无法运行时重试一次，原生拒绝为最终结论，身份无法证明时仍然 fail-closed；启动 Job 的持有者是原生 __daemon-job-supervise，先挂起启动 daemon、入 Job 后才恢复，并以原子方式发布就绪文件，已存在的同名 Job 会被拒绝。失败的启动保留精确的清理句柄，同一数据根的启动准入串行到清理结束；child_exit 可重试，错误信息带上子进程 bootstrap.log 中最后一条 [Error]，已死亡 owner 留下的锁不再把立即退出的子进程拖成完整超时。Space 在此基础上：失败时摘要显示真实状态而不是“就绪”；连续三次失败后显示“重试启动”，同时转入慢速后台重试（30 秒、1、2、4 分钟，之后每 5 分钟），手动重试清零并立即重来；服务不可用时仍可从设置导出诊断（含安装的 SDK 版本、bootstrap/daemon 日志与探针阶段、耗时和错误码，凭据脱敏）。该修复没有放大任何超时，也没有跳过 Job 验证的开关。',
+      'SDK beta.8（Issues 245–247，Windows 客户启动失败）把 Coder 启动路径从 PowerShell 改为 SDK 内置、带哈希校验的原生程序：Job 成员关系、kill-on-close 与进程创建身份由原生 __daemon-job-identity 在 10 秒期限内验证（原 PowerShell 探针为 5 秒），探针无法运行时重试一次，原生拒绝为最终结论，身份无法证明时仍然 fail-closed；启动 Job 的持有者是原生 __daemon-job-supervise，先挂起启动 daemon、入 Job 后才恢复，并以原子方式发布就绪文件，已存在的同名 Job 会被拒绝。失败的启动保留精确的清理句柄，同一数据根的启动准入串行到清理结束；child_exit 可重试，错误信息带上子进程 bootstrap.log 中最后一条 [Error]（beta.9 起只引用本次失败启动写入的行，不会误引上一次启动；原生 Job 监督器自身的失败也写成 [Error] 行；子进程无法回收时提示重试或重启应用即可释放），已死亡 owner 留下的锁不再把立即退出的子进程拖成完整超时。Space 在此基础上：失败时摘要显示真实状态而不是“就绪”；连续三次失败后显示“重试启动”，同时转入慢速后台重试（30 秒、1、2、4 分钟，之后每 5 分钟），手动重试清零并立即重来；服务不可用时仍可从设置导出诊断（含安装的 SDK 版本、bootstrap/daemon 日志与探针阶段、耗时和错误码，凭据脱敏）。除 Job 身份探针期限外没有放大其他超时，也没有跳过 Job 验证的开关。',
       '',
       '以下为历史发布与迁移记录。旧退出 API、journal/replay 与旧会话创建流程不代表当前行为；请优先采用以上当前 Product 契约及 background-runtime、sessions 主题。',
       'v0.1.45 中，Coder daemon 记录稳定 runId、有序事件、transcript 和共享设置，并承接 compact、fork、rewind、队列、权限/AskUser、Workflow 观察与控制、Learning Center、目录/MCP 发现和配置 External Agent 的 Actor/Turn。多个受信任客户端可观察同一 Coder 会话。F141 只增加启动 owner 的安全选择，不改变这些 daemon-native 与 Space host-provider 边界。',
@@ -339,7 +339,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '- Issue 218 源码修复刷新后排队消息及回答重复、运行中历史缺少已完成工具的问题，并恢复输出时间；两次有意发送的相同消息仍保留两份。需使用包含修复的重建版本。切换会话后排队消息偶现消失仍在调查，尚未确认解决。',
       '- 当前共享 Coder 直接显示 SDK 提供的有序当前 view；SDK 保存 canonical 输入、助手消息与工具结果，并提供恢复后的正文和用户图片。Space 不自行重建中断正文，也不写回正式历史；历史浏览与当前聊天分开，重复文字保留各自输入身份。',
       '- SDK 根据来源身份与压缩边界证据只读恢复旧历史，并自动重建旧页面缓存；无法证明的压缩边界显示部分可恢复历史与提示，保留原始记录，不阻塞继续发送消息。Space 不按文字或时间猜测去重，也不改写会话文件。',
-      '- 当前共享 Coder 通过 SDK Product 输入提交与 view 读取确认消息。排队接收只确认 inputId，不预先分配未来 runId；后续 delivery 与有序 view 绑定实际轮次。steer、重连和重试保留原输入身份及授权；Space 保留 queued input 的可见状态，未确认交付时不靠正文或旧气泡猜测成功。拒绝或确认未送达时显示可恢复状态；诊断不含用户正文。',
+      '- 当前共享 Coder 通过 SDK Product 输入提交与 view 读取确认消息。排队接收只确认 inputId，不预先分配未来 runId；后续 delivery 与有序 view 绑定实际轮次。steer、重连和重试保留原输入身份及授权；Space 保留 queued input 的可见状态，未确认交付时不靠正文或旧气泡猜测成功。排队为中断消息（steer）在“等待安全插入点”期间也可点“取回消息”拿回完整原文和附件（SDK beta.9 起）；安全点已认领后取回会明确失败。任务在插入前结束时显示“未送达”，退出 Space 不会撤回它。拒绝或确认未送达时显示可恢复状态；诊断不含用户正文。',
       '- 输入 / 打开命令与技能补全，@ 打开项目文件补全。有候选时 Tab/Enter 插入；完成命令或末级参数后关闭，合法下一层才继续补全。/help 的可选主题在主动输入前缀后建议。候选已加载但无匹配时 Enter 走普通提交/参数校验；仍在加载或加载失败时可按 Esc 退出后提交。已选项显示行内标签，可整体删除/撤销；点击或 Alt+↓ 查看引用并移除。复制保留完整引用。补全与标签只在本地处理，不展开技能或追加隐藏提示。',
       '- 粘贴或拖入 PNG/JPEG/WEBP/GIF 图片会生成图片 chip（GIF 取首帧，作为静态 PNG 发送）；当前 base64/IPC 路径的临时源文件处理上限为 12 MiB，Space 调用 KodaX 将最大边压到 2000 px，并要求最终文件不超过 6 MiB；单轮上限 8 张。',
       '- 拖入或通过 + 菜单添加文件/文件夹：项目内优先插入 @relative/path，项目外插入 file:// 链接；可见消息保留链接，但发送给模型的是经 Electron 校验的原生绝对路径；草稿最多 32 个文件引用。',
@@ -454,7 +454,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'settings',
     title: 'Settings',
-    summary: 'Settings 按应用、任务、能力、系统四组直达页面组织，页脚另有关于页；旧六分类入口仍兼容。',
+    summary:
+      'Settings 按应用、任务、能力、系统四组直达页面组织，页脚另有关于页；旧六分类入口仍兼容。',
     body: text(
       'Settings 是完整工作面，分组导航接替原项目/文件栏；返回后恢复原工作面和导航状态。打开设置不停止并行运行，也不重置工作区输入草稿。可用返回工作区、关闭按钮或 Escape 退出，嵌套确认与编辑器仍优先消费 Escape。',
       '',
@@ -978,7 +979,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'image-paste',
     title: 'Image paste',
-    summary: 'composer 可粘贴/拖入 PNG、JPEG、WEBP、GIF 图片（GIF 取首帧），作为 multimodal 输入发送。',
+    summary:
+      'composer 可粘贴/拖入 PNG、JPEG、WEBP、GIF 图片（GIF 取首帧），作为 multimodal 输入发送。',
     body: text(
       '图片确认损坏时会提示重新提取或替换，不会反复把坏图发给模型。旧会话中的坏图在请求里改为说明文字，其他正常图片和文字保留，原会话和文件不被改写。替换文件后重新读取即可重新校验；有效 WebP 不会仅因归一化器缺少对应解码支持而被拒绝。',
       '',
@@ -1120,7 +1122,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '一般不要手动改 state 文件；若 UI 状态严重损坏，可在备份后重置 ~/.kodax/space/state.json。',
       '',
-      '以上 ~/.kodax 指当前数据根。优先级：测试模式 > 设置 -> 常规 -> 数据位置 > 环境变量 KODAX_HOME > ~/.kodax；设置保存在数据根之外的 <appData>/KodaX Space/data-root.json，只影响 Space，CLI 继续用自己的位置（Space 内置终端继承 Space 的位置）。更换位置会在后台服务确认停止后重启；CLI 等其他客户端仍连接或仍有任务运行时会拒绝且不做任何修改。可选把当前数据复制到空目录：原位置不被修改，JSON/JSONL 中的旧绝对路径改写到新位置，客户端身份和 input intents 不复制；当前 SDK 不支持复制时界面会说明。设置的位置不可用时启动会提示并临时使用下一优先级位置，不会自动新建目录。KODAX_PROFILE_DIR 已弃用，只作为 KODAX_HOME 的别名。',
+      '以上 ~/.kodax 指当前数据根。优先级：测试模式 > 设置 -> 常规 -> 数据位置 > 环境变量 KODAX_HOME > ~/.kodax；设置保存在数据根之外的 <appData>/KodaX Space/data-root.json，只影响 Space，CLI 继续用自己的位置（Space 内置终端继承 Space 的位置）。更换位置会在后台服务确认停止后重启；CLI 等其他客户端仍连接或仍有任务运行时会拒绝且不做任何修改。可选把当前数据复制到空目录（SDK copyKodaXDataRoot）：原位置不被修改，复制期间目标里有 .kodax-copy-incomplete 标记，失败只删除本次写入的内容；JSON/JSONL 中的旧绝对路径改写到新位置；每个 Host 的运行状态（runtime/daemon、进程记录、sandbox 状态等）、客户端身份和 input intents 不复制。含该标记的文件夹是中断的复制，会被拒绝，请清空或换一个。环境变量 KODAX_HOME 必须是绝对路径，相对路径会被 Space 与 SDK 一致忽略。设置的位置不可用时启动会提示并临时使用下一优先级位置，不会自动新建目录。KODAX_PROFILE_DIR 已弃用，只作为 KODAX_HOME 的别名。',
     ),
     aliases: [
       '配置文件',
@@ -1181,13 +1183,12 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'troubleshooting',
     title: 'Troubleshooting',
-    summary:
-      '优先看 Settings/Providers 和设置中的诊断导出；本地 Coder 服务故障可重试启动。',
+    summary: '优先看 Settings/Providers 和设置中的诊断导出；本地 Coder 服务故障可重试启动。',
     body: text(
       '常见问题：',
       '- 本地 Coder 服务负责会话、模型调用和工具执行；启动不要求公网、Provider 或扩展。无 extensions 目录正常。离线可先进入设置，再配置可达的内网模型地址、协议、模型名和所需凭据。未配置模型应影响调用，不应阻止本地服务启动。',
       '- 服务启动失败：临时失败先连续自动重试三次，仍失败则显示失败原因和“重试启动”，同时转入慢速后台重试（30 秒、1、2、4 分钟，之后每 5 分钟），环境恢复后无需重开 Space；点击“重试启动”会清零计数并立即重来。每次重试前先验证并清理原启动进程，不删除 runtime、锁或 owner-policy。服务启动、重连、失败时摘要不显示“就绪”。',
-      '- 启动提示“助手启动失败”：错误信息会带上子进程 bootstrap.log 中最后一条 [Error]。Windows 的 Job 验证与启动已由 SDK 内置原生程序完成，不再依赖 PowerShell 编译，杀毒扫描或系统繁忙不应再让它卡住；若仍失败，请先导出诊断（设置 → 诊断），再保留 `runtime/daemon/default/bootstrap.log` 与 `daemon.log`，并在重启系统前记录进程列表。不要删除 effect/exit lock 或 owner-policy，也不要手动结束仍在运行的 daemon。',
+      '- 启动提示“助手启动失败”：错误信息会带上本次启动在子进程 bootstrap.log 中写下的最后一条 [Error]；提示子进程无法回收时，重试或重启 Space 即可释放。Windows 的 Job 验证与启动已由 SDK 内置原生程序完成，不再依赖 PowerShell 编译，杀毒扫描或系统繁忙不应再让它卡住；若仍失败，请先导出诊断（设置 → 诊断），再保留 `runtime/daemon/default/bootstrap.log` 与 `daemon.log`，并在重启系统前记录进程列表。不要删除 effect/exit lock 或 owner-policy，也不要手动结束仍在运行的 daemon。',
       '- 设置 → 诊断导出 ZIP 在服务不可用时仍可用，包含 Space、Runtime bootstrap/daemon 日志、已安装 SDK 版本和日志收集清单；缺失、不可读或截断会明确标注，凭据脱敏。',
       '- No provider/key：到 Settings -> Providers 配 key，或确认环境变量。',
       '- AI 读不到文件：确认已打开项目目录，路径引用是否在 workspace 内。',
