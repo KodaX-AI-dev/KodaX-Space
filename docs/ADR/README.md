@@ -14,6 +14,7 @@
 | [ADR-008](ADR-008-mascot-soft-rig-animation.md)    | Mascot 资产动画策略：像素基准 + soft rig                                                   | Accepted |
 | [ADR-009](ADR-009-settlement-certification-identity.md) | 旧输出路径的结算认证；共享 Coder 正文范围由 ADR-010 替代 | Accepted |
 | [ADR-010](ADR-010-sdk-product-output.md) | 共享 Coder 聊天只消费 SDK 输出面，当前与历史窗口分离 | Accepted |
+| [ADR-011](ADR-011-settings-data-root.md) | 数据位置由 Settings 指针决定，切换经 Host 停止重启，复制原位进行 | Accepted |
 
 ## 写 ADR 的约束
 

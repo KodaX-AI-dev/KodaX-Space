@@ -91,8 +91,13 @@ flowchart TD
 | `<profile-root>/runtime/`                | Shared Runtime state/journal                | Coder daemon runs；默认实际为 `~/.kodax/runtime/`                                                                  |
 | `KODAX_HOME=<abs>`                       | Space 与 KodaX 共享的数据根（含 Space 数据）| 该绝对路径本身就是数据根，不再追加 `.kodax`；必须在应用启动前设置；相对路径会被忽略                                 |
 | `KODAX_TEST_ONBOARDING=1\|<safe-id>`     | 测试隔离 profile                            | 强制写入系统临时目录，禁止指向真实用户数据                                                                         |
+| `<appData>/KodaX Space/data-root.json`   | 设置 → 常规 → 数据位置 保存的指针           | 位于数据根之外；优先于 `KODAX_HOME`；只影响 Space，不影响 CLI                                                      |
 
-`KODAX_PROFILE_DIR` 已弃用：只设它时等价于 `KODAX_HOME`（日志会记录告警），两者同时设置以 `KODAX_HOME` 为准。Space 会在首次加载 SDK 前把数据根对齐到 `KODAX_HOME`；测试模式优先级最高。只想让 Space 独立于 CLI 时，只在 Space 的启动项里设置它，不要写进全局环境变量，否则 CLI 也会改用该目录。
+数据根优先级：测试模式 > 设置中的数据位置 > `KODAX_HOME` > `~/.kodax`。Space 在首次加载 SDK 前把结果写入 `KODAX_HOME`，所以 Space 内置终端里运行的 CLI 也使用同一位置。只想让 Space 独立于 CLI，用设置里的数据位置即可，不要写全局环境变量。
+
+在设置中更换位置会经已验证的 Host 停止后重启；其他 KodaX 客户端（如 CLI）连接当前数据或仍有任务运行时会被拒绝，什么都不改。可选把当前数据复制到空目录（需要支持复制的 SDK），复制从不修改旧位置，JSON/JSONL 中指向旧位置的绝对路径会改写到新位置。设置的位置不可用（如移动硬盘未插）时，本次回退并询问用户，不会自动新建目录。详见 [F148](features/v0.1.47.md#feature_148-settings-based-data-location)。
+
+`KODAX_PROFILE_DIR` 已弃用，将在下一版本移除：只设它时等价于 `KODAX_HOME`（日志会记录告警），两者同时设置以 `KODAX_HOME` 为准。
 
 KodaX 0.7.96 的命令沙箱默认继承宿主环境，同时继续阻止固定的 KodaX/Electron 执行控制
 变量。旧 `config.json#sandbox.envPass` 输入已经失效；Space 不再编辑、写入或向任何 Run
@@ -246,7 +251,7 @@ native SQLite load、物理 sandbox helper/doctor、真实 packaged boot 和 Git
 | 现象                          | 首先检查                                                                                                                 |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 没有 Provider / API key       | Settings → Providers，检查已选来源、auth.json 权限和迁移状态；需要时明确选择环境变量或重试原凭证，不会自动换账号         |
-| 会话或配置出现在错误 profile  | 启动前的 `KODAX_HOME`；不要在 SDK import 后修改                                                     |
+| 会话或配置出现在错误 profile  | 设置 → 常规 → 数据位置 显示的当前位置与来源；启动前的 `KODAX_HOME`，不要在 SDK import 后修改        |
 | Runtime run 失败              | 版本信息、runId、`~/.kodax/space/logs`、Runtime status/capability snapshot                                               |
 | Packaged daemon 启动即退出    | `~/.kodax/space/logs`；必要时把 `scripts/diagnose-packaged-daemon.cmd` 复制到 extracted app 目录前台复现                 |
 | MCP 工具不可见                | MCP panel 的 Refresh/Reload、server diagnostics；MCP 子进程由 Space 管理                                                 |

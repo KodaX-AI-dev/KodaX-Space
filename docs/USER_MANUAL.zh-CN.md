@@ -717,7 +717,18 @@ flowchart TD
     Auth["auth.json / 权限受限的凭证文件"] --> Secret["Provider credentials"]
 ```
 
-说明：默认 profile 根是 `~/.kodax`；因此 0.1.33 shared daemon 的 Runtime 状态/journal 实际默认位置是 `~/.kodax/runtime`。自定义 `KODAX_HOME` 时路径随数据根移动（已弃用的 `KODAX_PROFILE_DIR` 等价于 `KODAX_HOME`）。0.1.31 embedded Runtime 可能留下历史的 `~/.kodax/.kodax/runtime`，0.1.32 起不再把它作为当前 daemon 真理源。
+说明：默认 profile 根是 `~/.kodax`；因此 0.1.33 shared daemon 的 Runtime 状态/journal 实际默认位置是 `~/.kodax/runtime`。自定义数据位置时路径随数据根移动（已弃用的 `KODAX_PROFILE_DIR` 等价于 `KODAX_HOME`，将在下一版本移除）。0.1.31 embedded Runtime 可能留下历史的 `~/.kodax/.kodax/runtime`，0.1.32 起不再把它作为当前 daemon 真理源。
+
+### 更换数据位置
+
+在 设置 → 常规 → 数据位置 查看 Space 当前使用的位置及其来源。优先级：测试模式 > 此处的设置 > 环境变量 `KODAX_HOME` > `~/.kodax`。设置只影响 Space；KodaX CLI 继续使用自己的位置，因此两者不再共享会话（Space 内置终端中的 CLI 除外，它继承 Space 的位置）。
+
+1. 点“更换位置…”，选择空目录或已有 KodaX 数据目录。网络位置、当前位置的子目录或父目录、含其他文件的目录会被拒绝。
+2. 选择空目录时可勾选“复制当前数据”。复制不修改原位置，文件中的旧绝对路径会改写到新位置；客户端身份等按位置独立的数据不复制。此版本若显示无法复制，只能不复制直接切换。
+3. 确认“保存并重启”。Space 会先安全停止后台服务；如果 CLI 等其他 KodaX 客户端仍连接当前数据或仍有任务运行，会提示并且什么都不改。
+4. 原位置的数据始终保留，“恢复默认位置”可随时切回。
+
+设置的位置不可用（例如移动硬盘未插）时，启动会提示并临时使用下一优先级的位置，不会自动新建目录；重新连接后重启即可恢复。Linux 上 Partner 连接器密钥保存在系统 keyring，Space 的本机加密密钥由系统保管，二者不随数据位置移动，切换后可能需要重新授权。
 
 - Renderer 不直接执行 LLM、文件工具或 shell。
 - Renderer 不读回已保存的 Key，普通 IPC 列表、日志和错误消息不包含 Key。
@@ -796,7 +807,7 @@ flowchart TD
 3. Coder/Partner/Quick Ask 与 session 状态；
 4. 可重复的步骤；
 5. 脱敏后的日志、错误和截图；
-6. 是否设置 `KODAX_HOME`、`KODAX_PROFILE_DIR` 或 Runtime rollback 环境变量。
+6. 设置 → 常规 → 数据位置 显示的位置与来源，是否设置 `KODAX_HOME`、`KODAX_PROFILE_DIR` 或 Runtime rollback 环境变量。
 
 普通问题可使用 GitHub Issues。安全漏洞、凭据泄露或未公开数据请不要提交公开 Issue，应通过私密渠道联系维护者。
 
