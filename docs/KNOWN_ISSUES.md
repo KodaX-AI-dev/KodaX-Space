@@ -248,6 +248,7 @@ Last Updated: 2026-11-13
 | 246 | High | Resolved (source; not released) | Windows Job verification failure leaves Coder unavailable without an actionable recovery flow | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown | 2026-11-12 |
 | 247 | Medium | Resolved (source; not released) | New-conversation task summary says Ready while the Coder backend has failed to start | Observed Space 0.1.47-alpha.5; first affected version unknown | 2026-11-12 |
 | 248 | High | Resolved (source; not released) | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
+| 249 | Medium | Resolved (source; not released) | Sent prompt stays (fully or partly) in the composer when a line ends with a line break | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11 | 2026-11-13 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16559,16 +16560,48 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
   Other installations' Hosts are never replaced. alpha.5 (beta.4) lacks the Issue 405 fix, so
   alpha.5 with a differently built CLI cannot be repaired retroactively.
 
+## Issue 249 — Sent prompt stays (fully or partly) in the composer when a line ends with a line break
+
+- **Priority**: Medium.
+- **Status**: Resolved in source, not released.
+- **Introduced**: Space 0.1.47-alpha.5, the first release with the Lexical composer (`2e8bbd7e`).
+  Reported on Windows 11; not platform specific.
+- **Created**: 2026-11-13.
+- **Original problem**: after sending, the prompt text remains in the composer. In the customer
+  screenshot the first part of the message was cleared and the later part ("然后这一段：…") stayed.
+- **Reproduction**: type `abc`, press Shift+Enter, press Enter: React `prompt` becomes `''` but the
+  editor still shows `abc`. Partial residue: put a multi-line draft into an empty composer
+  externally (quote insert, prefill, history, failed-send restore — one paragraph per line), then
+  Shift+Enter and paste text ending with a newline, press Enter: only the last paragraph remains,
+  and it flows back into `prompt`. A leading empty line also survives a send.
+- **Root cause**: sending sets `prompt` to `''`; `replaceDraft('', before)` in
+  `useComposerEditor.ts` selects `[0, before.length]` with `selectOffsets` and removes it.
+  `selectOffsets` (`composerEditorProjection.ts`) skips `LineBreakNode`s and, when the target
+  is at or before a line break that ends the block, falls back to `(block, 0, 'element')` — the
+  block start. The selection collapses (single paragraph: nothing removed, editor and `prompt`
+  diverge) or ends at the start of the last paragraph (that paragraph survives). The same mapping
+  serves `setSelectionRange`, `insertToken`, and `deleteAutoSeparator`.
+- **Resolution (2026-11-13)**: `selectOffsets` addresses a line break (or any non-text child) by
+  child index: a target at or before it becomes `(block, index, 'element')`, and a target at the
+  block end becomes `(block, childrenSize, 'element')`. Rebuilding the root on clear was tried and
+  rejected: it dropped the selection and broke later typing and paste.
+- **Fixed**: source after 0.1.47-alpha.5 (not released).
+- **Files changed**: `apps/desktop/renderer/src/shell/composerEditorProjection.ts`,
+  `ComposerEditor.test.ts`.
+- **Tests added**: browser test "composer clears every line on send and maps offsets at trailing
+  line breaks" (trailing newline, leading newline, injected multi-paragraph draft plus a pasted
+  quote ending in a newline, append after a trailing line break); red before the fix.
+
 ## Summary
 
-- Total: 235
+- Total: 236
 - Open: 1
 - Ready: 5
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 218
+- Resolved (including source-only fixes): 219
 - High: 118
-- Medium: 103
+- Medium: 104
 - Low: 14
 - Next ready to resolve: 222

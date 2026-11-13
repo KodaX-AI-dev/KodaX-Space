@@ -75,25 +75,30 @@ export function selectOffsets(start: number, end: number): void {
   const setPoint = (point: typeof selection.anchor, target: number, endBias: boolean): void => {
     let offset = 0;
     for (const block of $getRoot().getChildren()) {
-      if ($isElementNode(block))
-        for (const node of block.getChildren()) {
-          const size = wireText(node).length;
-          if (target <= offset + size && $isTextNode(node)) {
-            point.set(
-              node.getKey(),
-              node instanceof ComposerTokenNode
-                ? target <= offset || (!endBias && target < offset + size)
-                  ? 0
-                  : node.getTextContentSize()
-                : Math.max(0, target - offset),
-              'text',
-            );
-            return;
-          }
-          offset += $isLineBreakNode(node) ? 1 : size;
+      const children = $isElementNode(block) ? block.getChildren() : [];
+      for (const [index, node] of children.entries()) {
+        const size = wireText(node).length;
+        if (target <= offset + size && $isTextNode(node)) {
+          point.set(
+            node.getKey(),
+            node instanceof ComposerTokenNode
+              ? target <= offset || (!endBias && target < offset + size)
+                ? 0
+                : node.getTextContentSize()
+              : Math.max(0, target - offset),
+            'text',
+          );
+          return;
         }
+        // Line breaks are not text nodes: address the gap before them by child index.
+        if (target <= offset) {
+          point.set(block.getKey(), index, 'element');
+          return;
+        }
+        offset += $isLineBreakNode(node) ? 1 : size;
+      }
       if (target <= offset) {
-        point.set(block.getKey(), 0, 'element');
+        point.set(block.getKey(), children.length, 'element');
         return;
       }
       offset += 1;

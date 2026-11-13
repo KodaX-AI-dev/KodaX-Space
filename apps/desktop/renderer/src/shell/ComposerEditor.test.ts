@@ -5,13 +5,28 @@ import { chromium, type Page } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-test('composer keeps canonical input through atomic deletion, undo, copy and external restore', async () => {
+async function bundleApp(app: string): Promise<string> {
   const bundle = await build({
     stdin: {
       contents: `
       import React, { useRef, useState } from 'react';
       import { createRoot } from 'react-dom/client';
       import { ComposerEditor } from './ComposerEditor';
+      ${app}
+      createRoot(document.getElementById('root')).render(<App/>);`,
+      loader: 'tsx',
+      resolveDir: fileURLToPath(new URL('.', import.meta.url)),
+    },
+    bundle: true,
+    write: false,
+    format: 'iife',
+    define: { 'process.env.NODE_ENV': '"test"' },
+  });
+  return bundle.outputFiles[0]!.text;
+}
+
+test('composer keeps canonical input through atomic deletion, undo, copy and external restore', async () => {
+  const script = await bundleApp(`
       function App() {
         const [value, setValue] = useState('Please inspect ');
         const [readOnly, setReadOnly] = useState(false);
@@ -28,16 +43,7 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
           <button onClick={()=>ref.current.insertToken(0,4,{kind:'command',label:'/review',value:'/review'})}>Accept command</button>
           <button onClick={()=>ref.current.insertToken(ref.current.value.length,ref.current.value.length,{kind:'file',label:'demo.ts',value:'@tests/demo.ts'})}>Other file</button>
           <output>{value}</output></>;
-      }
-      createRoot(document.getElementById('root')).render(<App/>);`,
-      loader: 'tsx',
-      resolveDir: fileURLToPath(new URL('.', import.meta.url)),
-    },
-    bundle: true,
-    write: false,
-    format: 'iife',
-    define: { 'process.env.NODE_ENV': '"test"' },
-  });
+      }`);
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
@@ -46,7 +52,7 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
     await page.setContent(
       '<style>.relative{position:relative}.composer-token-details{position:absolute;bottom:100%;background:white}</style><div id="root" style="margin-top:200px"></div>',
     );
-    await page.addScriptTag({ content: bundle.outputFiles[0]!.text });
+    await page.addScriptTag({ content: script });
     await page.getByText('Insert', { exact: true }).click();
     const editor = page.getByRole('textbox');
     await editor.focus();
@@ -142,6 +148,68 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
     ]);
     assert.equal(await page.locator('output').textContent(), '@src/demo.ts @tests/demo.ts ');
     if (process.env.COMPOSER_COVERAGE) await recordCoverage(page);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('composer clears every line on send and maps offsets at trailing line breaks', async () => {
+  const script = await bundleApp(`
+      function App() {
+        const [value, setValue] = useState('');
+        return <><ComposerEditor value={value} onChange={setValue} onSelectionChange={()=>{}}
+          placeholder="Message" onKeyDown={(event)=>{if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); setValue('');}}} onPaste={()=>{}} />
+          <button onClick={()=>setValue('first\\nsecond')}>Inject</button>
+          <button onClick={()=>setValue((current)=>current + 'X')}>Append</button>
+          <output>{value}</output></>;
+      }`);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent('<div id="root"></div>');
+    await page.addScriptTag({ content: script });
+    const editor = page.getByRole('textbox');
+    const output = page.locator('output');
+    const paste = (text: string) =>
+      editor.evaluate((element, value) => {
+        const data = new DataTransfer();
+        data.setData('text/plain', value);
+        element.dispatchEvent(
+          new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
+        );
+      }, text);
+    const sendAndExpectEmpty = async (draft: string) => {
+      assert.equal(await output.textContent(), draft);
+      await page.keyboard.press('Enter');
+      assert.equal(await output.textContent(), '');
+      assert.equal(
+        await editor.textContent(),
+        '',
+        `residue after sending ${JSON.stringify(draft)}`,
+      );
+    };
+
+    await editor.focus();
+    await page.keyboard.type('abc');
+    await page.keyboard.press('Shift+Enter');
+    await sendAndExpectEmpty('abc\n');
+
+    await page.keyboard.press('Shift+Enter');
+    await page.keyboard.type('abc');
+    await sendAndExpectEmpty('\nabc');
+
+    await page.getByText('Inject', { exact: true }).click();
+    await editor.focus();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.press('Shift+Enter');
+    await paste('quote\n\nquestion\n');
+    await sendAndExpectEmpty('first\nsecond\nquote\n\nquestion\n');
+
+    await page.keyboard.type('abc');
+    await page.keyboard.press('Shift+Enter');
+    await page.getByText('Append', { exact: true }).click();
+    assert.equal(await output.textContent(), 'abc\nX');
+    assert.equal(await editor.textContent(), 'abcX');
   } finally {
     await browser.close();
   }
