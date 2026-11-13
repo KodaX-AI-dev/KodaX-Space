@@ -2041,10 +2041,12 @@ async function requestCompleteExit(): Promise<void> {
     if (pendingUpdateInstallation && disposition !== 'stop-runtime-and-exit') return;
     console.info(`[main] complete exit preflight settled in ${Date.now() - requestStartedAt}ms`);
     if (disposition === 'exit-preserve-runtime') {
-      const cleanup = await runtimeHostAdapter.stopSpaceOwnedRuntimeWorkForForcedExit();
+      const cleanup = await runtimeHostAdapter.stopSpaceOwnedRuntimeWorkForForcedExit({
+        preserveHost: true,
+      });
       if (cleanup.failed)
         throw createCoderOwnerRecoveryRestartError(
-          [new Error('Client cleanup remains unverified.')],
+          [new Error(cleanup.message ?? 'Client cleanup remains unverified.')],
           'Space client exit needs recovery.',
         );
       exitCommitted = true;

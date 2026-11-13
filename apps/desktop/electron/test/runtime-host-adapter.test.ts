@@ -6231,12 +6231,41 @@ test('post-mutation SDK settlement blockage preserves the live projection and re
   assert.equal(adapter.snapshot().state, 'ready');
 });
 
+test('preserving a shared Host requests only personal client exit and keeps a blocked cause', async () => {
+  const fake = createFakeRuntime();
+  const shutdownIntents: (boolean | undefined)[] = [];
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeExitSettler: async (input) => {
+      shutdownIntents.push(input.shutdownHost);
+      return {
+        status: 'blocked',
+        reason: 'cleanup_failed',
+        nextAction: 'relaunch-space',
+        message: 'Run run_1 did not stop.',
+      };
+    },
+  });
+
+  await adapter.initialize();
+  assert.deepEqual(await adapter.stopSpaceOwnedRuntimeWorkForForcedExit({ preserveHost: true }), {
+    attempted: 0,
+    failed: 1,
+    message: 'Run run_1 did not stop.',
+  });
+  assert.deepEqual(shutdownIntents, [false], 'peers keep the Host; do not ask it to stop');
+});
+
 test('forced exit uses SDK personal cleanup rather than inferred principal ownership', async () => {
   const fake = createFakeRuntime();
   let requests = 0;
   assert.ok(fake.runtime.lifecycle);
   fake.runtime.lifecycle.requestExit = async (input) => {
     requests += 1;
+    assert.equal(input.shutdownHost, true, 'forced exit still stops an idle Host');
     return {
       requestId: input.requestId,
       clientId: 'opaque-sdk-client',

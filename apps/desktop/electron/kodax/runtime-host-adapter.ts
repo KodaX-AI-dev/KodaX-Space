@@ -7940,14 +7940,21 @@ export class RuntimeHostAdapter {
    * forced Space exit. Session identity is deliberately not used as client
    * ownership: several Runtime clients may attach to one Session concurrently.
    */
-  async stopSpaceOwnedRuntimeWorkForForcedExit(): Promise<{
+  /** `preserveHost`: peers keep the Host, so only this client's exit is requested. */
+  async stopSpaceOwnedRuntimeWorkForForcedExit(options?: {
+    readonly preserveHost?: boolean;
+  }): Promise<{
     readonly attempted: number;
     readonly failed: number;
+    readonly message?: string;
   }> {
     if (!this.hasReadyRuntime()) {
       return { attempted: 0, failed: 0 };
     }
-    const settlement = await this.requestClientExitSettlement(await this.requireRuntime());
+    const settlement = await this.requestClientExitSettlement(
+      await this.requireRuntime(),
+      options?.preserveHost !== true,
+    );
     const cleanup = settlement.receipt?.cleanup;
     return {
       attempted: cleanup
@@ -7956,12 +7963,16 @@ export class RuntimeHostAdapter {
           cleanup.operationIds.length +
           cleanup.withdrawnInputs.length
         : 0,
-      failed: settlement.status === 'blocked' ? 1 : 0,
+      ...(settlement.status === 'blocked'
+        ? { failed: 1, message: settlement.message }
+        : { failed: 0 }),
     };
   }
 
+  /** The first caller fixes the shutdown intent; later callers share its one SDK receipt. */
   private requestClientExitSettlement(
     runtime?: KodaXDaemonRuntime,
+    shutdownHost = true,
   ): Promise<RuntimeExitSettlement> {
     if (!this.clientExitSettlement) {
       this.clientExitSettlement = (
@@ -7969,6 +7980,7 @@ export class RuntimeHostAdapter {
       )({
         configHome: this.runtimeConfigHome(),
         ...(runtime ? { runtime } : {}),
+        shutdownHost,
       });
     }
     return this.clientExitSettlement;

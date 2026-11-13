@@ -249,6 +249,7 @@ Last Updated: 2026-11-13
 | 247 | Medium | Resolved (source; not released) | New-conversation task summary says Ready while the Coder backend has failed to start | Observed Space 0.1.47-alpha.5; first affected version unknown | 2026-11-12 |
 | 248 | High | Resolved (source; not released) | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
 | 249 | Medium | Resolved (source; not released) | Sent prompt stays (fully or partly) in the composer when a line ends with a line break | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11 | 2026-11-13 |
+| 250 | Medium | Resolved (source; not released) | Quit with nothing running fails while a `kodax` CLI shares the Host | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8 | 2026-11-13 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16592,16 +16593,42 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
   line breaks" (trailing newline, leading newline, injected multi-paragraph draft plus a pasted
   quote ending in a newline, append after a trailing line break); red before the fix.
 
+## Issue 250 — Quit with nothing running fails while a `kodax` CLI shares the Host
+
+- **Priority**: Medium.
+- **Status**: Resolved in source, not released.
+- **Introduced**: source after 0.1.47-alpha.5, when Space and the CLI began sharing the `default`
+  Host (`4a28edda`, KodaX ADR-075). Observed in a local `out/win-unpacked` build with SDK
+  0.7.97-beta.8 on Windows 11.
+- **Created**: 2026-11-13.
+- **Original problem**: with no task running and a `kodax` CLI attached, Quit reports that the
+  client exit needs recovery ("Client cleanup remains unverified.") and Space does not exit.
+- **Root cause**: the CLI's connection makes the exit disposition `exit-preserve-runtime`, but
+  the preserve path still requested `shutdownHost: true`. The SDK then ran its full stop
+  preflight (4.6–17.5 s in `daemon.log`) before refusing with `connected_clients` (KodaX
+  Issue 410). Space's 15-second settlement deadline expired first, so a clean cleanup was
+  reported as unverified, and the real cause was replaced by a fixed message.
+- **Resolution (2026-11-13)**: the preserve path calls
+  `stopSpaceOwnedRuntimeWorkForForcedExit({ preserveHost: true })`, which requests only this
+  client's exit (`shutdownHost: false`); no Host stop is attempted. A blocked settlement now
+  returns its own message for the recovery error. The forced-exit path still asks to stop an
+  idle Host. KodaX Issue 410 makes the SDK refuse such a stop at once when a peer is connected.
+- **Fixed**: source after 0.1.47-alpha.5 (not released); the SDK half needs the next KodaX build.
+- **Files changed**: `apps/desktop/electron/kodax/runtime-host-adapter.ts`,
+  `apps/desktop/electron/main.ts`, `apps/desktop/electron/test/runtime-host-adapter.test.ts`.
+- **Tests added**: "preserving a shared Host requests only personal client exit and keeps a
+  blocked cause" (red before the fix); the forced-exit test now asserts `shutdownHost: true`.
+
 ## Summary
 
-- Total: 236
+- Total: 237
 - Open: 1
 - Ready: 5
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 219
+- Resolved (including source-only fixes): 220
 - High: 118
-- Medium: 104
+- Medium: 105
 - Low: 14
 - Next ready to resolve: 222
