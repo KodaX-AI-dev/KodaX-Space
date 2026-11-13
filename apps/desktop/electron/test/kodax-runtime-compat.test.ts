@@ -1199,7 +1199,7 @@ test('Space pins the same SDK in both manifests and verifies local candidate int
   const lock = require('../../../../package-lock.json') as {
     packages: Record<string, { version?: string; resolved?: string; integrity?: string }>;
   };
-  const expected = '0.7.97-beta.7';
+  const expected = '0.7.97-beta.8';
   const rootPin = root.dependencies['@kodax-ai/kodax']!;
   const desktopPin = desktop.dependencies['@kodax-ai/kodax']!;
   assert.equal(INSTALLED_KODAX_VERSION, expected);
@@ -1219,7 +1219,7 @@ test('Space pins the same SDK in both manifests and verifies local candidate int
   assert.equal(desktopPin, expected);
   assert.match(
     lock.packages['node_modules/@kodax-ai/kodax']?.resolved ?? '',
-    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-beta\.7\.tgz$/,
+    /^https:\/\/registry\.npmjs\.org\/@kodax-ai\/kodax\/-\/kodax-0\.7\.97-beta\.8\.tgz$/,
   );
 });
 

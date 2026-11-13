@@ -144,6 +144,10 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       CURRENT_RUNTIME +
         '当前构建通过公开 Product 输入、历史、统计和 lifecycle 契约接入共享 Host；SDK alpha.4 移除实时 Sidecar Verifier 与 /verifier-log，主 Agent 在当前 Run 内用工具及渲染证据检查结果，visual-review 提供检查方法；旧 verifier 消息仅作为历史记录读取。SDK alpha.5 修复实时工具图片附件，公开 attachment 读取提供 PNG 字节、尺寸和哈希校验；证据可读取不代表视觉审查通过。守护进程 preflight 在已知 mutation 忙碌时返回 conflict，Space 保留当前会话投影并拒绝把忙碌视为可停止。启动进度沿用 Runtime connection 投影显示本地阶段，SDK ready 不等于 Space 会话已就绪。SDK alpha.9 共享 Host 通过 canonical 元数据检查会话准入，历史正文 EIO 不再阻塞无关 Run/退出检查；活动控制器只有持有 owner fence 时才能复用准入，其他客户端仍受退出保护，受损会话显式打开仍报告读取错误。Artifact SDK 已随主包发布，提供四个 artifacts 子路径；共享 Host 需通过可信扩展注册九个工具并提供真实 Node，安装依赖不会自动启用。浏览器准备是显式操作，DOCX 的 Word/WPS 保真仍未验证。可信 Main 捕获凭据与 Host Tool leases、Provider allowlist 及 Workflow maxAgents/tokenBudget，SDK 管理实际执行、队列、Skill/command/review 准备与子任务权限。队列接收只确认 inputId，不虚构未来 Run；steer 和重连复用原输入授权。退出只清理本客户端工作，保护其他在线客户端；未知清理保留回执和恢复身份，接受不等于精确退出。仍要求 sandboxRuntime v11、runtimeAutoModeGuardrail v6、sharedSessionSettings v2、providerCredentialBroker v2 与 effectiveConfig v1。Space 为手动 compact 绑定并回收 operation-scoped credential lease；Run 的 allowlist 只包含已知 Provider 身份，fallback、classifier、Stall Sidecar、Agent 与 Workflow 后代仅在实际 wire call 时按 Provider 精确读取凭据，缺失即失败。配置状态读取 daemon effective value/source，不从 Electron 环境猜测。v11 的 Windows native host 使用 wire protocol 10 与 setup generation 11、逐命令私有 Temp、64 端口 broker 范围与真实 target-start doctor 证明；完整 native bundle 会解包到 app.asar.unpacked，并按 manifest SHA-256 在发布 smoke 中校验。',
       'alpha.10 接入：普通提问默认一直等待，跳过返回未作答而不会停止任务，Stop 才中断。启动提示会显示实际初始化阶段；上下文容量不足时任务保持等待，可切换模型或停止。原 Main 仍存活时，Host 重启后符合检查点条件的原任务可继续，不重交输入。内置 Skill 缺失或策略加载失败显示本地技能问题，不提示为 Provider 请求失败。旧未知清理只有在 SDK 核验原 Host 已安全退出后才放行，未知工作结果仍保留。',
+      'SDK beta.5 至 beta.8（Space 0.1.47 候选）的当前行为：每个 KODAX_HOME 只有一个共享 Host，Space 不再向启动器、owner 状态和退出结算传递 profile（ADR-075）；旧版以 coder profile 启动的 Host 由 SDK 经存储 owner 找到，按 profile 拆分的 Session 状态合并一次，旧 Host 中批准过的全局授权不会带入，需要重新批准。用户图片由 Host 固定为不可变副本，当前视图与历史预览经授权的 Host item reader 读取，支持 PNG/JPEG/WebP/GIF 并校验实际内容；用户消息正文不含模型可见的图片观测标签，观测信息在附件字段中。个人 workflow 从 SDK Agent home 读取，设置 KODAX_HOME 时不再列出 ~/.kodax/workflows。扩展 tool:before 返回 ask 时，审批卡逐条显示“扩展 X 要求确认：原因”，只能允许一次或拒绝；Space 判定为危险操作时同样保留扩展给出的原因。sandbox 观测可带 degradedReadRoots，活动条显示“沙箱降级”并提示 kodax sandbox setup。冷启动把已失效的 Run 子进程记录原样移到 .unresolved/，恢复证据完整保留。',
+      '',
+      'SDK beta.8（Issues 245–247，Windows 客户启动失败）把 Coder 启动路径从 PowerShell 改为 SDK 内置、带哈希校验的原生程序：Job 成员关系、kill-on-close 与进程创建身份由原生 __daemon-job-identity 在原有期限内验证，探针无法运行时重试一次，原生拒绝为最终结论，身份无法证明时仍然 fail-closed；启动 Job 的持有者是原生 __daemon-job-supervise，先挂起启动 daemon、入 Job 后才恢复，并以原子方式发布就绪文件，已存在的同名 Job 会被拒绝。失败的启动保留精确的清理句柄，同一数据根的启动准入串行到清理结束；child_exit 可重试，错误信息带上子进程 bootstrap.log 中最后一条 [Error]，已死亡 owner 留下的锁不再把立即退出的子进程拖成完整超时。Space 在此基础上：失败时摘要显示真实状态而不是“就绪”；连续三次失败后显示“重试启动”，同时转入慢速后台重试（30 秒、1、2、4 分钟，之后每 5 分钟），手动重试清零并立即重来；服务不可用时仍可从设置导出诊断（含安装的 SDK 版本、bootstrap/daemon 日志与探针阶段、耗时和错误码，凭据脱敏）。该修复没有放大任何超时，也没有跳过 Job 验证的开关。',
+      '',
       '以下为历史发布与迁移记录。旧退出 API、journal/replay 与旧会话创建流程不代表当前行为；请优先采用以上当前 Product 契约及 background-runtime、sessions 主题。',
       'v0.1.45 中，Coder daemon 记录稳定 runId、有序事件、transcript 和共享设置，并承接 compact、fork、rewind、队列、权限/AskUser、Workflow 观察与控制、Learning Center、目录/MCP 发现和配置 External Agent 的 Actor/Turn。多个受信任客户端可观察同一 Coder 会话。F141 只增加启动 owner 的安全选择，不改变这些 daemon-native 与 Space host-provider 边界。',
       '',
@@ -637,6 +641,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     body: text(
       'Workflow 是用户显式调用的单次多步骤任务，可拆解、执行、验证并生成产物。',
       '',
+      '个人 workflow 与 SDK 一致，从 Agent home 读取（设置了 KODAX_HOME 时位于其中的 workflows 目录），不再列出或放行 ~/.kodax/workflows，避免显示 SDK 看不到的文件（SDK beta.5，Issue 384）。',
+      '',
       '执行入口：带明确 Workflow 意图的请求、/workflow 命令、Workflow Launcher、右侧 Workflow 分区和 Workflow popout。普通复杂任务、并行/审查等弱信号不会自动启动 Workflow。',
       '',
       'Workflow 执行面只显示当前会话的运行、进度和最终回复，支持 pause/resume/stop；不提供保存/修改/改名/删除/prune/历史 rerun 管理。已有定义保留并可显式启动，执行前按原策略预检。',
@@ -728,6 +734,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'Auto 始终表示 Auto[LLM]。旧 auto-in-project、Auto Rules、engine、timeout 与 speculative window 只作为迁移输入，归一后不会继续保存或展示；/auto-engine 与 /auto-denials 已移除。Runtime Shell 先尝试 sandbox；成功时静默完成，只有可证明命令尚未启动的 denial/unavailable 边界才进入 Exec Policy 与固定 LLM reviewer。已启动或结果不确定的命令绝不重放；reviewer 基础设施失败时 fail closed。Full Access 跳过 sandbox 与 Auto review，但不能绕过 Exec Policy。',
       '',
       '当 AI 请求写文件、编辑、运行 bash、MCP 副作用工具等操作时，Space 会弹权限 modal，可 Allow once、Allow always 或 Deny；多个请求可能批量展示。Allow always 只会在 Runtime 为当前安全操作提供精确授权建议时出现，Space 仅回传该建议的 opaque ID；动态或危险 shell 操作不会获得长期允许。',
+      'SDK 扩展的 tool:before 可以要求确认：审批卡逐条显示“扩展 X 要求确认：原因”，按 SDK 契约，扩展的确认只能允许一次或拒绝；即使 Space 同时判定该操作危险，也不会覆盖扩展给出的原因（SDK beta.7）。',
       'Auto[LLM] 的权限提示会展示经脱敏、限长的 classifier reason，帮助用户理解本次 allow/ask 决策；它不展示 classifier prompt、完整响应或凭据。',
       '',
       '权限和 ask_user 队列按 Session 归属：权限 modal 只显示当前可见 Session 的请求；ask_user 提问卡渲染在该 Session 自己的对话流尾部，每个 reqId 独立结算，互不误答。后台 Session 的请求留在耐久队列，左侧栏会显示等待标记并优先保留这些 Session；切换到对应 Session 后再处理，不能用后台请求阻塞或误答当前会话。',
@@ -817,7 +824,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     body: text(
       'Coder session 使用 SDK 工具集：文件读取/搜索、代码索引、编辑/写入、bash、web_search/web_fetch、artifact 创建、workflow、MCP、memory 等。',
       '',
-      '只读工具通常直接运行；写文件、执行命令、会改外部状态的 MCP 工具或敏感操作会进入权限确认。',
+      '只读工具通常直接运行；写文件、执行命令、会改外部状态的 MCP 工具或敏感操作会进入权限确认。视觉工具 visual_history、visual_inspect、visual_read_pixels 归入 read 能力，按只读自动放行；它们和 read 读取的图片同样固定在 Host 媒体目录，经 Host 读取预览。',
       '',
       'create_artifact 生成会话产物，不直接改项目文件。repo-intelligence 是只读仓库理解能力。MCP 工具的可用性取决于 server 状态与工具副作用声明。',
       '',
@@ -1173,7 +1180,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     body: text(
       '常见问题：',
       '- 本地 Coder 服务负责会话、模型调用和工具执行；启动不要求公网、Provider 或扩展。无 extensions 目录正常。离线可先进入设置，再配置可达的内网模型地址、协议、模型名和所需凭据。未配置模型应影响调用，不应阻止本地服务启动。',
-      '- 服务启动失败：临时失败最多连续自动重试三次，仍失败可点击“重试启动”。先验证并清理原启动进程再重试，不删除 runtime、锁或 owner-policy。服务启动、重连、失败时摘要不显示“就绪”。',
+      '- 服务启动失败：临时失败先连续自动重试三次，仍失败则显示失败原因和“重试启动”，同时转入慢速后台重试（30 秒、1、2、4 分钟，之后每 5 分钟），环境恢复后无需重开 Space；点击“重试启动”会清零计数并立即重来。每次重试前先验证并清理原启动进程，不删除 runtime、锁或 owner-policy。服务启动、重连、失败时摘要不显示“就绪”。',
+      '- 启动提示“助手启动失败”：错误信息会带上子进程 bootstrap.log 中最后一条 [Error]。Windows 的 Job 验证与启动已由 SDK 内置原生程序完成，不再依赖 PowerShell 编译，杀毒扫描或系统繁忙不应再让它卡住；若仍失败，请先导出诊断（设置 → 诊断），再保留 `runtime/daemon/default/bootstrap.log` 与 `daemon.log`，并在重启系统前记录进程列表。不要删除 effect/exit lock 或 owner-policy，也不要手动结束仍在运行的 daemon。',
       '- 设置 → 诊断导出 ZIP 在服务不可用时仍可用，包含 Space、Runtime bootstrap/daemon 日志、已安装 SDK 版本和日志收集清单；缺失、不可读或截断会明确标注，凭据脱敏。',
       '- No provider/key：到 Settings -> Providers 配 key，或确认环境变量。',
       '- AI 读不到文件：确认已打开项目目录，路径引用是否在 workspace 内。',

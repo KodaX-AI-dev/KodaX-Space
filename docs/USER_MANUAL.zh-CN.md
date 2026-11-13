@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树（`0.1.47-alpha.5` 候选）的 Registry SDK `0.7.97-beta.7` 适配，见 [beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树（`0.1.47-alpha.5` 候选）的 Registry SDK `0.7.97-beta.8` 适配，见 [beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -237,7 +237,7 @@ flowchart LR
 唯一会话执行与历史写入者]
 ```
 
-Space 工作树锁定 KodaX SDK 0.7.97-beta.7。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
+Space 工作树锁定 KodaX SDK 0.7.97-beta.8。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
 
 Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 
@@ -372,6 +372,8 @@ host 中的变量值后，需要安全重启已连接的长驻 daemon。CLI 可�
 权限和 AskUser 请求按 Session 归属：权限 modal 只代表当前可见 Session；ask_user 提问卡渲染在该 Session 自己的对话流尾部，每个 reqId 独立结算，互不误答。后台 Session 的请求会留在耐久队列并在左侧栏显示等待标记；切换到对应 Session 后再处理。这样可以避免一个后台任务的确认盖住另一个正在阅读的会话。
 
 alpha.10 接入后的普通提问默认无限等待，不自动提交默认答案。点击“跳过”或按 Esc 返回未作答，任务可继续；Stop 才中断对应任务。Host 显式配置的提问期限到达时同样返回未作答。权限拒绝和授权保护仍独立生效。
+
+扩展（`tool:before`）可以要求确认：审批卡逐条显示“扩展 X 要求确认：原因”，只能允许一次或拒绝；即使 Space 同时判定该操作危险，也不会覆盖扩展给出的原因。
 
 PowerShell 的 `-Path` 支持 `[...]` 通配符。最新版 KodaX 会把这类方括号路径视为不完整并升级确认，防止 `[.]kodax/config.json` 解析到受保护路径后绕过 Auto 审查；如果目标确实是名称中带方括号的普通文件，请使用 `-LiteralPath` 或 `-PSPath`，例如 `build/file[12].txt`，它仍会按精确目标建模。
 
@@ -580,7 +582,7 @@ interactive HTML 在沙箱中预览；React artifact 当前不是 LiveCanvas。O
 
 ### Workflow
 
-Workflow 是用户显式启动的单次多步骤功能。使用 `/workflow create <需求>` 或选择已有定义启动；Task Dock 和 Workflow 执行面显示当前会话的进度，支持 pause/resume/stop。最终回复由执行 Host 保存进会话，结果中的交付物引用保留；断开窗口不等于停止。界面不再提供保存、修改、改名、删除、清理或重跑历史的管理操作，旧定义和历史结果保留。Host 负责终态持久化及安全收尾，Space 不直接清理其运行目录。
+Workflow 是用户显式启动的单次多步骤功能。个人 workflow 与 SDK 一致，从 Agent home 读取（设置了 `KODAX_HOME` 时位于其中），不再列出 `~/.kodax/workflows`。使用 `/workflow create <需求>` 或选择已有定义启动；Task Dock 和 Workflow 执行面显示当前会话的进度，支持 pause/resume/stop。最终回复由执行 Host 保存进会话，结果中的交付物引用保留；断开窗口不等于停止。界面不再提供保存、修改、改名、删除、清理或重跑历史的管理操作，旧定义和历史结果保留。Host 负责终态持久化及安全收尾，Space 不直接清理其运行目录。
 
 ### Memory Governance
 
@@ -730,7 +732,7 @@ flowchart TD
 
 本地 Coder 服务负责会话、模型调用和工具执行。它随应用本地启动，不要求连接公网、配置 Provider 或安装扩展；没有 `extensions` 目录是正常情况。离线环境可先打开设置，再配置可达的内网模型地址、协议、模型名和所需凭据。模型不可达或未配置应在模型调用时提示，不应导致本地服务启动失败。
 
-启动或重连期间，任务摘要显示服务当前状态；只有服务可用时才显示“就绪”。临时启动失败会自动重试，最多连续三次；仍失败时可点击“重试启动”，无需删除运行目录。重试会先处理上次启动遗留的清理，不能确认旧进程退出时不会创建竞争进程。持续失败请通过设置 → 诊断导出 ZIP：包含 Space 日志、Runtime 的 bootstrap/daemon 日志、实际安装 SDK 版本，以及各日志缺失、不可读、截断的原因；即使服务未启动也能导出。不要清空 `.kodax/runtime` 来跳过所有权或恢复检查。
+启动或重连期间，任务摘要显示服务当前状态；只有服务可用时才显示“就绪”。临时启动失败先自动重试三次；仍失败时显示失败原因和“重试启动”，同时转入慢速后台重试（30 秒、1、2、4 分钟，之后每 5 分钟），环境恢复后无需重开 Space；点击“重试启动”会清零计数并立即重来，无需删除运行目录。Windows 上 Job 验证与启动由 SDK 内置的原生程序完成，不再通过 PowerShell 编译，杀毒扫描或系统繁忙不应再让启动卡住；失败信息会带上子进程 `bootstrap.log` 的最后一条错误。重试会先处理上次启动遗留的清理，不能确认旧进程退出时不会创建竞争进程。持续失败请通过设置 → 诊断导出 ZIP：包含 Space 日志、Runtime 的 bootstrap/daemon 日志、实际安装 SDK 版本，以及各日志缺失、不可读、截断的原因；即使服务未启动也能导出。不要清空 `.kodax/runtime` 来跳过所有权或恢复检查；如需重启系统，请先导出诊断并记录进程列表。
 
 | 问题                        | 建议检查                                                                                                                                                                 |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

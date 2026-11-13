@@ -1,6 +1,6 @@
 # KodaX Capability Ledger
 
-> 2026-11-11：当前工作树已升级为 Registry SDK `0.7.97-beta.7`，见 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
+> 2026-11-11：当前工作树已升级为 Registry SDK `0.7.97-beta.8`，见 [beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
 > 2026-11-09：Space `0.1.47-alpha.5` 精确接入 Registry SDK `0.7.97-beta.4`，覆盖历史契约 v2（整轮 Fork/Rewind、`resync_required`、`newerCursor`）、规则独立加载与精确 AGENTS.md 路径编辑。当前验证和 SDK/外部限制见 [alpha.5](releases/v0.1.47-alpha.5-release-readiness.md)与[beta.4 适配](releases/kodax-beta4-space-adaptation.md)；alpha.4/beta.1 记录保留为已发布历史。
 
@@ -13,8 +13,8 @@
 > **2026-09-14 beta.3 Partner host integration candidate**: The bundled Partner library and connector adapters are Space-owned host capabilities, not new KodaX daemon capabilities. Host API 4 and declared capability checks gate the extension; methods use the existing Skill registry. Local automated and macOS evidence does not mark all external services or F096/F146 as fully supported. Coder sharing remains deferred. See [integration evidence](partner/releases/space-bundled-integration.md) and [current release gate](releases/v0.1.46-beta.3-release-readiness.md).
 
 > Last reviewed: 2026-11-09
-> Release baseline: Space `0.1.47-alpha.5` / SDK `0.7.97-beta.4`; current source pins SDK `0.7.97-beta.7`; latest stable stays v0.1.46 / KodaX 0.7.96. See [release status](releases/v0.1.47-alpha.5-release-readiness.md).
-> Source SDK baseline: local candidate `@kodax-ai/kodax@0.7.97-beta.7` (`sha512-dEwOi7OHTg9+4h3mRf4rKmM/Kq0OMuSGn0zWqOFfT6xf52De0zReMtp8X3RC7x385aAJ7uIlV8PqazrYs5adFw==`), built from the published beta.7 (Registry `sha512-GBEgt0X0YMbF62bpMfXRXYqcDchon7JUv/ltUzotROZo2PfzXMCPwRAfdFfg2WWXkVtz+lqNpxMPpCcQsOfftw==`) plus SDK commits `586ba53d5` and `72033b51f`. See [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md).
+> Release baseline: Space `0.1.47-alpha.5` / SDK `0.7.97-beta.4`; current source pins SDK `0.7.97-beta.8`; latest stable stays v0.1.46 / KodaX 0.7.96. See [release status](releases/v0.1.47-alpha.5-release-readiness.md).
+> Source SDK baseline: Registry `@kodax-ai/kodax@0.7.97-beta.8` (`sha512-KCwvT9muZxPpyeFbO8jUj/v4BLO0i8Y3zS8saAuxexiSmNUKtKjisKCpsWDW6qloerdN0d+HuplBvlaJuSptkw==`), the published release that contains the native Windows Job owner and identity probe (SDK commits `586ba53d5` and `72033b51f`). The earlier local candidate and the Registry beta.7 (`sha512-GBEgt0X0YMbF62bpMfXRXYqcDchon7JUv/ltUzotROZo2PfzXMCPwRAfdFfg2WWXkVtz+lqNpxMPpCcQsOfftw==`) are superseded. See [beta.8 adaptation](releases/kodax-beta8-space-adaptation.md).
 > Source evidence: Registry metadata, the installed package, the lockfile, and the published tarball agree on version, URL, and integrity. Registry metadata currently publishes no `gitHead`, so this ledger does not invent a source-commit claim.
 > Workspace dependency: Root/Desktop/lockfile pin one local beta.7 candidate tarball (published beta.7 plus unpublished native Job commits; Registry beta.7 is `sha512-GBEgt0X0…`); Space workspaces share alpha.5. Package, source and actual Host capabilities are checked separately. Earlier release evidence retains its original fingerprints.
 > Package/source evidence: a formal release requires both workspaces to resolve one deduplicated exact Registry package whose root/desktop manifests, lock views, installed package, tarball URL, and integrity agree. Release acceptance also imports every public KodaX facade, verifies ancestor-aware transitive dependencies, loads packaged `better-sqlite3`from unpacked native bytes, and boots the packaged application.

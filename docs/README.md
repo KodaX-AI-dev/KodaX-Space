@@ -1,6 +1,6 @@
 # KodaX Space 文档中心
 
-> 2026-11-11：当前工作树已升级为 Registry SDK `0.7.97-beta.7`，见 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
+> 2026-11-11：当前工作树已升级为 Registry SDK `0.7.97-beta.8`，见 [beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
 > 2026-11-09 发布准备：版本基线更新为 Space `0.1.47-alpha.5` / npm Registry `@kodax-ai/kodax@0.7.97-beta.4`，四个 workspace 与 lockfile 统一版本。当前公共接口以 [beta.4 适配](releases/kodax-beta4-space-adaptation.md)为准；发布门与验证状态见 [alpha.5 发布记录](releases/v0.1.47-alpha.5-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。
 

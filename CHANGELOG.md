@@ -14,11 +14,22 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- Pin Registry KodaX SDK `0.7.97-beta.8` exactly in both SDK consumers (replacing the temporary local candidate tarball), covering beta.5 through beta.8. Each `KODAX_HOME` has one Host: Space no longer passes the `coder` Host profile to the launcher, owner control or exit settlement (ADR-075). User images are pinned by the Host and previewed through the authorized item reader (PNG, JPEG, WebP, GIF; pasted GIFs are sent as their first frame). Personal workflows are read from the SDK Agent home. Extension `tool:before` approvals show per-extension reasons, sandbox degradation is visible with its unreadable roots, and cold start preserves extinct Run records under `.unresolved/`. See the [beta.8](docs/releases/kodax-beta8-space-adaptation.md), [beta.7](docs/releases/kodax-beta7-space-adaptation.md) and [beta.6](docs/releases/kodax-beta6-space-adaptation.md) adaptation records.
+- Align the in-app `space_manual`, the user manual, READMEs, PRD/HLD/DD, capability ledger and the Issue 245–247 records with beta.8: native Windows startup, slow background retry, startup-failure diagnostics, extension approval attribution and agent-home workflows. The SDK's own `kodax_manual` is never overwritten and already carries the beta.8 startup mechanism text.
 - Open the selected Artifact with one click from a collapsed Coder sidebar, preserving the latest target across mounting and keeping restored File Viewer content from overriding an explicit request.
 - Finish slash completion after optional help commands and terminal argument values, retain real subcommand continuation, and let ready no-match input reach normal validation while preserving discovery loading/error guards.
 - Make conversation history boundaries and return destinations visible, preserve single-page access, distinguish loaded-content find from saved search, and open saved search results directly in context with an original-text fallback.
 - Preview where a dragged sidebar project will land: the row follows the pointer, other projects slide aside, and it settles into place on release. Dropping at the end works, dragging down no longer lands one slot short, and Escape cancels.
 - Keep very long conversations fast: only the messages near the viewport are mounted, so scrolling, loading older or newer history and jumping to the newest message stay smooth however much history is loaded. Search and question-rail jumps now scroll instantly.
+
+### Fixed
+
+- Coder startup failures are visible, recoverable and diagnosable (Issues 245–247, reported on Windows with a non-self-healing "reconnecting assistant" state). The summary never shows Ready while the backend is unavailable; after three failed attempts Space shows the failure with Retry startup and keeps retrying in the background (30 s, 1, 2, 4 min, then every 5 min); a manual retry resets the schedule. The diagnostic export works without a running Host and includes startup and probe evidence.
+- With SDK beta.8 the Windows daemon start no longer compiles C# through PowerShell: Job proof and the Job owner are the bundled, hash-verified native helper, so antivirus scans or a loaded machine cannot stall startup. A startup that exits early reports the child's last bootstrap error instead of waiting out the full timeout, and failed starts keep their exact cleanup handles before any replacement starts. No timeout was lengthened and Job verification stays fail-closed.
+
+---
 
 ## [0.1.47-alpha.5] - 2026-11-09
 

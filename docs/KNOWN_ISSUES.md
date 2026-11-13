@@ -2,11 +2,11 @@
 
 Last Updated: 2026-11-12
 
-> 2026-11-11：当前工作树依赖 SDK `0.7.97-beta.7` 的本地候选包（已发布 beta.7 加两个未发布的原生 Job 提交，待 beta.8 发布后换回 Registry），见 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
+> 2026-11-13：当前工作树依赖已发布的 Registry SDK `0.7.97-beta.8`（含 Issues 245–247 的原生 Job 启动修复），见 [beta.8 适配](releases/kodax-beta8-space-adaptation.md) 与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
-> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-alpha.5 / SDK 0.7.97-beta.7 local candidate (published beta.7 plus two unpublished native Job commits; switch back to the Registry once published) ([beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [alpha.5 release status](releases/v0.1.47-alpha.5-release-readiness.md); the published alpha.4 beta.1 record stays for that release. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
+> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-alpha.5 / SDK 0.7.97-beta.8 from the Registry ([beta.8 adaptation](releases/kodax-beta8-space-adaptation.md), [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [alpha.5 release status](releases/v0.1.47-alpha.5-release-readiness.md); the published alpha.4 beta.1 record stays for that release. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
 ## Issue Index
 
@@ -16427,14 +16427,20 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
 - After three consecutive retryable failures Space shows the failure with Retry startup and switches to slow background retries (30 s, 1, 2, 4 min, then every 5 min); foreground callers still cannot start a new attempt.
   Only the slow timer may start attempts past that point; manual retry resets the schedule and retries at once.
 - Space's public SDK calls no longer pass the retired Host `profile` selector. Observed
-  legacy identities remain available for diagnostics. The local SDK candidate is based
-  on beta.7; this is not a claim that the published beta.7 already contains this patch.
+  legacy identities remain available for diagnostics. The fix ships in the published SDK 0.7.97-beta.8
+  (the published beta.7 does not contain it); Space depends on beta.8 from the Registry since 2026-11-13.
 - Five real Windows Electron E2E cases pass (re-run after the native supervisor swap: the recovery spec passed 16 of 16 repeats, diagnostic export passed; the cleanup case now fails the probe 1.5 s after readiness because the faster supervisor otherwise lets the daemon exit before a busy Main polls readiness): failed-start export; offline/no-Provider
   cold start; first failure auto-recovery; persistent failure plus ZIP/manual retry and
   local model request; startup plus delayed cleanup without overlapping replacement.
   Application transports reject public network; customer OS-level air-gap acceptance
   remains part of the human regression guide.
 - Native supervisor, verified 2026-11-12: a packaged `win-unpacked` candidate built with the local SDK tarball carries a byte-identical native executable and passed the recovery, diagnostic-export, startup-diagnostics and startup-exit E2E specs twice (7 of 7 each run). Eight parallel cold provisionings of the protected native artifact into a fresh `LOCALAPPDATA` succeeded in three rounds. Not measured: antivirus cold-start and CPU-stress timing; customer-machine acceptance.
+- Registry beta.8, verified 2026-11-13: `pack.mjs --win --dir` without the local-SDK flag passes `smoke-pack`;
+  boot-smoke reports the renderer ready in 5.6 s and the Runtime ready in 27.0 s with 122 historical child records
+  preserved. The packaged `win-unpacked` build passes the recovery (3 cases), diagnostic-export, startup-diagnostics,
+  startup-exit and file-attachments specs, plus the 7 sdk-unified-contract cases. Customer-machine and antivirus
+  timing remain unverified. See `docs/releases/kodax-beta8-space-adaptation.md` (it also records a stale-renderer
+  false alarm: `e2e:run` and `pack.mjs` do not rebuild `apps/desktop/dist`; run `npm run build:smoke` first).
 - Guide: `docs/test-guides/ISSUE_246_0.1.47_REGRESSION_GUIDE.md`.
 
 ### Additional evidence and fixes (2026-11-12, follow-up review)

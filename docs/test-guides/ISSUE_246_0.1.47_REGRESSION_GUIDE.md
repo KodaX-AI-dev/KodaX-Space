@@ -1,6 +1,6 @@
 # Issues 246 / 247 — 启动、自愈与离线回归
 
-适用：当前源码与本地修复 SDK 联调包；不是客户已安装版本的修复声明。
+适用：当前源码与已发布的 Registry SDK `0.7.97-beta.8`；不是客户已安装版本的修复声明。
 
 ## 自动回归
 
@@ -17,13 +17,13 @@
 
 ## SDK 联调边界
 
-当前 Space 使用相邻 KodaX 工作区生成的 `kodax-ai-kodax-0.7.97-beta.7.tgz` 修复候选包，根目录与 desktop 依赖指向同一文件，lockfile 校验实际 SHA-512。此文件不是已发布的 npm beta.7；正式发布前须发布包含修复的新 SDK 版本，再更新 Space 的精确 registry 依赖并重新验包。
+当前 Space 精确依赖 Registry `@kodax-ai/kodax@0.7.97-beta.8`，它已包含原生 Job 验证与监督（SDK Issue 409），lockfile 校验 Registry 字节。此前使用的本地 `kodax-ai-kodax-0.7.97-beta.7.tgz` 候选包已被取代；发布入口不再需要 `--allow-local-kodax`。
 
-beta.7 的公开 API 改为同一 home 一个 Host，删除 launcher/owner-control 的 `profile` 参数；测试与工具脚本同步迁移为独立 home，凭据绑定的 profile 和历史诊断日志不变。不能仅将依赖版本改成官方 beta.7 而丢失本次 SDK 源码修复。
+beta.7 的公开 API 改为同一 home 一个 Host，删除 launcher/owner-control 的 `profile` 参数；测试与工具脚本同步迁移为独立 home，凭据绑定的 profile 和历史诊断日志不变。官方 beta.7 不含本次 SDK 修复，因此依赖必须是 beta.8 或更高版本。
 
 用户图片也改由 Host 保存不可变副本。Space 的当前视图与历史预览统一使用授权 item reader，不按 Host 路径读取本地文件；PNG/JPEG/WebP 校验实际内容及 MIME，保留分块摘要、尺寸与撤销访问检查。测试覆盖惰性读取，图片 I/O 不阻止输入投影或 observation 结束。
 
-本地候选包允许 `node scripts/pack.mjs --win --dir --allow-local-kodax`；正式发布入口仍拒绝本地 SDK 依赖。
+打包使用 `node scripts/pack.mjs --win --dir`，无需本地候选包开关。
 
 ## 验证记录（2026-11-12，Windows x64）
 

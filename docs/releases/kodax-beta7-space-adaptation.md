@@ -1,5 +1,7 @@
 # SDK 0.7.97-beta.7（本地候选包）的 Space 适配
 
+> 2026-11-13 更新：候选包中的两个原生 Job 提交已随 SDK `0.7.97-beta.8` 正式发布，Space 已改回 Registry 依赖，见 [beta.8 适配](kodax-beta8-space-adaptation.md)。下文保留 beta.7 当时的接入与验收语境。
+
 2026-11-12。Root 和 Desktop 精确依赖 `@kodax-ai/kodax@0.7.97-beta.7`，但**当前安装的是本地候选包**
 `file:../KodaX/kodax-ai-kodax-0.7.97-beta.7.tgz`，不是 Registry 版本。
 候选包 = 已发布 beta.7 + 两个未发布的 SDK 提交（`586ba53d5`、`72033b51f`：原生 Windows Job owner，修复 Issues 245–247）。
