@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { constants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { getKodaxRuntimeDir } from '../data-paths.js';
+import { getKodaxDir } from '../data-paths.js';
 
 // Compatibility reader for the rc.2 Windows migration. Read-only: never start
 // a daemon to "validate" a secret, since that accepts a different bridge identity.
@@ -17,7 +17,7 @@ export async function verifyLegacyRuntimeSecret(
   identity: { readonly instanceId: string },
   candidate: string,
   journalPath = path.join(
-    getKodaxRuntimeDir(),
+    getKodaxDir(),
     'runtime',
     'daemon',
     'coder',

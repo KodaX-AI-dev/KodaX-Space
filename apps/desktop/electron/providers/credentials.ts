@@ -13,7 +13,7 @@ import {
   describeProviderCredential,
   resolveProviderCredentialSource,
 } from './provider-storage.js';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 import path from 'node:path';
 import { invalidateProviderCredential } from './credential-invalidation.js';
 import type { KodaXCustomProviderConfig, OAuthCredentialSession } from '@kodax-ai/kodax/llm';
@@ -134,7 +134,7 @@ async function selectOAuthSource(
     import('@kodax-ai/kodax/runtime'),
     import('@kodax-ai/kodax/llm'),
   ]);
-  const configPath = path.join(getKodaxRuntimeDir(), 'config.json'),
+  const configPath = path.join(getKodaxDir(), 'config.json'),
     key = JSON.stringify([configPath, registrationId, fingerprint]);
   let selected = oauthSessions.get(providerId);
   if (!selected || selected.key !== key) {

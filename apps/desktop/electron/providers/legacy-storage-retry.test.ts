@@ -19,7 +19,7 @@ for (const platform of ['win32', 'darwin']) test(`${platform} legacy storage rec
     await writeFile(keyring, `export async function findCredentials(){return []}export async function getPassword(){if(process.env.FIXTURE_READY!=='1')throw new Error('temporarily locked');return 'legacy-fixture'};`);
     await writeFile(loader, `export async function resolve(name,context,next){const urls={electron:${JSON.stringify(pathToFileURL(electron).href)},'@napi-rs/keyring/keytar.js':${JSON.stringify(pathToFileURL(keyring).href)}};return urls[name]?{url:urls[name],shortCircuit:true}:next(name,context);}`);
     const script = `import assert from 'node:assert/strict';import {register} from 'node:module';register(${JSON.stringify(pathToFileURL(loader).href)});Object.defineProperty(process,'platform',{value:${JSON.stringify(platform)}});const {getPersistentKey}=await import(${JSON.stringify(pathToFileURL(bundled).href)});await assert.rejects(getPersistentKey('owned-fixture'));process.env.FIXTURE_READY='1';assert.equal(await getPersistentKey('owned-fixture'),'legacy-fixture');process.stdout.write('recovered');`;
-    const env: NodeJS.ProcessEnv = { ...process.env, KODAX_PROFILE_DIR: root, KODAX_HOME: root, FIXTURE_READY: '0' };
+    const env: NodeJS.ProcessEnv = { ...process.env, KODAX_HOME: root, FIXTURE_READY: '0' };
     delete env.KODAX_TEST_ONBOARDING;
     const result = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', script], { env, windowsHide: true, timeout: 15000 });
     assert.equal(result.stdout, 'recovered');

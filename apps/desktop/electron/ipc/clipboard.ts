@@ -20,7 +20,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { MAX_NORMALIZED_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES } from '@kodax-space/space-ipc-schema';
 import { registerChannel } from './register.js';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 
 const SESSION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const FORK_ATTACHMENT_OWNERS_FILE = '.fork-attachment-owners.json';
@@ -88,12 +88,12 @@ const pendingProcessScope = `${process.pid}-${randomUUID()}`;
 // 而 host.test.ts → host.ts → 这里的 module load 链不应当因此而崩。registerClipboardChannels
 // 才是会被 main 调的入口，到时候 electron 已经在 main 进程里跑起来了。
 function durableClipboardRoot(): string {
-  return path.join(getKodaxRuntimeDir(), 'space', 'session-attachments');
+  return path.join(getKodaxDir(), 'space', 'session-attachments');
 }
 
 async function electronTempDir(): Promise<string> {
   if (process.env.KODAX_TEST_ONBOARDING) {
-    return path.join(getKodaxRuntimeDir(), 'space', 'test-temp');
+    return path.join(getKodaxDir(), 'space', 'test-temp');
   }
   if (!process.versions.electron) {
     return os.tmpdir();
@@ -108,17 +108,17 @@ async function electronTempDir(): Promise<string> {
 
 async function legacyClipboardRoot(): Promise<string> {
   if (process.env.KODAX_TEST_ONBOARDING) {
-    return path.join(getKodaxRuntimeDir(), 'space', 'test-legacy-clipboard');
+    return path.join(getKodaxDir(), 'space', 'test-legacy-clipboard');
   }
   return path.join(await electronTempDir(), 'kodax-space', 'clipboard');
 }
 
 async function pendingClipboardBaseRoot(): Promise<string> {
   if (process.env.KODAX_TEST_ONBOARDING) {
-    return path.join(getKodaxRuntimeDir(), 'space', 'test-pending-attachments');
+    return path.join(getKodaxDir(), 'space', 'test-pending-attachments');
   }
   const profileScope = createHash('sha256')
-    .update(path.resolve(getKodaxRuntimeDir()))
+    .update(path.resolve(getKodaxDir()))
     .digest('hex')
     .slice(0, 16);
   return path.join(await electronTempDir(), 'kodax-space', 'pending-attachments', profileScope);

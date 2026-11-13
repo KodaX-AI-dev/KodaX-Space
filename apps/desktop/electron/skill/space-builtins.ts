@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 
 type SdkSkillsModule = typeof import('@kodax-ai/kodax/skills');
 
@@ -23,7 +23,7 @@ interface SkillHost {
 /** Install through the public split-config CAS writer, then verify Host activation. */
 export async function ensureSpaceBuiltinSkillsOnHost(
   host: SkillHost,
-  configHome = getKodaxRuntimeDir(),
+  configHome = getKodaxDir(),
 ): Promise<void> {
   if (!registeredRoot) return;
   const existing = hostRegistrations.get(host);

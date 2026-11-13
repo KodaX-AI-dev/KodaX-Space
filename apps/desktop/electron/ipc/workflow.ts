@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { registerChannel } from './register.js';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 import { workflowController } from '../kodax/workflow-controller.js';
 import { workflowPolicyStore } from '../kodax/workflow-policy.js';
 import { kodaxHost } from '../kodax/host.js';
@@ -13,7 +13,7 @@ import {
 function isSafeWorkflowPath(filePath: string, projectRoot: string): boolean {
   const resolved = path.resolve(filePath);
   const allowed = [
-    path.resolve(getKodaxRuntimeDir(), 'workflows'),
+    path.resolve(getKodaxDir(), 'workflows'),
     path.resolve(projectRoot, '.kodax', 'workflows'),
   ];
   return allowed.some((prefix) => resolved === prefix || resolved.startsWith(prefix + path.sep));

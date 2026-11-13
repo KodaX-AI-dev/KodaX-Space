@@ -267,16 +267,16 @@ if (process.platform === 'win32') {
   app.setAppUserModelId(SPACE_APP_USER_MODEL_ID);
 }
 
-// KODAX_PROFILE_DIR 独立数据档时,把 SDK 数据根(sessions/config/agents)一并搬进该档,
-// 靠设 KODAX_HOME(SDK 的 getAgentConfigHome 只读它,不读 KODAX_SESSIONS_DIR)。必须在任何
-// loadSdkModule() 动态 import 之前(SDK 在模块加载时冻结 <KODAX_HOME>/sessions),所以放在
-// bootstrap 最早期。测试模式强制隔离到 tmpdir；默认/便携版下是 no-op。
-applySdkHomeEnv();
+// 数据根只有 KODAX_HOME 一个(SDK 的 getAgentConfigHome 读它,不读 KODAX_SESSIONS_DIR);
+// 这里把 Space 解析出的根对齐回 KODAX_HOME。必须在任何 loadSdkModule() 动态 import 之前
+// (SDK 在模块加载时冻结 <KODAX_HOME>/sessions),所以放在 bootstrap 最早期。测试模式强制
+// 隔离到 tmpdir；默认/便携版下是 no-op。已弃用的 KODAX_PROFILE_DIR 在此转成 KODAX_HOME。
+const { deprecatedProfileDir } = applySdkHomeEnv();
 
 const scopedUserDataDir = getScopedUserDataDir();
 if (scopedUserDataDir !== null) {
-  // Playwright and explicit KODAX_PROFILE_DIR runs need Chromium userData to follow the
-  // same data root. The single-instance lock is scoped to userData, so move it before
+  // Playwright onboarding runs need Chromium userData to follow the isolated data root.
+  // The single-instance lock is scoped to userData, so move it before
   // requestSingleInstanceLock().
   mkdirSync(scopedUserDataDir, { recursive: true });
   app.setPath('userData', scopedUserDataDir);
@@ -294,6 +294,14 @@ const diagnosticsLogger = initializeDiagnostics({
   privatePathPrefixes: [getKodaxDir()],
   fileSinkEnabled: process.env.SPACE_DISABLE_DIAGNOSTIC_FILE_SINK !== '1',
 });
+if (deprecatedProfileDir !== null) {
+  diagnosticsLogger?.warn(
+    'startup',
+    'deprecated_profile_dir',
+    'KODAX_PROFILE_DIR is deprecated; use KODAX_HOME instead.',
+    { profileDir: deprecatedProfileDir },
+  );
+}
 installHardwareAccelerationOverride();
 installWindowsRenderingGuards();
 installChildProcessDiagnostics();

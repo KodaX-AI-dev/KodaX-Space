@@ -103,7 +103,7 @@ import {
 } from './runtime/runtime-client-exit.js';
 import { effortToReasoningMode } from './reasoning-effort.js';
 import { resolveRuntimeToolInvocation } from './runtime-command.js';
-import { getKodaxRuntimeDir } from './data-paths.js';
+import { getKodaxDir } from './data-paths.js';
 import { stopCoderDaemonWhenSafe, type SafeDaemonStopResult } from './runtime-daemon-control.js';
 import {
   loadKodaxAutoModeDefaults,
@@ -2304,7 +2304,7 @@ export class RuntimeHostAdapter {
 
   constructor(options: RuntimeHostAdapterOptions = {}) {
     this.mode = options.mode ?? resolveRuntimeHostMode(process.env.KODAX_SPACE_RUNTIME_HOST);
-    this.profileRoot = path.resolve(options.profileRoot ?? getKodaxRuntimeDir());
+    this.profileRoot = path.resolve(options.profileRoot ?? getKodaxDir());
     this.runtimeHomeDir =
       options.runtimeHomeDir === undefined ? undefined : path.resolve(options.runtimeHomeDir);
     this.autoModeDefaultsResolver = options.autoModeDefaultsResolver ?? loadKodaxAutoModeDefaults;

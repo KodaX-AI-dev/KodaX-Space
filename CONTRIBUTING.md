@@ -41,7 +41,7 @@ npm run smoke:pack
 npm run smoke:boot
 ```
 
-高风险 Feature 按对应 `docs/test-guides/` 完成人工验收。不要使用真实用户 profile 做自动化测试；使用 `KODAX_TEST_ONBOARDING` 或独立的绝对 `KODAX_PROFILE_DIR`。
+高风险 Feature 按对应 `docs/test-guides/` 完成人工验收。不要使用真实用户 profile 做自动化测试；使用 `KODAX_TEST_ONBOARDING` 或独立的绝对 `KODAX_HOME`。
 
 ## 文档
 

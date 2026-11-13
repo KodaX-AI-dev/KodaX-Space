@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { getKodaxRuntimeDir } from './data-paths.js';
+import { getKodaxDir } from './data-paths.js';
 
 const MAX_CAPTURED_OUTPUT = 64 * 1024;
 const DAEMON_STOP_OUTER_GRACE_MS = 5_000;
@@ -175,7 +175,7 @@ export async function stopCoderDaemonWhenSafe(
 ): Promise<SafeDaemonStopResult> {
   const timeoutMs = Math.max(500, options.timeoutMs ?? 15_000);
   const cliPath = options.cliPath ?? resolveKodaxCliPath();
-  const runtimeDir = path.resolve(options.runtimeDir ?? getKodaxRuntimeDir());
+  const runtimeDir = path.resolve(options.runtimeDir ?? getKodaxDir());
   // The Electron main bundle is CommonJS while KodaX publishes import-only
   // subpath exports. Keep this as a real dynamic import; a top-level import
   // would compile to require("@kodax-ai/kodax/agent") and crash at bootstrap.

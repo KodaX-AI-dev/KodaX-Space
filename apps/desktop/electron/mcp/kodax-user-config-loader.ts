@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 
 // Loads KodaX MCP config for McpManager and the SDK extension runtime.
 //
@@ -43,7 +43,7 @@ export async function readKodaxMcpIntegration(
  * empty default document when neither exists.
  */
 export async function loadKodaxUserConfig(): Promise<McpServersConfig | undefined> {
-  const snapshot = await readKodaxMcpIntegration(getKodaxRuntimeDir());
+  const snapshot = await readKodaxMcpIntegration(getKodaxDir());
   const servers = snapshot.document.servers;
   return Object.keys(servers).length > 0 ? servers : undefined;
 }
@@ -54,7 +54,7 @@ export async function loadKodaxProjectMcpServers(
   if (!path.isAbsolute(projectRoot)) return undefined;
 
   const projectConfigHome = path.join(path.resolve(projectRoot), '.kodax');
-  if (path.resolve(projectConfigHome) === path.resolve(getKodaxRuntimeDir())) return undefined;
+  if (path.resolve(projectConfigHome) === path.resolve(getKodaxDir())) return undefined;
 
   const snapshot = await readKodaxMcpIntegration(projectConfigHome);
   const servers = snapshot.document.servers;

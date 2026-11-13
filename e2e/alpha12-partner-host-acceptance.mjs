@@ -11,10 +11,10 @@ const dependency = await assertKodaxReleaseDependencyState(
 );
 
 process.env.KODAX_TEST_ONBOARDING = `alpha12-host-${randomUUID()}`;
-const { applySdkHomeEnv, getKodaxRuntimeDir } =
+const { applySdkHomeEnv, getKodaxDir } =
   await import('../apps/desktop/electron/kodax/data-paths.ts');
 applySdkHomeEnv();
-const profileRoot = getKodaxRuntimeDir();
+const profileRoot = getKodaxDir();
 const workspace = path.join(profileRoot, 'workspace');
 await mkdir(workspace, { recursive: true });
 const projectSkill = path.join(workspace, '.agents', 'skills', 'alpha12-project');

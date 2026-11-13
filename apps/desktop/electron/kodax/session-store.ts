@@ -27,7 +27,7 @@
 import { canonProjectRoot, type Surface } from '@kodax-space/space-ipc-schema';
 import { dedupeTranscriptEntries } from '../ipc/transcript-dedup.js';
 import path from 'node:path';
-import { getKodaxRuntimeDir } from './data-paths.js';
+import { getKodaxDir } from './data-paths.js';
 import { getSessionTitleStore } from './session-title-store.js';
 import { watchPersistedSessionContents } from './session-content-watcher.js';
 
@@ -256,7 +256,7 @@ const DEFAULT_IMPL: SessionStoreImpl = {
   },
   watchSessionContents: (cb) =>
     process.platform === 'win32' || process.platform === 'linux'
-      ? watchPersistedSessionContents(path.join(getKodaxRuntimeDir(), 'sessions'), cb, {
+      ? watchPersistedSessionContents(path.join(getKodaxDir(), 'sessions'), cb, {
           onBaselineRecovered: clearPersistedSessionCache,
         })
       : { close: () => undefined },

@@ -18,7 +18,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import type { WorkflowRunT, WorkflowEventPayload } from '@kodax-space/space-ipc-schema';
-import { getKodaxRuntimeDir, getSpaceDataDir } from './data-paths.js';
+import { getKodaxDir, getSpaceDataDir } from './data-paths.js';
 import { pushToRenderer } from '../ipc/push.js';
 import { artifactStore } from '../artifact/store.js';
 import { detectArtifactKind } from '../artifact/workflow-artifact-bridge.js';
@@ -2286,7 +2286,7 @@ async function loadCodingSdk(): Promise<CodingSdkSubset | null> {
 /** Saved workflow dirs: personal `<agent home>/workflows`, where the SDK also reads them, plus project. */
 function savedWorkflowDirs(projectRoot?: string): { personal: string; project?: string } {
   return {
-    personal: path.join(getKodaxRuntimeDir(), 'workflows'),
+    personal: path.join(getKodaxDir(), 'workflows'),
     ...(projectRoot ? { project: path.join(projectRoot, '.kodax', 'workflows') } : {}),
   };
 }

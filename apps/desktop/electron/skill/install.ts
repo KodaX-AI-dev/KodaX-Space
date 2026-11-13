@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import yauzl from 'yauzl';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 
 export type SkillInstallSource = 'directory' | 'archive';
 export type SkillInstallTarget = 'user' | 'project';
@@ -31,7 +31,7 @@ export function getSkillTargetDir(
   target: SkillInstallTarget,
   projectRoot?: string,
 ): string {
-  if (target === 'user') return path.join(getKodaxRuntimeDir(), 'skills');
+  if (target === 'user') return path.join(getKodaxDir(), 'skills');
   if (!projectRoot || !path.isAbsolute(projectRoot)) {
     throw new Error('project skill install requires an absolute projectRoot');
   }

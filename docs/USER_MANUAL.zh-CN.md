@@ -717,7 +717,7 @@ flowchart TD
     Auth["auth.json / 权限受限的凭证文件"] --> Secret["Provider credentials"]
 ```
 
-说明：默认 profile 根是 `~/.kodax`；因此 0.1.33 shared daemon 的 Runtime 状态/journal 实际默认位置是 `~/.kodax/runtime`。自定义 `KODAX_HOME` 或 `KODAX_PROFILE_DIR` 时路径随 profile 移动。0.1.31 embedded Runtime 可能留下历史的 `~/.kodax/.kodax/runtime`，0.1.32 起不再把它作为当前 daemon 真理源。
+说明：默认 profile 根是 `~/.kodax`；因此 0.1.33 shared daemon 的 Runtime 状态/journal 实际默认位置是 `~/.kodax/runtime`。自定义 `KODAX_HOME` 时路径随数据根移动（已弃用的 `KODAX_PROFILE_DIR` 等价于 `KODAX_HOME`）。0.1.31 embedded Runtime 可能留下历史的 `~/.kodax/.kodax/runtime`，0.1.32 起不再把它作为当前 daemon 真理源。
 
 - Renderer 不直接执行 LLM、文件工具或 shell。
 - Renderer 不读回已保存的 Key，普通 IPC 列表、日志和错误消息不包含 Key。

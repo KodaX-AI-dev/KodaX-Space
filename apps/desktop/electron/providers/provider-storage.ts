@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { KodaXCustomProviderConfig } from '@kodax-ai/kodax/llm';
-import { getKodaxRuntimeDir, getSpaceDataDir } from '../kodax/data-paths.js';
+import { getKodaxDir, getSpaceDataDir } from '../kodax/data-paths.js';
 import {
   mergeSdkCustomProviderConfig,
   normalizeSpaceCustomProviderForSdk,
@@ -14,12 +14,12 @@ import { invalidateProviderCredential } from './credential-invalidation.js';
 import { legacyDiscovery } from './legacy-discovery.js';
 
 const sdk = () => import('@kodax-ai/kodax/llm');
-const authPath = () => path.join(getKodaxRuntimeDir(), 'auth.json');
+const authPath = () => path.join(getKodaxDir(), 'auth.json');
 
 async function readProviderConfiguration(): Promise<unknown> {
   const { readCoreConfig, withCoreConfigWriteLock, CoreConfigWriteConflictError } =
     await import('@kodax-ai/kodax/repl');
-  const file = path.join(getKodaxRuntimeDir(), 'config.json');
+  const file = path.join(getKodaxDir(), 'config.json');
   const backoff = [10, 25, 50, 100];
   for (let attempt = 0; ; attempt++) {
     try {

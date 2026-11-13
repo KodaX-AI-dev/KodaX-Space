@@ -6,7 +6,7 @@ import { registerChannelWithEvent } from './register.js';
 import { isRendererTarget } from './push.js';
 import { buildDiagnosticBundle } from '../diagnostics/export.js';
 import { captureDiagnosticInspection } from '../diagnostics/inspection.js';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 import {
   flushDiagnostics,
   getDiagnosticLogDirectory,
@@ -111,7 +111,7 @@ export function registerDiagnosticsChannels(deps: DiagnosticsChannelDeps): void 
       spaceVersion: deps.spaceVersion,
       sdkVersion: readInstalledDiagnosticSdkVersion(),
       hostSdkVersion: runtime.identity?.version,
-      runtimeDirectory: getKodaxRuntimeDir(),
+      runtimeDirectory: getKodaxDir(),
       runtimeProfile: runtime.identity?.profile,
       platform: process.platform,
       categories: input.categories,
@@ -170,7 +170,7 @@ export function registerDiagnosticsChannels(deps: DiagnosticsChannelDeps): void 
         ) ?? []),
       ],
       secretValues: redaction.secretValues,
-      privatePathPrefixes: [...(redaction.privatePathPrefixes ?? []), getKodaxRuntimeDir()],
+      privatePathPrefixes: [...(redaction.privatePathPrefixes ?? []), getKodaxDir()],
     });
 
     const destination = path.resolve(result.filePath);

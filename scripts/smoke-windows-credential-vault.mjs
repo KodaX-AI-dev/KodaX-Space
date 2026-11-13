@@ -85,7 +85,7 @@ async function main() {
     });
     await mkdir(path.join(root, 'electron-profile'), { recursive: true });
     await writeFile(path.join(root, 'main.cjs'), worker);
-    const env = { ...process.env, KODAX_PROFILE_DIR: path.join(root, 'profile') };
+    const env = { ...process.env, KODAX_HOME: path.join(root, 'profile') };
     delete env.KODAX_TEST_ONBOARDING;
     delete env.ELECTRON_RUN_AS_NODE;
     // Each stage is a fresh Electron process; no in-memory secret cache can pass this smoke.

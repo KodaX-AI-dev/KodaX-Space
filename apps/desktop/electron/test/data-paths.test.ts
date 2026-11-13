@@ -1,7 +1,7 @@
-// data-paths tests — OC-12 + 便携版数据目录一致性
+// data-paths tests — OC-12 + 单一数据根(KODAX_HOME)
 //
 // 跨平台(win/mac/linux):路径断言全部用 os.homedir()/os.tmpdir() + path.join 动态构造,
-// 不硬编码 `c:\...` 或 `/home/...`,故同一份用例在三个平台都成立。KODAX_PROFILE_DIR 的
+// 不硬编码 `c:\...` 或 `/home/...`,故同一份用例在三个平台都成立。KODAX_HOME 的
 // 绝对路径判定走 path.isAbsolute(当前 OS 语义)。
 //
 // 验收：
@@ -9,9 +9,10 @@
 //   2. KODAX_TEST_ONBOARDING=<id> → tmpdir/kodax-test-<id>
 //   3. KODAX_TEST_ONBOARDING=1 → tmpdir/kodax-test-<uuid> (auto)
 //   4. 便携版(PORTABLE_EXECUTABLE_DIR) **不再**重定向 → 仍走 ~/.kodax（回归:便携版看不到 workflow）
-//   5. KODAX_PROFILE_DIR=<abs> → <abs> 本身（不再拼 .kodax；含 SDK sessions 同步）
-//   6. 非绝对路径的 KODAX_PROFILE_DIR 被忽略 → 回落 ~/.kodax
-//   7. 同 process 多次调返同路径（缓存）
+//   5. KODAX_HOME=<abs> → <abs> 本身(Space 数据、SDK sessions/config 同根,不再分裂)
+//   6. 非绝对路径的 KODAX_HOME 被忽略 → 回落 ~/.kodax,且 applySdkHomeEnv 把 env 规整到同一路径
+//   7. KODAX_PROFILE_DIR 是已弃用别名:仅在没设 KODAX_HOME 时等价于 KODAX_HOME
+//   8. 同 process 多次调返同路径（缓存）
 
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +24,6 @@ import path from 'node:path';
 import { getAgentConfigHome } from '@kodax-ai/kodax/agent';
 import {
   getKodaxDir,
-  getKodaxRuntimeDir,
   getScopedUserDataDir,
   getSpaceDataDir,
   applySdkHomeEnv,
@@ -64,21 +64,22 @@ test('no env → ~/.kodax', () => {
   assert.equal(getKodaxDir(), homeKodax());
   assert.equal(getSpaceDataDir(), path.join(homeKodax(), 'space'));
   assert.equal(getScopedUserDataDir(), null);
-  assert.equal(getKodaxRuntimeDir(), homeKodax());
 });
 
-test('Runtime data follows an explicit absolute KODAX_HOME', () => {
+test('an absolute KODAX_HOME is the single data root for Space and the SDK', () => {
   clearAllDataEnv();
-  const sdkHome = path.join(os.tmpdir(), 'kodax-runtime-home-fixture');
-  process.env.KODAX_HOME = sdkHome;
-  assert.equal(getKodaxRuntimeDir(), sdkHome);
+  const home = path.join(os.tmpdir(), 'kodax-home-fixture');
+  process.env.KODAX_HOME = home;
+  assert.equal(getKodaxDir(), home);
+  assert.equal(getSpaceDataDir(), path.join(home, 'space'));
+  assert.equal(getScopedUserDataDir(), null, 'a data-root override must not reset Chromium userData');
 });
 
-test('onboarding isolation takes precedence over inherited KODAX_HOME for Runtime data', () => {
+test('onboarding isolation takes precedence over inherited KODAX_HOME', () => {
   clearAllDataEnv();
   process.env.KODAX_TEST_ONBOARDING = 'runtime-home-isolation';
   process.env.KODAX_HOME = path.join(os.tmpdir(), 'must-not-be-used-by-runtime');
-  assert.equal(getKodaxRuntimeDir(), path.join(os.tmpdir(), 'kodax-test-runtime-home-isolation'));
+  assert.equal(getKodaxDir(), path.join(os.tmpdir(), 'kodax-test-runtime-home-isolation'));
 });
 
 test('KODAX_TEST_ONBOARDING=fixture-1 → tmpdir/kodax-test-fixture-1', () => {
@@ -122,50 +123,24 @@ test('便携版 PORTABLE_EXECUTABLE_DIR 不再重定向 → 仍走 ~/.kodax (reg
   );
 });
 
-test('KODAX_PROFILE_DIR=<abs> → 该目录本身即数据根 (sessions/space 直接在其下)', () => {
+test('applySdkHomeEnv: SDK getAgentConfigHome 与 Space 数据根指向同一个 KODAX_HOME', () => {
+  // 真 SDK round-trip:getAgentConfigHome() 动态读 process.env.KODAX_HOME,是 SDK session/config
+  // 目录的根;node --test 按文件隔离进程,故此处 SDK 的 setAgentConfigHome 未被别处污染。
+  // **不拼 /sessions**:getAgentConfigHome 返回 .kodax 根本身。
   clearAllDataEnv();
-  const profileDir = path.join(os.tmpdir(), 'kodax-profile-fixture');
-  process.env.KODAX_PROFILE_DIR = profileDir;
+  const home = path.join(os.tmpdir(), 'kodax-home-fixture');
+  process.env.KODAX_HOME = home;
 
-  // 数据根 = profileDir 本身,不再拼 .kodax
-  assert.equal(getKodaxDir(), profileDir);
-  assert.equal(getSpaceDataDir(), path.join(profileDir, 'space'));
-  assert.equal(getScopedUserDataDir(), path.join(profileDir, 'space', 'electron-user-data'));
-});
-
-test('非绝对路径的 KODAX_PROFILE_DIR 被忽略 → 回落 ~/.kodax', () => {
-  // 'relative/kodax' 在 win/mac/linux 上都非绝对路径 → path.isAbsolute=false → 忽略。
-  clearAllDataEnv();
-  process.env.KODAX_PROFILE_DIR = path.join('relative', 'kodax');
-  assert.equal(getKodaxDir(), homeKodax());
-});
-
-test('applySdkHomeEnv: KODAX_PROFILE_DIR 时设 KODAX_HOME,SDK getAgentConfigHome 随之指向独立数据档', () => {
-  // 真 SDK round-trip:验证我们设的是 SDK 真正会读的那个 env —— KODAX_HOME —— 而不是 SDK 从不读的
-  // KODAX_SESSIONS_DIR(旧实现设错了、只在 Space 侧断言,给了假信心)。getAgentConfigHome() 动态读
-  // process.env.KODAX_HOME,是 SDK session/config 目录的根;node --test 按文件隔离进程,故此处 SDK 的
-  // setAgentConfigHome 未被别处污染,读的就是 env。**不拼 /sessions**:getAgentConfigHome 返回 .kodax 根本身。
-  clearAllDataEnv();
-  const profileDir = path.join(os.tmpdir(), 'kodax-profile-fixture');
-  process.env.KODAX_PROFILE_DIR = profileDir;
-
-  applySdkHomeEnv();
-  assert.equal(
-    process.env.KODAX_HOME,
-    profileDir,
-    'must set KODAX_HOME to the .kodax root itself (not <root>/sessions)',
-  );
-  assert.equal(
-    getAgentConfigHome(),
-    profileDir,
-    'SDK getAgentConfigHome() must resolve to the profile dir — proves KODAX_HOME is the env the SDK actually reads',
-  );
+  assert.deepEqual(applySdkHomeEnv(), { deprecatedProfileDir: null });
+  assert.equal(process.env.KODAX_HOME, home);
+  assert.equal(getAgentConfigHome(), home);
+  assert.equal(getKodaxDir(), home);
 });
 
 test('applySdkHomeEnv: 默认 / 便携版是 no-op (不碰 KODAX_HOME)', () => {
   clearAllDataEnv();
   process.env.PORTABLE_EXECUTABLE_DIR = path.join(os.tmpdir(), 'kodax-portable-fixture');
-  applySdkHomeEnv();
+  assert.deepEqual(applySdkHomeEnv(), { deprecatedProfileDir: null });
   assert.equal(process.env.KODAX_HOME, undefined, '便携版/默认不覆盖 SDK 自己的 home 默认');
 });
 
@@ -181,13 +156,56 @@ test('applySdkHomeEnv: 测试模式强制隔离 SDK home，不继承用户 KODAX
   assert.equal(getAgentConfigHome(), expected);
 });
 
-test('applySdkHomeEnv: 尊重用户已设的 KODAX_HOME,不覆盖', () => {
+test('applySdkHomeEnv: 非绝对 KODAX_HOME 被忽略,SDK 与 Space 回落到同一个默认根', () => {
+  // SDK 的 getAgentConfigHome 会原样接受相对路径;若 Space 只忽略而不规整 env,两边就分叉。
   clearAllDataEnv();
-  process.env.KODAX_PROFILE_DIR = path.join(os.tmpdir(), 'kodax-profile-fixture');
-  const userDir = path.join(os.tmpdir(), 'user-chosen-home');
-  process.env.KODAX_HOME = userDir;
+  process.env.KODAX_HOME = path.join('relative', 'kodax');
+
   applySdkHomeEnv();
-  assert.equal(process.env.KODAX_HOME, userDir);
+
+  assert.equal(getKodaxDir(), homeKodax());
+  assert.equal(process.env.KODAX_HOME, homeKodax());
+  assert.equal(getAgentConfigHome(), homeKodax());
+});
+
+test('KODAX_PROFILE_DIR (已弃用) 只设它时等价于 KODAX_HOME,并报告弃用', () => {
+  clearAllDataEnv();
+  const profileDir = path.join(os.tmpdir(), 'kodax-profile-fixture');
+  process.env.KODAX_PROFILE_DIR = profileDir;
+
+  assert.deepEqual(applySdkHomeEnv(), { deprecatedProfileDir: profileDir });
+  assert.equal(process.env.KODAX_HOME, profileDir);
+  assert.equal(getAgentConfigHome(), profileDir);
+  assert.equal(getKodaxDir(), profileDir);
+  assert.equal(getSpaceDataDir(), path.join(profileDir, 'space'));
+  assert.equal(getScopedUserDataDir(), null);
+});
+
+test('KODAX_PROFILE_DIR 与 KODAX_HOME 同时设置 → KODAX_HOME 优先,仍报告弃用', () => {
+  clearAllDataEnv();
+  const profileDir = path.join(os.tmpdir(), 'kodax-profile-fixture');
+  const home = path.join(os.tmpdir(), 'kodax-home-fixture');
+  process.env.KODAX_PROFILE_DIR = profileDir;
+  process.env.KODAX_HOME = home;
+
+  assert.deepEqual(applySdkHomeEnv(), { deprecatedProfileDir: profileDir });
+  assert.equal(getKodaxDir(), home);
+  assert.equal(getAgentConfigHome(), home);
+});
+
+test('非绝对路径的 KODAX_PROFILE_DIR 被忽略 → 回落 ~/.kodax,不报告弃用', () => {
+  clearAllDataEnv();
+  process.env.KODAX_PROFILE_DIR = path.join('relative', 'kodax');
+  assert.deepEqual(applySdkHomeEnv(), { deprecatedProfileDir: null });
+  assert.equal(getKodaxDir(), homeKodax());
+});
+
+test('测试模式下 KODAX_PROFILE_DIR 被忽略且不报告弃用', () => {
+  clearAllDataEnv();
+  process.env.KODAX_TEST_ONBOARDING = 'profile-ignored';
+  process.env.KODAX_PROFILE_DIR = path.join(os.tmpdir(), 'kodax-profile-fixture');
+  assert.deepEqual(applySdkHomeEnv(), { deprecatedProfileDir: null });
+  assert.equal(getKodaxDir(), path.join(os.tmpdir(), 'kodax-test-profile-ignored'));
 });
 
 test('KODAX_TEST_ONBOARDING rejects path traversal suffixes', () => {

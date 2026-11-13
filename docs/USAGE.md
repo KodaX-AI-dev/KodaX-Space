@@ -89,11 +89,10 @@ flowchart TD
 | `~/.kodax/space/`                        | Space UI 和桌面专属状态                     | 包含 logs、state 等                                                                                                |
 | `~/.kodax/space/settings.json`           | Space versioned preferences                 | version 3 保存 `coderRuntimeMode`；不属于 KodaX 核心配置或 integrations                                            |
 | `<profile-root>/runtime/`                | Shared Runtime state/journal                | Coder daemon runs；默认实际为 `~/.kodax/runtime/`                                                                  |
-| `KODAX_HOME=<abs>`                       | 改变 SDK 共享数据根                         | 必须在应用启动前设置                                                                                               |
-| `KODAX_PROFILE_DIR=<abs>`                | 让 Space 和 SDK 使用一个独立 profile        | 该绝对路径本身就是 profile 根，不再追加 `.kodax`                                                                   |
+| `KODAX_HOME=<abs>`                       | Space 与 KodaX 共享的数据根（含 Space 数据）| 该绝对路径本身就是数据根，不再追加 `.kodax`；必须在应用启动前设置；相对路径会被忽略                                 |
 | `KODAX_TEST_ONBOARDING=1\|<safe-id>`     | 测试隔离 profile                            | 强制写入系统临时目录，禁止指向真实用户数据                                                                         |
 
-若同时使用 `KODAX_PROFILE_DIR`，Space 会在首次加载 SDK 前将 `KODAX_HOME` 对齐到该 profile。相对路径会被忽略；测试模式优先级最高。
+`KODAX_PROFILE_DIR` 已弃用：只设它时等价于 `KODAX_HOME`（日志会记录告警），两者同时设置以 `KODAX_HOME` 为准。Space 会在首次加载 SDK 前把数据根对齐到 `KODAX_HOME`；测试模式优先级最高。只想让 Space 独立于 CLI 时，只在 Space 的启动项里设置它，不要写进全局环境变量，否则 CLI 也会改用该目录。
 
 KodaX 0.7.96 的命令沙箱默认继承宿主环境，同时继续阻止固定的 KodaX/Electron 执行控制
 变量。旧 `config.json#sandbox.envPass` 输入已经失效；Space 不再编辑、写入或向任何 Run
@@ -247,7 +246,7 @@ native SQLite load、物理 sandbox helper/doctor、真实 packaged boot 和 Git
 | 现象                          | 首先检查                                                                                                                 |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 没有 Provider / API key       | Settings → Providers，检查已选来源、auth.json 权限和迁移状态；需要时明确选择环境变量或重试原凭证，不会自动换账号         |
-| 会话或配置出现在错误 profile  | 启动前的 `KODAX_HOME`、`KODAX_PROFILE_DIR`；不要在 SDK import 后修改                                                     |
+| 会话或配置出现在错误 profile  | 启动前的 `KODAX_HOME`；不要在 SDK import 后修改                                                     |
 | Runtime run 失败              | 版本信息、runId、`~/.kodax/space/logs`、Runtime status/capability snapshot                                               |
 | Packaged daemon 启动即退出    | `~/.kodax/space/logs`；必要时把 `scripts/diagnose-packaged-daemon.cmd` 复制到 extracted app 目录前台复现                 |
 | MCP 工具不可见                | MCP panel 的 Refresh/Reload、server diagnostics；MCP 子进程由 Space 管理                                                 |
@@ -259,7 +258,7 @@ native SQLite load、物理 sandbox helper/doctor、真实 packaged boot 和 Git
 提交问题时请包含版本、操作系统、复现步骤、是否使用独立 profile、相关日志和脱敏截图。已知问题见 [KNOWN_ISSUES.md](KNOWN_ISSUES.md)。
 
 `scripts/diagnose-packaged-daemon.cmd` 不创建私有执行 owner，会按当前
-`KODAX_PROFILE_DIR`/`KODAX_HOME` 前台启动与正式包相同的 Electron→Node→KodaX CLI
+`KODAX_HOME` 前台启动与正式包相同的 Electron→Node→KodaX CLI
 链路，并在应用目录生成 `kodax-daemon-bootstrap-diagnostic.log`。该日志可能含本机路径、
 profile 位置和 Runtime 错误；分享前必须人工脱敏。
 

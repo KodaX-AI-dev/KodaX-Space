@@ -14,7 +14,7 @@ import { workflowPolicyStore } from './workflow-policy.js';
 import { RuntimeClientIdentityStore } from './runtime/runtime-client-identity.js';
 import { settleRuntimeClientExit } from './runtime/runtime-client-exit.js';
 import { RuntimeInputAuthorizationStore } from './runtime/runtime-input-authorization-store.js';
-import { getKodaxRuntimeDir } from './data-paths.js';
+import { getKodaxDir } from './data-paths.js';
 
 test('Space accepts the installed unified SDK capability contract', async () => {
   const sdk = await import('@kodax-ai/kodax/runtime');
@@ -474,7 +474,7 @@ async function verifyRuntimeUserImage(adapter: RuntimeHostAdapter, sessionId: st
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     'base64',
   );
-  const dir = path.join(getKodaxRuntimeDir(), 'space', 'session-attachments', sessionId);
+  const dir = path.join(getKodaxDir(), 'space', 'session-attachments', sessionId);
   await mkdir(dir, { recursive: true });
   const imagePath = path.join(dir, 'pasted.png');
   await writeFile(imagePath, bytes);

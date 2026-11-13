@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { RuntimeClientSecretStore } from './runtime-client-identity.js';
-import { getKodaxRuntimeDir } from '../data-paths.js';
+import { getKodaxDir } from '../data-paths.js';
 import { verifyLegacyRuntimeSecret } from './runtime-credential-recovery.js';
 import { rememberProviderSecret } from '../../providers/managed-env.js';
 import type { FileProviderCredentialStore } from '@kodax-ai/kodax/llm';
@@ -31,7 +31,7 @@ export function createRuntimeClientFileSecretStore(input: {
   readonly authFile?: string;
   readonly legacy?: RuntimeClientSecretStore;
 } = {}): RuntimeClientSecretStore {
-  const authFile = input.authFile ?? path.join(getKodaxRuntimeDir(), 'auth.json');
+  const authFile = input.authFile ?? path.join(getKodaxDir(), 'auth.json');
   let pending: Promise<FileProviderCredentialStore> | undefined;
   const store = () => pending ??= openFile(authFile).catch(error => { pending = undefined; throw error; });
   const binding = (account: string) => ({ profile: 'space-client-identity', provider: account,

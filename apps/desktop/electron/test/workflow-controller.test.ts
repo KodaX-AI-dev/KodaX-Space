@@ -13,7 +13,7 @@ import {
   withDefaultWorkflowAgentTarget,
 } from '../kodax/workflow-controller.js';
 import { _setRepoIntelEntitlementForTesting } from '../kodax/repo-intel-gate.js';
-import { getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 import type {
   WorkflowRunManagerLike,
   WorkflowLifecycleLike,
@@ -1254,11 +1254,11 @@ test('listLibrary reads personal workflows from the SDK agent home', async () =>
     // KodaX 0.7.97-beta.5+ reads personal workflows from KODAX_HOME, not ~/.kodax.
     assert.deepEqual(searched, [
       {
-        personal: join(getKodaxRuntimeDir(), 'workflows'),
+        personal: join(getKodaxDir(), 'workflows'),
         project: join(dir, '.kodax', 'workflows'),
       },
     ]);
-    assert.notEqual(getKodaxRuntimeDir(), join(homedir(), '.kodax'));
+    assert.notEqual(getKodaxDir(), join(homedir(), '.kodax'));
   } finally {
     _setCodingSdkForTesting(null);
     rmSync(dir, { recursive: true, force: true });

@@ -34,7 +34,7 @@ import {
   readKodaxMcpIntegration,
   type KodaxMcpIntegrationSnapshot,
 } from '../mcp/kodax-user-config-loader.js';
-import { getKodaxRuntimeDir } from './data-paths.js';
+import { getKodaxDir } from './data-paths.js';
 import { effortToReasoningMode, isSpaceReasoningMode } from './reasoning-effort.js';
 import type { PermissionMode, ReasoningMode } from '@kodax-space/space-ipc-schema';
 
@@ -708,7 +708,7 @@ const MODELED_COMPACTION_KEYS = new Set([
 ]);
 
 function getKodaxConfigPath(): string {
-  return path.join(getKodaxRuntimeDir(), 'config.json');
+  return path.join(getKodaxDir(), 'config.json');
 }
 
 async function loadRawConfigForOverview(
@@ -742,7 +742,7 @@ async function buildKodaxConfigOverview(
   projectRoot: string | undefined,
   errors: KodaxConfigOverviewT['errors'],
 ): Promise<KodaxConfigOverviewT> {
-  const kodaxDir = getKodaxRuntimeDir();
+  const kodaxDir = getKodaxDir();
   const configPath = getKodaxConfigPath();
   const configExists = await pathIsFile(configPath);
   const globalMcpSummary = await readGlobalMcpConfigSummary(raw, errors);
@@ -873,7 +873,7 @@ async function readGlobalMcpConfigSummary(
   globalConfigExists: boolean;
   globalServers: number;
 }> {
-  const configHome = getKodaxRuntimeDir();
+  const configHome = getKodaxDir();
   const globalPath = getKodaxMcpIntegrationPath(configHome);
   const globalConfigExists = await pathIsFile(globalPath);
 

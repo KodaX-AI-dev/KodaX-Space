@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 import type { McpbExtensionT } from '@kodax-space/space-ipc-schema';
-import { getKodaxDir, getKodaxRuntimeDir } from '../kodax/data-paths.js';
+import { getKodaxDir } from '../kodax/data-paths.js';
 import { replaceFileWithoutFollowingAliases } from '../kodax/atomic-file.js';
 import type { ManifestT } from './manifest.js';
 
@@ -631,7 +631,7 @@ export async function removeEntryFromKodaxMcp(
 
 async function loadDefaultSyncDeps(): Promise<McpbKodaxMcpSyncDeps> {
   const repl = await import('@kodax-ai/kodax/repl');
-  const configHome = getKodaxRuntimeDir();
+  const configHome = getKodaxDir();
   const snapshot = repl.readMcpIntegration(configHome);
   const servers = structuredClone(snapshot.document.servers);
   const write = () =>

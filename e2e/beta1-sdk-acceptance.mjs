@@ -15,10 +15,10 @@ test('installed Registry SDK Space adapter acceptance', { timeout: 180_000 }, as
   );
 
   process.env.KODAX_TEST_ONBOARDING = `beta1-host-${randomUUID()}`;
-  const { applySdkHomeEnv, getKodaxRuntimeDir } =
+  const { applySdkHomeEnv, getKodaxDir } =
     await import('../apps/desktop/electron/kodax/data-paths.ts');
   applySdkHomeEnv();
-  const homeDir = getKodaxRuntimeDir();
+  const homeDir = getKodaxDir();
   const profileRoot = path.join(homeDir, '.kodax');
   process.env.KODAX_HOME = profileRoot;
   const workspace = path.join(profileRoot, 'workspace');

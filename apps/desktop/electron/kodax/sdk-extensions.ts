@@ -1,4 +1,4 @@
-import { getKodaxRuntimeDir } from './data-paths.js';
+import { getKodaxDir } from './data-paths.js';
 
 type SdkCodingModule = typeof import('@kodax-ai/kodax/coding');
 type SpaceSdkExtensionRuntime = ReturnType<SdkCodingModule['createExtensionRuntime']>;
@@ -149,7 +149,7 @@ export async function discoverSpaceSdkExtensions(
       configuredPaths = await deps.loadConfiguredExtensionPaths();
     } else {
       const repl = await import('@kodax-ai/kodax/repl');
-      configuredPaths = repl.readExtensionsIntegration(getKodaxRuntimeDir()).document.paths;
+      configuredPaths = repl.readExtensionsIntegration(getKodaxDir()).document.paths;
     }
   } catch (err) {
     console.warn(

@@ -1,4 +1,4 @@
-import { getKodaxRuntimeDir } from './data-paths.js';
+import { getKodaxDir } from './data-paths.js';
 
 type SdkReplModule = typeof import('@kodax-ai/kodax/repl');
 export type KodaxIntegrationMigrationPlan = ReturnType<
@@ -22,7 +22,7 @@ async function loadSdkRepl(): Promise<SdkReplModule> {
  * filesystem path: Space always targets the same config home as the SDK/CLI.
  */
 export async function planKodaxIntegrationMigration(
-  configHome = getKodaxRuntimeDir(),
+  configHome = getKodaxDir(),
 ): Promise<KodaxIntegrationMigrationPlan> {
   const sdk = await loadSdkRepl();
   return sdk.planLegacyIntegrationMigration(configHome);
@@ -34,7 +34,7 @@ export async function planKodaxIntegrationMigration(
  * a separate, explicit CLI operation after the new sources have been verified.
  */
 export async function applyKodaxIntegrationMigration(
-  configHome = getKodaxRuntimeDir(),
+  configHome = getKodaxDir(),
 ): Promise<KodaxIntegrationMigrationResult> {
   const sdk = await loadSdkRepl();
   return sdk.migrateLegacyIntegrationConfig({

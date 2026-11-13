@@ -16,7 +16,6 @@ test(`fresh credentials and a restarted client need no OS vault on ${process.pla
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       KODAX_HOME: root,
-      KODAX_PROFILE_DIR: root,
     };
     delete env.KODAX_TEST_ONBOARDING;
     // Keep the parent suite's preload from re-enabling onboarding in this child.

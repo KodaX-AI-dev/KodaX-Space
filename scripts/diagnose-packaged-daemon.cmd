@@ -20,10 +20,10 @@ if not exist "%APP_EXE%" (
   exit /b 2
 )
 
-if defined KODAX_PROFILE_DIR (
-  set "CONFIG_HOME=%KODAX_PROFILE_DIR%"
-) else if defined KODAX_HOME (
+if defined KODAX_HOME (
   set "CONFIG_HOME=%KODAX_HOME%"
+) else if defined KODAX_PROFILE_DIR (
+  set "CONFIG_HOME=%KODAX_PROFILE_DIR%"
 ) else (
   set "CONFIG_HOME=%USERPROFILE%\.kodax"
 )

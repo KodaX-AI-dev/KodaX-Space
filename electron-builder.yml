@@ -273,7 +273,7 @@ nsis:
 # 数据目录：便携版**与 dev / 安装版一致，都用 ~/.kodax**（不再跟随 exe 目录）。
 # 早期版本曾按 PORTABLE_EXECUTABLE_DIR 把 Space 数据重定向到 <exe>/.kodax，但 SDK 的
 # sessions 不跟随 → 便携版里"session 正常、workflow 全空"的半便携不一致。现已取消该重定向
-# （见 apps/desktop/electron/kodax/data-paths.ts）。需要独立数据档用 KODAX_PROFILE_DIR。
+# （见 apps/desktop/electron/kodax/data-paths.ts）。需要独立数据档用 KODAX_HOME（KODAX_PROFILE_DIR 已弃用）。
 portable:
   artifactName: 'KodaX-Space-Portable-${version}.${ext}'
 
