@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-12
+Last Updated: 2026-11-13
 
 > 2026-11-13：当前工作树依赖已发布的 Registry SDK `0.7.97-beta.8`（含 Issues 245–247 的原生 Job 启动修复），见 [beta.8 适配](releases/kodax-beta8-space-adaptation.md) 与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
@@ -247,6 +247,7 @@ Last Updated: 2026-11-12
 | 245 | Medium | Resolved (source; not released) | Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown | 2026-11-12 |
 | 246 | High | Resolved (source; not released) | Windows Job verification failure leaves Coder unavailable without an actionable recovery flow | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown | 2026-11-12 |
 | 247 | Medium | Resolved (source; not released) | New-conversation task summary says Ready while the Coder backend has failed to start | Observed Space 0.1.47-alpha.5; first affected version unknown | 2026-11-12 |
+| 248 | High | Resolved (source; not released) | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -16486,16 +16487,63 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
   Add composed UI coverage for starting, failed, disconnected and recovered Runtime states,
   including the new-conversation case, so contradictory availability labels cannot pass alone.
 
+## Issue 248 — Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret
+
+- **Priority**: High.
+- **Status**: Resolved in source, not released; unit-tested only, not yet verified on Linux/Kylin.
+- **Introduced**: Space 0.1.47-alpha.5, which moved the Runtime client secret from the OS keychain
+  to `auth.json` and imports the 0.1.46 secret on first use. Reported on Kylin V10 SP1
+  (kernel 5.15.0-52) upgrading 0.1.46 → 0.1.47-alpha.5.
+- **Created**: 2026-11-13.
+- **Original problem**: after the upgrade Space stays on the boot page ("正在等待上次助手退出验证"),
+  shows "Runtime 退出恢复被阻止 / cleanup_unverified", and "继续验证" repeats forever. Closing the
+  window triggers complete exit, which fails with "Coder Runtime exit settlement failed after its
+  mutation boundary; recovery relaunch required." and relaunches into the same state.
+- **Customer analysis (incorrect)**: the bundled SDK 0.7.97-beta.4 lacks `settleKodaXRuntimeExit`.
+  alpha.5 never calls it (only manual text and tests mention it); beta.4 does export
+  `readKodaXClientExits` and `lifecycle.requestExit`, which `settleRuntimeClientExit` uses.
+- **Root cause**: `settlePublishedRuntimeExit` opens the stable client identity before any daemon
+  is inspected, and startup always scans for a pending exit. `loadOrCreate` reads the identity's
+  secret; for a 0.1.46 identity the secret exists only in the OS keychain, so the legacy import
+  calls `keychain.getPersistentKey`. With a locked Secret Service (`IsLocked: Cannot get secret of
+  a locked object`, autologin without keyring unlock) it throws "OS-protected storage is required
+  for the Runtime client secret" by design (no ephemeral fallback). The failure is mapped to
+  `cleanup_unverified` at startup and wrapped as the generic "mutation boundary" error on exit, so
+  neither the dialog nor the log showed the cause. No daemon or exit receipt was involved: the
+  customer had no `~/.kodax/runtime/daemon`.
+- **Evidence**: customer `auth.json` had no `space-client-identity` binding (empty `apiKeys`);
+  unlocking the login keyring in seahorse let Space start; the keychain probe failure and the exit
+  failure carry identical timestamps in `space-main.jsonl`. Windows is unaffected (Credential
+  Manager is readable). The identity file lives in `~/.kodax/space/`, not `~/.config/KodaX Space/`.
+- **Resolution (2026-11-13)**: `getPersistentKey` failures for an unavailable keychain carry
+  `code: 'persistent_key_unavailable'`. `RuntimeClientIdentityStore.loadOrCreate` replaces the
+  unreadable identity (new `instanceId` and secret account, same `clientId`) when no
+  `exitRecovery` depends on the old secret, so startup no longer needs the keyring. Startup
+  recovery blockers log `reason`/`nextAction`/message to the structured diagnostics, and complete-exit
+  failures print the wrapped causes.
+- **Files changed**: `apps/desktop/electron/kodax/runtime/runtime-client-identity.ts`,
+  `providers/keychain.ts`, `main.ts`, `test/runtime-client-identity.test.ts`.
+- **Tests added**: replacement of a legacy identity behind a locked keychain (red before the fix);
+  a pending `exitRecovery` still blocks and is not discarded.
+- **Not covered**: no active unlock prompt (`@napi-rs/keyring` has no unlock API); a pending exit
+  recovery created by 0.1.46 or earlier whose secret remains in a locked keyring still blocks;
+  Linux/Kylin upgrade not verified end to end.
+- **Coexistence review (no code change)**: Hosts from 0.7.96 (no build identity) are older than
+  beta.4+, so `firstRequiredDaemonUpgrade` takes the `runtimeVersion` refresh path (idle → managed
+  replacement via `daemonManagement`; busy → attach as compatible since SDK beta.6, Issue 405).
+  Other installations' Hosts are never replaced. alpha.5 (beta.4) lacks the Issue 405 fix, so
+  alpha.5 with a differently built CLI cannot be repaired retroactively.
+
 ## Summary
 
-- Total: 234
+- Total: 235
 - Open: 1
 - Ready: 5
 - Needs info: 0
 - In Progress: 11
 - Deferred: 0
-- Resolved (including source-only fixes): 217
-- High: 117
+- Resolved (including source-only fixes): 218
+- High: 118
 - Medium: 103
 - Low: 14
 - Next ready to resolve: 222
