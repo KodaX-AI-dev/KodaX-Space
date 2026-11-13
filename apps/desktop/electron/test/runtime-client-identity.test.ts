@@ -255,3 +255,61 @@ test('failed secret persistence never publishes a new identity', async (t) => {
   );
   await assert.rejects(fs.stat(file), { code: 'ENOENT' });
 });
+
+const KEYCHAIN_LOCKED = Object.assign(
+  new Error('OS-protected storage is required for the Runtime client secret.'),
+  { code: 'persistent_key_unavailable' },
+);
+
+/** Reads fail like a locked Linux keyring while the legacy secret exists only there. */
+function lockedLegacySecretStore(unlockedValues: Map<string, string>): RuntimeClientSecretStore {
+  return {
+    read: async (account, identity) => {
+      const value = unlockedValues.get(account);
+      if (value !== undefined) return value;
+      if (identity !== undefined) throw KEYCHAIN_LOCKED;
+      return undefined;
+    },
+    write: async (account, secret) => {
+      unlockedValues.set(account, secret);
+    },
+  };
+}
+
+test('a locked keychain cannot block startup: the unreadable legacy identity is replaced', async (t) => {
+  const { dir, file, store } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const metadata = { name: 'Space', version: 'fixture' };
+  const first = await store.openInstance(metadata);
+  const stored = JSON.parse(await fs.readFile(file, 'utf8')) as { secretAccount: string };
+
+  // 0.1.46 left the identity file with its secret only in the (now locked) OS keychain.
+  const file2Secrets = lockedLegacySecretStore(new Map());
+  const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, file2Secrets);
+  const next = await restarted.openInstance(metadata);
+
+  assert.equal(next.clientId, first.clientId, 'the installation keeps its client id');
+  assert.notEqual(next.instanceId, first.instanceId);
+  const after = JSON.parse(await fs.readFile(file, 'utf8')) as { secretAccount: string };
+  assert.notEqual(after.secretAccount, stored.secretAccount);
+  assert.equal(await restarted.openExitRecovery(metadata), undefined);
+  // The replacement is durable: the next start no longer touches the keychain.
+  const again = await new RuntimeClientIdentityStore(file, dir, randomUUID, file2Secrets).openInstance(
+    metadata,
+  );
+  assert.equal(again.instanceId, next.instanceId);
+  assert.equal(again.instanceSecret, next.instanceSecret);
+});
+
+test('a locked keychain still blocks when a pending exit recovery depends on the secret', async (t) => {
+  const { dir, file, store } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const metadata = { name: 'Space', version: 'fixture' };
+  const first = await store.openInstance(metadata);
+  await store.retireInstance(first.instanceId, { requestId: 'exit-fixture', runtimeId: 'host-fixture' });
+
+  const locked = lockedLegacySecretStore(new Map());
+  const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, locked);
+  await assert.rejects(restarted.openExitRecovery(metadata), /OS-protected storage is required/);
+  assert.match(await fs.readFile(file, 'utf8'), /exitRecovery/, 'recovery authority is not discarded');
+});

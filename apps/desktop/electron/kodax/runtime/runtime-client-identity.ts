@@ -92,6 +92,15 @@ type IdentityReadResult =
 
 class RuntimeClientIdentityAliasError extends Error {}
 
+/** Set by providers/keychain.ts when the OS keychain is locked, absent or unreachable. */
+function isKeychainUnavailable(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    (error as { readonly code?: unknown }).code === 'persistent_key_unavailable'
+  );
+}
+
 function sha256(bytes: Buffer): string {
   return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 }
@@ -242,13 +251,38 @@ export class RuntimeClientIdentityStore {
     this.#stablePromise = Promise.resolve(next);
   }
 
+  async #replaceUnreadableIdentity(
+    current: StableRuntimeClientIdentity,
+  ): Promise<StableRuntimeClientIdentity> {
+    const next: StableRuntimeClientIdentity = {
+      ...current,
+      instanceId: `space_instance_${this.#uuid()}`,
+      secretAccount: `runtime_client_${this.#uuid()}`,
+    };
+    await this.#loadSecret(next.secretAccount, true);
+    await this.#replaceStable(current, next);
+    return next;
+  }
+
   async #loadOrCreate(): Promise<StableRuntimeClientIdentity> {
     await fs.mkdir(this.#directory, { recursive: true, mode: 0o700 });
 
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const current = await this.#read();
       if (current.kind === 'valid') {
-        await this.#loadSecret(current.identity.secretAccount, false, current.identity);
+        try {
+          await this.#loadSecret(current.identity.secretAccount, false, current.identity);
+        } catch (error) {
+          // A locked or missing OS keychain must not make every start fail. Without a
+          // pending exit that needs the old secret, the legacy identity is unusable
+          // and only protects a Host that no recovery record refers to.
+          if (!isKeychainUnavailable(error) || current.identity.exitRecovery) throw error;
+          console.warn(
+            '[runtime-client] legacy client secret is unreadable; replacing the instance identity:',
+            error instanceof Error ? error.message : String(error),
+          );
+          return this.#replaceUnreadableIdentity(current.identity);
+        }
         return current.identity;
       }
 

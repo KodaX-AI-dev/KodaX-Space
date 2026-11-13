@@ -221,7 +221,11 @@ async function readPersistentKey(
   verifyRecoverySecret?: (candidate: string) => Promise<boolean>,
 ): Promise<string | undefined> {
   if ((await detectBackend()) !== 'keychain') {
-    throw new Error('OS-protected storage is required for the Runtime client secret.');
+    // Callers distinguish "the keychain cannot be read now" from a real storage failure.
+    throw Object.assign(
+      new Error('OS-protected storage is required for the Runtime client secret.'),
+      { code: 'persistent_key_unavailable' },
+    );
   }
   const vault = await loadVault();
   if (vault) {

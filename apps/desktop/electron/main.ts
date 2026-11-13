@@ -1487,6 +1487,11 @@ async function showRuntimeStartupRecoveryBlocker(
   const locale = await resolveCurrentTrayLocale();
   const zh = locale === 'zh-CN';
   const notice = runtimeExitRecoveryBlockedNotice(settlement, zh ? 'zh-CN' : 'en');
+  // The dialog stays generic; the SDK/identity cause must still reach the support log.
+  diagnosticsLogger?.warn('runtime', 'startup_exit_recovery_blocked', settlement.message, {
+    reason: settlement.reason,
+    nextAction: settlement.nextAction,
+  });
   restoreVisibleExitControlSurface();
   setVisibleBootStatus(
     settlement.reason === 'verification_timeout'
@@ -1970,7 +1975,13 @@ async function requestCompleteExit(): Promise<void> {
       restartRequired,
       zh ? 'zh-CN' : 'en',
     );
-    console.warn('[main] complete exit preparation failed:', failureMessage);
+    // Settlement wraps the real failure in an AggregateError; keep its causes diagnosable.
+    const causes = error instanceof AggregateError ? error.errors : [];
+    console.warn(
+      '[main] complete exit preparation failed:',
+      failureMessage,
+      ...causes.map((cause) => (cause instanceof Error ? cause.message : String(cause))),
+    );
     const result = await dialog.showMessageBox({
       type: 'warning',
       title: presentation.title,
