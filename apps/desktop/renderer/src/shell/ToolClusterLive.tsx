@@ -59,6 +59,16 @@ function RowIcon({ status }: { status: LiveToolRow['status'] }): JSX.Element {
   return <Check className="tool-pulse-row-icon is-done" strokeWidth={2.2} aria-hidden />;
 }
 
+/** The latest thinking line with a blinking caret; hidden (but laid out) while empty. */
+export function LiveThinkingLine({ text }: { text: string }): JSX.Element {
+  return (
+    <div className={`tool-pulse-think${text ? ' is-on' : ''}`}>
+      <span className="min-w-0 truncate">{text}</span>
+      <span className="tool-pulse-caret" aria-hidden />
+    </div>
+  );
+}
+
 /** Thinking tail + latest rows; a new row pushes the list up one row (FLIP on the list). */
 export function LiveToolFeed({
   thinking,
@@ -84,10 +94,7 @@ export function LiveToolFeed({
 
   return (
     <div className="tool-pulse-feed" data-testid="tool-cluster-live-feed">
-      <div className={`tool-pulse-think${thinking ? ' is-on' : ''}`}>
-        <span className="min-w-0 truncate">{thinking}</span>
-        <span className="tool-pulse-caret" aria-hidden />
-      </div>
+      <LiveThinkingLine text={thinking} />
       <div className="tool-pulse-rows-clip">
         <ul ref={listRef} className="tool-pulse-rows">
           {rows.map((row) => (

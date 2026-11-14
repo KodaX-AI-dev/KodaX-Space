@@ -74,6 +74,7 @@ import {
   ClusterBeats,
   formatPulseDuration,
   formatPulseTokens,
+  LiveThinkingLine,
   LiveToolFeed,
   motionAllowed,
   useSecondClock,
@@ -3711,6 +3712,8 @@ function ThinkingBlock({
 }): JSX.Element {
   const { t } = useI18n();
   const tokenLabel = t('transcript.view.thinking');
+  // A thinking-only tail step streams its latest line, like the live tool group's think line.
+  const live = followTail && !expanded;
   return (
     <div className="inline-flex w-fit min-w-0 max-w-full flex-col">
       <button
@@ -3723,12 +3726,18 @@ function ThinkingBlock({
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong',
         ].join(' ')}
         aria-expanded={expanded}
+        data-live={live ? 'true' : undefined}
       >
-        <Caret open={expanded} />
+        {live ? <span className="tool-pulse-spin" aria-hidden /> : <Caret open={expanded} />}
         <span className="rounded border border-thinking/20 bg-thinking/10 px-1.5 py-0.5 text-thinking/90">
           {tokenLabel}
         </span>
       </button>
+      {live && (
+        <div className="tool-pulse-feed">
+          <LiveThinkingLine text={thinkingTail(thinking)} />
+        </div>
+      )}
       {expanded ? (
         <Collapse open={expanded}>
           <ScrollCapBox

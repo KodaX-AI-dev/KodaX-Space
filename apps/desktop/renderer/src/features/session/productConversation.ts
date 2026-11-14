@@ -146,7 +146,7 @@ function provisionalProductMessages(
         (user) =>
           user.operationId &&
           !user.restoredFromHistory &&
-          !user.sendAdmissionSettled &&
+          !user.productInputObserved &&
           !accepted.has(user.operationId),
       )
       .map((user) => ({

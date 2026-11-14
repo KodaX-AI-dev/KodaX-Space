@@ -320,10 +320,7 @@ export default function App(): JSX.Element {
                 product.data.runtimeId === useAppStore.getState().runtimeConnection.runtimeId
               ) {
                 replaceProductSessionView(product.data);
-                for (const item of product.data.items)
-                  if (item.inputId) {
-                    useAppStore.getState().settleSendOperationMessage(sessionId, item.inputId);
-                  }
+                useAppStore.getState().observeProductInputs(sessionId, product.data.items);
               }
             })
             .catch((error: unknown) =>
@@ -701,10 +698,7 @@ export default function App(): JSX.Element {
       bridge.on('session.productChanged', (view) => {
         if (view.runtimeId === useAppStore.getState().runtimeConnection.runtimeId) {
           replaceProductSessionView(view);
-          for (const item of view.items)
-            if (item.inputId) {
-              useAppStore.getState().settleSendOperationMessage(view.sessionId, item.inputId);
-            }
+          useAppStore.getState().observeProductInputs(view.sessionId, view.items);
         }
       }),
       bridge.on('session.statisticsChanged', (statistics) => {

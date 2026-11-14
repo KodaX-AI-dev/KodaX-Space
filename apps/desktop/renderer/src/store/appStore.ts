@@ -47,6 +47,7 @@ import type {
   SpaceSessionStatisticsT,
   AgentActorTreeSnapshotT,
   SessionHistoryItem,
+  SessionProductItem,
 } from '@kodax-space/space-ipc-schema';
 import { bufferIndexForSelectorTurn } from '../features/session/turnIndex.js';
 import {
@@ -343,6 +344,7 @@ function runtimeOwnerMetadata(user: UserMessage): Partial<UserMessage> {
       operationId: user.operationId,
       operationReservation: user.operationReservation,
       sendAdmissionSettled: user.sendAdmissionSettled,
+      productInputObserved: user.productInputObserved,
       deliveryQueueId: user.deliveryQueueId,
       deliveryQueueMode: user.deliveryQueueMode,
       sourceQueuedLocalId: user.sourceQueuedLocalId,
@@ -950,6 +952,8 @@ interface AppState {
     failureDisposition: SendOperationFailureDisposition,
   ): SendOperationRollbackResult;
   settleSendOperationMessage(sessionId: string, operationId: string): void;
+  /** Settle and hand display to the SDK view for every input the product view now carries. */
+  observeProductInputs(sessionId: string, items: readonly SessionProductItem[]): void;
   /** Record the exact Runtime Run admitted by session.send, independent of transcript rows. */
   acknowledgePendingSendRun(sessionId: string, runId: string, expectedGeneration?: number): void;
   /** Bind the exact optimistic row to the fresh Runtime Run acknowledged by session.send. */
@@ -4646,6 +4650,44 @@ function existingSendOperationOwner(
   return undefined;
 }
 
+/** Settles send operations; `observed` also records that the SDK product view now shows them. */
+function settleSendOperationsPatch(
+  state: Pick<AppState, 'userMessagesBySession' | 'queuedUserMessagesBySession'>,
+  sessionId: string,
+  operationIds: ReadonlySet<string>,
+  observed: boolean,
+): Pick<AppState, 'userMessagesBySession' | 'queuedUserMessagesBySession'> | null {
+  const owns = (message: { readonly operationId?: string }): boolean =>
+    message.operationId !== undefined && operationIds.has(message.operationId);
+  const userPatch = {
+    sendAdmissionSettled: true as const,
+    ...(observed ? { productInputObserved: true as const } : {}),
+  };
+  let changed = false;
+  const nextUsers = (state.userMessagesBySession[sessionId] ?? []).map((message) => {
+    if (
+      !owns(message) ||
+      (message.sendAdmissionSettled && (!observed || message.productInputObserved))
+    )
+      return message;
+    changed = true;
+    return { ...message, ...userPatch };
+  });
+  const nextQueued = (state.queuedUserMessagesBySession[sessionId] ?? []).map((message) => {
+    if (!owns(message) || message.sendAdmissionSettled) return message;
+    changed = true;
+    return { ...message, sendAdmissionSettled: true as const };
+  });
+  if (!changed) return null;
+  const updatedUsers = nextUsers.filter(owns);
+  for (const message of updatedUsers) updateTranscriptOwner(sessionId, message, userPatch);
+  if (updatedUsers.length > 0) rememberHistoryLiveUsers(sessionId, updatedUsers);
+  return {
+    userMessagesBySession: { ...state.userMessagesBySession, [sessionId]: nextUsers },
+    queuedUserMessagesBySession: { ...state.queuedUserMessagesBySession, [sessionId]: nextQueued },
+  };
+}
+
 function pendingSendCleanupPatch(
   state: Pick<AppState, 'pendingSendBySession' | 'pendingSendRuntimeBaselineBySession'>,
   sessionId: string,
@@ -6767,37 +6809,16 @@ export const useAppStore = create<AppState>((setState) => {
     },
 
     settleSendOperationMessage: (sessionId, operationId) =>
-      set((state) => {
-        let changed = false;
-        const userBucket = state.userMessagesBySession[sessionId] ?? [];
-        const nextUsers = userBucket.map((message) => {
-          if (message.operationId !== operationId || message.sendAdmissionSettled === true) {
-            return message;
-          }
-          changed = true;
-          return { ...message, sendAdmissionSettled: true as const };
-        });
-        const queuedBucket = state.queuedUserMessagesBySession[sessionId] ?? [];
-        const nextQueued = queuedBucket.map((message) => {
-          if (message.operationId !== operationId || message.sendAdmissionSettled === true) {
-            return message;
-          }
-          changed = true;
-          return { ...message, sendAdmissionSettled: true as const };
-        });
-        if (!changed) return state;
-        const updatedUsers = nextUsers.filter((message) => message.operationId === operationId);
-        for (const message of updatedUsers)
-          updateTranscriptOwner(sessionId, message, { sendAdmissionSettled: true });
-        if (updatedUsers.length > 0) rememberHistoryLiveUsers(sessionId, updatedUsers);
-        return {
-          userMessagesBySession: { ...state.userMessagesBySession, [sessionId]: nextUsers },
-          queuedUserMessagesBySession: {
-            ...state.queuedUserMessagesBySession,
-            [sessionId]: nextQueued,
-          },
-        };
-      }),
+      set(
+        (state) =>
+          settleSendOperationsPatch(state, sessionId, new Set([operationId]), false) ?? state,
+      ),
+
+    observeProductInputs: (sessionId, items) => {
+      const inputIds = new Set(items.flatMap((item) => (item.inputId ? [item.inputId] : [])));
+      if (inputIds.size > 0)
+        set((state) => settleSendOperationsPatch(state, sessionId, inputIds, true) ?? state);
+    },
 
     acknowledgePendingSendRun: (sessionId, runId, expectedGeneration) =>
       set((state) => {

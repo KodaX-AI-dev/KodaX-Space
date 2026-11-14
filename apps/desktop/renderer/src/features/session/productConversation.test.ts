@@ -115,6 +115,7 @@ test('an accepted input outside the bounded SDK window cannot reappear as an opt
         content: 'old',
         sentAt: 1,
         sendAdmissionSettled: true,
+        productInputObserved: true,
       },
     ],
   );

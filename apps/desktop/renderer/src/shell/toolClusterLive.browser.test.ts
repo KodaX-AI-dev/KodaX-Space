@@ -24,6 +24,7 @@ const base=[
 window.running=()=>[...base,tool('bash','bash',{command:'npm test'},'running',1500)];
 window.between=()=>[...base,tool('bash','bash',{command:'npm test'},'success',1500,4000),
   {id:'think-2',type:'thinking',text:'first idea\\nnow checking the failing case',timestamp:t0+4100}];
+window.thinkingOnly=()=>[base[0],{id:'think-0',type:'thinking',outputState:'draft',text:'scan the repo\\nplanning the next step',timestamp:t0+10}];
 window.show=rows=>replaceProductSessionView({sessionId:'s',runtimeId:'r',revision:++revision,items:rows});
 window.stream=on=>useAppStore.setState({pendingSendBySession:on?{s:true}:{}});
 useAppStore.setState({currentSessionId:'s',currentProjectPath:'/project',sessions:[{sessionId:'s',title:'Live',surface:'code',projectRoot:'/project',createdAt:t0,lastActivityAt:t0}]});
@@ -117,6 +118,25 @@ test(
     await cluster.locator('[aria-hidden="true"] [data-testid="tool-cluster-live-feed"]').waitFor();
     assert.equal(await cluster.getByTestId('tool-cluster-live-stats').count(), 0);
     assert.equal(await cluster.getByTestId('tool-cluster-beats').locator('i').count(), 3);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'a thinking-only stream shows its latest thought live, then settles to the thinking chip',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate('window.stream(true);window.show(window.thinkingOnly());window.settle()');
+    const thinking = page.getByTestId('process-receipt-thinking');
+    await thinking.locator('.tool-pulse-think.is-on').getByText('planning the next step').waitFor();
+
+    await page.evaluate('window.stream(false);window.settle()');
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="process-receipt-thinking"] .tool-pulse-think') ===
+        null,
+    );
     assert.deepEqual(errors, []);
   },
 );

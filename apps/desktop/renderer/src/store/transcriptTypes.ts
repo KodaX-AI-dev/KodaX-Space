@@ -47,6 +47,8 @@ export interface UserMessage {
   readonly operationId?: string;
   readonly operationReservation?: SendOperationReservation;
   readonly sendAdmissionSettled?: true;
+  /** The SDK product view has carried this operation's input, so the view owns its display. */
+  readonly productInputObserved?: true;
   readonly canonicalIndex?: number;
   /** Absolute visible turn index before bounded history-window truncation. */
   readonly historyTurnIndex?: number;
