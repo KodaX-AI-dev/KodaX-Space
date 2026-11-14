@@ -161,7 +161,7 @@ macOS 取消授权记忆和 native loader cause 入口已补回归并修正；�
 - 验收读取环境中的 `DEEPSEEK_API_KEY`，仅将合成数据发给该 Provider。测试应用环境
   不直接持有该环境变量，通过测试内存凭据后端与真实 Runtime broker 调用。
   这项测试不替代上方真实 DPAPI 跨进程验证，更不替代客户原账号迁移验收。
-- 本机证据目录：`C:/Users/ADMIN/AppData/Local/Temp/space-rc9-followup-2b943869c9`；
+- 本机证据目录：`C:/Users/user/AppData/Local/Temp/space-rc9-followup-2b943869c9`；
   最终真实模型报告为 `live-complete/report.json`，原发布包失败为 `live-first/report.json`。
 
 复跑：设置 `DEEPSEEK_API_KEY`、`SPACE_LIVE_EXE`（待验收包绝对路径）和可选

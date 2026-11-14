@@ -386,7 +386,7 @@
                 "id": "reused-provider-id",
                 "name": "audit_count_read",
                 "input": {
-                  "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-statistics-audit-64GalH\\read-fixture.txt"
+                  "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-statistics-audit-64GalH\\read-fixture.txt"
                 }
               },
               {
@@ -394,7 +394,7 @@
                 "id": "reused-provider-id",
                 "name": "audit_count_read",
                 "input": {
-                  "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-statistics-audit-64GalH\\read-fixture.txt"
+                  "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-statistics-audit-64GalH\\read-fixture.txt"
                 }
               }
             ],

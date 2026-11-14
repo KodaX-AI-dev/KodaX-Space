@@ -34,9 +34,9 @@
 
 ## 证据位置
 
-工作区审计目录：`/Users/samharadelijiang/Documents/kodax Space/audits/office-experts-20260908/`。包含开工基线、官方上游Git副本、筛选目录、源码适配、red/green测试、真实模型输入输出、构建和隔离桌面日志、截图以及本轮变更摘要。
+工作区审计目录：`/Users/user/Documents/kodax Space/audits/office-experts-20260908/`。包含开工基线、官方上游Git副本、筛选目录、源码适配、red/green测试、真实模型输入输出、构建和隔离桌面日志、截图以及本轮变更摘要。
 
 
 ## 本机交付
 
-已备份原用户扩展目录并安装最终 Partner 插件，安装回读确认12专家、13连接器、启用状态保留，见 `library-update.json`。旧空闲应用通过原生菜单正常退出。尝试启动新应用时系统报告 Mac 锁定且不能自动解锁，故**用户桌面启动未完成**；解锁后打开 `/Users/samharadelijiang/Documents/KodaX-Space-Partner/out/office-experts-20260908/mac-arm64/KodaX Space.app` 即可。隔离桌面验收已通过，不将该结果冒充用户桌面已经打开。
+已备份原用户扩展目录并安装最终 Partner 插件，安装回读确认12专家、13连接器、启用状态保留，见 `library-update.json`。旧空闲应用通过原生菜单正常退出。尝试启动新应用时系统报告 Mac 锁定且不能自动解锁，故**用户桌面启动未完成**；解锁后打开 `/Users/user/Documents/KodaX-Space-Partner/out/office-experts-20260908/mac-arm64/KodaX Space.app` 即可。隔离桌面验收已通过，不将该结果冒充用户桌面已经打开。

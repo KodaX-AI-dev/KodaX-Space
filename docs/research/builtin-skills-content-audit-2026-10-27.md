@@ -8,7 +8,7 @@
 
 - 核验日期为 2026-10-27，用户时区为 Asia/Shanghai。Space 基线为 `e3ba5893347e20b09d37f6ea95265daa375bacc3`，SDK 基线为 `6d101b599878ffd0e90fc79ddf24e8067d0379e5`；Space 实际依赖 SDK `0.7.97-alpha.9`。SDK 同时有其他线程的技能错误分类修复，本文没有修改该工作区。[清点快照](/C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/research/builtin-skills-audit-inventory-2026-10-27.json)
 - 24 项入口正文逐项审读；关键支持文件、文件引用和执行契约作定向核对，不声称完成全部模板、媒体和脚本实现的逐行审计。Space 18 个入口中明确的 Markdown 相对链接未发现目标文件缺失；这不证明所有脚本可执行。SDK 的发布脚本另有明确缺失，见下文。[SDK 与本地技能审计](/C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/research/builtin-skills-sdk-firstparty-audit-2026-10-27.md)
-- 内容判断采用 `writing-great-skills` 的触发、渐进披露、重复和完成判据方法。用户已确认的产品方向是默认允许自然语言选择合适技能，执行范围继续遵循用户和项目要求；本文不建议按 Coder/Partner 名称整体禁用技能。[审计方法](/C:/Users/ADMIN/.agents/skills/writing-great-skills/SKILL.md)
+- 内容判断采用 `writing-great-skills` 的触发、渐进披露、重复和完成判据方法。用户已确认的产品方向是默认允许自然语言选择合适技能，执行范围继续遵循用户和项目要求；本文不建议按 Coder/Partner 名称整体禁用技能。[审计方法](/C:/Users/user/.agents/skills/writing-great-skills/SKILL.md)
 - 上游只核对第一方仓库、不可变提交、完整 Git tree、正文及补丁；没有运行模型效果评测，也没有执行技能自带脚本或使用付费模型。已经实测的技术问题与尚需行为评测的内容建议在下文分开表述。[设计来源核对](/C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/research/builtin-skills-upstream-design-2026-10-27.md) [业务来源核对](/C:/Works/GitProj/KodaX-AI/KodaX-Space/docs/research/builtin-skills-upstream-business-2026-10-27.md)
 
 ## 来源及真正需要考虑的更新
@@ -36,7 +36,7 @@
 
 ### SDK 的命令白名单与运行时语法不一致
 
-四个核心技能使用 `Bash(git:*, gh:*)` 或 `Bash(npm:*, node:*, npx:*)` 等声明，运行时却把模式当作原始命令字符串的 glob，冒号并不会转成命令前缀分隔。真实策略回调已验证下列 4 次均返回 `[Blocked]`，没有执行任何 shell 命令：[运行时匹配器](/C:/Works/GitProj/KodaX-AI/KodaX/packages/coding/src/skill-invocation-policy.ts:84) [诊断脚本](/C:/Users/ADMIN/AppData/Local/Temp/space-skills-audit-hqAAVQ/policy-probe.mts)
+四个核心技能使用 `Bash(git:*, gh:*)` 或 `Bash(npm:*, node:*, npx:*)` 等声明，运行时却把模式当作原始命令字符串的 glob，冒号并不会转成命令前缀分隔。真实策略回调已验证下列 4 次均返回 `[Blocked]`，没有执行任何 shell 命令：[运行时匹配器](/C:/Works/GitProj/KodaX-AI/KodaX/packages/coding/src/skill-invocation-policy.ts:84) [诊断脚本](/C:/Users/user/AppData/Local/Temp/space-skills-audit-hqAAVQ/policy-probe.mts)
 
 | 技能 | 正常工作所需命令 | 本次策略返回 |
 |---|---|---|

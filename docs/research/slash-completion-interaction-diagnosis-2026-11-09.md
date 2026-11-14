@@ -11,9 +11,9 @@ KodaX 源码基线为 `ffeb9ed7`。工作树没有 node_modules，本次复用�
 实际执行命令：
 
 ```powershell
-node C:/Users/ADMIN/AppData/Local/Temp/kodax-slash-ui-probe.cjs
-node C:/Users/ADMIN/AppData/Local/Temp/kodax-slash-ui-probe.cjs --assert-fixed
-node C:/Users/ADMIN/AppData/Local/Temp/kodax-slash-ui-controls.cjs
+node C:/Users/user/AppData/Local/Temp/kodax-slash-ui-probe.cjs
+node C:/Users/user/AppData/Local/Temp/kodax-slash-ui-probe.cjs --assert-fixed
+node C:/Users/user/AppData/Local/Temp/kodax-slash-ui-controls.cjs
 ```
 
 第二条命令断言“Tab 接受可选参数的 `/help` 后菜单应关闭”，当前稳定 RED，约 1.2 秒退出：

@@ -11,7 +11,7 @@
 
 ## 自动验证
 
-证据目录：`/Users/samharadelijiang/Documents/kodax Space/audits/expert-session-binding-20260907`。
+证据目录：`/Users/user/Documents/kodax Space/audits/expert-session-binding-20260907`。
 
 - `red-contract.log`、`red-chip.log`：先确认持续会话规则、详情说明和恢复加载提示的缺口；对应 green 日志通过。
 - `runtime-lifecycle.log`：18 项通过。实际安装专家库、注册随包方法，经真实 IPC handler、Host 存盘/恢复和 `RealKodaXSession.send` 进入 SDK；模型提供方使用受控记录器。

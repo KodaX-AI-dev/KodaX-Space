@@ -13,7 +13,7 @@
 
 ## 自动化与评审证据
 
-审计目录：`/Users/samharadelijiang/Documents/kodax Space/audits/expert-workflows-20260907/`。
+审计目录：`/Users/user/Documents/kodax Space/audits/expert-workflows-20260907/`。
 
 - `baseline.json`、`baseline/`、`current.patch` 和 `current-changes.json` 区分本轮增量与先前工作，不用整个 dirty diff 代替本次评审。
 - 先写失败用例，再接入 schema、目录、共享引导和实际 profile。原始失败及通过记录保留在 `t1-*.log`、`t2-*.log`、`t3-*.log`；新增工作标准不能接受任意命令、未知操作或账号凭据。

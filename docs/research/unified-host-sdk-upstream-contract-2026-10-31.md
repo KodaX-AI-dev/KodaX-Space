@@ -15,7 +15,7 @@
 | `[S]` | `C:/Works/GitProj/KodaX-AI/KodaX-Space`，HEAD `7801a8ca099c4ecf47af5b1e361ff6812f8c12b9`                                                                  | Space 当前源码；初始状态另有 `tests/fixtures/file-preview/fixture.txt` 未提交修改，未触碰 |
 | `[I]` | `[S]/node_modules/@kodax-ai/kodax`，安装 manifest `0.7.97-alpha.11`                                                                                       | 实际安装文件／公开声明；不能从版本反推新源码                                              |
 | `[U]` | `C:/Works/GitProj/KodaX-AI/KodaX` 的 Git commit `f6a010462a477bd1b36dd849a6c9c0dbb0f76808`（`feat(runtime)!: unify public execution on the shared Host`） | 已提交统一 Host 契约；使用 `git show f6a010462:<path>` 读取                               |
-| `[F]` | `C:/Users/ADMIN/.codex/worktrees/unified-host-final/KodaX`，checkout HEAD `466b874d07699420e2470364c892247577e44580`                                      | 冻结验收工作区；不是名为 f6 的 checkout。下列十个目标文件的工作区 blob 与 `[U]` 相等      |
+| `[F]` | `C:/Users/user/.codex/worktrees/unified-host-final/KodaX`，checkout HEAD `466b874d07699420e2470364c892247577e44580`                                      | 冻结验收工作区；不是名为 f6 的 checkout。下列十个目标文件的工作区 blob 与 `[U]` 相等      |
 | `[W]` | `C:/Works/GitProj/KodaX-AI/KodaX`，HEAD 仍为 f6，2026-10-31 读取的未提交工作区                                                                            | 后续组合契约与其他任务共存；未经本次运行验证，也未证明已发布                              |
 
 `[F]` 与 `[U]` 比较相等的目标：`src/sdk-runtime.ts`、`src/sdk-runtime-public.ts`、`src/sdk-client.ts`、`src/client-host-authorization.ts`、`src/client-runtime-adapter.ts`、`packages/coding/src/work-mode.ts`、`packages/coding/src/client-contract.ts`、`docs/SDK_MIGRATION.md`、`scripts/build-bundle.mjs`、`scripts/build-dts.mjs`。方法是 `git rev-parse f6a010462:<file>` 对比 `git hash-object <F/file>`；这是指定文件内容相等，不代表两个 checkout 的 HEAD 或整个工作区相等。
@@ -128,7 +128,7 @@
 
 ## 8. 声明边界 noEmit 探针（已实际执行）
 
-2026-10-31 用 Space 已安装 TypeScript `5.9.3` 的 `createProgram` 运行 `strict/noEmit/skipLibCheck/NodeNext`，同一组 9 个最小消费代码分别把 `/runtime` 解析到 `[I] dist/sdk-runtime.d.ts` 和 `[F] dist/sdk-runtime.d.ts`；脚本、临时 `.mts` 及 JSON 都只写 OS temp。没有 import 执行 SDK JS、没有启动 Host、没有全量 Space typecheck，也没有改动构建产物。没有 fixture 外的 TypeScript 诊断。原始结果留在 `C:/Users/ADMIN/AppData/Local/Temp/kodax-space-sdk-contract-20261031-cf8b9ab5fc194941b51035a7ea4a7242/results.json`。
+2026-10-31 用 Space 已安装 TypeScript `5.9.3` 的 `createProgram` 运行 `strict/noEmit/skipLibCheck/NodeNext`，同一组 9 个最小消费代码分别把 `/runtime` 解析到 `[I] dist/sdk-runtime.d.ts` 和 `[F] dist/sdk-runtime.d.ts`；脚本、临时 `.mts` 及 JSON 都只写 OS temp。没有 import 执行 SDK JS、没有启动 Host、没有全量 Space typecheck，也没有改动构建产物。没有 fixture 外的 TypeScript 诊断。原始结果留在 `C:/Users/user/AppData/Local/Temp/kodax-space-sdk-contract-20261031-cf8b9ab5fc194941b51035a7ea4a7242/results.json`。
 
 | 消费代码                                                              | 已安装 alpha.11 声明 | 冻结工作区现有公开声明 | 对应源码／声明                                                                                                                     |
 | --------------------------------------------------------------------- | -------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |

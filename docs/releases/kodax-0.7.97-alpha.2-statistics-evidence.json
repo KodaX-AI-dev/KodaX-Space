@@ -516,7 +516,7 @@
           "metadata": {
             "truncated": true,
             "capacityFallback": true,
-            "outputPath": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-alpha2-published-statistics-UXMRk5\\one-output.txt"
+            "outputPath": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-alpha2-published-statistics-UXMRk5\\one-output.txt"
           },
           "is_error": false
         },
@@ -527,7 +527,7 @@
           "metadata": {
             "truncated": true,
             "capacityFallback": true,
-            "outputPath": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-alpha2-published-statistics-UXMRk5\\two-output.txt"
+            "outputPath": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-alpha2-published-statistics-UXMRk5\\two-output.txt"
           },
           "is_error": false
         }

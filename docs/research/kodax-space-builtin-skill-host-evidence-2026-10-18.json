@@ -1,6 +1,6 @@
 {
   "checkedAt": "2026-10-18T09:40:50.603Z",
-  "homeDir": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\space-sdk-skill-audit-Mf9WXl",
+  "homeDir": "C:\\Users\\user\\AppData\\Local\\Temp\\space-sdk-skill-audit-Mf9WXl",
   "registeredNames": [
     "call-prep",
     "copywriting",
@@ -68,112 +68,112 @@
     {
       "name": "paper-theater",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.kodax\\skills\\paper-theater"
+      "path": "C:\\Users\\user\\.kodax\\skills\\paper-theater"
     },
     {
       "name": "code-review",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-review"
+      "path": "C:\\Users\\user\\.agents\\skills\\code-review"
     },
     {
       "name": "code-to-video",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-to-video"
+      "path": "C:\\Users\\user\\.agents\\skills\\code-to-video"
     },
     {
       "name": "diagnosing-bugs",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\diagnosing-bugs"
+      "path": "C:\\Users\\user\\.agents\\skills\\diagnosing-bugs"
     },
     {
       "name": "domain-modeling",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\domain-modeling"
+      "path": "C:\\Users\\user\\.agents\\skills\\domain-modeling"
     },
     {
       "name": "feature-manager",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\feature-manager"
+      "path": "C:\\Users\\user\\.agents\\skills\\feature-manager"
     },
     {
       "name": "find-skills",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\find-skills"
+      "path": "C:\\Users\\user\\.agents\\skills\\find-skills"
     },
     {
       "name": "frontend-slides",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\frontend-slides"
+      "path": "C:\\Users\\user\\.agents\\skills\\frontend-slides"
     },
     {
       "name": "grill-me",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grill-me"
+      "path": "C:\\Users\\user\\.agents\\skills\\grill-me"
     },
     {
       "name": "grilling",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grilling"
+      "path": "C:\\Users\\user\\.agents\\skills\\grilling"
     },
     {
       "name": "handoff",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\handoff"
+      "path": "C:\\Users\\user\\.agents\\skills\\handoff"
     },
     {
       "name": "huashu-design",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\huashu-design"
+      "path": "C:\\Users\\user\\.agents\\skills\\huashu-design"
     },
     {
       "name": "implement",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\implement"
+      "path": "C:\\Users\\user\\.agents\\skills\\implement"
     },
     {
       "name": "issue-manager",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\issue-manager"
+      "path": "C:\\Users\\user\\.agents\\skills\\issue-manager"
     },
     {
       "name": "research",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\research"
+      "path": "C:\\Users\\user\\.agents\\skills\\research"
     },
     {
       "name": "resolving-merge-conflicts",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\resolving-merge-conflicts"
+      "path": "C:\\Users\\user\\.agents\\skills\\resolving-merge-conflicts"
     },
     {
       "name": "smart-release",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\smart-release"
+      "path": "C:\\Users\\user\\.agents\\skills\\smart-release"
     },
     {
       "name": "tdd",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\tdd"
+      "path": "C:\\Users\\user\\.agents\\skills\\tdd"
     },
     {
       "name": "to-spec",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-spec"
+      "path": "C:\\Users\\user\\.agents\\skills\\to-spec"
     },
     {
       "name": "to-tickets",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-tickets"
+      "path": "C:\\Users\\user\\.agents\\skills\\to-tickets"
     },
     {
       "name": "which-skill",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\which-skill"
+      "path": "C:\\Users\\user\\.agents\\skills\\which-skill"
     },
     {
       "name": "writing-great-skills",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\writing-great-skills"
+      "path": "C:\\Users\\user\\.agents\\skills\\writing-great-skills"
     },
     {
       "name": "call-prep",
@@ -275,112 +275,112 @@
     {
       "name": "paper-theater",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.kodax\\skills\\paper-theater"
+      "path": "C:\\Users\\user\\.kodax\\skills\\paper-theater"
     },
     {
       "name": "code-review",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-review"
+      "path": "C:\\Users\\user\\.agents\\skills\\code-review"
     },
     {
       "name": "code-to-video",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\code-to-video"
+      "path": "C:\\Users\\user\\.agents\\skills\\code-to-video"
     },
     {
       "name": "diagnosing-bugs",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\diagnosing-bugs"
+      "path": "C:\\Users\\user\\.agents\\skills\\diagnosing-bugs"
     },
     {
       "name": "domain-modeling",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\domain-modeling"
+      "path": "C:\\Users\\user\\.agents\\skills\\domain-modeling"
     },
     {
       "name": "feature-manager",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\feature-manager"
+      "path": "C:\\Users\\user\\.agents\\skills\\feature-manager"
     },
     {
       "name": "find-skills",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\find-skills"
+      "path": "C:\\Users\\user\\.agents\\skills\\find-skills"
     },
     {
       "name": "frontend-slides",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\frontend-slides"
+      "path": "C:\\Users\\user\\.agents\\skills\\frontend-slides"
     },
     {
       "name": "grill-me",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grill-me"
+      "path": "C:\\Users\\user\\.agents\\skills\\grill-me"
     },
     {
       "name": "grilling",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\grilling"
+      "path": "C:\\Users\\user\\.agents\\skills\\grilling"
     },
     {
       "name": "handoff",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\handoff"
+      "path": "C:\\Users\\user\\.agents\\skills\\handoff"
     },
     {
       "name": "huashu-design",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\huashu-design"
+      "path": "C:\\Users\\user\\.agents\\skills\\huashu-design"
     },
     {
       "name": "implement",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\implement"
+      "path": "C:\\Users\\user\\.agents\\skills\\implement"
     },
     {
       "name": "issue-manager",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\issue-manager"
+      "path": "C:\\Users\\user\\.agents\\skills\\issue-manager"
     },
     {
       "name": "research",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\research"
+      "path": "C:\\Users\\user\\.agents\\skills\\research"
     },
     {
       "name": "resolving-merge-conflicts",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\resolving-merge-conflicts"
+      "path": "C:\\Users\\user\\.agents\\skills\\resolving-merge-conflicts"
     },
     {
       "name": "smart-release",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\smart-release"
+      "path": "C:\\Users\\user\\.agents\\skills\\smart-release"
     },
     {
       "name": "tdd",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\tdd"
+      "path": "C:\\Users\\user\\.agents\\skills\\tdd"
     },
     {
       "name": "to-spec",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-spec"
+      "path": "C:\\Users\\user\\.agents\\skills\\to-spec"
     },
     {
       "name": "to-tickets",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\to-tickets"
+      "path": "C:\\Users\\user\\.agents\\skills\\to-tickets"
     },
     {
       "name": "which-skill",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\which-skill"
+      "path": "C:\\Users\\user\\.agents\\skills\\which-skill"
     },
     {
       "name": "writing-great-skills",
       "source": "user",
-      "path": "C:\\Users\\ADMIN\\.agents\\skills\\writing-great-skills"
+      "path": "C:\\Users\\user\\.agents\\skills\\writing-great-skills"
     },
     {
       "name": "git-workflow",

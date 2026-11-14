@@ -16,20 +16,20 @@ test('fileUrlToPath decodes darwin file URLs', () => {
 });
 
 test('fileUrlToPath decodes Windows drive file URLs', () => {
-  const path = fileUrlToPath('file:///C:/Users/iceto/Desktop/demo%20file.txt', 'win32');
-  assert.equal(path, 'C:\\Users\\iceto\\Desktop\\demo file.txt');
+  const path = fileUrlToPath('file:///C:/Users/user/Desktop/demo%20file.txt', 'win32');
+  assert.equal(path, 'C:\\Users\\user\\Desktop\\demo file.txt');
 });
 
 test('parseFileReferences turns markdown file links into compact file parts', () => {
   const content =
-    'please inspect [demo file.txt]\n(<file:///C:/Users/iceto/Desktop/demo%20file.txt>) today';
+    'please inspect [demo file.txt]\n(<file:///C:/Users/user/Desktop/demo%20file.txt>) today';
   const parts = parseFileReferences(content, 'win32');
   assert.equal(parts.length, 3);
   assert.deepEqual(parts[0], { kind: 'text', text: 'please inspect ' });
   assert.equal(parts[1]?.kind, 'file');
   if (parts[1]?.kind === 'file') {
     assert.equal(parts[1].label, 'demo file.txt');
-    assert.equal(parts[1].path, 'C:\\Users\\iceto\\Desktop\\demo file.txt');
+    assert.equal(parts[1].path, 'C:\\Users\\user\\Desktop\\demo file.txt');
     assert.match(parts[1].detail, /demo file\.txt$/);
   }
   assert.deepEqual(parts[2], { kind: 'text', text: ' today' });
@@ -77,10 +77,10 @@ test('model prompt preserves Windows UNC, macOS, and Linux absolute path convent
 
 test('restored file-link prompts recover native paths after pending attachment state is gone', () => {
   const paths = collectAbsoluteAttachmentPaths(
-    'Retry [demo file.txt](<file:///C:/Users/iceto/Desktop/demo%20file.txt>)',
+    'Retry [demo file.txt](<file:///C:/Users/user/Desktop/demo%20file.txt>)',
     [],
     'win32',
   );
 
-  assert.deepEqual(paths, [{ kind: 'file', path: 'C:\\Users\\iceto\\Desktop\\demo file.txt' }]);
+  assert.deepEqual(paths, [{ kind: 'file', path: 'C:\\Users\\user\\Desktop\\demo file.txt' }]);
 });

@@ -4,7 +4,7 @@
 
 2026-11-02。正式 `@kodax-ai/kodax@0.7.97-alpha.12` 已安装，Space 适配及本次可独立完成的修复已提交，Windows Setup/Portable 已重打并验证。仍需 SDK 补齐的产品接口列在下方，当前候选包不能据此宣称所有问题已闭环。
 
-工作区：`C:/Users/ADMIN/.codex/worktrees/sdk-alpha12-preparation/KodaX-Space`，分支 `codex/sdk-alpha12-preparation`。Space 版本保持 `0.1.47-alpha.3`；没有发布 Space Release，也没有改写原 Space 主工作区的 fixture/research 文件。
+工作区：`C:/Users/user/.codex/worktrees/sdk-alpha12-preparation/KodaX-Space`，分支 `codex/sdk-alpha12-preparation`。Space 版本保持 `0.1.47-alpha.3`；没有发布 Space Release，也没有改写原 Space 主工作区的 fixture/research 文件。
 
 ## 正式安装与实际 Host
 

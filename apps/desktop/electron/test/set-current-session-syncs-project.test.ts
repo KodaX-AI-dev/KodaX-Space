@@ -124,46 +124,46 @@ test('Windows-style path case difference still triggers project sync (canonæ¯”è¾
 });
 
 test('setCurrentProject clears currentSessionId when active session belongs to previous project', () => {
-  const oldSession = mkSession('sess-old', '/Users/vincegao/kodax_workspace');
+  const oldSession = mkSession('sess-old', '/Users/user/kodax_workspace');
   useAppStore.setState({
     sessions: [oldSession],
     currentSessionId: 'sess-old',
-    currentProjectPath: '/Users/vincegao/kodax_workspace',
+    currentProjectPath: '/Users/user/kodax_workspace',
   });
 
-  useAppStore.getState().setCurrentProject('/Users/vincegao/finance-management');
+  useAppStore.getState().setCurrentProject('/Users/user/finance-management');
 
   const s = useAppStore.getState();
-  assert.equal(s.currentProjectPath, '/Users/vincegao/finance-management');
+  assert.equal(s.currentProjectPath, '/Users/user/finance-management');
   assert.equal(s.currentSessionId, null);
 });
 
 test('setCurrentProject clears currentSessionId when switching to a different project', () => {
-  const session = mkSession('sess-current', '/Users/vincegao/finance-management');
+  const session = mkSession('sess-current', '/Users/user/finance-management');
   useAppStore.setState({
     sessions: [session],
     currentSessionId: 'sess-current',
-    currentProjectPath: '/Users/vincegao/kodax_workspace',
+    currentProjectPath: '/Users/user/kodax_workspace',
   });
 
-  useAppStore.getState().setCurrentProject('/Users/vincegao/finance-management');
+  useAppStore.getState().setCurrentProject('/Users/user/finance-management');
 
   const s = useAppStore.getState();
-  assert.equal(s.currentProjectPath, '/Users/vincegao/finance-management');
+  assert.equal(s.currentProjectPath, '/Users/user/finance-management');
   assert.equal(s.currentSessionId, null);
 });
 
 test('setCurrentProject keeps currentSessionId when target project is unchanged', () => {
-  const session = mkSession('sess-current', '/Users/vincegao/finance-management');
+  const session = mkSession('sess-current', '/Users/user/finance-management');
   useAppStore.setState({
     sessions: [session],
     currentSessionId: 'sess-current',
-    currentProjectPath: '/Users/vincegao/finance-management/',
+    currentProjectPath: '/Users/user/finance-management/',
   });
 
-  useAppStore.getState().setCurrentProject('/Users/vincegao/finance-management');
+  useAppStore.getState().setCurrentProject('/Users/user/finance-management');
 
   const s = useAppStore.getState();
-  assert.equal(s.currentProjectPath, '/Users/vincegao/finance-management');
+  assert.equal(s.currentProjectPath, '/Users/user/finance-management');
   assert.equal(s.currentSessionId, 'sess-current');
 });

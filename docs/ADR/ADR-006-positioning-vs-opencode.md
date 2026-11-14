@@ -525,7 +525,7 @@ KodaX Space 在架构上与 opencode 已经良好区隔，而且 **opencode 自�
 
 ## 5. KodaX SDK 需求清单（30 项）
 
-> 这些是 feature 落地依赖的 SDK 导出/API。**应并入 [SDK gap 清单](../../../../Users/iceto/.claude/projects/c--Works-GitWorks-KodaX-author-KodaX-Space/memory/kodax_sdk_export_gaps.md) 发给 KodaX 团队。** 标注触发它的 OC feature。
+> 这些是 feature 落地依赖的 SDK 导出/API。**应并入 [SDK gap 清单](../../../../Users/user/.claude/projects/c--Works-GitWorks-KodaX-author-KodaX-Space/memory/kodax_sdk_export_gaps.md) 发给 KodaX 团队。** 标注触发它的 OC feature。
 
 ### 5.1 Session（OC-38/39/40/22/49）
 - `getSessionSnapshot(id): SessionSnapshotJSON` — 全轮次/工具调用/token 结构化 dump（区别于裸 JSONL）

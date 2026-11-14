@@ -1500,7 +1500,7 @@ the smaller target was stable; it did **not** prove losslessness.
 This target is therefore classified as an incomplete active-context recovery,
 not a valid full-history repair. The original Session was never overwritten or
 deleted, and its exact main/islands backup remains at
-`C:\Users\ADMIN\.kodax\session-repair-backups\20260801T022802Z-s_60717080-1d27-42fd-ac6a-be27319d9503`.
+`C:\Users\user\.kodax\session-repair-backups\20260801T022802Z-s_60717080-1d27-42fd-ac6a-be27319d9503`.
 
 The repair utility now fails closed before backup, fork, or target creation
 whenever full-lineage and active-lineage counts differ. Against the later

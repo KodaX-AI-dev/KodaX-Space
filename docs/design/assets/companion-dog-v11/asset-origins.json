@@ -6,19 +6,19 @@
     "sources": [
       {
         "file": "thinking-waiting-keyposes.png",
-        "original": "C:/Users/ADMIN/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-91ad1ab7-5de5-46a0-9ec9-13fa2cac218b.png",
+        "original": "C:/Users/user/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-91ad1ab7-5de5-46a0-9ec9-13fa2cac218b.png",
         "prompt": "prompts.json#thinking-waiting",
         "sha256": "d310c9d680031092705c7accc18b22ada976557f0b2da72431d2161f2e242222"
       },
       {
         "file": "complete-keyposes.png",
-        "original": "C:/Users/ADMIN/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-25505ddf-ae11-4c38-a0d1-91bc75026b63.png",
+        "original": "C:/Users/user/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-25505ddf-ae11-4c38-a0d1-91bc75026b63.png",
         "prompt": "prompts.json#complete",
         "sha256": "a0e026a8709bb422d882b3dacc6fa8d21331981522a412f4cb634a05c69fdd7e"
       },
       {
         "file": "complete-rise-keyposes.png",
-        "original": "C:/Users/ADMIN/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-658c8723-5522-48b8-b475-60b222c9fbf3.png",
+        "original": "C:/Users/user/.codex/generated_images/01a14436-3e2f-7f12-b146-7fce71756832/exec-658c8723-5522-48b8-b475-60b222c9fbf3.png",
         "prompt": "rise-prompt.json",
         "sha256": "3693872df9021a0416954017f73d06fe5142ae73c0fe5f1d22c2a0ffc0428d09"
       }

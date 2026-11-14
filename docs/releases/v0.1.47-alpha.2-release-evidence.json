@@ -533,7 +533,7 @@
       "specRemaining": 0
     },
     "provider": {
-      "path": "C:/Users/ADMIN/AppData/Local/Temp/kodax-4router-diagnosis-20261014/installed-alpha6-full-tools.json",
+      "path": "C:/Users/user/AppData/Local/Temp/kodax-4router-diagnosis-20261014/installed-alpha6-full-tools.json",
       "sha256": "91c1ffc285e27f85a82be4fa2306d42aec64d16510bff634504bf187ff2b3208",
       "mode": "installed-alpha6-full-tools",
       "model": "gemini-4-argon",

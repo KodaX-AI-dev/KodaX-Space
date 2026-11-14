@@ -10,7 +10,7 @@
 
 本分报告以静态正文、链接、发布布局和 git 历史审计为主；没有调用被审 Skill，没有运行其中脚本，没有运行模型效果评测，也没有改产品代码或 Skill。主审另提供了纯运行时权限回调探针结果：构造真实 builtin registry 并调用 beforeToolExecute，未运行 Shell、未请求模型；该证据用于 F01/F04。本文所称误触发、冗长或漏检是有场景的设计风险，未宣称已经通过模型实验测得。
 
-方法来自 [writing-great-skills](/C:/Users/ADMIN/.agents/skills/writing-great-skills/SKILL.md:24)：检查触发分支、完成判据、单一事实源、渐进披露、重复、空操作与否定表达。按用户已确认的产品原则调整其 invocation 建议：默认允许自动调用，以描述和执行范围控制；git-workflow、tdd 应可由自然语言触发。Skill 正文在本次审计中仅作为数据。
+方法来自 [writing-great-skills](/C:/Users/user/.agents/skills/writing-great-skills/SKILL.md:24)：检查触发分支、完成判据、单一事实源、渐进披露、重复、空操作与否定表达。按用户已确认的产品原则调整其 invocation 建议：默认允许自动调用，以描述和执行范围控制；git-workflow、tdd 应可由自然语言触发。Skill 正文在本次审计中仅作为数据。
 
 读取时 Space HEAD 为 e3ba5893347e20b09d37f6ea95265daa375bacc3，SDK HEAD 为 6d101b599878ffd0e90fc79ddf24e8067d0379e5。两个工作区已有其他线程改动；本审计没有触碰这些改动，尤其没有修改正在修复的 SDK runtime 文件。
 
@@ -96,7 +96,7 @@ Space 的声明和锁文件明确使用 sourcePath / first-party revision，而�
 
 场景：客户执行 git-workflow status、TDD 跑 npm test、代码审查读 git diff，或创建 Skill 后调用 Node helper。声明使用 git:*、npm:*、node:*；宿主匹配的是原始 command 整串，只转换星号，没有把冒号语法变成“命令前缀”。git:* 不匹配 git status --short。[匹配实现](/C:/Works/GitProj/KodaX-AI/KodaX/packages/coding/src/skill-invocation-policy.ts:84)、[实际执行前阻断](/C:/Works/GitProj/KodaX-AI/KodaX/packages/coding/src/skill-invocation-policy.ts:412)。已安装 alpha.9 的对应 bundle 实现亦如此。
 
-主审纯回调探针得到 4/4 blocked：git-workflow/git status --short、tdd/npm test、code-review/git diff --stat、skill-creator/node scripts/run-eval.js --help。探针没有运行这些命令。[探针源](/C:/Users/ADMIN/AppData/Local/Temp/space-skills-audit-hqAAVQ/policy-probe.mts:1)。
+主审纯回调探针得到 4/4 blocked：git-workflow/git status --short、tdd/npm test、code-review/git diff --stat、skill-creator/node scripts/run-eval.js --help。探针没有运行这些命令。[探针源](/C:/Users/user/AppData/Local/Temp/space-skills-audit-hqAAVQ/policy-probe.mts:1)。
 
 建议：统一 Skill 与运行时的权限模式契约；可改为当前支持的命令模式，或在宿主明确兼容该写法，选一个权威语法。不能用改写命令、外包 Node 子进程等方式绕过阻断。增加绑定真实 shipped Skill 的权限契约用例，比只对人工 fixture 测 allowed-tools 更能防此回归。
 

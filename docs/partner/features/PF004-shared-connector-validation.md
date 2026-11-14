@@ -32,7 +32,7 @@
 | 开发 Skill              | 原版 quick_validate PASS；74 个引用存在                                 | 未安装进应用共享 Skill 库                                                                                                             |
 | 独立 Skill forward-test | 两份可交接说明；定向 25/25 PASS                                         | 无真实账号/远端操作，识别分页与旧快照入模边界                                                                                         |
 
-本机原始证据位于 `/Users/samharadelijiang/Documents/kodax Space/audits/connector-foundation/`，其中 `logs/` 保存测试与构建日志，`forward-test/` 保存独立试用和审查。测试脚本为同目录 `electron-smoke.mts`，仅使用隔离 profile 与本地 HTTP 页面。
+本机原始证据位于 `/Users/user/Documents/kodax Space/audits/connector-foundation/`，其中 `logs/` 保存测试与构建日志，`forward-test/` 保存独立试用和审查。测试脚本为同目录 `electron-smoke.mts`，仅使用隔离 profile 与本地 HTTP 页面。
 
 ## 独立审查与修正
 

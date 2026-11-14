@@ -18,10 +18,10 @@
 
 ## 2. 可运行的反馈循环
 
-临时诊断脚本：[kodax-artifact-open-diagnosis.mjs](C:/Users/ADMIN/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs)。脚本用当前工作树源码构建实际 Shell，复用主检出的 node_modules 作为依赖；IPC 和预览页面采用模拟数据，未请求模型或实际文件。
+临时诊断脚本：[kodax-artifact-open-diagnosis.mjs](C:/Users/user/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs)。脚本用当前工作树源码构建实际 Shell，复用主检出的 node_modules 作为依赖；IPC 和预览页面采用模拟数据，未请求模型或实际文件。
 
 ```powershell
-node C:/Users/ADMIN/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs
+node C:/Users/user/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs
 ```
 
 已运行多次，结果稳定为 exit 1，断言“折叠侧栏时一次点击应读取选中 artifact”失败。实际信号为：
@@ -48,8 +48,8 @@ pageerrors=[]
 已运行命令：
 
 ```powershell
-node C:/Users/ADMIN/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs --initial-open
-node C:/Users/ADMIN/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs --replay
+node C:/Users/user/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs --initial-open
+node C:/Users/user/AppData/Local/Temp/kodax-artifact-open-diagnosis.mjs --replay
 ```
 
 两者 exit 0，pageerrors 均为空。参见[初始已展开证据](artifact-open-initial-open-evidence-2026-11-09.json)和[挂载后重放证据](artifact-open-replay-evidence-2026-11-09.json)。重放只是用于确认因果关系的探针，不是最终产品方案。

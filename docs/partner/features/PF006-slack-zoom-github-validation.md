@@ -29,7 +29,7 @@
 
 ## 验证证据
 
-审计目录：`/Users/samharadelijiang/Documents/kodax Space/audits/connectors-slack-zoom-github/`。
+审计目录：`/Users/user/Documents/kodax Space/audits/connectors-slack-zoom-github/`。
 
 - `baseline/` 保存本轮开始前 75 个已有修改文件与差异，便于区分 PF004/PF005 和本轮内容。
 - 资源 schema/共享能力测试先失败后通过，保留 strict resource 与主 frame 输入约束。

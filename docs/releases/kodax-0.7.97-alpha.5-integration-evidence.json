@@ -229,7 +229,7 @@
         ],
         "hostImage": {
           "toolId": "call_5eca6baceb71488fb58dd5cb",
-          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791950708171\\project\\report.png",
+          "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791950708171\\project\\report.png",
           "sha256": "65f3427fbb571c518397fd4c6a544751c3a7e633bd518cace0c575d381f7a3a1",
           "width": 960,
           "height": 540,
@@ -238,7 +238,7 @@
         "transcriptImages": [
           {
             "toolId": "call_5eca6baceb71488fb58dd5cb",
-            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791950708171\\project\\report.png",
+            "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791950708171\\project\\report.png",
             "mediaType": "image/png"
           }
         ],
@@ -362,7 +362,7 @@
         ],
         "hostImage": {
           "toolId": "call_2f6108415bbb475a97c87533",
-          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950849987\\project\\report.png",
+          "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950849987\\project\\report.png",
           "sha256": "c6086d3c1f45b20c71b7c9a1713f8dc9647f1123450a060b50811330985e99f2",
           "width": 960,
           "height": 540,
@@ -371,7 +371,7 @@
         "transcriptImages": [
           {
             "toolId": "call_2f6108415bbb475a97c87533",
-            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950849987\\project\\report.png",
+            "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950849987\\project\\report.png",
             "mediaType": "image/png"
           }
         ],
@@ -451,7 +451,7 @@
         ],
         "hostImage": {
           "toolId": "call_7101c99bbb234927aace2f76",
-          "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950974350\\project\\report.png",
+          "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950974350\\project\\report.png",
           "sha256": "26f7a3d79b3c8f8b018809f39bc6c2aa7fbb82c17ec41456baac74ac5ed0fa48",
           "width": 960,
           "height": 540,
@@ -460,7 +460,7 @@
         "transcriptImages": [
           {
             "toolId": "call_7101c99bbb234927aace2f76",
-            "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950974350\\project\\report.png",
+            "path": "C:\\Users\\user\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791950974350\\project\\report.png",
             "mediaType": "image/png"
           }
         ],

@@ -4,14 +4,14 @@ import { assertSessionSendScope, runIdempotentSessionSend } from '../ipc/session
 
 const codeSession = {
   sessionId: 's_code',
-  projectRoot: '/Users/vincegao/project-a',
+  projectRoot: '/Users/user/project-a',
   surface: 'code' as const,
 };
 
 test('assertSessionSendScope accepts matching project and surface', () => {
   assert.doesNotThrow(() =>
     assertSessionSendScope(codeSession, {
-      expectedProjectRoot: '/Users/vincegao/project-a/',
+      expectedProjectRoot: '/Users/user/project-a/',
       expectedSurface: 'code',
     }),
   );
@@ -21,7 +21,7 @@ test('assertSessionSendScope rejects stale project root', () => {
   assert.throws(
     () =>
       assertSessionSendScope(codeSession, {
-        expectedProjectRoot: '/Users/vincegao/project-b',
+        expectedProjectRoot: '/Users/user/project-b',
         expectedSurface: 'code',
       }),
     /session\/project mismatch/,
@@ -32,7 +32,7 @@ test('assertSessionSendScope rejects stale surface', () => {
   assert.throws(
     () =>
       assertSessionSendScope(codeSession, {
-        expectedProjectRoot: '/Users/vincegao/project-a',
+        expectedProjectRoot: '/Users/user/project-a',
         expectedSurface: 'partner',
       }),
     /session\/surface mismatch/,

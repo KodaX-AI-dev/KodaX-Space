@@ -153,7 +153,7 @@ readLineage 可给出已存在 lineage 的摘要，但旧 Session 可返回 null
 npx tsc -p tsconfig.check.json
 npx vitest run src/history-turn.test.ts src/sdk-client.history-turn.test.ts src/sdk-runtime.history-location.test.ts src/sdk-client.history-boundaries.test.ts src/sdk-runtime.legacy-view-read.test.ts
 # 已冻结生产 B 构建；本地 HTTP provider，不调用外部模型
-node C:/Users/ADMIN/AppData/Local/Temp/kodax-built-history-turn-provider-smoke.mjs <B-dist-directory>
+node C:/Users/user/AppData/Local/Temp/kodax-built-history-turn-provider-smoke.mjs <B-dist-directory>
 ```
 
 结果：类型检查通过；5 文件 16 测试通过。生产 daemon + HTTP SSE 工具续聊 fixture 的三次运行均 completed，4 个请求 auth 正确；Fork 整轮后继续对话的实际 wire 同时包含匹配的 `fixture-call` tool_use 和 tool_result，`orphanCalls: []`；owned daemon 正常 shutdown。此为受控工具消息完整性 smoke，不是模型质量或外部 Provider 全矩阵评测。Windows packaged Electron/native worker 测试由另一验收任务另行记录，不由本段 standalone 结果替代。
@@ -164,7 +164,7 @@ B 的 295 个文件已按 chunks 优先、根入口逐文件原子替换方式�
 
 覆盖后的开发 dist 已重新通过真实 daemon/HTTP provider 工具 Fork 续聊 fixture：三轮 completed、4 请求、正确 scoped auth、匹配的 tool_use/result、无 orphan、owned daemon 正常关闭。首次额外复核曾出现第 5 请求、全局最后请求断言失败；fixture 原先假设最后请求一定为主对话请求，后改为按独特 Fork 续聊输入选取对应请求。失败那次未保留请求正文，不能进一步声称已证明其具体后台请求来源，也不能把它记作已通过。
 
-独立 Windows candidate 的打包验收任务报告：`npm run build:test-kodax` 状态 0，native/daemon worker、boot、包内真实 Host 合约 6/6 通过；源码和 packaged 历史 E2E 两组各 8/8。原始 stage 已在所有消费者结束读取后迁至 `C:/Users/ADMIN/AppData/Local/Temp/kodax-history-builds-c872886b010145aea1b7efb423addb4d/`，保留 A/B 子目录名，不留在 SDK 可提交工作树。包内 SDK 是独立物理副本，后续验收不依赖开发链接或旧 stage 位置。
+独立 Windows candidate 的打包验收任务报告：`npm run build:test-kodax` 状态 0，native/daemon worker、boot、包内真实 Host 合约 6/6 通过；源码和 packaged 历史 E2E 两组各 8/8。原始 stage 已在所有消费者结束读取后迁至 `C:/Users/user/AppData/Local/Temp/kodax-history-builds-c872886b010145aea1b7efb423addb4d/`，保留 A/B 子目录名，不留在 SDK 可提交工作树。包内 SDK 是独立物理副本，后续验收不依赖开发链接或旧 stage 位置。
 
 ### beta.3 移植前的交叉复核
 

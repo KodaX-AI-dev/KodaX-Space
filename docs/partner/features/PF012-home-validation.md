@@ -18,14 +18,14 @@
 
 ## 效果与产物
 
-- [桌面首页](</Users/samharadelijiang/Documents/kodax Space/audits/partner-home-20260908/home-desktop.png>)
-- [窄窗口及专家引用](</Users/samharadelijiang/Documents/kodax Space/audits/partner-home-20260908/home-compact.png>)
-- [首次发送后的会话](</Users/samharadelijiang/Documents/kodax Space/audits/partner-home-20260908/home-to-session.png>)
+- [桌面首页](</Users/user/Documents/kodax Space/audits/partner-home-20260908/home-desktop.png>)
+- [窄窗口及专家引用](</Users/user/Documents/kodax Space/audits/partner-home-20260908/home-compact.png>)
+- [首次发送后的会话](</Users/user/Documents/kodax Space/audits/partner-home-20260908/home-to-session.png>)
 - 已构建应用：`out/mac-arm64/KodaX Space.app`。未替换正在运行的用户应用，未创建发布安装器。
 
 ## 验证与边界
 
-审计目录：`/Users/samharadelijiang/Documents/kodax Space/audits/partner-home-20260908/`。
+审计目录：`/Users/user/Documents/kodax Space/audits/partner-home-20260908/`。
 
 - `electron-home.mts` / `electron.log`：真实打包Electron、真实IPC、隔离用户目录。六示例保留已有草稿；未发送前保留冷启动页；专家入口、选择与头像解码、返回后的草稿保留；手动任务栏开关及无箭头；资料入口；820px窗口无横向溢出；首次发送进入会话且专家继续绑定。业务回复用mock，没有远端写入。
 - `typecheck.log`、`lint.log`、`build.log`：类型、改动文件lint、前端构建通过。

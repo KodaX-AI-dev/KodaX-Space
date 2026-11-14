@@ -222,7 +222,7 @@ test('Markdown file actions follow the link target instead of path-like display 
 });
 
 test('Markdown URL transform preserves recognized Windows file targets', () => {
-  const windowsPath = 'C:\\Users\\ADMIN\\project\\docs\\report.md';
+  const windowsPath = 'C:\\Users\\user\\project\\docs\\report.md';
   assert.equal(markdownUrlTransform(windowsPath), windowsPath);
   assert.equal(markdownUrlTransform('docs/report.md'), 'docs/report.md');
   assert.equal(markdownUrlTransform('mailto:user@example.md'), 'mailto:user@example.md');

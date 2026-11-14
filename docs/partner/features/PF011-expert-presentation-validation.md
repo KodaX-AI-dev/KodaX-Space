@@ -13,15 +13,15 @@
 
 生成方式：内置 image_gen，逐枚生成16张原创头像。参考用户截图的信息层级与头像形式，没有复制 WorkBuddy 人物素材。
 
-- [头像总览](</Users/samharadelijiang/Documents/kodax Space/audits/expert-card-design-20260908/avatar-gallery.png>)
-- [完整16条生成提示及原始输出路径](</Users/samharadelijiang/Documents/kodax Space/audits/expert-card-design-20260908/avatar-prompts.json>)
+- [头像总览](</Users/user/Documents/kodax Space/audits/expert-card-design-20260908/avatar-gallery.png>)
+- [完整16条生成提示及原始输出路径](</Users/user/Documents/kodax Space/audits/expert-card-design-20260908/avatar-prompts.json>)
 - 原图保存于本次审计目录的 `avatar-originals/`；生产素材为 `apps/desktop/public/expert-avatars/`。
 - 共享映射：`extensions/partner-library/expert-presentation.json`。
-- [卡片效果](</Users/samharadelijiang/Documents/kodax Space/audits/expert-card-design-20260908/cards-preview.png>)、[真实Electron详情](</Users/samharadelijiang/Documents/kodax Space/audits/expert-card-design-20260908/electron-expert-profile.png>)。
+- [卡片效果](</Users/user/Documents/kodax Space/audits/expert-card-design-20260908/cards-preview.png>)、[真实Electron详情](</Users/user/Documents/kodax Space/audits/expert-card-design-20260908/electron-expert-profile.png>)。
 
 ## 验证
 
-审计目录：`/Users/samharadelijiang/Documents/kodax Space/audits/expert-card-design-20260908/`。
+审计目录：`/Users/user/Documents/kodax Space/audits/expert-card-design-20260908/`。
 
 - `final-tests.log`：22通过、0失败、0跳过（15插件浏览器UI、4右栏、3归档测试）。覆盖明确选择、方法开关、编辑副本、删除、Escape与窄屏。
 - `baseline-countercheck.log`：新增回归断言在原卡片上检测到4个按钮，证明能发现旧版问题；此为基线反证，不宣称第一次运行即得到红灯。

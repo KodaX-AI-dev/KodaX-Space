@@ -2,7 +2,7 @@
 
 2026-11-02。用户授权先准备源码，SDK 正式发布通知后再安装正式包、打包和闭环。SDK 源码基线 `f24a922c117e0ece5d26224a133a69973b313ab6`；本地候选包仅在隔离工作区测试，SHA-512 见下。根/Desktop manifests 与正式 lockfile 保留 Registry alpha.11。源码支持、候选测试、正式发布和产品启用分别记录。
 
-当前分支 `codex/sdk-alpha12-preparation`，工作区 `C:/Users/ADMIN/.codex/worktrees/sdk-alpha12-preparation/KodaX-Space`。原主工作区的 fixture 与 research 文件未动。凭证基础复用独立 `codex/provider-credentials-space@7b37e1c8`（含 065cc39c/437cac7d/da531f0a），旧验收记录保留，本次组合验证另记。
+当前分支 `codex/sdk-alpha12-preparation`，工作区 `C:/Users/user/.codex/worktrees/sdk-alpha12-preparation/KodaX-Space`。原主工作区的 fixture 与 research 文件未动。凭证基础复用独立 `codex/provider-credentials-space@7b37e1c8`（含 065cc39c/437cac7d/da531f0a），旧验收记录保留，本次组合验证另记。
 
 ## 已准备的改动
 

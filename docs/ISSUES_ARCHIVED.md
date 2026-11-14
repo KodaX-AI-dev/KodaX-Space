@@ -959,7 +959,7 @@ Verification:
 Current behavior:
 
 - The UI breadcrumb and bottom project chip can show the newly selected project, such as `88. Finance Management System`.
-- The active `currentSessionId` can still point at a session whose `projectRoot` is the previous default workspace, such as `/Users/vincegao/kodax_workspace`.
+- The active `currentSessionId` can still point at a session whose `projectRoot` is the previous default workspace, such as `/Users/user/kodax_workspace`.
 - Sending a prompt then reuses that stale session, so the agent runs in the previous workspace and reports that the selected project appears empty.
 
 Expected behavior:
@@ -7474,7 +7474,7 @@ Validation:
 
 #### Original Problem
 
-Adding `C:\Users\ADMIN\Downloads\线束效应重塑企业级AI.png` to the composer through
+Adding `C:\Users\user\Downloads\线束效应重塑企业级AI.png` to the composer through
 either drag-and-drop or the `+` file picker fails with:
 
 `HANDLER_ERROR: [clipboard.saveImage] handler threw: clipboard image owner Session does not exist`

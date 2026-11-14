@@ -39,7 +39,7 @@ source/patch/lock 沿现有同步器维护。适配移除了无效相对引用�
 
 ## 可复核证据
 
-证据目录：`/Users/samharadelijiang/Documents/kodax Space/audits/expert-expansion-pf013`。
+证据目录：`/Users/user/Documents/kodax Space/audits/expert-expansion-pf013`。
 
 - `regression.log`、`archive-test-last.log`、`sdk-last.log`、`sdk-interview-final.log`。
 - `electron-new.log`与`electron-*.png`：4位新专家真实桌面流程。
