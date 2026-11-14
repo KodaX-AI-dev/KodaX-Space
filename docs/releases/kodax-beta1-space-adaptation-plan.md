@@ -2,14 +2,14 @@
 
 2026-11-03。**审计结论：主要生产链路已经接入，但不能宣布全部适配完成。** Partner 正常输入确实使用 Agent 工作面和可信 profile；模型 Provider 新 Key 已使用权限保护的 `auth.json`。以下保留用户批准的实施方案和审计基线；实际修复、验证、成品及仍待 SDK/环境的范围见 [本轮执行记录](kodax-beta1-space-fixes.md)。
 
-本次已将 Claude 补审逐项对照源码并归入实施清单；见 [核实记录](../research/sdk-beta1-claude-gap-verification.md)。补充内容包括：无 error 的冷队列等待、冷身份缓存污染、旧 Linux profile 显式恢复、Workflow 局部订阅失败、Artifact 加载诊断和连接器持久性。新增发现以静态确认为主，仍须先复现；下面的关闭清单覆盖全部当前已核实缺口，不把未执行的验收记为通过。
+本次已将 Claude 补审逐项对照源码并归入实施清单；见 [核实记录](sdk-beta1-claude-gap-verification.md)。补充内容包括：无 error 的冷队列等待、冷身份缓存污染、旧 Linux profile 显式恢复、Workflow 局部订阅失败、Artifact 加载诊断和连接器持久性。新增发现以静态确认为主，仍须先复现；下面的关闭清单覆盖全部当前已核实缺口，不把未执行的验收记为通过。
 
 ## 1. 审计固定点与范围
 
 - Space：`64fcfed3`，SDK 在 Root/Desktop/lockfile 精确锁定 `0.7.97-beta.1`，Space 仍为 `0.1.47-alpha.3`。已交付的 Windows 成品与测试范围见 [此前验收](kodax-0.7.97-beta.1-integration.md)。
 - SDK 源码：`C:/Works/GitProj/KodaX-AI/KodaX@e733e51f9`，release 提交、工作树干净。`alpha.11..beta.1` 为 87 个提交，`alpha.12..beta.1` 为 14 个提交。前者包括共享 Host 与 FEATURE_302，后者包括默认方法、业务绑定、promotion、原子配置和 redirect/recovery 补审。范围不限于最后一次依赖版本变化。
 - 事实优先级：正式安装包的类型/实现、实际 Host 能力与行为；四份随包权威文档；release 源码补证。四份文档与本地 release 文档归一换行后相同，但本地 `dist/kodax_cli.js` 与安装包不相同，不能拿源码目录中的 dist 充当已安装字节，也不能仅凭文档历史标题“未发布”判断能力尚未发布。
-- SDK：`docs/SDK_MIGRATION.md`、`docs/CLIENT_CONTRACT.md`、`docs/SPACE_SDK_SEAMS.md`、`public_docs/sdk/embedder-guide.md`，以及 LLM/Artifact 相关契约。逐项调用位置与来源在三份 [凭证调查](../research/sdk-beta1-credentials-audit.md)、[Partner 调查](../research/sdk-beta1-partner-audit.md)、[其余 27 类契约](../research/sdk-beta1-contract-inventory.md) 中列出。
+- SDK：`docs/SDK_MIGRATION.md`、`docs/CLIENT_CONTRACT.md`、`docs/SPACE_SDK_SEAMS.md`、`public_docs/sdk/embedder-guide.md`，以及 LLM/Artifact 相关契约。逐项调用位置与来源在三份 [凭证调查](sdk-beta1-credentials-audit.md)、[Partner 调查](sdk-beta1-partner-audit.md)、[其余 27 类契约](sdk-beta1-contract-inventory.md) 中列出。
 - 这轮做源码、声明、旧证据和隔离假凭证探针核查；未读真实用户 Key/token，未运行真实服务认证，未修改 SDK、原生 ABI 或发布新版本。此前 27 项成品测试只证明其已列明的路径，不代表下面新增的所有组合已验证。
 
 ## 2. Partner 应当如何接入
@@ -24,7 +24,7 @@ SDK 的可信 profile 使用 `workModePolicy:'intersect'`，角色 instructions 
 
 当前模型 API Key、默认 Provider OAuth、Main 稳定客户端秘密已经走 `auth.json`。文件采用 SDK 的权限保护和原子提交，普通 config 不写新 Key，Renderer 不读回秘密；新用户这三条路径无需 Keychain。原加密备份仍用于旧用户按原身份迁移，不能为删除依赖而删除它们。[文件初始化](../../apps/desktop/electron/providers/provider-storage.ts#L87)、[OAuth](../../apps/desktop/electron/providers/credentials.ts#L119)、[稳定秘密](../../apps/desktop/electron/kodax/runtime/runtime-client-secret-file.ts#L28)、SDK `SDK_MIGRATION.md:524-537,620-635`。
 
-“受权限保护的明文文件”必须在界面如实表达。当前设置页仍写 Keychain/系统加密，是遗漏。Partner 的邮件、腾讯及部分官方远端连接器仍向旧凭证层保存新秘密：Win/mac 正常使用系统保护的加密 vault，Linux 可用 libsecret，也可能降为 memory；缺少用户可见的持久性事实。钉钉另由官方 CLI 管理 token 密文及系统 Keychain 中的密钥，不能因其 profile 目录隔离就宣称无 Keychain。因此**模型 Provider 无 Keychain 与整个 Space 无 Keychain是两个不同的完成范围**。本轮必须修正连接器保存结果的真实性；全连接器后端迁移另列产品切片，不贸然移除旧依赖或启用 CLI 测试绕过。来源与固定官方版本依据见 [凭证调查追加节](../research/sdk-beta1-credentials-audit.md)。
+“受权限保护的明文文件”必须在界面如实表达。当前设置页仍写 Keychain/系统加密，是遗漏。Partner 的邮件、腾讯及部分官方远端连接器仍向旧凭证层保存新秘密：Win/mac 正常使用系统保护的加密 vault，Linux 可用 libsecret，也可能降为 memory；缺少用户可见的持久性事实。钉钉另由官方 CLI 管理 token 密文及系统 Keychain 中的密钥，不能因其 profile 目录隔离就宣称无 Keychain。因此**模型 Provider 无 Keychain 与整个 Space 无 Keychain是两个不同的完成范围**。本轮必须修正连接器保存结果的真实性；全连接器后端迁移另列产品切片，不贸然移除旧依赖或启用 CLI 测试绕过。来源与固定官方版本依据见 [凭证调查追加节](sdk-beta1-credentials-audit.md)。
 
 ## 4. 全部能力映射
 
@@ -80,8 +80,8 @@ SDK 的可信 profile 使用 `workModePolicy:'intersect'`，角色 instructions 
 4. v1 有真实文件 Key 的记录可无歧义转为 file；已选 shared 删除保持不可用。v1 private 空值/墓碑可能是原 env pin，也可能是文件删除，不能猜来源；保留原记录并提供明确继续环境来源/重新保存的动作。旧备份不复活，不重置 selection/tombstone。
 5. Settings、Provider Card、自定义表单、doctor、故障指南中英文同步显示真实文件存储和来源。保留旧 IPC 字段名兼容，先补 `file` 分支，不做无必要全仓字段改名。
 
-6. 补旧 Linux/Kylin profile 的明确恢复路径：eligible 旧 profile、未固定来源、旧 backend 不可读时，继续区分“未知旧账号”与“确实不存在”，不静默用 env；提供逐 Provider 的“重试旧凭证”“使用现有环境变量”“保存新 Key”和已有共享值的显式采用。选择按原显示状态 CAS 持久保存；不全局关闭旧发现、不删除备份。fresh、已有来源选择的正常路径保持，Provider 来源选择也不能替代旧 Main 稳定秘密的恢复。[条件与恢复设计](../research/sdk-beta1-credentials-audit.md)。
-7. 清理完整现行说明：ProviderCard 未知来源不得推成 keychain；BottomBar doctor、README/README_CN、PRD/HLD、USAGE/手册、IPC/启动注释同步文件+broker事实。原 PRD/HLD 强制 OS Keychain 的条款依本会话已采纳方案更新。当前 Provider 的不可达 memory 告警移除或收窄，但连接器真实的临时保存告警必须单独补。[逐文件清单](../research/sdk-beta1-credentials-audit.md)。
+6. 补旧 Linux/Kylin profile 的明确恢复路径：eligible 旧 profile、未固定来源、旧 backend 不可读时，继续区分“未知旧账号”与“确实不存在”，不静默用 env；提供逐 Provider 的“重试旧凭证”“使用现有环境变量”“保存新 Key”和已有共享值的显式采用。选择按原显示状态 CAS 持久保存；不全局关闭旧发现、不删除备份。fresh、已有来源选择的正常路径保持，Provider 来源选择也不能替代旧 Main 稳定秘密的恢复。[条件与恢复设计](sdk-beta1-credentials-audit.md)。
+7. 清理完整现行说明：ProviderCard 未知来源不得推成 keychain；BottomBar doctor、README/README_CN、PRD/HLD、USAGE/手册、IPC/启动注释同步文件+broker事实。原 PRD/HLD 强制 OS Keychain 的条款依本会话已采纳方案更新。当前 Provider 的不可达 memory 告警移除或收窄，但连接器真实的临时保存告警必须单独补。[逐文件清单](sdk-beta1-credentials-audit.md)。
 
 先写 RED：外部撤销+新 env、原 env 消失、已批准删除回退、v1 歧义、并发 CLI 更新、同/异数据根、连接变更、rename、迟到迁移与 tombstone；另加 eligible 旧 profile + 无 libsecret + 未选择来源、已固定 env、已有文件来源、fresh 四组。再用真实 Electron IPC/无 OS vault fixture 验保存→退出→重启、来源展示和模型实际使用账号。用户明确选 env 后不得再读旧 backend；旧 Main 身份秘密不可用时仍不能新建身份接管旧队列。存储不可用与旧迁移不可用分别展示。
 
@@ -89,7 +89,7 @@ SDK 的可信 profile 使用 `workModePolicy:'intersect'`，角色 instructions 
 
 **静态确认缺失，先补真实失败证据。** 新 after-turn input 保存了完整意图并注册了进程内 binding；没有 Run 时不会记录 resolved Run authorization。重连仅读取旧 captured authorization 并恢复 credential/tool，没有重新注册 execution binding 并用原意图重绑 pending input。SDK 要求旧 principal 用同 inputId/原意图重新提交以完成重绑。[接收](../../apps/desktop/electron/kodax/runtime-host-adapter.ts#L7569)、[重连](../../apps/desktop/electron/kodax/runtime-host-adapter.ts#L5390)、SDK `SPACE_SDK_SEAMS.md:26`，详见 Partner 调查。
 
-**先修可见性。** SDK 冷恢复可只设内部 awaitingBinding，不产生 admissionError；公开 queue/getInput 当前也不暴露该字段。Space 仅在 admissionError 下提供取回，所以会显示普通等待、没有取回入口，且队首挡住本 Session 后续输入。[SDK 与 UI 源码定位](../research/sdk-beta1-claude-gap-verification.md#五项意见的判断)。
+**先修可见性。** SDK 冷恢复可只设内部 awaitingBinding，不产生 admissionError；公开 queue/getInput 当前也不暴露该字段。Space 仅在 admissionError 下提供取回，所以会显示普通等待、没有取回入口，且队首挡住本 Session 后续输入。[SDK 与 UI 源码定位](sdk-beta1-claude-gap-verification.md#五项意见的判断)。
 
 B1：对 Host 确认 queued、原身份且 Main 有完整恢复材料的输入，独立于 admissionError 提供显式取回；缺材料则明确说明受限，不以 preview 取回。重连/重绑进度是 Main 自己的恢复状态，必须与 Host 错误分开，不能把所有普通排队或缺 error 都伪造成 binding 失败。后项保持原顺序；不自动跳过队首、删除输入或另建副本。若要求精确展示 Host 内部等待原因，另补只读事实接缝；基础取回与重绑不以该增强为前提。
 
@@ -99,7 +99,7 @@ B2：仅对 Host 确认仍未消费且可重绑的 queued input，验证稳定 M
 
 ### C. P1/P2：Partner 身份、Agent 边界与实际注入
 
-C1（P1）：冷 Session 身份必须先验证再缓存。command/workflow 在 surface 缺缓存时默认 code，ensureSession 在持久身份校验前写 sessionSurfaces；旧 Partner 被拒绝后错误 code 仍留存，正常输入/读设置也无法纠正。初始有界 profile 及常见 ready slash 的 commitRuntimeMutation 会提前正确填身份，因此按“缺缓存的 workflow/直接 command/启动竞态”等条件复现，不写成所有未打开的 Partner 必现。[详细 guard 与证据](../research/sdk-beta1-partner-audit.md)。
+C1（P1）：冷 Session 身份必须先验证再缓存。command/workflow 在 surface 缺缓存时默认 code，ensureSession 在持久身份校验前写 sessionSurfaces；旧 Partner 被拒绝后错误 code 仍留存，正常输入/读设置也无法纠正。初始有界 profile 及常见 ready slash 的 commitRuntimeMutation 会提前正确填身份，因此按“缺缓存的 workflow/直接 command/启动竞态”等条件复现，不写成所有未打开的 Partner 必现。[详细 guard 与证据](sdk-beta1-partner-audit.md)。
 
 最小修改：现有 Session 从可信 Main Session/公开 Host 元数据解析 surface/projectRoot，校验成功后才提交正式缓存。保留并发 ensure 的预期身份门禁，未验证候选不与已验证事实混用；一次失败不污染下次正常输入。真正身份冲突继续拒绝，不 retag、不吞错后默认 code。新建 Session 仍用明确创建意图，不能将“不在有界列表”当作不存在。验收含：profile 外旧 Partner、Host 未 ready、首次 command/workflow 后普通输入、首次操作失败再读设置、并发 ensure、真实冲突及现有 Coder 回归。
 
@@ -129,7 +129,7 @@ C3：捕获本地假 Provider 实际 system/messages/tool schemas，核对普通
 
 ### F. P2：Artifact 与 builtin 扩展能力健康
 
-Host `catalog.extensions().diagnostics.failures` 已有 stage/target/message/occurredAt/source，Space 尚未消费。已有 Settings 集成 domain 健康不是逐扩展加载成功的证明，builtin 安装也只核验 Skill entry。保留 Skill 与可选 Artifact 分离的设计。[注册](../../apps/desktop/electron/skill/space-builtins.ts#L33)、[现有配置健康](../../apps/desktop/renderer/src/features/settings/SettingsModal.tsx#L1116)、[SDK 加载事实与来源](../research/sdk-beta1-contract-inventory.md)。
+Host `catalog.extensions().diagnostics.failures` 已有 stage/target/message/occurredAt/source，Space 尚未消费。已有 Settings 集成 domain 健康不是逐扩展加载成功的证明，builtin 安装也只核验 Skill entry。保留 Skill 与可选 Artifact 分离的设计。[注册](../../apps/desktop/electron/skill/space-builtins.ts#L33)、[现有配置健康](../../apps/desktop/renderer/src/features/settings/SettingsModal.tsx#L1116)、[SDK 加载事实与来源](sdk-beta1-contract-inventory.md)。
 
 经 Main 投影当前 Host 的 loaded entry/实际 tools 与有界脱敏错误，分别展示 builtin Skills、Artifact 的 ready/degraded/unavailable。保留 last-known-good；历史失败不永久标记当前已恢复能力失败。复用启动/集成变化/显式刷新边界检查，不增加逐 token 轮询或第二个 extension runtime。修复前置条件后经可信重载或安全空闲重启，再核验工具。正常 input/Skills/history/其他扩展继续工作；真实打包资源缺失或篡改仍由门禁拒绝，不能用“可选”掩盖。
 
@@ -141,7 +141,7 @@ Host `catalog.extensions().diagnostics.failures` 已有 stage/target/message/occ
 
 分别验 Win/mac vault 不可用/写失败、Linux libsecret 不可用/写失败、OAuth 刷新与注销、保存后退出重启、同账号与不同 connector 隔离。原秘密、旧备份和撤销事实保留，失败不换号。Provider/Main 的同原值旧秘密迁移读取可能写回 vault，不能改成“所有旧层绝对只读”。
 
-全应用去 Keychain 单列可选迁移：Provider file、Space connector store、外部 DingTalk CLI profile 三类分别处理。DingTalk 固定版本默认在系统 Keychain 保护密钥，不偷开测试 file-DEK，也不把目录中的密文直接写入 Provider auth namespace。[固定官方实现](https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/blob/v1.0.61/internal/keychain/keychain_darwin.go#L248)、[平台与连接器详细依据](../research/sdk-beta1-credentials-audit.md)。该可选迁移不免除本轮对临时保存的真实性修复。
+全应用去 Keychain 单列可选迁移：Provider file、Space connector store、外部 DingTalk CLI profile 三类分别处理。DingTalk 固定版本默认在系统 Keychain 保护密钥，不偷开测试 file-DEK，也不把目录中的密文直接写入 Provider auth namespace。[固定官方实现](https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/blob/v1.0.61/internal/keychain/keychain_darwin.go#L248)、[平台与连接器详细依据](sdk-beta1-credentials-audit.md)。该可选迁移不免除本轮对临时保存的真实性修复。
 
 ### H. 必须补的组合回归
 

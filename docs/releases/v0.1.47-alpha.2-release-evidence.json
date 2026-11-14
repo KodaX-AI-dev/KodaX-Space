@@ -339,19 +339,19 @@
       "sha256": "025b0d4d6ebb714191f7d7e7e35f6830b875c89d611f49a862450138868aa5cc"
     },
     {
-      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-external-qwen-evidence.json",
+      "path": "docs/releases/kodax-0.7.97-alpha.4-visual-review-external-qwen-evidence.json",
       "sha256": "753256bbc2e2a86fa589131c69edbc460d4a3f1e1000cad4b3caf47470728cbd"
     },
     {
-      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-external-qwen.md",
+      "path": "docs/releases/kodax-0.7.97-alpha.4-visual-review-external-qwen.md",
       "sha256": "687047773feb7300e2243f3d0db2440ff10cdee2a3d77532eb37ebb6945fc9d0"
     },
     {
-      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-live-e2e-evidence.json",
+      "path": "docs/releases/kodax-0.7.97-alpha.4-visual-review-live-e2e-evidence.json",
       "sha256": "420410d882ae591c4a27c0d9628a4597da648c7fb2dda5ee7bf9a9702993412c"
     },
     {
-      "path": "docs/research/kodax-0.7.97-alpha.4-visual-review-live-e2e.md",
+      "path": "docs/releases/kodax-0.7.97-alpha.4-visual-review-live-e2e.md",
       "sha256": "09c0faa799a057d242777aee787b4f0d70c2e78054d3c36a2e950e95bf02337b"
     },
     {

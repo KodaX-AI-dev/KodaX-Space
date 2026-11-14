@@ -44,4 +44,4 @@
 
 ## 后续真实模型视觉行为验收（2026-10-13）
 
-用户要求使用 Space 自己已配置的 Provider/模型验证自动检查。通过内置 `zai-coding / glm-5.3-flash` 跑真实 Renderer 会话，AMA/SA 两个普通图表修改任务均自动加载 `visual-review`、读取当前 PNG 并在交付前给出视觉检查反馈，自动触发 E2E 2/2 通过；移除 HTML 源文件的像素识别对照 1/1 通过。所有请求均为指定 Provider/模型，无 fallback。先前自行选择的外部 Qwen 测试已标为历史非验收，不能代表当前配置。见 [真实模型 E2E 结果与限制](../research/kodax-0.7.97-alpha.4-visual-review-live-e2e.md)。前文技能发现/打包及离线契约通过的结论保持其原始范围。
+用户要求使用 Space 自己已配置的 Provider/模型验证自动检查。通过内置 `zai-coding / glm-5.3-flash` 跑真实 Renderer 会话，AMA/SA 两个普通图表修改任务均自动加载 `visual-review`、读取当前 PNG 并在交付前给出视觉检查反馈，自动触发 E2E 2/2 通过；移除 HTML 源文件的像素识别对照 1/1 通过。所有请求均为指定 Provider/模型，无 fallback。先前自行选择的外部 Qwen 测试已标为历史非验收，不能代表当前配置。见 [真实模型 E2E 结果与限制](kodax-0.7.97-alpha.4-visual-review-live-e2e.md)。前文技能发现/打包及离线契约通过的结论保持其原始范围。

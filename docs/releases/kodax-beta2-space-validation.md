@@ -2,7 +2,7 @@
 
 > 更正：本记录是 `de015cce` 时点的阶段验收，后续已确认历史冲突由 Space 队列投影反馈循环触发，撤回 SDK 根因归属；其中原称 29 项成品界面测试误用了环境变量，实际为第二轮源码测试，不计入成品资格。已启动正确入口补验，当前结论见 [根因复验记录](kodax-beta2-boundary-root-cause.md)。本记录保留当时失败及 CI 结果，不能代替后续更正。
 
-2026-11-05。适配提交 `71ec948d`，源码验收 SHA `c76a09d8a27730be3a6504df6135053fdd5c6752`。变更范围及双轴复审见 [接入说明](../releases/kodax-beta2-space-adaptation.md)。本记录仅补充实测结果，不宣称全部 SDK 根因或客户环境问题已关闭。
+2026-11-05。适配提交 `71ec948d`，源码验收 SHA `c76a09d8a27730be3a6504df6135053fdd5c6752`。变更范围及双轴复审见 [接入说明](kodax-beta2-space-adaptation.md)。本记录仅补充实测结果，不宣称全部 SDK 根因或客户环境问题已关闭。
 
 ## 安装与执行身份
 
@@ -81,7 +81,7 @@ Script 部分写入→Stop→冷 Host→Space 历史已可读后，第二个 SDK
 
 为排除只等 100ms 的短窗口影响，另做延长静置探针：先静置 5 秒再首读；每次 observe/close 后静置 2 秒，三次重读间隔 2 秒，load 后也静置 2 秒。仍得到 before=false、after=[true,false,false]、load 后=true、再次观察后=false。Space 恢复及不重放断言通过（37.1 秒），原始 SDK 读边界没有因延长静置收敛。此探针仅临时调整测试等待，不改产品；结束后测试文件 Git blob 恢复为 `84da386335fc7e11fb690a88a8adf02bba059184`，与验收 SHA 一致。记录见 `beta2-history-long-probe.log` 与 `beta2/history-long-probe/`。
 
-可转交 SDK 的问题、需求和验收要求见 [独立交接段落](../releases/kodax-beta2-observe-history-handoff.md)。测试将原始 SDK 返回单独附加为 JSON/annotation；Space 恢复、不重放及部分文件保留断言仍必须通过，没有用跳过测试关闭根因。
+可转交 SDK 的问题、需求和验收要求见 [独立交接段落](kodax-beta2-observe-history-handoff.md)。测试将原始 SDK 返回单独附加为 JSON/annotation；Space 恢复、不重放及部分文件保留断言仍必须通过，没有用跳过测试关闭根因。
 
 ### 补验发现的相邻准入边界
 

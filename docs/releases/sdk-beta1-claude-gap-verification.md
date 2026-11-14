@@ -33,6 +33,6 @@
 
 - 新发现没有在本轮实际客户环境或成品中复现；实施时先做 RED 与真实 Host 故障注入。具体触发范围不能从静态缺口直接推成所有会话必现。
 - Host 内部 awaitingBinding 当前不公开。Space 可以让自有完整 queued 意图显式取回并显示本地恢复进度；若要精确展示 Host 等待原因，需 SDK 补只读事实，不能由缺 error 猜造。
-- Partner 消费时的 Agent 不变量经补查确有公开契约不足：profile/request 不带所需模式，view 可能复用旧 loading。外层 CAS 无法独立证明跨客户端的 dequeue/command/workflow 竞态已关闭；新增 [SDK 原子模式准入交接](../releases/kodax-beta1-partner-mode-admission-handoff.md)，Space 的入口修复先做，原子保证须等正式 SDK 接口与实测闭环。
+- Partner 消费时的 Agent 不变量经补查确有公开契约不足：profile/request 不带所需模式，view 可能复用旧 loading。外层 CAS 无法独立证明跨客户端的 dequeue/command/workflow 竞态已关闭；新增 [SDK 原子模式准入交接](kodax-beta1-partner-mode-admission-handoff.md)，Space 的入口修复先做，原子保证须等正式 SDK 接口与实测闭环。
 
 本次只修改调研和方案文档；未改生产代码、SDK、真实用户数据或原生构建。

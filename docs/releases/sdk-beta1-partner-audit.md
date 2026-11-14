@@ -4,7 +4,7 @@ Partner 的正常输入已通过共享 Host 使用 Agent 工作模式、AMA 协�
 
 ## 核对边界
 
-- Space 固定点 `64fcfed3`；实际安装 `@kodax-ai/kodax@0.7.97-beta.1`。SDK 源码固定点 `e733e51f98fc5df7538a3dfc2438fed784345b33`，提交为 beta.1 release。本次只读源码、契约、测试与已有证据，不运行测试或构建，不读用户凭证、不修改 SDK/产品代码。[Space 依赖](../../package.json#L61)、[上轮验收](../releases/kodax-0.7.97-beta.1-integration.md)。
+- Space 固定点 `64fcfed3`；实际安装 `@kodax-ai/kodax@0.7.97-beta.1`。SDK 源码固定点 `e733e51f98fc5df7538a3dfc2438fed784345b33`，提交为 beta.1 release。本次只读源码、契约、测试与已有证据，不运行测试或构建，不读用户凭证、不修改 SDK/产品代码。[Space 依赖](../../package.json#L61)、[上轮验收](kodax-0.7.97-beta.1-integration.md)。
 - SDK 公开要求：Session `workMode:'agent'`，与 AMA/权限独立；可信 Main 的 profile/defaultSkill 由 Host 准备，原问题保留；排队消费使用最后成功提交的业务配置，冷 Host 重新注册 lease 并以原身份重绑输入。[已安装 SDK：`docs/SDK_MIGRATION.md:28-62`、`docs/SPACE_SDK_SEAMS.md:10-28`、`docs/CLIENT_CONTRACT.md:215-217`]。
 - 编译包 `dist/kodax_cli.js` 已核对包含 `workModePolicy:"intersect"`、`partnerInstructions:...agentProfile?.instructions` 和模式兼容判断；下面引用同 release 源码便于检查，未把其他候选源码当作已安装能力。源码位置：`KodaX/src/runtime-daemon/server.ts:2645-2653`、`packages/coding/src/task-engine/runner-driven.ts:1952`。
 
@@ -44,7 +44,7 @@ SDK binding lease 不能像 credential lease 一样 resume：公开服务只有 
 3. 禁用/卸载专家与撤销连接器仍在模型/副作用前阻断；原问题和附件保留；有明确用户改选或撤回路径。
 4. 超过 4,096 字符、图片/文件引用、after_turn/target 完整；不从 SDK preview 重建，不产生第二条 user input 或第二次副作用。
 5. 原 input 已有 Run、已交付/已完成、接收结果未知、principal 不匹配和恢复记录损坏：不自动提交。accept/rebind 响应丢失后查询同操作事实，不换新 inputId。
-6. alpha.12 遗留队列无完整原文：继续保留阻断并明确无法安全重绑，等待 [SDK 原文/回执接缝](../releases/kodax-beta1-queued-intent-handoff.md)，不能冒充完成。
+6. alpha.12 遗留队列无完整原文：继续保留阻断并明确无法安全重绑，等待 [SDK 原文/回执接缝](kodax-beta1-queued-intent-handoff.md)，不能冒充完成。
 
 上面是验收要求，不是已通过结果。现有真实 Host 脚本只覆盖同进程消费切换/禁用/取回，未制造这些 Main/Host 换代场景。`e2e/beta1-sdk-acceptance.mjs:183-257`。
 
@@ -68,17 +68,17 @@ SDK binding lease 不能像 credential lease 一样 resume：公开服务只有 
 
 ## 外部 SDK 依赖与产品可选项
 
-- promotion view 元数据旧缓存和旧队列完整原文/durable 撤回回执，是既有两项 SDK 接缝；Space 已有窄兼容及事实拒绝边界，仍应等正式 SDK 根修包闭环。[promotion 交接](../releases/kodax-beta1-promotion-view-handoff.md)、[队列交接](../releases/kodax-beta1-queued-intent-handoff.md)。
-- Quick Ask 转 Partner、新专家工作台策略 UI、真实外部平台登录及内容送达，是独立产品范围；SDK 能力存在不代表当前 UI 已开放，不能为“适配全部导出”自动增造功能。当前仅 Continue in Coder 的事实在 `QuickAskPopover.tsx:472`，远端登录/权益未验证边界在 [beta.1 验收](../releases/kodax-0.7.97-beta.1-integration.md)。
+- promotion view 元数据旧缓存和旧队列完整原文/durable 撤回回执，是既有两项 SDK 接缝；Space 已有窄兼容及事实拒绝边界，仍应等正式 SDK 根修包闭环。[promotion 交接](kodax-beta1-promotion-view-handoff.md)、[队列交接](kodax-beta1-queued-intent-handoff.md)。
+- Quick Ask 转 Partner、新专家工作台策略 UI、真实外部平台登录及内容送达，是独立产品范围；SDK 能力存在不代表当前 UI 已开放，不能为“适配全部导出”自动增造功能。当前仅 Continue in Coder 的事实在 `QuickAskPopover.tsx:472`，远端登录/权益未验证边界在 [beta.1 验收](kodax-0.7.97-beta.1-integration.md)。
 
 ## 未证实
 
 - 尚未运行针对本节新发现的实际 Main/Host 换代重绑复现；P1 来自完整静态调用链及明确 SDK 重绑契约，需在实现前先以新增专项回归锁定。
-- 尚无真实外部 connector/云 principal/在线模型的完整验收；现有本机假 Provider、静态检查和历史独立库测试不能证明这些环境成功。验收限制已记录于 [beta.1 验收](../releases/kodax-0.7.97-beta.1-integration.md)。
+- 尚无真实外部 connector/云 principal/在线模型的完整验收；现有本机假 Provider、静态检查和历史独立库测试不能证明这些环境成功。验收限制已记录于 [beta.1 验收](kodax-0.7.97-beta.1-integration.md)。
 
 ## 未解问题
 
-1. 需要 SDK 公开完整旧队列原文及持久撤回回执，才能无损覆盖缺 Space 私有意图的遗留输入；当前公开 preview 不够。[SDK 队列交接](../releases/kodax-beta1-queued-intent-handoff.md)。
+1. 需要 SDK 公开完整旧队列原文及持久撤回回执，才能无损覆盖缺 Space 私有意图的遗留输入；当前公开 preview 不够。[SDK 队列交接](kodax-beta1-queued-intent-handoff.md)。
 2. Quick Ask 是否新增“转 Partner”属于后续产品选择，本次现有产品适配无需以此阻断；当前只有转 Coder。`QuickAskPopover.tsx:472`。
 
 ## Claude 补审线索的重新核对

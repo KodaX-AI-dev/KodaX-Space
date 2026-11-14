@@ -806,22 +806,22 @@
     "lifecycle": {
       "status": "passed",
       "priorCounterexamples": 3,
-      "script": "docs/research/kodax-0.7.97-alpha.2-lifecycle-probe.mjs",
-      "evidence": "docs/research/kodax-0.7.97-alpha.2-lifecycle-evidence.json",
+      "script": "docs/releases/kodax-0.7.97-alpha.2-lifecycle-probe.mjs",
+      "evidence": "docs/releases/kodax-0.7.97-alpha.2-lifecycle-evidence.json",
       "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-lifecycle.log"
     },
     "statistics": {
       "status": "passed",
       "priorCounterexamples": 4,
       "independentRuns": 2,
-      "script": "docs/research/kodax-0.7.97-alpha.2-statistics-probe.mjs",
-      "evidence": "docs/research/kodax-0.7.97-alpha.2-statistics-evidence.json",
+      "script": "docs/releases/kodax-0.7.97-alpha.2-statistics-probe.mjs",
+      "evidence": "docs/releases/kodax-0.7.97-alpha.2-statistics-evidence.json",
       "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-statistics.log"
     },
     "mainBridgeAndHistory": {
       "status": "passed",
-      "script": "docs/research/kodax-0.7.97-alpha.2-main-bridge-probe.mjs",
-      "evidence": "docs/research/kodax-0.7.97-alpha.2-main-bridge-evidence.json",
+      "script": "docs/releases/kodax-0.7.97-alpha.2-main-bridge-probe.mjs",
+      "evidence": "docs/releases/kodax-0.7.97-alpha.2-main-bridge-evidence.json",
       "log": "artifacts/diagnostics/20261020/.tmp-kodax-alpha2-main-bridge.log",
       "wireCalls": 4,
       "credentialCalls": 4,

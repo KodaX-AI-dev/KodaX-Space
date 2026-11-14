@@ -1,6 +1,6 @@
 # SDK beta.2 Space 回归指南
 
-本指南针对当前工作树，公开 alpha.4 安装包仍使用 beta.1。执行结果见 [接入记录](../releases/kodax-beta2-space-adaptation.md) 和 [根因复验](../research/kodax-beta2-boundary-root-cause.md)。测试须使用独立 profile 和本地 Provider，不读取真实用户凭据。
+本指南针对当前工作树，公开 alpha.4 安装包仍使用 beta.1。执行结果见 [接入记录](../releases/kodax-beta2-space-adaptation.md) 和 [根因复验](../releases/kodax-beta2-boundary-root-cause.md)。测试须使用独立 profile 和本地 Provider，不读取真实用户凭据。
 
 1. `npm ci`、`npm ls @kodax-ai/kodax`：Root/Desktop 只有 beta.2，打包 Registry 原生资源和 builtin Skill 门禁通过。旧忙碌 Host 拒绝强制替换，保留其他客户端。
 2. Coder 首次输入前选择 Agent/Coding/Script；模式与 Provider/权限独立，忙碌或过期 revision 拒绝切换。Partner 显示 Host 实际模式，下一次执行提交 Agent 要求，另一客户端在授权后修改时必须由 Host 原子拒绝。

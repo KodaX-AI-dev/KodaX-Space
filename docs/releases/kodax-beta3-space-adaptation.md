@@ -123,7 +123,7 @@ Windows 冷启动测试中 Renderer 4.55 秒就绪。确定性延迟 daemon 20 �
 
 同时将基线输入器浏览器用例的选择/撤销改为 ControlOrMeta，逐词删除和行首移动按原生 macOS 键位发出。测试仍验证原来的正文、剪贴板、撤销、原子 token 删除和恢复，不改变应用快捷键。Windows 专项1/1通过，macOS 两种架构以最终远端结果为准。
 
-本轮最终冻结提交、成品哈希、Host事实、全部成品用例与远端CI结果统一记录在 [beta.3 最终验收记录](../research/kodax-beta3-space-final-validation.md)。该记录只在对应检查实际完成后填写，不能用门禁跳过或旧版本结果代替。
+本轮最终冻结提交、成品哈希、Host事实、全部成品用例与远端CI结果统一记录在 [beta.3 最终验收记录](kodax-beta3-space-final-validation.md)。该记录只在对应检查实际完成后填写，不能用门禁跳过或旧版本结果代替。
 
 #### 完整源码 E2E 发现的输入器样式遗漏
 

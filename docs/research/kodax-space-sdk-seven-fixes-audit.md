@@ -1,6 +1,6 @@
 # SDK 团队对上一轮七项问题的修复是否落实？
 
-> 发布后复验：本文保留发布前工作树 `a18e95d4…` 的验收记录。修复现已发布为 Registry `0.7.97-alpha.2` 并安装到 Space；七项反例已通过纯公开发布包入口重新复验，见[发布包审计](kodax-0.7.97-alpha.2-published-sdk-audit.md)。下文“npm 未发布、安装包未更新”是当时状态；Space 生产接入迁移仍未实施。
+> 发布后复验：本文保留发布前工作树 `a18e95d4…` 的验收记录。修复现已发布为 Registry `0.7.97-alpha.2` 并安装到 Space；七项反例已通过纯公开发布包入口重新复验，见[发布包审计](../releases/kodax-0.7.97-alpha.2-published-sdk-audit.md)。下文“npm 未发布、安装包未更新”是当时状态；Space 生产接入迁移仍未实施。
 
 主审计结论：**上一轮 7 项问题均已通过源码核对与独立正向复验，本轮未确认新的契约阻塞。** 三项退出反例重新走真实 detached/socket Host；四项统计反例重新走实际 Provider/工具执行、持久化、RPC 与公共 Product Client，详见[统计专项复验](kodax-space-sdk-seven-fixes-statistics-audit.md)。首轮关键回归出现一次 Windows 临时目录清理失败，退出文件单独重跑通过；这是单列的验证稳定性尾项，不能隐去首轮失败或写成全量回归一次全绿。SDK 源码未修改，npm 未发布，Space 安装包未更新。
 

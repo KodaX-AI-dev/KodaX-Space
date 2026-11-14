@@ -8577,7 +8577,7 @@ Validation:
 - Desktop TypeScript and production renderer build pass.
 - Focused Electron E2E verifies the semantic threshold maximum, current-input composition, policy
   facts, absence of reserve labels, mutual exclusion of the two popovers, and stable screenshots.
-- The [Product Design QA comparison](../design-qa.md) passes and records the intentional “Context
+- The [Product Design QA comparison](design/design-qa.md) passes and records the intentional “Context
   window” title plus removal of output reservation.
 
 ### 108: Electron native-binding probe could report an incompatible better-sqlite3 ABI as healthy

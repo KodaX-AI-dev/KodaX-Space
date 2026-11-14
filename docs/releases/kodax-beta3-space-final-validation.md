@@ -1,6 +1,6 @@
 # KodaX beta.3：Space 最终验收记录
 
-2026-11-08。本记录是 [发布差异核对表](../releases/kodax-beta3-space-adaptation.md) 的实际执行结果，不替代历史版本证据。
+2026-11-08。本记录是 [发布差异核对表](kodax-beta3-space-adaptation.md) 的实际执行结果，不替代历史版本证据。
 
 ## 冻结范围
 

@@ -51,7 +51,7 @@ Partner 连接器并未因 Provider 升级自动迁移：基础 runtime 使用 `
 
 - OAuth 消费可用，但 Space 当前 Provider UI 没有 SDK 原生 login/logout 流程；仍按既有合同交给 SDK/CLI/config。若“可用”要求桌面内完成订阅登录、换号、退出和状态恢复，需要单独实现 UI/IPC，不能算已接完；仅存在 OAuth badge 不等于登录验收。[ProviderCard:35-145](../../apps/desktop/renderer/src/features/provider/ProviderCard.tsx#L35)、[既有高级配置边界](../SDK_PROVIDER_CREDENTIALS.md#L23)。
 - 凭证文件 binding 使用 default namespace，而 Runtime 的执行角色为 coder，原合同明确这两个概念不同；不能为了追求“profile一致”把现有共享账号重命名到 coder。当前 OAuth 消费只接受 default 凭证 profile。若未来开放多个 credential profile，需要可信映射与选择，而非复制 factory 同名参数。[provider-storage:74](../../apps/desktop/electron/providers/provider-storage.ts#L74)、[credentials:185](../../apps/desktop/electron/providers/credentials.ts#L185)、[原合同](../SDK_PROVIDER_CREDENTIALS.md#L18)。
-- 普通 API/file/来源/CAS/迁移/epoch 已有大量单测和 Windows 假 Provider 成品证据；真实 Codex/OpenAI/Copilot 订阅刷新、真实云 principal、macOS/Linux 旧 vault 迁移和无 libsecret 实机仍未由这些离线测试证明。应保持为 P1 验收范围，使用测试账号且不在报告输出秘密；不能把 SDK 完整回归数字当作 Space 登录流认证。[既有证据界限](../SDK_PROVIDER_CREDENTIALS.md#L128)、[本轮 beta.1 验收限制](../releases/kodax-0.7.97-beta.1-integration.md#L50)。
+- 普通 API/file/来源/CAS/迁移/epoch 已有大量单测和 Windows 假 Provider 成品证据；真实 Codex/OpenAI/Copilot 订阅刷新、真实云 principal、macOS/Linux 旧 vault 迁移和无 libsecret 实机仍未由这些离线测试证明。应保持为 P1 验收范围，使用测试账号且不在报告输出秘密；不能把 SDK 完整回归数字当作 Space 登录流认证。[既有证据界限](../SDK_PROVIDER_CREDENTIALS.md#L128)、[本轮 beta.1 验收限制](kodax-0.7.97-beta.1-integration.md#L50)。
 - 更强的 native cloud stable principal replayIdentity 是可选增强，目前 Space plain carrier 不提供该证明；应显示未知，不能以 profile、tenant 字符串或未签名 claim 伪造。不影响已批准原生云请求入口继续使用。[SDK migration:749](../../node_modules/@kodax-ai/kodax/docs/SDK_MIGRATION.md#L749)、[Space cloud 序列化](../../apps/desktop/electron/providers/credentials.ts#L217)。
 
 ## 未解问题

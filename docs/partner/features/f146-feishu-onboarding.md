@@ -152,7 +152,7 @@
 - 版本 / 官方图片、横向布局、明暗连接状态对比度及三个宿主品牌消费面先 RED 后 GREEN。独立评审复跑 24 项定向测试全部通过。
 - 完整套件：release 46、desktop 3142 通过 / 4 条件跳过、schema 328，合计 **3516 通过、4 跳过、0 失败**。typecheck、最终完整 lint、build:smoke、独立包构建与 macOS arm64 打包 / packaged smoke 通过。首次并行 lint 遇到 release 测试正在移除的临时目录，待该阶段结束后重跑成功，没有放宽规则。
 - 同一隔离 profile 直接升级 0.5.0 → 0.5.1 并重新启用，连接记录文件逐字节一致；没有调用连接、解绑或授权接口。最新 Electron 的卡片显示“飞书 / 已连接”，打开管理弹窗后仍是同一连接，官方图标和名称一致。
-- 按用户 WorkBuddy 截图与实际 Electron 画面做全貌和局部同屏输入比较，结果见根目录 [design-qa.md](../../../design-qa.md)。明暗 / 窄屏另有受控组件回归，不外推为所有操作系统的桌面验收。
+- 按用户 WorkBuddy 截图与实际 Electron 画面做全貌和局部同屏输入比较，结果见根目录 [docs/design/design-qa.md](../../design/design-qa.md)。明暗 / 窄屏另有受控组件回归，不外推为所有操作系统的桌面验收。
 
 ### Standards
 

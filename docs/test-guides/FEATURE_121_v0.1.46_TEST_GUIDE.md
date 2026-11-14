@@ -102,4 +102,4 @@ resources, Sandbox, Worker and public Runtime lifecycle.
 2026-10-11: 99 distinct source E2E cases passed (93 existing plus 6 real SDK),
 6 packaged real-SDK cases passed, no failures/skips/retries. Existing cases
 include Mock/injected-event scenarios; live services and other platforms remain
-separate checks. See [scope, evidence and limits](../research/kodax-0.7.97-alpha.3-space-e2e-validation.md).
+separate checks. See [scope, evidence and limits](../releases/kodax-0.7.97-alpha.3-space-e2e-validation.md).

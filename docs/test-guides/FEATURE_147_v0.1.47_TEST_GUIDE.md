@@ -131,4 +131,4 @@
 
 输入器由 textarea 改为 Lexical contenteditable 后，焦点和暂停选择器必须跟随现有 `.composer-editor`。完整 Linux E2E 与同一 Windows 成品的两项反例均失败：聚焦时没有动效，流式阶段计算样式没有 paused。六处选择器已修正，原动画时长和守卫保持。
 
-使用 `workspace-visual-motion.spec.ts` 的四个真实 Electron 场景验收：中英文设置往返及草稿、有限聚焦反馈与后台窗口切换、真实双项目并行输出时暂停并恢复、视口边缘菜单几何。继续检查 Balanced/Minimal、reduced-motion 和滚动暂停；不以延长用例超时、跳过动画断言或增加常驻动效代替修复。最终源码与重新打包结果见 [beta.3 最终验收](../research/kodax-beta3-space-final-validation.md)。
+使用 `workspace-visual-motion.spec.ts` 的四个真实 Electron 场景验收：中英文设置往返及草稿、有限聚焦反馈与后台窗口切换、真实双项目并行输出时暂停并恢复、视口边缘菜单几何。继续检查 Balanced/Minimal、reduced-motion 和滚动暂停；不以延长用例超时、跳过动画断言或增加常驻动效代替修复。最终源码与重新打包结果见 [beta.3 最终验收](../releases/kodax-beta3-space-final-validation.md)。

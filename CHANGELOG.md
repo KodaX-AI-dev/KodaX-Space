@@ -224,7 +224,7 @@ stable SDK is a fresh build of the rc.14 source with release bookkeeping only.
 
 - **Issue 216 follow-up — Runtime credential self-heal, uninstall-safe
   AppData, terminal history errors**: Field investigation of a Windows
-  rc.5 machine (`docs/investigations/2026-09-28-runtime-credential-decryption.md`)
+  rc.5 machine (`docs/research/runtime-credential-decryption-2026-09-28.md`)
   confirmed the ciphertext lives in `.kodax/space` while the Electron
   `safeStorage` encryption key lives in AppData, so an NSIS uninstall that
   deleted AppData kept undecryptable ciphertext behind. NSIS now preserves

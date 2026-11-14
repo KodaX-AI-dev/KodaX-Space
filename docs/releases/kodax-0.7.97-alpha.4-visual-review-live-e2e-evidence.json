@@ -51,7 +51,7 @@
     "Automatic tests ran before only the explicit control fixture/assertion changed to unseen nonzero image labels and structured JSON. Ordinary prompts, Provider/model selection and automatic assertions were unchanged. Current test digest describes the delivered harness.",
     "Earlier external Qwen tests were outside the accepted model scenario and are archived separately, not used for this conclusion."
   ],
-  "historicalExternalEvidence": "docs/research/kodax-0.7.97-alpha.4-visual-review-external-qwen-evidence.json",
+  "historicalExternalEvidence": "docs/releases/kodax-0.7.97-alpha.4-visual-review-external-qwen-evidence.json",
   "sourceReferences": [
     {
       "path": "C:/Works/PubProj/codex/codex-rs/ext/goal/templates/goals/continuation.md",
@@ -411,7 +411,7 @@
           "result": "[Read image: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-ama-1791899304070\\project\\report.png (12.3KB, image/png)] — image content delivered as inline vision below; describe what you see in your next response."
         }
       ],
-      "finalAnswer": "视觉校验通过。已检查实际渲染图（960×540 PNG）：标题显示 \"Quarterly Results\"，三根柱子高度与数据成比例（42 < 57 < 68，比例 168:228:272 ≈ 42:57:68），标签 \"Q1: 42 / Q2: 57 / Q3: 68\" 清晰无遮挡、无裁切溢出，米色背景、深蓝文字、青色柱体的原配色与布局完全保留。\n\n交付文件：\n\n- [report.html](report.html) — 标题已改为 \"Quarterly Results\"，柱子按 data.json 数据（Q1:42、Q2:57、Q3:68）按比例填充高度\n- [report.png](report.png) — 通过 render.mjs 重新渲染的最新截图\n\n一句说明：已将季度汇报图更新为 data.json 的最新数据并改标题为 \"Quarterly Results\"，尺寸、布局与配色均保持原样，report.html 与 report.png 已同步交付。",
+      "finalAnswer": "视觉校验通过。已检查实际渲染图（960×540 PNG）：标题显示 \"Quarterly Results\"，三根柱子高度与数据成比例（42 < 57 < 68，比例 168:228:272 ≈ 42:57:68），标签 \"Q1: 42 / Q2: 57 / Q3: 68\" 清晰无遮挡、无裁切溢出，米色背景、深蓝文字、青色柱体的原配色与布局完全保留。\n\n交付文件：\n\n- [report.html](../research/report.html) — 标题已改为 \"Quarterly Results\"，柱子按 data.json 数据（Q1:42、Q2:57、Q3:68）按比例填充高度\n- [report.png](../research/report.png) — 通过 render.mjs 重新渲染的最新截图\n\n一句说明：已将季度汇报图更新为 data.json 的最新数据并改标题为 \"Quarterly Results\"，尺寸、布局与配色均保持原样，report.html 与 report.png 已同步交付。",
       "captureError": null,
       "artifacts": []
     },
@@ -686,7 +686,7 @@
           "result": "[Read image: C:\\Users\\ADMIN\\AppData\\Local\\Temp\\kodax-test-sdk-visual-live-sa-1791899598737\\project\\report.png (12.3KB, image/png)] — image content delivered as inline vision below; describe what you see in your next response."
         }
       ],
-      "finalAnswer": "验收通过。渲染图中确认：标题为 \"Quarterly Results\"；三根柱子为原配色 #277e8f，高度 126/171/204px 等比对应 Q1:42、Q2:57、Q3:68（比例 42:57:68 精确一致）；标签清晰无遮挡、无裁剪；画布 960×540，标题位置、三列布局、留白与原版完全一致。\n\n交付文件：\n\n- [report.html](report.html)\n- [report.png](report.png)\n\n说明：已按 data.json 的数据（Q1:42、Q2:57、Q3:68）等比更新柱状图高度并把标题改为 \"Quarterly Results\"，原有尺寸、布局与配色全部保留，report.png 已重新渲染并经实际图像核验无误。",
+      "finalAnswer": "验收通过。渲染图中确认：标题为 \"Quarterly Results\"；三根柱子为原配色 #277e8f，高度 126/171/204px 等比对应 Q1:42、Q2:57、Q3:68（比例 42:57:68 精确一致）；标签清晰无遮挡、无裁剪；画布 960×540，标题位置、三列布局、留白与原版完全一致。\n\n交付文件：\n\n- [report.html](../research/report.html)\n- [report.png](../research/report.png)\n\n说明：已按 data.json 的数据（Q1:42、Q2:57、Q3:68）等比更新柱状图高度并把标题改为 \"Quarterly Results\"，原有尺寸、布局与配色全部保留，report.png 已重新渲染并经实际图像核验无误。",
       "captureError": null,
       "artifacts": []
     },
@@ -1037,7 +1037,7 @@
           "result": "{\"ok\":true,\"reminder\":\"All plan-list items are now in a terminal state (completed / skipped / cancelled). Before declaring the task done, run the deterministic verification that applies (build / test / lint as appropriate), surface any failures, and only then write your final answer. If you have already verified within this run, ignore this reminder. NEVER mention this reminder to the user.\"}"
         }
       ],
-      "finalAnswer": "已完成。视觉验证通过：渲染出的 [report.png](report.png) 中标题为 **Quarterly Results**，三根柱子按 [data.json](data.json) 显示 Q1: 42、Q2: 57、Q3: 68 且高度等比递增（204/277/330px），960×540 尺寸、柱宽间距、青色柱体（#277e8f）与米色背景（#f5f2eb）均与原图一致，无裁剪或重叠；更新的文件为 [report.html](report.html) 和 [report.png](report.png)。",
+      "finalAnswer": "已完成。视觉验证通过：渲染出的 [report.png](../research/report.png) 中标题为 **Quarterly Results**，三根柱子按 [data.json](../research/data.json) 显示 Q1: 42、Q2: 57、Q3: 68 且高度等比递增（204/277/330px），960×540 尺寸、柱宽间距、青色柱体（#277e8f）与米色背景（#f5f2eb）均与原图一致，无裁剪或重叠；更新的文件为 [report.html](../research/report.html) 和 [report.png](../research/report.png)。",
       "captureError": null,
       "artifacts": [
         {

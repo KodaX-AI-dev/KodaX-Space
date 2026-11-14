@@ -4,7 +4,7 @@
 
 > 2026-11-08 当前工作树：Registry SDK `0.7.97-beta.3`，见 [完整适配与验收](../releases/kodax-beta3-space-adaptation.md)。工作模式仅首轮 Run 接纳前选择；历史定位与整轮操作按实际 Host 能力开放；规则片段保留独立来源。以下带日期的旧版本记录保持历史语境。
 
-> 2026-11-05 开发主线：已锁定 Registry SDK `0.7.97-beta.2`，已发布 alpha.4 仍为 beta.1。beta.2 适配见 [接入记录](../releases/kodax-beta2-space-adaptation.md)，历史与 Stop 问题的 Space 归因更正、单前台订阅及真正成品证据见 [根因复验](../research/kodax-beta2-boundary-root-cause.md)。下方旧日期记录保持原语境，不代表当前依赖或新发版。
+> 2026-11-05 开发主线：已锁定 Registry SDK `0.7.97-beta.2`，已发布 alpha.4 仍为 beta.1。beta.2 适配见 [接入记录](../releases/kodax-beta2-space-adaptation.md)，历史与 Stop 问题的 Space 归因更正、单前台订阅及真正成品证据见 [根因复验](../releases/kodax-beta2-boundary-root-cause.md)。下方旧日期记录保持原语境，不代表当前依赖或新发版。
 
 > 2026-11-04 版本基线：Space `0.1.47-alpha.4` / Registry SDK `0.7.97-beta.1`。本轮发布状态、验收与未关闭边界见 [alpha.4 发布记录](../releases/v0.1.47-alpha.4-release-readiness.md)；下方带日期的旧记录保留历史语境。
 
@@ -107,7 +107,7 @@ SDK 的创建/输入/设置/CLI/schema/存储边界关联回归 61/61 通过，�
 
 逐个接缝执行 RED → GREEN。先启动与当前投影，再输入授权与队列，再历史与统计，最后退出/恢复。每片运行关联回归；收尾运行全量测试、类型检查、lint、构建与 Standards/Spec 评审。验收要求不只消除类型错误，还验证已发布包上的真实运行与退出。
 
-迁移事实与上游证据见 [已发布 SDK 验收](../research/kodax-0.7.97-alpha.2-published-sdk-audit.md)。实现验收结果完成后追加于此。
+迁移事实与上游证据见 [已发布 SDK 验收](../releases/kodax-0.7.97-alpha.2-published-sdk-audit.md)。实现验收结果完成后追加于此。
 
 ## 上游接缝需求的范围校正（2026-10-10）
 
@@ -149,7 +149,7 @@ npm `alpha` 已核对为 `0.7.97-alpha.3`。根目录、Desktop 与 lockfile 使
 
 ## 扩展 E2E 验收（2026-10-11）
 
-源码 99 个不同用例（93 项现有桌面 + 6 项真实发布 SDK）全部通过，0 失败/跳过/重试；同一真实 SDK 套件在打包目录应用通过 6/6。最后启动/九类文件预览专项 2/2 通过，打包 dependency/boot/SDK gate 全部通过。见 [E2E 范围、修复与限制](../research/kodax-0.7.97-alpha.3-space-e2e-validation.md) 和 [逐项证据](../research/kodax-0.7.97-alpha.3-space-e2e-evidence.json)。
+源码 99 个不同用例（93 项现有桌面 + 6 项真实发布 SDK）全部通过，0 失败/跳过/重试；同一真实 SDK 套件在打包目录应用通过 6/6。最后启动/九类文件预览专项 2/2 通过，打包 dependency/boot/SDK gate 全部通过。见 [E2E 范围、修复与限制](../releases/kodax-0.7.97-alpha.3-space-e2e-validation.md) 和 [逐项证据](../releases/kodax-0.7.97-alpha.3-space-e2e-evidence.json)。
 
 修复了 Stop 后新输入 admission 期间的观察订阅过早退役；反例 RED→GREEN，adapter 250/250 回归通过。Windows 常规 E2E 在独立 Desktop 运行，不切换用户桌面，保留正常产品窗口行为；Job 负责结束/取消时的测试子树清理。最终 Standards/Spec 均 0 项残留。
 

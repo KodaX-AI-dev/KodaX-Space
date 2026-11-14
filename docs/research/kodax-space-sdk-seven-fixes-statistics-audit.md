@@ -1,6 +1,6 @@
 # 上一轮 4 项统计问题是否已经修复？
 
-> 发布后复验：本文绑定发布前工作树。四项统计修复现已通过实际 Registry `0.7.97-alpha.2` 的纯公开 SDK 入口再次验收，见[发布包审计](kodax-0.7.97-alpha.2-published-sdk-audit.md)及[发布版统计证据](kodax-0.7.97-alpha.2-statistics-evidence.json)。旧源码/构建包探针保留历史。
+> 发布后复验：本文绑定发布前工作树。四项统计修复现已通过实际 Registry `0.7.97-alpha.2` 的纯公开 SDK 入口再次验收，见[发布包审计](../releases/kodax-0.7.97-alpha.2-published-sdk-audit.md)及[发布版统计证据](../releases/kodax-0.7.97-alpha.2-statistics-evidence.json)。旧源码/构建包探针保留历史。
 
 结论：**4/4 修复已通过独立正向复验；本次新增确认 finding 为 0。** 实测覆盖普通 ambient 根 Run 的原生子 Actor、实际 child reporter、公共 Product Client 并发重复 toolId、独立结果/恢复附件，以及 operation-only partial 与 native pending 的区分。此次没有重跑旧的 expectViolation 探针，也没有将历史问题继续当作当前 finding。
 
