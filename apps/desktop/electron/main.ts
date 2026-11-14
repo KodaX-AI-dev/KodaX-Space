@@ -81,6 +81,7 @@ import { registerProviderChannels, injectAllKeysToEnv } from './ipc/provider.js'
 import { syncSpaceCustomProvidersToRuntime } from './providers/runtime-catalog.js';
 import { customProviderMutationQueue } from './providers/custom-provider-mutations.js';
 import { autoActivateProvidersFromEnv } from './providers/auto-activate.js';
+import { loadCliBridgeModels } from './providers/catalog.js';
 import { registerFilesChannels } from './ipc/files.js';
 import { registerPartnerSourceChannels } from './ipc/partner-sources.js';
 import { registerPartnerKbChannels } from './ipc/partner-kb.js';
@@ -2836,6 +2837,12 @@ const startupPromise = app
     void permissionRegistry.load();
     // Initialize public Provider metadata and environment eligibility. Model secrets stay
     // in SDK auth.json or the selected environment source, behind the Main broker.
+    void loadCliBridgeModels().catch((err) => {
+      console.warn(
+        '[main] CLI bridge model list failed:',
+        err instanceof Error ? err.message : err,
+      );
+    });
     void providerConfigStore
       .load()
       .then(() => injectAllKeysToEnv())

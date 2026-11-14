@@ -26,6 +26,11 @@ export function QueuedInputRecovery({
         inputId,
       });
       if (!result.ok) throw new Error(result.error.message);
+      if ('conflict' in result.data) {
+        setError(t('message.queue.takeBackConflict'));
+        return;
+      }
+      const original = result.data;
       useAppStore.setState((state) => ({
         queuedUserMessagesBySession: {
           ...state.queuedUserMessagesBySession,
@@ -33,9 +38,9 @@ export function QueuedInputRecovery({
             item.id === localId
               ? {
                   ...item,
-                  content: result.data.text,
-                  matchContent: result.data.text,
-                  attachments: result.data.attachments,
+                  content: original.text,
+                  matchContent: original.text,
+                  attachments: original.attachments,
                   admissionError: undefined,
                   status: 'failed' as const,
                   failureReason: undefined,

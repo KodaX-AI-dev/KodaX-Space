@@ -4337,7 +4337,15 @@ export class RuntimeHostAdapter {
     const runtime = await this.requireRuntime();
     await this.assertHostSession(runtime, input.sessionId);
     if (!this.productClientInstanceId) throw new Error('Main client identity is unavailable.');
-    const original = await takeBackProductInput(runtime.runs, this.productClientInstanceId, input);
+    const original = await takeBackProductInput(
+      runtime.runs,
+      this.productClientInstanceId,
+      input,
+    ).catch((error: unknown) => {
+      if (runtimeErrorCode(error) === 'conflict') return undefined;
+      throw error;
+    });
+    if (!original) return { conflict: true as const };
     const { issueSessionImageAttachment } =
       await import('../window/session-attachment-protocol.js');
     const attachments = await Promise.all(

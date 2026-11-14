@@ -122,3 +122,12 @@ test('empty/whitespace env value is treated as absent', async () => {
   assert.equal(providerConfigStore.getDefaultProviderId(), null);
   assert.deepEqual(getAutoActivatedThisBoot(), []);
 });
+
+test('a CLI bridge is not auto-activated from an API key it does not use', async () => {
+  await providerConfigStore.load();
+  process.env.OPENAI_API_KEY = 'sk-openai-xxx';
+  process.env.GEMINI_API_KEY = 'gemini-xxx';
+  await autoActivateProvidersFromEnv();
+  assert.equal(providerConfigStore.getDefaultProviderId(), 'openai');
+  assert.deepEqual(getAutoActivatedThisBoot(), ['openai']);
+});

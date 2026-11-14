@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { realpath } from 'node:fs/promises';
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -40,6 +41,17 @@ test('Space Artifact extension resolves the installed public SDK and a real Node
   assert.ok(names.includes('artifact_render'));
   dispose();
   assert.equal(removed.length, 10);
+});
+
+test('a Host outside Electron never resolves the SDK outside the packaged Space copy', async () => {
+  // Real Node sees app.asar as a file: a Host the KodaX CLI started cannot load the SDK inside it.
+  const resources = await mkdtemp(path.join(os.tmpdir(), 'space-artifacts-packaged-'));
+  try {
+    await writeFile(path.join(resources, 'app.asar'), 'archive');
+    assert.throws(() => resolveSpaceArtifactImports(resources), /not started by KodaX Space/);
+  } finally {
+    await rm(resources, { recursive: true, force: true });
+  }
 });
 
 test('Space injects LibreOffice only from fixed install locations', () => {

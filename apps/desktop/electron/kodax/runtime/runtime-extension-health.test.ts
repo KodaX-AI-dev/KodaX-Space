@@ -80,3 +80,23 @@ test('long extension names still satisfy the actual bounded IPC health contract'
   } as never);
   assert.doesNotThrow(() => runtimeExtensionHealthChannel.output.parse(result));
 });
+
+test('a Host started by another KodaX installation explains the missing Artifact tools', () => {
+  const result = projectExtensionHealth({
+    active: true,
+    extensions: [{ path: '/trusted/space-builtins.mjs', label: 'Skills', loadSource: 'config' }],
+    diagnostics: {
+      tools: [],
+      failures: [
+        {
+          stage: 'load',
+          target: '/private/space-artifacts.mjs',
+          message:
+            'Artifact tools are unavailable: this KodaX Host was not started by KodaX Space (for example, the KodaX CLI started it).',
+          occurredAt: '2026-11-14',
+        },
+      ],
+    },
+  } as never);
+  assert.match(result.failures[0]!.message, /Host started by KodaX Space/);
+});

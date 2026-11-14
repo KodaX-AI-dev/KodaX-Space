@@ -12,15 +12,16 @@
 
 type CapRule = { match: RegExp; cap: number };
 
-// 数值与 SDK 0.7.96-beta.6 provider-capabilities.json 对齐（beta.5 把 deepseek 默认模型改为
-// deepseek-flash、上下文窗口维持 1M，2026-09-11 复核）。
+// 数值与 SDK 0.7.97-beta.9 对齐；同一 model 在多个 provider 上窗口不同时取最小值。
+// model-context-caps.test.ts 逐条对照 SDK，任何过报都会失败。
 // **过报(over-claim)是危险方向**——会让用户误以为"还有大把空间"却提前压缩；这里逐条按 SDK 真值订正。
 // 顺序敏感：更具体的规则必须在通配前面（first-match wins）。
 const RULES: readonly CapRule[] = [
-  // Anthropic Claude — opus 4.7 / 4.8 是 1M；其余 (haiku / opus 4.6 等) 200k。
-  { match: /^claude-opus-4-[78]/, cap: 1_000_000 },
+  // Anthropic Claude — 5.5 全系、opus 4.6–4.8、sonnet 4.6 是 1M；其余 (haiku 4.5 等) 200k。
+  { match: /^claude-(?:(?:opus|sonnet|haiku)-5-5|opus-4-[678]|sonnet-4-6)/, cap: 1_000_000 },
   { match: /^claude-/, cap: 200_000 },
-  // OpenAI GPT-5 系列 — 现役 gpt-5.4 / gpt-5.3-codex-spark 均 400k（**旧注 1M 已过时，是过报**）。
+  // OpenAI GPT-5 系列 — gpt-5.4 是 1,050,000；gpt-5.3-codex / -spark 400k。
+  { match: /^gpt-5\.4$/, cap: 1_050_000 },
   { match: /^gpt-5/, cap: 400_000 },
   // OpenAI GPT-4 系列 — 128k
   { match: /^gpt-4/, cap: 128_000 },
@@ -29,13 +30,15 @@ const RULES: readonly CapRule[] = [
   { match: /^deepseek-/, cap: 1_000_000 },
   // Kimi K2 系列（k2.5 / k2.6 / k2.7-code）与 Kimi for Coding — 均 256k。
   // KodaX 0.7.77 exposes public Kimi K3 as `kimi-k3` and keeps Kimi Code tier ids.
-  { match: /^kimi-k3$/, cap: 1_048_576 },
-  { match: /^k3$/, cap: 1_048_576 },
+  // Ark Coding 以 1,024,000 提供 kimi-k3 / kimi-k3.1-pro；Kimi Code 的 k3 / k3.1-pro 是 1,048,576。
+  { match: /^kimi-k3(?:\.1-pro(?:-highspeed)?)?$/, cap: 1_024_000 },
+  { match: /^k3(?:\.1-pro(?:-highspeed)?)?$/, cap: 1_048_576 },
   { match: /^k3-256k$/, cap: 262_144 },
   { match: /^kimi-k2/, cap: 256_000 },
   { match: /^kimi-for-coding/, cap: 256_000 },
-  // Qwen 3.5 — 1M
-  { match: /^qwen3\.5/, cap: 1_000_000 },
+  // Qwen 3.5 plus 256k；Token Plan 的 3.6 / 3.7 / 3.8 是 1M。
+  { match: /^qwen3\.5/, cap: 256_000 },
+  { match: /^qwen3\.[678]/, cap: 1_000_000 },
   // GLM-5.2 / 5.3 (Zhipu / Z.ai Coding Plan) - 1M; keep before the broader GLM-5 fallback.
   { match: /^glm-5\.[23](?:-flash)?$/, cap: 1_000_000 },
   // GLM-5 / GLM-5.1 / GLM-5 Turbo - 200k fallback.

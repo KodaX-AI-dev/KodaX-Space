@@ -10,6 +10,8 @@ const label = (value: string) =>
 function failureReason(message: string): string {
   if (/real Node\.js|Node\.js.*(?:PATH|worker)|worker.*Node\.js/i.test(message))
     return 'Artifact worker requires real Node.js >=20.16 on the shell PATH. Other conversation tools remain available.';
+  if (/not started by KodaX Space/.test(message))
+    return 'Artifact tools need the Host started by KodaX Space; another KodaX installation such as the CLI started this one.';
   if (/Cannot find (?:module|package)|ENOENT|module not found/i.test(message))
     return 'An extension module or dependency is missing. Check the installed package resources.';
   if (/EACCES|EPERM|permission denied/i.test(message))

@@ -152,18 +152,18 @@ const SPACE_OVERRIDES: Record<string, SpaceOverride> = {
   'gemini-cli': {
     displayName: 'Gemini CLI',
     protocol: 'gemini-cli',
-    // CLI bridge — no HTTP probe applicable；defaultModel 由本地 gemini CLI 自报
-    defaultModelFallback: 'gemini-3.0-pro',
+    // CLI bridge：启动后由 loadCliBridgeModels 换成 SDK 列表（本地 CLI 配置的默认在首位）
+    defaultModelFallback: 'auto-gemini-3',
     fallbackApiKeyEnv: 'GEMINI_API_KEY',
-    fallbackDefaultModel: 'gemini-3.0-pro',
+    fallbackDefaultModel: 'auto-gemini-3',
   },
   'codex-cli': {
     displayName: 'Codex CLI (OpenAI)',
     protocol: 'codex-cli',
-    // CLI bridge — no HTTP probe applicable；defaultModel 由本地 codex CLI 自报
-    defaultModelFallback: 'gpt-5.3-codex',
+    // CLI bridge：启动后由 loadCliBridgeModels 换成 SDK 列表（本地 CLI 配置的默认在首位）
+    defaultModelFallback: 'gpt-5.4',
     fallbackApiKeyEnv: 'OPENAI_API_KEY',
-    fallbackDefaultModel: 'gpt-5.3-codex',
+    fallbackDefaultModel: 'gpt-5.4',
   },
 };
 
@@ -285,7 +285,27 @@ function loadProvidersWithFallback(): readonly BuiltinProvider[] {
   }
 }
 
-export const BUILTIN_PROVIDERS: readonly BuiltinProvider[] = loadProvidersWithFallback();
+const providers: BuiltinProvider[] = [...loadProvidersWithFallback()];
+export const BUILTIN_PROVIDERS: readonly BuiltinProvider[] = providers;
+
+export function isCliBridge(provider: BuiltinProvider): boolean {
+  return provider.protocol === 'gemini-cli' || provider.protocol === 'codex-cli';
+}
+
+/**
+ * CLI bridges have no static model list: the SDK reads the local CLI's configured default
+ * and lists it first. Startup replaces the fallback entries once the SDK is loaded.
+ */
+export async function loadCliBridgeModels(
+  listModels: (id: string) => Promise<readonly string[]> = async (id) =>
+    (await import('@kodax-ai/kodax/llm')).getProviderModels(id),
+): Promise<void> {
+  for (const [index, provider] of providers.entries()) {
+    if (!isCliBridge(provider)) continue;
+    const models = await listModels(provider.id);
+    if (models[0]) providers[index] = { ...provider, defaultModel: models[0], models };
+  }
+}
 
 export function getBuiltin(id: string): BuiltinProvider | undefined {
   return BUILTIN_PROVIDERS.find((p) => p.id === id);

@@ -43,11 +43,20 @@ export async function resolveArtifactNode(env = process.env) {
   );
 }
 
-export function resolveSpaceArtifactImports() {
-  const resources = fileURLToPath(new URL('.', import.meta.url));
-  const packaged = path.join(resources, 'app.asar', 'package.json');
+export function resolveSpaceArtifactImports(
+  resources = fileURLToPath(new URL('.', import.meta.url)),
+) {
+  const archive = path.join(resources, 'app.asar');
+  const packaged = path.join(archive, 'package.json');
+  // Only Electron reads into the archive. Real Node (a Host the KodaX CLI started) would
+  // otherwise resolve through parent folders outside this Space copy.
+  if (existsSync(archive) && !existsSync(packaged)) {
+    throw new Error(
+      'Artifact tools are unavailable: this KodaX Host was not started by KodaX Space (for example, the KodaX CLI started it). They return when KodaX Space starts its own Host.',
+    );
+  }
   const require = createRequire(
-    existsSync(packaged) ? packaged : new URL('../package.json', import.meta.url),
+    existsSync(packaged) ? packaged : path.join(resources, '..', 'package.json'),
   );
   const manifestPath = require.resolve('@kodax-ai/kodax/package.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));

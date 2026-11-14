@@ -3022,6 +3022,8 @@ export const messages = {
     'message.queue.recovery.blocked':
       'Restoration did not complete. Take back the original input to review and send it again.',
     'message.queue.takeBack': 'Take back message',
+    'message.queue.takeBackConflict':
+      'This message can no longer be taken back: it was already delivered, or its run ended.',
     'message.queue.failed': 'Not delivered',
     'message.queue.failedDetail': 'The run ended before insertion. Copy this message and retry.',
     'message.thinkingSummary': 'Thinking (~{tokens} tokens)',
@@ -6067,6 +6069,7 @@ export const messages = {
       '本地没有完整输入用于自动恢复，可尝试从 Host 取回原始输入。',
     'message.queue.recovery.blocked': '恢复未完成。可取回原始输入，检查后重新发送。',
     'message.queue.takeBack': '取回消息',
+    'message.queue.takeBackConflict': '这条消息已无法取回：它已送达，或所属任务已结束。',
     'message.queue.failed': '未送达',
     'message.queue.failedDetail': '任务在插入前已结束；请复制这条消息后重试。',
     'message.thinkingSummary': '思考（约 {tokens} token）',

@@ -25,7 +25,7 @@ export async function projectProductItems(
     items.map(async (item) => {
       if (!item.attachments?.length) return sessionProductItemSchema.parse(item);
       const retained = previous.find((candidate) => candidate.id === item.id);
-      const sameImages = JSON.stringify(retained?.attachments) === JSON.stringify(item.attachments);
+      const sameImages = imageKey(retained?.attachments) === imageKey(item.attachments);
       const imageAttachments =
         sameImages && retained?.imageAttachments
           ? retained.imageAttachments
@@ -36,6 +36,13 @@ export async function projectProductItems(
             );
       return sessionProductItemSchema.parse({ ...item, imageAttachments });
     }),
+  );
+}
+
+/** The schema keeps only these fields; SDK observation metadata must not defeat reuse. */
+function imageKey(attachments: ClientViewItem['attachments'] | undefined): string {
+  return JSON.stringify(
+    attachments?.map(({ kind, path, mediaType }) => [kind, path, mediaType ?? null]),
   );
 }
 

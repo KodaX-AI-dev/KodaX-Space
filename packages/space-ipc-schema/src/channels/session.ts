@@ -553,12 +553,17 @@ export const sessionWithdrawInputChannel = {
   input: z
     .object({ sessionId: z.string().min(1).max(128), inputId: z.string().min(1).max(256) })
     .strict(),
-  output: z
-    .object({
-      text: z.string().max(16 * 1024 * 1024),
-      attachments: z.array(sessionImageAttachmentSchema).max(32),
-    })
-    .strict(),
+  // `conflict`: the SDK refused the take-back because the input was already delivered,
+  // dropped with its Run, or (steer) lost with a Host restart.
+  output: z.union([
+    z
+      .object({
+        text: z.string().max(16 * 1024 * 1024),
+        attachments: z.array(sessionImageAttachmentSchema).max(32),
+      })
+      .strict(),
+    z.object({ conflict: z.literal(true) }).strict(),
+  ]),
 } as const;
 
 export const sessionSendChannel = {

@@ -18,16 +18,15 @@
 // 安全：本函数只调 providerConfigStore.setDefault()，不写 keychain、不读 / 不打 env value。
 // 详见 ADR-006 §7.3 "KX-I-01 自动激活安全" 讨论。
 
-import { BUILTIN_PROVIDERS } from './catalog.js';
+import { BUILTIN_PROVIDERS, isCliBridge } from './catalog.js';
 import { providerConfigStore } from './config.js';
 import { listConfiguredAccounts } from './provider-storage.js';
 import { externalProviderEnvValue } from './managed-env.js';
 
-// "coding 偏好"优先级。Anthropic / Codex CLI 类 coding-first provider 排前。
+// "coding 偏好"优先级。Anthropic 等 coding-first provider 排前；CLI bridge 不参与自动激活。
 // 在 PRIORITY 表里同时有 env 的 → 取最靠前；不在 PRIORITY 表里的 → 落到表尾（unknown）。
 const PRIORITY: readonly string[] = [
   'anthropic',
-  'codex-cli',
   'kimi-code',
   'zhipu-coding',
   'openai',
@@ -39,7 +38,6 @@ const PRIORITY: readonly string[] = [
   'qwen',
   'zhipu',
   'kimi',
-  'gemini-cli',
 ];
 
 // 本次启动激活过的 provider id（首次启动且 env 有 key 时非空）。
@@ -67,7 +65,9 @@ export async function autoActivateProvidersFromEnv(): Promise<void> {
   const keychainActive = new Set(
     await listConfiguredAccounts(BUILTIN_PROVIDERS.map((provider) => provider.id)),
   );
+  // A CLI bridge authenticates through its own CLI, so a shared env key is no evidence.
   const envActive = BUILTIN_PROVIDERS.filter((b) => {
+    if (isCliBridge(b)) return false;
     return externalProviderEnvValue(b.apiKeyEnv) !== undefined || keychainActive.has(b.id);
   });
   if (envActive.length === 0) return;

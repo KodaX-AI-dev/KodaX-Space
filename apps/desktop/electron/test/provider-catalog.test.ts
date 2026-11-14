@@ -18,6 +18,7 @@ import {
   buildFallbackProviders,
   getBuiltin,
   isBuiltinId,
+  loadCliBridgeModels,
 } from '../providers/catalog.js';
 
 test('catalog includes at least 13 built-in providers (SDK can add more)', () => {
@@ -204,4 +205,21 @@ test('isBuiltinId true for known, false for unknown / custom_ prefix', () => {
   assert.equal(isBuiltinId('anthropic'), true);
   assert.equal(isBuiltinId('made-up'), false);
   assert.equal(isBuiltinId('custom_abc12345'), false);
+});
+
+// Last: these replace the CLI bridge entries for the rest of this file.
+test('CLI bridge models come from the SDK, led by the local CLI default', async () => {
+  await loadCliBridgeModels(async (id) =>
+    id === 'codex-cli' ? ['gpt-6-astra', 'gpt-5.4'] : ['auto-gemini-3', 'gemini-2.5-pro'],
+  );
+  assert.equal(getBuiltin('codex-cli')?.defaultModel, 'gpt-6-astra');
+  assert.deepEqual(getBuiltin('codex-cli')?.models, ['gpt-6-astra', 'gpt-5.4']);
+  assert.deepEqual(getBuiltin('gemini-cli')?.models, ['auto-gemini-3', 'gemini-2.5-pro']);
+  assert.equal(getBuiltin('anthropic')?.protocol, 'anthropic');
+});
+
+test('the published SDK supplies the CLI bridge model lists', async () => {
+  await loadCliBridgeModels();
+  assert.ok(getBuiltin('gemini-cli')?.models?.includes('auto-gemini-3'));
+  assert.ok(getBuiltin('codex-cli')?.models?.includes('gpt-5.4'));
 });

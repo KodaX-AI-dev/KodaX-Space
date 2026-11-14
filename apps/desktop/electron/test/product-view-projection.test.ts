@@ -114,6 +114,34 @@ test('SDK image references get safe preview status and reuse capabilities withou
   assert.deepEqual(second, first);
 });
 
+test('beta.7 image observation fields do not re-issue previews on every view update', async () => {
+  const items = [
+    {
+      id: 'observed-image',
+      type: 'tool' as const,
+      text: 'image',
+      tool: { callId: 'call', name: 'read', status: 'success' as const },
+      attachments: [
+        {
+          kind: 'image' as const,
+          path: 'C:\\host-media\\observed.png',
+          mediaType: 'image/png',
+          observationId: 'observation-1',
+          width: 1,
+          height: 1,
+          sha256: 'a'.repeat(64),
+        },
+      ],
+    },
+  ];
+  const reader = async () => {
+    throw new Error('Previews are read lazily.');
+  };
+  const first = await projectProductItems('observed-session', items, [], reader);
+  const second = await projectProductItems('observed-session', items, first, reader);
+  assert.deepEqual(second[0]?.imageAttachments, first[0]?.imageAttachments);
+});
+
 // Real decodable files: the Host image check decodes with the SDK, so fake bytes are refused.
 const JPEG_BASE64 =
   '/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAf/AABEIAC4AoAMBEQACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+gEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoLEQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/APznr/fA/wArwoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKACgAoAKAP/2Q==';
