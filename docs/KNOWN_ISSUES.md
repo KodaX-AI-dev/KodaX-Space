@@ -12102,7 +12102,7 @@ The pathological source event amplification is fixed in the 0.7.79 release
 candidate. Issue 143 remains In Progress only until the exact Registry package
 is pinned in both Space manifests and packaged long-Session acceptance confirms
 the end-to-end CPU/latency improvement. The contract and evidence are recorded
-in `docs/KODAX_RUNTIME_STREAM_PERFORMANCE_HANDOFF.md`.
+in `docs/research/kodax-runtime-stream-performance-handoff-2026-08.md`.
 
 Files changed:
 
@@ -12111,7 +12111,7 @@ Files changed:
 - `apps/desktop/renderer/src/store/sessionEventBatcher.ts`
 - `apps/desktop/electron/test/app-store-runtime-projection.test.ts`
 - `apps/desktop/electron/test/session-event-batcher.test.ts`
-- `docs/KODAX_RUNTIME_STREAM_PERFORMANCE_HANDOFF.md`
+- `docs/research/kodax-runtime-stream-performance-handoff-2026-08.md`
 
 Verification:
 
