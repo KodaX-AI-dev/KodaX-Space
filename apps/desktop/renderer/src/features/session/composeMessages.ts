@@ -91,6 +91,9 @@ export type ConversationMessage =
       result?: string;
       progress?: string;
       status: 'running' | 'done' | 'interrupted';
+      /** SDK product tool timing (epoch ms); absent on legacy event-composed history. */
+      startedAt?: number;
+      endedAt?: number;
     }
   | {
       kind: 'system_notice';

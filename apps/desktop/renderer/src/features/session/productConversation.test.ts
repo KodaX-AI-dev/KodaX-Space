@@ -153,6 +153,27 @@ test('Host tool images remain attached to their exact displayed execution', () =
   );
 });
 
+test('SDK tool timing reaches the displayed execution only when the SDK reported it', () => {
+  const projected = projectProductConversation([
+    {
+      id: 'timed',
+      type: 'tool',
+      text: 'ok',
+      tool: { callId: 'a', name: 'bash', status: 'success', startedAt: 1_000, endedAt: 2_500 },
+    },
+    {
+      id: 'untimed',
+      type: 'tool',
+      text: '',
+      tool: { callId: 'b', name: 'read', status: 'running' },
+    },
+  ]);
+  const [timed, untimed] = projected.messages;
+  assert.deepEqual(timed?.kind === 'tool_call' && [timed.startedAt, timed.endedAt], [1_000, 2_500]);
+  assert.equal(untimed?.kind === 'tool_call' && 'startedAt' in untimed, false);
+  assert.equal(untimed?.kind === 'tool_call' && 'endedAt' in untimed, false);
+});
+
 test('Space command and workflow notices remain visible without changing SDK output order', () => {
   const projected = projectProductConversation(
     [

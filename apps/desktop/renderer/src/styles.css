@@ -1777,6 +1777,228 @@ html:not(.q-minimal) .search-ring-anim {
   transition: box-shadow var(--motion-fast) var(--ease-expo);
 }
 
+/* —— 运行中的工具组（ToolClusterLive）：转圈 + 流光 + 三行动作流 + 节拍条 ——
+   设计定稿：docs/design/live-work-motion/direction-approved.md。只动 transform/opacity；
+   流光仅 full 档；极简档静止；reduced-motion 见文件末尾兜底。 */
+.tool-pulse-chip.is-live {
+  border-color: rgb(var(--run) / 0.35);
+}
+html.q-full .tool-pulse-chip.is-live::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(var(--run) / 0.16) 48%,
+    rgb(var(--run) / 0.05) 56%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: ks-tool-pulse-sweep 2.4s var(--ease-expo) infinite;
+}
+@keyframes ks-tool-pulse-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  70%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+.tool-pulse-spin {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1.5px solid rgb(var(--run) / 0.25);
+  border-top-color: rgb(var(--run));
+  animation: ks-activity-spin 0.8s linear infinite;
+}
+.tool-pulse-spin.is-row {
+  width: 10px;
+  height: 10px;
+}
+html.q-minimal .tool-pulse-spin {
+  animation: none;
+  border-color: rgb(var(--run));
+}
+html:not(.q-minimal) .tool-pulse-count {
+  animation: ks-tool-pulse-count var(--motion-normal) var(--ease-expo) both;
+}
+@keyframes ks-tool-pulse-count {
+  from {
+    opacity: 0.35;
+    transform: translateY(45%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tool-pulse-stats {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 8px;
+  font: 11px var(--mono);
+  color: rgb(var(--fg-faint));
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tool-pulse-beats {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+  margin-left: 2px;
+  padding-left: 7px;
+  border-left: 1px solid rgb(var(--border-default) / 0.8);
+}
+.tool-pulse-beat {
+  flex: 0 0 3px;
+  border-radius: 1px;
+  transform-origin: bottom;
+  background: rgb(var(--fg-muted) / 0.85);
+}
+.tool-pulse-beat.tone-info {
+  background: rgb(var(--info) / 0.85);
+}
+.tool-pulse-beat.tone-accent {
+  background: rgb(var(--accent) / 0.85);
+}
+.tool-pulse-beat.tone-run {
+  background: rgb(var(--run) / 0.85);
+}
+html:not(.q-minimal) .tool-pulse-chip.is-live .tool-pulse-beat {
+  animation: ks-tool-pulse-beat 320ms var(--ease-overshoot) both;
+}
+@keyframes ks-tool-pulse-beat {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.tool-pulse-feed {
+  width: 28rem;
+  max-width: 100%;
+  margin: 6px 0 0 12px;
+  padding-left: 12px;
+  border-left: 1px solid rgb(var(--border-default));
+}
+.tool-pulse-think {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  font-size: 12px;
+  color: rgb(var(--thinking) / 0.85);
+  white-space: nowrap;
+  opacity: 0;
+}
+.tool-pulse-think.is-on {
+  opacity: 1;
+}
+html:not(.q-minimal) .tool-pulse-think {
+  transition: opacity var(--motion-normal) var(--ease-expo);
+}
+.tool-pulse-caret {
+  flex-shrink: 0;
+  width: 6px;
+  height: 12px;
+  margin-left: 2px;
+  background: rgb(var(--thinking) / 0.7);
+}
+html:not(.q-minimal) .tool-pulse-caret {
+  animation: ks-tool-pulse-blink 1s steps(1) infinite;
+}
+@keyframes ks-tool-pulse-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.tool-pulse-rows-clip {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 66px;
+  overflow: hidden;
+}
+.tool-pulse-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tool-pulse-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  font: 11.5px var(--mono);
+  color: rgb(var(--fg-muted));
+  white-space: nowrap;
+}
+html:not(.q-minimal) .tool-pulse-row {
+  transition: opacity var(--motion-slow) var(--ease-expo);
+}
+.tool-pulse-row:nth-last-child(2) {
+  opacity: 0.72;
+}
+.tool-pulse-row:nth-last-child(3) {
+  opacity: 0.46;
+}
+.tool-pulse-row:nth-last-child(n + 4) {
+  opacity: 0;
+}
+.tool-pulse-row.is-running {
+  opacity: 1;
+}
+.tool-pulse-row-name {
+  flex-shrink: 0;
+  min-width: 34px;
+  color: rgb(var(--fg-secondary));
+}
+.tool-pulse-row.is-running .tool-pulse-row-name {
+  color: rgb(var(--fg-primary));
+}
+.tool-pulse-row-target {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-pulse-row-duration {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: rgb(var(--fg-faint));
+  font-variant-numeric: tabular-nums;
+}
+.tool-pulse-row-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.tool-pulse-row-icon.is-done {
+  color: rgb(var(--ok));
+}
+.tool-pulse-row-icon.is-stopped {
+  color: rgb(var(--warn));
+}
+html:not(.q-minimal) .tool-pulse-row-icon {
+  animation: ks-tool-pulse-pop var(--motion-normal) var(--ease-overshoot) both;
+}
+@keyframes ks-tool-pulse-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .context-liquid-gauge {
   --cw-level: rgb(var(--ok));
   --cw-level-dim: rgb(var(--ok) / 0.7);
@@ -2146,7 +2368,15 @@ html:not(.q-minimal) .collapse-track {
   html.q-full .session-token-indicator:hover .token-usage-orbit__ring,
   html:not(.q-minimal) .kodax-dog-mascot__motion,
   html:not(.q-minimal) .kodax-dog-sprite-mascot__motion,
-  html:not(.q-minimal) .collapse-track {
+  html:not(.q-minimal) .collapse-track,
+  .tool-pulse-chip.is-live::after,
+  .tool-pulse-spin,
+  .tool-pulse-count,
+  .tool-pulse-beat,
+  .tool-pulse-think,
+  .tool-pulse-caret,
+  .tool-pulse-row,
+  .tool-pulse-row-icon {
     animation: none !important;
     transition: none !important;
   }

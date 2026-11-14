@@ -69,6 +69,22 @@ import {
   type TransientArtifactSnapshot,
 } from '../features/artifact/transientArtifact.js';
 import { AskUserInlineStack } from '../features/ask-user/AskUserInline.js';
+import { EASE_EXPO } from '../lib/motion.js';
+import {
+  ClusterBeats,
+  formatPulseDuration,
+  formatPulseTokens,
+  LiveToolFeed,
+  motionAllowed,
+  useSecondClock,
+} from './ToolClusterLive.js';
+import {
+  clusterOutputTokens,
+  clusterStartedAt,
+  liveToolRows,
+  thinkingTail,
+  toolBeats,
+} from './toolClusterPulse.js';
 
 // **稳定空数组**：useAppStore selector 里返回 `?? []` literal 会每次 render 创建新引用，
 // zustand 默认 Object.is 比对触发 subscribe re-render → re-eval selector → 又新 [] → 无限循环
@@ -844,9 +860,29 @@ function groupTools(
         }
         i = j - 1; // 跳过 consumed tool_calls (for loop ++ 再 +1 到 j)
       } else {
-        flushCluster();
         const hasThinking = Boolean(m.thinking && m.thinking.length > 0);
         const hasText = m.text.length > 0;
+        if (
+          foldThinking &&
+          hasThinking &&
+          !hasText &&
+          pendingCluster.length > 0 &&
+          i === messages.length - 1
+        ) {
+          // 尾部 thinking-only step（工具调用之间正在想）：留在当前工具组里，组保持在尾部，
+          // 运行中的动作流（ToolClusterPulse）就不会在每次思考时收起又重开。
+          pendingCluster.push({
+            id: m.id,
+            title: '',
+            tools: [],
+            ...(m.turnIndex !== undefined ? { turnIndex: m.turnIndex } : {}),
+            syntheticTitle: true,
+            thinking: m.thinking!,
+            ...(m.productItem ? { productItem: m.productItem } : {}),
+          });
+          continue;
+        }
+        flushCluster();
         if (hasThinking) {
           out.push({
             kind: 'thinking',
@@ -3749,6 +3785,27 @@ function ToolCluster({
   const { t } = useI18n();
   const allTools = cluster.subClusters.flatMap((sc) => sc.tools);
   const running = allTools.find((t) => t.status === 'running');
+  // followTail 只在流式运行中的尾部工具组为 true —— 这正是「运行中的工作感」要动起来的那一组。
+  const live = followTail;
+  const feedOpen = live && !expanded;
+  const now = useSecondClock(live);
+  const startedAt = live ? clusterStartedAt(cluster.subClusters, allTools) : undefined;
+  const lastStep = cluster.subClusters.at(-1);
+  const chipRef = useRef<HTMLButtonElement>(null);
+  const wasLive = useRef(live);
+  useEffect(() => {
+    // 收回成静态标签的一瞬：一次 ok 色外扩光环，提示「这一组做完了」。
+    if (wasLive.current && !live && chipRef.current && motionAllowed()) {
+      chipRef.current.animate(
+        [
+          { boxShadow: '0 0 0 0 rgb(var(--ok) / 0.45)' },
+          { boxShadow: '0 0 0 7px rgb(var(--ok) / 0)' },
+        ],
+        { duration: 650, easing: EASE_EXPO },
+      );
+    }
+    wasLive.current = live;
+  }, [live]);
   const label =
     cluster.totalTools === 1
       ? t('conversation.ranOneCommand')
@@ -3769,6 +3826,7 @@ function ToolCluster({
   //   - syntheticTitle=false (assistant 真说了话作为前导) 时**必须**显示，
   //     否则 assistant 真实回复内容会从对话流消失（v0.1.4 回归 bug 修复）
   const showStepLabel = (sc: SubCluster): boolean => {
+    if (sc.tools.length === 0) return false; // 尾部正在思考的 step，没有工具可汇总
     if (!sc.syntheticTitle) return true;
     if (cluster.subClusters.length > 1) return true; // 多 sub-cluster 时仍需区分边界
     return false;
@@ -3776,38 +3834,63 @@ function ToolCluster({
 
   return (
     <div className="inline-flex w-fit min-w-0 max-w-full flex-col items-start text-xs">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={[
-          'group/receipt inline-flex h-8 w-fit min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-md border px-2 py-1',
-          'border-border-default/70 bg-surface-2/45 font-mono text-[11px] text-fg-muted',
-          'transition-colors hover:border-border-strong hover:bg-hover-bg hover:text-fg-primary',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong',
-        ].join(' ')}
-        aria-expanded={expanded}
-      >
-        <Caret open={expanded} />
-        <span className="shrink-0 text-fg-secondary group-hover/receipt:text-fg-primary">
-          {label}
-        </span>
-        {toolNameSummary && (
-          <span className="min-w-0 truncate text-fg-faint">
-            <span className="mr-1">·</span>
-            {toolNameSummary}
+      <div className="flex min-w-0 max-w-full items-center gap-2.5">
+        <button
+          ref={chipRef}
+          type="button"
+          onClick={onToggle}
+          className={[
+            'group/receipt relative inline-flex h-8 w-fit min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-md border px-2 py-1',
+            'border-border-default/70 bg-surface-2/45 font-mono text-[11px] text-fg-muted',
+            'transition-colors hover:border-border-strong hover:bg-hover-bg hover:text-fg-primary',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-strong',
+            live ? 'tool-pulse-chip is-live' : '',
+          ].join(' ')}
+          aria-expanded={expanded}
+          data-live={live ? 'true' : undefined}
+        >
+          {live ? <span className="tool-pulse-spin" aria-hidden /> : <Caret open={expanded} />}
+          <span
+            key={live ? cluster.totalTools : 'settled'}
+            className={`shrink-0 text-fg-secondary group-hover/receipt:text-fg-primary${live ? ' tool-pulse-count' : ''}`}
+          >
+            {label}
+          </span>
+          {toolNameSummary && (
+            <span className="min-w-0 truncate text-fg-faint">
+              <span className="mr-1">·</span>
+              {toolNameSummary}
+            </span>
+          )}
+          {thinkingLabel && !live && (
+            <span className="shrink-0 rounded border border-thinking/20 bg-thinking/10 px-1.5 py-0.5 text-thinking/90">
+              {thinkingLabel}
+            </span>
+          )}
+          {running && !feedOpen && (
+            <span className="shrink-0 rounded border border-warn/25 bg-warn/10 px-1.5 py-0.5 text-warn">
+              {t('conversation.runningTool', { tool: running.toolName })}
+            </span>
+          )}
+          <ClusterBeats beats={toolBeats(allTools)} />
+        </button>
+        {live && (
+          <span className="tool-pulse-stats" data-testid="tool-cluster-live-stats">
+            {startedAt !== undefined && (
+              <span>{formatPulseDuration(Math.max(0, now - startedAt), true)}</span>
+            )}
+            <span className="text-fg-muted">
+              ↑ {formatPulseTokens(clusterOutputTokens(cluster.subClusters, allTools))} tok
+            </span>
           </span>
         )}
-        {thinkingLabel && (
-          <span className="shrink-0 rounded border border-thinking/20 bg-thinking/10 px-1.5 py-0.5 text-thinking/90">
-            {thinkingLabel}
-          </span>
-        )}
-        {running && (
-          <span className="shrink-0 rounded border border-warn/25 bg-warn/10 px-1.5 py-0.5 text-warn">
-            {t('conversation.runningTool', { tool: running.toolName })}
-          </span>
-        )}
-      </button>
+      </div>
+      <Collapse open={feedOpen} lazyMount>
+        <LiveToolFeed
+          thinking={lastStep && lastStep.tools.length === 0 ? thinkingTail(lastStep.thinking) : ''}
+          rows={liveToolRows(allTools, now)}
+        />
+      </Collapse>
       {expanded ? (
         <Collapse open={expanded}>
           <ScrollCapBox

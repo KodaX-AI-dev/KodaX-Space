@@ -20,6 +20,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Changed
 
+- The tool group a Run is working in now shows that it is working: a spinner and light sweep on its label, the last three actions scrolling underneath with their targets and durations, the latest thinking line while the model decides the next call, and elapsed time and output tokens beside the label. A strip of up to 12 bars (colour = tool kind, height = duration) stays on the label after the Run ends. Thinking between tool calls no longer splits the live group. Motion follows the visual quality setting and reduced-motion preference. Design record: [live-work-motion](docs/design/live-work-motion/direction-approved.md).
 - `KODAX_HOME` is the single data-root variable for Space and the SDK. `KODAX_PROFILE_DIR` is a deprecated alias (used only when `KODAX_HOME` is unset, with a logged warning) and will be removed in the next version.
 
 - Pin Registry KodaX SDK `0.7.97-beta.9` exactly in both SDK consumers. beta.9 publishes `copyKodaXDataRoot`, so the copy option in Settings → Data location is always offered for empty folders (the `copy_unavailable` gate and `copySupported` field are removed); a queued interrupt (steer) message can be taken back with its full text and attachments until the Run inserts it, reads "not delivered" when the task ends first, and is no longer withdrawn by quitting Space; a relative `KODAX_HOME` is ignored by the SDK as it already was by Space. See the [beta.9 adaptation](docs/releases/kodax-beta9-space-adaptation.md).

@@ -99,6 +99,8 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
           : item.tool.status === 'running' || item.tool.status === 'awaiting_approval'
             ? 'running'
             : 'done',
+      ...(item.tool.startedAt !== undefined ? { startedAt: item.tool.startedAt } : {}),
+      ...(item.tool.endedAt !== undefined ? { endedAt: item.tool.endedAt } : {}),
     };
   return {
     kind: 'system_notice',
