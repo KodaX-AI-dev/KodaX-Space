@@ -12,7 +12,7 @@
 | 搜索记得的一句话 | Ctrl+F 的计数和箭头来自当前显示内容，同一输入框的下拉来自 SDK 对原始记录的相关度检索。浏览器对照出现了本窗 0/0、下拉 1 条，点中只能在浮层读正文。SDK 检索默认取 8 项、上限 20，不能拿返回数充当全文出现次数。[窗口匹配](../../apps/desktop/renderer/src/shell/ConversationStreamV2.tsx#L1226) · [搜索浮层](../../apps/desktop/renderer/src/features/session/ProductHistorySearch.tsx#L58) · [SDK 检索](../../../KodaX/packages/agent/src/session-lineage/history-retrieval.ts#L487) |
 | 想知道自己读到了哪一次提问 | 侧轨收集本窗 user 和本地回显，以数组长度从 1 编号。换窗会重排，三项以下侧轨消失。`/history` 只取旧缓存中最近 20 个可见提问，`/tree` 描述会话的父子关系。三种入口回答的是不同的问题。[侧轨](../../apps/desktop/renderer/src/shell/ConversationStreamV2.tsx#L1125) · [两个命令](../../apps/desktop/renderer/src/shell/BottomBar.tsx#L1378) |
 | 浏览旧轮，点“从这里 Fork” | 现场 view 122 个显示项、4 个用户提问，直接带历史边界的项为 0。已取回的历史有 216 个显示项，投影后仅 1 个提问能连上边界。缺边界的分支弹提示后就返回，继续等待不会启动定位。另一个隔离实验按“显示成功”的工具行边界 Fork，确实遗漏了已保存的工具结果。行按钮、菜单和命令还从不同缓存取目标。[现场与入口实测](space-history-action-entrypoints-2026-11-07.md) · [SDK 派生实验](sdk-view-history-action-boundaries-2026-11-07.md) |
-| 仅想扫一眼旧回答 | 当前正文补读 effect 遍历选中窗口里的非 draft 项，对不完整的文本和工具参数发起读取，范围可覆盖折叠或不在视口的内容。现场 34 次补读有 12 次因为 SDK 路由旧 ID 失败，逐项重试和 toast 放大影响。已有源码修复能抑制这一故障。何时值得补多少正文仍是独立的设计取舍。[补读调度](../../apps/desktop/renderer/src/shell/ConversationStreamV2.tsx#L840) · [旧会话修复及部署状态](../../docs/KNOWN_ISSUES.md#L16055) |
+| 仅想扫一眼旧回答 | 当前正文补读 effect 遍历选中窗口里的非 draft 项，对不完整的文本和工具参数发起读取，范围可覆盖折叠或不在视口的内容。现场 34 次补读有 12 次因为 SDK 路由旧 ID 失败，逐项重试和 toast 放大影响。已有源码修复能抑制这一故障。何时值得补多少正文仍是独立的设计取舍。[补读调度](../../apps/desktop/renderer/src/shell/ConversationStreamV2.tsx#L840) · [旧会话修复及部署状态](../ISSUES_ARCHIVED.md#issue-237--legacy-body-reads-and-repeated-warning-notifications) |
 
 ### 两组可重复的页缝实验
 
@@ -23,7 +23,7 @@
 | 120 | 41–120 | 1–120，无下一页游标 | 41–120 | 1–40 |
 | 200 | 121–200 | 51–200，有下一页游标 | 121–200 → 1–50 → 121–200 | 51–120 |
 
-这是 SDK 实读加 Space 选窗的组合实验。另一组 Chromium 对照用真实会话组件和隔离 IPC 验证了历史首页特征行没有进入会话流。以上数字不能外推为用户原会话漏掉的条数。普通页面下翻、唯一“返回最新”按钮以及冻结页不被新帧覆盖已有回归，改造应保留这些行为。[浏览器交互调查](session-reading-ux-2026-11-07.md) · [现有导航回归](../../apps/desktop/renderer/src/shell/ConversationStreamV2.tsx#L1958) · [原分页修复](../KNOWN_ISSUES.md#L16040)
+这是 SDK 实读加 Space 选窗的组合实验。另一组 Chromium 对照用真实会话组件和隔离 IPC 验证了历史首页特征行没有进入会话流。以上数字不能外推为用户原会话漏掉的条数。普通页面下翻、唯一“返回最新”按钮以及冻结页不被新帧覆盖已有回归，改造应保留这些行为。[浏览器交互调查](session-reading-ux-2026-11-07.md) · [现有导航回归](../../apps/desktop/renderer/src/shell/ConversationStreamV2.tsx#L1958) · [原分页修复](../ISSUES_ARCHIVED.md#issues-234235--informational-reports-and-bidirectional-history-browsing)
 
 ## 用户应能预期的行为
 
@@ -42,7 +42,7 @@
 
 1. **先在 Space 打通最短的阅读路径。** 把“用户选了实时还是已保存记录”与“当前历史页前后是否还有页”分开。直接复用已经取回的历史首页，包含只有一页的情况。同修订内可按已知来源恢复阅读位置，无可验证锚点时用显式切换；所有页都能读到。同步校正搜索范围与本窗提问编号。优先补读正在阅读、用户展开或明确要复制的内容；全文复制须实际读完整。先量首屏正文补读量，再定预取预算。[当前状态](../../apps/desktop/renderer/src/store/productSessionView.ts#L73) · [分页导航](../../apps/desktop/renderer/src/shell/sessionHistoryPaging.ts#L1240) · [搜索实现](../../apps/desktop/renderer/src/features/session/ProductHistorySearch.tsx#L30)
 2. **Space 与 SDK 共同验证两项能力。** 一项是只读定位，给定所见项或搜索引用，返回能验证的阅读窗口与落点，或仅原文可读、来源已变化。已有同修订、同窗口身份直接复用。另一项是解析本次 Fork/回退应保留的完整轮尾，覆盖隐藏结果、跨页和旧无 ID 的记录。写入时保留现有 sourceRevision 校验，回退还需把用户确认时的 expectedHead 贯穿 Space 调用链。SDK 拥有来源和分支，Space 持有屏幕偏移、焦点、返回路径和用户选择。行、菜单、命令共用操作逻辑并保留各自作用域。两种能力的输入可能相同，但只读定位成功不能授权改写会话。[SDK 来源丢失点与候选接缝](sdk-view-history-action-boundaries-2026-11-07.md) · [上下游入口](space-history-action-entrypoints-2026-11-07.md) · [REPL 现有来源锚点及有限窗口](../../../KodaX/packages/repl/src/ui/utils/prompt-history-browse.ts#L92)
-3. **有定位契约后再提升连续性。** 同一修订只保留相邻的有限页，围绕当前段落换入换出。已有页缓存和索引优先复用。用动态高度、长思考、图片、旧会话及持续输出压测，达到需要时才换虚拟列表。已有 F144 的有界 DOM、焦点和锚点验收值得沿用；其中“现有能力足够整个方案”与“已有可累积的稳定行索引”的前提要在共享 Coder 路径重验。[F144 原计划](../features/v0.2.x-plus.md) · [历史性能样本](../KNOWN_ISSUES.md#L11816)
+3. **有定位契约后再提升连续性。** 同一修订只保留相邻的有限页，围绕当前段落换入换出。已有页缓存和索引优先复用。用动态高度、长思考、图片、旧会话及持续输出压测，达到需要时才换虚拟列表。已有 F144 的有界 DOM、焦点和锚点验收值得沿用；其中“现有能力足够整个方案”与“已有可累积的稳定行索引”的前提要在共享 Coder 路径重验。[F144 原计划](../features/v0.2.x-plus.md) · [历史性能样本](../KNOWN_ISSUES.md#142-full-effects-history-restoration-mounts-and-animates-an-entire-long-transcript-beneath-a-live-backdrop-surface)
 
 交叉评审也检查了其他选择。只加虚拟滚动可以减轻排版，却仍会跳过上述 70 条。全量拉取再由 Space 拼流式尾巴要解决重复正文、草稿提交和来源歧义，正是 ADR-010 已记录的回归。由 SDK 提供一个全新的统一时间线协议长期可行，但需要覆盖项身份、草稿转正、压缩、失效和迁移；目前有更小的可验证交接。全会话提问目录有助于“记得话题、忘了关键词”，值得用这个任务单独比较，暂不为显示一个全局序号而完整扫描正文。[ADR 的复现与取舍](../ADR/ADR-010-sdk-product-output.md) · [现有终端客户端对照](../../../KodaX/packages/repl/src/ui/utils/prompt-history-browse.ts#L40) · [侧轨现状](../../apps/desktop/renderer/src/shell/ConversationStreamV2.tsx#L1125)
 

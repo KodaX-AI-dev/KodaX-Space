@@ -669,7 +669,7 @@ v0.1.46-beta.4. Readiness record: [release readiness](https://github.com/KodaX-A
   the on-HEAD symptom proof. The structural fix — retiring the live/canonical
   dual-role buffer that produced this class — is scoped as
   [FEATURE_275](docs/features/v0.1.46.md) and lands before v0.1.46 final, with
-  the full record in [Issue 207](docs/KNOWN_ISSUES.md).
+  the full record in [Issue 207](docs/ISSUES_ARCHIVED.md).
 
 ## [0.1.46-alpha.5] - 2026-09-04
 
@@ -691,7 +691,7 @@ v0.1.46-beta.4. Readiness record: [release readiness](https://github.com/KodaX-A
   renderer push for the session — deterministic missed-notification).
   Decision record: [ADR-009](docs/ADR/ADR-009-settlement-certification-identity.md)
   (foreground-convergence addendum) and
-  [Issue 206](docs/KNOWN_ISSUES.md).
+  [Issue 206](docs/ISSUES_ARCHIVED.md).
 
 ## [0.1.46-alpha.4] - 2026-09-04
 
