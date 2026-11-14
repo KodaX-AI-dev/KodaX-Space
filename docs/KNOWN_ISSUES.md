@@ -6928,7 +6928,7 @@ Verification:
 - Status: In Progress
 - Introduced: v0.1.32 development
 - Prior Fix: v0.1.32 (incomplete)
-- Fixed: KodaX source; pending npm package integration
+- Fixed: KodaX 0.7.77 (source) plus beta.9 `dropped` outcome; packaged regression pending
 - Created: 2026-07-22
 - Resolution Date: Pending
 - Reopened: 2026-07-24, 2026-07-25
@@ -7149,6 +7149,17 @@ same ownership mismatch at its `hasQueuedFollowUp` terminal return.
 
 The source fix must be published in the next KodaX npm package and then pinned
 by Space before the packaged desktop application can be marked resolved.
+
+#### Package status (2026-11-14 SDK audit)
+
+- The source fix (KodaX commit `659889342`) shipped in KodaX `0.7.77`; Space has
+  pinned later packages since, now Registry `0.7.97-beta.9`.
+- beta.9 adds the explicit non-delivery outcome: a `steer` input whose Run ends
+  before delivery reads `dropped` instead of staying `queued`. Space shows
+  "Not delivered" with the full message and its retry hint; see
+  [beta.9 adaptation](releases/kodax-beta9-space-adaptation.md).
+- Not yet done: the packaged regression of the original late-finalization race. Until
+  it passes, the status stays open; the remaining gap is verification, not an SDK change.
 
 ### 084: Daemon child-agent prose, thinking, and tools are merged into the parent transcript and live snapshot
 
@@ -15951,7 +15962,7 @@ the intentional delayed-start fixture). Startup-wait screenshot was visually che
 ## Issue 225: Intermittent packaged Runtime cold startup exceeds its readiness deadline
 
 - Priority: Medium
-- Status: ready (fix owned by the KodaX SDK; no Space change applied)
+- Status: ready (SDK beta.5 shipped a partial fix; awaiting installed beta.9 evidence)
 - Introduced: Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9; first affected version unknown
 - Created: 2026-10-25
 - Information completed: 2026-11-09, from per-stage timing that the automatic recorder retained for four further slow launches
@@ -16078,6 +16089,17 @@ Proposed SDK follow-up:
 2. Keep the historical sweep from blocking readiness, or bound it.
 3. Prune or settle records whose owner is proven gone, instead of skipping them forever.
 4. Isolate SDK tests and evals from the real `~/.kodax` registry.
+
+### SDK follow-up shipped (2026-11-14 SDK audit)
+
+KodaX `0.7.97-beta.5` (Issue 398) implements item 3: a cold shared Host start moves Run child
+records whose owner and every recorded process are gone to `.unresolved/` unchanged instead of
+rereading them, which removed about 6 s per cold start on a home with about 1,300 such records.
+The idle Host also expires `.unresolved` records after 90 days. Items 1, 2 and 4 are not in the
+changelog. Space pins beta.9 in source, but the installed application still runs alpha.5 / SDK
+beta.4, and the real-profile recorder has retained no slow start since 2026-11-09. Next step: compare
+the first cold starts of an installed beta.9 build against the table above. The issue stays open
+until that evidence exists.
 
 ## Issues 226–229 — Runtime and builtin Skill integration
 

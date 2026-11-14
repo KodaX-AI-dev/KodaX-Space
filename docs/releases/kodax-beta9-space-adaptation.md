@@ -62,3 +62,39 @@ beta.9 = beta.8 + 数据根复制（SDK FEATURE_306，供 Space F148 使用）+ 
 
 - 没有 macOS/Linux 实机验收；Windows 安装版与便携版的安装、升级流程未执行（只验证目录包）；F148 测试指南中需要真实机器的场景（另一盘符、盘符根目录、MCPB 扩展启动、便携版重启）未执行。
 - 未创建标签，也未发布安装包。
+
+## SDK 能力全面复核（2026-11-14）
+
+对照 beta.9 的公开出口、`CLIENT_CONTRACT.md`、`SPACE_SDK_SEAMS.md`、`SDK_MIGRATION.md` 与 0.7.96 → beta.9 changelog，逐域检查 Space 的使用（Runtime/Product client、llm/Provider、Skill/MCP/沙箱/媒体、Artifact/A2A/Memory/Partner）。
+
+### 已修复
+
+| 问题                                                                                                                                                                                                                         | 修复与验证                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| beta.7 给图片附件加了 `observationId/width/height/sha256`，Product view 复用判断按整个附件比较，每次视图更新都重新签发预览 URL                                                                                               | 只比较 schema 保留的 `kind/path/mediaType`；`product-view-projection` 新增回归                                                                                                      |
+| Gemini CLI / Codex CLI 只有一个 Space 写死的旧模型（`gemini-3.0-pro`、`gpt-5.3-codex`），`/model` 拒绝 SDK 支持的模型，也忽略本地 CLI 配置的默认模型                                                                         | 启动后用 SDK `getProviderModels` 取 CLI bridge 模型列表（本地 CLI 配置的默认在首位）；兜底值对齐 SDK（`auto-gemini-3`、`gpt-5.4`）；`provider-catalog` 新增注入与真实 SDK 两条测试  |
+| 首启自动激活只凭 `OPENAI_API_KEY` 就选 codex-cli（`GEMINI_API_KEY` 同理选 gemini-cli），而 CLI bridge 用自己的 CLI 登录，未装 CLI 时首轮失败                                                                                 | CLI bridge 不参与自动激活，与 `provider-storage` 的环境凭据判断一致；`auto-activate` 新增回归                                                                                       |
+| 渲染进程上下文窗口兜底表停在 0.7.96-beta.6：`qwen3.5-plus` 过报为 1M（SDK 256k），Claude 5.5 / 4.6、gpt-5.4、Kimi k3.1、Qwen 3.6–3.8 低报为 200k/400k                                                                        | 按 beta.9 订正；同一模型在多个 Provider 上窗口不同时取最小值。新测试逐条对照 SDK 全部内置模型，任何过报即失败                                                                       |
+| CLI 启动的共享 Host（Issue 405 后 Space 会直接使用它）用真实 Node 加载 `space-artifacts.mjs`：真实 Node 读不了 `app.asar`，解析会走出安装目录去父级 `node_modules` 找 SDK，安装版则 `MODULE_NOT_FOUND`，健康页误报“模块缺失” | 打包布局下若 `app.asar` 内不可读，明确报错“此 Host 不是 KodaX Space 启动的”，不再越出 Space 自带副本解析；健康页给出对应说明。Artifact 工具在这种 Host 里仍不可用，见下方“需要决定” |
+| steer 在安全点认领后、Run 结束 `dropped` 后或 Host 重启后取回，SDK 返回 `conflict`，界面直接显示英文原始错误                                                                                                                 | `session.withdrawInput` 输出增加 `{ conflict: true }`，界面显示“这条消息已无法取回：它已送达，或所属任务已结束。”；schema 新增测试                                                  |
+
+文档：能力台账第 19 行仍写“本地 beta.7 候选包”、多行写“current alpha.7/alpha.9”、Memory 策略写 `f260-v0.7.68.2`（beta.9 为 `f275-v0.7.77.1`），已订正；KNOWN_ISSUES 083 注明修复早在 0.7.77 发布、beta.9 补上 `dropped`，剩余为成品回归；225 注明 beta.5 Issue 398 已实现建议的第 3 项，待安装 beta.9 后的冷启动数据；Partner 文档 PF014 索引状态、源码基线与“还有 SDK 缺口”的旧表述已订正。
+
+### 需要决定
+
+- **CLI 启动的 Host 里的 Artifact 工具**：SDK 扩展 API 不提供 `executeManagedProcess`，Space 自带的 `coding` 出口在 ASAR 内，真实 Node 无法加载。可选：Space 遇到非自己启动的 Host 时提示用户（现状）；或改用该 Host 自身安装的 SDK 注册 Artifact（需确认 Host 入口路径，并放宽“只用 Space 自带 SDK”的信任边界）；或请 SDK 在扩展 API 中提供受管执行。
+- **能力版本严格相等**：`sessionCancellation`、`toolInvocation` 等启动检查用 `!== 1`，SDK `supportsRuntimeCapability` 用 `>=`。共享 Host 来自更新的 CLI 且该能力升到 v2 时，Space 会拒绝启动。若 SDK 承诺升版向后兼容，应改为最低版本检查；若升版可能改变语义，保持严格（现状）。
+- **代理**：beta.5（FEATURE_303）起 OpenAI Responses WebSocket 只在 Node 22.21+/24.5+ 且设置 `NODE_USE_ENV_PROXY=1` 时遵循 `HTTPS_PROXY`/`NO_PROXY`。Space 启动的 Host 是否设置该变量、Electron 内置 Node 是否满足版本，尚无决定或用户文档（`USAGE.md` 只说明打包下载的代理）。
+- 保存并重启（数据位置）在 Host 未就绪时走恢复重启且位置不变（见“验证中发现”）。
+
+### 记录、不改
+
+- `catalog.ts` 读取包内 `dist/provider-capabilities.json`（不在 `exports` 中）。目前 14 个 HTTP Provider 的默认模型与列表与 SDK getter 一致；若 SDK 移动或改形，Space 落到手写兜底表。
+- 数据位置复制没有取消：SDK `copyKodaXDataRoot` 支持 `signal`，Space 未传。
+- 未发现 Space 使用已弃用出口；沙箱 v11、Skill 注册表、媒体、凭据租约、Partner 执行绑定、Memory 与 A2A 的调用签名与 beta.9 一致。
+
+### 上游 SDK
+
+- beta.9 改变了 steer 取回的客户端可见行为（新增可取回窗口、`dropped`），未提升能力版本，与 `CLIENT_CONTRACT` “客户端可见行为变化须提升能力版本”不一致。
+- `SPACE_SDK_SEAMS.md` 仍示例 `profile`；`ARTIFACT_SDK.md` 与 `SPACE_SDK_SEAMS.md` 仍称 Artifact 子路径未发布。
+- Artifact 的 Space 集成说明只考虑 Space 启动的 Host，未覆盖 Issue 405 之后由 CLI 启动、Space 共用的 Host。
