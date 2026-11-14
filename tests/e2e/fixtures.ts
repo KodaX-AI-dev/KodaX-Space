@@ -224,6 +224,8 @@ export interface LaunchSpaceOptions {
   readonly onPageError?: (err: Error) => void;
   /** Additional deterministic environment values for the isolated Electron process. */
   readonly env?: Readonly<Record<string, string>>;
+  /** Source-Electron switches placed before the app path (e.g. `-r <preload>`); Playwright drops NODE_OPTIONS. */
+  readonly electronArgs?: readonly string[];
   /** Test-only hook that runs immediately after Electron connects, before renderer waits. */
   readonly onLaunched?: (app: ElectronApplication) => Promise<void>;
 }
@@ -279,7 +281,7 @@ export async function launchSpace(
       ...(opts?.recordVideo ? { recordVideo: opts.recordVideo } : {}),
       // Electron reads metadata only from an application directory. Launching
       // main.js directly bypasses package.json and reports 0.0 on Linux.
-      args: executablePath ? [] : [ELECTRON_APP],
+      args: executablePath ? [] : [...(opts?.electronArgs ?? []), ELECTRON_APP],
       env: {
         ...baseEnv,
         KODAX_TEST_ONBOARDING: testId,

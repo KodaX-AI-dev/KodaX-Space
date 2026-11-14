@@ -449,7 +449,8 @@ test('Space complete exit protects another connected product client', async () =
     const receipt = await readPublicSpaceExit(space);
     expect(receipt.runtimeId).toBe((JSON.parse(descriptor) as { runtimeId: string }).runtimeId);
     expect(receipt.cleanup.state).toBe('succeeded');
-    expect(receipt.host.state).toBe('protected');
+    // Issue 250: a Host kept for a peer is not asked to stop; only this client exits.
+    expect(receipt.host).toMatchObject({ requested: false, state: 'not_requested' });
     const history = await peer.sessions.readHistory(sessionId);
     expect(history.items.some((item) => item.type === 'user' && item.text === 'PEER_SESSION')).toBe(
       true,

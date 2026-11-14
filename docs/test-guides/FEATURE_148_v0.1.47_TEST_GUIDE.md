@@ -11,13 +11,14 @@
 
 ## 自动化覆盖
 
-| 范围                                                               | 命令（在 `apps/desktop` 下）                                                                                            | 结果  |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ----- |
-| 解析、指针、校验、环境标记                                         | `node --test --import ../../scripts/test/isolated-credential-profile.mjs --import tsx electron/kodax/data-root.test.ts` | 21/21 |
-| 切换、排除项、失败不写指针，真实 beta.9 复制（路径改写、标记拒绝） | 同上，`electron/kodax/data-root-change.test.ts`                                                                         | 通过  |
-| 启动对话框文案                                                     | 同上，`electron/kodax/data-root-notice.test.ts`                                                                         | 通过  |
-| SDK 复制（KodaX 仓库）                                             | `npx vitest run src/data-root-copy.test.ts`                                                                             | 25/25 |
-| Space 驱动真实 SDK 构建                                            | 一次性集成脚本：复制、路径改写、排除项、指针、非空目标拒绝、标记识别                                                    | 通过  |
+| 范围                                                                            | 命令（在 `apps/desktop` 下）                                                                                                                                                                            | 结果  |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| 解析、指针、校验、环境标记                                                      | `node --test --import ../../scripts/test/isolated-credential-profile.mjs --import tsx electron/kodax/data-root.test.ts`                                                                                 | 21/21 |
+| 切换、排除项、失败不写指针，真实 beta.9 复制（路径改写、标记拒绝）              | 同上，`electron/kodax/data-root-change.test.ts`                                                                                                                                                         | 通过  |
+| 启动对话框文案                                                                  | 同上，`electron/kodax/data-root-notice.test.ts`                                                                                                                                                         | 通过  |
+| SDK 复制（KodaX 仓库）                                                          | `npx vitest run src/data-root-copy.test.ts`                                                                                                                                                             | 25/25 |
+| Space 驱动真实 SDK 构建                                                         | 一次性集成脚本：复制、路径改写、排除项、指针、非空目标拒绝、标记识别                                                                                                                                    | 通过  |
+| 设置界面复制并保存重启（源码 Electron，非测试模式，隔离 appData 与 OS keyring） | 仓库根目录 `npm run e2e:run -- tests/e2e/data-root-change.spec.ts`：选目录、勾选复制、经验证的 Host 停止、指针、排除项、路径改写、`data_root_changed`、重启请求；再次启动从新位置读取，来源“在此处设置” | 3/3   |
 
 ## 人工场景
 
@@ -39,7 +40,7 @@
 2. 进度窗口显示文件数；完成后重新打开，会话、设置、Provider 可用，历史会话中的图片与工具输出可打开。
 3. 检查 `space/mcpb/registry.json` 等 JSON 中的 `installDir` 指向新位置；MCPB 扩展能启动。
 4. 新位置没有 `.kodax-copy-incomplete`、`space/runtime-client-identity.json`、`space/input-intents`。
-5. 日志 `space/logs` 中有 `data_root_changed`，含 `files`、`bytes`、`rebasedFiles`、`skipped`。
+5. 诊断日志 `<appData>/KodaX Space/diagnostics/space-main.jsonl` 中有 `data_root_changed`，含 `files`、`bytes`、`rebasedFiles`、`skipped`。
 6. 旧位置清单与哈希不变。
 
 ### D. 使用已有 KodaX 数据目录

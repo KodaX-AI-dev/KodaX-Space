@@ -44,8 +44,21 @@ beta.9 = beta.8 + 数据根复制（SDK FEATURE_306，供 Space F148 使用）+ 
 | `npm run build:smoke` | 通过                                                                                                                                                                                                                                   |
 | 源码 Electron E2E     | 重建后 28/28 通过：`settings-modal`、`settings-modal-interactions`、`settings-navigation`、`queued-message-toast`、`runtime-startup-exit`、`runtime-startup-recovery`、`update-safe-exit`（none / peer / active task，真实 Host 停止） |
 
+### 补充自动验证（提交 `97c6e7be` 之后）
+
+| 检查                                | 结果                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 设置 → 数据位置“复制并保存重启” E2E | 新增 `tests/e2e/data-root-change.spec.ts`，连续 3/3 通过。非测试模式启动，`-r` 预加载把 appData/userData 指到临时目录并拒绝加载 OS keyring，`KODAX_HOME` 指向临时旧根。覆盖：经验证的 Host 停止、指针、排除项、无标记、JSON 中旧根绝对路径改写、旧根不变、`data_root_changed`（含 `rebasedFiles`）、重启请求；再次启动读取新位置，来源“在此处设置”并提示环境变量；OS keyring 加载 0 次。真实凭据（133 + 20 条）与真实指针未变 |
+| steer 在真实 Run 中取回             | 新增 `tests/e2e/steer-take-back.spec.ts`：本地模型挂起首个请求，Enter 发送的插话显示“等待安全点”，点“取回消息”后为“已撤回”；放行后 Run 正常完成，模型从未收到该文本，Run 结束后仍为“已撤回”。对照：不点取回时，同一文本作为下一次模型请求送达                                                                                                                                                                                 |
+| Windows 目录包与成品冒烟            | `node scripts/pack.mjs --win --dir` 用 Registry beta.9 打出 `out/win-unpacked`：依赖冒烟通过（asar 内为精确 beta.9、依赖闭包 323 个包）；成品冷启动通过（隔离配置，渲染器 5.8 秒就绪，Runtime 在确定性延迟后 26.9 秒就绪，122 条历史子进程记录保留）；成品 `sdk-unified-contract` 7/7 通过（源码 Electron 同样 7/7）                                                                                                          |
+
+### 验证中发现
+
+- Host 尚未启动完成（或启动失败）时点“保存并重启”，没有可验证停止的 Host，Space 拒绝更改并按“需要恢复重启”处理：应用重启，数据位置不变。E2E 先等待 Host 就绪再保存。这与安装更新共用同一安全门（ADR-011）；Host 无法启动时用户也无法通过设置换位置。是否放宽待决定。
+- 成品 `sdk-unified-contract` 首次 6/7：“完整退出保护另一已连接客户端”仍期望回执 `host.state` 为 `protected`。Issue 250 之后保留 Host 的退出只请求本客户端退出，回执为 `requested: false`、`not_requested`；断言已更新，对端仍能读取历史的检查保留。
+- F148 测试指南 C.5 原写日志在 `space/logs`，实际在 Electron userData 的 `diagnostics/space-main.jsonl`，已更正。
+
 ### 未验证
 
-- 没有 E2E 覆盖设置 → 数据位置的完整“复制并重启”流程（会重启进程）；复制本身由真实 beta.9 的单测覆盖，按 [F148 测试指南](../test-guides/FEATURE_148_v0.1.47_TEST_GUIDE.md) C 节人工验收。
-- steer 取回只在单测与既有组件层验证，没有在真实模型运行中手动点“取回消息”卡住安全点前的时机。
-- 未打目录包、未做成品冷启动；没有 macOS/Linux 实机验收；未创建标签，也未发布安装包。
+- 没有 macOS/Linux 实机验收；Windows 安装版与便携版的安装、升级流程未执行（只验证目录包）；F148 测试指南中需要真实机器的场景（另一盘符、盘符根目录、MCPB 扩展启动、便携版重启）未执行。
+- 未创建标签，也未发布安装包。
