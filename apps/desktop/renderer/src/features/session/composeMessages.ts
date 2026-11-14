@@ -91,6 +91,8 @@ export type ConversationMessage =
       result?: string;
       progress?: string;
       status: 'running' | 'done' | 'interrupted';
+      /** The SDK reported an error result for this execution. */
+      failed?: true;
       /** SDK product tool timing (epoch ms); absent on legacy event-composed history. */
       startedAt?: number;
       endedAt?: number;

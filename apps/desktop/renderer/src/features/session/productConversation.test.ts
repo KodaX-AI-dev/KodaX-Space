@@ -175,6 +175,21 @@ test('SDK tool timing reaches the displayed execution only when the SDK reported
   assert.equal(untimed?.kind === 'tool_call' && 'endedAt' in untimed, false);
 });
 
+test('an SDK tool error marks the displayed execution as failed', () => {
+  const projected = projectProductConversation([
+    {
+      id: 'bad',
+      type: 'tool',
+      text: 'exit 1',
+      tool: { callId: 'a', name: 'bash', status: 'error' },
+    },
+    { id: 'ok', type: 'tool', text: 'ok', tool: { callId: 'b', name: 'bash', status: 'success' } },
+  ]);
+  const [bad, ok] = projected.messages;
+  assert.deepEqual(bad?.kind === 'tool_call' && [bad.status, bad.failed], ['done', true]);
+  assert.equal(ok?.kind === 'tool_call' && 'failed' in ok, false);
+});
+
 test('Space command and workflow notices remain visible without changing SDK output order', () => {
   const projected = projectProductConversation(
     [

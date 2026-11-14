@@ -99,6 +99,7 @@ function displayItem(item: SessionProductItem, turnIndex?: number): Conversation
           : item.tool.status === 'running' || item.tool.status === 'awaiting_approval'
             ? 'running'
             : 'done',
+      ...(item.tool.status === 'error' ? { failed: true as const } : {}),
       ...(item.tool.startedAt !== undefined ? { startedAt: item.tool.startedAt } : {}),
       ...(item.tool.endedAt !== undefined ? { endedAt: item.tool.endedAt } : {}),
     };

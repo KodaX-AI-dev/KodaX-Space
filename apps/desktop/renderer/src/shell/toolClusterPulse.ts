@@ -1,14 +1,16 @@
 // toolClusterPulse — pure projections behind the live "运行了 N 个命令" group.
 //
 // While a run is working, the tail tool group shows a three-row action feed, the latest
-// thinking line and a beat strip (one bar per finished tool: colour = tool family, height =
-// duration). The strip stays frozen on the settled group. Design record:
+// thinking line and per-family tallies (count + total time; the running family keeps counting
+// up). The tallies stay on the settled group. Design record:
 // docs/design/live-work-motion/direction-approved.md
 
 export interface PulseTool {
   readonly id: string;
   readonly toolName: string;
   readonly status: 'running' | 'done' | 'interrupted';
+  /** The tool finished with an error result. */
+  readonly failed?: boolean;
   readonly input?: Record<string, unknown>;
   readonly startedAt?: number;
   readonly endedAt?: number;
@@ -19,13 +21,15 @@ export interface PulseStep {
   readonly productItem?: { readonly timestamp?: number };
 }
 
-export type BeatTone = 'info' | 'accent' | 'run' | 'muted';
+export type ToolFamily = 'read' | 'edit' | 'run' | 'other' | 'fail';
 
-export interface Beat {
-  readonly id: string;
-  readonly tone: BeatTone;
-  /** Bar height in px. */
-  readonly height: number;
+export interface FamilyTally {
+  readonly family: ToolFamily;
+  readonly count: number;
+  /** Summed measured time; absent when no tool of the family carries timing. */
+  readonly durationMs?: number;
+  /** A tool of this family is still running, so its time is counting up. */
+  readonly running: boolean;
 }
 
 export interface LiveToolRow {
@@ -36,24 +40,21 @@ export interface LiveToolRow {
   readonly durationMs?: number;
 }
 
-export const BEAT_LIMIT = 12;
 /** Three visible rows plus the one fading out above them while the list pushes up. */
 export const LIVE_ROW_LIMIT = 4;
-const BEAT_MIN_PX = 5;
-const BEAT_MAX_PX = 16;
-const BEAT_UNTIMED_PX = 10;
 const TEXT_LIMIT = 80;
 
-const BEAT_TONES: Readonly<Record<string, BeatTone>> = {
-  read: 'info',
-  grep: 'info',
-  glob: 'info',
-  ls: 'info',
-  write: 'accent',
-  edit: 'accent',
-  multi_edit: 'accent',
-  str_replace: 'accent',
-  insert_after_anchor: 'accent',
+const FAMILY_ORDER: readonly ToolFamily[] = ['read', 'edit', 'run', 'other', 'fail'];
+const TOOL_FAMILIES: Readonly<Record<string, ToolFamily>> = {
+  read: 'read',
+  grep: 'read',
+  glob: 'read',
+  ls: 'read',
+  write: 'edit',
+  edit: 'edit',
+  multi_edit: 'edit',
+  str_replace: 'edit',
+  insert_after_anchor: 'edit',
   bash: 'run',
 };
 
@@ -65,22 +66,43 @@ function durationOf(tool: PulseTool, now?: number): number | undefined {
   return end === undefined ? undefined : Math.max(0, end - tool.startedAt);
 }
 
-/** 100ms → shortest bar, ≥3.2s → tallest, on a log scale so quick tools stay distinguishable. */
-function beatHeight(durationMs: number | undefined): number {
-  if (durationMs === undefined) return BEAT_UNTIMED_PX;
-  const ratio = Math.min(1, Math.max(0, Math.log2(Math.max(1, durationMs) / 100) / 5));
-  return Math.round(BEAT_MIN_PX + (BEAT_MAX_PX - BEAT_MIN_PX) * ratio);
+function toolFamily(tool: PulseTool): ToolFamily {
+  return tool.failed ? 'fail' : (TOOL_FAMILIES[tool.toolName] ?? 'other');
 }
 
-export function toolBeats(tools: readonly PulseTool[]): Beat[] {
-  return tools
-    .filter((tool) => tool.status !== 'running')
-    .slice(-BEAT_LIMIT)
-    .map((tool) => ({
-      id: tool.id,
-      tone: BEAT_TONES[tool.toolName] ?? 'muted',
-      height: beatHeight(durationOf(tool)),
-    }));
+export function familyTallies(tools: readonly PulseTool[], now?: number): FamilyTally[] {
+  return FAMILY_ORDER.flatMap((family) => {
+    const members = tools.filter((tool) => toolFamily(tool) === family);
+    if (members.length === 0) return [];
+    const durations = members
+      .map((tool) => durationOf(tool, now))
+      .filter((value): value is number => value !== undefined);
+    return [
+      {
+        family,
+        count: members.length,
+        ...(durations.length > 0
+          ? { durationMs: durations.reduce((sum, value) => sum + value, 0) }
+          : {}),
+        running: members.some((tool) => tool.status === 'running'),
+      },
+    ];
+  });
+}
+
+/**
+ * At most two units (2.4s · 42s · 3m07s · 1h05m). Running values tick once per second, so they
+ * drop the tenths and keep seconds even past an hour (1h05m07s) to stay visibly alive.
+ */
+export function formatPulseDuration(ms: number, running: boolean): string {
+  const sec = ms / 1_000;
+  if (sec < 10 && !running) return `${sec.toFixed(1)}s`;
+  const whole = Math.floor(sec);
+  if (whole < 60) return `${whole}s`;
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  if (whole < 3_600) return `${Math.floor(whole / 60)}m${pad(whole % 60)}s`;
+  const hours = `${Math.floor(whole / 3_600)}h${pad(Math.floor(whole / 60) % 60)}m`;
+  return running ? `${hours}${pad(whole % 60)}s` : hours;
 }
 
 function oneLine(text: string): string {

@@ -3,9 +3,14 @@
 // row push-up checks the same gates here because WAAPI bypasses CSS gating.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, Dot, FileSearch, Pencil, SquareTerminal, X, type LucideIcon } from 'lucide-react';
 import { DURATION, EASE_EXPO } from '../lib/motion.js';
-import type { Beat, LiveToolRow } from './toolClusterPulse.js';
+import {
+  formatPulseDuration,
+  type FamilyTally,
+  type LiveToolRow,
+  type ToolFamily,
+} from './toolClusterPulse.js';
 
 export function motionAllowed(): boolean {
   if (typeof document === 'undefined') return false;
@@ -25,29 +30,49 @@ export function useSecondClock(active: boolean): number {
   return now;
 }
 
-export function formatPulseDuration(ms: number, running: boolean): string {
-  const sec = ms / 1_000;
-  if (sec < 10 && !running) return `${sec.toFixed(1)}s`;
-  const whole = Math.floor(sec);
-  if (whole < 60) return `${whole}s`;
-  return `${Math.floor(whole / 60)}m${String(whole % 60).padStart(2, '0')}s`;
-}
-
 export function formatPulseTokens(n: number): string {
   return n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
 }
 
-export function ClusterBeats({ beats }: { beats: readonly Beat[] }): JSX.Element | null {
-  if (beats.length === 0) return null;
+const FAMILY_ICONS: Readonly<Record<ToolFamily, LucideIcon>> = {
+  read: FileSearch,
+  edit: Pencil,
+  run: SquareTerminal,
+  other: Dot,
+  fail: X,
+};
+
+/** Icon + count + total time per tool family; a new call re-keys the count so it bumps. */
+export function ClusterTallies({
+  tallies,
+  live,
+}: {
+  tallies: readonly FamilyTally[];
+  live: boolean;
+}): JSX.Element | null {
+  if (tallies.length === 0) return null;
   return (
-    <span className="tool-pulse-beats" aria-hidden data-testid="tool-cluster-beats">
-      {beats.map((beat) => (
-        <i
-          key={beat.id}
-          className={`tool-pulse-beat tone-${beat.tone}`}
-          style={{ height: beat.height }}
-        />
-      ))}
+    <span className="tool-pulse-tallies" aria-hidden data-testid="tool-cluster-tallies">
+      {tallies.map((tally) => {
+        const Icon = FAMILY_ICONS[tally.family];
+        return (
+          <span
+            key={tally.family}
+            className={`tool-pulse-tally fam-${tally.family}${tally.running ? ' is-running' : ''}`}
+            data-family={tally.family}
+          >
+            <Icon className="tool-pulse-tally-icon" strokeWidth={2.2} />
+            <b key={live ? tally.count : 'settled'} className="tool-pulse-tally-count">
+              {tally.count}
+            </b>
+            {tally.durationMs !== undefined && (
+              <span className="tool-pulse-tally-time">
+                {formatPulseDuration(tally.durationMs, tally.running)}
+              </span>
+            )}
+          </span>
+        );
+      })}
     </span>
   );
 }

@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="utf-8" />
+<title>运行中工具组 · 节拍条方案对比</title>
+<!--
+  方案对比页（live-work-motion 已选方向内的迭代：替换「12 根竖条」）。
+  假设：
+  1. 只替换工具组标签右侧的那条可视化；标签、spinner、统计、三行动作流都不变（这里省略动作流，聚焦对比）。
+  2. 所有方案只用现有数据：工具名、开始/结束时间、成功/失败。失败需要投影里补一个字段（SDK 已有 error 状态）。
+  3. 模拟数据是确定性脚本，耗时取自真实运行的量级：读/搜 30–400ms，改 40–110ms，测试 3–10s。
+  4. 演示里标签不限宽；产品里标签最宽 30rem，E 方案最占宽度。
+-->
+<style>
+@font-face { font-family: 'Geist Variable'; font-weight: 100 900; src: url('../../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono Variable'; font-weight: 100 800; src: url('../../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); }
+
+/* —— 设计 token：照抄 apps/desktop/renderer/src/styles.css —— */
+:root {
+  --surface: 252 251 248; --surface-2: 243 242 238; --surface-3: 234 233 226;
+  --fg-primary: 36 36 33; --fg-secondary: 98 98 91; --fg-muted: 112 112 104; --fg-faint: 149 148 139;
+  --border-default: 222 221 213; --border-strong: 201 199 188;
+  --accent: 226 182 109; --ok: 31 157 82; --run: 31 143 214; --info: 37 99 235; --thinking: 147 51 234; --danger: 220 77 77;
+  --ui: 'Geist Variable', -apple-system, 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
+  --mono: 'JetBrains Mono Variable', ui-monospace, Consolas, monospace;
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  color-scheme: light;
+}
+html.dark {
+  --surface: 24 24 23; --surface-2: 19 19 19; --surface-3: 36 36 34;
+  --fg-primary: 238 237 233; --fg-secondary: 174 173 165; --fg-muted: 149 148 139; --fg-faint: 116 115 107;
+  --border-default: 48 48 44; --border-strong: 73 73 65;
+  --accent: 226 182 109; --ok: 74 222 128; --run: 76 194 255; --info: 96 165 250; --thinking: 192 132 252; --danger: 248 113 113;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: rgb(var(--surface)); color: rgb(var(--fg-primary)); font: 14px/1.55 var(--ui); }
+
+/* —— 页面框架 —— */
+.page-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 18px 28px 14px; border-bottom: 1px solid rgb(var(--border-default)); }
+.page-head h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.page-head p { margin: 2px 0 0; color: rgb(var(--fg-muted)); font-size: 13px; }
+.controls { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 12px; color: rgb(var(--fg-muted)); }
+.seg { display: inline-flex; border: 1px solid rgb(var(--border-default)); border-radius: 7px; overflow: hidden; }
+.seg button, .btn { white-space: nowrap; font: 12px var(--ui); color: rgb(var(--fg-secondary)); background: transparent; border: 0; padding: 5px 10px; cursor: pointer; }
+.seg button + button { border-left: 1px solid rgb(var(--border-default)); }
+.seg button[aria-pressed='true'] { background: rgb(var(--surface-3)); color: rgb(var(--fg-primary)); }
+.btn { border: 1px solid rgb(var(--border-default)); border-radius: 7px; }
+.btn:hover, .seg button:hover { color: rgb(var(--fg-primary)); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 12px 28px 0; font-size: 12px; color: rgb(var(--fg-muted)); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; background: rgb(var(--c)); }
+.legend i.dots { height: 0; border-top: 2px dotted rgb(var(--thinking) / 0.7); background: none; border-radius: 0; }
+.legend .note { color: rgb(var(--fg-faint)); }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px 28px 32px; }
+@media (max-width: 1180px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.card { border: 1px solid rgb(var(--border-default)); border-radius: 12px; padding: 14px 16px 16px; }
+.card.ref { border-style: dashed; }
+.card h2 { margin: 0; font-size: 14px; font-weight: 600; display: flex; gap: 8px; align-items: baseline; }
+.card h2 .k { font: 600 12px var(--mono); color: rgb(var(--fg-faint)); min-width: 22px; }
+.card .what { margin: 4px 0 12px 30px; font-size: 13px; color: rgb(var(--fg-muted)); text-wrap: pretty; }
+.card .what b { font-weight: 500; color: rgb(var(--fg-secondary)); }
+.card .what .no { color: rgb(var(--fg-faint)); }
+.stage { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 12px; border-radius: 8px; background: rgb(var(--surface-2) / 0.6); overflow: hidden; }
+
+/* —— 工具组标签（复刻产品） —— */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; max-width: 100%; padding: 4px 8px; border-radius: 6px; border: 1px solid rgb(var(--border-default) / 0.7); background: rgb(var(--surface) / 0.6); font: 11px var(--mono); color: rgb(var(--fg-muted)); white-space: nowrap; overflow: hidden; position: relative; flex-shrink: 0; }
+.chip .label { color: rgb(var(--fg-secondary)); }
+.chip .names { color: rgb(var(--fg-faint)); }
+.chip .tag-think { border-radius: 4px; border: 1px solid rgb(var(--thinking) / 0.2); background: rgb(var(--thinking) / 0.1); color: rgb(var(--thinking) / 0.9); padding: 1px 6px; }
+.chip.live { border-color: rgb(var(--run) / 0.35); }
+.chip.live::after { content: ''; position: absolute; inset: -1px; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgb(var(--run) / 0.14) 48%, rgb(var(--run) / 0.04) 56%, transparent 70%); transform: translateX(-100%); animation: sweep 2.4s var(--ease-expo) infinite; }
+@keyframes sweep { 0% { transform: translateX(-100%); } 70%, 100% { transform: translateX(100%); } }
+.spin { width: 11px; height: 11px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid rgb(var(--run) / 0.25); border-top-color: rgb(var(--run)); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+.caret { width: 12px; height: 12px; flex-shrink: 0; }
+.stats { display: inline-flex; gap: 8px; font: 11px var(--mono); color: rgb(var(--fg-faint)); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stats .tok { color: rgb(var(--fg-muted)); }
+
+/* —— 可视化区：各方案共用 —— */
+.strip { display: flex; align-items: center; flex-shrink: 0; height: 18px; margin-left: 2px; padding-left: 8px; border-left: 1px solid rgb(var(--border-default) / 0.8); }
+.strip:empty { display: none; }
+.f-read { --c: var(--fg-secondary); } .f-edit { --c: var(--accent); } .f-run { --c: var(--run); } .f-other { --c: var(--fg-faint); } .f-fail { --c: var(--danger); }
+.enter-y { animation: grow-y 320ms var(--ease-overshoot) both; transform-origin: bottom; }
+.enter-x { animation: grow-x 260ms var(--ease-expo) both; transform-origin: left; }
+.enter-f { animation: fade-in 260ms var(--ease-expo) both; }
+@keyframes grow-y { from { transform: scaleY(0); } }
+@keyframes grow-x { from { transform: scaleX(0); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(3px); } }
+@keyframes breathe { 50% { opacity: 0.35; } }
+
+/* 现状 · 竖条 */
+.bars { align-items: flex-end; gap: 2px; height: 16px; }
+.bars i { width: 3px; border-radius: 1px; background: rgb(var(--c) / 0.85); }
+
+/* A / A+ · 阶段条 */
+.cells i { height: 10px; margin-right: 1px; border-radius: 1.5px; background: rgb(var(--c) / 0.85); }
+.cells i.ph { margin-left: 4px; }
+.cells i.running { animation: breathe 1s ease-in-out infinite; }
+.cells.timed i { transition: width 140ms linear; }
+
+/* B · 构成条 */
+.comp { width: 150px; height: 6px; border-radius: 3px; overflow: hidden; gap: 1px; background: rgb(var(--border-default) / 0.5); }
+.comp i { height: 100%; min-width: 2px; background: rgb(var(--c) / 0.85); transition: flex-grow 400ms var(--ease-expo); }
+
+/* C · 分类计数 */
+.counts { gap: 10px; font: 11px var(--mono); font-variant-numeric: tabular-nums; }
+.counts span { display: inline-flex; align-items: center; gap: 3px; color: rgb(var(--c)); }
+.counts svg { width: 12px; height: 12px; }
+.counts .bump { animation: bump 300ms var(--ease-overshoot); }
+@keyframes bump { 40% { transform: translateY(-2px) scale(1.12); } }
+.counts .t { margin-left: 2px; color: rgb(var(--fg-faint)); transition: color 200ms; }
+.counts span.cur svg { animation: breathe 1s ease-in-out infinite; }
+.counts span.cur .t { color: rgb(var(--c)); }
+
+/* D · 胶囊时间线 */
+.tl { position: relative; width: 190px; }
+.tl .base { position: absolute; left: 0; top: 50%; border-top: 1px dotted rgb(var(--thinking) / 0.55); }
+.tl i { position: absolute; top: 5px; height: 8px; min-width: 3px; border-radius: 4px; background: rgb(var(--c) / 0.9); }
+.tl i.running { box-shadow: 0 0 0 2px rgb(var(--c) / 0.22); }
+.tl .now { position: absolute; right: 0; top: 1px; bottom: 1px; width: 1.5px; border-radius: 1px; background: rgb(var(--run)); animation: breathe 1s ease-in-out infinite; }
+
+/* E · 阶段胶囊 */
+.pills { gap: 4px; padding-left: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 10px; font: 11px var(--mono); font-variant-numeric: tabular-nums; color: rgb(var(--c)); background: rgb(var(--c) / 0.1); border: 1px solid rgb(var(--c) / 0.22); }
+.pill .t { color: rgb(var(--fg-faint)); }
+.pill .x { color: rgb(var(--danger)); }
+.pill.more { --c: var(--fg-faint); }
+.pill.cur::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgb(var(--c)); animation: breathe 1s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <div>
+    <h1>运行中工具组 · 节拍条方案对比</h1>
+    <p>同一组模拟运行同时驱动 8 个方案。先看运行中怎么动，再看结束后定格的样子。鼠标悬停色块可以看到具体工具和耗时。</p>
+  </div>
+  <div class="controls">
+    场景
+    <div class="seg" id="scenarios">
+      <button data-s="reads">全是快速读取</button>
+      <button data-s="mixed" aria-pressed="true">看代码 → 改 → 测试</button>
+      <button data-s="fail">测试失败后再修</button>
+      <button data-s="long">长任务（从 59:50 起播）</button>
+    </div>
+    速度
+    <div class="seg" id="speeds">
+      <button data-v="1">1×</button>
+      <button data-v="2" aria-pressed="true">2×</button>
+      <button data-v="4">4×</button>
+    </div>
+    <button class="btn" id="replay">重播</button>
+    <button class="btn" id="end">直接看结果</button>
+    <button class="btn" id="theme">切换明暗</button>
+  </div>
+</header>
+<div class="legend">
+  <span class="f-read"><i></i>看代码 read / grep / glob / ls</span>
+  <span class="f-edit"><i></i>改代码 edit / write</span>
+  <span class="f-run"><i></i>跑命令 bash</span>
+  <span class="f-fail"><i></i>失败</span>
+  <span><i class="dots"></i>思考（只在 D 里出现）</span>
+  <span class="note">看代码改用中性灰：原来的 info 蓝和 run 天蓝在暗色下几乎分不清，而且读取是大头，做底色更合适。</span>
+  <span class="note">耗时量级取自真实运行：读 30–400ms，改 40–110ms，测试 3–10s</span>
+</div>
+<main class="grid" id="grid"></main>
+
+<script>
+// ---------------- 方案说明 ----------------
+const OPTIONS = [
+  { id: 'bars', k: '现状', name: '竖条（已按真实耗时校准）', ref: true,
+    what: '<b>一根 = 一个工具，高 = 耗时，色 = 类型</b>，只留最近 12 根。<span class="no">全是快速读取时几乎一样高；看不出阶段。</span>' },
+  { id: 'cellsCount', k: 'A', name: '阶段条 · 宽度按个数',
+    what: '同类相邻合成一段，<b>看得出顺序和多少</b>。<span class="no">看不出时间（你指出的问题）。</span>' },
+  { id: 'cellsTime', k: 'A+', name: '阶段条 · 宽度按耗时',
+    what: '同 A，但<b>每格宽度 = 耗时</b>（平方根压缩，慢命令不会把快的挤没）。正在运行的那格实时变长。<b>顺序、类型、时间都在。</b>' },
+  { id: 'comp', k: 'B', name: '构成条 · 按耗时占比',
+    what: '一条细条，<b>时间花在哪类工具上</b>。最安静。<span class="no">没有先后顺序，看不出个数。</span>' },
+  { id: 'counts', k: 'C', name: '分类计数',
+    what: '图标 + 数字，<b>不用猜就能读懂</b>，失败单独计数。<span class="no">看不出时间和顺序，动感最弱。</span>' },
+  { id: 'countsTime', k: 'C+', name: '分类计数 + 分类总耗时',
+    what: '同 C，每类后面跟<b>这一类累计花了多久</b>。正在跑的那一类图标呼吸、时间实时往上走；新的一次调用让数字跳一下。<b>一眼读懂，也看得出时间花在哪。</b><span class="no">看不出先后顺序。</span>' },
+  { id: 'timeline', k: 'D', name: '胶囊时间线（新）',
+    what: '横轴是真实时间：<b>工具是胶囊，空隙里的紫色虚线是模型在思考</b>。能看出「想了多久、做了多久」；运行中整条随时间往左压缩。' },
+  { id: 'pills', k: 'E', name: '阶段胶囊（新）',
+    what: '每个阶段一颗胶囊，<b>直接写次数和耗时</b>，最直白，只留最近 3 个阶段。<span class="no">最占宽度，文字多。</span>' },
+];
+
+// ---------------- 模拟数据 ----------------
+const FAM = { read: 'read', grep: 'read', glob: 'read', ls: 'read', edit: 'edit', write: 'edit', multi_edit: 'edit', bash: 'run' };
+const FAM_LABEL = { read: '看代码', edit: '改代码', run: '跑命令', other: '其他' };
+const FAM_SHORT = { read: '读', edit: '改', run: '跑', other: '其他' };
+const FAM_ORDER = ['read', 'edit', 'run', 'other', 'fail'];
+function rng(seed) { return () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32; }
+function build(steps) {
+  let t = 0, n = 0;
+  const tools = [];
+  for (const s of steps) {
+    if (s.think) { t += s.think; continue; }
+    tools.push({ id: `t${n++}`, name: s.tool, target: s.target, start: t, end: t + s.ms, fail: Boolean(s.fail) });
+    t += s.ms + 70;
+  }
+  return { tools, total: t };
+}
+const tool = (name, target, ms, fail) => ({ tool: name, target, ms, fail });
+function readsOnly() {
+  const r = rng(7);
+  const files = ['src/store/session.ts', 'src/shell/Chat.tsx', 'README.md', 'packages/sdk/index.ts', 'src/App.tsx', 'docs/HLD.md'];
+  const steps = [];
+  for (const batch of [5, 4, 6, 3, 6]) {
+    steps.push({ think: 1200 + r() * 1800 });
+    for (let i = 0; i < batch; i++) {
+      const pick = r();
+      steps.push(pick < 0.7 ? tool('read', files[Math.floor(r() * files.length)], 30 + r() * 150)
+        : pick < 0.88 ? tool('grep', 'sendOperation', 120 + r() * 260) : tool('glob', '**/*.test.ts', 40 + r() * 90));
+    }
+  }
+  return build(steps);
+}
+function longRun() {
+  const sc = build([
+    { think: 1200 }, tool('read', 'playwright.config.ts', 80), tool('read', 'tests/e2e/smoke.spec.ts', 110),
+    { think: 900 }, tool('bash', 'npm run e2e:full', 3_725_000),
+    { think: 1500 }, tool('read', 'test-results/report.md', 90),
+  ]);
+  return { ...sc, startAt: sc.tools[2].start + 59 * 60_000 + 50_000 };
+}
+const SCENARIOS = {
+  long: longRun(),
+  reads: readsOnly(),
+  mixed: build([
+    { think: 1400 }, tool('read', 'src/store/appStore.ts', 120), tool('grep', 'settleSend', 380), tool('read', 'src/App.tsx', 90), tool('read', 'productConversation.ts', 70),
+    { think: 2200 }, tool('edit', 'src/store/appStore.ts', 60), tool('edit', 'productConversation.ts', 45), tool('multi_edit', 'src/App.tsx', 110),
+    { think: 900 }, tool('bash', 'npm test', 9500),
+    { think: 1300 }, tool('read', 'sendOperation.test.ts', 60), tool('edit', 'sendOperation.test.ts', 50), tool('bash', 'npm test', 6500), tool('bash', 'npx tsc --noEmit', 3800),
+  ]),
+  fail: build([
+    { think: 1100 }, tool('read', 'src/shell/Chat.tsx', 90), tool('read', 'src/store/session.ts', 140), tool('read', 'src/App.tsx', 60), tool('grep', 'pendingSend', 300),
+    { think: 1600 }, tool('edit', 'src/store/session.ts', 70), tool('edit', 'src/shell/Chat.tsx', 40),
+    { think: 700 }, tool('bash', 'npm test', 7200, true),
+    { think: 2400 }, tool('read', 'session.test.ts', 80), tool('grep', 'expected', 260), tool('edit', 'src/store/session.ts', 55), tool('bash', 'npm test', 6800),
+    { think: 600 }, tool('bash', 'npm run lint', 2600),
+  ]),
+};
+
+// ---------------- 小工具 ----------------
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+/** 最多两级单位：2.4s → 42s → 3m07s → 1h05m；运行中的小时级多带秒（1h05m07s），每秒都在走。 */
+function fmtDur(ms, running = false) {
+  if (ms < 10_000) return `${(Math.floor(ms / 100) / 10).toFixed(1)}s`;
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const pad = (n) => String(n).padStart(2, '0');
+  if (sec < 3600) return `${Math.floor(sec / 60)}m${pad(sec % 60)}s`;
+  const hm = `${Math.floor(sec / 3600)}h${pad(Math.floor(sec / 60) % 60)}m`;
+  return running ? `${hm}${pad(sec % 60)}s` : hm;
+}
+const fam = (t) => (t.fail && !t.running ? 'fail' : FAM[t.name] ?? 'other');
+const phaseKey = (t) => FAM[t.name] ?? 'other';
+const tip = (t) => `${t.name} ${t.target} · ${t.running ? '运行中 ' : ''}${fmtDur(t.dur)}${t.fail && !t.running ? ' · 失败' : ''}`;
+function mk(tag, cls) { const el = document.createElement(tag); if (cls) el.className = cls; return el; }
+/** Keyed children: reuse by key, create (with entry animation) for new keys, drop the rest. */
+function sync(parent, keys, create) {
+  const existing = new Map([...parent.children].filter((c) => c.dataset.k).map((c) => [c.dataset.k, c]));
+  const out = keys.map((k) => existing.get(k) ?? create(k));
+  out.forEach((el, i) => { el.dataset.k = keys[i]; if (parent.children[i] !== el) parent.insertBefore(el, parent.children[i] ?? null); });
+  const keep = new Set(keys);
+  for (const [k, el] of existing) if (!keep.has(k)) el.remove();
+  return out;
+}
+function setFam(el, f) { el.className = el.className.replace(/\bf-\w+/g, '').trim() + ` f-${f}`; }
+function phasesOf(vis) {
+  const out = [];
+  for (const t of vis) {
+    const last = out.at(-1);
+    if (last && last.key === phaseKey(t)) last.tools.push(t);
+    else out.push({ key: phaseKey(t), tools: [t] });
+  }
+  return out;
+}
+const ICONS = {
+  read: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><circle cx="11.5" cy="14.5" r="2.5"/><path d="m13.5 16.5 2 2"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  run: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg>',
+  other: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>',
+  fail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+};
+
+// ---------------- 各方案渲染 ----------------
+const RENDER = {
+  bars(s, vis) {
+    s.className = 'strip bars';
+    const done = vis.filter((t) => !t.running).slice(-12);
+    sync(s, done.map((t) => t.id), () => mk('i', 'enter-y')).forEach((el, i) => {
+      const t = done[i];
+      el.style.height = `${Math.round(5 + 11 * clamp01(Math.log10(Math.max(1, t.dur) / 10) / 3))}px`;
+      setFam(el, fam(t)); el.title = tip(t);
+    });
+  },
+  cellsCount(s, vis) { cells(s, vis, false); },
+  cellsTime(s, vis) { cells(s, vis, true); },
+  comp(s, vis) {
+    s.className = 'strip comp';
+    const totals = new Map();
+    for (const t of vis) { const f = fam(t); const v = totals.get(f) ?? { n: 0, dur: 0 }; totals.set(f, { n: v.n + 1, dur: v.dur + t.dur }); }
+    const all = [...totals.values()].reduce((a, v) => a + v.dur, 0) || 1;
+    const keys = FAM_ORDER.filter((f) => totals.has(f));
+    sync(s, keys, () => mk('i', 'enter-x')).forEach((el, i) => {
+      const v = totals.get(keys[i]);
+      setFam(el, keys[i]); el.style.flexGrow = String(Math.max(v.dur, 1));
+      el.title = `${FAM_LABEL[keys[i]] ?? '失败'} · ${v.n} 个 · ${fmtDur(v.dur)}（${Math.round((v.dur / all) * 100)}%）`;
+    });
+  },
+  counts(s, vis) { counts(s, vis, false); },
+  countsTime(s, vis) { counts(s, vis, true); },
+  timeline(s, vis, T, live) {
+    s.className = 'strip';
+    let box = s.querySelector('.tl');
+    if (!box) { box = mk('div', 'tl'); box.style.height = '18px'; box.append(mk('div', 'base'), mk('div', 'items')); s.append(box); }
+    const span = Math.max(T, 4000);
+    const scale = 190 / span;
+    const items = box.querySelector('.items');
+    sync(items, vis.map((t) => t.id), () => mk('i', 'enter-f')).forEach((el, i) => {
+      const t = vis[i];
+      el.style.left = `${t.start * scale}px`; el.style.width = `${Math.max(3, t.dur * scale)}px`;
+      setFam(el, fam(t)); el.classList.toggle('running', t.running); el.title = tip(t);
+    });
+    box.querySelector('.base').style.width = `${T * scale}px`;
+    let now = box.querySelector('.now');
+    if (live && !now) box.append(mk('div', 'now')); else if (!live && now) now.remove();
+  },
+  pills(s, vis, T, live) {
+    s.className = 'strip pills';
+    const phases = phasesOf(vis);
+    const shown = phases.slice(-3);
+    const hidden = phases.length - shown.length;
+    const keys = [...(hidden > 0 ? ['more'] : []), ...shown.map((_, i) => `p${hidden + i}`)];
+    sync(s, keys, () => mk('span', 'pill enter-f')).forEach((el, i) => {
+      if (keys[i] === 'more') { el.className = 'pill more'; el.textContent = `+${hidden}`; el.title = '更早的阶段'; return; }
+      const p = shown[i - (hidden > 0 ? 1 : 0)];
+      const dur = p.tools.reduce((a, t) => a + t.dur, 0);
+      const fails = p.tools.filter((t) => t.fail && !t.running).length;
+      const cur = live && p === phases.at(-1);
+      el.className = `pill f-${p.key}${cur ? ' cur' : ''}`;
+      el.title = `${FAM_LABEL[p.key]} ${p.tools.length} 个 · ${fmtDur(dur)}`;
+      el.innerHTML = `${FAM_SHORT[p.key]} ×${p.tools.length}<span class="t">${fmtDur(dur)}</span>${fails ? `<span class="x">✕${fails}</span>` : ''}`;
+    });
+  },
+};
+function counts(s, vis, timed) {
+  s.className = 'strip counts';
+  const totals = new Map();
+  for (const t of vis) { const f = fam(t); const v = totals.get(f) ?? { n: 0, dur: 0, cur: false }; totals.set(f, { n: v.n + 1, dur: v.dur + t.dur, cur: v.cur || t.running }); }
+  const keys = FAM_ORDER.filter((f) => totals.has(f));
+  sync(s, keys, (k) => { const el = mk('span', 'enter-f'); el.innerHTML = `${ICONS[k]}<b style="font-weight:500"></b>${timed ? '<span class="t"></span>' : ''}`; return el; }).forEach((el, i) => {
+    const v = totals.get(keys[i]);
+    const n = String(v.n);
+    setFam(el, keys[i]);
+    const num = el.querySelector('b');
+    if (num.textContent !== n) {
+      if (num.textContent) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      num.textContent = n;
+    }
+    if (timed) { el.classList.toggle('cur', v.cur); el.querySelector('.t').textContent = fmtDur(v.dur, v.cur); }
+    el.title = `${FAM_LABEL[keys[i]] ?? '失败'} ${n} 个${timed ? ` · 共 ${fmtDur(v.dur)}` : ''}`;
+  });
+}
+function cells(s, vis, timed) {
+  s.className = `strip cells${timed ? ' timed' : ''}`;
+  const W = 180;
+  const phaseCount = phasesOf(vis).length;
+  const avail = W - Math.max(0, phaseCount - 1) * 4 - vis.length;
+  let widths;
+  if (timed) {
+    const roots = vis.map((t) => Math.sqrt(Math.max(1, t.dur)));
+    const k = Math.min(0.55, avail / (roots.reduce((a, v) => a + v, 0) || 1));
+    widths = roots.map((r) => Math.max(2, r * k));
+  } else {
+    const w = Math.min(6, Math.max(2, Math.floor(avail / Math.max(1, vis.length))));
+    widths = vis.map(() => w);
+  }
+  sync(s, vis.map((t) => t.id), () => mk('i', 'enter-x')).forEach((el, i) => {
+    const t = vis[i];
+    el.style.width = `${widths[i]}px`;
+    setFam(el, fam(t));
+    el.classList.toggle('ph', i > 0 && phaseKey(vis[i - 1]) !== phaseKey(t));
+    el.classList.toggle('running', t.running);
+    el.title = tip(t);
+  });
+}
+
+// ---------------- 卡片 + 标签 ----------------
+const CARET = '<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>';
+const cards = OPTIONS.map((o) => {
+  const card = mk('section', `card${o.ref ? ' ref' : ''}`);
+  card.innerHTML = `<h2><span class="k">${o.k}</span>${o.name}</h2><p class="what">${o.what}</p>
+    <div class="stage"><div class="chip"><span class="icon"></span><span class="label"></span><span class="names"></span><span class="tag-think" hidden>思考</span><div class="strip"></div></div><span class="stats"></span></div>`;
+  document.getElementById('grid').append(card);
+  return { o, chip: card.querySelector('.chip'), strip: card.querySelector('.strip'), icon: card.querySelector('.icon'),
+    label: card.querySelector('.label'), names: card.querySelector('.names'), think: card.querySelector('.tag-think'), stats: card.querySelector('.stats') };
+});
+function paintChip(c, vis, T, live) {
+  c.chip.classList.toggle('live', live);
+  const iconKind = live ? 'spin' : 'caret';
+  if (c.icon.dataset.kind !== iconKind) { c.icon.dataset.kind = iconKind; c.icon.innerHTML = live ? '<span class="spin" style="display:block"></span>' : CARET; }
+  c.label.textContent = `运行了 ${vis.length} 个命令`;
+  const names = [...new Set(vis.map((t) => t.name))];
+  c.names.textContent = names.length ? `· ${names.slice(0, 3).join(' · ')}${names.length > 3 ? ` +${names.length - 3}` : ''}` : '';
+  c.think.hidden = live;
+  c.stats.innerHTML = live ? `<span>${fmtDur(T, true)}</span><span class="tok">↑ ${(T * 0.06 / 1000).toFixed(1)}k tok</span>` : '';
+}
+
+// ---------------- 播放 ----------------
+let scenario = 'mixed', speed = 2, startedAt = performance.now(), offset = 0;
+function reset(jumpToEnd) {
+  for (const c of cards) c.strip.replaceChildren();
+  startedAt = performance.now();
+  offset = jumpToEnd ? SCENARIOS[scenario].total + 1000 : SCENARIOS[scenario].startAt ?? 0;
+}
+function frame(now) {
+  const sc = SCENARIOS[scenario];
+  const T = Math.min(sc.total, offset + (now - startedAt) * speed);
+  const live = offset + (now - startedAt) * speed < sc.total + 300;
+  const vis = sc.tools.filter((t) => t.start <= T).map((t) => ({ ...t, running: t.end > T, dur: Math.min(t.end, T) - t.start }));
+  for (const c of cards) { paintChip(c, vis, T, live); RENDER[c.o.id](c.strip, vis, T, live); }
+  requestAnimationFrame(frame);
+}
+function pressed(group, btn) { for (const b of group.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn)); }
+document.getElementById('scenarios').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; scenario = b.dataset.s; pressed(e.currentTarget, b); reset(false);
+});
+document.getElementById('speeds').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const now = performance.now(); offset += (now - startedAt) * speed; startedAt = now;
+  speed = Number(b.dataset.v); pressed(e.currentTarget, b);
+});
+document.getElementById('replay').onclick = () => reset(false);
+document.getElementById('end').onclick = () => reset(true);
+document.getElementById('theme').onclick = () => document.documentElement.classList.toggle('dark');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

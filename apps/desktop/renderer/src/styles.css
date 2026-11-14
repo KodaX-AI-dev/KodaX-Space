@@ -1846,40 +1846,66 @@ html:not(.q-minimal) .tool-pulse-count {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.tool-pulse-beats {
+/* 分类计数：图标 + 次数 + 该类总耗时。读取用中性色（info 蓝与 run 天蓝在暗色下分不清）。 */
+.tool-pulse-tallies {
   display: inline-flex;
   flex-shrink: 0;
-  align-items: flex-end;
-  gap: 2px;
-  height: 16px;
+  align-items: center;
+  gap: 10px;
   margin-left: 2px;
   padding-left: 7px;
   border-left: 1px solid rgb(var(--border-default) / 0.8);
+  font-variant-numeric: tabular-nums;
 }
-.tool-pulse-beat {
-  flex: 0 0 3px;
-  border-radius: 1px;
-  transform-origin: bottom;
-  background: rgb(var(--fg-muted) / 0.85);
+.tool-pulse-tally {
+  --tally: var(--fg-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: rgb(var(--tally));
 }
-.tool-pulse-beat.tone-info {
-  background: rgb(var(--info) / 0.85);
+.tool-pulse-tally.fam-edit {
+  --tally: var(--accent);
 }
-.tool-pulse-beat.tone-accent {
-  background: rgb(var(--accent) / 0.85);
+.tool-pulse-tally.fam-run {
+  --tally: var(--run);
 }
-.tool-pulse-beat.tone-run {
-  background: rgb(var(--run) / 0.85);
+.tool-pulse-tally.fam-other {
+  --tally: var(--fg-faint);
 }
-html:not(.q-minimal) .tool-pulse-chip.is-live .tool-pulse-beat {
-  animation: ks-tool-pulse-beat 320ms var(--ease-overshoot) both;
+.tool-pulse-tally.fam-fail {
+  --tally: var(--danger);
 }
-@keyframes ks-tool-pulse-beat {
-  from {
-    transform: scaleY(0);
+.tool-pulse-tally-icon {
+  width: 12px;
+  height: 12px;
+}
+.tool-pulse-tally-count {
+  display: inline-block;
+  font-weight: 500;
+}
+.tool-pulse-tally-time {
+  margin-left: 2px;
+  color: rgb(var(--fg-faint));
+  transition: color var(--motion-normal) var(--ease-expo);
+}
+.tool-pulse-tally.is-running .tool-pulse-tally-time {
+  color: rgb(var(--tally));
+}
+html:not(.q-minimal) .tool-pulse-tally.is-running .tool-pulse-tally-icon {
+  animation: ks-tool-pulse-breathe 1s ease-in-out infinite;
+}
+html:not(.q-minimal) .tool-pulse-chip.is-live .tool-pulse-tally-count {
+  animation: ks-tool-pulse-bump 300ms var(--ease-overshoot);
+}
+@keyframes ks-tool-pulse-breathe {
+  50% {
+    opacity: 0.4;
   }
-  to {
-    transform: scaleY(1);
+}
+@keyframes ks-tool-pulse-bump {
+  40% {
+    transform: translateY(-2px) scale(1.12);
   }
 }
 .tool-pulse-feed {
@@ -2372,7 +2398,9 @@ html:not(.q-minimal) .collapse-track {
   .tool-pulse-chip.is-live::after,
   .tool-pulse-spin,
   .tool-pulse-count,
-  .tool-pulse-beat,
+  .tool-pulse-tally-icon,
+  .tool-pulse-tally-count,
+  .tool-pulse-tally-time,
   .tool-pulse-think,
   .tool-pulse-caret,
   .tool-pulse-row,

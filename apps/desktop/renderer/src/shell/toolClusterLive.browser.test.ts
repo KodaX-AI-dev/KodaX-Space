@@ -3,7 +3,7 @@ import test, { type TestContext } from 'node:test';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import { chromium } from 'playwright';
+import { chromium, type Locator } from 'playwright';
 
 const fixture = `
 import React from 'react';import{createRoot}from'react-dom/client';
@@ -31,6 +31,19 @@ useAppStore.setState({currentSessionId:'s',currentProjectPath:'/project',session
 createRoot(document.getElementById('root')).render(<I18nProvider><ConversationStreamV2/></I18nProvider>);
 window.settle=()=>new Promise(resolve=>{let frames=0;const tick=()=>++frames<6?requestAnimationFrame(tick):resolve();requestAnimationFrame(tick)});
 `;
+
+async function tallies(cluster: Locator): Promise<string[]> {
+  return cluster
+    .getByTestId('tool-cluster-tallies')
+    .locator('[data-family]')
+    .evaluateAll((nodes) =>
+      nodes.map(
+        (node) =>
+          `${node.getAttribute('data-family')} ${node.querySelector('b')?.textContent}` +
+          (node.classList.contains('is-running') ? ' running' : ''),
+      ),
+    );
+}
 
 async function openConversation(t: TestContext) {
   const bundle = await build({
@@ -79,7 +92,7 @@ async function openConversation(t: TestContext) {
 }
 
 test(
-  'the live tool group shows its action feed, beats and stats, then settles to the frozen beats',
+  'the live tool group shows its action feed, family tallies and stats, then keeps the tallies',
   { skip: !existsSync(chromium.executablePath()) },
   async (t) => {
     const { page, errors } = await openConversation(t);
@@ -98,7 +111,11 @@ test(
       'npm test',
     ]);
     assert.equal(await rows.last().getAttribute('class'), 'tool-pulse-row is-running');
-    assert.equal(await cluster.getByTestId('tool-cluster-beats').locator('i').count(), 2);
+    assert.deepEqual(await tallies(cluster), ['read 2', 'run 1 running']);
+    assert.match(
+      (await cluster.locator('[data-family="run"] .tool-pulse-tally-time').textContent()) ?? '',
+      /^\d+s$/,
+    );
     assert.match(
       (await cluster.getByTestId('tool-cluster-live-stats').textContent()) ?? '',
       /\d+s.*tok/,
@@ -111,13 +128,13 @@ test(
       .locator('.tool-pulse-think.is-on')
       .getByText('now checking the failing case')
       .waitFor();
-    assert.equal(await cluster.getByTestId('tool-cluster-beats').locator('i').count(), 3);
+    assert.deepEqual(await tallies(cluster), ['read 2', 'run 1']);
 
     await page.evaluate('window.stream(false);window.settle()');
     // The feed collapses (kept mounted for the close transition) out of the a11y tree.
     await cluster.locator('[aria-hidden="true"] [data-testid="tool-cluster-live-feed"]').waitFor();
     assert.equal(await cluster.getByTestId('tool-cluster-live-stats').count(), 0);
-    assert.equal(await cluster.getByTestId('tool-cluster-beats').locator('i').count(), 3);
+    assert.deepEqual(await tallies(cluster), ['read 2', 'run 1']);
     assert.deepEqual(errors, []);
   },
 );

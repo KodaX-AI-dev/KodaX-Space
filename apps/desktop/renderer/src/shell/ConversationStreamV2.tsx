@@ -71,8 +71,7 @@ import {
 import { AskUserInlineStack } from '../features/ask-user/AskUserInline.js';
 import { EASE_EXPO } from '../lib/motion.js';
 import {
-  ClusterBeats,
-  formatPulseDuration,
+  ClusterTallies,
   formatPulseTokens,
   LiveThinkingLine,
   LiveToolFeed,
@@ -82,9 +81,10 @@ import {
 import {
   clusterOutputTokens,
   clusterStartedAt,
+  familyTallies,
+  formatPulseDuration,
   liveToolRows,
   thinkingTail,
-  toolBeats,
 } from './toolClusterPulse.js';
 
 // **稳定空数组**：useAppStore selector 里返回 `?? []` literal 会每次 render 创建新引用，
@@ -3881,7 +3881,7 @@ function ToolCluster({
               {t('conversation.runningTool', { tool: running.toolName })}
             </span>
           )}
-          <ClusterBeats beats={toolBeats(allTools)} />
+          <ClusterTallies tallies={familyTallies(allTools, now)} live={live} />
         </button>
         {live && (
           <span className="tool-pulse-stats" data-testid="tool-cluster-live-stats">

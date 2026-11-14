@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  BEAT_LIMIT,
   clusterOutputTokens,
   clusterStartedAt,
+  familyTallies,
+  formatPulseDuration,
   liveToolRows,
   thinkingTail,
-  toolBeats,
   toolTarget,
   type PulseTool,
 } from './toolClusterPulse.js';
@@ -18,37 +18,55 @@ const tool = (id: string, patch: Partial<PulseTool> = {}): PulseTool => ({
   ...patch,
 });
 
-test('beats keep only the latest finished tools and skip running ones', () => {
-  const tools = [
-    ...Array.from({ length: BEAT_LIMIT + 3 }, (_, index) => tool(`t${index}`)),
-    tool('live', { status: 'running' }),
-  ];
-  const beats = toolBeats(tools);
-  assert.equal(beats.length, BEAT_LIMIT);
-  assert.equal(beats[0]?.id, 't3');
-  assert.equal(beats.at(-1)?.id, `t${BEAT_LIMIT + 2}`);
-});
-
-test('beat tone follows the tool family and height follows the measured duration', () => {
-  const [read, edit, bash, other, quick, slow, untimed] = toolBeats([
-    tool('read', { toolName: 'grep' }),
-    tool('edit', { toolName: 'multi_edit' }),
+test('tallies count each tool family in a fixed order, with failures counted apart', () => {
+  const tallies = familyTallies([
     tool('bash', { toolName: 'bash' }),
-    tool('other', { toolName: 'ask_user' }),
-    tool('quick', { startedAt: 0, endedAt: 50 }),
-    tool('slow', { startedAt: 0, endedAt: 60_000 }),
-    tool('untimed'),
+    tool('grep', { toolName: 'grep' }),
+    tool('ask', { toolName: 'ask_user' }),
+    tool('edit', { toolName: 'multi_edit' }),
+    tool('read'),
+    tool('test', { toolName: 'bash', failed: true }),
   ]);
   assert.deepEqual(
-    [read, edit, bash, other].map((beat) => beat?.tone),
-    ['info', 'accent', 'run', 'muted'],
+    tallies.map((tally) => [tally.family, tally.count]),
+    [
+      ['read', 2],
+      ['edit', 1],
+      ['run', 1],
+      ['other', 1],
+      ['fail', 1],
+    ],
   );
-  assert.ok(quick && slow && untimed);
-  assert.ok(quick.height < untimed.height && untimed.height < slow.height);
-  assert.equal(
-    slow.height,
-    toolBeats([tool('x', { startedAt: 0, endedAt: 3_600_000 })])[0]?.height,
-  );
+});
+
+test('a tally sums its measured time and the running tool keeps counting up', () => {
+  const tools = [
+    tool('a', { startedAt: 0, endedAt: 300 }),
+    tool('b', { startedAt: 400, endedAt: 1_000 }),
+    tool('test', { toolName: 'bash', status: 'running', startedAt: 1_000 }),
+  ];
+  const [read, run] = familyTallies(tools, 4_000);
+  assert.deepEqual(read, { family: 'read', count: 2, durationMs: 900, running: false });
+  assert.deepEqual(run, { family: 'run', count: 1, durationMs: 3_000, running: true });
+  assert.equal(familyTallies(tools, 9_000)[1]?.durationMs, 8_000);
+});
+
+test('a family without any timing has no duration rather than a fake zero', () => {
+  assert.deepEqual(familyTallies([tool('legacy')]), [{ family: 'read', count: 1, running: false }]);
+});
+
+test('durations use at most two units, plus seconds while an hour-long tool is running', () => {
+  const cases: [number, boolean, string][] = [
+    [2_440, false, '2.4s'],
+    [2_440, true, '2s'],
+    [42_900, false, '42s'],
+    [187_000, true, '3m07s'],
+    [3_907_000, false, '1h05m'],
+    [3_907_000, true, '1h05m07s'],
+  ];
+  for (const [ms, running, expected] of cases) {
+    assert.equal(formatPulseDuration(ms, running), expected, `${ms} ${running}`);
+  }
 });
 
 test('live rows are the three visible tools plus the one leaving, with target and duration', () => {
