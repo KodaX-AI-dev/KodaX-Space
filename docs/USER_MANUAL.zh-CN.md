@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树（`0.1.47-alpha.5` 候选）的 Registry SDK `0.7.97-beta.9` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树（`0.1.47-beta.1` 候选）的 Registry SDK `0.7.97-beta.10` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。beta.10 把一起回答的多条排队输入合并为一条 canonical 用户消息（`inputIds` 记名），Host 重启不再重复执行已合并输入。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -155,6 +155,8 @@ _图 1：已打开示例项目但尚未创建会话时的 Coder 工作台。实�
 
 如果后台 Session 正在等待权限或 ask_user 回答，左侧栏会显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 问题以该 Session 对话流尾部的聚焦提问卡呈现（v0.1.44 之前的全屏模态已移除），全部待答卡并存可答，composer 上方的召回停靠条显示待答计数并可定位闪光到队首卡。请求仍保存在全局耐久队列中，切换 Session 不会丢失或误消费。
 
+左侧栏的筛选/分组/排序菜单已被一个“显示已归档会话”开关替代，开启后归档会话以变暗的行显示。项目保持加入顺序（新项目排在末尾）直到被拖动，拖拽后的顺序保存在 projects.json，开发版与打包版共享同一顺序；会话先按置顶、再按最近活动排序。拖动项目时会预览落点，其他项目让位，`Escape` 取消。
+
 v0.1.44 还把需要注意的**唯一 Session 数**同步到操作系统原生应用图标：Windows 任务栏与托盘、macOS Dock，以及受桌面环境支持的 Linux launcher。同一 Session 即使同时有未读结果、权限请求和 AskUser，也只计一次。聚焦并查看该 Session 会清除未读结果；权限或 AskUser 只有在实际解决/取消后才退出计数。不支持数字角标的 Linux 桌面会安全忽略，不影响任务。
 
 **系统通知与 Mac 角标**：设置中可以开启“后台会话完成时发送系统通知”。它仅提醒运行至少一分钟、且完成时 Space 不在前台的实时任务；历史重放、取消和前台短任务不新增系统提醒。点击“测试通知”可检查原生通知是否被系统接收，测试不会自动开启完成通知，也不调用模型。系统接收不保证出现横幅或声音，仍由通知权限及专注模式决定。
@@ -213,6 +215,10 @@ macOS 请在“系统设置 → 通知 → KodaX Space”允许通知并开启�
 侧栏项目和会话重命名时，Enter 或移开焦点保存一次，Escape 取消；输入法选词确认不会提前保存。保存被拒绝时保留原名称并显示错误提示，右键菜单按 Escape 返回触发位置。
 
 Ctrl/Cmd+F 默认查找“已加载内容”，包含当前已显示的实时文字，不切换历史来源；零匹配时可显式“搜索已保存会话”。保存检索不包含尚未保存的实时输出，也不将相关结果条数当作全文出现次数。点击保存结果会优先定位到对话上下文，无法定位时提供原文；也可单独“查看原文”。“返回结果”恢复原阅读页、查询和结果焦点；定位和恢复位置不会被当成用户翻页操作。
+
+Run 工作时，对话流尾部的实时工具组显示正在做什么：按工具族（读、改、运行、其他、失败）在标签上显示图标、调用次数与累计耗时，最近三个操作带目标和时长滚动，模型思考时显示最新一行 thinking；等待审批的工具显示手势图标和“等待审批”，以错误结果结束的工具卡带红色 failed 徽标。Run 结束后工具组保留各族计数、总时间和输出 token。Run 的 spinner 固定显示在 composer 上方整轮可见：实时工具组展示工作期间，spinner 收起动画和文字，只保留已用时间、步骤、活动 todo 与 ↑输入（含缓存）/↓输出 token；发送中、排队、等待回答、等待子 Agent、压缩和停止等阶段恢复 comet 与文字说明。主 Agent 等待子 Agent 时，spinner 附加“Agents working: N”和每个运行中子 Agent 的一行实时进度（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失。动画跟随视觉质量设置和系统减少动态效果偏好。
+
+长会话默认只挂载视口附近的消息（F144 窗口化）：无论加载了多少历史，滚动、加载更早或更新页、跳到最新消息都保持流畅；搜索和问题轨跳转即时定位，展开行与入口提示在重新挂载后保留。
 
 - **Project**：本地工作目录，也是文件工具的主要边界。
 - **Session**：围绕一个项目持续进行的对话，保存 transcript 和上下文。
@@ -371,7 +377,7 @@ host 中的变量值后，需要安全重启已连接的长驻 daemon。CLI 可�
 
 权限和 AskUser 请求按 Session 归属：权限 modal 只代表当前可见 Session；ask_user 提问卡渲染在该 Session 自己的对话流尾部，每个 reqId 独立结算，互不误答。后台 Session 的请求会留在耐久队列并在左侧栏显示等待标记；切换到对应 Session 后再处理。这样可以避免一个后台任务的确认盖住另一个正在阅读的会话。
 
-alpha.10 接入后的普通提问默认无限等待，不自动提交默认答案。点击“跳过”或按 Esc 返回未作答，任务可继续；Stop 才中断对应任务。Host 显式配置的提问期限到达时同样返回未作答。权限拒绝和授权保护仍独立生效。
+alpha.10 接入后的普通提问默认无限等待，不自动提交默认答案。点击“跳过”或按 Esc 返回未作答，任务可继续；Stop 才中断对应任务。Host 显式配置的提问期限到达时同样返回未作答。权限拒绝和授权保护仍独立生效。多问题提问中的“跳过 (Esc)”只跳过当前问题：已作答的问题仍会发送给 agent，只有全部问题都未作答时这张卡才算跳过。
 
 扩展（`tool:before`）可以要求确认：审批卡逐条显示“扩展 X 要求确认：原因”，只能允许一次或拒绝；即使 Space 同时判定该操作危险，也不会覆盖扩展给出的原因。
 
@@ -400,7 +406,8 @@ PowerShell 的 `-Path` 支持 `[...]` 通配符。最新版 KodaX 会把这类�
 - 项目外文件以受控文件引用处理，不会自动变成项目文件。
 - PDF、DOCX、XLS/XLSX 和文本/代码文件可在 Preview 查看；大文件受大小和单元格数量限制。
 - 运行中普通发送使用 `interruptInput:1`：Runtime 返回公开 `inputId`，并在下一个安全 Runner 边界按 FIFO 把它作为真实用户消息交给当前 Run；`Ctrl/Cmd+Enter` 明确使用 after-turn，在当前 turn 后创建后续执行。
-- interrupt 真正进入 transcript 后，黄色排队气泡由 canonical 用户消息替换。若最终安全窗口已经关闭，发送会被拒绝并恢复原草稿；若极端终态中已接受但仍未交付，Space 会保留红色“未送达”气泡和复制重试提示，而不是永久显示排队中。
+- interrupt 真正进入 transcript 后，黄色排队气泡由 canonical 用户消息替换。排队中的中断消息（steer）在“等待安全插入点”期间可点“取回消息”：文字回到 composer 草稿（已有草稿时空一行分隔），气泡移除；带图片的消息保留撤回气泡，因为图片需要重新添加。安全点已被认领后取回会明确失败。若最终安全窗口已经关闭，发送会被拒绝并恢复原草稿；若极端终态中已接受但仍未交付，Space 会保留红色“未送达”气泡和复制重试提示，而不是永久显示排队中。
+- 一起被回答的多条排队输入显示为一条合并后的用户消息（SDK beta.10，每条原始输入以 `inputIds` 记名）；Host 重启不会把已合并的输入再执行一遍，也不会重新排队。
 - 若 Runtime 无法持久化 durable `run.input.delivered` 事件，该 input 仍保持 queued，发送调用返回错误并由 Space 恢复草稿；Runtime 只记录不含用户输入正文的有界 `runtime.warning`，不能把这次失败当作已送达。
 - 停止任务会清理不应继续的后续提示；不要把 queue 气泡是否消失当作唯一交付依据，排障时同时记录 `sessionId`、`runId` 和 `inputId`。
 
