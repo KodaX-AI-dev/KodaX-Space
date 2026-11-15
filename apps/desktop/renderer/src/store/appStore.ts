@@ -102,6 +102,7 @@ import type {
 } from './transcriptTypes.js';
 export type { UserImageAttachment, UserMessage, QueuedUserMessage } from './transcriptTypes.js';
 import { pushToast, useToastStore } from './toastStore.js';
+import { mergeRestoredDraft } from './composerRestore.js';
 import { translateMessage } from '../i18n/I18nProvider.js';
 import { isCancelledSessionError } from '../features/session/sessionError.js';
 
@@ -566,6 +567,8 @@ interface AppState {
    * runId 相同视为已看过；新一轮 failed/interrupted 的 runId 不同，红点重新亮起。
    */
   errorSeenRunIdBySession: Readonly<Record<string, string>>;
+  /** Text taken back from the queue, waiting for that session's composer to pick it up. */
+  composerRestoreBySession: Readonly<Record<string, string>>;
   /** All terminal Runtime Runs acknowledged while visiting a Session; bounded per Session. */
   errorSeenRunIdsBySession: Readonly<Record<string, readonly string[]>>;
   /**
@@ -955,6 +958,17 @@ interface AppState {
   /** Settle and hand display to the SDK view for every input the product view now carries. */
   observeProductInputs(sessionId: string, items: readonly SessionProductItem[]): void;
   /** Record the exact Runtime Run admitted by session.send, independent of transcript rows. */
+  /**
+   * The Host returned a queued input: its text goes back to the composer. Images cannot be
+   * re-attached from display capabilities, so an input with images stays as a withdrawn bubble.
+   */
+  takeBackQueuedInput(
+    sessionId: string,
+    localId: string,
+    original: { readonly text: string; readonly attachments: readonly UserImageAttachment[] },
+  ): void;
+  /** Returns and clears the text waiting for this session's composer. */
+  consumeComposerRestore(sessionId: string): string | undefined;
   acknowledgePendingSendRun(sessionId: string, runId: string, expectedGeneration?: number): void;
   /** Bind the exact optimistic row to the fresh Runtime Run acknowledged by session.send. */
   bindUserMessageRuntimeRun(sessionId: string, messageId: string, runId: string): void;
@@ -6450,6 +6464,7 @@ export const useAppStore = create<AppState>((setState) => {
   return {
     projects: [],
     licenseStatus: null,
+    composerRestoreBySession: {},
     currentProjectPath: lsGet(LS_KEY_PROJECT),
     expandedProjects: readPersistedExpandedProjects(),
     sessions: [],
@@ -7013,6 +7028,55 @@ export const useAppStore = create<AppState>((setState) => {
         if (!changed) return state;
         const updatedUsers = nextUserBucket.filter(
           (message) => message.operationId === operationId,
+    takeBackQueuedInput: (sessionId, localId, original) => {
+      const hasImages = original.attachments.length > 0;
+      // '(image)' is the prompt the composer sends for an image-only input; it is not user text.
+      const text = hasImages && original.text === '(image)' ? '' : original.text;
+      set((state) => {
+        const queued = state.queuedUserMessagesBySession[sessionId] ?? [];
+        const nextQueued = hasImages
+          ? queued.map((item) =>
+              item.id === localId
+                ? {
+                    ...item,
+                    content: original.text,
+                    matchContent: original.text,
+                    attachments: original.attachments,
+                    admissionError: undefined,
+                    status: 'failed' as const,
+                    failureReason: undefined,
+                    withdrawn: true as const,
+                  }
+                : item,
+            )
+          : queued.filter((item) => item.id !== localId);
+        const waiting = state.composerRestoreBySession[sessionId];
+        return {
+          queuedUserMessagesBySession: {
+            ...state.queuedUserMessagesBySession,
+            [sessionId]: nextQueued,
+          },
+          ...(text === ''
+            ? {}
+            : {
+                composerRestoreBySession: {
+                  ...state.composerRestoreBySession,
+                  [sessionId]: waiting === undefined ? text : mergeRestoredDraft(waiting, text),
+                },
+              }),
+        };
+      });
+    },
+    consumeComposerRestore: (sessionId) => {
+      let text: string | undefined;
+      set((state) => {
+        text = state.composerRestoreBySession[sessionId];
+        if (text === undefined) return {};
+        const { [sessionId]: _taken, ...rest } = state.composerRestoreBySession;
+        return { composerRestoreBySession: rest };
+      });
+      return text;
+    },
         );
         for (const message of updatedUsers)
           updateTranscriptOwner(sessionId, message, { attachments: message.attachments });

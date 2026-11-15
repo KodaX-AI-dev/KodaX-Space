@@ -36,7 +36,8 @@ export const messages = {
     'provider.credentialReadFailed':
       'Could not read these credentials. Retry after resolving the storage problem; existing credentials have been preserved.',
     'message.queue.withdrawn': 'Withdrawn',
-    'message.queue.withdrawnDetail': 'You took back this message before delivery.',
+    'message.queue.withdrawnDetail':
+      'Taken back before delivery. Any text is back in the composer; add the images again.',
 
     'components.title': 'Connector components',
     'components.description':
@@ -3470,7 +3471,7 @@ export const messages = {
     'modelPicker.applyEffortFailed': '无法将思考强度应用到此会话，请刷新后重试。',
     'provider.credentialReadFailed': '凭证读取失败，请解决存储问题后重试，现有凭证已保留。',
     'message.queue.withdrawn': '已撤回',
-    'message.queue.withdrawnDetail': '你在消息送达前撤回了它。',
+    'message.queue.withdrawnDetail': '已在送达前撤回。图片需要重新添加，文字（如有）已放回输入框。',
 
     'components.title': '连接器组件',
     'components.description': '按需安装连接组件。安装不会连接账号，也不会授予会话访问权限。',

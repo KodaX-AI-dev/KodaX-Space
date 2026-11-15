@@ -40,6 +40,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 ### Fixed
 
 - In a multi-question ask, "Skip (Esc)" skips only the current question. The questions you answered are still sent to the agent; the ask counts as skipped only when no question was answered. Before, skipping any question dropped every earlier answer and the agent continued on its own recommendations.
+- "Take back message" on a queued message now puts its text back into the composer (after any draft already there, separated by a blank line) and removes the bubble. Before, the text stayed in a red "Withdrawn" bubble that sat at the bottom of the transcript for the rest of the session. A message with images keeps the withdrawn bubble so the images stay visible, because they have to be added again.
 - A tool call that ended with an error result shows a red "failed" badge on its card instead of "done", matching the failure tally on its group.
 - The "Return to newest messages" button no longer stays at the bottom of a conversation you have scrolled back down: after browsing saved history from the live view, scrolling down again at the end of the newest saved page returns to the live view.
 - Queued messages the assistant answers together as one turn now show as that one merged message: no leftover queued bubble per merged message, and a Host restart during that turn no longer queues them again (SDK beta.10).

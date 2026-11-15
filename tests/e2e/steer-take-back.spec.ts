@@ -28,8 +28,9 @@ test('taking back a steer input before its safe point keeps it from the model', 
     await expect(bubble).toHaveAttribute('data-status', 'queued', { timeout: 15_000 });
 
     await bubble.getByRole('button', { name: 'Take back message', exact: true }).click();
-    await expect(bubble).toContainText('Withdrawn');
-    await expect(bubble).toContainText(steer);
+    // The text goes back to the composer and the queued bubble leaves the transcript.
+    await expect(bubble).toHaveCount(0);
+    await expect(composer).toContainText(steer);
 
     provider.release('HOLD_QUEUE');
     await expect(
@@ -37,8 +38,9 @@ test('taking back a steer input before its safe point keeps it from the model', 
     ).toBeVisible({ timeout: 30_000 });
     await waitSdkIdle(space, sessionId);
     expect(provider.requests.join('\n')).not.toContain(steer);
-    // A withdrawn input stays withdrawn after the Run ends.
-    await expect(bubble).toContainText('Withdrawn');
+    // The taken-back input does not come back after the Run ends.
+    await expect(bubble).toHaveCount(0);
+    await expect(composer).toContainText(steer);
     expect(provider.errors).toEqual([]);
   } finally {
     await provider.close();

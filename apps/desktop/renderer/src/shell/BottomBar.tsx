@@ -14,6 +14,7 @@ import {
   type SessionMeta,
 } from '@kodax-space/space-ipc-schema';
 import { useAppStore, type UserImageAttachment } from '../store/appStore.js';
+import { mergeRestoredDraft } from '../store/composerRestore.js';
 import { useSurfaceStore } from '../store/surface.js';
 import { ChipBar } from './ChipBar.js';
 import { ModelEffortSelector } from './ModelEffortSelector.js';
@@ -733,6 +734,26 @@ export function BottomBar(): JSX.Element {
     window.addEventListener('kodax-space.compose-prefill', onPrefill);
     return () => window.removeEventListener('kodax-space.compose-prefill', onPrefill);
   }, [setPrompt]);
+
+  // A queued input taken back returns here; it waits in the store while another session is open.
+  const pendingRestore = useAppStore((s) =>
+    currentSessionId ? s.composerRestoreBySession[currentSessionId] : undefined,
+  );
+  useEffect(() => {
+    if (!currentSessionId || pendingRestore === undefined) return;
+    const restored = useAppStore.getState().consumeComposerRestore(currentSessionId);
+    if (restored === undefined) return;
+    const next = mergeRestoredDraft(promptRef.current, restored);
+    setPrompt(next);
+    draftRef.current = next;
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(next.length, next.length);
+      setCaret(next.length);
+    });
+  }, [currentSessionId, pendingRestore, promptRef, setPrompt]);
 
   useEffect(() => {
     return registerInsertReceiver((text) => {

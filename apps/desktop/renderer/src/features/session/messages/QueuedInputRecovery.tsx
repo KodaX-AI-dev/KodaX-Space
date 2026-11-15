@@ -30,26 +30,7 @@ export function QueuedInputRecovery({
         setError(t('message.queue.takeBackConflict'));
         return;
       }
-      const original = result.data;
-      useAppStore.setState((state) => ({
-        queuedUserMessagesBySession: {
-          ...state.queuedUserMessagesBySession,
-          [sessionId]: (state.queuedUserMessagesBySession[sessionId] ?? []).map((item) =>
-            item.id === localId
-              ? {
-                  ...item,
-                  content: original.text,
-                  matchContent: original.text,
-                  attachments: original.attachments,
-                  admissionError: undefined,
-                  status: 'failed' as const,
-                  failureReason: undefined,
-                  withdrawn: true as const,
-                }
-              : item,
-          ),
-        },
-      }));
+      useAppStore.getState().takeBackQueuedInput(sessionId, localId, result.data);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
     } finally {

@@ -26,6 +26,8 @@ test('a user-withdrawn queued input is distinct from failed delivery', () => {
       ),
     );
     assert.match(markup, /Withdrawn/);
+    // Only inputs with images stay as a bubble; the text has already gone back to the composer.
+    assert.match(markup, /add the images again/);
     assert.doesNotMatch(markup, /Not delivered|run ended before insertion/);
   });
 });

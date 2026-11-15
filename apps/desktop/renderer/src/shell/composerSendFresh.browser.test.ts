@@ -32,6 +32,7 @@ window.kodaxSpace={platform:'win32',on:()=>()=>{},invoke:async(channel,input)=>{
 }};
 useAppStore.setState({currentProjectPath:'/project',currentSessionId:'s',
  sessions:[{sessionId:'s',title:'Test',surface:'code',projectRoot:'/project'}]});
+window.store=useAppStore;
 createRoot(document.getElementById('root')).render(<I18nProvider><BottomBar/></I18nProvider>);
 `;
 
@@ -123,6 +124,42 @@ test(
     });
     await page.waitForFunction('window.sent.length === 1');
     assert.deepEqual(await page.evaluate('window.sent'), ['pasted question']);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'a queued message taken back lands in the composer after the draft already there',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, editor, errors } = await openComposer(t);
+    await editor.focus();
+    await page.keyboard.type('my draft');
+    await page.evaluate(() => {
+      const store = (
+        window as unknown as {
+          store: { setState(partial: Record<string, unknown>): void };
+        }
+      ).store;
+      // The other session's text waits until that session is open.
+      store.setState({ composerRestoreBySession: { s: 'taken back', other: 'later' } });
+    });
+    await page.waitForFunction(() =>
+      document.querySelector('[contenteditable="true"]')?.textContent?.includes('taken back'),
+    );
+    const text = await editor.evaluate((el) => (el as HTMLElement).innerText);
+    assert.match(text, /^my draft\n+taken back\n?$/);
+    assert.deepEqual(
+      await page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              store: { getState(): { composerRestoreBySession: Record<string, string> } };
+            }
+          ).store.getState().composerRestoreBySession,
+      ),
+      { other: 'later' },
+    );
     assert.deepEqual(errors, []);
   },
 );

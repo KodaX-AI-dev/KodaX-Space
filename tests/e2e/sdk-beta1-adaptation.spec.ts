@@ -419,11 +419,10 @@ test('blocked queued input is visible and taking it back preserves text beyond t
     await space.page.screenshot({ path: test.info().outputPath('blocked-queue.png') });
     await takeBack.click();
     await expect(takeBack).toHaveCount(0);
-    const retained = space.page.getByTestId('queued-user-message-bubble');
-    await expect(retained).toHaveAttribute('data-status', 'failed');
-    await expect(retained).toContainText('Withdrawn');
-    await expect(retained).not.toContainText('Not delivered');
-    await expect(retained).toContainText('_END');
+    // The full text, not the Host preview, goes back to the composer and the bubble leaves.
+    await expect(space.page.getByTestId('queued-user-message-bubble')).toHaveCount(0);
+    await expect(composer).toContainText('_END');
+    await expect(composer).toContainText('BETA1_BLOCKED_');
     expect(provider.requests.some((text) => text.includes('BETA1_BLOCKED_'))).toBe(false);
   } finally {
     provider.release('HOLD_QUEUE');
