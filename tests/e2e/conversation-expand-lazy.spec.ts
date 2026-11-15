@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -113,10 +113,6 @@ function seededExpandEvents(sessionId: string): SessionEvent[] {
     { kind: 'session_complete', sessionId },
   );
   return events;
-}
-
-function lastToolCluster(page: Page) {
-  return page.getByTestId('process-receipt-tool_cluster').last();
 }
 
 test('conversation expansion lazy-mounts hidden tool details and defers Monaco diff mount', async () => {

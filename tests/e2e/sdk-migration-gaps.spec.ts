@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { connectKodaXClient } from '@kodax-ai/kodax/client';
 import { createArtifactSdk } from '@kodax-ai/kodax/artifacts';
 import { createKodaXArtifactPort } from '@kodax-ai/kodax/artifacts/client';
@@ -159,7 +160,11 @@ test('Workflow execution and Memory management share the actual Host with anothe
     expect(Buffer.from(evidence.image.dataBase64, 'base64')).toEqual(png);
     expect(provider.requests.length).toBe(requestsBeforeArtifact);
   } finally {
-    await peer?.disconnect();
+    // A half-dead daemon socket can leave disconnect() pending forever; bounding it
+    // keeps cleanup moving so the isolated daemon's inherited launch pipes cannot
+    // hold the worker open (the observed Worker teardown timeout after a failed
+    // attempt on loaded Windows runners).
+    await Promise.race([peer?.disconnect() ?? Promise.resolve(), delay(10_000)]);
     await provider.close();
     await space.close();
   }
