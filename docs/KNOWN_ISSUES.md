@@ -33,13 +33,13 @@ Last Updated: 2026-11-15
 | 231 | Medium   | ready                                                                                                        | Linux CLI sandbox guidance omits the missing Node interpreter                                                                                                                                              | Reported 2026-10-23; CLI version unknown                                              | 2026-10-28 |
 | 232 | High     | Resolved in source                                                                                           | Startup updater downloads automatically and lacks a stable-channel guard                                                                                                                                   | Existing F022 behavior                                                                | 2026-10-28 |
 | 244 | Low      | ready                                                                                                        | Cold-open newest history read grows with Session file size                                                                                                                                                 | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4                                     | 2026-11-10 |
-| 245 | Medium   | Resolved (source; not released)                                                                              | Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize                                                                                                                    | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
-| 246 | High     | Resolved (source; not released)                                                                              | Windows Job verification failure leaves Coder unavailable without an actionable recovery flow                                                                                                              | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
-| 247 | Medium   | Resolved (source; not released)                                                                              | New-conversation task summary says Ready while the Coder backend has failed to start                                                                                                                       | Observed Space 0.1.47-alpha.5; first affected version unknown                         | 2026-11-12 |
-| 248 | High     | Resolved (source; not released)                                                                              | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret                                                                                 | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
-| 249 | Medium   | Resolved (source; not released)                                                                              | Sent prompt stays (fully or partly) in the composer when a line ends with a line break                                                                                                                     | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11             | 2026-11-13 |
-| 250 | Medium   | Resolved (source; not released)                                                                              | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                                        | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
-| 251 | Medium   | Resolved (source; not released)                                                                              | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                               | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
+| 245 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize                                                                                                                    | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
+| 246 | High     | Resolved in 0.1.47-beta.1                                                                                    | Windows Job verification failure leaves Coder unavailable without an actionable recovery flow                                                                                                              | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
+| 247 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | New-conversation task summary says Ready while the Coder backend has failed to start                                                                                                                       | Observed Space 0.1.47-alpha.5; first affected version unknown                         | 2026-11-12 |
+| 248 | High     | Resolved in 0.1.47-beta.1                                                                                    | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret                                                                                 | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
+| 249 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Sent prompt stays (fully or partly) in the composer when a line ends with a line break                                                                                                                     | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11             | 2026-11-13 |
+| 250 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                                        | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
+| 251 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                               | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
 | 252 | Low      | Ready (SDK fix)                                                                                              | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                                         | SDK product view (failure kept only in Run status); observed with SDK 0.7.97-beta.10  | 2026-11-15 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
@@ -2323,7 +2323,7 @@ until that evidence exists.
 ## Issue 245 — Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize
 
 - **Priority**: Medium.
-- **Status**: Resolved in source; Windows packaged regression passed. Not released.
+- **Status**: Resolved; released in 0.1.47-beta.1. Windows packaged regression passed.
 - **Introduced**: Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4, Windows x64; first affected version unknown.
 - **Created**: 2026-11-12.
 
@@ -2419,7 +2419,7 @@ no customer recovery or release is claimed by these export tests.
 ## Issue 246 — Windows Job verification failure leaves Coder unavailable without an actionable recovery flow
 
 - **Priority**: High.
-- **Status**: Resolved in source, not released. Native membership verification and verified cleanup/retry replace the failing startup path. The reason the original PowerShell subprocess exceeded five seconds remains unknown.
+- **Status**: Resolved; released in 0.1.47-beta.1. Native membership verification and verified cleanup/retry replace the failing startup path. The reason the original PowerShell subprocess exceeded five seconds remains unknown.
 - **Introduced**: Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4, Windows x64; first affected version unknown.
 - **Created**: 2026-11-12.
 
@@ -2571,7 +2571,7 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
 ## Issue 247 — New-conversation task summary says Ready while the Coder backend has failed to start
 
 - **Priority**: Medium.
-- **Status**: Resolved in source, not released; confirmed by unit and real Electron failure/recovery regressions.
+- **Status**: Resolved; released in 0.1.47-beta.1; confirmed by unit and real Electron failure/recovery regressions.
 - **Introduced**: Observed Space 0.1.47-alpha.5; first affected version unknown.
 - **Created**: 2026-11-12.
 - **Original problem**: a selected project with a new conversation shows “就绪” directly above
@@ -2594,7 +2594,7 @@ Isolated probes retained under `artifacts/diagnostics/startup-recovery-20261112/
 ## Issue 248 — Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret
 
 - **Priority**: High.
-- **Status**: Resolved in source, not released; unit-tested only, not yet verified on Linux/Kylin.
+- **Status**: Resolved; released in 0.1.47-beta.1; unit-tested only, not yet verified on Linux/Kylin.
 - **Introduced**: Space 0.1.47-alpha.5, which moved the Runtime client secret from the OS keychain
   to `auth.json` and imports the 0.1.46 secret on first use. Reported on Kylin V10 SP1
   (kernel 5.15.0-52) upgrading 0.1.46 → 0.1.47-alpha.5.
@@ -2666,7 +2666,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
 ## Issue 249 — Sent prompt stays (fully or partly) in the composer when a line ends with a line break
 
 - **Priority**: Medium.
-- **Status**: Resolved in source, not released.
+- **Status**: Resolved; released in 0.1.47-beta.1.
 - **Introduced**: Space 0.1.47-alpha.5, the first release with the Lexical composer (`2e8bbd7e`).
   Reported on Windows 11; not platform specific.
 - **Created**: 2026-11-13.
@@ -2688,7 +2688,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
   child index: a target at or before it becomes `(block, index, 'element')`, and a target at the
   block end becomes `(block, childrenSize, 'element')`. Rebuilding the root on clear was tried and
   rejected: it dropped the selection and broke later typing and paste.
-- **Fixed**: source after 0.1.47-alpha.5 (not released).
+- **Fixed**: source after 0.1.47-alpha.5; released in 0.1.47-beta.1.
 - **Files changed**: `apps/desktop/renderer/src/shell/composerEditorProjection.ts`,
   `ComposerEditor.test.ts`.
 - **Tests added**: browser test "composer clears every line on send and maps offsets at trailing
@@ -2698,7 +2698,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
 ## Issue 250 — Quit with nothing running fails while a `kodax` CLI shares the Host
 
 - **Priority**: Medium.
-- **Status**: Resolved in source, not released.
+- **Status**: Resolved; released in 0.1.47-beta.1.
 - **Introduced**: source after 0.1.47-alpha.5, when Space and the CLI began sharing the `default`
   Host (`4a28edda`, KodaX ADR-075). Observed in a local `out/win-unpacked` build with SDK
   0.7.97-beta.8 on Windows 11.
@@ -2715,7 +2715,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
   client's exit (`shutdownHost: false`); no Host stop is attempted. A blocked settlement now
   returns its own message for the recovery error. The forced-exit path still asks to stop an
   idle Host. KodaX Issue 410 makes the SDK refuse such a stop at once when a peer is connected.
-- **Fixed**: source after 0.1.47-alpha.5 (not released). The SDK half (KodaX Issue 410) ships in
+- **Fixed**: source after 0.1.47-alpha.5; released in 0.1.47-beta.1. The SDK half (KodaX Issue 410) ships in
   Registry SDK 0.7.97-beta.9, which Space pins since 2026-11-14.
 - **Files changed**: `apps/desktop/electron/kodax/runtime-host-adapter.ts`,
   `apps/desktop/electron/main.ts`, `apps/desktop/electron/test/runtime-host-adapter.test.ts`.
@@ -2725,7 +2725,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
 ## Issue 251 — A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears
 
 - **Priority**: Medium.
-- **Status**: Resolved in source, not released.
+- **Status**: Resolved; released in 0.1.47-beta.1.
 - **Introduced**: Space 0.1.47-alpha.2, when the transcript moved to the SDK product view
   (`ec154569`). Reported on Windows 11 with SDK 0.7.97-beta.9.
 - **Created**: 2026-11-14.
@@ -2742,7 +2742,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
   for every product snapshot and change, and the projection keeps the local bubble until that flag
   is set. Acceptance still sets `sendAdmissionSettled` as before. An observed input that later
   leaves the bounded product window does not come back as a local bubble.
-- **Fixed**: source after 0.1.47-alpha.5 (not released), commit `e73c6374`.
+- **Fixed**: source after 0.1.47-alpha.5; released in 0.1.47-beta.1, commit `e73c6374`.
 - **Files changed**: `apps/desktop/renderer/src/App.tsx`, `store/appStore.ts`,
   `store/transcriptTypes.ts`, `features/session/productConversation.ts`,
   `productConversation.test.ts`.
