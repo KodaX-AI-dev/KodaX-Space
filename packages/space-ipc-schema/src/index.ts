@@ -299,6 +299,8 @@ export {
   agentActorTreeSnapshotSchema,
   agentActorSnapshotChannel,
   agentActorChangedChannel,
+  agentChildLiveChangedChannel,
+  type AgentChildLiveT,
   externalAgentStatusChannel,
   externalAgentRegistrationListChannel,
   externalAgentReferenceUpsertChannel,

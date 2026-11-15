@@ -10,7 +10,7 @@ import React from 'react';import{createRoot}from'react-dom/client';
 import{ConversationStreamV2}from'./ConversationStreamV2.tsx';
 import{I18nProvider}from'../i18n/I18nProvider.tsx';
 import{useAppStore}from'../store/appStore.ts';
-import{replaceProductSessionView}from'../store/productSessionView.ts';
+import{replaceProductSessionView,installProductHistory}from'../store/productSessionView.ts';
 window.kodaxSpace={platform:'win32',on:()=>()=>{},invoke:async()=>({ok:false,error:{message:'Unused channel'}})};
 let revision=0;const t0=Date.now()-5000;
 const tool=(id,name,input,status,start,end)=>({id,type:'tool',timestamp:t0+start,text:'',
@@ -27,6 +27,14 @@ window.between=()=>[...base,tool('bash','bash',{command:'npm test'},'success',15
 window.thinkingOnly=()=>[base[0],{id:'think-0',type:'thinking',outputState:'draft',text:'scan the repo\\nplanning the next step',timestamp:t0+10}];
 window.show=rows=>replaceProductSessionView({sessionId:'s',runtimeId:'r',revision:++revision,items:rows});
 window.stream=on=>useAppStore.setState({pendingSendBySession:on?{s:true}:{}});
+window.olderPage=rows=>installProductHistory('s',rows,true);
+window.queue=()=>useAppStore.setState({queuedUserMessagesBySession:{s:[{id:'q',content:'next',matchContent:'next',queueMode:'after-turn',status:'queued'}]}});
+window.local=()=>useAppStore.setState({userMessagesBySession:{s:[{id:'u_local',operationId:'op',content:'go',sentAt:t0}]}});
+window.answer={id:'answer',type:'assistant',outputState:'draft',text:'the answer',timestamp:t0+4200};
+window.say={id:'say',type:'assistant',text:'Let me check',timestamp:t0+50};
+window.readTool=tool('read','read',{file_path:'src/a.ts'},'success',100,150);
+window.mark=text=>{window.marked=[...document.querySelectorAll('[data-testid="conversation-render-row"]')].find(row=>row.textContent.includes(text));return Boolean(window.marked)};
+window.markedAlive=()=>document.contains(window.marked);
 useAppStore.setState({currentSessionId:'s',currentProjectPath:'/project',sessions:[{sessionId:'s',title:'Live',surface:'code',projectRoot:'/project',createdAt:t0,lastActivityAt:t0}]});
 createRoot(document.getElementById('root')).render(<I18nProvider><ConversationStreamV2/></I18nProvider>);
 window.settle=()=>new Promise(resolve=>{let frames=0;const tick=()=>++frames<6?requestAnimationFrame(tick):resolve();requestAnimationFrame(tick)});
@@ -154,6 +162,82 @@ test(
         document.querySelector('[data-testid="process-receipt-thinking"] .tool-pulse-think') ===
         null,
     );
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'rows keep their DOM through the turn: thought to tools to answer, and text gaining a tool',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate(
+      "window.stream(true);window.show([window.running()[0],{...window.running()[1],outputState:'draft'}]);window.settle()",
+    );
+    assert.equal(await page.evaluate('window.mark("look around")'), true);
+    for (const step of [
+      'window.show(window.running())',
+      'window.show(window.between())',
+      'window.show([...window.between(),window.answer])',
+    ]) {
+      await page.evaluate(`${step};window.settle()`);
+      assert.equal(await page.evaluate('window.markedAlive()'), true, step);
+    }
+    assert.equal(await page.getByTestId('process-receipt-tool_cluster').count(), 1);
+
+    await page.evaluate('window.show([window.running()[0],window.say]);window.settle()');
+    assert.equal(await page.evaluate('window.mark("Let me check")'), true);
+    await page.evaluate(
+      'window.show([window.running()[0],window.say,window.readTool]);window.settle()',
+    );
+    assert.equal(await page.evaluate('window.markedAlive()'), true);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'the live group stays live under a queued follow-up but never on an older page',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate(
+      'window.stream(true);window.show(window.running());window.queue();window.settle()',
+    );
+    const stats = page.getByTestId('tool-cluster-live-stats');
+    assert.equal(await stats.count(), 1);
+    await page.evaluate('window.olderPage(window.running());window.settle()');
+    assert.equal(await stats.count(), 0);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'the sent query keeps its bubble when the SDK view takes it over',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate('window.local();window.show([]);window.settle()');
+    assert.equal(await page.evaluate('window.mark("go")'), true);
+    await page.evaluate(
+      "window.show([{id:'sdk-u',type:'user',inputId:'op',text:'go',timestamp:window.running()[0].timestamp}]);window.settle()",
+    );
+    assert.equal(await page.getByTestId('user-message-bubble').count(), 1);
+    assert.equal(await page.evaluate('window.markedAlive()'), true);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'a failed tool reads as failed in the live feed',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate(
+      "window.stream(true);window.show([...window.running(),{...window.readTool,id:'gone',tool:{...window.readTool.tool,callId:'gone',status:'error'}}]);window.settle()",
+    );
+    const row = page.getByTestId('tool-cluster-live-row').last();
+    assert.equal(await row.getAttribute('class'), 'tool-pulse-row is-failed');
+    assert.equal(await row.locator('.tool-pulse-row-icon.is-failed').count(), 1);
     assert.deepEqual(errors, []);
   },
 );

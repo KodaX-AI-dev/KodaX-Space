@@ -177,3 +177,18 @@ export function useProductSessionTranscript(
     () => productTranscriptSnapshot(sessionId),
   );
 }
+
+/** True when the live view already holds the oldest saved history item, matched by input or output identity. */
+export function liveViewReachesHistoryStart(
+  viewItems: readonly SessionProductItem[],
+  historyItems: readonly SessionProductItem[],
+): boolean {
+  const oldest = historyItems[0];
+  if (!oldest) return false;
+  return viewItems.some(
+    (item) =>
+      item.id === oldest.id ||
+      (oldest.inputId !== undefined && item.type === oldest.type && item.inputId === oldest.inputId) ||
+      (oldest.outputId !== undefined && item.type === oldest.type && item.outputId === oldest.outputId),
+  );
+}

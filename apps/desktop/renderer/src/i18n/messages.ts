@@ -420,6 +420,7 @@ export const messages = {
     'activity.contextCapacity':
       'Waiting for context capacity ({required} needed, {available} available). Choose a larger-context model or stop.',
     'activity.verifying': 'Verifying...',
+    'activity.childAgents': 'Agents working: {count}',
 
     'openPath.linkOpenFailed': 'Could not open this link',
     'openPath.fileNotFound': 'File not found; cannot reveal it',
@@ -3824,6 +3825,7 @@ export const messages = {
     'activity.contextCapacity':
       '正在等待可用上下文（需要 {required}，可用 {available}）。请选择上下文更大的模型，或停止任务。',
     'activity.verifying': '正在验证...',
+    'activity.childAgents': '{count} 个 Agent 工作中',
 
     'openPath.linkOpenFailed': '无法打开该链接',
     'openPath.fileNotFound': '未找到该文件，无法定位',

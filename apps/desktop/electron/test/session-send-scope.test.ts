@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertSessionSendScope, runIdempotentSessionSend } from '../ipc/session.js';
+import { SendNotAdmittedError } from '../kodax/send-admission.js';
 
 const codeSession = {
   sessionId: 's_code',
@@ -102,4 +103,31 @@ test('session.send never evicts an in-flight operation at the dedupe capacity', 
 
   for (const release of releases) release();
   await Promise.all([...pending, firstRetry]);
+});
+
+test('session.send runs an exact retry again after a failure before admission', async () => {
+  const operationId = `session-send-not-admitted-${crypto.randomUUID()}`;
+  let starts = 0;
+  const send = async (): Promise<{ readonly accepted: true }> => {
+    starts += 1;
+    if (starts === 1) throw new SendNotAdmittedError(new Error('retry shortly'));
+    return { accepted: true };
+  };
+
+  await assert.rejects(runIdempotentSessionSend(operationId, 'same', send), /retry shortly/);
+  assert.deepEqual(await runIdempotentSessionSend(operationId, 'same', send), { accepted: true });
+  assert.equal(starts, 2);
+});
+
+test('session.send replays a failure whose admission is uncertain instead of resubmitting', async () => {
+  const operationId = `session-send-uncertain-${crypto.randomUUID()}`;
+  let starts = 0;
+  const send = async (): Promise<never> => {
+    starts += 1;
+    throw new Error('transport lost after submit');
+  };
+
+  await assert.rejects(runIdempotentSessionSend(operationId, 'same', send), /transport lost/);
+  await assert.rejects(runIdempotentSessionSend(operationId, 'same', send), /transport lost/);
+  assert.equal(starts, 1);
 });

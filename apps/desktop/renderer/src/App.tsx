@@ -17,6 +17,7 @@ import type {
 } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from './store/appStore.js';
 import { replaceProductSessionView } from './store/productSessionView.js';
+import { replaceChildAgentLive } from './store/childAgentLive.js';
 import { pushToast } from './store/toastStore.js';
 import { useI18n } from './i18n/I18nProvider.js';
 import { QuickAskPopover } from './features/quick-ask/QuickAskPopover.js';
@@ -711,6 +712,7 @@ export default function App(): JSX.Element {
       bridge.on('agent.actor.changed', (snapshot) => {
         replaceAgentActorSnapshot(snapshot);
       }),
+      bridge.on('agent.childLive.changed', replaceChildAgentLive),
     );
     const mountedConnection = useAppStore.getState().runtimeConnection;
     if (runtimeConnectionHasFreshLiveAuthority(mountedConnection)) {

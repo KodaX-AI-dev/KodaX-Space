@@ -26,7 +26,7 @@ export type ToolFamily = 'read' | 'edit' | 'run' | 'other' | 'fail';
 export interface FamilyTally {
   readonly family: ToolFamily;
   readonly count: number;
-  /** Summed measured time; absent when no tool of the family carries timing. */
+  /** Wall time the family was busy (parallel calls count once); absent when untimed. */
   readonly durationMs?: number;
   /** A tool of this family is still running, so its time is counting up. */
   readonly running: boolean;
@@ -36,7 +36,7 @@ export interface LiveToolRow {
   readonly id: string;
   readonly name: string;
   readonly target: string;
-  readonly status: PulseTool['status'];
+  readonly status: PulseTool['status'] | 'failed';
   readonly durationMs?: number;
 }
 
@@ -56,34 +56,64 @@ const TOOL_FAMILIES: Readonly<Record<string, ToolFamily>> = {
   str_replace: 'edit',
   insert_after_anchor: 'edit',
   bash: 'run',
+  // Script mode: a cell runs code; the calls it makes still show as their own rows.
+  script_exec: 'run',
 };
 
 const TARGET_KEYS = ['file_path', 'path', 'file', 'pattern', 'command', 'query', 'url'] as const;
 
-function durationOf(tool: PulseTool, now?: number): number | undefined {
+function intervalOf(tool: PulseTool, now?: number): [number, number] | undefined {
   if (tool.startedAt === undefined) return undefined;
   const end = tool.status === 'running' ? now : tool.endedAt;
-  return end === undefined ? undefined : Math.max(0, end - tool.startedAt);
+  return end === undefined ? undefined : [tool.startedAt, Math.max(tool.startedAt, end)];
+}
+
+function durationOf(tool: PulseTool, now?: number): number | undefined {
+  const interval = intervalOf(tool, now);
+  return interval && interval[1] - interval[0];
+}
+
+/** Length of the union of the intervals, so overlapping (parallel) calls count once. */
+function busyTime(intervals: readonly [number, number][]): number {
+  let total = 0;
+  let reach = -Infinity;
+  for (const [start, end] of [...intervals].sort((a, b) => a[0] - b[0])) {
+    if (end <= reach) continue;
+    total += end - Math.max(start, reach);
+    reach = end;
+  }
+  return total;
+}
+
+/** Script mode bridges deferred tools through tool_call({ name, input }); show the tool it calls. */
+function displayTool(tool: PulseTool): { name: string; input?: Record<string, unknown> } {
+  const bridged = tool.toolName === 'tool_call' ? tool.input : undefined;
+  if (typeof bridged?.name !== 'string') return { name: tool.toolName, input: tool.input };
+  const input = bridged.input;
+  return {
+    name: bridged.name,
+    ...(input && typeof input === 'object' && !Array.isArray(input)
+      ? { input: input as Record<string, unknown> }
+      : {}),
+  };
 }
 
 function toolFamily(tool: PulseTool): ToolFamily {
-  return tool.failed ? 'fail' : (TOOL_FAMILIES[tool.toolName] ?? 'other');
+  return tool.failed ? 'fail' : (TOOL_FAMILIES[displayTool(tool).name] ?? 'other');
 }
 
 export function familyTallies(tools: readonly PulseTool[], now?: number): FamilyTally[] {
   return FAMILY_ORDER.flatMap((family) => {
     const members = tools.filter((tool) => toolFamily(tool) === family);
     if (members.length === 0) return [];
-    const durations = members
-      .map((tool) => durationOf(tool, now))
-      .filter((value): value is number => value !== undefined);
+    const intervals = members
+      .map((tool) => intervalOf(tool, now))
+      .filter((value): value is [number, number] => value !== undefined);
     return [
       {
         family,
         count: members.length,
-        ...(durations.length > 0
-          ? { durationMs: durations.reduce((sum, value) => sum + value, 0) }
-          : {}),
+        ...(intervals.length > 0 ? { durationMs: busyTime(intervals) } : {}),
         running: members.some((tool) => tool.status === 'running'),
       },
     ];
@@ -111,20 +141,30 @@ function oneLine(text: string): string {
 
 export function toolTarget(input: Record<string, unknown> | undefined): string {
   if (!input) return '';
-  const key = TARGET_KEYS.find((candidate) => typeof input[candidate] === 'string');
-  if (!key) return '';
-  const value = oneLine(input[key] as string);
+  // A script cell is named by its first line of code.
+  const code =
+    typeof input.code === 'string' ? input.code.split('\n').map(oneLine).find(Boolean) : undefined;
+  const value =
+    code ??
+    TARGET_KEYS.map((key) => input[key])
+      .filter((candidate): candidate is string => typeof candidate === 'string')
+      .map(oneLine)
+      .find(Boolean);
+  if (!value) return '';
   return value.length > TEXT_LIMIT ? `${value.slice(0, TEXT_LIMIT)}…` : value;
 }
 
 export function liveToolRows(tools: readonly PulseTool[], now: number): LiveToolRow[] {
-  return tools.slice(-LIVE_ROW_LIMIT).map((tool) => ({
-    id: tool.id,
-    name: tool.toolName,
-    target: toolTarget(tool.input),
-    status: tool.status,
-    durationMs: durationOf(tool, now),
-  }));
+  return tools.slice(-LIVE_ROW_LIMIT).map((tool) => {
+    const shown = displayTool(tool);
+    return {
+      id: tool.id,
+      name: shown.name,
+      target: toolTarget(shown.input),
+      status: tool.failed ? 'failed' : tool.status,
+      durationMs: durationOf(tool, now),
+    };
+  });
 }
 
 export function thinkingTail(thinking: string | undefined): string {

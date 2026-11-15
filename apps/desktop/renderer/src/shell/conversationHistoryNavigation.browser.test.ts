@@ -454,3 +454,49 @@ for (const input of ['keyboard', 'touch', 'scrollbar'] as const) {
     },
   );
 }
+
+historyTest(
+  'scrolling down past the newest saved page returns to the live view instead of leaving a stale latest pill',
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    page.setDefaultTimeout(3500);
+    await page.evaluate('window.singlePage=true;window.primeLive()');
+    const stream = page.getByTestId('conversation-stream');
+    const scroller = page.getByTestId('conversation-scroll-container');
+    await stream.getByText('Live 19', { exact: true }).waitFor();
+    await page.evaluate('window.settle(48)');
+    await scroller.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.getByRole('button', { name: 'Browse history messages', exact: true }).click();
+    await waitLoaded(page, 'NEWEST0');
+    await page.getByRole('button', { name: 'Return to reading position' }).waitFor();
+    await page.evaluate('window.settle(48)');
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await scroller.hover();
+    await page.mouse.wheel(0, 300);
+    await stream.getByText('Live 19', { exact: true }).waitFor();
+    await page
+      .getByRole('button', { name: 'Jump to bottom', exact: true })
+      .waitFor({ state: 'detached' });
+    assert.equal(await page.getByRole('button', { name: 'Return to reading position' }).count(), 0);
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+      return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
+    });
+    // Back in the live view it follows new output again.
+    await page.evaluate('window.streaming(true);window.live(24, "FOLLOWED TAIL")');
+    await stream.getByText('FOLLOWED TAIL', { exact: true }).waitFor();
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+      return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
+    });
+    assert.equal(
+      await page.getByRole('button', { name: 'Jump to bottom', exact: true }).count(),
+      0,
+    );
+    assert.deepEqual(errors, []);
+  },
+);

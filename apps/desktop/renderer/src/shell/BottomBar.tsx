@@ -2073,7 +2073,9 @@ export function BottomBar(): JSX.Element {
       return;
     }
     const effectiveQueueMode = queueModeForRuntimePhase(queueMode, currentRuntimePhase);
-    const promptAtSend = promptOverride ?? prompt;
+    // The editor's committed text, not the last rendered draft: Enter can arrive before React
+    // renders a paste.
+    const promptAtSend = promptOverride ?? textareaRef.current?.value ?? prompt;
     const trimmed = promptAtSend.trim();
     const fileRefPrompt = pendingFileReferencePrompt(trimmed, pendingFileRefs);
     const textAndFilePrompt = combinePromptAndFileReferences(trimmed, fileRefPrompt);

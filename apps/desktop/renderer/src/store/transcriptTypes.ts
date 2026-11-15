@@ -47,6 +47,9 @@ export interface UserMessage {
   readonly operationId?: string;
   readonly operationReservation?: SendOperationReservation;
   readonly sendAdmissionSettled?: true;
+  /** session.send failed without saying whether the Runtime took it, and the draft went back to
+   *  the composer. Hidden until an exact retry or a Runtime projection claims it. */
+  readonly sendFailedAmbiguously?: true;
   /** The SDK product view has carried this operation's input, so the view owns its display. */
   readonly productInputObserved?: true;
   readonly canonicalIndex?: number;
@@ -110,6 +113,8 @@ export interface QueuedUserMessage {
   readonly operationId?: string;
   readonly operationReservation?: SendOperationReservation;
   readonly sendAdmissionSettled?: true;
+  /** Same as UserMessage.sendFailedAmbiguously. */
+  readonly sendFailedAmbiguously?: true;
   readonly content: string;
   readonly matchContent: string;
   readonly attachments?: readonly UserImageAttachment[];

@@ -41,10 +41,19 @@ test('the accepted SDK input replaces its optimistic bubble despite different at
     ],
     [{ id: 'optimistic', operationId: 'input', content: 'prompt', sentAt: 1 }],
   );
+  // One bubble with the SDK text; it keeps the local id so the sent query's row is not remounted.
   assert.deepEqual(
-    projected.messages.map((message) => message.id),
-    ['sdk-user', 'sdk-answer'],
+    projected.messages.map((message) => [
+      message.id,
+      'sourceItemId' in message ? message.sourceItemId : undefined,
+      'content' in message ? message.content : undefined,
+    ]),
+    [
+      ['optimistic', 'sdk-user', 'prompt\nattachment paths'],
+      ['sdk-answer', undefined, undefined],
+    ],
   );
+  assert.equal(projected.userMessages[0]?.id, 'sdk-user');
 });
 
 test('SDK block and tool execution identities remain distinct without a reconstructed turn', () => {

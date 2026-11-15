@@ -141,6 +141,41 @@ export const agentActorChangedChannel = {
   payload: agentActorTreeSnapshotSchema,
 } as const;
 
+// Live-only work of each running child agent, folded by Main from the SDK's child stream events.
+// Never persisted; a child leaves the list when its activity ends.
+const agentChildLiveSchema = z
+  .object({
+    id: z.string().min(1).max(2048),
+    label: z.string().min(1).max(2048),
+    startedAt: z.number().finite(),
+    /** Tail of the thinking (or reply) text streamed since the child's last tool call. */
+    thinking: z.string().max(400).optional(),
+    /** The child's latest tool call; input keeps only short string fields. */
+    tool: z
+      .object({
+        id: z.string().min(1).max(512),
+        name: z.string().min(1).max(256),
+        input: z.record(z.string(), z.string().max(240)).optional(),
+        status: z.enum(['running', 'done', 'failed']),
+        startedAt: z.number().finite(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+export const agentChildLiveChangedChannel = {
+  name: 'agent.childLive.changed',
+  direction: 'push',
+  payload: z
+    .object({
+      sessionId: z.string().min(1).max(256),
+      children: z.array(agentChildLiveSchema).max(64),
+    })
+    .strict(),
+} as const;
+
+export type AgentChildLiveT = z.infer<typeof agentChildLiveSchema>;
 export type AgentActorTreeSnapshotT = z.infer<typeof agentActorTreeSnapshotSchema>;
 export type AgentActorSummaryT = z.infer<typeof agentActorSummarySchema>;
 export type AgentActorLatestTurnT = z.infer<typeof agentActorLatestTurnSchema>;

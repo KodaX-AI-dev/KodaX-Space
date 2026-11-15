@@ -2,7 +2,7 @@
 // All motion is transform/opacity only. CSS animations are gated in styles.css; the WAAPI
 // row push-up checks the same gates here because WAAPI bypasses CSS gating.
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react';
 import { Check, Dot, FileSearch, Pencil, SquareTerminal, X, type LucideIcon } from 'lucide-react';
 import { DURATION, EASE_EXPO } from '../lib/motion.js';
 import {
@@ -77,18 +77,25 @@ export function ClusterTallies({
   );
 }
 
-function RowIcon({ status }: { status: LiveToolRow['status'] }): JSX.Element {
+export function RowIcon({ status }: { status: LiveToolRow['status'] }): JSX.Element {
   if (status === 'running') return <span className="tool-pulse-spin is-row" aria-hidden />;
+  if (status === 'failed')
+    return <X className="tool-pulse-row-icon is-failed" strokeWidth={2} aria-hidden />;
   if (status === 'interrupted')
     return <X className="tool-pulse-row-icon is-stopped" strokeWidth={2} aria-hidden />;
   return <Check className="tool-pulse-row-icon is-done" strokeWidth={2.2} aria-hidden />;
 }
 
-/** The latest thinking line with a blinking caret; hidden (but laid out) while empty. */
+/**
+ * The latest thinking line with a blinking caret; hidden (but laid out) while empty. A line wider
+ * than the group is clipped on the left so the newest words stay next to the caret.
+ */
 export function LiveThinkingLine({ text }: { text: string }): JSX.Element {
   return (
     <div className={`tool-pulse-think${text ? ' is-on' : ''}`}>
-      <span className="min-w-0 truncate">{text}</span>
+      <span className="tool-pulse-think-text">
+        <span>{text}</span>
+      </span>
       <span className="tool-pulse-caret" aria-hidden />
     </div>
   );

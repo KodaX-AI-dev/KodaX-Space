@@ -103,6 +103,11 @@ export async function createLocalSdkProvider() {
     | undefined;
   let preparedCommandRequests = 0;
   const pending = new Map<string, ServerResponse>();
+  const holds = new Map<string, () => void>();
+  const hold = (marker: string) =>
+    new Promise<void>((resolve) => {
+      holds.set(marker, resolve);
+    });
   const errors: string[] = [];
   const transport = { connections: 0, requestsStarted: 0, bodiesCompleted: 0 };
   let projectRoot = '';
@@ -298,6 +303,99 @@ export async function createLocalSdkProvider() {
       pending.set(prompt, response);
       return;
     }
+    const userTexts = parsed.messages.flatMap((message) =>
+      message.role === 'user' && typeof message.content === 'string' ? [message.content] : [],
+    );
+    const child = userTexts.some(
+      (text) => text.startsWith('# Child Agent Task') && text.includes('CHILD_PROBE_WORK'),
+    );
+    if (child || userTexts.includes('LIVE_CHILD_AGENT')) {
+      // The root spawns one child and waits; the child thinks, reads, thinks and reports, holding between steps.
+      const toolResults = parsed.messages.filter((message) => message.role === 'tool').length;
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      const chunk = (delta: object, finish: string | null = null) =>
+        response.write(
+          `data: ${JSON.stringify({
+            id: 'live-child',
+            object: 'chat.completion.chunk',
+            model: 'space-e2e-model',
+            choices: [{ index: 0, delta, finish_reason: finish }],
+          })}\n\n`,
+        );
+      const call = (id: string, name: string, input: object) =>
+        chunk(
+          {
+            tool_calls: [
+              {
+                index: 0,
+                id,
+                type: 'function',
+                function: { name, arguments: JSON.stringify(input) },
+              },
+            ],
+          },
+          'tool_calls',
+        );
+      if (child && toolResults === 0) {
+        chunk({ reasoning_content: 'Child is scanning files.\nchecking the README first' });
+        await hold('CHILD_TOOL');
+        call('child-read', 'read', { path: path.join(projectRoot, 'README.md') });
+      } else if (child) {
+        chunk({ reasoning_content: 'README read.\nwriting the child report' });
+        await hold('CHILD_ANSWER');
+        chunk({ content: 'CHILD_REPORT' }, 'stop');
+      } else if (toolResults === 0) {
+        call('root-spawn', 'spawn_agent', {
+          task_name: 'child-probe',
+          objective: 'CHILD_PROBE_WORK',
+        });
+      } else if (toolResults === 1) {
+        call('root-wait', 'wait_agent', { timeout_ms: 60_000 });
+      } else chunk({ content: 'LIVE_CHILD_DONE' }, 'stop');
+      response.end('data: [DONE]\n\n');
+      return;
+    }
+    if (prompt === 'LIVE_RENDER_CHAIN') {
+      // Thinking streams first and holds, then tools (one failing), then held thinking + answer.
+      const afterTools = parsed.messages.at(-1)?.role === 'tool';
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      const chunk = (delta: object, finish: string | null = null) =>
+        response.write(
+          `data: ${JSON.stringify({
+            id: 'live-chain',
+            object: 'chat.completion.chunk',
+            model: 'space-e2e-model',
+            choices: [{ index: 0, delta, finish_reason: finish }],
+          })}\n\n`,
+        );
+      chunk({
+        reasoning_content: afterTools
+          ? 'Two reads passed.\nthe check failed, writing the answer'
+          : 'Scanning the project.\nplanning which files to read',
+      });
+      await hold(afterTools ? 'LIVE_ANSWER' : 'LIVE_TOOLS');
+      if (afterTools) chunk({ content: 'LIVE_CHAIN_ANSWER' }, 'stop');
+      else
+        chunk(
+          {
+            tool_calls: [
+              ['live-read', 'read', { path: path.join(projectRoot, 'README.md') }],
+              ['live-grep', 'grep', { pattern: 'Local', path: projectRoot }],
+              ['live-check', 'bash', { command: 'node -e "0"' }],
+              // A non-zero exit is still an SDK success; a missing file is a tool error.
+              ['live-missing', 'read', { path: path.join(projectRoot, 'missing.md') }],
+            ].map(([id, name, input], index) => ({
+              index,
+              id,
+              type: 'function',
+              function: { name, arguments: JSON.stringify(input) },
+            })),
+          },
+          'tool_calls',
+        );
+      response.end('data: [DONE]\n\n');
+      return;
+    }
     if (prompt === 'STREAM_PRODUCT') {
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       response.write(
@@ -414,6 +512,8 @@ export async function createLocalSdkProvider() {
       projectRoot = value;
     },
     release: (marker: string) => {
+      holds.get(marker)?.();
+      holds.delete(marker);
       for (const [prompt, response] of pending) {
         if (!prompt.includes(marker)) continue;
         pending.delete(prompt);
@@ -422,6 +522,7 @@ export async function createLocalSdkProvider() {
       }
     },
     close: async () => {
+      for (const resolve of holds.values()) resolve();
       for (const response of pending.values()) response.destroy();
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) =>

@@ -178,10 +178,20 @@ test('composer clears every line on send and maps offsets at trailing line break
           new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
         );
       }, text);
+    // The editor reports a change after Lexical commits its update, and React renders it later
+    // still, so wait for the draft rather than reading it once right after a synthetic paste.
+    const outputIs = (text: string) =>
+      page.waitForFunction(
+        (value) => document.querySelector('output')?.textContent === value,
+        text,
+        {
+          timeout: 5_000,
+        },
+      );
     const sendAndExpectEmpty = async (draft: string) => {
-      assert.equal(await output.textContent(), draft);
+      await outputIs(draft);
       await page.keyboard.press('Enter');
-      assert.equal(await output.textContent(), '');
+      await outputIs('');
       assert.equal(
         await editor.textContent(),
         '',

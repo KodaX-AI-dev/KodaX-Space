@@ -55,13 +55,18 @@ function toolInput(text?: string): Record<string, unknown> | undefined {
     return { input: text };
   }
 }
-function displayItem(item: SessionProductItem, turnIndex?: number): ConversationMessage {
+function displayItem(
+  item: SessionProductItem,
+  turnIndex?: number,
+  localUserId?: string,
+): ConversationMessage {
   const body = productItemBodyLength(item, 'text') !== undefined ? { productItem: item } : {};
   if (item.type === 'user')
     return {
       kind: 'user',
       ...body,
-      id: item.id,
+      // A sent query keeps its local bubble id when the SDK item takes it over, so the row is not remounted.
+      ...(localUserId ? { id: localUserId, sourceItemId: item.id } : { id: item.id }),
       content: item.text,
       sentAt: item.timestamp ?? 0,
       ...(item.imageAttachments ? { attachments: item.imageAttachments } : {}),
@@ -140,7 +145,17 @@ function provisionalProductMessages(
   users: readonly UserMessage[],
   queued: readonly QueuedUserMessage[],
 ): ConversationMessage[] {
-  const accepted = new Set(items.flatMap((item) => (item.inputId ? [item.inputId] : [])));
+  // A merged batch is one user item that consumed every input in inputIds.
+  const accepted = new Set(
+    items.flatMap((item) => (item.inputId ? [item.inputId, ...(item.inputIds ?? [])] : [])),
+  );
+  // A send that failed ambiguously stays hidden until something proves the Runtime took it.
+  const failed = (message: UserMessage | QueuedUserMessage): boolean =>
+    message.sendFailedAmbiguously === true &&
+    !message.sendAdmissionSettled &&
+    ('queueMode' in message
+      ? message.queueId === undefined
+      : (message.runtimeRunId ?? message.deliveryQueueId ?? message.turnId) === undefined);
   return [
     ...users
       .filter(
@@ -148,6 +163,7 @@ function provisionalProductMessages(
           user.operationId &&
           !user.restoredFromHistory &&
           !user.productInputObserved &&
+          !failed(user) &&
           !accepted.has(user.operationId),
       )
       .map((user) => ({
@@ -158,7 +174,7 @@ function provisionalProductMessages(
         attachments: user.attachments,
       })),
     ...queued
-      .filter((user) => !user.operationId || !accepted.has(user.operationId))
+      .filter((user) => !failed(user) && (!user.operationId || !accepted.has(user.operationId)))
       .map((user) => ({ kind: 'queued_user' as const, ...user })),
   ];
 }
@@ -173,6 +189,11 @@ export function projectProductConversation(
 ): { messages: ConversationMessage[]; userMessages: UserMessage[] } {
   const messages: ConversationMessage[] = [];
   const userMessages: UserMessage[] = [];
+  const localUserIds = new Map(
+    provisionalUsers.flatMap((user) =>
+      user.operationId && !user.restoredFromHistory ? [[user.operationId, user.id] as const] : [],
+    ),
+  );
   for (const item of items) {
     const boundary = productHistoryBoundary(item, historyItems);
     if (item.type === 'user')
@@ -190,7 +211,17 @@ export function projectProductConversation(
         ...owner,
         historyBoundary: { boundaryId: boundary.entryId, sourceRevision: boundary.sourceRevision },
       };
-    messages.push(displayItem(item, userMessages.length > 0 ? userMessages.length - 1 : undefined));
+    messages.push(
+      displayItem(
+        item,
+        userMessages.length > 0 ? userMessages.length - 1 : undefined,
+        item.type === 'user' && item.inputId
+          ? [item.inputId, ...(item.inputIds ?? [])]
+              .map((inputId) => localUserIds.get(inputId))
+              .find(Boolean)
+          : undefined,
+      ),
+    );
   }
   messages.push(...provisionalProductMessages(items, provisionalUsers, queuedUsers));
   return { messages: insertProductNotices(messages, notices), userMessages };

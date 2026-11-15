@@ -39,7 +39,7 @@ test('tallies count each tool family in a fixed order, with failures counted apa
   );
 });
 
-test('a tally sums its measured time and the running tool keeps counting up', () => {
+test('a tally totals its busy time and the running tool keeps counting up', () => {
   const tools = [
     tool('a', { startedAt: 0, endedAt: 300 }),
     tool('b', { startedAt: 400, endedAt: 1_000 }),
@@ -49,6 +49,28 @@ test('a tally sums its measured time and the running tool keeps counting up', ()
   assert.deepEqual(read, { family: 'read', count: 2, durationMs: 900, running: false });
   assert.deepEqual(run, { family: 'run', count: 1, durationMs: 3_000, running: true });
   assert.equal(familyTallies(tools, 9_000)[1]?.durationMs, 8_000);
+});
+
+test('parallel tools of a family count their overlapping time once', () => {
+  const [read, fail] = familyTallies(
+    [
+      tool('read', { startedAt: 0, endedAt: 9_000 }),
+      tool('grep', { toolName: 'grep', startedAt: 10, endedAt: 9_000 }),
+      tool('late', { startedAt: 12_000, endedAt: 12_500 }),
+      tool('missing', { failed: true, startedAt: 20, endedAt: 9_000 }),
+    ],
+    20_000,
+  );
+  assert.equal(read?.durationMs, 9_500);
+  assert.equal(fail?.durationMs, 8_980);
+  const [run] = familyTallies(
+    [
+      tool('a', { toolName: 'bash', startedAt: 0, endedAt: 3_000 }),
+      tool('b', { toolName: 'bash', status: 'running', startedAt: 1_000 }),
+    ],
+    5_000,
+  );
+  assert.deepEqual(run, { family: 'run', count: 2, durationMs: 5_000, running: true });
 });
 
 test('a family without any timing has no duration rather than a fake zero', () => {
@@ -99,12 +121,15 @@ test('live rows are the three visible tools plus the one leaving, with target an
       ['d', 'bash', 'npm run typecheck', 'running', 1_500],
     ],
   );
+  const [failed] = liveToolRows([tool('x', { failed: true })], 0);
+  assert.equal(failed?.status, 'failed');
 });
 
 test('tool target prefers the identifying argument and stays on one bounded line', () => {
   assert.equal(toolTarget(undefined), '');
   assert.equal(toolTarget({ limit: 3 }), '');
   assert.equal(toolTarget({ query: 'x', path: 'a.ts' }), 'a.ts');
+  assert.equal(toolTarget({ pattern: 'needle', path: ' ' }), 'needle');
   assert.equal(toolTarget({ command: 'a'.repeat(200) }).length, 81);
 });
 
@@ -123,4 +148,34 @@ test('cluster stats come from the earliest known start and the generated text', 
   assert.equal(clusterStartedAt([{}], [tool('x')]), undefined);
   // 'abcd' = 1, '思考' = 2, '{"path":"abcdefgh"}' (19 ascii) = 5
   assert.equal(clusterOutputTokens(steps, tools), 8);
+});
+
+test('script mode: a bridged tool_call shows and counts as the tool it calls', () => {
+  const bridged = tool('bridge', {
+    toolName: 'tool_call',
+    input: { name: 'grep', input: { pattern: 'inputIds', path: 'src' } },
+  });
+  assert.deepEqual(
+    liveToolRows([bridged], 0).map(({ name, target }) => ({ name, target })),
+    [{ name: 'grep', target: 'src' }],
+  );
+  assert.deepEqual(
+    familyTallies([bridged]).map((tally) => tally.family),
+    ['read'],
+  );
+});
+
+test('script mode: a script cell shows its first code line and counts as a run', () => {
+  const cell = tool('cell', {
+    toolName: 'script_exec',
+    input: { code: '\n  const r = await tools["read"]({ path: "README.md" });\nreturn r;' },
+  });
+  assert.deepEqual(
+    liveToolRows([cell], 0).map(({ name, target }) => ({ name, target })),
+    [{ name: 'script_exec', target: 'const r = await tools["read"]({ path: "README.md" });' }],
+  );
+  assert.deepEqual(
+    familyTallies([cell]).map((tally) => tally.family),
+    ['run'],
+  );
 });

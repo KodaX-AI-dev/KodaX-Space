@@ -157,6 +157,7 @@ import {
   workflowRunSchema,
   type AgentActorTreeSnapshotT,
   type WorkflowActivityPayload,
+  type AgentChildLiveT,
   type WorkflowEventPayload,
   type WorkflowRunT,
   type DispatchableAgentListingT,
@@ -180,6 +181,7 @@ import {
 } from './runtime/runtime-agent-projection.js';
 import { RuntimeAgentTreeObserver } from './runtime/runtime-agent-tree-observer.js';
 import { buildChildActivity, isTransientChildEvent, type ChildMeta } from './workflow-activity.js';
+import { reduceChildAgentLive } from './child-agent-live.js';
 import {
   createCoderOwnerRecoveryRestartError,
   isCoderOwnerRecoveryRestartRequired,
@@ -1370,6 +1372,10 @@ interface RuntimeProjectionPush {
     payload: import('@kodax-space/space-ipc-schema').AgentActorTreeSnapshotT,
   ): void;
   (channel: 'workflow.activity', payload: WorkflowActivityPayload): void;
+  (
+    channel: 'agent.childLive.changed',
+    payload: { sessionId: string; children: AgentChildLiveT[] },
+  ): void;
   (channel: 'workflow.event', payload: WorkflowEventPayload): void;
   (
     channel: 'workflow.observation',
@@ -1412,12 +1418,8 @@ interface RuntimeOwnerControl {
     readonly homeDir?: string;
     readonly enableRollback?: boolean;
   }): Promise<RuntimeInlineOwnerHandle>;
-  getState(input: {
-    readonly homeDir?: string;
-  }): Promise<RuntimeOwnerState>;
-  enableDaemon(input: {
-    readonly homeDir?: string;
-  }): Promise<RuntimeOwnerPolicyState>;
+  getState(input: { readonly homeDir?: string }): Promise<RuntimeOwnerState>;
+  enableDaemon(input: { readonly homeDir?: string }): Promise<RuntimeOwnerPolicyState>;
 }
 
 interface SpaceCredentialLeaseBinding {
@@ -2174,6 +2176,8 @@ export class RuntimeHostAdapter {
   private readonly activeRuns = new Map<string, string>();
   private readonly observations = new Map<string, RuntimeSessionObservationState>();
   private readonly productViews = new Map<string, SessionProductView>();
+  private readonly childAgentLive = new Map<string, AgentChildLiveT[]>();
+  private readonly childAgentLiveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private foregroundObservationSessionId: string | undefined;
   private foregroundObservationRequest = 0;
   private readonly queueRebindAttempts = new WeakMap<RuntimeSessionObservationState, Set<string>>();
@@ -2585,7 +2589,10 @@ export class RuntimeHostAdapter {
     if (this.state === 'ready') return Promise.resolve();
     if (this.state === 'closed') return Promise.reject(new Error('Runtime host is closed'));
     // Foreground callers must not spawn startups past the fast retries; only the slow timer may.
-    if (this.startupRetryExhausted && !slowRetry) return Promise.reject(new Error('Automatic startup retries paused; use Retry startup to try again.'));
+    if (this.startupRetryExhausted && !slowRetry)
+      return Promise.reject(
+        new Error('Automatic startup retries paused; use Retry startup to try again.'),
+      );
     if (this.startupPausedForExit && this.initializePromise === null) {
       return Promise.reject(new Error('Runtime startup is paused for complete exit.'));
     }
@@ -2821,7 +2828,11 @@ export class RuntimeHostAdapter {
         }
         this.state = startupAbort.signal.aborted ? 'uninitialized' : 'failed';
         this.publishUnavailable(
-          this.startupRetryExhausted ? 'disconnected' : retryableFailure || startupAbort.signal.aborted ? 'reconnecting' : 'incompatible',
+          this.startupRetryExhausted
+            ? 'disconnected'
+            : retryableFailure || startupAbort.signal.aborted
+              ? 'reconnecting'
+              : 'incompatible',
           this.lastError,
         );
         // Restart authority stays in the SDK. Retry transient attach/startup failures
@@ -3002,7 +3013,10 @@ export class RuntimeHostAdapter {
     if (this.reconnectTimer) return;
     // 30 s, 1 min, 2 min, 4 min, then every 5 min once the fast retries are exhausted.
     const delay = this.startupRetryExhausted
-      ? Math.min(300_000, this.slowRetryBaseMs * 2 ** Math.min(Math.max(0, this.consecutiveStartupFailures - 3), 4))
+      ? Math.min(
+          300_000,
+          this.slowRetryBaseMs * 2 ** Math.min(Math.max(0, this.consecutiveStartupFailures - 3), 4),
+        )
       : Math.min(30_000, 1_000 * 2 ** Math.min(this.reconnectAttempt, 5));
     this.reconnectTimer = setTimeout(() => {
       if (this.state === 'closed') {
@@ -3027,7 +3041,10 @@ export class RuntimeHostAdapter {
           }
           // Exhausted: initialize() already published `disconnected`; keep it.
           if (!this.startupRetryExhausted) {
-            this.publishUnavailable('reconnecting', this.lastError ?? sanitizeDiagnosticError(error));
+            this.publishUnavailable(
+              'reconnecting',
+              this.lastError ?? sanitizeDiagnosticError(error),
+            );
           }
           this.scheduleReconnect(ensureHost || isDaemonEnsureRecoveryFailure(error));
         });
@@ -4493,6 +4510,7 @@ export class RuntimeHostAdapter {
     this.runtimeSessionIds.delete(sessionId);
     this.liveProjectionRevisions.delete(sessionId);
     this.productViews.delete(sessionId);
+    this.childAgentLive.delete(sessionId);
     this.unsentDrafts.delete(sessionId);
     this.acceptedInputObservationDemands.delete(sessionId);
     invalidatePersistedSessionCache(sessionId);
@@ -6123,7 +6141,29 @@ export class RuntimeHostAdapter {
     return ordinal;
   }
 
+  /** Child stream deltas arrive many times a second; the renderer needs at most four frames. */
+  private foldChildAgentLive(event: RuntimeTypedEvent): void {
+    const children = reduceChildAgentLive(
+      this.childAgentLive.get(event.sessionId) ?? [],
+      event,
+      Date.now(),
+    );
+    if (!children) return;
+    this.childAgentLive.set(event.sessionId, children);
+    if (this.childAgentLiveTimers.has(event.sessionId)) return;
+    const timer = setTimeout(() => {
+      this.childAgentLiveTimers.delete(event.sessionId);
+      this.push('agent.childLive.changed', {
+        sessionId: event.sessionId,
+        children: this.childAgentLive.get(event.sessionId) ?? [],
+      });
+    }, 250);
+    timer.unref?.();
+    this.childAgentLiveTimers.set(event.sessionId, timer);
+  }
+
   private async bridgeRuntimeEvent(event: RuntimeTypedEvent, runtimeId?: string): Promise<void> {
+    this.foldChildAgentLive(event);
     if (
       this.productViews.has(event.sessionId) &&
       ['assistant.delta', 'thinking.delta', 'thinking.finished', 'output.segment.started'].includes(
@@ -8010,7 +8050,9 @@ export class RuntimeHostAdapter {
     if (!pending) return;
     const visible = new Set(view.queue.map((input) => input.inputId));
     for (const item of view.items)
-      if (item.type === 'user' && item.inputId) visible.add(item.inputId);
+      if (item.type === 'user')
+        for (const inputId of [item.inputId, ...(item.inputIds ?? [])])
+          if (inputId) visible.add(inputId);
     for (const [inputId, runtimeId] of pending) {
       if (runtimeId !== state.runtime.identity.runtimeId || visible.has(inputId)) {
         this.releaseInputObservationDemand(state.sessionId, inputId);

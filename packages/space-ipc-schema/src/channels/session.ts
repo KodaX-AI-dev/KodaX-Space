@@ -303,6 +303,8 @@ export const sessionProductItemSchema = z
     ]),
     text: z.string().max(16 * 1024 * 1024),
     inputId: z.string().max(4096).optional(),
+    /** Every input merged into this user message, head (inputId) first; only when merged. */
+    inputIds: z.array(z.string().max(4096)).max(500).optional(),
     outputId: z.string().max(4096).optional(),
     outputState: z.enum(['draft', 'committed']).optional(),
     textRevision: z.number().int().nonnegative().optional(),

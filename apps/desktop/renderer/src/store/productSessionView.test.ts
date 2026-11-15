@@ -7,6 +7,7 @@ import {
   resetProductSessionViews,
   installProductHistory,
   installProductItemContent,
+  liveViewReachesHistoryStart,
 } from './productSessionView.js';
 
 test('complete bodies belong to the selected SDK source and runtime', () => {
@@ -165,4 +166,15 @@ test('tool input completion stays in its frozen history window and late removed 
   assert.deepEqual(productTranscriptSnapshot('session')?.items, []);
   resetProductSessionViews('session');
   assert.equal(productTranscriptSnapshot('session'), undefined);
+});
+
+test('the live view reaches the saved history start only when it holds the oldest saved item', () => {
+  const user = (id: string, inputId: string) => ({ id, type: 'user' as const, text: inputId, inputId });
+  const history = [user('h1', 'in-1'), user('h2', 'in-2')];
+  // View and history may name the same input with different item ids.
+  assert.equal(liveViewReachesHistoryStart([user('v1', 'in-1'), user('v2', 'in-2')], history), true);
+  assert.equal(liveViewReachesHistoryStart([user('v2', 'in-2')], history), false);
+  assert.equal(liveViewReachesHistoryStart([user('v1', 'in-1')], []), false);
+  const notice = { id: 'n1', type: 'info' as const, text: 'note' };
+  assert.equal(liveViewReachesHistoryStart([notice], [notice]), true);
 });

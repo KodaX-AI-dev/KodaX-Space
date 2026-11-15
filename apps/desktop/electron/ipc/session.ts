@@ -110,6 +110,7 @@ import type {
   SessionHistoryItem,
   SessionMeta,
 } from '@kodax-space/space-ipc-schema';
+import { notAdmitted, SendNotAdmittedError } from '../kodax/send-admission.js';
 
 type ConversationHistoryData = RuntimeConversationHistory | PersistedConversationHistoryData;
 
@@ -155,8 +156,14 @@ export function runIdempotentSessionSend<T>(
     () => {
       record.state = 'settled';
     },
-    () => {
+    (error: unknown) => {
       record.state = 'settled';
+      // Nothing reached the Runtime, so an exact retry must run again rather than replay this.
+      if (
+        error instanceof SendNotAdmittedError &&
+        sessionSendOperations.get(operationId) === record
+      )
+        sessionSendOperations.delete(operationId);
     },
   );
   return result;
@@ -1126,6 +1133,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     runIdempotentSessionSend(input.operationId, JSON.stringify(input), async () => {
       const existingSession = kodaxHost.get(input.sessionId);
       const releaseModeSwitchAdmission = options.beginCoderAdmission?.() ?? (() => undefined);
+      let admissionStarted = false;
       try {
         let session = existingSession;
         if (!session) {
@@ -1204,6 +1212,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
         const promptOverlay = [input.partnerPromptOverlay, attachmentPathOverlay]
           .filter((part): part is string => part !== undefined)
           .join('\n\n');
+        admissionStarted = true;
         const result = await session.send(input.prompt, preparedArtifacts, {
           queueMode: input.queueMode,
           ...(promptOverlay ? { promptOverlay } : {}),
@@ -1248,6 +1257,9 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
           ...(result.runId !== undefined ? { runId: result.runId } : {}),
           ...(attachments !== undefined ? { attachments } : {}),
         };
+      } catch (error: unknown) {
+        // Checks before session.send() submit nothing; session.send() tags its own early failures.
+        throw admissionStarted ? error : notAdmitted(error);
       } finally {
         releaseModeSwitchAdmission();
       }

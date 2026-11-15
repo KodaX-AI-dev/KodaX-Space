@@ -272,6 +272,7 @@ import {
 } from '../ipc/queue.js';
 import { reasoningModeToEffort, runtimeSettingEffort } from './reasoning-effort.js';
 import { runtimeHostAdapter } from './runtime-host-adapter.js';
+import { notAdmitted } from './send-admission.js';
 
 type SpaceReasoning = ReasoningMode;
 
@@ -845,7 +846,9 @@ export class RealKodaXSession implements ManagedSession {
         }
         if (this.currentAbort || activeRunId) {
           if (!activeRunId) {
-            throw new Error('The Coder daemon is still accepting the current run; retry shortly.');
+            throw notAdmitted(
+              new Error('The Coder daemon is still accepting the current run; retry shortly.'),
+            );
           }
           // A daemon session may outlive Space while its local settings sidecar is
           // missing or stale. Reconcile before attaching a continuation; a fresh run
@@ -865,18 +868,20 @@ export class RealKodaXSession implements ManagedSession {
         if (isSessionHistoryReadTimeout(error)) {
           return { accepted: false, reason: 'session_history_unavailable', queueMode };
         }
-        throw error;
+        throw notAdmitted(error);
       }
       if (this.currentAbort || activeRunId) {
         if (toolInvocation)
-          throw new Error(
-            'Wait for the current Run to finish before executing an explicit command.',
+          throw notAdmitted(
+            new Error('Wait for the current Run to finish before executing an explicit command.'),
           );
         if (explicitSkillReference !== undefined) {
           return { accepted: false, reason: 'skill_requires_idle', queueMode };
         }
         if (!activeRunId) {
-          throw new Error('The Coder daemon is still accepting the current run; retry shortly.');
+          throw notAdmitted(
+            new Error('The Coder daemon is still accepting the current run; retry shortly.'),
+          );
         }
         // Preserve the delivery mode selected by the user. In particular, normal
         // Enter means interrupt while Ctrl/Cmd+Enter means after-turn. A Runtime

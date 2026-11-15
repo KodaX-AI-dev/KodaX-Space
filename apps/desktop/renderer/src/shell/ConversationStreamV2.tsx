@@ -42,6 +42,7 @@ import { projectProductConversation } from '../features/session/productConversat
 import {
   useProductSessionTranscript,
   productTranscriptSnapshot,
+  liveViewReachesHistoryStart,
 } from '../store/productSessionView.js';
 import { isProductItemPreview } from '../lib/productItemContent.js';
 import { ThinkingText } from '../features/session/messages/ThinkingText.js';
@@ -375,8 +376,15 @@ function isProcessReceiptMessage(message: ViewMessage): message is ProcessReceip
   return message.kind === 'thinking' || message.kind === 'tool_cluster';
 }
 
+/**
+ * Keyed by the first step only, so the row keeps its DOM while receipts join it and while a
+ * thinking chip becomes the tool group that the same step opens.
+ */
 function makeReceiptRowId(receipts: readonly ProcessReceiptMessage[]): string {
-  return `receipts_${receipts.map((receipt) => receipt.id).join('_')}`;
+  const first = receipts[0];
+  if (first?.kind !== 'tool_cluster') return `receipts_${first?.id}`;
+  const step = first.subClusters[0];
+  return `receipts_${step?.id}${step?.thinking !== undefined ? '_thinking' : ''}`;
 }
 
 /** Whether a row renders the message, receipt, tool or source item with this id. */
@@ -749,7 +757,6 @@ function groupTools(
   const foldThinking = view === 'normal' || view === 'summary';
   const out: ViewMessage[] = [];
   let pendingCluster: SubCluster[] = [];
-  let clusterCounter = 0;
 
   const flushCluster = (): void => {
     if (pendingCluster.length === 0) return;
@@ -757,7 +764,7 @@ function groupTools(
     const turnIndex = pendingCluster.find((sc) => sc.turnIndex !== undefined)?.turnIndex;
     out.push({
       kind: 'tool_cluster',
-      id: `cluster_${clusterCounter++}_${pendingCluster[0].id}`,
+      id: `cluster_${pendingCluster[0].id}`,
       subClusters: pendingCluster,
       totalTools,
       ...(turnIndex !== undefined ? { turnIndex } : {}),
@@ -811,7 +818,7 @@ function groupTools(
           // 复用现有 assistant_text view-kind —— AssistantBubble 已经会渲染 markdown + footer
           out.push({
             kind: 'assistant_text',
-            id: `${m.id}_text`,
+            id: m.id,
             sourceItemId: m.id,
             ...(m.productItem ? { productItem: m.productItem } : {}),
             text: m.text,
@@ -863,15 +870,9 @@ function groupTools(
       } else {
         const hasThinking = Boolean(m.thinking && m.thinking.length > 0);
         const hasText = m.text.length > 0;
-        if (
-          foldThinking &&
-          hasThinking &&
-          !hasText &&
-          pendingCluster.length > 0 &&
-          i === messages.length - 1
-        ) {
-          // 尾部 thinking-only step（工具调用之间正在想）：留在当前工具组里，组保持在尾部，
-          // 运行中的动作流（ToolClusterPulse）就不会在每次思考时收起又重开。
+        if (foldThinking && hasThinking && !hasText && pendingCluster.length > 0) {
+          // 工具之后的 thinking-only step（工具调用之间或答复前在想）：留在当前工具组里。运行中的
+          // 动作流不会在每次思考时收起又重开，答复到达时思考也不会从组里跳出成独立 chip。
           pendingCluster.push({
             id: m.id,
             title: '',
@@ -897,7 +898,7 @@ function groupTools(
         if (hasText && hasThinking) {
           out.push({
             kind: 'assistant_text',
-            id: `${m.id}_text`,
+            id: m.id,
             sourceItemId: m.id,
             ...(m.productItem ? { productItem: m.productItem } : {}),
             text: m.text,
@@ -962,7 +963,10 @@ export function ConversationStreamV2(): JSX.Element {
     !!productTranscript?.view &&
     !productTranscript.browsingOlder &&
     productTranscript.historyItems.length > 0 &&
-    historyPaging.phase === 'ready';
+    historyPaging.phase === 'ready' &&
+    // A live view that already starts at the conversation's beginning has nothing older to browse.
+    (historyPaging.hasMore ||
+      !liveViewReachesHistoryStart(productTranscript.view.items, productTranscript.historyItems));
   const historyRuntimeReason = useAppStore((s) =>
     s.runtimeConnection.state === 'ready' ? undefined : s.runtimeConnection.reason,
   );
@@ -1353,6 +1357,18 @@ export function ConversationStreamV2(): JSX.Element {
   );
   // The streaming row and the rows a search jump, its return or a history restore target stay
   // mounted, so the code that scrolls to them finds their element.
+  // The run's working row: the last one above any queued follow-up or local notice, and never on
+  // an older history page.
+  const liveTailId = useMemo(() => {
+    if (!isStreaming || productTranscript?.browsingOlder) return undefined;
+    return [...renderItems]
+      .reverse()
+      .find(
+        (item) =>
+          item.kind !== 'message' ||
+          (item.message.kind !== 'queued_user' && item.message.kind !== 'local_notice'),
+      )?.id;
+  }, [isStreaming, productTranscript?.browsingOlder, renderItems]);
   const pinnedRows = useMemo(() => {
     const ids = [
       findJump?.id,
@@ -1365,8 +1381,7 @@ export function ConversationStreamV2(): JSX.Element {
       const row = id ? renderItems.find((item) => renderItemContains(item, id)) : undefined;
       return row ? [row.id] : [];
     });
-    const tail = renderItems.at(-1);
-    if (isStreaming && tail) targets.push(tail.id);
+    if (liveTailId) targets.push(liveTailId);
     return targets.length === 0 ? EMPTY_PINS : new Set(targets);
   }, [
     findJump,
@@ -1375,7 +1390,7 @@ export function ConversationStreamV2(): JSX.Element {
     returnAnchorId,
     historyRestoreAnchor,
     renderItems,
-    isStreaming,
+    liveTailId,
   ]);
   const windowParts = useTranscriptWindow({
     scrollRef,
@@ -1876,12 +1891,29 @@ export function ConversationStreamV2(): JSX.Element {
     syncActiveQueryAnchorFromScrollPosition(el);
   }
 
+  /**
+   * After a downward gesture settles at the bottom: read the next newer page, or, when the reader
+   * was already at the end of the newest saved page and pushes further, continue into the live view.
+   * Merely reaching that end keeps the read pages (already-read content never changes source).
+   */
+  function continueTowardNewer(scroller: HTMLDivElement, startedAtBottom: boolean): void {
+    syncFollowStateFromScrollPosition(scroller);
+    if (getDistanceFromBottom(scroller) >= BOTTOM_DISTANCE_PX) return;
+    const pastSavedEnd =
+      startedAtBottom &&
+      productTranscript?.browsingOlder &&
+      !!productTranscript.view &&
+      historyPaging.phase === 'ready' &&
+      !historyPaging.newerCursor;
+    if (pastSavedEnd) returnToNewestHistory();
+    else requestAdjacentHistory(scroller, 'newer');
+  }
+
   function followUserScrollTowardNewer(scroller: HTMLDivElement): void {
+    const startedAtBottom = getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX;
     requestAnimationFrame(() => {
       if (scrollRef.current !== scroller) return;
-      syncFollowStateFromScrollPosition(scroller);
-      if (getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX)
-        requestAdjacentHistory(scroller, 'newer');
+      continueTowardNewer(scroller, startedAtBottom);
     });
   }
 
@@ -2159,6 +2191,7 @@ export function ConversationStreamV2(): JSX.Element {
     const deltaY = e.deltaY;
     if (deltaY !== 0) historyScrollIntentRef.current = deltaY < 0 ? 'older' : 'newer';
     const scrollTopBefore = scroller.scrollTop;
+    const startedAtBottom = getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX;
     const preserveBoundaryRestore = preservesPrependAnchorForBoundaryInput(
       prependAnchorRestoreRef.current?.phase,
       deltaY < 0,
@@ -2180,9 +2213,7 @@ export function ConversationStreamV2(): JSX.Element {
         if (!movedUp && !leftBottom && scrollTopBefore <= 0) return;
         disengageFollowForUserScrollIntent(scroller);
       } else if (deltaY > 0) {
-        syncFollowStateFromScrollPosition(scroller);
-        if (getDistanceFromBottom(scroller) < BOTTOM_DISTANCE_PX)
-          requestAdjacentHistory(scroller, 'newer');
+        continueTowardNewer(scroller, startedAtBottom);
       }
     });
   }
@@ -2727,7 +2758,7 @@ export function ConversationStreamV2(): JSX.Element {
         item={item}
         index={index}
         animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
-        liveTail={isStreaming && index === renderItems.length - 1}
+        liveTail={item.id === liveTailId}
         queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
         feedSize={renderItems.length}
         expanded={expanded}

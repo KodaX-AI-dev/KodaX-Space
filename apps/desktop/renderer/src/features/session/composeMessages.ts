@@ -38,6 +38,8 @@ export type ConversationMessage =
       kind: 'user';
       productItem?: SessionProductItem;
       id: string;
+      /** SDK item id when the bubble keeps the id of the locally sent query. */
+      sourceItemId?: string;
       content: string;
       attachments?: UserMessage['attachments'];
       sentAt: number;

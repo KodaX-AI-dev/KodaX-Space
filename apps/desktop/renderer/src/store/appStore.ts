@@ -4634,15 +4634,17 @@ function existingSendOperationOwner(
   const settled = messages.settledUser ?? messages.settledQueued;
   if (settled !== undefined) return { owner: { kind: 'settled', id: settled.id } };
   if (messages.provisionalUser !== undefined) {
+    const { sendFailedAmbiguously: _failed, ...user } = messages.provisionalUser;
     const updatedUser = {
-      ...messages.provisionalUser,
+      ...user,
       operationReservation: refreshedSendOperationReservation(requestGeneration),
     };
     return { owner: { kind: 'user', id: updatedUser.id }, updatedUser };
   }
   if (messages.provisionalQueued !== undefined) {
+    const { sendFailedAmbiguously: _failed, ...queued } = messages.provisionalQueued;
     const updatedQueued = {
-      ...messages.provisionalQueued,
+      ...queued,
       operationReservation: refreshedSendOperationReservation(requestGeneration),
     };
     return { owner: { kind: 'queued', id: updatedQueued.id }, updatedQueued };
@@ -4673,10 +4675,17 @@ function settleSendOperationsPatch(
     changed = true;
     return { ...message, ...userPatch };
   });
-  const nextQueued = (state.queuedUserMessagesBySession[sessionId] ?? []).map((message) => {
-    if (!owns(message) || message.sendAdmissionSettled) return message;
+  const nextQueued = (state.queuedUserMessagesBySession[sessionId] ?? []).flatMap((message) => {
+    if (!owns(message)) return [message];
+    // The product view now shows this input as a turn; a queued row would only come back once
+    // the input scrolls out of the bounded view.
+    if (observed) {
+      changed = true;
+      return [];
+    }
+    if (message.sendAdmissionSettled) return [message];
     changed = true;
-    return { ...message, sendAdmissionSettled: true as const };
+    return [{ ...message, sendAdmissionSettled: true as const }];
   });
   if (!changed) return null;
   const updatedUsers = nextUsers.filter(owns);
@@ -4806,6 +4815,40 @@ function settledSendOperationPatch(
       ),
     },
   };
+}
+
+/**
+ * Keeps the owner, so an exact retry or a late Runtime projection reuses its identity, but hides
+ * it: the draft is back in the composer and the Runtime may never have taken it.
+ */
+function ambiguousSendFailurePatch(
+  state: AppState,
+  sessionId: string,
+  provisional: UserMessage | QueuedUserMessage,
+  isUser: boolean,
+  pendingPatch: Partial<AppState>,
+): Partial<AppState> {
+  const mark = <T extends { readonly id: string }>(messages: readonly T[]): T[] =>
+    messages.map((message) =>
+      message.id === provisional.id
+        ? { ...message, sendFailedAmbiguously: true as const }
+        : message,
+    );
+  return isUser
+    ? {
+        ...pendingPatch,
+        userMessagesBySession: {
+          ...state.userMessagesBySession,
+          [sessionId]: mark(state.userMessagesBySession[sessionId] ?? []),
+        },
+      }
+    : {
+        ...pendingPatch,
+        queuedUserMessagesBySession: {
+          ...state.queuedUserMessagesBySession,
+          [sessionId]: mark(state.queuedUserMessagesBySession[sessionId] ?? []),
+        },
+      };
 }
 
 function removeProvisionalSendOperationPatch(
@@ -6790,12 +6833,17 @@ export const useAppStore = create<AppState>((setState) => {
         }
         if (provisional.operationReservation?.requestGeneration !== expectedGeneration)
           return state;
+        const removesUser = messages.provisionalUser?.id === provisional.id;
         if (failureDisposition === 'ambiguous') {
           result = 'retained';
-          return Object.keys(pendingPatch).length === 0 ? state : pendingPatch;
+          return ambiguousSendFailurePatch(
+            state,
+            sessionId,
+            provisional,
+            removesUser,
+            pendingPatch,
+          );
         }
-
-        const removesUser = messages.provisionalUser?.id === provisional.id;
         result = 'rolled-back';
         return removeProvisionalSendOperationPatch(
           state,
@@ -6815,7 +6863,9 @@ export const useAppStore = create<AppState>((setState) => {
       ),
 
     observeProductInputs: (sessionId, items) => {
-      const inputIds = new Set(items.flatMap((item) => (item.inputId ? [item.inputId] : [])));
+      const inputIds = new Set(
+        items.flatMap((item) => (item.inputId ? [item.inputId, ...(item.inputIds ?? [])] : [])),
+      );
       if (inputIds.size > 0)
         set((state) => settleSendOperationsPatch(state, sessionId, inputIds, true) ?? state);
     },

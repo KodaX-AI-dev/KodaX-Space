@@ -25,6 +25,9 @@ import { useAppStore } from '../store/appStore.js';
 import { runtimeConnectionHasFreshLiveAuthority } from '../store/runtimeProjectionState.js';
 import { FileNameText } from '../components/FileNameText.js';
 import { useI18n } from '../i18n/I18nProvider.js';
+import { useChildAgentLive } from '../store/childAgentLive.js';
+import { childAgentRows } from './childAgentRows.js';
+import { ChildAgentLiveRows } from './ChildAgentLiveRows.js';
 import type { MessageKey } from '../i18n/messages.js';
 
 const EMPTY_EVENTS: readonly SessionEvent[] = [];
@@ -394,7 +397,9 @@ function snapshotFromRuntimeRunState(
           : run.phase === 'recovering'
             ? contextCapacity
               ? 'Waiting for context capacity…'
-              : run.contextRecovery ? 'Recovering saved progress…' : 'Recovering…'
+              : run.contextRecovery
+                ? 'Recovering saved progress…'
+                : 'Recovering…'
             : run.phase === 'unknown'
               ? run.lifecycleError?.code === 'actor_settlement_not_persisted'
                 ? 'Stopping and repairing run state…'
@@ -826,6 +831,7 @@ export function ActivitySpinner(): ReactJSX.Element | null {
   );
 
   const product = useProductSessionTranscript(currentSessionId)?.view;
+  const childAgents = useChildAgentLive(currentSessionId);
   const baseSnapshot = selectActivitySnapshot(
     runtimeLive,
     events,
@@ -903,34 +909,40 @@ export function ActivitySpinner(): ReactJSX.Element | null {
     liveTokStr = `~${formatTokens(snap.toolInputTokens)} tokens`;
   }
 
-  const tail = [elapsedStr, iterStr, tokenStr, liveTokStr].filter(Boolean).join(' · ');
+  const childStr =
+    childAgents.length > 0 ? t('activity.childAgents', { count: String(childAgents.length) }) : '';
+  const tail = [elapsedStr, iterStr, tokenStr, liveTokStr, childStr].filter(Boolean).join(' · ');
+  const children = childAgentRows(childAgents, Date.now());
 
   return (
-    <div className="flex items-center gap-2 text-xs text-fg-muted font-mono px-1 py-0.5">
-      <span className="activity-spinner-comet" aria-hidden />
-      <span className="text-fg-secondary">{statusBase}</span>
-      {toolBase && (
-        <FileNameText
-          name={toolBase}
-          className="max-w-[280px] text-fg-muted"
-          title={snap.toolPath}
-        />
-      )}
-      {snap.sandbox && (
-        <span
-          className={
-            snap.sandbox.tone === 'warning'
-              ? 'rounded border border-warn/40 bg-warn/10 px-1.5 py-0.5 text-warn'
-              : snap.sandbox.tone === 'safe'
-                ? 'rounded border border-ok/35 bg-ok/10 px-1.5 py-0.5 text-ok'
-                : 'rounded border border-border-default px-1.5 py-0.5 text-fg-muted'
-          }
-          title={snap.sandbox.title}
-        >
-          {snap.sandbox.label}
-        </span>
-      )}
-      {tail && <span className="text-fg-muted">· {tail}</span>}
+    <div>
+      <div className="flex items-center gap-2 text-xs text-fg-muted font-mono px-1 py-0.5">
+        <span className="activity-spinner-comet" aria-hidden />
+        <span className="text-fg-secondary">{statusBase}</span>
+        {toolBase && (
+          <FileNameText
+            name={toolBase}
+            className="max-w-[280px] text-fg-muted"
+            title={snap.toolPath}
+          />
+        )}
+        {snap.sandbox && (
+          <span
+            className={
+              snap.sandbox.tone === 'warning'
+                ? 'rounded border border-warn/40 bg-warn/10 px-1.5 py-0.5 text-warn'
+                : snap.sandbox.tone === 'safe'
+                  ? 'rounded border border-ok/35 bg-ok/10 px-1.5 py-0.5 text-ok'
+                  : 'rounded border border-border-default px-1.5 py-0.5 text-fg-muted'
+            }
+            title={snap.sandbox.title}
+          >
+            {snap.sandbox.label}
+          </span>
+        )}
+        {tail && <span className="text-fg-muted">· {tail}</span>}
+      </div>
+      <ChildAgentLiveRows rows={children.rows} overflow={children.overflow} />
     </div>
   );
 }
