@@ -1780,6 +1780,15 @@ html:not(.q-minimal) .search-ring-anim {
 /* —— 运行中的工具组（ToolClusterLive）：转圈 + 流光 + 三行动作流 + 节拍条 ——
    设计定稿：docs/design/live-work-motion/direction-approved.md。只动 transform/opacity；
    流光仅 full 档；极简档静止；reduced-motion 见文件末尾兜底。 */
+[data-transcript-font='sm'] {
+  --transcript-font: 14px;
+}
+[data-transcript-font='base'] {
+  --transcript-font: 15px;
+}
+[data-transcript-font='lg'] {
+  --transcript-font: 17px;
+}
 .tool-pulse-chip.is-live {
   border-color: rgb(var(--run) / 0.35);
 }
@@ -1909,22 +1918,28 @@ html:not(.q-minimal) .tool-pulse-chip.is-live .tool-pulse-tally-count {
   }
 }
 .tool-pulse-feed {
-  width: 28rem;
-  max-width: 100%;
   margin: 6px 0 0 12px;
   padding-left: 12px;
   border-left: 1px solid rgb(var(--border-default));
+  /* Fills the column it is given without widening it. */
+  contain: inline-size;
+}
+/* Live text scales with the transcript font, one step smaller (14/15/17 -> 12/13/15). */
+.tool-pulse-think,
+.live-thinking-text {
+  font-size: calc(var(--transcript-font, 14px) - 2px);
 }
 .tool-pulse-think {
   display: flex;
   align-items: center;
-  height: 22px;
-  font-size: 12px;
+  height: 0;
   color: rgb(var(--thinking) / 0.85);
   white-space: nowrap;
   opacity: 0;
+  overflow: hidden;
 }
 .tool-pulse-think.is-on {
+  height: 1.8em;
   opacity: 1;
 }
 .tool-pulse-think-text {
@@ -1937,12 +1952,14 @@ html:not(.q-minimal) .tool-pulse-chip.is-live .tool-pulse-tally-count {
   flex-shrink: 0;
 }
 html:not(.q-minimal) .tool-pulse-think {
-  transition: opacity var(--motion-normal) var(--ease-expo);
+  transition:
+    opacity var(--motion-normal) var(--ease-expo),
+    height var(--motion-normal) var(--ease-expo);
 }
 .tool-pulse-caret {
   flex-shrink: 0;
-  width: 6px;
-  height: 12px;
+  width: 0.5em;
+  height: 1em;
   margin-left: 2px;
   background: rgb(var(--thinking) / 0.7);
 }
@@ -1958,8 +1975,14 @@ html:not(.q-minimal) .tool-pulse-caret {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  height: 66px;
+  /* Mono rows sit one step below the thinking line (14/15/17 -> 11/12/14), capped near 48ch. */
+  font: calc(var(--transcript-font, 14px) - 3px) var(--mono);
+  max-width: 48em;
+  height: calc(var(--rows, 3) * 1.9em);
   overflow: hidden;
+}
+html:not(.q-minimal) .tool-pulse-rows-clip {
+  transition: height var(--motion-slow) var(--ease-expo);
 }
 .tool-pulse-rows {
   margin: 0;
@@ -1969,9 +1992,8 @@ html:not(.q-minimal) .tool-pulse-caret {
 .tool-pulse-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 22px;
-  font: 11.5px var(--mono);
+  gap: 0.7em;
+  height: 1.9em;
   color: rgb(var(--fg-muted));
   white-space: nowrap;
 }
@@ -1992,7 +2014,7 @@ html:not(.q-minimal) .tool-pulse-row {
 }
 .tool-pulse-row-name {
   flex-shrink: 0;
-  min-width: 34px;
+  min-width: 3em;
   color: rgb(var(--fg-secondary));
 }
 .tool-pulse-row.is-running .tool-pulse-row-name {
@@ -2458,6 +2480,7 @@ html:not(.q-minimal) .collapse-track {
   .tool-pulse-tally-count,
   .tool-pulse-tally-time,
   .tool-pulse-think,
+  .tool-pulse-rows-clip,
   .tool-pulse-caret,
   .tool-pulse-row,
   .tool-pulse-row-icon {

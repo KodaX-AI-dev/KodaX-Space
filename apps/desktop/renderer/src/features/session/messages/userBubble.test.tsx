@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '../../../i18n/I18nProvider.js';
-import { LocalNoticeBubble, UserBubble } from './bubbles.js';
+import { LocalNoticeBubble, ToolCallCard, UserBubble } from './bubbles.js';
 
 /** The provider follows the system languages; pin them so assertions never depend on the host OS. */
 function withSystemLanguages<T>(languages: readonly string[], render: () => T): T {
@@ -76,4 +76,24 @@ test('user queries have a persistent localized sender label distinct from assist
   assert.match(markup, /data-testid="user-query-content"/);
   assert.match(markup, /aria-label="复制消息"/);
   assert.match(markup, /保留到这轮，创建分支/);
+});
+
+test('a tool that finished with an error result shows a failed badge, not done', () => {
+  const markup = withSystemLanguages(['en-US'], () =>
+    renderToStaticMarkup(
+      <I18nProvider>
+        <ToolCallCard
+          kind="tool_call"
+          id="t1"
+          toolId="t1"
+          toolName="script_exec"
+          status="done"
+          failed
+          result="[Blocked] Task actions were deferred"
+        />
+      </I18nProvider>,
+    ),
+  );
+  assert.match(markup, />failed</);
+  assert.doesNotMatch(markup, />done</);
 });

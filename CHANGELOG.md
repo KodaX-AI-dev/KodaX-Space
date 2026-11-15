@@ -22,6 +22,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 - The tool group a Run is working in now shows that it is working: a spinner and light sweep on its label, the last three actions scrolling underneath with their targets and durations, the latest thinking line while the model decides the next call, and elapsed time and output tokens beside the label. Per tool family (read, edit, run, other, failed) the label shows an icon, a call count and total time; the running family's icon breathes and its time counts up, a new call bumps its count, and the tallies stay on the label after the Run ends. A step that only thinks shows its latest thinking line live as well. Thinking between tool calls no longer splits the live group. Motion follows the visual quality setting and reduced-motion preference. Design record: [live-work-motion](docs/design/live-work-motion/direction-approved.md).
 - While the main agent waits on sub-agents, the bottom spinner adds "Agents working: N" and shows one live row per running sub-agent: its name, its latest thinking line or current tool and target, and how long it has been running. Rows disappear as each sub-agent finishes. Main folds the SDK's live child events itself (`agent.childLive.changed`) because the SDK session view keeps only the latest text chunk.
+- The live work feed now fits its content and the transcript: the thinking line spans the conversation column, tool rows stay readable at about 48 characters wide, and the box is only as tall as the rows and thinking it shows (up to three rows) instead of a fixed three-row block. Live text and the expanded thinking text follow the transcript font size setting, one step smaller. Skill loads tally under their own book icon.
+- A long expanded query also has "Collapse query" at its end; collapsing from there scrolls the query start back into view.
 - Script mode reads like direct tool use in the live tool group: a bridged `tool_call` shows and counts as the tool it calls, and a `script_exec` cell shows its first line of code and counts as a run.
 - `KODAX_HOME` is the single data-root variable for Space and the SDK. `KODAX_PROFILE_DIR` is a deprecated alias (used only when `KODAX_HOME` is unset, with a logged warning) and will be removed in the next version.
 
@@ -37,6 +39,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Fixed
 
+- In a multi-question ask, "Skip (Esc)" skips only the current question. The questions you answered are still sent to the agent; the ask counts as skipped only when no question was answered. Before, skipping any question dropped every earlier answer and the agent continued on its own recommendations.
+- A tool call that ended with an error result shows a red "failed" badge on its card instead of "done", matching the failure tally on its group.
 - The "Return to newest messages" button no longer stays at the bottom of a conversation you have scrolled back down: after browsing saved history from the live view, scrolling down again at the end of the newest saved page returns to the live view.
 - Queued messages the assistant answers together as one turn now show as that one merged message: no leftover queued bubble per merged message, and a Host restart during that turn no longer queues them again (SDK beta.10).
 - Sending a prompt clears the whole composer again: text ending with a line break (Shift+Enter or a pasted quote) no longer stays fully or partly in the input after it was sent (Issue 249, introduced in 0.1.47-alpha.5).

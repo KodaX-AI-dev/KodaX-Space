@@ -2,10 +2,20 @@
 // All motion is transform/opacity only. CSS animations are gated in styles.css; the WAAPI
 // row push-up checks the same gates here because WAAPI bypasses CSS gating.
 
-import { useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react';
-import { Check, Dot, FileSearch, Pencil, SquareTerminal, X, type LucideIcon } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from 'react';
+import {
+  BookOpen,
+  Check,
+  Dot,
+  FileSearch,
+  Pencil,
+  SquareTerminal,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { DURATION, EASE_EXPO } from '../lib/motion.js';
 import {
+  LIVE_ROW_LIMIT,
   formatPulseDuration,
   type FamilyTally,
   type LiveToolRow,
@@ -38,6 +48,7 @@ const FAMILY_ICONS: Readonly<Record<ToolFamily, LucideIcon>> = {
   read: FileSearch,
   edit: Pencil,
   run: SquareTerminal,
+  skill: BookOpen,
   other: Dot,
   fail: X,
 };
@@ -87,7 +98,7 @@ export function RowIcon({ status }: { status: LiveToolRow['status'] }): JSX.Elem
 }
 
 /**
- * The latest thinking line with a blinking caret; hidden (but laid out) while empty. A line wider
+ * The latest thinking line with a blinking caret; it folds to no height while empty. A line wider
  * than the group is clipped on the left so the newest words stay next to the caret.
  */
 export function LiveThinkingLine({ text }: { text: string }): JSX.Element {
@@ -127,7 +138,11 @@ export function LiveToolFeed({
   return (
     <div className="tool-pulse-feed" data-testid="tool-cluster-live-feed">
       <LiveThinkingLine text={thinking} />
-      <div className="tool-pulse-rows-clip">
+      {/* As tall as the rows it shows (at most three); a fourth only fades out above them. */}
+      <div
+        className="tool-pulse-rows-clip"
+        style={{ '--rows': Math.min(rows.length, LIVE_ROW_LIMIT - 1) } as CSSProperties}
+      >
         <ul ref={listRef} className="tool-pulse-rows">
           {rows.map((row) => (
             <li

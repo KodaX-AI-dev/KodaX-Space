@@ -120,9 +120,16 @@ test('long user queries keep a four-line preview and can expand or collapse in p
       )
       .toBe(LONG_QUERY);
     await expect(label).toHaveText('You');
-    await toggle.click();
+    // A reader who finished the query collapses it from its end; the query start comes back.
+    const collapseEnd = bubble.getByTestId('user-query-collapse-end');
+    await expect(collapseEnd).toHaveAccessibleName('Collapse query');
+    await collapseEnd.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+    await expect(label).not.toBeInViewport();
+    await collapseEnd.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(toggle).toHaveAccessibleName('Expand query');
+    await expect(collapseEnd).toHaveCount(0);
+    await expect(label).toBeInViewport();
     await expect
       .poll(() => content.evaluate((element) => element.clientHeight))
       .toBeLessThanOrEqual(collapsed.clientHeight + 1);

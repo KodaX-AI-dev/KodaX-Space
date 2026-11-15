@@ -148,6 +148,37 @@ test(
 );
 
 test(
+  'the live feed sizes to its content, fills the column and follows the transcript font',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate(
+      'window.stream(true);window.show([window.running()[0],window.running().at(-1)]);window.settle()',
+    );
+    const cluster = page.getByTestId('process-receipt-tool_cluster');
+    const clip = cluster.locator('.tool-pulse-rows-clip');
+    await clip.waitFor();
+    // One row and no thought: the feed is one row tall, with no empty thinking line above it.
+    assert.equal(await clip.evaluate((node) => node.style.getPropertyValue('--rows')), '1');
+    assert.equal(await cluster.locator('.tool-pulse-think.is-on').count(), 0);
+    assert.equal(await cluster.evaluate((node) => getComputedStyle(node).flexGrow), '1');
+    assert.equal(
+      await page.getByTestId('conversation-scroll-container').getAttribute('data-transcript-font'),
+      'base',
+    );
+
+    await page.evaluate('window.show(window.running());window.settle()');
+    assert.equal(await clip.evaluate((node) => node.style.getPropertyValue('--rows')), '3');
+
+    await page.evaluate('window.show(window.thinkingOnly());window.settle()');
+    const thinking = page.getByTestId('process-receipt-thinking');
+    await thinking.locator('.tool-pulse-think.is-on').waitFor();
+    assert.equal(await thinking.evaluate((node) => getComputedStyle(node).flexGrow), '1');
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
   'a thinking-only stream shows its latest thought live, then settles to the thinking chip',
   { skip: !existsSync(chromium.executablePath()) },
   async (t) => {

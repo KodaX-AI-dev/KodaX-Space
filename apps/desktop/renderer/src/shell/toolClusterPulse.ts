@@ -21,7 +21,7 @@ export interface PulseStep {
   readonly productItem?: { readonly timestamp?: number };
 }
 
-export type ToolFamily = 'read' | 'edit' | 'run' | 'other' | 'fail';
+export type ToolFamily = 'read' | 'edit' | 'run' | 'skill' | 'other' | 'fail';
 
 export interface FamilyTally {
   readonly family: ToolFamily;
@@ -44,7 +44,7 @@ export interface LiveToolRow {
 export const LIVE_ROW_LIMIT = 4;
 const TEXT_LIMIT = 80;
 
-const FAMILY_ORDER: readonly ToolFamily[] = ['read', 'edit', 'run', 'other', 'fail'];
+const FAMILY_ORDER: readonly ToolFamily[] = ['read', 'edit', 'run', 'skill', 'other', 'fail'];
 const TOOL_FAMILIES: Readonly<Record<string, ToolFamily>> = {
   read: 'read',
   grep: 'read',
@@ -58,6 +58,7 @@ const TOOL_FAMILIES: Readonly<Record<string, ToolFamily>> = {
   bash: 'run',
   // Script mode: a cell runs code; the calls it makes still show as their own rows.
   script_exec: 'run',
+  skill: 'skill',
 };
 
 const TARGET_KEYS = ['file_path', 'path', 'file', 'pattern', 'command', 'query', 'url'] as const;

@@ -2803,6 +2803,7 @@ export function ConversationStreamV2(): JSX.Element {
         onTouchStartCapture={handleTouchStart}
         onTouchMoveCapture={handleTouchMove}
         className={`ix-zone h-full overflow-auto px-8 py-5 ${fontClass}`}
+        data-transcript-font={transcriptFontSize}
       >
         {/* 左右只留几个字符的 padding，不限宽 —— 用户反馈 max-w-3xl 在宽屏留太多空白。
             左侧保留 transcript timeline marker，query jump rail 独立悬浮在更靠左的位置。*/}
@@ -3318,8 +3319,11 @@ function ProcessReceiptRow({
     >
       {receipts.map((receipt) => {
         const ringClass = searchRingClassFor(receipt.id, currentMatchId, matchSet);
-        const receiptStyle: CSSProperties =
-          receipt.kind === 'tool_cluster'
+        // The live tail fills the rest of the line so its feed can follow the column width.
+        const live = followTail && receipt === receipts.at(-1);
+        const receiptStyle: CSSProperties = live
+          ? { flex: '1 1 auto', minWidth: 0, maxWidth: '100%' }
+          : receipt.kind === 'tool_cluster'
             ? { flex: '0 1 auto', minWidth: 0, maxWidth: 'min(30rem, 100%)' }
             : { flex: '0 0 auto', minWidth: 0, maxWidth: '100%' };
         return (
@@ -3335,7 +3339,7 @@ function ProcessReceiptRow({
             {receipt.kind === 'tool_cluster' ? (
               <ToolCluster
                 cluster={receipt}
-                followTail={followTail && receipt === receipts.at(-1)}
+                followTail={live}
                 expanded={expanded.has(receipt.id) || clustersForceExpand}
                 expandedItems={expanded}
                 onToggle={() => onToggle(receipt.id)}
@@ -3344,7 +3348,7 @@ function ProcessReceiptRow({
               <ThinkingBlock
                 productItem={receipt.productItem}
                 thinking={receipt.thinking}
-                followTail={followTail && receipt === receipts.at(-1)}
+                followTail={live}
                 expanded={expanded.has(receipt.id) || thinkingForceExpand}
                 onToggle={() => onToggle(receipt.id)}
               />
@@ -3746,7 +3750,7 @@ function ThinkingBlock({
   // A thinking-only tail step streams its latest line, like the live tool group's think line.
   const live = followTail && !expanded;
   return (
-    <div className="inline-flex w-fit min-w-0 max-w-full flex-col">
+    <div className={`${live ? 'flex w-full' : 'inline-flex w-fit'} min-w-0 max-w-full flex-col`}>
       <button
         type="button"
         onClick={onToggle}
@@ -3780,7 +3784,7 @@ function ThinkingBlock({
               restoreCap: t('message.restoreCap'),
             }}
             className={[
-              'mt-1.5 ml-3 pl-2 border-l text-xs whitespace-pre-wrap',
+              'live-thinking-text mt-1.5 ml-3 pl-2 border-l whitespace-pre-wrap',
               'dark:border-thinking/60 dark:text-thinking/80',
               'border-thinking/50 text-thinking/90',
             ].join(' ')}
@@ -3873,7 +3877,9 @@ function ToolCluster({
   };
 
   return (
-    <div className="inline-flex w-fit min-w-0 max-w-full flex-col items-start text-xs">
+    <div
+      className={`${feedOpen ? 'flex w-full' : 'inline-flex w-fit items-start'} min-w-0 max-w-full flex-col text-xs`}
+    >
       <div className="flex min-w-0 max-w-full items-center gap-2.5">
         <button
           ref={chipRef}

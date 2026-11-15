@@ -315,10 +315,12 @@ function UserMessageContent({ content }: { content: string }): JSX.Element {
 // ---- User Bubble ----
 
 const USER_QUERY_PREVIEW_LINES = 4;
+const QUERY_REVEAL_MARGIN_PX = 8;
 
 function CollapsibleUserMessageContent({ content }: { content: string }): JSX.Element {
   const { t } = useI18n();
   const contentId = useId();
+  const contentRef = useRef<HTMLDivElement>(null);
   const measuredContentRef = useRef<HTMLDivElement>(null);
   const [expandedChoice, setExpanded] = useRowDisclosure(DisclosurePart.userQuery, false);
   const [layout, setLayout] = useState({
@@ -364,11 +366,16 @@ function CollapsibleUserMessageContent({ content }: { content: string }): JSX.El
       : layout.previewHeight
     : undefined;
   const toggleLabel = t(expanded ? 'message.collapseQuery' : 'message.expandQuery');
-  const toggle = layout.collapsible ? (
+  const toggle = (atEnd: boolean): JSX.Element => (
     <button
       type="button"
-      data-testid="user-query-toggle"
-      onClick={() => setExpanded((current) => !current)}
+      data-testid={atEnd ? 'user-query-collapse-end' : 'user-query-toggle'}
+      onClick={() => {
+        // Collapsing from the end would leave the reader below a now-short query; bring its
+        // start back. Its top does not move while the content shrinks, so measure now.
+        if (expanded) revealQueryStart(contentRef.current);
+        setExpanded((current) => !current);
+      }}
       aria-controls={contentId}
       aria-expanded={expanded}
       aria-label={toggleLabel}
@@ -381,12 +388,13 @@ function CollapsibleUserMessageContent({ content }: { content: string }): JSX.El
         <ChevronDown className="h-3 w-3" strokeWidth={1.8} aria-hidden />
       )}
     </button>
-  ) : null;
+  );
 
   return (
     <>
-      {expanded && toggle}
+      {layout.collapsible && expanded && toggle(false)}
       <div
+        ref={contentRef}
         id={contentId}
         data-testid="user-query-content"
         data-preview-lines={USER_QUERY_PREVIEW_LINES}
@@ -397,9 +405,18 @@ function CollapsibleUserMessageContent({ content }: { content: string }): JSX.El
           <UserMessageContent content={content} />
         </div>
       </div>
-      {!expanded && toggle}
+      {layout.collapsible && toggle(expanded)}
     </>
   );
+}
+
+/** Scrolls the transcript up so the query's bubble starts in view, if it starts above it. */
+function revealQueryStart(content: HTMLElement | null): void {
+  const bubble = content?.closest<HTMLElement>('[data-testid="user-message-bubble"]') ?? content;
+  const scroller = content?.closest<HTMLElement>('[data-testid="conversation-scroll-container"]');
+  if (!bubble || !scroller) return;
+  const above = scroller.getBoundingClientRect().top - bubble.getBoundingClientRect().top;
+  if (above > 0) scroller.scrollTop -= above + QUERY_REVEAL_MARGIN_PX;
 }
 
 function isSafeUserImageUrl(url: string): boolean {
@@ -768,6 +785,7 @@ function ToolCallCardBody({
   result,
   progress,
   status,
+  failed,
 }: ToolCallCardProps): JSX.Element {
   const { t } = useI18n();
   const [manualExpanded, setManualExpanded] = useRowDisclosure(DisclosurePart.toolDetails, () =>
@@ -861,7 +879,7 @@ function ToolCallCardBody({
                 <FileNameText name={pathArg} />
               </button>
             )}
-            <StatusBadge status={status} />
+            <StatusBadge status={status} failed={failed} />
           </div>
         );
       })()}
@@ -905,8 +923,21 @@ function ToolCallCardBody({
   );
 }
 
-function StatusBadge({ status }: { status: 'running' | 'done' | 'interrupted' }): JSX.Element {
+function StatusBadge({
+  status,
+  failed,
+}: {
+  status: 'running' | 'done' | 'interrupted';
+  failed?: boolean;
+}): JSX.Element {
   const { t } = useI18n();
+  if (status === 'done' && failed) {
+    return (
+      <span className="text-[11px] uppercase px-1.5 py-0.5 rounded border text-danger bg-danger/12 border-danger/30">
+        {t('message.status.failed')}
+      </span>
+    );
+  }
   if (status !== 'done') {
     return (
       <span

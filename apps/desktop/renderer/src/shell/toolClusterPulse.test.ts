@@ -39,6 +39,21 @@ test('tallies count each tool family in a fixed order, with failures counted apa
   );
 });
 
+test('skill loads tally as their own family, also when script mode bridges them', () => {
+  const tallies = familyTallies([
+    tool('s1', { toolName: 'skill', input: { skill: 'grilling' } }),
+    tool('s2', { toolName: 'tool_call', input: { name: 'skill', input: { skill: 'tdd' } } }),
+    tool('ask', { toolName: 'ask_user' }),
+  ]);
+  assert.deepEqual(
+    tallies.map((tally) => [tally.family, tally.count]),
+    [
+      ['skill', 2],
+      ['other', 1],
+    ],
+  );
+});
+
 test('a tally totals its busy time and the running tool keeps counting up', () => {
   const tools = [
     tool('a', { startedAt: 0, endedAt: 300 }),
