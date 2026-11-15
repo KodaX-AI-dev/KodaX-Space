@@ -187,6 +187,21 @@ function AskUserInlineCard({
     [reply],
   );
 
+  /** Multi-question: move to the next question, or send what was answered after the last one. */
+  const advanceMulti = useCallback(
+    (answers: Readonly<Record<string, AskUserQuestionAnswer>>): void => {
+      if (!multi) return;
+      if (multiQuestionIndex < multi.questions.length - 1) {
+        setMultiAnswers(answers);
+        setMultiQuestionIndex((index) => index + 1);
+        return;
+      }
+      // Skipped questions are simply absent; the ask is skipped only when nothing was answered.
+      void reply(Object.keys(answers).length > 0 ? { value: answers } : { cancelled: true });
+    },
+    [multi, multiQuestionIndex, reply],
+  );
+
   const submitQuestion = useCallback((): void => {
     if (kind === 'guardrail') return;
     if (kind === 'input') {
@@ -210,13 +225,7 @@ function AskUserInlineCard({
     }
     const answer: AskUserQuestionAnswer = question.multiSelect ? values : (values[0] ?? '');
     if (multi) {
-      const nextAnswers = { ...multiAnswers, [question.question]: answer };
-      if (multiQuestionIndex < multi.questions.length - 1) {
-        setMultiAnswers(nextAnswers);
-        setMultiQuestionIndex((index) => index + 1);
-        return;
-      }
-      void reply({ value: nextAnswers });
+      advanceMulti({ ...multiAnswers, [question.question]: answer });
       return;
     }
     void reply({ value: answer });
@@ -230,12 +239,18 @@ function AskUserInlineCard({
     t,
     multi,
     multiAnswers,
-    multiQuestionIndex,
+    advanceMulti,
   ]);
 
+  /** Skip skips the current question only; in a multi-question ask the earlier answers stay. */
   const cancelQuestion = useCallback((): void => {
-    void reply({ cancelled: true });
-  }, [reply]);
+    if (!multi || !question) {
+      void reply({ cancelled: true });
+      return;
+    }
+    const { [question.question]: _skipped, ...answers } = multiAnswers;
+    advanceMulti(answers);
+  }, [multi, question, multiAnswers, advanceMulti, reply]);
 
   const onTextInputKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLTextAreaElement>): void => {
