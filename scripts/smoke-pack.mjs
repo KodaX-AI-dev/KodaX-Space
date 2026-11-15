@@ -988,6 +988,15 @@ async function checkAsarContents(asarPath) {
     ? (await listFilesRecursive(unpackedDir)).map((f) => f.replace(/\\/g, '/'))
     : [];
   await verifyPackagedKodaxNativeArtifacts(unpackedDir);
+  // Builtin Skill scripts run under a real `node`, which cannot read app.asar.
+  for (const sourceFile of await listFilesRecursive(kodaxBuiltinSourceDir)) {
+    const relative = path.relative(kodaxBuiltinSourceDir, sourceFile).replace(/\\/g, '/');
+    const req = `/node_modules/@kodax-ai/kodax/dist/builtin/${relative}`;
+    if (!unpackedFiles.some((file) => file.endsWith(req))) {
+      fail(`KodaX builtin skill file is not unpacked from asar: ${req}`);
+    }
+  }
+  ok('every KodaX builtin skill file is present in app.asar.unpacked');
   const asrtAsarPrefix = '/node_modules/@anthropic-ai/sandbox-runtime/';
   if (normalized.some((file) => file.includes(asrtAsarPrefix))) {
     fail(

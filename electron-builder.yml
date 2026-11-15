@@ -209,6 +209,9 @@ asarUnpack:
   # Keep their relative assets, package scope and renderer dependency tree physical.
   - '**/node_modules/@kodax-ai/kodax/package.json'
   - '**/node_modules/@kodax-ai/kodax/dist/artifacts/**'
+  # Builtin Skill scripts are run by a real `node`; the SDK resolves the builtin
+  # root to this unpacked copy.
+  - '**/node_modules/@kodax-ai/kodax/dist/builtin/**'
   - '**/node_modules/{jszip,lie,immediate,pako,readable-stream,core-util-is,inherits,isarray,process-nextick-args,safe-buffer,string_decoder,util-deprecate,setimmediate,pngjs,pptxgenjs,https,image-size,queue,pdfjs-dist,docx-renderer,konva,lodash-es,fast-xml-parser,strnum,anynum,playwright-core,echarts,tslib,zrender,mtx-decompressor}/**'
   - '**/node_modules/@aiden0z/pptx-renderer/**'
   - '**/node_modules/@silvia-odwyer/photon-node/**'
