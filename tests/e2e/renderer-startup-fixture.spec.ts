@@ -44,7 +44,12 @@ async function deferRoot(page: Page, reattach: boolean): Promise<void> {
     if (reattach)
       setTimeout(() => {
         document.body.append(root);
-        state.framesAtAttachment = state.frames;
+        // The attachment mutation itself can earn one compositor commit before
+        // native background suspension fully holds; baseline the counter after
+        // that settles so the probe measures steady-state suspension.
+        setTimeout(() => {
+          state.framesAtAttachment = state.frames;
+        }, 300);
       }, 250);
   }, reattach);
 }

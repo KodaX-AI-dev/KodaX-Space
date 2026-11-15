@@ -136,9 +136,21 @@ test('conversation expansion lazy-mounts hidden tool details and defers Monaco d
 
     const sessionId = await createSession(space, 'seed lazy expansion audit');
     await emitSessionEvents(space, seededExpandEvents(sessionId));
-    await expect(lastToolCluster(page)).toBeVisible({ timeout: 8_000 });
+    // The heavy injected batch digests over several seconds, and the real prompt's
+    // own reply cluster can render before (or after) ours. Target our cluster by its
+    // tool-name summary (tool names are not localized) instead of DOM position, then
+    // wait until no chip is live so the click lands on the settled grouping — a
+    // mid-digest toggle expands an id that the settle regrouping reassigns.
+    const lazyCluster = page
+      .getByTestId('process-receipt-tool_cluster')
+      .filter({ hasText: 'bash' })
+      .filter({ hasText: 'edit' });
+    await expect(lazyCluster).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.locator('[data-testid="process-receipt-tool_cluster"] [data-live]'),
+    ).toHaveCount(0, { timeout: 15_000 });
 
-    await lastToolCluster(page).getByRole('button').first().click();
+    await lazyCluster.getByRole('button').first().click();
     await expect(page.getByTestId('tool-call-card')).toHaveCount(7, { timeout: 8_000 });
     await expect(page.getByTestId('tool-call-card-details')).toHaveCount(1);
 
