@@ -405,6 +405,29 @@ test('Space manual covers the SDK beta.5-beta.7 behaviors Space adapted to', () 
   assert.match(own('tools'), /visual_read_pixels.*read 能力/);
 });
 
+test('Space manual covers the SDK beta.10 merged inputs and the 0.1.47-beta.1 conversation updates', () => {
+  const own = (id: string): string =>
+    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
+      '## Inherited KodaX SDK mechanism',
+    )[0] ?? '';
+
+  assert.match(own('runtime-host'), /inputIds 记名/);
+  assert.match(own('runtime-host'), /Host 重启后不会把已合并的输入再执行一遍/);
+  assert.match(own('composer'), /beta\.10 把一起回答的多条排队输入合并/);
+  assert.match(own('composer'), /文字回到 composer 草稿/);
+  assert.match(own('composer'), /带图片的消息保留撤回气泡/);
+  assert.match(own('permissions'), /跳过 \(Esc\)」只跳过当前问题/);
+  assert.match(own('permissions'), /全部问题都未作答时这张卡才算跳过/);
+  assert.match(own('ui-map'), /显示已归档会话.*开关/);
+  assert.match(own('ui-map'), /拖拽顺序保存在 projects\.json/);
+  assert.match(own('ui-map'), /红色 failed 徽标/);
+  assert.match(own('ui-map'), /live 工具组按工具族/);
+  assert.match(own('runtime-host'), /固定在 composer 上方/);
+  assert.match(own('runtime-host'), /Agents working: N/);
+  assert.match(own('agent-coordination'), /行随子 Agent 结束消失/);
+  assert.match(own('sessions'), /F144 窗口化/);
+});
+
 test('the installed SDK kodax_manual carries its own startup Job mechanism text, unmodified by Space', () => {
   // Space adds no overlay for the SDK sandbox topic, so kodax_manual serves this text as shipped.
   assert.equal(
