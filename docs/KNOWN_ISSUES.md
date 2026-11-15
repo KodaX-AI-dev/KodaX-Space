@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-14
+Last Updated: 2026-11-15
 
 > 2026-11-14：当前工作树依赖已发布的 Registry SDK `0.7.97-beta.9`（含 beta.8 的 Issues 245–247 原生 Job 启动修复与 Issue 250 的 SDK 侧修复），见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md) 与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
@@ -39,6 +39,8 @@ Last Updated: 2026-11-14
 | 248 | High     | Resolved (source; not released)                                                                              | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret                                                                                 | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
 | 249 | Medium   | Resolved (source; not released)                                                                              | Sent prompt stays (fully or partly) in the composer when a line ends with a line break                                                                                                                     | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11             | 2026-11-13 |
 | 250 | Medium   | Resolved (source; not released)                                                                              | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                                        | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
+| 251 | Medium   | Resolved (source; not released)                                                                              | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                               | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
+| 252 | Low      | Ready (SDK fix)                                                                                              | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                                         | SDK product view (failure kept only in Run status); observed with SDK 0.7.97-beta.10  | 2026-11-15 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -2720,16 +2722,68 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
 - **Tests added**: "preserving a shared Host requests only personal client exit and keeps a
   blocked cause" (red before the fix); the forced-exit test now asserts `shutdownHost: true`.
 
+## Issue 251 — A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears
+
+- **Priority**: Medium.
+- **Status**: Resolved in source, not released.
+- **Introduced**: Space 0.1.47-alpha.2, when the transcript moved to the SDK product view
+  (`ec154569`). Reported on Windows 11 with SDK 0.7.97-beta.9.
+- **Created**: 2026-11-14.
+- **Original problem**: in a Session that already has history, a new query appears in the
+  transcript and the spinner shows "sent". When the spinner turns to "working" the query vanishes,
+  and a few seconds later it appears again.
+- **Root cause**: when `session.send` is accepted over IPC, the composer calls
+  `settleSendOperationMessage`, which sets `sendAdmissionSettled` on the optimistic user bubble.
+  `provisionalProductMessages` (`productConversation.ts`) kept local bubbles only while
+  `!sendAdmissionSettled`, so the bubble was dropped at acceptance. The SDK product view adds the
+  user item (`inputId` = the send `operationId`) only later, so for that gap neither copy was shown.
+- **Resolution (2026-11-14)**: a separate `UserMessage.productInputObserved` flag records that the
+  product view has carried the input. `App.tsx` calls the new store action `observeProductInputs`
+  for every product snapshot and change, and the projection keeps the local bubble until that flag
+  is set. Acceptance still sets `sendAdmissionSettled` as before. An observed input that later
+  leaves the bounded product window does not come back as a local bubble.
+- **Fixed**: source after 0.1.47-alpha.5 (not released), commit `e73c6374`.
+- **Files changed**: `apps/desktop/renderer/src/App.tsx`, `store/appStore.ts`,
+  `store/transcriptTypes.ts`, `features/session/productConversation.ts`,
+  `productConversation.test.ts`.
+- **Tests added**: `apps/desktop/renderer/src/store/sendOperationEcho.test.ts` — "an accepted send
+  stays visible until the SDK product view carries its input" (reserve → accept → observe through
+  the real store and projection; red before the fix). It also checks that the input does not come
+  back once it has left the window.
+
+## Issue 252 — A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains
+
+- **Priority**: Low (not blocking: the failure is visible while it is the latest Run).
+- **Status**: Ready — fix belongs to the KodaX SDK; Space needs no change once the SDK writes the item.
+- **Introduced**: SDK product view; observed on Windows 11 with SDK 0.7.97-beta.10.
+- **Created**: 2026-11-15.
+- **Original problem**: with a wrong provider key, the first query fails. The transcript shows the
+  key error and a grey notice `Recovery exhausted. Type "continue" to retry or "stop" to cancel.`
+  After fixing the key and sending again, the key error is gone while the grey notice stays
+  (also after reopening the Session).
+- **Root cause**:
+  - The SDK never adds a `type: 'error'` view item for a failed Run; the failure exists only in
+    Run status (`failureDetail`). Space derives the error notice from the latest Run only
+    (`currentDiagnosticRun`, `features/session/runtimeFailureNotice.ts`), so the next Run hides it.
+  - An auth failure is non-retryable and goes straight to `manual_continue`. The Host appends the
+    REPL text from `createRecoveryHistoryItem` (KodaX `src/session-view-notices.ts`) and persists
+    it. Nothing in the SDK handles a typed `continue`/`stop`, so the instruction misleads clients.
+- **Expected fix (SDK)**: persist a run-scoped `type: 'error'` item (`sourceRunId`, safe failure
+  message) after the failed input, and stop writing the CLI-only `manual_continue` text into the
+  view (omit it or use neutral text). Space already shows SDK error items in place and decorates
+  the current Run's item with failure detail and the Provider settings action.
+- **Decision**: no Space-side fallback (2026-11-15); reported to the KodaX SDK thread.
+
 ## Summary
 
-- Total: 27
+- Total: 29
 - Open: 1
-- Ready: 4
+- Ready: 5
 - In Progress: 11
-- Resolved, awaiting release or verification: 9
+- Resolved, awaiting release or verification: 10
 - Other (partially fixed / under investigation): 2
 - High: 15
-- Medium: 11
-- Low: 1
+- Medium: 12
+- Low: 2
 - Next ready to resolve: 222
 - Archived (resolved and delivered): see [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md)
