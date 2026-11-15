@@ -105,6 +105,7 @@ function displayItem(
             ? 'running'
             : 'done',
       ...(item.tool.status === 'error' ? { failed: true as const } : {}),
+      ...(item.tool.status === 'awaiting_approval' ? { awaitingApproval: true as const } : {}),
       ...(item.tool.startedAt !== undefined ? { startedAt: item.tool.startedAt } : {}),
       ...(item.tool.endedAt !== undefined ? { endedAt: item.tool.endedAt } : {}),
     };

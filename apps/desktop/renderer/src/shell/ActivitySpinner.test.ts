@@ -90,3 +90,74 @@ test('spinner renders runtime iteration and omits an unbounded denominator', (t)
     assert.ok(!html.includes('17/0'));
   }
 });
+
+function renderRuntimeSpinner(
+  t: { after: (fn: () => void) => void },
+  options: { readonly phase: 'running' | 'waiting_permission'; readonly liveWorkVisible: boolean },
+): string {
+  const initial = useAppStore.getInitialState();
+  const original = { ...initial };
+  t.after(() => Object.assign(initial, original));
+  const end = (outputTokens: number) => ({
+    kind: 'iteration_end',
+    sessionId: 'live',
+    iter: 1,
+    maxIter: 0,
+    tokenCount: 1,
+    usage: { inputTokens: 1_000, cacheReadInputTokens: 4_000, outputTokens },
+    runtimeEvent: { runtimeId: 'rt', runId: 'run', seq: 1, journalEpoch: 'e' },
+  });
+  Object.assign(initial, {
+    currentSessionId: 'live',
+    pendingSendBySession: {},
+    runtimeProfile: undefined,
+    runtimeConnection: {
+      state: 'ready',
+      runtimeId: 'rt',
+      changedAt: 0,
+      stale: false,
+      capabilities: [],
+    },
+    eventsBySession: {
+      live: [{ kind: 'session_start', sessionId: 'live', provider: 'p' }, end(600), end(900)],
+    },
+    liveProjectionBySession: {
+      live: {
+        sessionId: 'live',
+        projectionRevision: 1,
+        cursor: { runtimeId: 'rt', seq: 1 },
+        transcriptRevision: 't',
+        activeRun: { runId: 'run', sessionId: 'live', phase: options.phase, startedAt: 10 },
+        queuedRuns: [],
+        activeTools: [],
+        todos: [
+          { id: 'a', content: '调研', status: 'in_progress', activeForm: '调研三个上游仓库源码' },
+        ],
+        queuedInputs: [],
+        interactions: [],
+      },
+    },
+  });
+  return renderToStaticMarkup(
+    createElement(
+      TestI18nProvider,
+      null,
+      createElement(ActivitySpinner, { liveWorkVisible: options.liveWorkVisible }),
+    ),
+  );
+}
+
+test('beside a working live group the spinner drops its comet but keeps the task and run totals', (t) => {
+  const html = renderRuntimeSpinner(t, { phase: 'running', liveWorkVisible: true });
+  assert.doesNotMatch(html, /activity-spinner-comet/);
+  assert.match(html, /调研三个上游仓库源码/);
+  // ↑ = input with cache (2 × 5k), ↓ = output (600 + 900).
+  assert.match(html, /↑10\.0k/);
+  assert.match(html, /↓1\.5k/);
+});
+
+test('a phase the live group cannot show brings the comet and the phase text back', (t) => {
+  const html = renderRuntimeSpinner(t, { phase: 'waiting_permission', liveWorkVisible: true });
+  assert.match(html, /activity-spinner-comet/);
+  assert.match(html, /等待批准/);
+});

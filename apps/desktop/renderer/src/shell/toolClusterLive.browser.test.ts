@@ -27,6 +27,9 @@ window.between=()=>[...base,tool('bash','bash',{command:'npm test'},'success',15
 window.thinkingOnly=()=>[base[0],{id:'think-0',type:'thinking',outputState:'draft',text:'scan the repo\\nplanning the next step',timestamp:t0+10}];
 window.show=rows=>replaceProductSessionView({sessionId:'s',runtimeId:'r',revision:++revision,items:rows});
 window.stream=on=>useAppStore.setState({pendingSendBySession:on?{s:true}:{}});
+window.started=()=>useAppStore.setState({eventsBySession:{s:[{kind:'session_start',sessionId:'s',provider:'p'}]}});
+window.compact=()=>useAppStore.setState({eventsBySession:{s:[{kind:'session_start',sessionId:'s',provider:'p'},{kind:'compact_start',sessionId:'s'}]}});
+window.awaiting=()=>[...base,tool('bash','bash',{command:'rm -rf build'},'awaiting_approval',1500)];
 window.olderPage=rows=>installProductHistory('s',rows,true);
 window.queue=()=>useAppStore.setState({queuedUserMessagesBySession:{s:[{id:'q',content:'next',matchContent:'next',queueMode:'after-turn',status:'queued'}]}});
 window.local=()=>useAppStore.setState({userMessagesBySession:{s:[{id:'u_local',operationId:'op',content:'go',sentAt:t0}]}});
@@ -124,10 +127,9 @@ test(
       (await cluster.locator('[data-family="run"] .tool-pulse-tally-time').textContent()) ?? '',
       /^\d+s$/,
     );
-    assert.match(
-      (await cluster.getByTestId('tool-cluster-live-stats').textContent()) ?? '',
-      /\d+s.*tok/,
-    );
+    const stats = cluster.getByTestId('tool-cluster-stats');
+    assert.equal(await stats.getAttribute('data-live'), 'true');
+    assert.match((await stats.textContent()) ?? '', /\d+s.*↓ \d+ tok/);
 
     // Thinking between tool calls folds into the live group instead of ending it.
     await page.evaluate('window.show(window.between());window.settle()');
@@ -141,7 +143,9 @@ test(
     await page.evaluate('window.stream(false);window.settle()');
     // The feed collapses (kept mounted for the close transition) out of the a11y tree.
     await cluster.locator('[aria-hidden="true"] [data-testid="tool-cluster-live-feed"]').waitFor();
-    assert.equal(await cluster.getByTestId('tool-cluster-live-stats').count(), 0);
+    // The settled group keeps its elapsed time and output estimate.
+    assert.equal(await stats.getAttribute('data-live'), null);
+    assert.match((await stats.textContent()) ?? '', /\d+(\.\d)?s.*↓ \d+ tok/);
     assert.deepEqual(await tallies(cluster), ['read 2', 'run 1']);
     assert.deepEqual(errors, []);
   },
@@ -234,7 +238,7 @@ test(
     await page.evaluate(
       'window.stream(true);window.show(window.running());window.queue();window.settle()',
     );
-    const stats = page.getByTestId('tool-cluster-live-stats');
+    const stats = page.locator('[data-testid="tool-cluster-stats"][data-live="true"]');
     assert.equal(await stats.count(), 1);
     await page.evaluate('window.olderPage(window.running());window.settle()');
     assert.equal(await stats.count(), 0);
@@ -269,6 +273,53 @@ test(
     const row = page.getByTestId('tool-cluster-live-row').last();
     assert.equal(await row.getAttribute('class'), 'tool-pulse-row is-failed');
     assert.equal(await row.locator('.tool-pulse-row-icon.is-failed').count(), 1);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'while the run waits the live group stays open but stops moving, and the spinner takes over',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate(
+      'window.stream(true);window.started();window.show(window.running());window.settle()',
+    );
+    const cluster = page.getByTestId('process-receipt-tool_cluster');
+    const spinner = page.getByTestId('activity-spinner-row');
+    await cluster.getByTestId('tool-cluster-live-row').first().waitFor();
+    // Pinned above the composer, outside the scrolling transcript.
+    assert.equal(
+      await page
+        .getByTestId('conversation-scroll-container')
+        .getByTestId('activity-spinner-row')
+        .count(),
+      0,
+    );
+    // The live group shows the work, so the spinner keeps only its numbers.
+    assert.equal(await spinner.locator('.activity-spinner-comet').count(), 0);
+    assert.equal(await cluster.locator('.tool-pulse-paused').count(), 0);
+
+    await page.evaluate('window.compact();window.settle()');
+    await cluster.locator('.tool-pulse-paused').waitFor();
+    assert.equal(await cluster.getByTestId('tool-cluster-live-feed').isVisible(), true);
+    await spinner.locator('.activity-spinner-comet').waitFor({ state: 'attached' });
+    assert.match((await spinner.textContent()) ?? '', /Compacting context/);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'a tool waiting for approval reads as awaiting approval, not running',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.evaluate('window.stream(true);window.show(window.awaiting());window.settle()');
+    const row = page.getByTestId('tool-cluster-live-row').last();
+    await row.waitFor();
+    assert.equal(await row.getAttribute('class'), 'tool-pulse-row is-awaiting');
+    assert.match((await row.textContent()) ?? '', /awaiting approval/);
+    assert.equal(await row.locator('.tool-pulse-spin').count(), 0);
     assert.deepEqual(errors, []);
   },
 );

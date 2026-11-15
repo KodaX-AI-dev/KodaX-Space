@@ -98,13 +98,18 @@ test('a follow-up streams thinking, tools and the answer without losing or doubl
       .configure({ soft: true })
       .poll(() => tallies(cluster))
       .toEqual(['read 2', 'run 1', 'fail 1']);
-    await expect(cluster.getByTestId('tool-cluster-live-stats')).toBeVisible();
+    await expect(cluster.getByTestId('tool-cluster-stats')).toHaveAttribute('data-live', 'true');
     await shot('2-tools-live');
 
     provider.release('LIVE_ANSWER');
     await expect(stream.getByText('LIVE_CHAIN_ANSWER')).toBeVisible({ timeout: 20_000 });
     await waitSdkIdle(space, sessionId);
-    await expect(cluster.getByTestId('tool-cluster-live-stats')).toHaveCount(0);
+    // Settled, the group keeps its elapsed time and output estimate.
+    await expect(cluster.getByTestId('tool-cluster-stats')).not.toHaveAttribute(
+      'data-live',
+      'true',
+    );
+    await expect(cluster.getByTestId('tool-cluster-stats')).toContainText('tok');
     expect.soft(await tallies(cluster)).toEqual(['read 2', 'run 1', 'fail 1']);
     await expect(stream.getByTestId('process-receipt-tool_cluster')).toHaveCount(1);
     await shot('3-settled');

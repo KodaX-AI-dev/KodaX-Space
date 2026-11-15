@@ -302,7 +302,8 @@ test('alpha.11 thinking and tool argument progress display the Host token estima
         .toBe(kind);
       const activity = (await readSdkProductView(space, sessionId)).activity!;
       expect(activity.streaming.estimatedTokenCount).toBeGreaterThan(0);
-      await expect(space.page.getByText(new RegExp('~[0-9.]+(?:k)? tokens')).last()).toBeVisible();
+      // The streaming estimate joins the Run's output total as ↓~N.
+      await expect(space.page.getByTestId('activity-spinner-row')).toContainText(/↓~[0-9.]+k?/);
       await space.page.screenshot({ path: test.info().outputPath(`${kind}-tokens.png`) });
       const stopped = await space.page.evaluate(
         (args) => window.kodaxSpace!.invoke('session.cancel', args),

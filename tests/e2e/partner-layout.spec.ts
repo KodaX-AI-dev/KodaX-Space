@@ -56,7 +56,7 @@ async function sendPrompt(page: Page, prompt: string): Promise<void> {
     timeout: 10_000,
   });
   await expect(stream.getByText(/Ran 1 command/).first()).toBeVisible({ timeout: 20_000 });
-  await expect(stream.locator('.activity-spinner-comet')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByTestId('activity-spinner-row')).toHaveCount(0, { timeout: 20_000 });
 }
 
 async function saveScreenshot(page: Page, name: string): Promise<void> {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  clusterEndedAt,
   clusterOutputTokens,
   clusterStartedAt,
   familyTallies,
@@ -193,4 +194,21 @@ test('script mode: a script cell shows its first code line and counts as a run',
     familyTallies([cell]).map((tally) => tally.family),
     ['run'],
   );
+});
+
+test('a tool held for approval is a waiting row, and the group ends with its last tool', () => {
+  const held = {
+    id: 'b',
+    toolName: 'bash',
+    status: 'running',
+    awaitingApproval: true,
+    startedAt: 5,
+  } as const;
+  assert.equal(liveToolRows([held], 10)[0]!.status, 'awaiting');
+  const done = [
+    { id: 'a', toolName: 'read', status: 'done', startedAt: 1, endedAt: 4 },
+    { id: 'c', toolName: 'grep', status: 'done', startedAt: 2, endedAt: 9 },
+  ] as const;
+  assert.equal(clusterEndedAt(done), 9);
+  assert.equal(clusterEndedAt([...done, held]), undefined);
 });

@@ -80,6 +80,7 @@ import {
   useSecondClock,
 } from './ToolClusterLive.js';
 import {
+  clusterEndedAt,
   clusterOutputTokens,
   clusterStartedAt,
   familyTallies,
@@ -127,7 +128,7 @@ import {
   useRevealOnce,
 } from '../features/session/messages/rowDisclosure.js';
 import { WelcomeDashboard } from './WelcomeDashboard.js';
-import { ActivitySpinner, useIsStreaming } from './ActivitySpinner.js';
+import { ActivitySpinner, useActivityState } from './ActivitySpinner.js';
 import { Caret } from '../components/Caret.js';
 import { Reveal } from '../components/Reveal.js';
 import { Collapse } from '../components/Collapse.js';
@@ -936,7 +937,8 @@ function groupTools(
 
 export function ConversationStreamV2(): JSX.Element {
   const { t } = useI18n();
-  const isStreaming = useIsStreaming();
+  const activity = useActivityState();
+  const isStreaming = activity.isStreaming;
   const currentSessionId = useAppStore((s) => s.currentSessionId);
   const welcomeDraftSessionId = useAppStore((s) => s.welcomeDraftSessionId);
   const actionSession = useAppStore((s) =>
@@ -1359,16 +1361,20 @@ export function ConversationStreamV2(): JSX.Element {
   // mounted, so the code that scrolls to them finds their element.
   // The run's working row: the last one above any queued follow-up or local notice, and never on
   // an older history page.
-  const liveTailId = useMemo(() => {
-    if (!isStreaming || productTranscript?.browsingOlder) return undefined;
+  // A queued-only Run has not started, so the previous Run's tail is settled.
+  const liveTail = useMemo(() => {
+    if (!activity.tailLive || productTranscript?.browsingOlder) return undefined;
     return [...renderItems]
       .reverse()
       .find(
         (item) =>
           item.kind !== 'message' ||
           (item.message.kind !== 'queued_user' && item.message.kind !== 'local_notice'),
-      )?.id;
-  }, [isStreaming, productTranscript?.browsingOlder, renderItems]);
+      );
+  }, [activity.tailLive, productTranscript?.browsingOlder, renderItems]);
+  const liveTailId = liveTail?.id;
+  // The spinner steps back while a working live group or thinking chip shows the work.
+  const liveWorkVisible = activity.working && liveTail?.kind === 'receipts';
   const pinnedRows = useMemo(() => {
     const ids = [
       findJump?.id,
@@ -2759,6 +2765,7 @@ export function ConversationStreamV2(): JSX.Element {
         index={index}
         animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
         liveTail={item.id === liveTailId}
+        liveWorking={item.id === liveTailId && activity.working}
         queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
         feedSize={renderItems.length}
         expanded={expanded}
@@ -2788,365 +2795,373 @@ export function ConversationStreamV2(): JSX.Element {
   };
 
   return (
-    <div
-      className="relative flex-1 overflow-hidden"
-      data-testid="conversation-stream"
-      data-session-id={currentSessionId}
-    >
+    <>
       <div
-        ref={scrollRef}
-        data-testid="conversation-scroll-container"
-        onScroll={handleScroll}
-        onWheelCapture={handleWheel}
-        onKeyDownCapture={handleKeyDown}
-        onPointerDownCapture={handlePointerDown}
-        onTouchStartCapture={handleTouchStart}
-        onTouchMoveCapture={handleTouchMove}
-        className={`ix-zone h-full overflow-auto px-8 py-5 ${fontClass}`}
-        data-transcript-font={transcriptFontSize}
+        className="relative flex-1 overflow-hidden"
+        data-testid="conversation-stream"
+        data-session-id={currentSessionId}
       >
-        {/* 左右只留几个字符的 padding，不限宽 —— 用户反馈 max-w-3xl 在宽屏留太多空白。
+        <div
+          ref={scrollRef}
+          data-testid="conversation-scroll-container"
+          onScroll={handleScroll}
+          onWheelCapture={handleWheel}
+          onKeyDownCapture={handleKeyDown}
+          onPointerDownCapture={handlePointerDown}
+          onTouchStartCapture={handleTouchStart}
+          onTouchMoveCapture={handleTouchMove}
+          className={`ix-zone h-full overflow-auto px-8 py-5 ${fontClass}`}
+          data-transcript-font={transcriptFontSize}
+        >
+          {/* 左右只留几个字符的 padding，不限宽 —— 用户反馈 max-w-3xl 在宽屏留太多空白。
             左侧保留 transcript timeline marker，query jump rail 独立悬浮在更靠左的位置。*/}
-        <div ref={contentRef} className="relative pl-10 sm:pl-12">
-          {renderItems.length > 0 && (
-            <div
-              className="conversation-timeline-decoration absolute left-[20px] top-2 bottom-2 w-px bg-border-default/55 sm:left-[28px]"
-              aria-hidden
-            />
-          )}
-          <div
-            ref={windowRef}
-            className="space-y-3"
-            data-transcript-window="true"
-            // Windowed rows come and go; a feed tells assistive tech each row's place in the whole.
-            role="feed"
-          >
-            {showHistoryBoundary && (
+          <div ref={contentRef} className="relative pl-10 sm:pl-12">
+            {renderItems.length > 0 && (
               <div
-                data-testid="conversation-history-boundary"
-                className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-md border border-border-default bg-surface-2/60 px-4 py-3 text-sm"
-              >
-                {canOpenSavedPage || historyPaging.hasMore ? (
-                  <>
-                    <button
-                      type="button"
-                      className="rounded-md border border-border-strong bg-surface-3 px-3 py-2 font-medium text-fg-primary hover:bg-surface-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      onClick={() => {
-                        if (scrollRef.current)
-                          requestAdjacentHistory(scrollRef.current, 'older', canOpenSavedPage);
-                      }}
-                    >
-                      {t(
-                        canOpenSavedPage
-                          ? 'conversation.openSavedPage'
-                          : 'conversation.loadEarlier',
-                      )}
-                    </button>
-                    <span className="text-xs text-fg-secondary">
-                      {t(
-                        canOpenSavedPage
-                          ? 'conversation.savedPageDestination'
-                          : 'conversation.scrollForEarlier',
-                      )}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-xs text-fg-secondary">
-                    {t(
-                      historyPaging.conversationStatus === 'resolved'
-                        ? 'conversation.historyStart'
-                        : 'conversation.availableHistory',
-                    )}
-                  </span>
-                )}
-              </div>
-            )}
-            {(olderHistoryFeedback?.sessionId === currentSessionId ||
-              historyBoundaryLoading ||
-              historyBoundaryWaiting) && (
-              <HistoryPagingSentinel
-                reason={historyPaging.runtimeFailureReason}
-                phase={
-                  olderHistoryFeedback?.sessionId === currentSessionId
-                    ? olderHistoryFeedback.phase
-                    : historyBoundaryWaiting
-                      ? 'waiting'
-                      : 'loading'
-                }
-                onRetry={() => {
-                  const scroller = scrollRef.current;
-                  if (scroller !== null) requestAdjacentHistory(scroller);
-                }}
+                className="conversation-timeline-decoration absolute left-[20px] top-2 bottom-2 w-px bg-border-default/55 sm:left-[28px]"
+                aria-hidden
               />
             )}
-            {olderHistoryFeedback?.sessionId !== currentSessionId &&
-              currentSessionId !== null &&
-              displayMessages.length > 0 &&
-              historyPaging.phase === 'error' && (
+            <div
+              ref={windowRef}
+              className="space-y-3"
+              data-transcript-window="true"
+              // Windowed rows come and go; a feed tells assistive tech each row's place in the whole.
+              role="feed"
+            >
+              {showHistoryBoundary && (
+                <div
+                  data-testid="conversation-history-boundary"
+                  className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-md border border-border-default bg-surface-2/60 px-4 py-3 text-sm"
+                >
+                  {canOpenSavedPage || historyPaging.hasMore ? (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-md border border-border-strong bg-surface-3 px-3 py-2 font-medium text-fg-primary hover:bg-surface-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        onClick={() => {
+                          if (scrollRef.current)
+                            requestAdjacentHistory(scrollRef.current, 'older', canOpenSavedPage);
+                        }}
+                      >
+                        {t(
+                          canOpenSavedPage
+                            ? 'conversation.openSavedPage'
+                            : 'conversation.loadEarlier',
+                        )}
+                      </button>
+                      <span className="text-xs text-fg-secondary">
+                        {t(
+                          canOpenSavedPage
+                            ? 'conversation.savedPageDestination'
+                            : 'conversation.scrollForEarlier',
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-fg-secondary">
+                      {t(
+                        historyPaging.conversationStatus === 'resolved'
+                          ? 'conversation.historyStart'
+                          : 'conversation.availableHistory',
+                      )}
+                    </span>
+                  )}
+                </div>
+              )}
+              {(olderHistoryFeedback?.sessionId === currentSessionId ||
+                historyBoundaryLoading ||
+                historyBoundaryWaiting) && (
                 <HistoryPagingSentinel
-                  phase="error"
-                  reason={
-                    historyPaging.savedPageChanged
-                      ? t('conversation.savedPageChanged')
-                      : historyPaging.runtimeFailureReason
-                  }
-                  retryLabel={
-                    historyPaging.savedPageChanged ? t('conversation.returnToNewest') : undefined
+                  reason={historyPaging.runtimeFailureReason}
+                  phase={
+                    olderHistoryFeedback?.sessionId === currentSessionId
+                      ? olderHistoryFeedback.phase
+                      : historyBoundaryWaiting
+                        ? 'waiting'
+                        : 'loading'
                   }
                   onRetry={() => {
-                    if (historyPaging.savedPageChanged) {
-                      returnToNewestHistory();
-                      return;
-                    }
-                    if (historyPaging.surface !== undefined) {
-                      // Failure is already painted by this error sentinel; the
-                      // rejection itself must not escape as an unhandled error.
-                      void restoreNewestSessionHistory(
-                        currentSessionId,
-                        historyPaging.surface,
-                      ).catch(() => {});
-                    }
+                    const scroller = scrollRef.current;
+                    if (scroller !== null) requestAdjacentHistory(scroller);
                   }}
                 />
               )}
-            {displayMessages.length === 0 &&
-              (historyPaging.phase === 'waiting' ? (
-                <HistoryPagingSentinel
-                  phase="waiting"
-                  reason={historyRuntimeReason}
-                  onRetry={() => undefined}
-                />
-              ) : historyPaging.phase === 'error' && historyPaging.runtimeUnavailable === true ? (
-                // Runtime 不可用导致正文读不到:重试已终止。明确告知文件未损坏,避免被当成空白/损坏。
-                <div
-                  className="text-fg-faint text-sm"
-                  role="alert"
-                  data-testid="history-runtime-unavailable"
-                >
-                  {historyPaging.runtimeFailureReason ??
-                    historyRuntimeReason ??
-                    t('conversation.historyRuntimeUnavailable')}
-                </div>
-              ) : historyPaging.phase === 'error' ? (
-                <HistoryPagingSentinel
-                  phase="error"
-                  onRetry={() => {
-                    if (currentSessionId)
-                      void restoreNewestSessionHistory(
-                        currentSessionId,
-                        historyPaging.surface ?? 'code',
-                      ).catch(() => {
-                        /* The paging state renders the error. */
-                      });
-                  }}
-                />
-              ) : historyPaging.phase === 'loading' ||
-                (historyPaging.phase === 'idle' && currentSessionMsgCount > 0) ? (
-                <HistoryRestoreSkeleton />
-              ) : (
-                !canOpenSavedPage && (
-                  <div className="text-fg-faint italic text-sm">
-                    {t('conversation.emptyPrompt')}
-                  </div>
-                )
-              ))}
-            <RowDisclosureSession sessionId={currentSessionId}>
-              <ProductBodyOwnerContext.Provider value={bodyOwner}>
-                {windowParts.flatMap((part) =>
-                  part.kind === 'spacer' ? (
-                    <div
-                      key={`spacer:${renderItems[part.start].id}`}
-                      aria-hidden
-                      data-window-spacer={renderItems[part.start].id}
-                      style={{ height: part.height, overflowAnchor: 'none' }}
-                    />
-                  ) : (
-                    renderItems
-                      .slice(part.start, part.end)
-                      .map((item, offset) => renderRow(item, part.start + offset))
-                  ),
+              {olderHistoryFeedback?.sessionId !== currentSessionId &&
+                currentSessionId !== null &&
+                displayMessages.length > 0 &&
+                historyPaging.phase === 'error' && (
+                  <HistoryPagingSentinel
+                    phase="error"
+                    reason={
+                      historyPaging.savedPageChanged
+                        ? t('conversation.savedPageChanged')
+                        : historyPaging.runtimeFailureReason
+                    }
+                    retryLabel={
+                      historyPaging.savedPageChanged ? t('conversation.returnToNewest') : undefined
+                    }
+                    onRetry={() => {
+                      if (historyPaging.savedPageChanged) {
+                        returnToNewestHistory();
+                        return;
+                      }
+                      if (historyPaging.surface !== undefined) {
+                        // Failure is already painted by this error sentinel; the
+                        // rejection itself must not escape as an unhandled error.
+                        void restoreNewestSessionHistory(
+                          currentSessionId,
+                          historyPaging.surface,
+                        ).catch(() => {});
+                      }
+                    }}
+                  />
                 )}
-              </ProductBodyOwnerContext.Provider>
-            </RowDisclosureSession>
-            {/* 流式 spinner —— v0.1.4：从 BottomBar 搬到这里，把"正在做什么"
-            放在对话流末尾。ActivitySpinner 自己 return null 时本块也不渲染。 */}
-            <StreamingSpinnerRow />
-            {/* 流内聚焦卡：pending askUser 渲染在对话流尾部，无模态遮罩 */}
-            <AskUserInlineStack />
+              {displayMessages.length === 0 &&
+                (historyPaging.phase === 'waiting' ? (
+                  <HistoryPagingSentinel
+                    phase="waiting"
+                    reason={historyRuntimeReason}
+                    onRetry={() => undefined}
+                  />
+                ) : historyPaging.phase === 'error' && historyPaging.runtimeUnavailable === true ? (
+                  // Runtime 不可用导致正文读不到:重试已终止。明确告知文件未损坏,避免被当成空白/损坏。
+                  <div
+                    className="text-fg-faint text-sm"
+                    role="alert"
+                    data-testid="history-runtime-unavailable"
+                  >
+                    {historyPaging.runtimeFailureReason ??
+                      historyRuntimeReason ??
+                      t('conversation.historyRuntimeUnavailable')}
+                  </div>
+                ) : historyPaging.phase === 'error' ? (
+                  <HistoryPagingSentinel
+                    phase="error"
+                    onRetry={() => {
+                      if (currentSessionId)
+                        void restoreNewestSessionHistory(
+                          currentSessionId,
+                          historyPaging.surface ?? 'code',
+                        ).catch(() => {
+                          /* The paging state renders the error. */
+                        });
+                    }}
+                  />
+                ) : historyPaging.phase === 'loading' ||
+                  (historyPaging.phase === 'idle' && currentSessionMsgCount > 0) ? (
+                  <HistoryRestoreSkeleton />
+                ) : (
+                  !canOpenSavedPage && (
+                    <div className="text-fg-faint italic text-sm">
+                      {t('conversation.emptyPrompt')}
+                    </div>
+                  )
+                ))}
+              <RowDisclosureSession sessionId={currentSessionId}>
+                <ProductBodyOwnerContext.Provider value={bodyOwner}>
+                  {windowParts.flatMap((part) =>
+                    part.kind === 'spacer' ? (
+                      <div
+                        key={`spacer:${renderItems[part.start].id}`}
+                        aria-hidden
+                        data-window-spacer={renderItems[part.start].id}
+                        style={{ height: part.height, overflowAnchor: 'none' }}
+                      />
+                    ) : (
+                      renderItems
+                        .slice(part.start, part.end)
+                        .map((item, offset) => renderRow(item, part.start + offset))
+                    ),
+                  )}
+                </ProductBodyOwnerContext.Provider>
+              </RowDisclosureSession>
+              {/* 流内聚焦卡：pending askUser 渲染在对话流尾部，无模态遮罩 */}
+              <AskUserInlineStack />
+            </div>
           </div>
         </div>
-      </div>
 
-      {showQueryJumpRail && (
-        <QueryJumpRail
-          anchors={queryJumpAnchors}
-          activeId={activeQueryAnchorId}
-          hoverId={hoverQueryAnchorId}
-          onHover={setHoverQueryAnchorId}
-          onJump={jumpToQueryAnchor}
-        />
-      )}
-
-      {/* P4a 搜索框 — 右上角浮窗 */}
-      {searchOpen && (
-        <div
-          data-testid="transcript-search-bar"
-          hidden={!!locatedSearchItem}
-          className={
-            locatedSearchItem
-              ? 'hidden'
-              : 'absolute top-2 right-4 z-30 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-1 bg-surface-2 border border-border-strong rounded shadow-xl px-2 py-1'
-          }
-        >
-          <input
-            ref={searchInputRef}
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (sessionSearch && (e.key === 'ArrowDown' || e.key === 'Enter')) {
-                e.preventDefault();
-                const first = searchResultsRef.current?.querySelector<HTMLButtonElement>('button');
-                if (e.key === 'Enter') first?.click();
-                else first?.focus();
-                return;
-              }
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (e.shiftKey) prevMatch();
-                else nextMatch();
-              } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (e.key === 'ArrowDown') nextMatch();
-                else prevMatch();
-              }
-            }}
-            placeholder={t('conversation.searchPlaceholder')}
-            className="bg-transparent text-xs outline-none w-44 text-fg-primary placeholder:text-fg-muted"
+        {showQueryJumpRail && (
+          <QueryJumpRail
+            anchors={queryJumpAnchors}
+            activeId={activeQueryAnchorId}
+            hoverId={hoverQueryAnchorId}
+            onHover={setHoverQueryAnchorId}
+            onJump={jumpToQueryAnchor}
           />
-          {productTranscript && (
-            <select
-              aria-label={t('conversation.searchScope')}
-              value={searchScope}
-              className="bg-surface-2 text-xs text-fg-secondary"
-              onChange={(event) => {
-                setSearchScope(event.target.value === 'session' ? 'session' : 'page');
-                searchInputRef.current?.focus();
-              }}
-            >
-              <option value="page">{t('conversation.findPage')}</option>
-              <option value="session">{t('conversation.findSession')}</option>
-            </select>
-          )}
-          {sessionSearch && currentSessionId && (
-            <div ref={searchResultsRef}>
-              <ProductHistorySearch
-                key={currentSessionId}
-                sessionId={currentSessionId}
-                query={searchQuery}
-                onLocate={locateSearchHit}
-              />
-            </div>
-          )}
-          {!sessionSearch && (
-            <>
-              <span className="text-[11px] text-fg-muted font-mono w-12 text-right select-none">
-                {searchQuery
-                  ? matchIds.length === 0
-                    ? '0/0'
-                    : `${visibleMatchIndex + 1}/${matchIds.length}`
-                  : ''}
-              </span>
-              <button
-                type="button"
-                onClick={prevMatch}
-                disabled={matchIds.length === 0}
-                className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
-                title={t('conversation.previousMatchTitle')}
-                aria-label={t('conversation.previousMatch')}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                onClick={nextMatch}
-                disabled={matchIds.length === 0}
-                className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
-                title={t('conversation.nextMatchTitle')}
-                aria-label={t('conversation.nextMatch')}
-              >
-                ↓
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={closeSearch}
-            className="text-fg-muted hover:text-fg-primary px-1"
-            title={t('conversation.closeSearchTitle')}
-            aria-label={t('conversation.closeSearch')}
+        )}
+
+        {/* P4a 搜索框 — 右上角浮窗 */}
+        {searchOpen && (
+          <div
+            data-testid="transcript-search-bar"
+            hidden={!!locatedSearchItem}
+            className={
+              locatedSearchItem
+                ? 'hidden'
+                : 'absolute top-2 right-4 z-30 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-1 bg-surface-2 border border-border-strong rounded shadow-xl px-2 py-1'
+            }
           >
-            ✕
-          </button>
-          {!sessionSearch && productTranscript && searchQuery.trim() && matchIds.length === 0 && (
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (sessionSearch && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+                  e.preventDefault();
+                  const first =
+                    searchResultsRef.current?.querySelector<HTMLButtonElement>('button');
+                  if (e.key === 'Enter') first?.click();
+                  else first?.focus();
+                  return;
+                }
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (e.shiftKey) prevMatch();
+                  else nextMatch();
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (e.key === 'ArrowDown') nextMatch();
+                  else prevMatch();
+                }
+              }}
+              placeholder={t('conversation.searchPlaceholder')}
+              className="bg-transparent text-xs outline-none w-44 text-fg-primary placeholder:text-fg-muted"
+            />
+            {productTranscript && (
+              <select
+                aria-label={t('conversation.searchScope')}
+                value={searchScope}
+                className="bg-surface-2 text-xs text-fg-secondary"
+                onChange={(event) => {
+                  setSearchScope(event.target.value === 'session' ? 'session' : 'page');
+                  searchInputRef.current?.focus();
+                }}
+              >
+                <option value="page">{t('conversation.findPage')}</option>
+                <option value="session">{t('conversation.findSession')}</option>
+              </select>
+            )}
+            {sessionSearch && currentSessionId && (
+              <div ref={searchResultsRef}>
+                <ProductHistorySearch
+                  key={currentSessionId}
+                  sessionId={currentSessionId}
+                  query={searchQuery}
+                  onLocate={locateSearchHit}
+                />
+              </div>
+            )}
+            {!sessionSearch && (
+              <>
+                <span className="text-[11px] text-fg-muted font-mono w-12 text-right select-none">
+                  {searchQuery
+                    ? matchIds.length === 0
+                      ? '0/0'
+                      : `${visibleMatchIndex + 1}/${matchIds.length}`
+                    : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={prevMatch}
+                  disabled={matchIds.length === 0}
+                  className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
+                  title={t('conversation.previousMatchTitle')}
+                  aria-label={t('conversation.previousMatch')}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={nextMatch}
+                  disabled={matchIds.length === 0}
+                  className="text-fg-muted hover:text-fg-primary px-1 disabled:opacity-30"
+                  title={t('conversation.nextMatchTitle')}
+                  aria-label={t('conversation.nextMatch')}
+                >
+                  ↓
+                </button>
+              </>
+            )}
             <button
               type="button"
-              className="basis-full rounded px-2 py-1 text-left text-xs text-info hover:bg-surface-3"
-              onClick={() => {
-                setSearchScope('session');
-                searchInputRef.current?.focus();
-              }}
+              onClick={closeSearch}
+              className="text-fg-muted hover:text-fg-primary px-1"
+              title={t('conversation.closeSearchTitle')}
+              aria-label={t('conversation.closeSearch')}
             >
-              {t('conversation.findSession')}
+              ✕
             </button>
-          )}
-        </div>
-      )}
+            {!sessionSearch && productTranscript && searchQuery.trim() && matchIds.length === 0 && (
+              <button
+                type="button"
+                className="basis-full rounded px-2 py-1 text-left text-xs text-info hover:bg-surface-3"
+                onClick={() => {
+                  setSearchScope('session');
+                  searchInputRef.current?.focus();
+                }}
+              >
+                {t('conversation.findSession')}
+              </button>
+            )}
+          </div>
+        )}
 
-      {/* 跳到底：对标 Codex —— 悬浮圆形 chevron。用 surface-4（float 浮层级：浅色纯白 / 深色提亮灰）
+        {/* 跳到底：对标 Codex —— 悬浮圆形 chevron。用 surface-4（float 浮层级：浅色纯白 / 深色提亮灰）
           + .lift 柔影，明确浮在对话流之上，深浅两色都清晰可见（旧用 surface-3 在深色里几乎隐形）。
           chevron 用 2.5 描边补足「细 V 不够显眼」；hover 时 outline 微光环（用 outline 不用 ring，
           避免和 .lift 的 box-shadow 抢同一属性、hover 反而丢掉浮影）。
           外层 div 负责居中定位，内层 button 的 .ix-pop 悬停缩放不和居中 translate 打架。 */}
-      {productTranscript?.browsingOlder && liveReadingPosition.current && !searchOpen && (
-        <button
-          type="button"
-          className="absolute top-2 right-4 z-20 rounded bg-surface-2 px-3 py-1 text-xs"
-          onClick={() => returnToNewestHistory(liveReadingPosition.current ?? undefined)}
-        >
-          {t('conversation.backToReading')}
-        </button>
-      )}
-      {locatedSearchItem && (
-        <button
-          type="button"
-          className="absolute top-2 right-4 z-30 rounded bg-surface-2 px-3 py-1 text-xs"
-          onClick={() => returnFromLocatedSearch.current?.()}
-        >
-          {t('conversation.backToResults')}
-        </button>
-      )}
-      {(showJumpToBottom || historyPaging.hasNewer || latestJumpRequest !== null) && (
-        <div className="reveal-marker absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+        {productTranscript?.browsingOlder && liveReadingPosition.current && !searchOpen && (
           <button
             type="button"
-            onClick={jumpToBottom}
-            aria-label={t('conversation.jumpToBottom')}
-            title={t('conversation.returnToNewest')}
-            disabled={latestJumpRequest !== null}
-            aria-busy={latestJumpRequest !== null}
-            className="ix-pop h-9 rounded-full flex items-center justify-center gap-2 px-3 text-xs bg-surface-4 border border-border-default lift text-fg-secondary hover:text-fg-primary hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-border-strong"
+            className="absolute top-2 right-4 z-20 rounded bg-surface-2 px-3 py-1 text-xs"
+            onClick={() => returnToNewestHistory(liveReadingPosition.current ?? undefined)}
           >
-            {latestJumpRequest !== null ? (
-              <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />
-            ) : (
-              <ChevronDown className="w-4 h-4" strokeWidth={2.5} aria-hidden />
-            )}
-            <span>{t('conversation.returnToNewest')}</span>
+            {t('conversation.backToReading')}
           </button>
+        )}
+        {locatedSearchItem && (
+          <button
+            type="button"
+            className="absolute top-2 right-4 z-30 rounded bg-surface-2 px-3 py-1 text-xs"
+            onClick={() => returnFromLocatedSearch.current?.()}
+          >
+            {t('conversation.backToResults')}
+          </button>
+        )}
+        {(showJumpToBottom || historyPaging.hasNewer || latestJumpRequest !== null) && (
+          <div className="reveal-marker absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+            <button
+              type="button"
+              onClick={jumpToBottom}
+              aria-label={t('conversation.jumpToBottom')}
+              title={t('conversation.returnToNewest')}
+              disabled={latestJumpRequest !== null}
+              aria-busy={latestJumpRequest !== null}
+              className="ix-pop h-9 rounded-full flex items-center justify-center gap-2 px-3 text-xs bg-surface-4 border border-border-default lift text-fg-secondary hover:text-fg-primary hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-border-strong"
+            >
+              {latestJumpRequest !== null ? (
+                <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />
+              ) : (
+                <ChevronDown className="w-4 h-4" strokeWidth={2.5} aria-hidden />
+              )}
+              <span>{t('conversation.returnToNewest')}</span>
+            </button>
+          </div>
+        )}
+      </div>
+      {/* Run progress stays in view above the composer instead of scrolling with the transcript. */}
+      {isStreaming && (
+        <div className="shrink-0 px-8 pb-1 pt-1" data-testid="activity-spinner-row">
+          <div className="pl-10 sm:pl-12">
+            <ActivitySpinner liveWorkVisible={liveWorkVisible} />
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -3293,6 +3308,7 @@ function searchRingClassFor(
 function ProcessReceiptRow({
   receipts,
   followTail,
+  working,
   expanded,
   clustersForceExpand,
   thinkingForceExpand,
@@ -3302,6 +3318,8 @@ function ProcessReceiptRow({
 }: {
   receipts: readonly ProcessReceiptMessage[];
   followTail: boolean;
+  /** The Run is producing work; a waiting Run keeps the live tail still. */
+  working: boolean;
   expanded: ReadonlySet<string>;
   clustersForceExpand: boolean;
   thinkingForceExpand: boolean;
@@ -3340,6 +3358,7 @@ function ProcessReceiptRow({
               <ToolCluster
                 cluster={receipt}
                 followTail={live}
+                working={live && working}
                 expanded={expanded.has(receipt.id) || clustersForceExpand}
                 expandedItems={expanded}
                 onToggle={() => onToggle(receipt.id)}
@@ -3349,6 +3368,7 @@ function ProcessReceiptRow({
                 productItem={receipt.productItem}
                 thinking={receipt.thinking}
                 followTail={live}
+                working={live && working}
                 expanded={expanded.has(receipt.id) || thinkingForceExpand}
                 onToggle={() => onToggle(receipt.id)}
               />
@@ -3365,6 +3385,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   index,
   animateEntry,
   liveTail,
+  liveWorking,
   queryOwnerId,
   feedSize,
   expanded,
@@ -3386,6 +3407,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly index: number;
   readonly animateEntry: boolean;
   readonly liveTail: boolean;
+  readonly liveWorking: boolean;
   readonly queryOwnerId: string | undefined;
   /** Rows in the whole transcript; the window mounts only some of them. */
   readonly feedSize: number;
@@ -3420,6 +3442,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
         <ProcessReceiptRow
           receipts={item.receipts}
           followTail={liveTail}
+          working={liveWorking}
           expanded={expanded}
           clustersForceExpand={clustersForceExpand}
           thinkingForceExpand={thinkingForceExpand}
@@ -3716,19 +3739,6 @@ function ArtifactInlineCallout({ artifact }: { artifact: ArtifactMessage }): JSX
   );
 }
 /**
- * 流式 spinner 行 —— 对话流末尾的"正在做什么"指示。
- * 不在 streaming 时整行返 null。
- */
-function StreamingSpinnerRow(): JSX.Element | null {
-  const isStreaming = useIsStreaming();
-  if (!isStreaming) return null;
-  return (
-    <div className="relative">
-      <ActivitySpinner />
-    </div>
-  );
-}
-/**
  * ThinkingBlock — receipt strip + expandable pre-wrap text.
  * Token estimates belong to Host activity; transcript text only identifies the state.
  */
@@ -3736,12 +3746,14 @@ function ThinkingBlock({
   productItem,
   thinking,
   followTail,
+  working,
   expanded,
   onToggle,
 }: {
   thinking: string;
   productItem?: SessionProductItem;
   followTail: boolean;
+  working: boolean;
   expanded: boolean;
   onToggle: () => void;
 }): JSX.Element {
@@ -3750,7 +3762,9 @@ function ThinkingBlock({
   // A thinking-only tail step streams its latest line, like the live tool group's think line.
   const live = followTail && !expanded;
   return (
-    <div className={`${live ? 'flex w-full' : 'inline-flex w-fit'} min-w-0 max-w-full flex-col`}>
+    <div
+      className={`${live ? 'flex w-full' : 'inline-flex w-fit'}${live && !working ? ' tool-pulse-paused' : ''} min-w-0 max-w-full flex-col`}
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -3802,6 +3816,7 @@ function ThinkingBlock({
 interface ToolClusterProps {
   cluster: ToolClusterMessage;
   followTail: boolean;
+  working: boolean;
   expanded: boolean;
   expandedItems: ReadonlySet<string>;
   onToggle: () => void;
@@ -3822,6 +3837,7 @@ interface ToolClusterProps {
 function ToolCluster({
   cluster,
   followTail,
+  working,
   expanded,
   expandedItems,
   onToggle,
@@ -3832,8 +3848,14 @@ function ToolCluster({
   // followTail 只在流式运行中的尾部工具组为 true —— 这正是「运行中的工作感」要动起来的那一组。
   const live = followTail;
   const feedOpen = live && !expanded;
-  const now = useSecondClock(live);
-  const startedAt = live ? clusterStartedAt(cluster.subClusters, allTools) : undefined;
+  // A waiting Run (approval, answer, agents, compaction) keeps the group open but still.
+  const paused = live && !working;
+  const now = useSecondClock(live && working);
+  const startedAt = clusterStartedAt(cluster.subClusters, allTools);
+  const endedAt = live ? now : clusterEndedAt(allTools);
+  const elapsedMs =
+    startedAt !== undefined && endedAt !== undefined ? Math.max(0, endedAt - startedAt) : undefined;
+  const outputTokens = clusterOutputTokens(cluster.subClusters, allTools);
   const lastStep = cluster.subClusters.at(-1);
   const chipRef = useRef<HTMLButtonElement>(null);
   const wasLive = useRef(live);
@@ -3878,7 +3900,7 @@ function ToolCluster({
 
   return (
     <div
-      className={`${feedOpen ? 'flex w-full' : 'inline-flex w-fit items-start'} min-w-0 max-w-full flex-col text-xs`}
+      className={`${feedOpen ? 'flex w-full' : 'inline-flex w-fit items-start'}${paused ? ' tool-pulse-paused' : ''} min-w-0 max-w-full flex-col text-xs`}
     >
       <div className="flex min-w-0 max-w-full items-center gap-2.5">
         <button
@@ -3915,19 +3937,23 @@ function ToolCluster({
           )}
           {running && !feedOpen && (
             <span className="shrink-0 rounded border border-warn/25 bg-warn/10 px-1.5 py-0.5 text-warn">
-              {t('conversation.runningTool', { tool: running.toolName })}
+              {running.awaitingApproval
+                ? t('conversation.awaitingApproval')
+                : t('conversation.runningTool', { tool: running.toolName })}
             </span>
           )}
           <ClusterTallies tallies={familyTallies(allTools, now)} live={live} />
         </button>
-        {live && (
-          <span className="tool-pulse-stats" data-testid="tool-cluster-live-stats">
-            {startedAt !== undefined && (
-              <span>{formatPulseDuration(Math.max(0, now - startedAt), true)}</span>
+        {(elapsedMs !== undefined || outputTokens > 0) && (
+          <span
+            className="tool-pulse-stats"
+            data-testid="tool-cluster-stats"
+            data-live={live ? 'true' : undefined}
+          >
+            {elapsedMs !== undefined && <span>{formatPulseDuration(elapsedMs, live)}</span>}
+            {outputTokens > 0 && (
+              <span className="text-fg-muted">↓ {formatPulseTokens(outputTokens)} tok</span>
             )}
-            <span className="text-fg-muted">
-              ↑ {formatPulseTokens(clusterOutputTokens(cluster.subClusters, allTools))} tok
-            </span>
           </span>
         )}
       </div>

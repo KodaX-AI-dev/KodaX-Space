@@ -11,6 +11,8 @@ export interface PulseTool {
   readonly status: 'running' | 'done' | 'interrupted';
   /** The tool finished with an error result. */
   readonly failed?: boolean;
+  /** Held for the user's approval: shown as waiting, not running. */
+  readonly awaitingApproval?: boolean;
   readonly input?: Record<string, unknown>;
   readonly startedAt?: number;
   readonly endedAt?: number;
@@ -36,7 +38,7 @@ export interface LiveToolRow {
   readonly id: string;
   readonly name: string;
   readonly target: string;
-  readonly status: PulseTool['status'] | 'failed';
+  readonly status: PulseTool['status'] | 'failed' | 'awaiting';
   readonly durationMs?: number;
 }
 
@@ -162,7 +164,11 @@ export function liveToolRows(tools: readonly PulseTool[], now: number): LiveTool
       id: tool.id,
       name: shown.name,
       target: toolTarget(shown.input),
-      status: tool.failed ? 'failed' : tool.status,
+      status: tool.failed
+        ? 'failed'
+        : tool.awaitingApproval && tool.status === 'running'
+          ? 'awaiting'
+          : tool.status,
       durationMs: durationOf(tool, now),
     };
   });
@@ -176,6 +182,15 @@ export function thinkingTail(thinking: string | undefined): string {
     .at(-1);
   if (!line) return '';
   return line.length > TEXT_LIMIT ? `…${line.slice(-TEXT_LIMIT)}` : line;
+}
+
+/** When the group's last tool ended; undefined while any tool runs or none is timed. */
+export function clusterEndedAt(tools: readonly PulseTool[]): number | undefined {
+  if (tools.some((tool) => tool.status === 'running')) return undefined;
+  const ends = tools
+    .map((tool) => tool.endedAt)
+    .filter((value): value is number => value !== undefined);
+  return ends.length > 0 ? Math.max(...ends) : undefined;
 }
 
 export function clusterStartedAt(

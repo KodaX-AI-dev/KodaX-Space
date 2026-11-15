@@ -2089,6 +2089,16 @@ html:not(.q-minimal) .tool-pulse-row {
 .tool-pulse-row-icon.is-failed {
   color: rgb(var(--danger));
 }
+.tool-pulse-row-icon.is-awaiting {
+  color: rgb(var(--warn));
+}
+/* 运行在等待（批准、回答、子 Agent、压缩）时，尾部工作组保持展开但静止。 */
+.tool-pulse-paused .tool-pulse-spin,
+.tool-pulse-paused .tool-pulse-caret,
+.tool-pulse-paused .tool-pulse-tally.is-running .tool-pulse-tally-time,
+.tool-pulse-paused .tool-pulse-chip.is-live::after {
+  animation-play-state: paused;
+}
 html:not(.q-minimal) .tool-pulse-row-icon {
   animation: ks-tool-pulse-pop var(--motion-normal) var(--ease-overshoot) both;
 }

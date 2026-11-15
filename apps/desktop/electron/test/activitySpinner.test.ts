@@ -8,6 +8,7 @@ import type {
 import {
   presentRuntimeSandbox,
   selectEffectiveRuntimeActiveRun,
+  selectLiveWork,
   selectActivitySnapshot,
   selectActivityGeneration,
   selectRuntimeStopIdentity,
@@ -1344,10 +1345,94 @@ test('root iteration bridge repairs a missing live snapshot only for the same ac
   );
 });
 
- test('saved recovery without reliable token counts gives an actionable non-numeric status', () => {
-  const snapshot = snapshotFromRuntimeProfileSession({ sessionId: sid, surface: 'code', createdAt: 10, lastActivityAt: 20,
-    activeRun: { runId: 'capacity_unknown', sessionId: sid, phase: 'recovering', contextRecovery: { waitingSince: 10 } }, queuedRuns: [] });
+test('saved recovery without reliable token counts gives an actionable non-numeric status', () => {
+  const snapshot = snapshotFromRuntimeProfileSession({
+    sessionId: sid,
+    surface: 'code',
+    createdAt: 10,
+    lastActivityAt: 20,
+    activeRun: {
+      runId: 'capacity_unknown',
+      sessionId: sid,
+      phase: 'recovering',
+      contextRecovery: { waitingSince: 10 },
+    },
+    queuedRuns: [],
+  });
   assert.equal(snapshot?.streaming, true);
   assert.equal(snapshot?.status, 'Recovering saved progress…');
   assert.equal(snapshot?.contextCapacity, undefined);
+});
+
+test('a requested stop reads as Stopping until the Run ends', () => {
+  const run = (phase: 'running' | 'cancelling', stop: boolean) =>
+    snapshotFromRuntimeProjection({
+      ...idleProjection(),
+      activeRun: {
+        runId: 'run_stop',
+        sessionId: sid,
+        phase,
+        startedAt: 10,
+        ...(stop
+          ? {
+              stop: {
+                requestedAt: 12,
+                state: 'confirmed',
+                outcome: 'unknown',
+                reason: 'User stop.',
+              },
+            }
+          : {}),
+      },
+    } satisfies SpaceSessionLiveProjectionT)?.status;
+  assert.equal(run('cancelling', false), 'Stopping…');
+  assert.equal(run('running', true), 'Stopping…');
+  assert.notEqual(run('running', false), 'Stopping…');
+});
+
+test('the live group works only while the Run is running, and a queued-only Run has no tail', () => {
+  const active = (phase: 'running' | 'waiting_permission' | 'cancelling', stop = false) =>
+    ({
+      runId: 'run_live',
+      sessionId: sid,
+      phase,
+      startedAt: 10,
+      ...(stop
+        ? {
+            stop: {
+              requestedAt: 12,
+              state: 'confirmed' as const,
+              outcome: 'unknown' as const,
+              reason: 'User stop.',
+            },
+          }
+        : {}),
+    }) as const;
+  const streaming = { streaming: true, status: 'Working…', startedAt: 10 };
+  assert.deepEqual(selectLiveWork(streaming, active('running')), { tailLive: true, working: true });
+  assert.deepEqual(selectLiveWork(streaming, active('waiting_permission')), {
+    tailLive: true,
+    working: false,
+  });
+  assert.deepEqual(selectLiveWork(streaming, active('running', true)), {
+    tailLive: true,
+    working: false,
+  });
+  assert.deepEqual(selectLiveWork({ ...streaming, compacting: true }, active('running')), {
+    tailLive: true,
+    working: false,
+  });
+  // Legacy and pending streams have no Runtime Run to consult.
+  assert.deepEqual(selectLiveWork(streaming, undefined), { tailLive: true, working: true });
+  assert.deepEqual(selectLiveWork({ streaming: false, status: '', startedAt: null }, undefined), {
+    tailLive: false,
+    working: false,
+  });
+
+  const queued = snapshotFromRuntimeProjection({
+    ...idleProjection(),
+    queuedRuns: [{ runId: 'run_next', sessionId: sid, phase: 'queued', queuedAt: 10 }],
+  } satisfies SpaceSessionLiveProjectionT)!;
+  assert.equal(queued.queuedOnly, true);
+  assert.deepEqual(selectLiveWork(queued, undefined), { tailLive: false, working: false });
 });

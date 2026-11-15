@@ -95,6 +95,8 @@ export type ConversationMessage =
       status: 'running' | 'done' | 'interrupted';
       /** The SDK reported an error result for this execution. */
       failed?: true;
+      /** Still running from the Run's view, but held until the user approves it. */
+      awaitingApproval?: true;
       /** SDK product tool timing (epoch ms); absent on legacy event-composed history. */
       startedAt?: number;
       endedAt?: number;

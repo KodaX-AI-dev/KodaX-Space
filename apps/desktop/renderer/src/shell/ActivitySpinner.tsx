@@ -29,6 +29,7 @@ import { useChildAgentLive } from '../store/childAgentLive.js';
 import { childAgentRows } from './childAgentRows.js';
 import { ChildAgentLiveRows } from './ChildAgentLiveRows.js';
 import type { MessageKey } from '../i18n/messages.js';
+import { activityStatusKind, activityStatusText, runTokenTotals } from './activityStatus.js';
 
 const EMPTY_EVENTS: readonly SessionEvent[] = [];
 
@@ -38,6 +39,8 @@ export interface ActivitySnapshot {
   readonly contextCapacity?: { readonly required: number; readonly available: number };
   /** Nested root compaction lifecycle, independent from the translated status label. */
   readonly compacting?: boolean;
+  /** Only a queued Run exists: the previous Run's transcript tail is settled, not live. */
+  readonly queuedOnly?: true;
   readonly iter?: { current: number; max: number };
   readonly tokens?: number;
   /** session_start 的时间戳（spinner 计算 elapsed s 用）；pending 时退回 null。 */
@@ -371,6 +374,7 @@ function snapshotFromRuntimeRunState(
     return {
       streaming: true,
       status: 'Queued…',
+      queuedOnly: true,
       startedAt: queued.queuedAt ?? queued.startedAt ?? Date.now(),
     };
   }
@@ -385,8 +389,11 @@ function snapshotFromRuntimeRunState(
     required > available
       ? { required, available }
       : undefined;
-  const status =
-    run.phase === 'waiting_permission'
+  const stopping =
+    run.phase === 'cancelling' || (run.stop !== undefined && run.phase !== 'unknown');
+  const status = stopping
+    ? 'Stopping…'
+    : run.phase === 'waiting_permission'
       ? 'Waiting for permission…'
       : run.phase === 'waiting_user_input'
         ? 'Waiting for input…'
@@ -799,7 +806,23 @@ function resolveStartedAtMemo(events: readonly SessionEvent[]): number {
   return now;
 }
 
-export function ActivitySpinner(): ReactJSX.Element | null {
+const SANDBOX_LABEL_KEYS: Readonly<Record<string, MessageKey>> = {
+  Sandboxed: 'activity.sandboxed',
+  'Sandbox degraded': 'activity.sandboxDegraded',
+  'Sandbox fallback': 'activity.sandboxFallback',
+  'No sandbox': 'activity.noSandbox',
+};
+
+/**
+ * Run-level progress pinned above the composer. While the transcript's live group shows the work
+ * (`liveWorkVisible`), the spinner drops its comet and work verb and keeps the task label, elapsed
+ * time, step and token totals; any phase the live group cannot show brings both back.
+ */
+export function ActivitySpinner({
+  liveWorkVisible = false,
+}: {
+  readonly liveWorkVisible?: boolean;
+}): ReactJSX.Element | null {
   const { t } = useI18n();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
   const events = useAppStore((s) =>
@@ -849,11 +872,14 @@ export function ActivitySpinner(): ReactJSX.Element | null {
     activeRun?.phase === 'running'
       ? productStreamingProgress(product?.activity, activeRun.runId)
       : undefined;
+  // The active todo's wording outranks the streaming verb; the estimate still applies.
+  const baseKind = activityStatusKind(baseSnapshot.status);
   const snap = {
     ...baseSnapshot,
     thinkingTokens: undefined,
     toolInputTokens: undefined,
     ...productProgress,
+    ...(baseKind === 'task' ? { status: baseSnapshot.status } : {}),
   };
   // Elapsed display still ticks once per second; spinner motion itself is CSS-driven.
   const [, forceTick] = useState(0);
@@ -878,9 +904,20 @@ export function ActivitySpinner(): ReactJSX.Element | null {
     ? `${t('agent.iteration')} ${snap.iter.current}${snap.iter.max > 0 ? '/' + snap.iter.max : ''}`
     : '';
 
-  // tokens 后跟 tok/s rate — 用 cumulative tokens / elapsed sec 作平均速率（足以反映进度感）
+  // Runtime Runs: ↑ input (cache included) and ↓ output summed over the Run's root steps, with the
+  // streaming block's estimate added to ↓ ("~"). Legacy streams keep the latest context count.
+  const totals = activeRun ? runTokenTotals(events, activeRun.runId) : undefined;
+  const liveEstimate = snap.thinkingTokens ?? snap.toolInputTokens;
   let tokenStr = '';
-  if (snap.tokens !== undefined) {
+  if (totals || (activeRun && liveEstimate !== undefined)) {
+    const down = (totals?.down ?? 0) + (liveEstimate ?? 0);
+    tokenStr = [
+      totals ? `↑${formatTokens(totals.up)}` : '',
+      `↓${liveEstimate !== undefined ? '~' : ''}${formatTokens(down)}`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+  } else if (snap.tokens !== undefined) {
     tokenStr = `${formatTokens(snap.tokens)} tokens`;
     if (elapsedSec >= 2) {
       const rate = Math.round(snap.tokens / elapsedSec);
@@ -895,7 +932,10 @@ export function ActivitySpinner(): ReactJSX.Element | null {
         required: formatTokens(snap.contextCapacity.required),
         available: formatTokens(snap.contextCapacity.available),
       })
-    : formatActivityStatus(snap.status, sendingTooLong, t);
+    : activityStatusText(snap.status, sendingTooLong, t);
+  const statusKind = activityStatusKind(snap.status);
+  const showComet = !liveWorkVisible || statusKind === 'phase';
+  const showStatus = !liveWorkVisible || statusKind !== 'work';
 
   // tool path 显示 basename — 全路径太长，basename + dim 灰显
   const toolBase = snap.toolPath ? snap.toolPath.split(/[\\/]/).filter(Boolean).pop() : null;
@@ -903,7 +943,9 @@ export function ActivitySpinner(): ReactJSX.Element | null {
   // Live 估算 token：thinking 中显示 "~850 tok"；工具 input partial JSON 累积时同理。
   // `~` 标记是估算（区别于 iteration_end 的权威 tokens），单位统一为 token 而非 chars。
   let liveTokStr = '';
-  if (snap.thinkingTokens !== undefined) {
+  if (activeRun) {
+    // Already folded into the ↓ total.
+  } else if (snap.thinkingTokens !== undefined) {
     liveTokStr = `~${formatTokens(snap.thinkingTokens)} tokens`;
   } else if (snap.toolInputTokens !== undefined) {
     liveTokStr = `~${formatTokens(snap.toolInputTokens)} tokens`;
@@ -917,9 +959,9 @@ export function ActivitySpinner(): ReactJSX.Element | null {
   return (
     <div>
       <div className="flex items-center gap-2 text-xs text-fg-muted font-mono px-1 py-0.5">
-        <span className="activity-spinner-comet" aria-hidden />
-        <span className="text-fg-secondary">{statusBase}</span>
-        {toolBase && (
+        {showComet && <span className="activity-spinner-comet" aria-hidden />}
+        {showStatus && <span className="text-fg-secondary">{statusBase}</span>}
+        {showStatus && toolBase && (
           <FileNameText
             name={toolBase}
             className="max-w-[280px] text-fg-muted"
@@ -937,14 +979,37 @@ export function ActivitySpinner(): ReactJSX.Element | null {
             }
             title={snap.sandbox.title}
           >
-            {snap.sandbox.label}
+            {SANDBOX_LABEL_KEYS[snap.sandbox.label]
+              ? t(SANDBOX_LABEL_KEYS[snap.sandbox.label]!)
+              : snap.sandbox.label}
           </span>
         )}
-        {tail && <span className="text-fg-muted">· {tail}</span>}
+        {tail && (
+          <span className="text-fg-muted">
+            {showStatus ? '· ' : ''}
+            {tail}
+          </span>
+        )}
       </div>
       <ChildAgentLiveRows rows={children.rows} overflow={children.overflow} />
     </div>
   );
+}
+
+export interface LiveWork {
+  /** The transcript's last row belongs to the current Run (live, even while it waits). */
+  readonly tailLive: boolean;
+  /** The Run is producing work right now, so the live group spins and its clock ticks. */
+  readonly working: boolean;
+}
+
+export function selectLiveWork(
+  snapshot: ActivitySnapshot,
+  activeRun: RuntimeProfileSession['activeRun'],
+): LiveWork {
+  const tailLive = snapshot.streaming && snapshot.queuedOnly !== true;
+  const runWorking = activeRun ? activeRun.phase === 'running' && !activeRun.stop : true;
+  return { tailLive, working: tailLive && snapshot.compacting !== true && runWorking };
 }
 
 export interface ActivityState {
@@ -955,6 +1020,8 @@ export interface ActivityState {
   readonly runtimePhase?: SpaceRuntimeRunPhaseT;
   readonly runtimeStopIdentity: RuntimeStopIdentity;
   readonly activityGeneration?: string;
+  readonly tailLive: boolean;
+  readonly working: boolean;
 }
 
 export function selectRuntimeDisplayPhase(
@@ -1030,7 +1097,9 @@ export function useActivityState(): ActivityState {
     runtimeConnectionAuthoritative,
     scoped.profileCursor,
   );
+  const liveWork = selectLiveWork(snapshot, runtimeActiveRun);
   return {
+    ...liveWork,
     iteration: snapshot.iter,
     isStreaming: snapshot.streaming,
     isCompacting: snapshot.streaming && snapshot.compacting === true,
@@ -1050,25 +1119,4 @@ export function useActivityState(): ActivityState {
 /** Hook 版给只关心 streaming bool（含 pendingSend）的调用方使用。 */
 export function useIsStreaming(): boolean {
   return useActivityState().isStreaming;
-}
-
-type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
-
-function formatActivityStatus(status: string, sendingTooLong: boolean, t: Translate): string {
-  if (sendingTooLong) return t('activity.sendingWaiting');
-  if (status === 'Recovering saved progress…') return t('activity.savedRecovery');
-  if (status === 'Sending…') return t('activity.sending');
-  if (status.startsWith('Receiving ') && status.endsWith('…'))
-    return t('activity.receivingTool', { tool: status.slice(10, -1) });
-  if (status === 'Thinking…') return t('activity.thinking');
-  if (status === 'Processing result…') return t('activity.processingResult');
-  if (status === 'Writing…') return t('activity.writing');
-  if (status === 'Compacting context…') return t('activity.compactingContext');
-  if (status === 'Verifying…') return t('activity.verifying');
-  if (status === 'Stop status unknown…' || status === 'Run status unknown…')
-    return t('taskDock.runUnconfirmed');
-  if (status.startsWith('Running ') && status.endsWith('…')) {
-    return t('activity.runningTool', { tool: status.slice('Running '.length, -1) });
-  }
-  return status;
 }

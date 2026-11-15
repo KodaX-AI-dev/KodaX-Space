@@ -8,12 +8,14 @@ import {
   Check,
   Dot,
   FileSearch,
+  Hand,
   Pencil,
   SquareTerminal,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { DURATION, EASE_EXPO } from '../lib/motion.js';
+import { useI18n } from '../i18n/I18nProvider.js';
 import {
   LIVE_ROW_LIMIT,
   formatPulseDuration,
@@ -90,6 +92,8 @@ export function ClusterTallies({
 
 export function RowIcon({ status }: { status: LiveToolRow['status'] }): JSX.Element {
   if (status === 'running') return <span className="tool-pulse-spin is-row" aria-hidden />;
+  if (status === 'awaiting')
+    return <Hand className="tool-pulse-row-icon is-awaiting" strokeWidth={2} aria-hidden />;
   if (status === 'failed')
     return <X className="tool-pulse-row-icon is-failed" strokeWidth={2} aria-hidden />;
   if (status === 'interrupted')
@@ -120,6 +124,7 @@ export function LiveToolFeed({
   thinking: string;
   rows: readonly LiveToolRow[];
 }): JSX.Element {
+  const { t } = useI18n();
   const listRef = useRef<HTMLUListElement>(null);
   const lastId = rows.at(-1)?.id;
   const previousLastId = useRef(lastId);
@@ -153,10 +158,16 @@ export function LiveToolFeed({
               <RowIcon status={row.status} />
               <span className="tool-pulse-row-name">{row.name}</span>
               <span className="tool-pulse-row-target">{row.target}</span>
-              {row.durationMs !== undefined && (
+              {row.status === 'awaiting' ? (
                 <span className="tool-pulse-row-duration">
-                  {formatPulseDuration(row.durationMs, row.status === 'running')}
+                  {t('conversation.awaitingApproval')}
                 </span>
+              ) : (
+                row.durationMs !== undefined && (
+                  <span className="tool-pulse-row-duration">
+                    {formatPulseDuration(row.durationMs, row.status === 'running')}
+                  </span>
+                )
               )}
             </li>
           ))}
