@@ -117,10 +117,12 @@ for (const holdClient of [false, true]) {
     } finally {
       provider.release('HOLD_QUEUE');
       try {
-        await owner?.stop();
+        // The SDK refuses `daemon stop` while another client is attached (KodaX
+        // Issue 410, SDK beta.9); close this Space client before asking the CLI.
+        await space?.close();
       } finally {
         try {
-          await space?.close();
+          await owner?.stop();
         } finally {
           await provider.close();
         }

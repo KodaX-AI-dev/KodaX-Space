@@ -278,7 +278,9 @@ test('real SDK items replace live output, survive reload, and retain repeated di
     for (const item of view.items.filter(
       (item) => item.type === 'user' || item.type === 'assistant',
     )) {
-      await expect(space.page.locator(`[data-msg-id="${item.id}"]`)).toHaveCount(1);
+      // A sent query keeps its local bubble id in data-msg-id after the SDK item takes
+      // it over, so count the mounted row by the canonical item identity instead.
+      await expect(space.page.locator(`[data-source-item="${item.id}"]`)).toHaveCount(1);
     }
     await expect(
       space.page

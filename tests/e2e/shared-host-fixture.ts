@@ -12,6 +12,30 @@ const cli = path.join(
   'dist/kodax_cli.js',
 );
 
+/**
+ * beta.9 refuses `daemon stop` while any client is attached (KodaX Issue 410); a
+ * just-closed client's connection can linger for a moment, so retry the typed
+ * refusal a bounded number of times instead of failing the whole test's cleanup.
+ */
+async function stopDaemonCli(root: string): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await runFile(process.execPath, [cli, 'daemon', 'stop', '--timeout-ms', '5000', '--json'], {
+        env: { ...process.env, KODAX_HOME: root },
+        windowsHide: true,
+        timeout: 20_000,
+      });
+      return;
+    } catch (error) {
+      if (!String(error).includes('connected_clients')) throw error;
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  }
+  throw lastError;
+}
+
 export async function startConflictingHistoryHost(
   root: string,
   options: {
@@ -159,15 +183,7 @@ export async function startConflictingHistoryHost(
       try {
         await confirmExit();
       } finally {
-        await runFile(
-          process.execPath,
-          [cli, 'daemon', 'stop', '--timeout-ms', '5000', '--json'],
-          {
-            env: { ...process.env, KODAX_HOME: root },
-            windowsHide: true,
-            timeout: 20_000,
-          },
-        );
+        await stopDaemonCli(root);
       }
     },
   };

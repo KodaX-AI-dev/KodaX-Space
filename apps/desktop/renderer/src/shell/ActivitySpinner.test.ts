@@ -157,7 +157,18 @@ test('beside a working live group the spinner drops its comet but keeps the task
 });
 
 test('a phase the live group cannot show brings the comet and the phase text back', (t) => {
-  const html = renderRuntimeSpinner(t, { phase: 'waiting_permission', liveWorkVisible: true });
-  assert.match(html, /activity-spinner-comet/);
-  assert.match(html, /等待批准/);
+  // 固定 zh-CN：断言本地化的等待文案，不随 CI 主机的系统语言变化。
+  const previousDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: () => 'zh-CN', setItem: () => undefined },
+  });
+  try {
+    const html = renderRuntimeSpinner(t, { phase: 'waiting_permission', liveWorkVisible: true });
+    assert.match(html, /activity-spinner-comet/);
+    assert.match(html, /等待批准/);
+  } finally {
+    if (previousDescriptor) Object.defineProperty(globalThis, 'localStorage', previousDescriptor);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+  }
 });

@@ -28,7 +28,9 @@ test('all 4 project channels are registered', () => {
 
 test('project.list input is void; output requires projects array', () => {
   assert.equal(projectListChannel.input.safeParse(undefined).success, true);
-  assert.equal(projectListChannel.output.safeParse({ projects: [] }).success, true);
+  // F148/F005 拖排顺序进 projects.json 后，project.list 输出必须带 order 数组。
+  assert.equal(projectListChannel.output.safeParse({ projects: [], order: [] }).success, true);
+  assert.equal(projectListChannel.output.safeParse({ projects: [] }).success, false);
 });
 
 test('project.openDialog output: path can be string or null', () => {
