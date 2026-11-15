@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Fixed
+
+- Scrolling up through a Coder conversation while a Run is working no longer gets stuck on "history changed" with a disabled "Return to latest". A failed background refresh keeps the loaded older pages instead of discarding their boundary; "Return to latest" switches to the live view at once instead of waiting for a newest-page read that conflicts with the Run's writes; the 30-second and window-focus refresh of the newest page waits until the Run ends; and the Host retry recognises the conflict messages the SDK actually sends (the full `.write-locks` path and "topology could not be verified"). Older pages also load during a Run once Space pins an SDK that keeps earlier cache revisions readable (KodaX [Unreleased]).
+
 ## [0.1.47-beta.1] - 2026-11-15
 
 ### Added

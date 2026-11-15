@@ -529,7 +529,11 @@ function isHistoryReadBoundaryConflict(error: unknown, sessionId: string): boole
   return (
     error.message ===
       `Session location topology changed during the read boundary for ${sessionId}` ||
-    /^Session data changed during the read boundary: [a-f0-9]{64}\.lock$/.test(error.message)
+    error.message === `Session location topology could not be verified for ${sessionId}` ||
+    // The SDK names the full write-lock path; older builds named only the lock file.
+    /^Session data changed during the read boundary: (?:.*[\\/]\.write-locks[\\/])?[a-f0-9]{64}\.lock$/.test(
+      error.message,
+    )
   );
 }
 

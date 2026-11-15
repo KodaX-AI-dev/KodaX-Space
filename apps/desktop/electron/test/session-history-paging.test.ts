@@ -11,6 +11,7 @@ import { messageForSelectorTurn } from '../../renderer/src/features/session/turn
 import { runtimeTerminalEvidenceCandidates } from '../../renderer/src/store/runtimeProjectionState.js';
 import {
   activateSessionHistoryPaging,
+  convergeNewestSessionHistory,
   deactivateSessionHistoryPaging,
   hasReadySessionHistory,
   historyPhaseAllowsRuntimeObservation,
@@ -26,6 +27,7 @@ import {
   revalidateNewestSessionHistory,
   resetSessionHistoryPagingLifecycle,
   restoreNewestSessionHistory,
+  returnToLiveSessionHistory,
   sessionEventInvalidatesHistoryCache,
   sessionHistoryPagingSnapshot,
   wakeWaitingSessionHistory,
@@ -6151,4 +6153,180 @@ test('located history extends both edges, retains completed bodies, deduplicates
     ['origin'],
   );
   assert.equal(sessionHistoryPagingSnapshot(sessionId).hasNewer, false);
+});
+
+test('a failed background revalidation during a Run keeps the loaded older-page boundary', async () => {
+  const sessionId = 'live-browse-after-failed-revalidation';
+  seedPagingStore(sessionId);
+  let newestChanged = false;
+  const requests: (string | undefined)[] = [];
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async (_channel: string, input: { cursor?: string }) => {
+          requests.push(input.cursor);
+          return {
+            ok: true,
+            data: {
+              items: [],
+              productItems: [{ id: input.cursor ?? 'newest', type: 'user', text: 'q' }],
+              page:
+                newestChanged && input.cursor === undefined
+                  ? { outcome: 'data_changed' }
+                  : {
+                      outcome: 'ready',
+                      revision: 'r',
+                      sourceRevision: 's',
+                      hasMore: !input.cursor,
+                      ...(input.cursor ? {} : { nextCursor: 'older' }),
+                      hasNewer: !!input.cursor,
+                      windowMode: input.cursor ? 'prepend' : 'replace',
+                    },
+            },
+          };
+        }),
+      },
+    },
+  });
+  replaceProductSessionView({
+    sessionId,
+    runtimeId: 'rt',
+    revision: 1,
+    items: [{ id: 'live', type: 'assistant', text: 'streaming' }],
+  });
+  try {
+    await restoreNewestSessionHistory(sessionId, 'code');
+    useAppStore.setState({ pendingSendBySession: { [sessionId]: true } });
+    newestChanged = true;
+    await revalidateNewestSessionHistory(sessionId, 'code');
+    await loadOlderSessionHistory(sessionId);
+    assert.equal(productTranscriptSnapshot(sessionId)?.browsingOlder, true);
+    requests.length = 0;
+    await loadOlderSessionHistory(sessionId);
+    // The older page still belongs to the same revision; the SDK, not a stale epoch, decides.
+    assert.deepEqual(requests, ['older']);
+    assert.notEqual(sessionHistoryPagingSnapshot(sessionId).savedPageChanged, true);
+    assert.equal(sessionHistoryPagingSnapshot(sessionId).phase, 'ready');
+    assert.equal(sessionHistoryPagingSnapshot(sessionId).hasMore, false);
+  } finally {
+    useAppStore.setState({ pendingSendBySession: {} });
+    deactivateSessionHistoryPaging(sessionId);
+  }
+});
+
+test('returning to live during a Run selects the live view without waiting for a newest read', async () => {
+  const sessionId = 'live-return-without-newest-read';
+  seedPagingStore(sessionId);
+  let newestChanged = false;
+  let releaseNewest: (() => void) | undefined;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async (_channel: string, input: { cursor?: string }) => {
+          if (newestChanged && input.cursor === undefined) {
+            await new Promise<void>((resolve) => (releaseNewest = resolve));
+          }
+          return {
+            ok: true,
+            data: {
+              items: [],
+              productItems: [{ id: input.cursor ?? 'newest', type: 'user', text: 'q' }],
+              page:
+                newestChanged && input.cursor === undefined
+                  ? { outcome: 'data_changed' }
+                  : {
+                      outcome: 'ready',
+                      revision: 'r',
+                      sourceRevision: 's',
+                      hasMore: !input.cursor,
+                      ...(input.cursor ? {} : { nextCursor: 'older' }),
+                      hasNewer: !!input.cursor,
+                      windowMode: input.cursor ? 'prepend' : 'replace',
+                    },
+            },
+          };
+        }),
+      },
+    },
+  });
+  replaceProductSessionView({
+    sessionId,
+    runtimeId: 'rt',
+    revision: 1,
+    items: [{ id: 'live', type: 'assistant', text: 'streaming' }],
+  });
+  try {
+    await restoreNewestSessionHistory(sessionId, 'code');
+    useAppStore.setState({ pendingSendBySession: { [sessionId]: true } });
+    await loadOlderSessionHistory(sessionId);
+    await loadOlderSessionHistory(sessionId);
+    assert.equal(productTranscriptSnapshot(sessionId)?.browsingOlder, true);
+    newestChanged = true;
+    await returnToLiveSessionHistory(sessionId, 'code');
+    assert.equal(productTranscriptSnapshot(sessionId)?.browsingOlder, false);
+    assert.deepEqual(
+      productTranscriptSnapshot(sessionId)?.items.map((item) => item.id),
+      ['live'],
+    );
+    const state = sessionHistoryPagingSnapshot(sessionId);
+    assert.equal(state.phase, 'ready');
+    assert.equal(state.hasNewer, false);
+    // The background refresh failing must not pull the user back into saved pages.
+    releaseNewest?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(productTranscriptSnapshot(sessionId)?.browsingOlder, false);
+    assert.equal(sessionHistoryPagingSnapshot(sessionId).phase, 'ready');
+  } finally {
+    useAppStore.setState({ pendingSendBySession: {} });
+    deactivateSessionHistoryPaging(sessionId);
+  }
+});
+
+test('periodic convergence skips the newest read while a Run is open', async () => {
+  const sessionId = 'converge-skips-open-run';
+  seedPagingStore(sessionId);
+  let requests = 0;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {
+      kodaxSpace: {
+        invoke: mockHistoryInvoke(async () => {
+          requests += 1;
+          return {
+            ok: true,
+            data: {
+              items: [],
+              productItems: [{ id: 'newest', type: 'user', text: 'q' }],
+              page: {
+                outcome: 'ready',
+                revision: 'r',
+                sourceRevision: 's',
+                hasMore: false,
+                hasNewer: false,
+                windowMode: 'replace',
+              },
+            },
+          };
+        }),
+      },
+    },
+  });
+  try {
+    await restoreNewestSessionHistory(sessionId, 'code');
+    useAppStore.setState({ pendingSendBySession: { [sessionId]: true } });
+    requests = 0;
+    await convergeNewestSessionHistory(sessionId, 'code');
+    assert.equal(requests, 0);
+    useAppStore.setState({ pendingSendBySession: {} });
+    await convergeNewestSessionHistory(sessionId, 'code');
+    assert.equal(requests, 1);
+  } finally {
+    useAppStore.setState({ pendingSendBySession: {} });
+    deactivateSessionHistoryPaging(sessionId);
+  }
 });

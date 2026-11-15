@@ -48,11 +48,11 @@ import { createSessionEventBatcher } from './store/sessionEventBatcher.js';
 import { invokeWithTimeout } from './lib/ipcInvokeWithTimeout.js';
 import { SPACE_VERSION_REFRESH_EVENT } from './lib/versionEvents.js';
 import {
+  convergeNewestSessionHistory,
   historyPhaseAllowsRuntimeObservation,
   invalidateSessionHistoryPaging,
   reconcileTerminalSessionHistory,
   refreshDeferredSessionHistory,
-  revalidateNewestSessionHistory,
   sessionEventInvalidatesHistoryCache,
   sessionHistoryPagingSnapshot,
   useSessionHistoryPaging,
@@ -642,7 +642,7 @@ export default function App(): JSX.Element {
       if (!sessionId) return;
       const selected = state.sessions.find((session) => session.sessionId === sessionId);
       if (selected?.surface === 'partner') return;
-      void revalidateNewestSessionHistory(sessionId, selected?.surface ?? 'code').catch(
+      void convergeNewestSessionHistory(sessionId, selected?.surface ?? 'code').catch(
         (error: unknown) => {
           console.error('[session.history] foreground convergence revalidate failed', {
             sessionId,

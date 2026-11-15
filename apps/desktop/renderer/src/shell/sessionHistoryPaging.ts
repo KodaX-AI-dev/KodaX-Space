@@ -901,9 +901,12 @@ async function requestHistory(
         return;
       }
       invalidateSessionCanonicalTranscriptPage(sessionId);
-      loadedEpochs.delete(sessionId);
+      const retainsReady = retainReadyProjection && previous.phase === 'ready';
+      // A retained window keeps its cursor and revision, so it keeps its epoch: the SDK, not this
+      // failed refresh, decides whether an older page of that revision is still readable.
+      if (!retainsReady) loadedEpochs.delete(sessionId);
       publish(sessionId, {
-        ...(retainReadyProjection && previous.phase === 'ready' ? previous : IDLE_HISTORY_STATE),
+        ...(retainsReady ? previous : IDLE_HISTORY_STATE),
         ...(surface ? { surface } : {}),
         ...(boundary.conversationStatus !== undefined
           ? { conversationStatus: boundary.conversationStatus }
@@ -1256,6 +1259,38 @@ export function restoreNewestSessionHistory(
   return requestHistory(sessionId, false, expectedSurface, retainReadyProjection);
 }
 
+/**
+ * Leave saved pages for the live view. The live view already is the newest authority, so the
+ * switch needs no read; a newest read during a Run can be slow or conflict with the writer. The
+ * saved window is refreshed in the background and never re-selected by that refresh.
+ */
+export function returnToLiveSessionHistory(
+  sessionId: string,
+  expectedSurface: 'code' | 'partner',
+): Promise<void> {
+  const product = productTranscriptSnapshot(sessionId);
+  if (!product?.view || !product.browsingOlder) {
+    return restoreNewestSessionHistory(sessionId, expectedSurface);
+  }
+  clearRetry(sessionId);
+  // A new lifecycle token fences any older-page read still in flight.
+  activateSessionHistoryPaging(sessionId);
+  installProductHistory(sessionId, product.historyItems, false);
+  const {
+    savedPageChanged: _savedPageChanged,
+    newerCursor: _newerCursor,
+    ...state
+  } = sessionHistoryPagingSnapshot(sessionId);
+  publish(sessionId, { ...state, phase: 'ready', hasNewer: false });
+  void requestHistory(sessionId, false, expectedSurface, true).catch((error: unknown) => {
+    console.error('[session.history] background refresh after live return failed', {
+      sessionId,
+      error,
+    });
+  });
+  return Promise.resolve();
+}
+
 export async function loadNewerSessionHistory(sessionId: string): Promise<void> {
   const token = activeTokens.get(sessionId);
   if (token === undefined) return;
@@ -1419,6 +1454,19 @@ export function revalidateNewestSessionHistory(
   if (productTranscriptSnapshot(sessionId)?.browsingOlder) return Promise.resolve();
   clearRetry(sessionId);
   return requestHistory(sessionId, false, expectedSurface, true);
+}
+
+/**
+ * Periodic convergence for the selected Session. During an open Run the live view is current and
+ * the Run's terminal event reconciles newest history, so a newest read would only compete with
+ * the writer.
+ */
+export function convergeNewestSessionHistory(
+  sessionId: string,
+  expectedSurface: 'code' | 'partner',
+): Promise<void> {
+  if (sessionHasOpenLiveTurn(sessionId)) return Promise.resolve();
+  return revalidateNewestSessionHistory(sessionId, expectedSurface);
 }
 
 /** Resume a ready-page refresh only after its deferred Run has reached a terminal boundary. */

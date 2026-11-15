@@ -1128,8 +1128,53 @@ test('cold history recovers a lock conflict followed by a topology conflict thro
 });
 
 for (const message of [
+  `Session data changed during the read boundary: C:\\Users\\u\\.kodax\\sessions\\.write-locks\\${'b'.repeat(64)}.lock`,
+  `Session data changed during the read boundary: /home/u/.kodax/sessions/.write-locks/${'c'.repeat(64)}.lock`,
+  'Session location topology could not be verified for s_sdk_history',
+]) {
+  test(`newest history retries the SDK's own boundary conflict messages: ${message}`, async () => {
+    const fake = createFakeRuntime();
+    fake.sessions.add('s_sdk_history');
+    let reads = 0;
+    let reloads = 0;
+    const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+    fake.runtime.sessions.load = async (id) => {
+      if (reads > 0) reloads++;
+      return load(id);
+    };
+    fake.runtime.sessions.readHistory = async () => {
+      reads++;
+      if (reads === 1) throw Object.assign(new Error(message), { code: 'resync_required' });
+      return {
+        revision: 'retried',
+        sourceRevision: 'retried',
+        status: 'resolved',
+        issues: [],
+        items: [],
+        oversized: [],
+      };
+    };
+    const adapter = new RuntimeHostAdapter({
+      mode: 'runtime',
+      profileRoot: path.resolve('C:/isolated-profile'),
+      runtimeFactory: async () => fake.runtime,
+      identityStore: testIdentityStore,
+    });
+    try {
+      const result = await adapter.readProductHistory('s_sdk_history');
+      assert.equal(result.outcome === 'ready' && result.page?.sourceRevision, 'retried');
+      assert.equal(reloads, 1);
+    } finally {
+      await adapter.close();
+    }
+  });
+}
+
+for (const message of [
   'Session data changed during the read boundary: invalid.lock',
   'Session location topology changed during the read boundary for another-session',
+  'Session location topology could not be verified for another-session',
+  `Session data changed during the read boundary: C:\\sessions\\.write-locks\\${'d'.repeat(64)}.lock.tmp`,
 ]) {
   test(`unknown history boundaries do not trigger a Host load: ${message}`, async () => {
     const fake = createFakeRuntime();

@@ -149,6 +149,7 @@ import {
   PREPEND_ANCHOR_CORRECTION_FRAME_OFFSETS,
   preservesPrependAnchorForBoundaryInput,
   restoreNewestSessionHistory,
+  returnToLiveSessionHistory,
   useSessionHistoryPaging,
 } from './sessionHistoryPaging.js';
 // 聚合后的 view-only message kind —— 两层折叠对齐 Claude Desktop "Ran 6 commands ⌄":
@@ -2520,7 +2521,7 @@ export function ConversationStreamV2(): JSX.Element {
       .getState()
       .sessions.find((candidate) => candidate.sessionId === currentSessionId);
     const surface = session?.surface ?? useSurfaceStore.getState().currentSurface;
-    void restoreNewestSessionHistory(sessionId, surface)
+    void returnToLiveSessionHistory(sessionId, surface)
       .then(() => {
         if (
           latestJumpOwnerRef.current !== token ||
