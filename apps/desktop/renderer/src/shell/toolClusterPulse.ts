@@ -16,11 +16,16 @@ export interface PulseTool {
   readonly input?: Record<string, unknown>;
   readonly startedAt?: number;
   readonly endedAt?: number;
+  /** SDK view item; its input may be a bounded preview of a longer body. */
+  readonly productItem?: {
+    readonly tool?: { readonly inputText?: string; readonly totalInputLength?: number };
+  };
 }
 
 export interface PulseStep {
   readonly thinking?: string;
-  readonly productItem?: { readonly timestamp?: number };
+  /** SDK view item; its text may be a bounded preview of `totalTextLength`. */
+  readonly productItem?: { readonly timestamp?: number; readonly totalTextLength?: number };
 }
 
 export type ToolFamily = 'read' | 'edit' | 'run' | 'skill' | 'other' | 'fail';
@@ -209,15 +214,21 @@ export function clusterOutputTokens(
   steps: readonly PulseStep[],
   tools: readonly PulseTool[],
 ): number {
+  let total = 0;
+  for (const step of steps)
+    total += textTokens(step.thinking ?? '', step.productItem?.totalTextLength);
+  for (const tool of tools) {
+    const body = tool.productItem?.tool;
+    if (body?.inputText) total += textTokens(body.inputText, body.totalInputLength);
+    else if (tool.input) total += textTokens(JSON.stringify(tool.input));
+  }
+  return Math.round(total);
+}
+
+/** About 4 ASCII characters or 1 other character per token; a preview scales to its whole body. */
+function textTokens(text: string, bodyLength = text.length): number {
   let ascii = 0;
-  let other = 0;
-  const tally = (text: string): void => {
-    for (let index = 0; index < text.length; index++) {
-      if (text.charCodeAt(index) < 128) ascii++;
-      else other++;
-    }
-  };
-  for (const step of steps) tally(step.thinking ?? '');
-  for (const tool of tools) if (tool.input) tally(JSON.stringify(tool.input));
-  return Math.round(ascii / 4 + other);
+  for (let index = 0; index < text.length; index++) if (text.charCodeAt(index) < 128) ascii++;
+  const tokens = ascii / 4 + (text.length - ascii);
+  return text.length > 0 && bodyLength > text.length ? (tokens * bodyLength) / text.length : tokens;
 }

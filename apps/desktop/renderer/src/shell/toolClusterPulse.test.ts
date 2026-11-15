@@ -166,6 +166,23 @@ test('cluster stats come from the earliest known start and the generated text', 
   assert.equal(clusterOutputTokens(steps, tools), 8);
 });
 
+test('output tokens count whole bodies when the SDK view keeps only a preview of them', () => {
+  // A running Run's view trims older bodies to previews; the group total must not shrink.
+  const full = [{ thinking: 'a'.repeat(4_000) }];
+  const fullTools = [tool('a', { input: { command: 'b'.repeat(3_986) } })];
+  const steps = [
+    { thinking: 'a'.repeat(400), productItem: { textOffset: 3_600, totalTextLength: 4_000 } },
+  ];
+  const inputText = JSON.stringify({ command: 'b'.repeat(384) });
+  const tools = [
+    tool('a', {
+      input: { input: inputText.slice(0, 200) },
+      productItem: { tool: { inputText: inputText.slice(0, 200), totalInputLength: 4_000 } },
+    }),
+  ];
+  assert.equal(clusterOutputTokens(steps, tools), clusterOutputTokens(full, fullTools));
+});
+
 test('script mode: a bridged tool_call shows and counts as the tool it calls', () => {
   const bridged = tool('bridge', {
     toolName: 'tool_call',
