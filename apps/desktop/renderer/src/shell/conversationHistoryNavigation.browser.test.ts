@@ -482,17 +482,27 @@ historyTest(
       .getByRole('button', { name: 'Jump to bottom', exact: true })
       .waitFor({ state: 'detached' });
     assert.equal(await page.getByRole('button', { name: 'Return to reading position' }).count(), 0);
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
-      return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
-    });
+    // Loaded CI runners can lag a settle-and-wheel round; give the bottom checks
+    // their own budget instead of the 3.5s page default.
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+        return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
+      },
+      undefined,
+      { timeout: 12_000 },
+    );
     // Back in the live view it follows new output again.
     await page.evaluate('window.streaming(true);window.live(24, "FOLLOWED TAIL")');
     await stream.getByText('FOLLOWED TAIL', { exact: true }).waitFor();
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
-      return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
-    });
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+        return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
+      },
+      undefined,
+      { timeout: 12_000 },
+    );
     assert.equal(
       await page.getByRole('button', { name: 'Jump to bottom', exact: true }).count(),
       0,

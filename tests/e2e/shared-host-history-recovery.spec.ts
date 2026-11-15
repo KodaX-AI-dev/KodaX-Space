@@ -14,7 +14,7 @@ import {
 } from './sdk-provider-fixture.js';
 import { stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
 
-test.setTimeout(180_000);
+test.setTimeout(360_000);
 
 let legacySdkRoot: string;
 test.beforeAll(async () => {
@@ -85,7 +85,13 @@ for (const holdClient of [false, true]) {
             .filter({ hasText: `ISSUE222 ${label} history` })
             .click();
         const conversation = space.page.getByTestId('conversation-stream');
-        await expect(conversation).toContainText(`saved question ${label}`, { timeout: 35_000 });
+        // The published alpha.6 daemon keeps its busy flags (active_runs,
+        // connected_clients) for about two minutes after the protected Run
+        // settles on Windows, so the first recovery render waits out that
+        // whole window instead of only one retry slot.
+        await expect(conversation).toContainText(`saved question ${label}`, {
+          timeout: label === 'first' ? 180_000 : 35_000,
+        });
         await expect(conversation).toContainText(`saved answer ${label}`, { timeout: 35_000 });
         await expect(space.page.getByTestId('history-runtime-unavailable')).toHaveCount(0);
       }

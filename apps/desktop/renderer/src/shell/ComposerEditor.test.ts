@@ -210,7 +210,10 @@ test('composer clears every line on send and maps offsets at trailing line break
 
     await page.getByText('Inject', { exact: true }).click();
     await editor.focus();
-    await page.keyboard.press('ControlOrMeta+End');
+    // macOS Chromium binds Cmd+Down (not Cmd+End) to move to the document end.
+    await page.keyboard.press(
+      process.platform === 'darwin' ? 'Meta+ArrowDown' : 'ControlOrMeta+End',
+    );
     await page.keyboard.press('Shift+Enter');
     await paste('quote\n\nquestion\n');
     await sendAndExpectEmpty('first\nsecond\nquote\n\nquestion\n');
