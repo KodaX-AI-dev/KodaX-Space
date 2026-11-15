@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+## [0.1.47-beta.1] - 2026-11-15
+
 ### Added
 
 - Choose where Space keeps its data in Settings → General → Data location (F148, [ADR-011](docs/ADR/ADR-011-settings-data-root.md)). Priority is test mode > the location set here > `KODAX_HOME` > `~/.kodax`; the setting is stored outside the data root (`<appData>/KodaX Space/data-root.json`) and does not change the KodaX CLI's location. "Save and restart" goes through the verified Host shutdown used for update installation and changes nothing while another KodaX client is connected or work is running. Folders are accepted when empty or already holding KodaX data; network, nested, same, unwritable, foreign and half-copied folders are refused with a reason. Optional copy to an empty folder uses the SDK `copyKodaXDataRoot` (Registry beta.9): the old location is never modified, a failed copy removes only what it wrote, a folder left by an interrupted copy is refused, absolute paths to it inside JSON/JSONL files are rewritten, and per-location client identity and input intents are not copied. An unavailable configured location (unplugged drive, damaged setting) falls back for the session and asks the user; the folder is never created automatically.
@@ -51,6 +53,11 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Linux upgrades from 0.1.46 no longer stay on the "waiting for the previous assistant exit verification" page when the OS keyring is locked, does not answer, or no longer holds the legacy Runtime client secret (Issue 248, reported on Kylin V10). Without a pending exit recovery the unreadable identity is replaced by a new instance identity; a pending recovery still blocks and no temporary secret is created. Linux keyring reads are bounded at 10 s (also for provider keys), and startup blockers and complete-exit failures log their cause. Workaround for alpha.5: unlock the login keyring and relaunch.
 - Coder startup failures are visible, recoverable and diagnosable (Issues 245–247, reported on Windows with a non-self-healing "reconnecting assistant" state). The summary never shows Ready while the backend is unavailable; after three failed attempts Space shows the failure with Retry startup and keeps retrying in the background (30 s, 1, 2, 4 min, then every 5 min); a manual retry resets the schedule. The diagnostic export works without a running Host and includes startup and probe evidence.
 - With SDK beta.8 the Windows daemon start no longer compiles C# through PowerShell: Job proof and the Job owner are the bundled, hash-verified native helper, so antivirus scans or a loaded machine cannot stall startup. A startup that exits early reports the child's last bootstrap error instead of waiting out the full timeout, and failed starts keep their exact cleanup handles before any replacement starts. Space lengthened no timeout; the SDK's Job identity check deadline is 10 s (5 s for the old PowerShell probe; the beta.8 SDK notes said no timeout changed, corrected in beta.9). Job verification stays fail-closed. With beta.9 the error quotes only a `[Error]` line from the failed attempt, the native supervisor logs its own failures, and a cleanup failure says that retrying or restarting releases it.
+
+### Documentation and qualification
+
+- Align the in-app `space_manual` (runtime-host, composer, permissions, ui-map, sessions, agent-coordination), the user manual, the sidebar and conversation topics with beta.10 and this cycle's UI: merged queued inputs, live tool group and pinned Run spinner, archived toggle with projects.json ordering, queued take-back returning text to the composer, per-question skip in multi-question asks, and transcript windowing as the default. The SDK's own `kodax_manual` is never overwritten.
+- This is a prerelease; stable remains v0.1.46. SDK Repo-intelligence Host gaps, Issue 371 history first-read latency and external account/customer-OS acceptance remain explicit limitations, not silently closed items.
 
 ---
 
