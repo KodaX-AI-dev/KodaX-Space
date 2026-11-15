@@ -1,6 +1,7 @@
 // F040 v0.1.9 Step 7 — project drag-sort + Archived fold-state persistence e2e.
 //
-// 不在 Electron 里模拟拖动,只测 localStorage 持久化通路。
+// 不在 Electron 里模拟拖动,只测持久化通路:项目顺序存 projects.json (dev 与打包版共享),
+// 旧版本留在 localStorage 的顺序启动时迁移过去。
 // 拖排交互 (指针拖动 + 落点预览) 由 renderer/src/shell/projectDragSort.browser.test.ts
 // 和 sortPreview.test.ts 覆盖。
 
@@ -47,22 +48,11 @@ test('archivedProjectsExpanded persists across reload', async () => {
   }
 });
 
-test('projectOrder lsKey is read and survives reload', async () => {
+test('a legacy localStorage project order moves into projects.json', async () => {
   const space = await launchSpace(`${TEST_ID}-order`);
   try {
     const { page } = space;
     await page.waitForTimeout(2000);
-    // Chromium localStorage 跨 test run 共享 (Space main 没设独立 userData),清掉
-    // 本次 spec 用到的 keys 防上一次跑的值串进默认状态。
-    await page.evaluate(() => {
-      window.localStorage.removeItem('kodax-space.archivedProjectsExpanded');
-      window.localStorage.removeItem('kodax-space.projectOrder');
-    });
-    await page.reload();
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(1500);
-
-    // 直接写一个合法 projectOrder
     const seeded = ['/proj/a', '/proj/b', '/proj/c'];
     await page.evaluate((order) => {
       window.localStorage.setItem('kodax-space.projectOrder', JSON.stringify(order));
@@ -70,12 +60,14 @@ test('projectOrder lsKey is read and survives reload', async () => {
 
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2000);
-
-    const after = await page.evaluate(() =>
-      window.localStorage.getItem('kodax-space.projectOrder'),
-    );
-    expect(after).toBe(JSON.stringify(seeded));
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem('kodax-space.projectOrder')))
+      .toBeNull();
+    const saved = await page.evaluate(async () => {
+      const result = await window.kodaxSpace!.invoke('project.list', undefined);
+      return result.ok ? result.data.order : null;
+    });
+    expect(saved).toEqual(seeded);
   } finally {
     await space.close();
   }

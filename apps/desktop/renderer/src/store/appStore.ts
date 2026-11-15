@@ -193,31 +193,10 @@ export interface Notification {
   readonly dismissOnOutsideInteraction?: boolean;
 }
 
-/**
- * Recents 列表过滤 / 分组 / 排序 状态 — 对齐 Claude Desktop 截图 3。
- * alpha.1 阶段全部存 renderer 本地（不持久化重启清空）；后续需要的话再持久化到 main。
- */
-export interface RecentsFilter {
-  status: 'active' | 'archived' | 'all';
-  /** 'current' 只显示 currentProjectPath 的；'all' 跨项目（v0.1.x main 端要按 project 拆开发） */
-  projectScope: 'current' | 'all';
-  lastActivity: 'today' | '7d' | '30d' | 'all';
-  groupBy: 'none' | 'project' | 'status';
-  sortBy: 'recency' | 'alphabetical' | 'created';
-}
-
 type SessionFlagName = 'pinned' | 'archived' | 'unread';
 type SessionFlagsById = Readonly<
   Record<string, { pinned?: boolean; archived?: boolean; unread?: boolean } | undefined>
 >;
-
-const DEFAULT_RECENTS_FILTER: RecentsFilter = {
-  status: 'active',
-  projectScope: 'current',
-  lastActivity: 'all',
-  groupBy: 'none',
-  sortBy: 'recency',
-};
 
 /** Renderer-only ownership marker for events reconstructed from a replaceable history window. */
 const restoredHistoryEvents = new WeakSet<object>();
@@ -567,8 +546,6 @@ interface AppState {
    * runId 相同视为已看过；新一轮 failed/interrupted 的 runId 不同，红点重新亮起。
    */
   errorSeenRunIdBySession: Readonly<Record<string, string>>;
-  /** Text taken back from the queue, waiting for that session's composer to pick it up. */
-  composerRestoreBySession: Readonly<Record<string, string>>;
   /** All terminal Runtime Runs acknowledged while visiting a Session; bounded per Session. */
   errorSeenRunIdsBySession: Readonly<Record<string, readonly string[]>>;
   /**
@@ -590,6 +567,8 @@ interface AppState {
   /** 每个 sessionId 一桶用户消息（renderer 本地跟踪）。*/
   userMessagesBySession: Readonly<Record<string, readonly UserMessage[]>>;
   queuedUserMessagesBySession: Readonly<Record<string, readonly QueuedUserMessage[]>>;
+  /** Text taken back from the queue, waiting for that session's composer to pick it up. */
+  composerRestoreBySession: Readonly<Record<string, string>>;
   /** Renderer-local slash/info/status notices. These are not user turns and should not affect history/fork indices. */
   localNoticesBySession: Readonly<Record<string, readonly LocalNoticeMessage[]>>;
   /** Renderer-local workflow notices. These are not user turns and should not affect history/fork indices. */
@@ -781,8 +760,8 @@ interface AppState {
   /** F060 视觉质量档（Liquid Glass 总开关）。持久化到 localStorage。
    *  minimal=实色无模糊 / balanced=玻璃+光标高光（默认）/ full=半透明中央区+更厚玻璃。 */
   visualQuality: VisualQuality;
-  /** Recents 列表过滤+分组+排序选项 — alpha.1 不持久化。*/
-  recentsFilter: RecentsFilter;
+  /** 侧栏是否连同已归档的 session 一起显示（默认隐藏，不持久化）。*/
+  showArchivedSessions: boolean;
   /**
    * Transcript view — Claude Desktop 截图 7 同款。
    *   - normal: 默认 (assistant 消息 + tool calls)
@@ -821,9 +800,9 @@ interface AppState {
   nativeCompletionNotificationsEnabled: boolean;
   /**
    * v0.1.9 Step 7 — 用户手动拖动排过的项目顺序 (canonProjectRoot 形态)。
-   *   - 空数组 = 没拖过,LeftSidebar 走原"lastUsedAt + current 排首"逻辑
-   *   - 非空 = 按本数组顺序排在前,不在本数组里的项目按 lastUsedAt 排到尾
-   * 持久化到 localStorage `kodax-space.projectOrder` (JSON 数组)。
+   *   - 空数组 = 没拖过,LeftSidebar 按添加顺序显示
+   *   - 非空 = 按本数组顺序排在前,不在本数组里的项目按添加顺序排到尾
+   * 持久化在 main 端 projects.json (project.order.set)，见 projectOrderSync.ts。
    */
   projectOrder: readonly string[];
   /** v0.1.9 Step 7 — sidebar "Archived (N)" 折叠组的展开状态。默认折叠,localStorage 持久化。*/
@@ -958,17 +937,6 @@ interface AppState {
   /** Settle and hand display to the SDK view for every input the product view now carries. */
   observeProductInputs(sessionId: string, items: readonly SessionProductItem[]): void;
   /** Record the exact Runtime Run admitted by session.send, independent of transcript rows. */
-  /**
-   * The Host returned a queued input: its text goes back to the composer. Images cannot be
-   * re-attached from display capabilities, so an input with images stays as a withdrawn bubble.
-   */
-  takeBackQueuedInput(
-    sessionId: string,
-    localId: string,
-    original: { readonly text: string; readonly attachments: readonly UserImageAttachment[] },
-  ): void;
-  /** Returns and clears the text waiting for this session's composer. */
-  consumeComposerRestore(sessionId: string): string | undefined;
   acknowledgePendingSendRun(sessionId: string, runId: string, expectedGeneration?: number): void;
   /** Bind the exact optimistic row to the fresh Runtime Run acknowledged by session.send. */
   bindUserMessageRuntimeRun(sessionId: string, messageId: string, runId: string): void;
@@ -990,6 +958,17 @@ interface AppState {
     options?: number | { readonly sentAt?: number; readonly variant?: 'echo' | 'output' },
   ): Promise<void>;
   restoreLocalNotices(sessionId: string, notices: readonly LocalNoticeMessage[]): void;
+  /**
+   * The Host returned a queued input: its text goes back to the composer. Images cannot be
+   * re-attached from display capabilities, so an input with images stays as a withdrawn bubble.
+   */
+  takeBackQueuedInput(
+    sessionId: string,
+    localId: string,
+    original: { readonly text: string; readonly attachments: readonly UserImageAttachment[] },
+  ): void;
+  /** Returns and clears the text waiting for this session's composer. */
+  consumeComposerRestore(sessionId: string): string | undefined;
   appendQueuedUserMessage(
     sessionId: string,
     input: {
@@ -1070,7 +1049,7 @@ interface AppState {
   /** Session UX flags — 局部状态 (alpha.1 不持久化)。toggle 形 + 合并形 set 函数。*/
   toggleSessionFlag(sessionId: string, flag: SessionFlagName): void;
   setSessionFlag(sessionId: string, flag: SessionFlagName, value: boolean): void;
-  setRecentsFilter(filter: RecentsFilter): void;
+  setShowArchivedSessions(show: boolean): void;
   setTheme(theme: 'dark' | 'light' | 'system'): void;
   /** F060：切视觉质量档。立即应用 <html> class + 写 localStorage。*/
   setVisualQuality(q: VisualQuality): void;
@@ -1228,10 +1207,11 @@ function nextMascotMode(mode: MascotMode): MascotMode {
 }
 
 /**
- * v0.1.9 Step 7 — 读用户拖排过的项目顺序 (canonProjectRoot 路径数组,顺序意义)。
- * 坏值 (非 JSON / 非数组 / 元素非 string / 超 256 项) 一律返空,等效"按 lastUsedAt 排"。
+ * 旧版本存在 localStorage 的项目拖排顺序 (canonProjectRoot 路径数组)。现在顺序存于
+ * projects.json，这里只作首屏初值与一次性迁移来源（见 projectOrderSync.ts）。
+ * 坏值 (非 JSON / 非数组 / 元素非 string / 超 256 项) 一律返空。
  */
-function readPersistedProjectOrder(): readonly string[] {
+export function readLegacyProjectOrder(): readonly string[] {
   const raw = lsGet('kodax-space.projectOrder');
   if (raw === null) return [];
   try {
@@ -1246,6 +1226,10 @@ function readPersistedProjectOrder(): readonly string[] {
   } catch {
     return [];
   }
+}
+
+export function clearLegacyProjectOrder(): void {
+  lsSet('kodax-space.projectOrder', null);
 }
 
 /** F040: 从 localStorage 读 expanded projects map。坏值（非 object / 非 boolean） 一律返空。
@@ -6464,7 +6448,6 @@ export const useAppStore = create<AppState>((setState) => {
   return {
     projects: [],
     licenseStatus: null,
-    composerRestoreBySession: {},
     currentProjectPath: lsGet(LS_KEY_PROJECT),
     expandedProjects: readPersistedExpandedProjects(),
     sessions: [],
@@ -6481,6 +6464,7 @@ export const useAppStore = create<AppState>((setState) => {
     transientArtifactsBySession: {},
     userMessagesBySession: {},
     queuedUserMessagesBySession: {},
+    composerRestoreBySession: {},
     localNoticesBySession: {},
     workflowNoticesBySession: {},
     permissionQueue: [],
@@ -6537,7 +6521,7 @@ export const useAppStore = create<AppState>((setState) => {
     pendingAgentMode: readPersistedAgentMode(),
     pendingModel: readPersistedModel(),
     sessionFlags: {},
-    recentsFilter: DEFAULT_RECENTS_FILTER,
+    showArchivedSessions: false,
     theme:
       (typeof window !== 'undefined' &&
         (localStorage.getItem('kodax-space.theme') as 'dark' | 'light' | 'system' | null)) ||
@@ -6569,7 +6553,7 @@ export const useAppStore = create<AppState>((setState) => {
       lsGet(LS_KEY_NATIVE_COMPLETION_NOTIFICATIONS),
     ),
     promotedPopoutsBySession: {},
-    projectOrder: readPersistedProjectOrder(),
+    projectOrder: readLegacyProjectOrder(),
     archivedProjectsExpanded: lsGet('kodax-space.archivedProjectsExpanded') === '1',
 
     setProjects: (projects) => set({ projects }),
@@ -7028,6 +7012,22 @@ export const useAppStore = create<AppState>((setState) => {
         if (!changed) return state;
         const updatedUsers = nextUserBucket.filter(
           (message) => message.operationId === operationId,
+        );
+        for (const message of updatedUsers)
+          updateTranscriptOwner(sessionId, message, { attachments: message.attachments });
+        if (updatedUsers.length > 0) rememberHistoryLiveUsers(sessionId, updatedUsers);
+        return {
+          userMessagesBySession: {
+            ...state.userMessagesBySession,
+            [sessionId]: nextUserBucket,
+          },
+          queuedUserMessagesBySession: {
+            ...state.queuedUserMessagesBySession,
+            [sessionId]: nextQueuedBucket,
+          },
+        };
+      }),
+
     takeBackQueuedInput: (sessionId, localId, original) => {
       const hasImages = original.attachments.length > 0;
       // '(image)' is the prompt the composer sends for an image-only input; it is not user text.
@@ -7077,22 +7077,6 @@ export const useAppStore = create<AppState>((setState) => {
       });
       return text;
     },
-        );
-        for (const message of updatedUsers)
-          updateTranscriptOwner(sessionId, message, { attachments: message.attachments });
-        if (updatedUsers.length > 0) rememberHistoryLiveUsers(sessionId, updatedUsers);
-        return {
-          userMessagesBySession: {
-            ...state.userMessagesBySession,
-            [sessionId]: nextUserBucket,
-          },
-          queuedUserMessagesBySession: {
-            ...state.queuedUserMessagesBySession,
-            [sessionId]: nextQueuedBucket,
-          },
-        };
-      }),
-
     restoreLocalNotices: (sessionId, notices) => {
       if (notices.length === 0) return;
       set((state) => ({
@@ -9746,10 +9730,8 @@ export const useAppStore = create<AppState>((setState) => {
       }),
 
     setProjectOrder: (order) => {
-      // readPersistedProjectOrder 拒收 >256 项,这里同上限截断,保证写入的值能被读回。
-      const next = order.slice(0, 256);
-      lsSet('kodax-space.projectOrder', JSON.stringify(next));
-      set({ projectOrder: next });
+      // projects.json 的 order 上限 256 项,这里同上限截断,保证写入的值能被读回。
+      set({ projectOrder: order.slice(0, 256) });
     },
 
     setArchivedProjectsExpanded: (expanded) => {
@@ -9770,7 +9752,7 @@ export const useAppStore = create<AppState>((setState) => {
         };
       }),
 
-    setRecentsFilter: (filter) => set({ recentsFilter: filter }),
+    setShowArchivedSessions: (show) => set({ showArchivedSessions: show }),
     setTheme: (theme) => {
       if (typeof window !== 'undefined') {
         try {

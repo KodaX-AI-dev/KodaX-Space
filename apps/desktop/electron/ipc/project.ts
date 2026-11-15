@@ -25,7 +25,13 @@ export function registerProjectChannels(): void {
   // project.list
   registerChannel('project.list', async () => {
     const projects = await projectStore.list();
-    return { projects };
+    return { projects, order: await projectStore.order() };
+  });
+
+  // project.order.set — 用户拖排的项目顺序；只影响显示顺序，不碰 allowlist。
+  registerChannel('project.order.set', async (input) => {
+    await projectStore.setOrder(input.order);
+    return {};
   });
 
   // project.openDialog

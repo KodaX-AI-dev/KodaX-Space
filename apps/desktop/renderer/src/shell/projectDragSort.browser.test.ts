@@ -10,7 +10,9 @@ import React from 'react';import{createRoot}from'react-dom/client';
 import{LeftSidebar}from'./LeftSidebar.tsx';import{I18nProvider}from'../i18n/I18nProvider.tsx';
 import{useAppStore}from'../store/appStore.ts';
 const projects=['alpha','bravo','charlie','delta'].map((name,i)=>({path:'/p/'+name,name,addedAt:1,lastUsedAt:10-i}));
-window.kodaxSpace={platform:'linux',rendererReady:()=>{},on:()=>()=>{},invoke:async(channel)=>{
+window.savedOrders=[];
+window.kodaxSpace={platform:'linux',rendererReady:()=>{},on:()=>()=>{},invoke:async(channel,input)=>{
+if(channel==='project.order.set'){window.savedOrders.push(input.order.map((p)=>p.split(String.fromCharCode(92)).join('/')));return{ok:true,data:{}};}
 if(channel==='settings.get')return{ok:true,data:{languageMode:'en-US',effectiveLocale:'en-US'}};
 if(channel==='project.list')return{ok:true,data:{projects}};
 if(channel==='session.list')return{ok:true,data:{sessions:[]}};
@@ -124,6 +126,10 @@ test(
         ).store.getState().projectOrder.length > 0,
     );
     assert.deepEqual(await visibleOrder(page), ['/p/bravo', '/p/charlie', '/p/delta', '/p/alpha']);
+    // The order is saved to projects.json, shared by dev and packaged builds.
+    assert.deepEqual(await page.evaluate('window.savedOrders'), [
+      ['/p/bravo', '/p/charlie', '/p/delta', '/p/alpha'],
+    ]);
     assert.deepEqual(errors, []);
   },
 );
@@ -143,6 +149,7 @@ test(
     await page.mouse.up();
     await page.waitForTimeout(250);
     assert.deepEqual(await visibleOrder(page), []);
+    assert.deepEqual(await page.evaluate('window.savedOrders'), []);
 
     const bravo = page.getByRole('button', { name: 'bravo', exact: true });
     await bravo.click();

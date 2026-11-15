@@ -250,6 +250,7 @@ export {
   projectRecentRemoveChannel,
   projectRecentRenameChannel,
   projectRecentSetArchivedChannel,
+  projectOrderSetChannel,
   projectGitStatsChannel,
   projectGitStatusChannel,
   projectGitChangesChannel,

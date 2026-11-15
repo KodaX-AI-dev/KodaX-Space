@@ -34,12 +34,16 @@ const fileSchema = z.object({
       archived: z.boolean().optional(),
     }),
   ),
+  /** 用户拖排的项目顺序 (renderer 的 canonProjectRoot 路径)。缺省 = 从未拖排。
+   *  放在 main 端文件而非 localStorage：dev (localhost) 与打包版 (app://) 的 localStorage 不互通。 */
+  order: z.array(z.string().min(1).max(4096)).max(256).optional(),
 });
 
 export type Project = z.infer<typeof fileSchema>['projects'][number];
 
 export class ProjectStore {
   private cached: Project[] | null = null;
+  private cachedOrder: string[] = [];
   private writeLock: Promise<void> = Promise.resolve();
 
   constructor(
@@ -59,6 +63,7 @@ export class ProjectStore {
         );
         this.cached = [];
       } else {
+        this.cachedOrder = parsed.data.order ?? [];
         // 文件可能被外部（别的进程 / 攻击者 / 手工编辑）写入畸形 path——
         // schema 只确保字符串；不验证语义。这里再过一遍 validateProjectRoot 把
         // 非绝对 / 含 .. / 含 NUL 的条目 drop 掉。filename basename 是显示用的，
@@ -184,9 +189,23 @@ export class ProjectStore {
     });
   }
 
+  async order(): Promise<string[]> {
+    await this.list();
+    return [...this.cachedOrder];
+  }
+
+  /** 替换用户拖排顺序。renderer 每次拖排都发送完整的可见顺序。*/
+  async setOrder(order: readonly string[]): Promise<void> {
+    await this.mutate((list) => {
+      this.cachedOrder = [...order];
+      return { list, ret: undefined };
+    });
+  }
+
   /** 测试用：丢内存 cache 强制下次 list 重新读盘。*/
   invalidate(): void {
     this.cached = null;
+    this.cachedOrder = [];
   }
 
   /**
@@ -219,7 +238,8 @@ export class ProjectStore {
     // mode 0o700 / 0o600：projects.json 含用户项目路径，可能泄露 proprietary 代码名等。
     // Windows 忽略 mode，POSIX 强制 user-only。
     await fs.mkdir(this.dir, { recursive: true, mode: 0o700 });
-    const payload = JSON.stringify({ version: 1, projects: list }, null, 2);
+    const order = this.cachedOrder.length > 0 ? { order: this.cachedOrder } : {};
+    const payload = JSON.stringify({ version: 1, projects: list, ...order }, null, 2);
     await replaceFileWithoutFollowingAliases(
       this.filePath,
       Buffer.from(payload, 'utf8'),

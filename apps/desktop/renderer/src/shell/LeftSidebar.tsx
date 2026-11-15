@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Archive,
   Plus,
   ChevronDown,
   Ellipsis,
@@ -43,7 +44,6 @@ import {
 import { SessionContextMenu } from './SessionContextMenu.js';
 import { ProjectContextMenu } from './ProjectContextMenu.js';
 import { ProjectSessionPicker } from './ProjectSessionPicker.js';
-import { RecentsFilterMenu } from './RecentsFilterMenu.js';
 import { SidebarFooter } from './SidebarFooter.js';
 import { useSessionStatusMap, type SessionStatus } from '../features/session/useSessionStatus.js';
 import { SessionAwaitingIndicator } from '../features/session/SessionAwaitingIndicator.js';
@@ -51,6 +51,7 @@ import { prioritizeAttentionItems } from '../features/session/sessionInteraction
 import { sessionAttentionKind, summarizeAttention } from '../features/session/sessionAttention.js';
 import { ProjectAttentionBadge } from './ProjectAttentionBadge.js';
 import { pushToast } from '../store/toastStore.js';
+import { saveProjectOrder } from '../store/projectOrderSync.js';
 import type { Project } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
@@ -234,7 +235,7 @@ export function LeftSidebar({
           peers.length === 0 时整段隐藏不占空间。 */}
       <RunningPeersPanel />
 
-      {/* Recents 标题 + 过滤按钮 (对齐 Claude Desktop 截图 3 的 ⚙) */}
+      {/* Projects 标题 + 显示已归档开关 */}
       <RecentsHeader />
 
       <div className="flex-1 overflow-y-auto px-1.5 pb-2">
@@ -265,12 +266,11 @@ export function LeftSidebar({
 /**
  * F040: 多项目可折叠树外层。
  *
- * 顶层 = 已打开过的所有项目（store.projects），按 lastUsedAt 倒序。当前项目默认展开
- * 且高亮；其它项目折叠态。展开状态持久化到 localStorage（store.expandedProjects）。
+ * 顶层 = 已打开过的所有项目（store.projects），按用户拖排顺序，未拖排的按添加顺序在尾部。
+ * 当前项目默认展开且高亮；其它项目折叠态。展开状态持久化到 localStorage（store.expandedProjects）。
  *
- * 每项目内复用 SessionTree（传 projectRootOverride 强制按本项目 path 过滤，不受
- * recentsFilter.projectScope 影响）。状态点：useSessionStatusMap 一次拍全部 session
- * 状态，按需传给每个 SessionTree。
+ * 每项目内复用 SessionTree（传 projectRoot 只渲染本项目 session）。状态点：
+ * useSessionStatusMap 一次拍全部 session 状态，按需传给每个 SessionTree。
  *
  * 折叠项目节点显示运行数计数（🟢N），让用户一眼看到哪个项目里有 agent 在跑。
  *
@@ -364,45 +364,37 @@ function ProjectTree({
   const allSessionIds = useMemo(() => sessions.map((s) => s.sessionId), [sessions]);
   const statusMap = useSessionStatusMap(allSessionIds);
 
-  // 项目排序优先级:
-  //   1. v0.1.9 Step 7: 用户拖排过 (projectOrder 非空) → 按 projectOrder 排,新项目追加到尾
-  //   2. 旧默认: lastUsedAt 倒序
+  // 项目顺序只由用户决定：拖排过的按 projectOrder，其余按添加顺序追加在尾部；使用不会重排。
   // F043: archived 项目从主列表剔出,单独"Archived (N)"分组展示。
   const ordered = useMemo(() => {
-    const active = projects.filter((p) => p.archived !== true);
-
-    if (projectOrder.length > 0) {
-      // 用户已拖排过: 按 projectOrder 索引排,不在里面的追加(按 lastUsedAt 内部排)。
-      const orderIdx = new Map<string, number>();
-      projectOrder.forEach((p, i) => orderIdx.set(p, i));
-      return [...active].sort((a, b) => {
-        const aIdx = orderIdx.get(canonProjectRootBrowser(a.path)) ?? Infinity;
-        const bIdx = orderIdx.get(canonProjectRootBrowser(b.path)) ?? Infinity;
-        if (aIdx !== bIdx) return aIdx - bIdx;
-        return b.lastUsedAt - a.lastUsedAt;
-      });
-    }
-
-    return [...active].sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+    const orderIdx = new Map(projectOrder.map((p, i) => [p, i] as const));
+    const rank = (p: Project): number =>
+      orderIdx.get(canonProjectRootBrowser(p.path)) ?? projectOrder.length;
+    return projects
+      .filter((p) => p.archived !== true)
+      .sort((a, b) => rank(a) - rank(b) || a.addedAt - b.addedAt);
   }, [projects, projectOrder]);
 
   const archived = useMemo(
-    () => projects.filter((p) => p.archived === true).sort((a, b) => b.lastUsedAt - a.lastUsedAt),
+    () => projects.filter((p) => p.archived === true).sort((a, b) => a.addedAt - b.addedAt),
     [projects],
   );
 
-  // 拖排 / 置顶都基于用户当前看到的顺序计算,store 只持久化结果。
+  // 拖排 / 置顶都基于用户当前看到的顺序计算,结果写进 projects.json (dev 与打包版共享)。
   const moveProject = useCallback(
     (from: number, to: number): void => {
-      setProjectOrder(
-        moveItem(
-          ordered.map((p) => canonProjectRootBrowser(p.path)),
-          from,
-          to,
-        ),
+      const next = moveItem(
+        ordered.map((p) => canonProjectRootBrowser(p.path)),
+        from,
+        to,
       );
+      setProjectOrder(next);
+      if (!window.kodaxSpace) return;
+      void saveProjectOrder(window.kodaxSpace, next).then((saved) => {
+        if (!saved) pushToast(t('sidebar.projectOrderSaveFailed'), 'error');
+      });
     },
-    [ordered, setProjectOrder],
+    [ordered, setProjectOrder, t],
   );
   const dragSort = useDragSort(ordered.length, moveProject);
 
@@ -625,7 +617,7 @@ function ProjectTree({
                 sessions={projSessions}
                 currentSessionId={currentSessionId}
                 onSelect={onSelect}
-                projectRootOverride={proj.path}
+                projectRoot={proj.path}
                 statusFor={statusFor}
                 maxVisible={visibleLimit}
                 initialVisible={SESSIONS_PER_PROJECT_INITIAL_VISIBLE}
@@ -741,9 +733,8 @@ interface SessionTreeProps {
   readonly sessions: readonly SessionMeta[];
   readonly currentSessionId: string | null;
   readonly onSelect: (sessionId: string) => void;
-  /** F040: 多项目模式时由 ProjectTree 传该项目路径，覆盖 filter.projectScope 行为，
-   *  让每个 SessionTree 严格只渲染自己项目的 session。缺省走原来的 projectScope filter。 */
-  readonly projectRootOverride?: string;
+  /** F040: 该树所属项目；只渲染这个项目的 session。 */
+  readonly projectRoot: string;
   /** F040: 每行末尾的状态点。idle 不渲染（避免噪音）；缺省整个 sidebar 都不显示状态。 */
   readonly statusFor?: (sessionId: string) => SessionStatus;
   /** 默认显示上限。超过 cap 时下方渲染展开/全部/折叠动作；undefined = 不 cap (legacy). */
@@ -772,7 +763,7 @@ function SessionTree({
   sessions,
   currentSessionId,
   onSelect,
-  projectRootOverride,
+  projectRoot,
   statusFor,
   maxVisible,
   initialVisible,
@@ -783,52 +774,23 @@ function SessionTree({
 }: SessionTreeProps): JSX.Element {
   const { t } = useI18n();
   const sessionFlags = useAppStore((s) => s.sessionFlags);
-  const filter = useAppStore((s) => s.recentsFilter);
-  const currentProjectPath = useAppStore((s) => s.currentProjectPath);
+  const showArchived = useAppStore((s) => s.showArchivedSessions);
 
-  // 应用 filter：status / lastActivity / projectScope
-  // F040：projectRootOverride 设了的话 projectScope filter 被替换为强等于该路径，
-  //       让 ProjectTree 多项目模式下每个 SessionTree 严格只渲染自己项目的 session。
+  // 每个 SessionTree 只渲染自己项目的 session；归档的默认隐藏。
   const visible = useMemo(() => {
-    const now = Date.now();
-    const cutoff =
-      filter.lastActivity === 'today'
-        ? now - 24 * 3600 * 1000
-        : filter.lastActivity === '7d'
-          ? now - 7 * 24 * 3600 * 1000
-          : filter.lastActivity === '30d'
-            ? now - 30 * 24 * 3600 * 1000
-            : 0;
-    const overrideCanon = projectRootOverride ? canonProjectRootBrowser(projectRootOverride) : null;
-    const curCanon = currentProjectPath ? canonProjectRootBrowser(currentProjectPath) : null;
-    return sessions.filter((s) => {
-      const f = sessionFlags[s.sessionId];
-      if (filter.status === 'active' && f?.archived) return false;
-      if (filter.status === 'archived' && !f?.archived) return false;
-      if (overrideCanon !== null) {
-        if (canonProjectRootBrowser(s.projectRoot) !== overrideCanon) return false;
-      } else if (filter.projectScope === 'current' && curCanon) {
-        if (canonProjectRootBrowser(s.projectRoot) !== curCanon) return false;
-      }
-      if (cutoff > 0 && s.lastActivityAt < cutoff) return false;
-      return true;
-    });
-  }, [sessions, sessionFlags, filter, currentProjectPath, projectRootOverride]);
+    const projectCanon = canonProjectRootBrowser(projectRoot);
+    return sessions.filter(
+      (s) =>
+        (showArchived || !sessionFlags[s.sessionId]?.archived) &&
+        canonProjectRootBrowser(s.projectRoot) === projectCanon,
+    );
+  }, [sessions, sessionFlags, showArchived, projectRoot]);
 
-  // 排序：pinned 顶部 + sortBy 选项决定二级排序
-  const rendered = useMemo(() => {
-    const tree = buildSessionTreeOrder(visible, (id) => Boolean(sessionFlags[id]?.pinned));
-    if (filter.sortBy === 'recency') return tree;
-    // 对 flat tree 二次排序（树形结构下 alphabetical/created 仅排 root；children 保 DFS 序）
-    return tree.slice().sort((a, b) => {
-      if (a.depth !== b.depth) return a.depth - b.depth;
-      if (filter.sortBy === 'alphabetical') {
-        return (a.session.title ?? '').localeCompare(b.session.title ?? '');
-      }
-      // created
-      return b.session.createdAt - a.session.createdAt;
-    });
-  }, [visible, sessionFlags, filter.sortBy]);
+  // 排序：pinned 顶部，其余按最近活动；子 session 跟在父 session 下。
+  const rendered = useMemo(
+    () => buildSessionTreeOrder(visible, (id) => Boolean(sessionFlags[id]?.pinned)),
+    [visible, sessionFlags],
+  );
   // 右键菜单状态：哪个 session + 屏幕坐标
   const [ctxMenu, setCtxMenu] = useState<{ session: SessionMeta; x: number; y: number } | null>(
     null,
@@ -1085,7 +1047,7 @@ function SessionRow({
           aria-busy={deleting}
           aria-current={isSelected ? 'page' : undefined}
           className={`group/sessionrow w-full min-w-0 text-left text-xs px-2 py-1 rounded grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-2 min-h-[1.625rem] transition-opacity duration-150 ${
-            deleting ? 'opacity-40 pointer-events-none' : ''
+            deleting ? 'opacity-40 pointer-events-none' : flags?.archived ? 'opacity-60' : ''
           } ${
             isSelected
               ? 'bg-surface-3 text-fg-primary'
@@ -1322,52 +1284,24 @@ const EMPTY_PEERS: readonly RunningSessionInfoT[] = [];
 
 function RecentsHeader(): JSX.Element {
   const { t } = useI18n();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const filter = useAppStore((s) => s.recentsFilter);
-  // 显示当前过滤 summary，给用户暗示"我现在看的是哪部分"
-  const filterStatusLabel =
-    filter.status === 'active'
-      ? ''
-      : filter.status === 'archived'
-        ? t('sidebar.filter.status.archived')
-        : t('sidebar.filter.status.all');
-  const filterSortLabel =
-    filter.sortBy === 'alphabetical'
-      ? t('sidebar.filter.sort.alphabetical')
-      : filter.sortBy === 'created'
-        ? t('sidebar.filter.sort.created')
-        : t('sidebar.filter.sort.recency');
-  const summary =
-    filter.status !== 'active' ||
-    filter.lastActivity !== 'all' ||
-    filter.sortBy !== 'recency' ||
-    filter.groupBy !== 'none'
-      ? `${filterStatusLabel ? `${filterStatusLabel} · ` : ''}${filterSortLabel}`
-      : null;
+  const showArchived = useAppStore((s) => s.showArchivedSessions);
+  const setShowArchived = useAppStore((s) => s.setShowArchivedSessions);
   return (
-    <div className="px-4 pt-4 pb-2 text-xs text-fg-muted flex justify-between items-center flex-shrink-0 relative">
-      {/* F043 v0.1.9: 改为"Projects" — 实际形态就是项目折叠树，原 Recents 概念被
-          ProjectTree 取代；点 ⇅ 仍调过滤菜单（session 级 active/archived/sort 等）。 */}
+    <div className="px-4 pt-4 pb-2 text-xs text-fg-muted flex justify-between items-center flex-shrink-0">
+      {/* F043 v0.1.9: "Projects" — 项目折叠树。右侧唯一开关：显示已归档的 session。 */}
       <span>{t('sidebar.projects')}</span>
-      <div className="flex items-center gap-2">
-        {summary && <span className="normal-case text-fg-muted text-[11px]">{summary}</span>}
-        <button
-          ref={buttonRef}
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="text-fg-muted hover:text-fg-primary normal-case"
-          aria-label={t('sidebar.filter.aria')}
-          title={t('sidebar.filter.title')}
-        >
-          ⇅
-        </button>
-      </div>
-      <RecentsFilterMenu
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        anchorEl={buttonRef.current}
-      />
+      <button
+        type="button"
+        onClick={() => setShowArchived(!showArchived)}
+        className={`rounded p-0.5 hover:bg-hover-bg hover:text-fg-primary ${
+          showArchived ? 'text-fg-primary bg-hover-bg' : 'text-fg-muted'
+        }`}
+        aria-pressed={showArchived}
+        aria-label={t('sidebar.showArchivedSessions')}
+        title={t('sidebar.showArchivedSessions')}
+      >
+        <Archive className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </button>
     </div>
   );
 }

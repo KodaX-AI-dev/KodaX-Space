@@ -251,3 +251,33 @@ test('rename + setArchived: independent fields, no mutual interference', async (
   assert.equal(list[0].name, 'My Project');
   assert.equal(list[0].archived, true);
 });
+
+test('order: empty until set, then persisted and kept across other mutations', async () => {
+  const store = createProjectStore(storeFile, tmpDir);
+  const a = path.join(tmpDir, 'a');
+  const b = path.join(tmpDir, 'b');
+  await store.addOrBump(a);
+  assert.deepEqual(await store.order(), []);
+
+  await store.setOrder([b, a]);
+  await store.addOrBump(b);
+  await store.rename(a, 'Renamed');
+  await store.setArchived(b, true);
+
+  const reloaded = createProjectStore(storeFile, tmpDir);
+  assert.deepEqual(await reloaded.order(), [b, a]);
+  assert.equal((await reloaded.list()).length, 2);
+});
+
+test('order: a file written before order existed still loads its projects', async () => {
+  await fs.writeFile(
+    storeFile,
+    JSON.stringify({
+      version: 1,
+      projects: [{ path: path.join(tmpDir, 'old'), name: 'old', addedAt: 1, lastUsedAt: 1 }],
+    }),
+  );
+  const store = createProjectStore(storeFile, tmpDir);
+  assert.equal((await store.list()).length, 1);
+  assert.deepEqual(await store.order(), []);
+});

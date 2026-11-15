@@ -20,6 +20,9 @@ const projectSchema = z.object({
 
 export type Project = z.infer<typeof projectSchema>;
 
+/** 用户拖排的项目顺序 (canonProjectRoot 路径)；空 = 从未拖排，按添加顺序显示。 */
+const projectOrderSchema = z.array(z.string().min(1).max(4096)).max(256);
+
 // ---- project.list ----
 export const projectListChannel = {
   name: 'project.list',
@@ -27,7 +30,18 @@ export const projectListChannel = {
   input: z.undefined(),
   output: z.object({
     projects: z.array(projectSchema),
+    order: projectOrderSchema,
   }),
+} as const;
+
+// ---- project.order.set ----
+//
+// 持久化用户拖排的项目顺序到 projects.json，dev 与打包版共享同一顺序。
+export const projectOrderSetChannel = {
+  name: 'project.order.set',
+  direction: 'invoke',
+  input: z.object({ order: projectOrderSchema }),
+  output: z.object({}),
 } as const;
 
 // ---- project.openDialog ----
@@ -312,14 +326,7 @@ export const projectGitFileDiffChannel = {
     isBinary: z.boolean().optional(),
     /** available=false 时给前端精准文案的 hint。 */
     reason: z
-      .enum([
-        'ok',
-        'file-too-large',
-        'is-binary',
-        'not-a-git-repo',
-        'no-such-file',
-        'git-error',
-      ])
+      .enum(['ok', 'file-too-large', 'is-binary', 'not-a-git-repo', 'no-such-file', 'git-error'])
       .optional(),
   }),
 } as const;
