@@ -1005,8 +1005,8 @@ test('a cold newest-history topology conflict reloads through the Host once with
     if (reloads === 0) {
       conflict = true;
       throw Object.assign(
-        new Error('Session location topology changed during the read boundary for s_cold_history'),
-        { code: 'resync_required' },
+        new Error('Session file changed during the read boundary: s_cold_history.jsonl'),
+        { code: 'resync_required', data: { reason: 'writer_active' } },
       );
     }
     return {
@@ -1054,8 +1054,8 @@ test('a recovered newest history boundary is read without reopening an invalidat
     if (!fresh) {
       conflict = true;
       throw Object.assign(
-        new Error('Session location topology changed during the read boundary for s_view_history'),
-        { code: 'resync_required' },
+        new Error('Session main file moved during the read boundary'),
+        { code: 'resync_required', data: { reason: 'writer_active' } },
       );
     }
     return {
@@ -1100,7 +1100,7 @@ test('cold history recovers a lock conflict followed by a topology conflict thro
             ? `Session data changed during the read boundary: ${'a'.repeat(64)}.lock`
             : 'Session location topology changed during the read boundary for s_history_cascade',
         ),
-        { code: 'resync_required' },
+        { code: 'resync_required', data: { reason: 'writer_active' } },
       );
     return {
       revision: 'restored',
@@ -1127,56 +1127,90 @@ test('cold history recovers a lock conflict followed by a topology conflict thro
   }
 });
 
-for (const message of [
-  `Session data changed during the read boundary: C:\\Users\\u\\.kodax\\sessions\\.write-locks\\${'b'.repeat(64)}.lock`,
-  `Session data changed during the read boundary: /home/u/.kodax/sessions/.write-locks/${'c'.repeat(64)}.lock`,
-  'Session location topology could not be verified for s_sdk_history',
-]) {
-  test(`newest history retries the SDK's own boundary conflict messages: ${message}`, async () => {
-    const fake = createFakeRuntime();
-    fake.sessions.add('s_sdk_history');
-    let reads = 0;
-    let reloads = 0;
-    const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
-    fake.runtime.sessions.load = async (id) => {
-      if (reads > 0) reloads++;
-      return load(id);
-    };
-    fake.runtime.sessions.readHistory = async () => {
-      reads++;
-      if (reads === 1) throw Object.assign(new Error(message), { code: 'resync_required' });
-      return {
-        revision: 'retried',
-        sourceRevision: 'retried',
-        status: 'resolved',
-        issues: [],
-        items: [],
-        oversized: [],
-      };
-    };
-    const adapter = new RuntimeHostAdapter({
-      mode: 'runtime',
-      profileRoot: path.resolve('C:/isolated-profile'),
-      runtimeFactory: async () => fake.runtime,
-      identityStore: testIdentityStore,
+test('newest history reports data_changed when its refresh load also crosses a writer', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_refresh_conflict');
+  let reads = 0;
+  const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+  fake.runtime.sessions.load = async (id) => {
+    if (reads > 0)
+      throw Object.assign(new Error('Session data changed during the load boundary'), {
+        code: 'data_changed',
+      });
+    return load(id);
+  };
+  fake.runtime.sessions.readHistory = async () => {
+    reads++;
+    throw Object.assign(new Error('Session data changed during the read boundary'), {
+      code: 'resync_required',
+      data: { reason: 'writer_active' },
     });
-    try {
-      const result = await adapter.readProductHistory('s_sdk_history');
-      assert.equal(result.outcome === 'ready' && result.page?.sourceRevision, 'retried');
-      assert.equal(reloads, 1);
-    } finally {
-      await adapter.close();
-    }
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
   });
-}
+  try {
+    assert.deepEqual(await adapter.readProductHistory('s_refresh_conflict'), {
+      outcome: 'data_changed',
+    });
+    assert.equal(reads, 1);
+  } finally {
+    await adapter.close();
+  }
+});
 
-for (const message of [
-  'Session data changed during the read boundary: invalid.lock',
-  'Session location topology changed during the read boundary for another-session',
-  'Session location topology could not be verified for another-session',
-  `Session data changed during the read boundary: C:\\sessions\\.write-locks\\${'d'.repeat(64)}.lock.tmp`,
-]) {
-  test(`unknown history boundaries do not trigger a Host load: ${message}`, async () => {
+test('newest history retries a writer_active resync once through a Host load', async () => {
+  const fake = createFakeRuntime();
+  fake.sessions.add('s_sdk_history');
+  let reads = 0;
+  let reloads = 0;
+  const load = fake.runtime.sessions.load.bind(fake.runtime.sessions);
+  fake.runtime.sessions.load = async (id) => {
+    if (reads > 0) reloads++;
+    return load(id);
+  };
+  fake.runtime.sessions.readHistory = async () => {
+    reads++;
+    if (reads === 1) {
+      throw Object.assign(new Error('Session data changed during the read boundary'), {
+        code: 'resync_required',
+        data: { reason: 'writer_active' },
+      });
+    }
+    return {
+      revision: 'retried',
+      sourceRevision: 'retried',
+      status: 'resolved',
+      issues: [],
+      items: [],
+      oversized: [],
+    };
+  };
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:/isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+  });
+  try {
+    const result = await adapter.readProductHistory('s_sdk_history');
+    assert.equal(result.outcome === 'ready' && result.page?.sourceRevision, 'retried');
+    assert.equal(reloads, 1);
+  } finally {
+    await adapter.close();
+  }
+});
+
+for (const [label, fields] of [
+  ['no reason', { code: 'resync_required' }],
+  ['source_changed', { code: 'resync_required', data: { reason: 'source_changed' } }],
+  ['revision_mismatch', { code: 'resync_required', data: { reason: 'revision_mismatch' } }],
+  ['raw data_changed', { code: 'data_changed', data: { reason: 'writer_active' } }],
+] as const) {
+  test(`history resyncs other than writer_active do not trigger a Host load: ${label}`, async () => {
     const fake = createFakeRuntime();
     fake.sessions.add('s_unknown_history');
     let conflict = false;
@@ -1188,7 +1222,11 @@ for (const message of [
     };
     fake.runtime.sessions.readHistory = async () => {
       conflict = true;
-      throw Object.assign(new Error(message), { code: 'resync_required' });
+      // The message names a write lock; detection must rely on the typed reason only.
+      throw Object.assign(
+        new Error(`Session data changed during the read boundary: ${'d'.repeat(64)}.lock`),
+        fields,
+      );
     };
     const adapter = new RuntimeHostAdapter({
       mode: 'runtime',
@@ -1229,7 +1267,7 @@ for (const boundary of [
         new Error(
           'Session location topology changed during the read boundary for s_topology_bound',
         ),
-        { code: 'resync_required' },
+        { code: 'resync_required', data: { reason: 'writer_active' } },
       );
     };
     const adapter = new RuntimeHostAdapter({
@@ -1314,6 +1352,16 @@ test('history contract v2 returns the complete SDK turn and typed resync reasons
     assert.deepEqual(await adapter.resolveHistoryTurn('v2-host', { kind: 'latest' }), {
       status: 'stale',
       reason: 'selection_expired',
+    });
+    resolved = async () => {
+      throw Object.assign(new Error('writer'), {
+        code: 'resync_required',
+        data: { reason: 'writer_active' },
+      });
+    };
+    assert.deepEqual(await adapter.resolveHistoryTurn('v2-host', { kind: 'latest' }), {
+      status: 'stale',
+      reason: 'source_changed',
     });
     resolved = async () => {
       throw Object.assign(new Error('busy'), { code: 'conflict' });

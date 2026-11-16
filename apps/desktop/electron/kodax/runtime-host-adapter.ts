@@ -503,19 +503,21 @@ function runtimeErrorCode(error: unknown): string | undefined {
     : undefined;
 }
 
+/** `writer_active` is a transient retry signal; turn callers treat it as `source_changed`. */
+type HistoryTurnChangedReason = Exclude<ClientHistoryResyncReason, 'writer_active'>;
 const HISTORY_RESYNC_REASONS = new Set<string>([
   'revision_mismatch',
   'source_changed',
   'selection_expired',
   'head_changed',
-] satisfies ClientHistoryResyncReason[]);
+] satisfies HistoryTurnChangedReason[]);
 
 /** Typed SDK history resync reason; never inferred from error text. */
-export function historyTurnChangedReason(error: unknown): ClientHistoryResyncReason | undefined {
+export function historyTurnChangedReason(error: unknown): HistoryTurnChangedReason | undefined {
   if (runtimeErrorCode(error) !== 'resync_required') return undefined;
   const reason = (error as { readonly data?: { readonly reason?: unknown } }).data?.reason;
   return typeof reason === 'string' && HISTORY_RESYNC_REASONS.has(reason)
-    ? (reason as ClientHistoryResyncReason)
+    ? (reason as HistoryTurnChangedReason)
     : 'source_changed';
 }
 
@@ -524,17 +526,10 @@ function isRuntimeResyncRequired(error: unknown): boolean {
   return code === 'resync_required' || code === 'data_changed';
 }
 
-function isHistoryReadBoundaryConflict(error: unknown, sessionId: string): boolean {
-  if (!isRuntimeResyncRequired(error) || !(error instanceof Error)) return false;
-  return (
-    error.message ===
-      `Session location topology changed during the read boundary for ${sessionId}` ||
-    error.message === `Session location topology could not be verified for ${sessionId}` ||
-    // The SDK names the full write-lock path; older builds named only the lock file.
-    /^Session data changed during the read boundary: (?:.*[\\/]\.write-locks[\\/])?[a-f0-9]{64}\.lock$/.test(
-      error.message,
-    )
-  );
+/** A read crossed a live Session writer; a fresh read can succeed with no history change. */
+function isHistoryReadBoundaryConflict(error: unknown): boolean {
+  if (runtimeErrorCode(error) !== 'resync_required') return false;
+  return (error as { readonly data?: { readonly reason?: unknown } }).data?.reason === 'writer_active';
 }
 
 function isSessionIdentityReadConflict(error: unknown): boolean {
@@ -4762,31 +4757,31 @@ export class RuntimeHostAdapter {
       } catch (error) {
         if (this.runtime !== runtime)
           throw new Error('Runtime changed while reading Session history.');
-        if (
-          attempt < 2 &&
-          !around &&
-          cursor === undefined &&
-          isHistoryReadBoundaryConflict(error, sessionId)
-        ) {
-          // A lock conflict can precede a topology conflict after cold recovery. Both
-          // refreshes stay bounded and use public reads; input and Runs are never replayed.
-          await runtime.sessions.load(sessionId);
-          if (this.runtime !== runtime)
-            throw new Error('Runtime changed while refreshing Session history.');
-          continue;
-        }
-        if (isRuntimeResyncRequired(error)) {
+        // A lock conflict can precede a topology conflict after cold recovery. Both
+        // refreshes stay bounded and use public reads; input and Runs are never replayed.
+        // A refresh that fails is classified exactly like the read it replaced.
+        const failure =
+          attempt < 2 && !around && cursor === undefined && isHistoryReadBoundaryConflict(error)
+            ? await runtime.sessions.load(sessionId).then(
+                () => undefined,
+                (refreshError: unknown) => refreshError,
+              )
+            : error;
+        if (this.runtime !== runtime)
+          throw new Error('Runtime changed while refreshing Session history.');
+        if (failure === undefined) continue;
+        if (isRuntimeResyncRequired(failure)) {
           getDiagnosticsLogger()?.warn('session-history', 'read_data_changed', undefined, {
             continuation: cursor !== undefined,
             located: around !== undefined,
             attempt,
-            code: runtimeErrorCode(error),
-            message: error instanceof Error ? error.message : String(error),
+            code: runtimeErrorCode(failure),
+            message: failure instanceof Error ? failure.message : String(failure),
           });
           return { outcome: 'data_changed' };
         }
-        if (isSessionNotFoundError(error)) return { outcome: 'ready', page: null };
-        throw error;
+        if (isSessionNotFoundError(failure)) return { outcome: 'ready', page: null };
+        throw failure;
       }
     }
     return { outcome: 'data_changed' };

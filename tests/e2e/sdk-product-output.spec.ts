@@ -28,13 +28,21 @@ test('SDK error output retains Provider actions and diagnostics without a second
     await waitSdkIdle(space, sessionId);
     const snapshot = await readSdkProductView(space, sessionId);
     const errorItem = snapshot.items.find((item) => item.type === 'error');
-    if (errorItem)
-      await expect(space.page.locator(`[data-msg-id="${errorItem.id}"]`)).toHaveCount(1);
+    expect(errorItem).toBeDefined();
+    const errorRow = space.page.locator(`[data-msg-id="${errorItem!.id}"]`);
+    await expect(errorRow).toHaveCount(1);
     await expect(
       space.page
         .getByTestId('conversation-stream')
         .getByRole('button', { name: 'Provider settings', exact: true }),
     ).toHaveCount(1);
+    // The saved failure stays after the next Run; the CLI-only recovery prompt never appears.
+    await sendSdkPrompt(space, 'AFTER_FAIL');
+    const stream = space.page.getByTestId('conversation-stream');
+    await expect(stream).toContainText('SDK_REPLY:AFTER_FAIL', { timeout: 20_000 });
+    await waitSdkIdle(space, sessionId);
+    await expect(errorRow).toHaveCount(1);
+    await expect(stream).not.toContainText('Recovery exhausted');
     expect(provider.errors).toEqual([]);
   } finally {
     await provider.close();
@@ -42,7 +50,7 @@ test('SDK error output retains Provider actions and diagnostics without a second
   }
 });
 
-test('expired SDK history cursors request resync and leave the current view intact', async () => {
+test('older SDK history cursors survive the next Run and a mismatched revision requests resync without touching the view', async () => {
   const provider = await createLocalSdkProvider();
   const { space } = await launchRealSdkSpace(`sdk-product-cursor-${Date.now()}`, provider.url);
   let peer: Awaited<ReturnType<typeof connectKodaXClient>> | undefined;
@@ -73,17 +81,22 @@ test('expired SDK history cursors request resync and leave the current view inta
       'SDK_REPLY:CURSOR_SECOND',
     );
     await waitSdkIdle(space, sessionId);
-    const result = await space.page.evaluate(
-      (args) => window.kodaxSpace!.invoke('session.history', args),
-      {
+    const readOlder = (revision: string) =>
+      space.page.evaluate((args) => window.kodaxSpace!.invoke('session.history', args), {
         sessionId,
         requestId: randomUUID(),
         expectedSurface: 'code' as const,
         cursor: history.nextCursor,
-        revision: history.revision,
+        revision,
         sourceRevision: history.sourceRevision,
-      },
-    );
+      });
+    // The next Run only grows the history, so the older cursor still reads its own page.
+    const older = await readOlder(history.revision);
+    expect(older.ok && older.data.page?.outcome).toBe('ready');
+    const olderItems = JSON.stringify(older.ok && older.data.productItems);
+    expect(olderItems).toContain('CURSOR_FIRST');
+    expect(olderItems).not.toContain('CURSOR_SECOND');
+    const result = await readOlder(`sha256:${'0'.repeat(64)}`);
     expect(result.ok && result.data.page?.outcome).toBe('data_changed');
     await expect(space.page.getByTestId('conversation-stream')).toContainText(
       'SDK_REPLY:CURSOR_SECOND',

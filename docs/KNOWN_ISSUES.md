@@ -40,7 +40,7 @@ Last Updated: 2026-11-15
 | 249 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Sent prompt stays (fully or partly) in the composer when a line ends with a line break                                                                                                                     | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11             | 2026-11-13 |
 | 250 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                                        | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
 | 251 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                               | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
-| 252 | Low      | Ready (SDK fix)                                                                                              | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                                         | SDK product view (failure kept only in Run status); observed with SDK 0.7.97-beta.10  | 2026-11-15 |
+| 252 | Low      | Resolved in source (SDK beta.11)                                                                             | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                                         | SDK product view (failure kept only in Run status); fixed by SDK 0.7.97-beta.11       | 2026-11-15 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -2754,7 +2754,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
 ## Issue 252 — A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains
 
 - **Priority**: Low (not blocking: the failure is visible while it is the latest Run).
-- **Status**: Ready — fix belongs to the KodaX SDK; Space needs no change once the SDK writes the item.
+- **Status**: Resolved in source — Space pins SDK 0.7.97-beta.11, which writes the item; no Space code change.
 - **Introduced**: SDK product view; observed on Windows 11 with SDK 0.7.97-beta.10.
 - **Created**: 2026-11-15.
 - **Original problem**: with a wrong provider key, the first query fails. The transcript shows the
@@ -2773,14 +2773,19 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
   view (omit it or use neutral text). Space already shows SDK error items in place and decorates
   the current Run's item with failure detail and the Provider settings action.
 - **Decision**: no Space-side fallback (2026-11-15); reported to the KodaX SDK thread.
+- **Resolution (2026-11-16)**: SDK 0.7.97-beta.11 persists a run-scoped `type: 'error'` item and no
+  longer writes the `manual_continue` text into the view. `tests/e2e/sdk-product-output.spec.ts`
+  ("SDK error output retains Provider actions and diagnostics without a second error body") now requires the error item, shows it once with
+  the Provider settings action, and keeps it after a later successful Run without a
+  "Recovery exhausted" notice.
 
 ## Summary
 
 - Total: 29
 - Open: 1
-- Ready: 5
+- Ready: 4
 - In Progress: 11
-- Resolved, awaiting release or verification: 10
+- Resolved, awaiting release or verification: 11
 - Other (partially fixed / under investigation): 2
 - High: 15
 - Medium: 12

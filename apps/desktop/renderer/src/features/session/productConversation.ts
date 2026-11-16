@@ -51,9 +51,55 @@ function toolInput(text?: string): Record<string, unknown> | undefined {
       ? (parsed as Record<string, unknown>)
       : { input: text };
   } catch {
-    // Bounded SDK previews can end inside JSON; retain the supplied text for display.
-    return { input: text };
+    // Bounded SDK previews keep the start of the input and can end inside JSON. Keep the raw text,
+    // plus the complete leading string fields so headers still show the file path / bridged tool.
+    return { ...previewStringFields(text), input: text };
   }
+}
+
+/** First-occurrence top-level `"key": "string"` pairs that are fully present in a JSON prefix. */
+function previewStringFields(text: string): Record<string, string> {
+  const fields: Record<string, string> = {};
+  if (!text.startsWith('{')) return fields;
+  let depth = 0;
+  let key: string | undefined;
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (char === '"') {
+      const end = closingQuote(text, index);
+      if (end < 0) break;
+      const value = jsonString(text.slice(index, end + 1));
+      // Not JSON after all: the raw `input` text is still shown.
+      if (value === undefined) break;
+      if (depth === 1 && key === undefined && /^\s*:/.test(text.slice(end + 1, end + 8))) {
+        key = value;
+      } else {
+        if (depth === 1 && key !== undefined && !(key in fields)) fields[key] = value;
+        if (depth === 1) key = undefined;
+      }
+      index = end;
+    } else if (char === '{' || char === '[') depth++;
+    else if (char === '}' || char === ']') depth--;
+    else if (char === ',' && depth === 1) key = undefined;
+  }
+  return fields;
+}
+
+function jsonString(literal: string): string | undefined {
+  try {
+    const value: unknown = JSON.parse(literal);
+    return typeof value === 'string' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function closingQuote(text: string, start: number): number {
+  for (let index = start + 1; index < text.length; index++) {
+    if (text[index] === '\\') index++;
+    else if (text[index] === '"') return index;
+  }
+  return -1;
 }
 function displayItem(
   item: SessionProductItem,

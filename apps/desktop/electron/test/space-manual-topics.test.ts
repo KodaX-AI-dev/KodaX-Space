@@ -208,7 +208,9 @@ test('Space kodax_manual documents the required current KodaX capability boundar
   assert.match(topics.get('skills')?.body ?? '', /每个 enabled Skill.*显式调用/);
   assert.match(topics.get('skills')?.body ?? '', /disable-model-invocation.*模型发现/);
   assert.match(topics.get('skills')?.body ?? '', /user-invocable.*兼容元数据/);
-  assert.match(topics.get('skills')?.body ?? '', /allowed-tools.*hook JSON.*诊断/);
+  assert.match(topics.get('skills')?.body ?? '', /allowed-tools 会被忽略.*Host 权限模式/);
+  assert.match(topics.get('skills')?.body ?? '', /无效 hook JSON.*诊断/);
+  assert.doesNotMatch(topics.get('skills')?.body ?? '', /无效 allowed-tools/);
 });
 
 test('Space manual describes the shared Host and removes the retired recovery switch', () => {
@@ -426,6 +428,18 @@ test('Space manual covers the SDK beta.10 merged inputs and the 0.1.47-beta.1 co
   assert.match(own('runtime-host'), /Agents working: N/);
   assert.match(own('agent-coordination'), /行随子 Agent 结束消失/);
   assert.match(own('sessions'), /F144 窗口化/);
+});
+
+test('Space manual covers the SDK beta.11 saved Run failures and partial multi-question answers', () => {
+  const own = (id: string): string =>
+    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
+      '## Inherited KodaX SDK mechanism',
+    )[0] ?? '';
+
+  assert.match(own('runtime-host'), /SDK beta\.11.*失败的 Run 在对话中保留一条错误消息/);
+  assert.match(own('runtime-host'), /不再显示 CLI 的 Recovery exhausted 提示/);
+  assert.match(own('permissions'), /模型收到的结果以 unanswered 列出跳过的问题/);
+  assert.match(own('permissions'), /同一批提问中问题文本重复时 SDK 在提问前拒绝/);
 });
 
 test('the installed SDK kodax_manual carries its own startup Job mechanism text, unmodified by Space', () => {

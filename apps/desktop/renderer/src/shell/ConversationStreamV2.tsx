@@ -715,14 +715,14 @@ function pickToolString(input: Record<string, unknown> | undefined, key: string)
 
 function artifactMessageFromTool(tool: ToolCallMsg): ArtifactMessage | null {
   if (tool.toolName !== 'create_artifact' || tool.status === 'interrupted') return null;
-  if (
-    tool.productItem &&
+  // A bounded SDK body is cut off: the card still opens the stored artifact by id, but no
+  // snapshot is built from the partial content.
+  const preview =
+    tool.productItem !== undefined &&
     (isProductItemPreview(tool.productItem, 'input') ||
-      isProductItemPreview(tool.productItem, 'text'))
-  )
-    return null;
+      isProductItemPreview(tool.productItem, 'text'));
   const match = typeof tool.result === 'string' ? ARTIFACT_RESULT_RE.exec(tool.result) : null;
-  if (tool.status === 'done' && !match) return null;
+  if ((tool.status === 'done' || preview) && !match) return null;
 
   const artifactId = match?.[1]?.trim() ?? null;
   const parsedVersion = match ? Number(match[2]) : undefined;
@@ -730,11 +730,13 @@ function artifactMessageFromTool(tool: ToolCallMsg): ArtifactMessage | null {
   const title = pickToolString(tool.input, 'title') ?? 'Artifact';
   const artifactKind = pickToolString(tool.input, 'kind') ?? 'artifact';
   const summary = pickToolString(tool.input, 'summary');
-  const snapshot = snapshotFromCreateArtifactTool({
-    status: tool.status,
-    input: tool.input,
-    result: tool.result,
-  });
+  const snapshot = preview
+    ? undefined
+    : snapshotFromCreateArtifactTool({
+        status: tool.status,
+        input: tool.input,
+        result: tool.result,
+      });
 
   return {
     kind: 'artifact',

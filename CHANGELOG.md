@@ -14,9 +14,17 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- Pin Registry KodaX SDK `0.7.97-beta.11` exactly in both SDK consumers. beta.11 keeps a failed Run's error in the conversation, reads history pages from a revision log that a live Run cannot invalidate, reports skipped questions of a partially answered multi-question ask as `unanswered`, rejects duplicate question texts in one ask, ignores Skill `allowed-tools`, and resolves builtin Skills to `app.asar.unpacked` in packaged apps.
+
 ### Fixed
 
-- Scrolling up through a Coder conversation while a Run is working no longer gets stuck on "history changed" with a disabled "Return to latest". A failed background refresh keeps the loaded older pages instead of discarding their boundary; "Return to latest" switches to the live view at once instead of waiting for a newest-page read that conflicts with the Run's writes; the 30-second and window-focus refresh of the newest page waits until the Run ends; and the Host retry recognises the conflict messages the SDK actually sends (the full `.write-locks` path and "topology could not be verified"). Older pages also load during a Run once Space pins an SDK that keeps earlier cache revisions readable (KodaX [Unreleased]).
+- A failed Run's error (for example a wrong Provider key) now stays in the conversation after the next send and after reopening the Session, and the CLI-only "Recovery exhausted. Type continue…" notice no longer appears (Issue 252, fixed by SDK beta.11).
+- Builtin Skill scripts in the packaged app can import `yaml` and `fflate`: both are unpacked from `app.asar`, and the package smoke fails when a package a builtin Skill script imports is missing from `app.asar.unpacked`.
+- Tool headers whose SDK input preview was cut off inside JSON still show the file path or bridged tool name, and a cut-off `create_artifact` card opens the stored Artifact by id instead of building a snapshot from partial content.
+
+- Scrolling up through a Coder conversation while a Run is working no longer gets stuck on "history changed" with a disabled "Return to latest". A failed background refresh keeps the loaded older pages instead of discarding their boundary; "Return to latest" switches to the live view at once instead of waiting for a newest-page read that conflicts with the Run's writes; the 30-second and window-focus refresh of the newest page waits until the Run ends; and the Host retries a newest-page read once when the SDK reports `resync_required` with `data.reason: 'writer_active'` (a live writer crossed the read) instead of matching error text. Older pages also load during a Run with SDK beta.11, which keeps earlier cache revisions readable.
 
 ## [0.1.47-beta.1] - 2026-11-15
 

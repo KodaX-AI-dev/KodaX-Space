@@ -219,3 +219,43 @@ test('Space command and workflow notices remain visible without changing SDK out
     ['user-1', 'answer-1', 'command', 'workflow', 'user-2'],
   );
 });
+
+test('a cut-off tool input preview keeps its complete leading string fields', () => {
+  const editPreview = String.raw`{"file_path":"C:\\src\\a \"b\".ts","old_string":"x","new_string":"unfinish`;
+  const bridgedPreview = '{"name":"read","input":{"path":"/a","limit":';
+  const projected = projectProductConversation([
+    {
+      id: 'edit',
+      type: 'tool',
+      text: '',
+      tool: { callId: 'e', name: 'edit', status: 'success', inputText: editPreview, totalInputLength: 900 },
+    },
+    {
+      id: 'bridged',
+      type: 'tool',
+      text: '',
+      tool: { callId: 'b', name: 'tool_call', status: 'success', inputText: bridgedPreview, totalInputLength: 900 },
+    },
+    {
+      id: 'complete',
+      type: 'tool',
+      text: '',
+      tool: { callId: 'c', name: 'read', status: 'success', inputText: '{"path":"/x"}' },
+    },
+    {
+      id: 'not-json',
+      type: 'tool',
+      text: '',
+      tool: { callId: 'n', name: 'bash', status: 'running', inputText: String.raw`{"command":"a\q","x` },
+    },
+  ]);
+  const inputs = projected.messages.map((message) =>
+    message.kind === 'tool_call' ? message.input : undefined,
+  );
+  assert.deepEqual(inputs, [
+    { file_path: String.raw`C:\src\a "b".ts`, old_string: 'x', input: editPreview },
+    { name: 'read', input: bridgedPreview },
+    { path: '/x' },
+    { input: String.raw`{"command":"a\q","x` },
+  ]);
+});

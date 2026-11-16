@@ -214,7 +214,9 @@ test('model-loaded Skills apply trusted policy hooks model preference and refres
     const requests = provider.requests.filter((request) => request.prompt === 'SKILL_MODEL');
     const results = requests.flatMap((request) => request.results).join('\n');
     expect(results).toContain('MODEL_SKILL_BODY');
-    expect(results).toMatch(/glob.*not allowed|not allowed.*glob/i);
+    // allowed-tools no longer narrows the Run; glob runs under the Host permission mode.
+    expect(results).not.toMatch(/not allowed/i);
+    expect(results).toMatch(/project[\\/]README\.md/);
     expect(results).toContain('Local SDK E2E');
     expect(requests.slice(1).some((request) => request.model === 'space-e2e-preferred')).toBe(true);
     const hooks = await readFile(path.join(projectRoot, 'hooks.txt'), 'utf8');

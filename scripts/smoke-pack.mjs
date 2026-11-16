@@ -59,6 +59,24 @@ function electronBin() {
   return electronBinCache;
 }
 
+/** Packages statically imported by builtin Skill scripts that a real `node` cannot find unpacked. */
+export function unresolvedBuiltinPackages(sources, unpackedFiles) {
+  const packages = new Set();
+  for (const source of sources) {
+    for (const [, specifier] of source.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)) {
+      if (specifier.startsWith('.') || specifier.startsWith('node:')) continue;
+      const parts = specifier.split('/');
+      packages.add(specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]);
+    }
+  }
+  return [...packages].filter(
+    (name) =>
+      !unpackedFiles.some((file) =>
+        file.endsWith(`/app.asar.unpacked/node_modules/${name}/package.json`),
+      ),
+  );
+}
+
 export async function verifyPackagedPartnerLibrary({
   asarPath,
   sourceArchivePath = path.join(
@@ -997,6 +1015,19 @@ async function checkAsarContents(asarPath) {
     }
   }
   ok('every KodaX builtin skill file is present in app.asar.unpacked');
+  const builtinScripts = (await listFilesRecursive(kodaxBuiltinSourceDir)).filter((file) =>
+    /\.(?:m?js|cjs)$/.test(file),
+  );
+  const missingBuiltinPackages = unresolvedBuiltinPackages(
+    await Promise.all(builtinScripts.map((file) => fs.readFile(file, 'utf8'))),
+    unpackedFiles,
+  );
+  if (missingBuiltinPackages.length > 0) {
+    fail(
+      `KodaX builtin skill script packages are not unpacked from asar: ${missingBuiltinPackages.join(', ')}`,
+    );
+  }
+  ok('every package imported by KodaX builtin skill scripts is in app.asar.unpacked');
   const asrtAsarPrefix = '/node_modules/@anthropic-ai/sandbox-runtime/';
   if (normalized.some((file) => file.includes(asrtAsarPrefix))) {
     fail(

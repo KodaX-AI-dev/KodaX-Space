@@ -27,6 +27,7 @@ const session={sessionId:'s',projectRoot:'/project',surface:'code',provider:'ant
 useAppStore.setState({currentSessionId:'s',currentProjectPath:'/project',rightSidebarOpen:false,sessions:[session,{...session,sessionId:'other'}],runtimeConnection:{state:'ready',runtimeId:'host',stale:false,capabilities:[]}});
 replaceProductSessionView({sessionId:'s',runtimeId:'host',revision:1,items:refs.map(ref=>({id:'create-'+ref.id,type:'tool',text:'Artifact created (id='+ref.id+', v1)',tool:{callId:'create-'+ref.id,name:'create_artifact',status:'success',resultRecorded:true,inputText:JSON.stringify({kind:'markdown',title:ref.title,content:'# Content '+ref.id})}}))});
 window.store=useAppStore;
+window.showInputPreview=()=>{const input=JSON.stringify({kind:'markdown',title:'Report first',content:'# Content first'});replaceProductSessionView({sessionId:'s',runtimeId:'host',revision:2,items:[{id:'create-first',type:'tool',text:'Artifact created (id=first, v1)',tool:{callId:'create-first',name:'create_artifact',status:'success',resultRecorded:true,inputText:input.slice(0,input.indexOf('# Con')),totalInputLength:input.length}}]})};
 window.openFixtureFile=()=>dispatchOpenFileViewer({id:'old-file',kind:'markdown',title:'Old file',source:'file-preview',projectRoot:'/project',content:'# Old file'});
 window.addEventListener('fixture-context-change',event=>useAppStore.setState(event.detail??{currentSessionId:'other'}));
 window.releaseLists=()=>{window.holdList=false;for(const resolve of window.pendingLists.splice(0))resolve()};
@@ -218,6 +219,23 @@ test(
     await page
       .frameLocator('iframe')
       .getByRole('heading', { name: 'Content second', exact: true })
+      .waitFor();
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'a bounded create_artifact input preview still shows a card that opens the artifact by id',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openFixture(t);
+    await page.getByText('Report second', { exact: true }).first().waitFor();
+    await page.evaluate('window.showInputPreview()');
+    await page.getByText('Report second', { exact: true }).waitFor({ state: 'detached' });
+    await page.getByText('Report first', { exact: true }).first().click();
+    await page
+      .frameLocator('iframe')
+      .getByRole('heading', { name: 'Content first', exact: true })
       .waitFor();
     assert.deepEqual(errors, []);
   },
