@@ -21,6 +21,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 ### Fixed
 
 - A failed Run's error (for example a wrong Provider key) now stays in the conversation after the next send and after reopening the Session, and the CLI-only "Recovery exhausted. Type continue…" notice no longer appears (Issue 252, fixed by SDK beta.11).
+- On Windows, registering the Space builtin Skill extension now rides out a scanner holding `extensions.json` for up to about 1.6 seconds (backoff 25–800 ms) instead of giving up after about 150 ms, which left that Run without the builtin Skills. Only the failure path waits, and the warning now names the system error code.
 - Builtin Skill scripts in the packaged app can import `yaml` and `fflate`: both are unpacked from `app.asar`, and the package smoke fails when a package a builtin Skill script imports is missing from `app.asar.unpacked`.
 - Tool headers whose SDK input preview was cut off inside JSON still show the file path or bridged tool name, and a cut-off `create_artifact` card opens the stored Artifact by id instead of building a snapshot from partial content.
 

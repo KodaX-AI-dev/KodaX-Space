@@ -13,6 +13,12 @@ export interface SpaceBuiltinPathContext {
 let registeredRoot: string | null = null;
 let unregisterCurrentRoot: (() => void) | null = null;
 const hostRegistrations = new WeakMap<object, Promise<void>>();
+/**
+ * Backoff for a CAS conflict or a transiently occupied extensions.json. A Windows
+ * scanner can hold a freshly written file for hundreds of milliseconds; ~1.6 s
+ * rides that out, and only the failure path waits.
+ */
+const MERGE_RETRY_DELAYS_MS = [25, 50, 100, 200, 400, 800] as const;
 
 interface SkillHost {
   readonly catalog: {
@@ -51,9 +57,11 @@ export async function ensureSpaceBuiltinSkillsOnHost(
     hostRegistrations.delete(host);
     // These installer-owned additions are optional execution capabilities.
     // Keep the SDK's current catalog usable; a later request retries activation.
+    const code = errorCode(error);
     console.warn(
       '[space-builtins] Host extension registration unavailable:',
       error instanceof Error ? error.message : String(error),
+      ...(code ? [`(${code})`] : []),
     );
   });
   hostRegistrations.set(host, registration);
@@ -85,24 +93,29 @@ async function mergeBuiltinExtensionPaths(
       });
       return;
     } catch (error) {
+      const delay = MERGE_RETRY_DELAYS_MS[attempt];
       if (
-        attempt >= 3 ||
+        delay === undefined ||
         !(error instanceof sdk.IntegrationConfigConflictError || transientWriteFailure(error))
       )
         throw error;
-      await new Promise<void>((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
     }
   }
 }
 
 function transientWriteFailure(error: unknown): boolean {
+  return ['EBUSY', 'EACCES', 'EPERM', 'EAGAIN'].includes(errorCode(error) ?? '');
+}
+
+/** First system error code in the cause chain; the SDK wraps the rename failure. */
+function errorCode(error: unknown): string | undefined {
   let cause: unknown = error;
   for (let depth = 0; depth < 4 && cause !== null && typeof cause === 'object'; depth++) {
-    if ('code' in cause && ['EBUSY', 'EACCES', 'EPERM', 'EAGAIN'].includes(String(cause.code)))
-      return true;
+    if ('code' in cause && typeof cause.code === 'string') return cause.code;
     cause = 'cause' in cause ? cause.cause : undefined;
   }
-  return false;
+  return undefined;
 }
 
 export function resolveSpaceBuiltinSkillsPath(context: SpaceBuiltinPathContext): string {

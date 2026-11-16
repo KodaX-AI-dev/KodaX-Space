@@ -146,6 +146,49 @@ test('Host builtin registration retries transient atomic replacement without los
   ]);
 });
 
+test('Host builtin registration rides out a Windows scanner holding extensions.json for 600 ms', async (t) => {
+  await registerSpaceBuiltinSkills(builtinRoot);
+  const entry = path.join(temporaryRoot, 'space-builtins.mjs');
+  fs.writeFileSync(entry, 'export default()=>{}');
+  const sdk = await import('@kodax-ai/kodax/repl');
+  sdk.writeIntegrationDocument({
+    domain: 'extensions',
+    configHome: temporaryRoot,
+    document: { version: 1, paths: ['user-extension.mjs'] },
+    validate: sdk.parseExtensionsIntegrationDocument,
+    expectedRevision: null,
+  });
+  const rename = fs.renameSync;
+  const releasedAt = Date.now() + 600;
+  const mocked = t.mock.method(
+    fs,
+    'renameSync',
+    (source: Parameters<typeof rename>[0], destination: Parameters<typeof rename>[1]) => {
+      if (
+        String(destination) === path.join(temporaryRoot, 'integrations', 'extensions.json') &&
+        Date.now() < releasedAt
+      ) {
+        throw Object.assign(new Error('Scanner holds the file'), { code: 'EPERM' });
+      }
+      return rename(source, destination);
+    },
+  );
+  syncBuiltinESMExports();
+  t.after(() => {
+    mocked.mock.restore();
+    syncBuiltinESMExports();
+  });
+  await ensureSpaceBuiltinSkillsOnHost(
+    { catalog: { extensions: async () => ({ extensions: [{ path: entry }] }) } },
+    temporaryRoot,
+  );
+  assert.deepEqual(sdk.readExtensionsIntegration(temporaryRoot).document.paths, [
+    'user-extension.mjs',
+    entry,
+    path.join(temporaryRoot, 'space-artifacts.mjs'),
+  ]);
+});
+
 test('exhausted file occupation preserves configuration and a later admission can repair registration', async (t) => {
   await registerSpaceBuiltinSkills(builtinRoot);
   const entry = path.join(temporaryRoot, 'space-builtins.mjs');
@@ -182,13 +225,13 @@ test('exhausted file occupation preserves configuration and a later admission ca
   });
   const host = { catalog: { extensions: async () => ({ extensions: [{ path: entry }] }) } };
   await ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot);
-  assert.equal(attempts, 4);
+  assert.equal(attempts, 7);
   assert.deepEqual(sdk.readExtensionsIntegration(temporaryRoot).document.paths, [
     'user-extension.mjs',
   ]);
   occupied = false;
   await ensureSpaceBuiltinSkillsOnHost(host, temporaryRoot);
-  assert.equal(attempts, 4);
+  assert.equal(attempts, 7);
   assert.ok(sdk.readExtensionsIntegration(temporaryRoot).document.paths.includes(entry));
 });
 
