@@ -1,9 +1,12 @@
 import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  forceCloseLaunch,
   parseOwnedTestDaemonPid,
   stopOwnedTestDaemon,
 } from '../../../../tests/e2e/fixture-daemon-cleanup.js';
@@ -99,4 +102,76 @@ test('test daemon cleanup recognizes its physical profile through a temporary pa
     true,
   );
   assert.deepEqual(signalled, [daemonPid]);
+});
+
+async function launchWithPipeHoldingGrandchild(parentExits: boolean) {
+  // Mirrors Playwright's Electron launch: a shell wrapper on Windows, a process group elsewhere,
+  // and a descendant that inherits the launch pipes. Killing only the wrapper leaves them open.
+  // When the parent exits first, a detached descendant (like a shared daemon) has left the tree.
+  const root = await mkdtemp(path.join(os.tmpdir(), 'kodax-fixture-launch-tree-'));
+  roots.push(root);
+  const script = path.join(root, 'parent.cjs');
+  const pidFile = path.join(root, 'grandchild.pid');
+  await writeFile(
+    script,
+    "const child = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], " +
+      `{ stdio: 'inherit', detached: ${parentExits} });\n` +
+      `require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));\n` +
+      (parentExits
+        ? 'setTimeout(() => process.exit(0), 300);\n'
+        : 'setInterval(() => {}, 1000);\n'),
+  );
+  const child = spawn(`"${process.execPath}" "${script}"`, {
+    shell: true,
+    detached: process.platform !== 'win32',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+  const exited = once(child, 'exit');
+  child.stdout.resume();
+  child.stderr.resume();
+  const grandchildPid = async () => {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const raw = await readFile(pidFile, 'utf8').catch(() => '');
+      if (raw !== '') return Number(raw);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error('grandchild never started');
+  };
+  return { child, exited, grandchildPid: await grandchildPid() };
+}
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+test('forced launch close kills a live wrapper together with its pipe-holding descendants', async () => {
+  const { child, grandchildPid } = await launchWithPipeHoldingGrandchild(false);
+  assert.equal(await forceCloseLaunch(child, 5_000), 'tree');
+  assert.equal(isAlive(grandchildPid), false);
+});
+
+test('forced launch close releases pipes still held by a descendant outside the tree', async () => {
+  const { child, exited, grandchildPid } = await launchWithPipeHoldingGrandchild(true);
+  await exited;
+  try {
+    assert.equal(await forceCloseLaunch(child, 2_000), 'pipes');
+  } finally {
+    if (isAlive(grandchildPid)) process.kill(grandchildPid);
+  }
+});
+
+test('forced launch close returns at once when the launch already closed', async () => {
+  const child = spawn(process.execPath, ['-e', ''], { stdio: ['ignore', 'pipe', 'pipe'] });
+  child.stdout.resume();
+  child.stderr.resume();
+  await once(child, 'close');
+  const started = Date.now();
+  assert.equal(await forceCloseLaunch(child, 5_000), 'closed');
+  assert.ok(Date.now() - started < 1_000);
 });

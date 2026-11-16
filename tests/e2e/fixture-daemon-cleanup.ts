@@ -1,3 +1,5 @@
+import { spawnSync, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -70,4 +72,52 @@ export async function stopOwnedTestDaemon(
     if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false;
     throw error;
   }
+}
+
+/**
+ * Force-close a Playwright launch whose graceful close stalled; reports which step released it.
+ * On Windows Playwright starts Electron through `cmd.exe /c`, so ChildProcess.kill() would end only
+ * that wrapper, mark the handle killed and thereby skip Playwright's own `taskkill /T` fallback; the
+ * orphaned tree keeps the launch pipes open and stalls worker teardown. Kill the whole tree instead
+ * (elsewhere the launch is detached, so its process group holds the same tree). A descendant whose
+ * parent already exited has left that tree, so finally release our pipe ends to let the close land.
+ */
+export async function forceCloseLaunch(
+  child: ChildProcess,
+  graceMs: number,
+): Promise<'closed' | 'tree' | 'pipes' | 'open'> {
+  const exited = child.exitCode !== null || child.signalCode !== null;
+  if (exited && child.stdio.slice(1).every((stream) => !stream || stream.destroyed)) {
+    return 'closed';
+  }
+  const closed = once(child, 'close').then(() => true);
+  killLaunchTree(child.pid);
+  if (await closesWithin(closed, graceMs)) return 'tree';
+  for (const stream of child.stdio) stream?.destroy();
+  return (await closesWithin(closed, graceMs)) ? 'pipes' : 'open';
+}
+
+function killLaunchTree(pid: number | undefined): void {
+  if (pid === undefined) return;
+  if (process.platform === 'win32') {
+    // A non-zero status only means the wrapper already exited; the pipe release covers that.
+    const result = spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true });
+    if (result.error) throw result.error;
+    return;
+  }
+  try {
+    process.kill(-pid, 'SIGKILL');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+  }
+}
+
+async function closesWithin(closed: Promise<boolean>, ms: number): Promise<boolean> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<false>((resolve) => {
+    timeout = setTimeout(() => resolve(false), ms);
+  });
+  const outcome = await Promise.race([closed, timedOut]);
+  clearTimeout(timeout);
+  return outcome;
 }

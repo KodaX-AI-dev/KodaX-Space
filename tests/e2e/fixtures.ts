@@ -6,9 +6,11 @@
 import { _electron, test, type ElectronApplication, type Page } from '@playwright/test';
 import path from 'node:path';
 import { existsSync, promises as fs, readFileSync, realpathSync } from 'node:fs';
+import type { ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
+import { forceCloseLaunch, stopOwnedTestDaemon } from './fixture-daemon-cleanup.js';
 import { captureWithEvidenceBudget } from '../../scripts/e2e-evidence-budget.mjs';
 import { cleanupRuntimeClientCredentialForTestProfile } from '../../scripts/runtime-test-credential-cleanup.mjs';
 
@@ -23,7 +25,9 @@ const SPACE_VERSION = (
   }
 ).version;
 const ELECTRON_CLOSE_TIMEOUT_MS = 10_000;
+const ELECTRON_FORCE_CLOSE_GRACE_MS = 5_000;
 const DAEMON_POST_CLOSE_RETRY_DELAYS_MS = [0, 100, 300] as const;
+const DAEMON_SWEEP_INTERVAL_MS = 100;
 
 // Windows CI images export TEMP as the 8.3 alias (C:\Users\RUNNER~1\...), and
 // the isolated-desktop launcher does not carry the driver's env normalization
@@ -133,24 +137,55 @@ async function stopOwnedTestDaemonQuietly(testDataDir: string): Promise<boolean>
   return stopOwnedTestDaemon(testDataDir).catch(() => false);
 }
 
-async function closeElectronBounded(app: ElectronApplication): Promise<void> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  const timedOut = new Promise<'timeout'>((resolve) => {
-    timeout = setTimeout(() => resolve('timeout'), ELECTRON_CLOSE_TIMEOUT_MS);
-    timeout.unref?.();
-  });
+function launchedProcess(app: ElectronApplication): ChildProcess | undefined {
+  try {
+    return app.process();
+  } catch {
+    // Playwright disposes the handle once it has seen the launch close, so nothing is left to bound.
+    return undefined;
+  }
+}
+
+async function closeElectronBounded(app: ElectronApplication, testDataDir: string): Promise<void> {
+  const child = launchedProcess(app);
   const closed = app.close().then(
     () => 'closed' as const,
     () => 'failed' as const,
   );
-  const outcome = await Promise.race([closed, timedOut]);
-  if (timeout !== undefined) clearTimeout(timeout);
-  if (outcome === 'closed') return;
-  try {
-    app.process().kill();
-  } catch {
-    // The process may already have exited while Playwright was closing its transport.
+  if (child === undefined) {
+    await settleWithin(closed, ELECTRON_CLOSE_TIMEOUT_MS);
+    return;
   }
+  const exited =
+    child.exitCode !== null || child.signalCode !== null
+      ? Promise.resolve('exited' as const)
+      : once(child, 'exit').then(() => 'exited' as const);
+  const deadline = Date.now() + ELECTRON_CLOSE_TIMEOUT_MS;
+  let outcome = await settleWithin(Promise.race([closed, exited]), ELECTRON_CLOSE_TIMEOUT_MS);
+  // Stop the owned daemon only once Electron has exited: a live Space respawns a stopped daemon,
+  // and that replacement inherits Playwright's launch pipes and outlives this profile's cleanup.
+  // Keep sweeping until the pipes close, because a late daemon may still be writing its descriptor.
+  while (outcome === 'exited' && Date.now() < deadline) {
+    await stopOwnedTestDaemonQuietly(testDataDir);
+    const settled = await settleWithin(closed, DAEMON_SWEEP_INTERVAL_MS);
+    if (settled !== 'timeout') outcome = settled;
+  }
+  if (outcome === 'closed') return;
+  const release = await forceCloseLaunch(child, ELECTRON_FORCE_CLOSE_GRACE_MS);
+  test
+    .info()
+    .annotations.push({ type: 'electron-force-close', description: `${outcome}: ${release}` });
+}
+
+async function settleWithin<T>(work: Promise<T>, ms: number): Promise<T | 'timeout'> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<'timeout'>((resolve) => {
+    timeout = setTimeout(() => resolve('timeout'), ms);
+    timeout.unref?.();
+  });
+  const outcome = await Promise.race([work, timedOut]);
+  clearTimeout(timeout);
+  return outcome;
 }
 
 export async function waitForMainRendererPage(app: ElectronApplication): Promise<Page> {
@@ -178,11 +213,9 @@ async function cleanupIsolatedSpace(
 ): Promise<void> {
   // Production keeps its shared daemon alive across Space restarts. This fixture owns an
   // isolated daemon, so stop only the PID whose descriptor is rooted in this testDataDir.
-  // Sweep both sides of Electron shutdown: under a loaded serial suite the daemon spawn can
-  // still be finishing when the first sweep runs, and deleting the profile immediately after
-  // app.close would otherwise orphan that late child together with its inherited launch pipes.
-  await stopOwnedTestDaemonQuietly(testDataDir);
-  if (app !== undefined) await closeElectronBounded(app);
+  // Sweep again after Electron shutdown: deleting the profile while a late daemon child is
+  // still starting would otherwise orphan it together with its inherited launch pipes.
+  if (app !== undefined) await closeElectronBounded(app, testDataDir);
   for (const retryDelayMs of DAEMON_POST_CLOSE_RETRY_DELAYS_MS) {
     if (retryDelayMs > 0) await delay(retryDelayMs);
     if (await stopOwnedTestDaemonQuietly(testDataDir)) break;
