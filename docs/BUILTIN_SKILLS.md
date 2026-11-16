@@ -2,7 +2,7 @@
 
 > 2026-11-14：当前工作树已升级为 SDK `0.7.97-beta.9`（Registry），见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
-> 2026-11-15 版本基线：Space `0.1.47-beta.1` / Registry SDK `0.7.97-beta.10`。本轮发布状态、验收与未关闭边界见 [beta.1 发布记录](releases/v0.1.47-beta.1-release-readiness.md)；alpha.5/alpha.4 基线记录保留为已发布历史，下方带日期的旧记录保留历史语境。
+> 2026-11-17 版本基线：Space `0.1.47-beta.2` / Registry SDK `0.7.97-beta.11`。内置 Skill 脚本在打包版中从 `app.asar.unpacked` 运行，脚本依赖的 npm 包（yaml、fflate）一并解包并由打包 smoke 校验；Windows 注册等待占用 `extensions.json` 的扫描器。本轮发布状态、验收与未关闭边界见 [beta.2 发布记录](releases/v0.1.47-beta.2-release-readiness.md)；beta.1/alpha.5/alpha.4 基线记录保留为已发布历史，下方带日期的旧记录保留历史语境。
 
 KodaX Space ships its own vetted skills from `resources/builtin-skills`. They are
 installed with the application under `resources/builtin-skills`, registered
@@ -125,10 +125,13 @@ shipping so the lock records an auditable Git commit.
 
 `scripts/smoke-pack.mjs` requires the packaged Space builtin file set to match
 the integrity lock exactly, then compares every byte. It also verifies that
-KodaX SDK builtin Markdown remains inside `app.asar`. Source synchronization
-also rejects broken or escaping local Markdown links. A missing or unexpected
-resource, stale patch, invalid link, or changed byte fails validation instead
-of producing a partially working release.
+KodaX SDK builtin Markdown remains inside `app.asar`, that every KodaX builtin
+Skill file is present in `app.asar.unpacked` (builtin scripts run under a real
+`node`), and that every package a builtin Skill script imports (for example
+`yaml` or `fflate`) is unpacked under `app.asar.unpacked/node_modules`. Source
+synchronization also rejects broken or escaping local Markdown links. A missing
+or unexpected resource, stale patch, invalid link, or changed byte fails
+validation instead of producing a partially working release.
 
 The current release gate and artifact expectations are tracked in the
 [v0.1.43 release-readiness checklist](releases/v0.1.43-release-readiness.md).

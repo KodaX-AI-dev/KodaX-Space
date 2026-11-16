@@ -1,6 +1,6 @@
 # KodaX Space 详细设计
 
-> 2026-11-15 发布准备：版本基线更新为 Space `0.1.47-beta.1` / npm Registry `@kodax-ai/kodax@0.7.97-beta.10`，四个 workspace 与 lockfile 统一版本。本预发布覆盖 beta.5–beta.10 接入（每个 `KODAX_HOME` 一个 Host、Host 固定输入图片、个人 workflow 从 Agent home 读取、沙箱降级可见、数据位置更换与可选复制、排队 steer 取回、排队输入合并显示）与对话实时工作显示（live 工具组、composer 上方 spinner、转录窗口化、归档开关）。当前公共接口以 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)为准；发布门与验证状态见 [beta.1 发布记录](releases/v0.1.47-beta.1-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。beta.4 历史契约 v2 与 AGENTS.md 精确路径编辑不变。
+> 2026-11-17 发布准备：版本基线更新为 Space `0.1.47-beta.2` / npm Registry `@kodax-ai/kodax@0.7.97-beta.11`，四个 workspace 与 lockfile 统一版本。本预发布在 beta.1 之上将 SDK 精确固定到 beta.11：失败 Run 的错误保留在对话中（Issue 252）、Run 写入期间仍可读取更早历史页、多问题提问部分作答以 `unanswered` 上报、Skill `allowed-tools` 被忽略、内置 Skill 解析到 `app.asar.unpacked`；随发 Windows `extensions.json` 扫描等待、内置 Skill 脚本依赖（yaml、fflate）解包与打包 smoke 校验、截断工具表头仍显示目标、Run 期间旧历史浏览修复与工具组 token 计数修复。当前公共接口以 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)为准；发布门与验证状态见 [beta.2 发布记录](releases/v0.1.47-beta.2-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。beta.4 历史契约 v2 与 AGENTS.md 精确路径编辑不变。
 
 > 2026-11-08 当前工作树：Registry SDK `0.7.97-beta.3`，见 [完整适配与验收](releases/kodax-beta3-space-adaptation.md)。工作模式仅首轮 Run 接纳前选择；历史定位与整轮操作按实际 Host 能力开放；规则片段保留独立来源。以下带日期的旧版本记录保持历史语境。
 
@@ -62,7 +62,7 @@ Space 保留 SDK 的结构化失败分类、原显示项身份与重试信息；
 
 根目录、Desktop、共享 IPC 和 UI 包统一版本，root/Desktop/lockfile 与安装包必须包含相同 Registry SDK。依赖门校验 tarball integrity、公开能力及完整 native bundle，安装包 smoke 校验解包字节并启动真实应用。
 
-alpha.4 候选的验证和完成门见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)；当前候选见文首 [beta.1 发布记录](releases/v0.1.47-beta.1-release-readiness.md)。历史 release/research 记录保留原版本和文件指纹；局部测试或 Windows 构建不代表跨平台、外部账号或完整 F121/F141 人工验收完成。
+alpha.4 候选的验证和完成门见 [alpha.4 发布记录](releases/v0.1.47-alpha.4-release-readiness.md)；当前候选见文首 [beta.2 发布记录](releases/v0.1.47-beta.2-release-readiness.md)。历史 release/research 记录保留原版本和文件指纹；局部测试或 Windows 构建不代表跨平台、外部账号或完整 F121/F141 人工验收完成。
 
 ## 共享 Host 恢复（Issue 222 / SDK alpha.7）
 
