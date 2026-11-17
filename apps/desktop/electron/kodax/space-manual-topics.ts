@@ -152,7 +152,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'SDK beta.11：失败的 Run 在对话中保留一条错误消息，刷新或继续下一次 Run 后仍在原位置；Space 不再显示 CLI 的 Recovery exhausted 提示。打包版的内置 Skill 脚本从 app.asar.unpacked 运行，其依赖的 yaml、fflate 一并解包。',
       '',
-      'Run 工作时，对话流尾部的 live 工具组显示正在做什么：按工具族（读、改、运行、其他、失败）在标签上显示图标、调用次数与总耗时，最新三个动作带目标与时长滚动，模型思考时显示最新 thinking 行；等待审批的工具显示手势图标与“等待审批”。Run 结束后工具组保留各族计数与总时间、输出 token。Run 的 spinner 固定在 composer 上方整轮可见：live 工具组展示工作期间 spinner 收起动画文字，只保留已用时间、步骤、活动 todo 与 ↑输入（含缓存）/↓输出 token；发送中、排队、等待审批或回答、等待子 Agent、压缩与停止等阶段恢复 comet 与文字。主 Agent 等待子 Agent 时，spinner 增加“Agents working: N”并为每个运行中的子 Agent 显示一行实时进度（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失。',
+      'Run 工作时，对话流尾部的 live 工具组显示正在做什么：按工具族（读、改、运行、其他、失败）在标签上显示图标、调用次数与总耗时，最新三个动作带目标与时长滚动，模型思考时显示最新 thinking 行；等待审批的工具显示手势图标与“等待审批”。Run 结束后工具组保留各族计数与总时间、输出 token。Run 的 spinner 跟在对话流末尾，带 KodaX Run 标记（点阵方块翻滚后压平成像素 K）：live 工具组展示工作期间 spinner 收起标记和文字，只保留已用时间、步骤、活动 todo 与 ↑输入（含缓存）/↓输出 token；发送中、排队、等待审批或回答、等待子 Agent、压缩与停止等阶段恢复标记与文字。向上翻看历史时，“返回最新消息”按钮带上 Run 标记、已用时间和运行中的子 Agent 数。主 Agent 等待子 Agent 时，spinner 增加“Agents working: N”并为每个运行中的子 Agent 显示一行实时进度（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失。',
       '',
       '以下为历史发布与迁移记录。旧退出 API、journal/replay 与旧会话创建流程不代表当前行为；请优先采用以上当前 Product 契约及 background-runtime、sessions 主题。',
       'v0.1.45 中，Coder daemon 记录稳定 runId、有序事件、transcript 和共享设置，并承接 compact、fork、rewind、队列、权限/AskUser、Workflow 观察与控制、Learning Center、目录/MCP 发现和配置 External Agent 的 Actor/Turn。多个受信任客户端可观察同一 Coder 会话。F141 只增加启动 owner 的安全选择，不改变这些 daemon-native 与 Space host-provider 边界。',
@@ -809,7 +809,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '父 Agent 在等待子 Agent 时收到的新用户提示仍是真实用户消息。0.7.77 会把它交给当前 Agent并通知 Space 记录到 transcript，同时绑定正确的 live turn；每条队列消息只出队一次。未确认的 root completion 会在硬重启后恢复一次，同进程 Runtime 重建按 child turnId 去重，已确认或旧版历史完成不会重放。',
       '',
-      'Space 的主 transcript 和 root live draft 只显示 root 正文、thinking、工具和 Todo。主 Agent 等待子 Agent 时，composer 上方的 spinner 附加“Agents working: N”和每个运行中子 Agent 的实时行（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失；子 Agent 的正文仍不进入 root transcript，完整活动继续留在 Agents/Workflow 面板。若子正文混入父回复，或 wait_agent 因普通进度反复返回，应记录 sessionId、runId、actorPath/turnId 和日志。',
+      'Space 的主 transcript 和 root live draft 只显示 root 正文、thinking、工具和 Todo。主 Agent 等待子 Agent 时，对话流末尾的 spinner 附加“Agents working: N”和每个运行中子 Agent 的实时行（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失；子 Agent 的正文仍不进入 root transcript，完整活动继续留在 Agents/Workflow 面板。若子正文混入父回复，或 wait_agent 因普通进度反复返回，应记录 sessionId、runId、actorPath/turnId 和日志。',
     ),
     aliases: [
       'wait_agent',

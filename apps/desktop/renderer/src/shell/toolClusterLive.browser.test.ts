@@ -28,6 +28,7 @@ window.thinkingOnly=()=>[base[0],{id:'think-0',type:'thinking',outputState:'draf
 window.show=rows=>replaceProductSessionView({sessionId:'s',runtimeId:'r',revision:++revision,items:rows});
 window.stream=on=>useAppStore.setState({pendingSendBySession:on?{s:true}:{}});
 window.started=()=>useAppStore.setState({eventsBySession:{s:[{kind:'session_start',sessionId:'s',provider:'p'}]}});
+window.finished=()=>useAppStore.setState({eventsBySession:{s:[{kind:'session_start',sessionId:'s',provider:'p'},{kind:'session_complete',sessionId:'s'}]}});
 window.compact=()=>useAppStore.setState({eventsBySession:{s:[{kind:'session_start',sessionId:'s',provider:'p'},{kind:'compact_start',sessionId:'s'}]}});
 window.awaiting=()=>[...base,tool('bash','bash',{command:'rm -rf build'},'awaiting_approval',1500)];
 window.olderPage=rows=>installProductHistory('s',rows,true);
@@ -242,6 +243,8 @@ test(
     assert.equal(await stats.count(), 1);
     await page.evaluate('window.olderPage(window.running());window.settle()');
     assert.equal(await stats.count(), 0);
+    // An older page is not where the Run is working.
+    assert.equal(await page.getByTestId('activity-spinner-row').count(), 0);
     assert.deepEqual(errors, []);
   },
 );
@@ -258,6 +261,36 @@ test(
     );
     assert.equal(await page.getByTestId('user-message-bubble').count(), 1);
     assert.equal(await page.evaluate('window.markedAlive()'), true);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'scrolled away from a working Run, the return button carries its progress',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openConversation(t);
+    await page.addStyleTag({
+      content: '[data-testid="conversation-scroll-container"]{height:240px;overflow:auto}',
+    });
+    await page.evaluate(
+      "window.stream(true);window.started();window.show([...window.running(),{...window.answer,text:'line\\n\\n'.repeat(60)}]);window.settle()",
+    );
+    const scroller = page.getByTestId('conversation-scroll-container');
+    const jump = page.getByRole('button', { name: 'Jump to bottom', exact: true });
+    await scroller.getByTestId('activity-spinner-row').waitFor();
+    assert.equal(await jump.count(), 0);
+
+    await scroller.hover();
+    await page.mouse.wheel(0, -2000);
+    const progress = jump.getByTestId('activity-spinner-compact');
+    await progress.getByTestId('run-mark').waitFor();
+    // Elapsed time appears once the Run has been working for a second.
+    await progress.filter({ hasText: /\d+s/ }).waitFor();
+
+    await page.evaluate('window.stream(false);window.finished();window.settle()');
+    await jump.getByTestId('activity-spinner-compact').waitFor({ state: 'detached' });
+    assert.equal(await jump.isVisible(), true);
     assert.deepEqual(errors, []);
   },
 );
@@ -288,22 +321,32 @@ test(
     const cluster = page.getByTestId('process-receipt-tool_cluster');
     const spinner = page.getByTestId('activity-spinner-row');
     await cluster.getByTestId('tool-cluster-live-row').first().waitFor();
-    // Pinned above the composer, outside the scrolling transcript.
+    // It follows the work at the end of the transcript, scrolling with it.
     assert.equal(
       await page
         .getByTestId('conversation-scroll-container')
         .getByTestId('activity-spinner-row')
         .count(),
-      0,
+      1,
+    );
+    assert.equal(
+      await cluster.evaluate((node) =>
+        Boolean(
+          node.compareDocumentPosition(
+            document.querySelector('[data-testid="activity-spinner-row"]')!,
+          ) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ),
+      true,
     );
     // The live group shows the work, so the spinner keeps only its numbers.
-    assert.equal(await spinner.locator('.activity-spinner-comet').count(), 0);
+    assert.equal(await spinner.getByTestId('run-mark').count(), 0);
     assert.equal(await cluster.locator('.tool-pulse-paused').count(), 0);
 
     await page.evaluate('window.compact();window.settle()');
     await cluster.locator('.tool-pulse-paused').waitFor();
     assert.equal(await cluster.getByTestId('tool-cluster-live-feed').isVisible(), true);
-    await spinner.locator('.activity-spinner-comet').waitFor({ state: 'attached' });
+    await spinner.getByTestId('run-mark').waitFor({ state: 'attached' });
     assert.match((await spinner.textContent()) ?? '', /Compacting context/);
     assert.deepEqual(errors, []);
   },

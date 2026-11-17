@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Run mark · B × C 融合</title>
+    <style>
+      body {
+        margin: 0;
+        font:
+          14px/1.6 system-ui,
+          'Microsoft YaHei UI',
+          sans-serif;
+        background: #f4f3ef;
+        color: #222;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 32px 24px 64px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 6px;
+      }
+      .lead {
+        color: #555;
+        margin: 0 0 14px;
+        max-width: 900px;
+      }
+      .controls {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin: 0 0 18px;
+        font-size: 13px;
+        color: #555;
+        flex-wrap: wrap;
+      }
+      .perf {
+        font:
+          12px ui-monospace,
+          monospace;
+        color: #777;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #e3e1da;
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .card h2 {
+        font-size: 15px;
+        margin: 0 0 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tag {
+        font-size: 11px;
+        font-weight: 500;
+        color: #8a6a1c;
+        background: #fbf4e4;
+        border-radius: 4px;
+        padding: 0 6px;
+      }
+      .tag.new {
+        color: #2f6b3a;
+        background: #e9f4ea;
+      }
+      .card p {
+        color: #555;
+        font-size: 12.5px;
+        margin: 0 0 12px;
+        min-height: 80px;
+      }
+      .stage {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 150px;
+        border-radius: 8px;
+        background: #faf9f6;
+      }
+      .stage.dark {
+        background: #1b1b1d;
+        margin-top: 8px;
+      }
+      .rows {
+        margin-top: 10px;
+        display: grid;
+        gap: 6px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font:
+          12px ui-monospace,
+          monospace;
+        color: #6b6b6b;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: #faf9f6;
+      }
+      .row.dark {
+        background: #1b1b1d;
+        color: #a1a1a6;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid #dcdad3;
+        background: #fff;
+        font-size: 12px;
+        color: #555;
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
+      }
+      .pill .meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: ui-monospace, monospace;
+        color: #888;
+      }
+      .note {
+        font-size: 12px;
+        color: #6b5a2e;
+        background: #fbf7ec;
+        border-radius: 6px;
+        padding: 6px 8px;
+        margin-top: 10px;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Run mark：B（星尘旋涡）× C（体素方阵）融合</h1>
+      <p class="lead">
+        第一行是原版 B、C 作对照，后面三个是融合方案，都保留了 B 的"旋转、卷入"和 C 的"像素 K /
+        点阵屏"，区别在两边各占多少。每个方案都给了放大图、深浅两种背景，以及实际尺寸：运行行
+        18px，回到底部按钮 14px。系统开启减少动效时只显示静止的 K。
+      </p>
+      <div class="controls">
+        <label><input type="checkbox" id="pause" /> 暂停</label>
+        <label><input type="checkbox" id="slow" /> 0.25× 慢放（看变形过程）</label>
+        <span class="perf" id="perf"></span>
+      </div>
+      <div class="grid" id="grid"></div>
+    </main>
+    <script>
+      // ---- math -----------------------------------------------------------------
+      const TAU = Math.PI * 2;
+      const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+      const clamp01 = (v) => Math.max(0, Math.min(1, v));
+      const rotX = ([x, y, z], a) => [
+        x,
+        y * Math.cos(a) - z * Math.sin(a),
+        y * Math.sin(a) + z * Math.cos(a),
+      ];
+      const rotY = ([x, y, z], a) => [
+        x * Math.cos(a) + z * Math.sin(a),
+        y,
+        -x * Math.sin(a) + z * Math.cos(a),
+      ];
+      const rotZ = ([x, y, z], a) => [
+        x * Math.cos(a) - y * Math.sin(a),
+        x * Math.sin(a) + y * Math.cos(a),
+        z,
+      ];
+      const lerp3 = (a, b, f) => [
+        a[0] + (b[0] - a[0]) * f,
+        a[1] + (b[1] - a[1]) * f,
+        a[2] + (b[2] - a[2]) * f,
+      ];
+      const seeded = (seed) => () => {
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const line = ([ax, ay], [bx, by], n) =>
+        Array.from({ length: n }, (_, i) => {
+          const f = n === 1 ? 0 : i / (n - 1);
+          return [ax + (bx - ax) * f, ay + (by - ay) * f, 0];
+        });
+      // K strokes in y-down unit space: stem, upper arm, lower arm.
+      const STEM = [
+        [-0.5, -0.86],
+        [-0.5, 0.86],
+      ];
+      const UPPER = [
+        [-0.34, 0.1],
+        [0.6, -0.86],
+      ];
+      const LOWER = [
+        [-0.06, -0.15],
+        [0.62, 0.86],
+      ];
+      const kStrokes = (a, b, c) => [
+        ...line(...STEM, a),
+        ...line(...UPPER, b),
+        ...line(...LOWER, c),
+      ];
+
+      // Shared timeline (seconds): move, gather, hold K with a glint, release.
+      const PERIOD = 5.6;
+      function morphAt(t) {
+        const u = t % PERIOD;
+        if (u < 2.5) return 0;
+        if (u < 3.25) return ease((u - 2.5) / 0.75);
+        if (u < 4.65) return 1;
+        if (u < 5.4) return 1 - ease((u - 4.65) / 0.75);
+        return 0;
+      }
+      const glintAt = (t) => {
+        const u = t % PERIOD;
+        return u >= 3.35 && u <= 4.35 ? -1.3 + (u - 3.35) * 2.6 : null;
+      };
+
+      // ---- directions -------------------------------------------------------------
+      // A dot: home(t) -> [x, y, z, alpha?]; k: target in the K (null = fade out in place);
+      // kAlpha: brightness in the K; stagger 0..1 delays its gather; size scales the dot.
+
+      // B · 星尘旋涡
+      function vortex() {
+        const perArm = 21,
+          k = kStrokes(18, 15, 13),
+          dots = [];
+        for (let arm = 0; arm < 2; arm++)
+          for (let i = 0; i < perArm; i++) dots.push({ r: 0.14 + 0.86 * (i / (perArm - 1)), arm });
+        for (let c = 0; c < 4; c++) dots.push({ r: 0.06, arm: c / 2 });
+        return {
+          radius: 0.062,
+          dots: dots.map((d, i) => ({
+            k: k[i],
+            kAlpha: 1,
+            homeAlpha: 0.35 + 0.65 * (1 - d.r),
+            home: (t) => {
+              const th = d.arm * Math.PI + d.r * 3.4 - t * (2.1 - 1.2 * d.r);
+              return rotZ(rotX([Math.cos(th) * d.r, 0, Math.sin(th) * d.r], -1.08), 0.38);
+            },
+          })),
+        };
+      }
+      // C · 体素方阵
+      function voxel() {
+        const K7 = ['X...X', 'X..X.', 'X.X..', 'XX...', 'X.X..', 'X..X.', 'X...X'];
+        const s = 0.28,
+          dots = [];
+        for (let z = -1; z <= 1; z++)
+          for (let y = -3; y <= 3; y++)
+            for (let x = -2; x <= 2; x++) {
+              const lit = K7[y + 3][x + 2] === 'X',
+                front = z === 1,
+                base = [x * s, y * s, z * s];
+              dots.push({
+                k: [x * s, y * s, 0],
+                kAlpha: front ? (lit ? 1 : 0.13) : 0,
+                dim: front && !lit,
+                homeAlpha: 1,
+                home: (t) => rotZ(rotX(rotY(base, t * 0.9), 0.42 + Math.sin(t * 0.55) * 0.3), 0.12),
+              });
+            }
+        return { dots, radius: 0.058 };
+      }
+      // Pixel K on C's 5×7 grid, shared by the fusions.
+      const K7 = ['X...X', 'X..X.', 'X.X..', 'XX...', 'X.X..', 'X..X.', 'X...X'];
+      const GRID = 0.28;
+      const kGrid = () => {
+        const lit = [],
+          off = [];
+        for (let y = -3; y <= 3; y++)
+          for (let x = -2; x <= 2; x++)
+            (K7[y + 3][x + 2] === 'X' ? lit : off).push([x * GRID, y * GRID, 0]);
+        return { lit, off };
+      };
+      // H1 · 旋涡 → 像素 K：B 的旋涡动势，落点是 C 的像素 K，成形时点阵屏的暗格浮现。
+      function vortexToPixel() {
+        const { lit, off } = kGrid(),
+          targets = [];
+        // Interleave lit and dim cells so both arms feed both the K and the backdrop.
+        const total = lit.length + off.length;
+        for (let i = 0; i < total; i++)
+          targets.push(
+            i % 5 < 2 && lit.length
+              ? { k: lit.shift(), on: true }
+              : off.length
+                ? { k: off.shift(), on: false }
+                : { k: lit.shift(), on: true },
+          );
+        const perArm = Math.ceil(targets.length / 2);
+        return {
+          radius: 0.06,
+          dots: targets.map((tg, i) => {
+            const arm = i % 2,
+              r = 0.1 + 0.9 * (Math.floor(i / 2) / (perArm - 1));
+            return {
+              k: tg.k,
+              kAlpha: tg.on ? 1 : 0.13,
+              dim: !tg.on,
+              homeAlpha: 0.35 + 0.65 * (1 - r),
+              stagger: tg.on ? 0 : 0.5,
+              home: (t) => {
+                const th = arm * Math.PI + r * 3.4 - t * (2.1 - 1.2 * r);
+                return rotZ(rotX([Math.cos(th) * r, 0, Math.sin(th) * r], -1.08), 0.38);
+              },
+            };
+          }),
+        };
+      }
+      // H2 · 扭转体素：C 的点阵方块，每一行按 B 的差速旋转各自扭转，拧成一座旋涡塔，再拧正、压平成像素 K。
+      function twistedVoxel() {
+        const dots = [];
+        for (let z = -1; z <= 1; z++)
+          for (let y = -3; y <= 3; y++)
+            for (let x = -2; x <= 2; x++) {
+              const lit = K7[y + 3][x + 2] === 'X',
+                front = z === 1,
+                base = [x * GRID, y * GRID, z * GRID];
+              dots.push({
+                k: [x * GRID, y * GRID, 0],
+                kAlpha: front ? (lit ? 1 : 0.13) : 0,
+                dim: front && !lit,
+                homeAlpha: 1,
+                stagger: (y + 3) / 6,
+                home: (t) =>
+                  rotZ(rotX(rotY(base, t * 1.1 + y * 0.42 * Math.sin(t * 0.9)), 0.42), 0.1),
+              });
+            }
+        return { dots, radius: 0.058 };
+      }
+      // H3 · 点阵屏旋涡：整个图标就是一块 9×9 的方点 LED 屏，屏上播放旋涡，再像终端刷新一样从上到下扫出 K。
+      function ledVortex() {
+        const N = 9,
+          cell = 1.8 / (N - 1),
+          dots = [];
+        const isK = (cx, cy) =>
+          cx === 2 || (cy !== 4 && cx === 2 + Math.abs(cy - 4) + 1) || (cy === 4 && cx === 3);
+        for (let cy = 0; cy < N; cy++)
+          for (let cx = 0; cx < N; cx++) {
+            const x = -0.9 + cx * cell,
+              y = -0.9 + cy * cell,
+              r = Math.hypot(x, y),
+              a = Math.atan2(y, x),
+              on = isK(cx, cy);
+            dots.push({
+              k: [x, y, 0],
+              kAlpha: on ? 1 : 0.1,
+              dim: !on,
+              homeAlpha: 1,
+              stagger: cy / (N - 1),
+              home: (t) => {
+                const arm = Math.pow(Math.max(0, Math.cos(2 * (a + r * 3.2 - t * 2.2))), 3);
+                const glow = r > 1.05 ? 0 : 0.1 + 0.9 * arm * (1 - r * 0.55);
+                const p = rotX(
+                  rotY([x, y, 0], Math.sin(t * 0.8) * 0.28),
+                  0.18 + Math.sin(t * 0.6) * 0.12,
+                );
+                return [...p, glow];
+              },
+            });
+          }
+        return { dots, radius: 0.075, square: true };
+      }
+
+      // ---- renderer --------------------------------------------------------------
+      const FOCAL = 3.4;
+      function place(dir, t, m, small) {
+        return dir.dots.map((d) => {
+          const lm = d.stagger === undefined ? m : clamp01((m - d.stagger * 0.4) / 0.6);
+          const h = d.home(t),
+            ha = h[3] ?? 1;
+          const p = lerp3(h, d.k ?? h, lm);
+          const shade = 0.22 + 0.78 * ((p[2] + 1) / 2);
+          const kA = d.k === null || (small && d.dim) ? 0 : d.kAlpha;
+          return {
+            p,
+            lit: d.k !== null && d.kAlpha === 1,
+            alpha: d.homeAlpha * ha * shade * (1 - lm) + kA * lm,
+            size: (d.size ?? 1) * ((0.72 + 0.5 * ((p[2] + 1) / 2)) * (1 - lm) + lm),
+          };
+        });
+      }
+      function draw(o) {
+        const { ctx, px, dir, color, t, m, glint } = o;
+        const dpr = Math.min(2, window.devicePixelRatio || 1),
+          half = px / 2,
+          small = px <= 24,
+          boost = small && !dir.square ? 1.45 : 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, px, px);
+        ctx.fillStyle = ctx.strokeStyle = color;
+        const proj = (p) => {
+          const s = FOCAL / (FOCAL - p[2]);
+          return [half + p[0] * half * 0.92 * s, half + p[1] * half * 0.92 * s, s];
+        };
+        const pts = place(dir, t, m, small),
+          xy = pts.map((d) => proj(d.p));
+        const dotR = (d, s) => Math.max(0.55, dir.radius * half * d.size * boost * s);
+        ctx.lineCap = 'round';
+        if (dir.links) {
+          const la = dir.linkAlpha(m);
+          if (la > 0.02) {
+            ctx.lineWidth = Math.max(0.6, dir.radius * half * (small ? 1.1 : 0.7));
+            for (const [i, j] of dir.links) {
+              ctx.globalAlpha = la * Math.min(pts[i].alpha, pts[j].alpha);
+              ctx.beginPath();
+              ctx.moveTo(xy[i][0], xy[i][1]);
+              ctx.lineTo(xy[j][0], xy[j][1]);
+              ctx.stroke();
+            }
+          }
+        }
+        if (dir.trail) {
+          const prev = place(dir, t - 0.09, m, small).map((d) => proj(d.p));
+          for (let i = 0; i < pts.length; i++) {
+            const dx = xy[i][0] - prev[i][0],
+              dy = xy[i][1] - prev[i][1];
+            if (dx * dx + dy * dy > (half * 0.7) ** 2 || pts[i].alpha < 0.05) continue;
+            const g = ctx.createLinearGradient(prev[i][0], prev[i][1], xy[i][0], xy[i][1]);
+            g.addColorStop(0, color.replace('rgb(', 'rgba(').replace(')', ' / 0)'));
+            g.addColorStop(1, color);
+            ctx.strokeStyle = g;
+            ctx.globalAlpha = pts[i].alpha * 0.7;
+            ctx.lineWidth = dotR(pts[i], xy[i][2]) * 1.5;
+            ctx.beginPath();
+            ctx.moveTo(prev[i][0], prev[i][1]);
+            ctx.lineTo(xy[i][0], xy[i][1]);
+            ctx.stroke();
+          }
+        }
+        const order = pts.map((_, i) => i).sort((a, b) => pts[a].p[2] - pts[b].p[2]);
+        for (const i of order) {
+          const d = pts[i];
+          let alpha = d.alpha,
+            size = 1;
+          if (glint !== null && d.lit) {
+            const g = Math.max(0, 1 - Math.abs(d.p[0] - glint) * 2.6);
+            size = 1 + 0.45 * g;
+            alpha = Math.min(1, alpha * (0.78 + 0.6 * g));
+          }
+          if (alpha < 0.02) continue;
+          ctx.globalAlpha = alpha;
+          const rr = dotR(d, xy[i][2]) * size;
+          if (dir.square) {
+            ctx.beginPath();
+            ctx.roundRect(xy[i][0] - rr, xy[i][1] - rr, rr * 2, rr * 2, rr * 0.35);
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.arc(xy[i][0], xy[i][1], rr, 0, TAU);
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+      const orbs = [];
+      function mount(host, makeDir, px, color) {
+        const c = document.createElement('canvas'),
+          dpr = Math.min(2, window.devicePixelRatio || 1);
+        c.width = px * dpr;
+        c.height = px * dpr;
+        c.style.width = c.style.height = px + 'px';
+        host.prepend(c);
+        orbs.push({ ctx: c.getContext('2d'), px, dir: makeDir(), color, t: 0, m: 1, glint: null });
+      }
+
+      // ---- page ------------------------------------------------------------------
+      const LIGHT = 'rgb(201 138 9)',
+        DARK = 'rgb(245 166 35)';
+      const directions = [
+        [
+          'B · 星尘旋涡',
+          'prev',
+          vortex,
+          '倾斜的双臂星系差速旋转，星尘沿旋臂卷进中心落成圆点 K，一道高光扫过，再甩回旋臂。',
+          '原版 B：最流畅、最优雅。',
+        ],
+        [
+          'C · 体素方阵',
+          'prev',
+          voxel,
+          '5×7×3 的点阵方块在空中翻滚，压平后像 LED 点阵屏一样亮出像素 K，其余点变暗或消失。',
+          '原版 C：终端感最强，14px 下最好认。',
+        ],
+        [
+          'H1 · 旋涡 → 像素 K',
+          'mix',
+          vortexToPixel,
+          '前半段完全是 B 的旋涡，聚合时星尘不再落成圆滑的 K，而是"咔嗒"一下落进 5×7 的格子，亮出 C 的像素 K，点阵屏的暗格随之浮现。',
+          '融合比重：动势 B 七成，落点 C 三成。最像"B 的灵魂 + C 的签名"，B 的流畅一点没丢。',
+        ],
+        [
+          'H2 · 扭转体素',
+          'mix',
+          twistedVoxel,
+          'C 的点阵方块，但每一行按 B 的差速各自扭转，整块拧成一座旋转的"旋涡塔"；聚合时从上到下一行行拧正、压平，亮出像素 K。',
+          '融合比重：形体 C 七成，动势 B 三成。立体感最强，扭转时很有机械感。',
+        ],
+        [
+          'H3 · 点阵屏旋涡',
+          'mix',
+          ledVortex,
+          '整个图标就是一块 9×9 的方点 LED 屏，屏上"播放"一个旋转的双臂旋涡；聚合时像终端刷新一样从上到下一行行扫出 K。',
+          '融合比重：各占一半。最"终端"，像素对齐、边缘最锐利，小尺寸下不发糊。',
+        ],
+      ];
+      document.getElementById('grid').innerHTML = directions
+        .map(
+          ([title, kind, , desc, note], i) => `
+  <section class="card"><h2>${title}<span class="tag ${kind === 'mix' ? 'new' : ''}">${kind === 'mix' ? 'B × C 融合' : '原版'}</span></h2><p>${desc}</p>
+    <div class="stage" data-o="${i}" data-px="112" data-c="light"></div>
+    <div class="stage dark" data-o="${i}" data-px="112" data-c="dark"></div>
+    <div class="rows">
+      <div class="row" data-o="${i}" data-px="18" data-c="light"><span>2m32s · 轮次 4/500 · ↑31.2k ↓~1.8k</span></div>
+      <div class="row dark" data-o="${i}" data-px="18" data-c="dark"><span>正在压缩上下文… · 4m05s</span></div>
+      <div><span class="pill">⌄ 返回最新消息 <span class="meta" data-o="${i}" data-px="14" data-c="light"><span>2m32s · 2 个 Agent</span></span></span></div>
+    </div>
+    <div class="note">${note}</div></section>`,
+        )
+        .join('');
+      document
+        .querySelectorAll('[data-o]')
+        .forEach((el) =>
+          mount(
+            el,
+            directions[+el.dataset.o][2],
+            +el.dataset.px,
+            el.dataset.c === 'dark' ? DARK : LIGHT,
+          ),
+        );
+
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let clock = 0,
+        last = performance.now(),
+        drawMs = 0,
+        frames = 0;
+      const pause = document.getElementById('pause'),
+        slow = document.getElementById('slow'),
+        perf = document.getElementById('perf');
+      function tick(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        if (!pause.checked) clock += dt * (slow.checked ? 0.25 : 1);
+        const m = morphAt(clock),
+          glint = glintAt(clock),
+          t0 = performance.now();
+        for (const o of orbs) {
+          o.t = clock;
+          o.m = m;
+          o.glint = glint;
+          draw(o);
+        }
+        drawMs += performance.now() - t0;
+        frames++;
+        if (frames === 60) {
+          perf.textContent = `实测：页面上 ${orbs.length} 个图标，每个每帧绘制平均 ${((drawMs / frames / orbs.length) * 1000).toFixed(0)} µs`;
+          drawMs = 0;
+          frames = 0;
+        }
+        requestAnimationFrame(tick);
+      }
+      if (reduce) {
+        for (const o of orbs) draw(o);
+        perf.textContent = '减少动效已开启：只显示静止的 K';
+      } else requestAnimationFrame(tick);
+    </script>
+  </body>
+</html>

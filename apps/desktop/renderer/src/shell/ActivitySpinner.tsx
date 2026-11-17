@@ -2,7 +2,7 @@ import { useProductSessionTranscript } from '../store/productSessionView.js';
 import { productStreamingProgress } from './productStreaming.js';
 // ActivitySpinner — alpha.1 / P0 polish
 //
-// 流式响应中的活动指示器，挂在输入框上方。CSS spinner +
+// 流式响应中的活动指示器，跟在对话流末尾。KodaX Run 标记（RunMark）+
 // 实时状态文案（"Thinking…" / "Reading file…" / "Running bash…"）+ 当前 iter / tokens +
 // 已用秒数（spinner stats tail，对齐 KodaX TUI）。
 //
@@ -27,6 +27,7 @@ import { FileNameText } from '../components/FileNameText.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { useChildAgentLive } from '../store/childAgentLive.js';
 import { childAgentRows } from './childAgentRows.js';
+import { RunMark } from './RunMark.js';
 import { ChildAgentLiveRows } from './ChildAgentLiveRows.js';
 import type { MessageKey } from '../i18n/messages.js';
 import { activityStatusKind, activityStatusText, runTokenTotals } from './activityStatus.js';
@@ -814,14 +815,17 @@ const SANDBOX_LABEL_KEYS: Readonly<Record<string, MessageKey>> = {
 };
 
 /**
- * Run-level progress pinned above the composer. While the transcript's live group shows the work
- * (`liveWorkVisible`), the spinner drops its comet and work verb and keeps the task label, elapsed
+ * Run-level progress at the transcript end. While the transcript's live group shows the work
+ * (`liveWorkVisible`), the spinner drops its Run mark and work verb and keeps the task label, elapsed
  * time, step and token totals; any phase the live group cannot show brings both back.
  */
 export function ActivitySpinner({
   liveWorkVisible = false,
+  compact = false,
 }: {
   readonly liveWorkVisible?: boolean;
+  /** Mark, elapsed time and sub-agent count only: the return button's view of a scrolled-away Run. */
+  readonly compact?: boolean;
 }): ReactJSX.Element | null {
   const { t } = useI18n();
   const currentSessionId = useAppStore((s) => s.currentSessionId);
@@ -881,7 +885,7 @@ export function ActivitySpinner({
     ...productProgress,
     ...(baseKind === 'task' ? { status: baseSnapshot.status } : {}),
   };
-  // Elapsed display still ticks once per second; spinner motion itself is CSS-driven.
+  // Elapsed display still ticks once per second; the Run mark animates outside React.
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -934,7 +938,7 @@ export function ActivitySpinner({
       })
     : activityStatusText(snap.status, sendingTooLong, t);
   const statusKind = activityStatusKind(snap.status);
-  const showComet = !liveWorkVisible || statusKind === 'phase';
+  const showMark = !liveWorkVisible || statusKind === 'phase';
   const showStatus = !liveWorkVisible || statusKind !== 'work';
 
   // tool path 显示 basename — 全路径太长，basename + dim 灰显
@@ -953,13 +957,24 @@ export function ActivitySpinner({
 
   const childStr =
     childAgents.length > 0 ? t('activity.childAgents', { count: String(childAgents.length) }) : '';
+  if (compact) {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 font-mono tabular-nums text-fg-muted"
+        data-testid="activity-spinner-compact"
+      >
+        <RunMark size={14} />
+        {[elapsedStr, childStr].filter(Boolean).join(' · ')}
+      </span>
+    );
+  }
   const tail = [elapsedStr, iterStr, tokenStr, liveTokStr, childStr].filter(Boolean).join(' · ');
   const children = childAgentRows(childAgents, Date.now());
 
   return (
     <div>
       <div className="flex items-center gap-2 text-xs text-fg-muted font-mono px-1 py-0.5">
-        {showComet && <span className="activity-spinner-comet" aria-hidden />}
+        {showMark && <RunMark size={18} />}
         {showStatus && <span className="text-fg-secondary">{statusBase}</span>}
         {showStatus && toolBase && (
           <FileNameText

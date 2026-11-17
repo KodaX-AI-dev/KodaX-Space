@@ -424,7 +424,7 @@ test('Space manual covers the SDK beta.10 merged inputs and the 0.1.47-beta.1 co
   assert.match(own('ui-map'), /拖拽顺序保存在 projects\.json/);
   assert.match(own('ui-map'), /红色 failed 徽标/);
   assert.match(own('ui-map'), /live 工具组按工具族/);
-  assert.match(own('runtime-host'), /固定在 composer 上方/);
+  assert.match(own('runtime-host'), /spinner 跟在对话流末尾.*返回最新消息/);
   assert.match(own('runtime-host'), /Agents working: N/);
   assert.match(own('agent-coordination'), /行随子 Agent 结束消失/);
   assert.match(own('sessions'), /F144 窗口化/);

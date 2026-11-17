@@ -2979,6 +2979,13 @@ export function ConversationStreamV2(): JSX.Element {
                   )}
                 </ProductBodyOwnerContext.Provider>
               </RowDisclosureSession>
+              {/* Run progress follows the work at the transcript end; scrolled away, the return
+                button carries it. An older page is not where the Run is working. */}
+              {isStreaming && !productTranscript?.browsingOlder && (
+                <div className="pt-1" data-testid="activity-spinner-row">
+                  <ActivitySpinner liveWorkVisible={liveWorkVisible} />
+                </div>
+              )}
               {/* 流内聚焦卡：pending askUser 渲染在对话流尾部，无模态遮罩 */}
               <AskUserInlineStack />
             </div>
@@ -3152,18 +3159,11 @@ export function ConversationStreamV2(): JSX.Element {
                 <ChevronDown className="w-4 h-4" strokeWidth={2.5} aria-hidden />
               )}
               <span>{t('conversation.returnToNewest')}</span>
+              {isStreaming && <ActivitySpinner compact />}
             </button>
           </div>
         )}
       </div>
-      {/* Run progress stays in view above the composer instead of scrolling with the transcript. */}
-      {isStreaming && (
-        <div className="shrink-0 px-8 pb-1 pt-1" data-testid="activity-spinner-row">
-          <div className="pl-10 sm:pl-12">
-            <ActivitySpinner liveWorkVisible={liveWorkVisible} />
-          </div>
-        </div>
-      )}
     </>
   );
 }
