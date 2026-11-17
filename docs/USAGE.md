@@ -1,6 +1,6 @@
 # KodaX Space 运行与开发指南
 
-> 2026-11-17 发布准备：版本基线更新为 Space `0.1.47-beta.2` / npm Registry `@kodax-ai/kodax@0.7.97-beta.11`（失败 Run 的错误保留在对话中、Run 写入期间仍可读取更早历史页、内置 Skill 从 `app.asar.unpacked` 运行）；见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)，发布门见 [beta.2 发布记录](releases/v0.1.47-beta.2-release-readiness.md)；下方 beta.1 发布准备记录保留原语境。
+> 2026-11-17 发布准备：版本基线更新为 Space `0.1.47-beta.2` / npm Registry `@kodax-ai/kodax@0.7.97-beta.11`（失败 Run 的错误保留在对话中、Run 写入期间仍可读取更早历史页、内置 Skill 从 `app.asar.unpacked` 运行、Run spinner 回到对话流末尾并以 KodaX Run mark 取代 comet）；见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)，发布门见 [beta.2 发布记录](releases/v0.1.47-beta.2-release-readiness.md)；下方 beta.1 发布准备记录保留原语境。
 
 > 2026-11-09 发布准备：版本基线更新为 Space `0.1.47-alpha.5` / npm Registry `@kodax-ai/kodax@0.7.97-beta.4`，四个 workspace 与 lockfile 统一版本。当前公共接口以 [beta.4 适配](releases/kodax-beta4-space-adaptation.md)为准；发布门与验证状态见 [alpha.5 发布记录](releases/v0.1.47-alpha.5-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。
 
