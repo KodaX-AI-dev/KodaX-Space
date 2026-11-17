@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+## [0.1.47-beta.2] - 2026-11-17
+
 ### Changed
 
 - Pin Registry KodaX SDK `0.7.97-beta.11` exactly in both SDK consumers. beta.11 keeps a failed Run's error in the conversation, reads history pages from a revision log that a live Run cannot invalidate, reports skipped questions of a partially answered multi-question ask as `unanswered`, rejects duplicate question texts in one ask, ignores Skill `allowed-tools`, and resolves builtin Skills to `app.asar.unpacked` in packaged apps.
@@ -24,9 +26,13 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - On Windows, registering the Space builtin Skill extension now rides out a scanner holding `extensions.json` for up to about 1.6 seconds (backoff 25–800 ms) instead of giving up after about 150 ms, which left that Run without the builtin Skills. Only the failure path waits, and the warning now names the system error code.
 - Builtin Skill scripts in the packaged app can import `yaml` and `fflate`: both are unpacked from `app.asar`, and the package smoke fails when a package a builtin Skill script imports is missing from `app.asar.unpacked`.
 - Tool headers whose SDK input preview was cut off inside JSON still show the file path or bridged tool name, and a cut-off `create_artifact` card opens the stored Artifact by id instead of building a snapshot from partial content.
-
 - Scrolling up through a Coder conversation while a Run is working no longer gets stuck on "history changed" with a disabled "Return to latest". A failed background refresh keeps the loaded older pages instead of discarding their boundary; "Return to latest" switches to the live view at once instead of waiting for a newest-page read that conflicts with the Run's writes; the 30-second and window-focus refresh of the newest page waits until the Run ends; and the Host retries a newest-page read once when the SDK reports `resync_required` with `data.reason: 'writer_active'` (a live writer crossed the read) instead of matching error text. Older pages also load during a Run with SDK beta.11, which keeps earlier cache revisions readable.
 - The Run spinner follows the end of the transcript again instead of staying pinned above the composer, and its comet is replaced by the KodaX Run mark: a dot voxel block that tumbles and flattens into a pixel K. Scrolled up during a Run, the "Return to newest" button carries the mark, the elapsed time and the running sub-agent count. All marks share one animation-frame loop that stops when they are offscreen, the window is hidden or no Run is active; reduced motion and the minimal visual quality show a still K. QuickAsk and the diff panel keep the comet. The user manual and `space_manual` describe the new placement. Design record: [run-mark](docs/design/run-mark/direction-approved.md).
+
+### Documentation and qualification
+
+- Align the baseline docs (PRD/HLD/DD, usage, doc index, feature list, builtin skills, capability and credential ledgers, known issues) and the in-app `space_manual` with SDK beta.11 and this prerelease: the failed-Run error that stays in the conversation, `unanswered` partial multi-question answers, the ignored Skill `allowed-tools`, builtin Skill scripts running from `app.asar.unpacked` with their imported packages unpacked, and the Windows `extensions.json` scanner backoff. The SDK's own `kodax_manual` is never overwritten.
+- This is a prerelease; stable remains v0.1.46. SDK Repo-intelligence Host gaps, Issue 371 history first-read latency and external account/customer-OS acceptance remain explicit limitations, not silently closed items.
 
 ## [0.1.47-beta.1] - 2026-11-15
 
