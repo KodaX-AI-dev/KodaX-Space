@@ -176,6 +176,47 @@ test('installs a skill zip into the user skills directory', async () => {
   assert.equal(fs.readFileSync(path.join(result.installDir, 'notes.txt'), 'utf8'), 'copied from zip');
 });
 
+function manyFileSkillEntries(name: string, fileCount: number): ZipEntryInput[] {
+  const entries: ZipEntryInput[] = [
+    { name: `${name}/SKILL.md`, data: `---\nname: ${name}\ndescription: Test skill\n---\n` },
+  ];
+  for (let i = 0; i < fileCount; i++) {
+    entries.push({ name: `${name}/assets/icons/icon-${i}.svg`, data: `<svg id="${i}"/>` });
+  }
+  return entries;
+}
+
+function installTmpEntries(): string[] {
+  const tmpBase = path.join(getKodaxDir(), 'skills', '.install-tmp');
+  return fs.existsSync(tmpBase) ? fs.readdirSync(tmpBase) : [];
+}
+
+// Issue 253: CyberPPT ships 11,639 icons; a 4,096-entry cap rejected it after partial extraction.
+test('installs a skill zip with more than 4096 files and leaves no install temp', async () => {
+  const zipPath = path.join(tmpSourceRoot, 'icon-skill.zip');
+  writeZip(zipPath, manyFileSkillEntries('icon-skill', 5000));
+
+  const result = await installSkillFromPath('archive', zipPath, { target: 'user' });
+
+  assert.equal(result.name, 'icon-skill');
+  assert.equal(
+    fs.readdirSync(path.join(result.installDir, 'assets', 'icons')).length,
+    5000,
+  );
+  assert.deepEqual(installTmpEntries(), []);
+});
+
+test('rejects an over-limit skill zip before extracting any entry', async () => {
+  const zipPath = path.join(tmpSourceRoot, 'huge.zip');
+  writeZip(zipPath, manyFileSkillEntries('huge-skill', 32768));
+
+  await assert.rejects(
+    () => installSkillFromPath('archive', zipPath, { target: 'user' }),
+    /archive has 32769 entries; the limit is 32768/,
+  );
+  assert.deepEqual(installTmpEntries(), []);
+});
+
 test('user skill install follows KODAX_HOME when it is explicitly set', async () => {
   const customHome = fs.mkdtempSync(path.join(os.tmpdir(), 'kodax-home-skills-'));
   extraCleanup.push(customHome);

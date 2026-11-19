@@ -14,6 +14,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Fixed
+
+- Settings → Skills → User/Project ZIP and folder installs accept skills with up to 32,768 files (was 4,096), so icon-heavy skills such as CyberPPT (11,685 files) install. An over-limit zip is now rejected before anything is extracted, and temporary install files are removed with retries (a Windows scanner can hold them briefly); a removal that still fails is logged instead of silently leaving `.install-tmp` behind (Issue 253).
+
 ## [0.1.47-beta.2] - 2026-11-17
 
 ### Changed

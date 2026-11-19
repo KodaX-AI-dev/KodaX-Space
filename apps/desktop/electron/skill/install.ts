@@ -22,7 +22,9 @@ export interface InstalledSkillResult {
 }
 
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9._:-]{0,63}$/;
-const MAX_ENTRIES = 4096;
+// Issue 253: real skills ship icon packs (CyberPPT: 11,685 entries). Byte and ratio guards bound
+// zip bombs; this cap only bounds the file count.
+const MAX_ENTRIES = 32768;
 const MAX_TOTAL_BYTES = 512 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO = 100;
 const MAX_SKILL_MD_BYTES = 64 * 1024;
@@ -100,8 +102,8 @@ async function installSkillArchive(
     await extractZip(tmpZip, extractRoot);
     return await installSkillDirectory(extractRoot, options);
   } finally {
-    await fsp.rm(tmpZip, { force: true }).catch(() => undefined);
-    await fsp.rm(extractRoot, { recursive: true, force: true }).catch(() => undefined);
+    await removeTemp(tmpZip);
+    await removeTemp(extractRoot);
   }
 }
 
@@ -189,13 +191,26 @@ async function copyDirectoryAtomic(
     try {
       await fsp.rename(tmpDir, installDir);
     } catch (err) {
-      if (existing) await fsp.rename(backupDir, installDir).catch(() => undefined);
+      if (existing) {
+        await fsp.rename(backupDir, installDir).catch((restoreErr: unknown) => {
+          console.warn(`[skill.install] failed to restore ${installDir}: ${String(restoreErr)}`);
+        });
+      }
       throw err;
     }
-    if (existing) await fsp.rm(backupDir, { recursive: true, force: true }).catch(() => undefined);
+    if (existing) await removeTemp(backupDir);
   } catch (err) {
-    await fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);
+    await removeTemp(tmpDir);
     throw err;
+  }
+}
+
+/** Windows AV/indexers briefly hold fresh files; retry, then log instead of failing the install. */
+async function removeTemp(target: string): Promise<void> {
+  try {
+    await fsp.rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch (err) {
+    console.warn(`[skill.install] failed to remove temporary ${target}: ${String(err)}`);
   }
 }
 
@@ -232,7 +247,6 @@ async function forEachEntrySequential(
   perEntry: (entry: yauzl.Entry) => Promise<void>,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    let processed = 0;
     let stopped = false;
     const stop = (err: Error): void => {
       if (stopped) return;
@@ -240,11 +254,6 @@ async function forEachEntrySequential(
       reject(err);
     };
     zip.on('entry', (entry: yauzl.Entry) => {
-      processed++;
-      if (processed > MAX_ENTRIES) {
-        stop(new Error(`archive has more than ${MAX_ENTRIES} entries`));
-        return;
-      }
       perEntry(entry)
         .then(() => {
           if (!stopped) zip.readEntry();
@@ -262,6 +271,10 @@ async function forEachEntrySequential(
 async function extractZip(zipPath: string, extractRoot: string): Promise<void> {
   const zip = await openZipFile(zipPath);
   try {
+    // yauzl iterates exactly the central-directory entryCount, so this bounds extraction up front.
+    if (zip.entryCount > MAX_ENTRIES) {
+      throw new Error(`archive has ${zip.entryCount} entries; the limit is ${MAX_ENTRIES}`);
+    }
     let totalBytes = 0;
     await forEachEntrySequential(zip, async (entry) => {
       const isDir = entry.fileName.endsWith('/');

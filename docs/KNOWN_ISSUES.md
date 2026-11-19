@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-11-17
+Last Updated: 2026-11-19
 
 > 2026-11-14：当前工作树依赖已发布的 Registry SDK `0.7.97-beta.9`（含 beta.8 的 Issues 245–247 原生 Job 启动修复与 Issue 250 的 SDK 侧修复），见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md) 与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
@@ -41,6 +41,7 @@ Last Updated: 2026-11-17
 | 250 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                                        | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
 | 251 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                               | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
 | 252 | Low      | Resolved in 0.1.47-beta.2                                                                                    | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                                         | SDK product view (failure kept only in Run status); fixed by SDK 0.7.97-beta.11       | 2026-11-15 |
+| 253 | Medium   | Resolved in source                                                                                           | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                              | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                      | 2026-11-19 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -2779,16 +2780,58 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
   the Provider settings action, and keeps it after a later successful Run without a
   "Recovery exhausted" notice.
 
+## Issue 253 — Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data
+
+- **Priority**: Medium (a popular skill cannot be installed from Settings; `git clone` into the
+  skills folder works).
+- **Status**: Resolved in source.
+- **Introduced**: Space 0.1.47-beta.1 (Settings skill install). Reported by 苏睿聪 and 天能 on
+  0.1.47-beta.1 and beta.2, Windows 11 and macOS.
+- **Created**: 2026-11-19.
+- **Original problem**: Settings → 技能 → [上传] 用户 ZIP with `CyberPPT.zip` (19,438 KB). The
+  button spins, then stops; no skill appears in `~/.kodax/skills`, while
+  `skills/.install-tmp/` holds `skill-<pid>-<ts>-<nonce>.zip` and a partly filled
+  `extract-<pid>-<ts>-<nonce>/`.
+- **Reproduction**: the public CyberPPT repo zip (`crazyykhllc-bit/CyberPPT`, `name: cyber-ppt`)
+  has 11,685 entries, 11,639 of them under `assets/icons`. `installSkillFromPath('archive', …)`
+  throws `archive has more than 4096 entries`; the Settings page shows it as `HANDLER_ERROR`
+  above the install locations.
+- **Root cause**:
+  - `apps/desktop/electron/skill/install.ts` capped archives and folders at
+    `MAX_ENTRIES = 4096`. Extraction counted entries while writing, so the first 4,096 files were
+    on disk before the error. The byte (512 MB) and per-entry ratio (100:1) guards already bound
+    zip bombs; the count cap was the only blocker.
+  - Temporary files were removed with `fsp.rm(...).catch(() => undefined)` and no retry. On the
+    reporter's Windows machine the removal of freshly written files failed (most likely a scanner
+    or indexer holding them; not reproduced locally) and the error was discarded, so the
+    temporary zip and partial extract stayed behind.
+- **Resolution (2026-11-19)**:
+  - `MAX_ENTRIES` is 32,768. `extractZip` checks yauzl's central-directory `entryCount` before
+    extracting (`archive has N entries; the limit is 32768`), so an over-limit zip writes nothing;
+    the per-entry counter is gone because yauzl reads exactly `entryCount` entries.
+  - `removeTemp` removes temporary zip/extract/copy/backup paths with `maxRetries: 5,
+    retryDelay: 200` and logs a failure through `console.warn` (captured by the diagnostics
+    logger). A failed rollback rename is logged too.
+  - Existing leftovers from beta.1/beta.2 are not swept; users can delete
+    `skills/.install-tmp` by hand.
+- **Fixed**: source after 0.1.47-beta.2.
+- **Files changed**: `apps/desktop/electron/skill/install.ts`,
+  `apps/desktop/electron/test/skill-install.test.ts`, `CHANGELOG.md`.
+- **Tests added**: `skill-install.test.ts` — "installs a skill zip with more than 4096 files and
+  leaves no install temp" (5,000 icons; red before the fix) and "rejects an over-limit skill zip
+  before extracting any entry" (32,769 entries; red before the fix). The real CyberPPT repo zip
+  installs as `cyber-ppt` with an empty `.install-tmp`.
+
 ## Summary
 
-- Total: 29
+- Total: 30
 - Open: 1
 - Ready: 4
 - In Progress: 11
-- Resolved, awaiting release or verification: 11
+- Resolved, awaiting release or verification: 12
 - Other (partially fixed / under investigation): 2
 - High: 15
-- Medium: 12
+- Medium: 13
 - Low: 2
 - Next ready to resolve: 222
 - Archived (resolved and delivered): see [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md)
