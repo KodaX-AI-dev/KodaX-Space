@@ -3,8 +3,10 @@ import { test } from 'node:test';
 import {
   airtableRemoteMcpProvider,
   atlassianRemoteMcpProvider,
+  connectorCredentialAccount,
   createOfficialRemoteConnectorBundle,
   createVerifiedCredentialStore,
+  MAX_CREDENTIAL_ACCOUNT_LENGTH,
   notionRemoteMcpProvider,
   officialRemoteOAuthConfigs,
   resolveAirtableSubject,
@@ -235,4 +237,48 @@ test('connector credential writes cannot report success when the store discards 
     delete: async () => {},
   });
   await assert.rejects(store.set('fixture-account', 'private-secret'), /credential.*sav|persist/i);
+});
+
+test('connector credential keys longer than the vault account limit persist under a stable short account', async () => {
+  // A real Space profile: `sp` + 3 hex + `-` + UUID (42 characters).
+  const profile = 'sp1a2-0f6c2d8e-4b7a-4c1d-9e3f-5a6b7c8d9e0f';
+  const tencentKey = `partner-connector-tencent-docs:${profile}`;
+  const oauthKey = `partner-connector-oauth:notion:${profile}`;
+  assert.ok(tencentKey.length > MAX_CREDENTIAL_ACCOUNT_LENGTH);
+  assert.ok(oauthKey.length > MAX_CREDENTIAL_ACCOUNT_LENGTH);
+
+  const persisted = new Map<string, string>();
+  const store = createVerifiedCredentialStore({
+    get: async (account) => persisted.get(account),
+    set: async (account, value) => {
+      // Mirrors EncryptedCredentialVault.set, which rejects accounts over 64 characters.
+      if (account.length > MAX_CREDENTIAL_ACCOUNT_LENGTH)
+        throw new Error('invalid credential account');
+      persisted.set(account, value);
+    },
+    delete: async (account) => persisted.delete(account),
+  });
+
+  await store.set(tencentKey, 'tencent-secret');
+  await store.set(oauthKey, 'notion-secret');
+  assert.equal(await store.get(tencentKey), 'tencent-secret');
+  assert.equal(await store.get(oauthKey), 'notion-secret');
+  assert.equal(persisted.size, 2);
+  for (const account of persisted.keys()) {
+    assert.ok(account.length <= MAX_CREDENTIAL_ACCOUNT_LENGTH, account);
+    assert.doesNotMatch(account, /tencent|notion|sp1a2/u);
+  }
+
+  await store.delete(tencentKey);
+  assert.equal(await store.get(tencentKey), undefined);
+  assert.equal(await store.get(oauthKey), 'notion-secret');
+});
+
+test('connector credential keys within the vault account limit are stored unchanged', () => {
+  const key = 'partner-connector-oauth:slack:space-legacy-slack';
+  assert.ok(key.length <= MAX_CREDENTIAL_ACCOUNT_LENGTH);
+  assert.equal(connectorCredentialAccount(key), key);
+  const long = `partner-connector-tencent-docs:${'sp1a2-0f6c2d8e-4b7a-4c1d-9e3f-5a6b7c8d9e0f'}`;
+  assert.equal(connectorCredentialAccount(long), connectorCredentialAccount(long));
+  assert.notEqual(connectorCredentialAccount(long), connectorCredentialAccount(`${long}x`));
 });

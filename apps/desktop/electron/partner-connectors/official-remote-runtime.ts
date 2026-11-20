@@ -1,6 +1,7 @@
 import { createSlackConnector } from './slack-api.js';
 import { createZoomConnector } from './zoom-api.js';
 import { createGithubConnector } from './github-api.js';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { deleteKey, getKey, setPersistentKey } from '../providers/keychain.js';
 import {
@@ -196,21 +197,37 @@ export interface CredentialPersistence {
   delete(key: string): Promise<unknown>;
 }
 
+/** Matches MAX_ACCOUNT_LENGTH in providers/encrypted-credential-vault.ts. */
+export const MAX_CREDENTIAL_ACCOUNT_LENGTH = 64;
+
+/**
+ * Connector keys embed a provider id and a Space profile (`sp…-<uuid>`), so for example
+ * `partner-connector-tencent-docs:<profile>` is 73 characters and the OS credential vault
+ * rejects it. Long keys map to a stable digest that fits the vault; short keys are unchanged,
+ * so credentials saved under them stay readable and the vault format stays compatible.
+ */
+export function connectorCredentialAccount(key: string): string {
+  if (key.length <= MAX_CREDENTIAL_ACCOUNT_LENGTH) return key;
+  return `pc:${createHash('sha256').update(key, 'utf8').digest('base64url')}`;
+}
+
 /** Credential deletion succeeds only when the same backend can no longer read the secret. */
 export function createVerifiedCredentialStore(persistence: CredentialPersistence): CredentialStore {
   return {
-    get: (key) => persistence.get(key),
+    get: (key) => persistence.get(connectorCredentialAccount(key)),
     set: async (key, value) => {
+      const account = connectorCredentialAccount(key);
       // Production composes the throwing persistent setter, never a memory fallback.
-      await persistence.set(key, value);
-      if ((await persistence.get(key)) !== value)
+      await persistence.set(account, value);
+      if ((await persistence.get(account)) !== value)
         throw new Error('Connector credential save could not be verified.');
     },
     delete: async (key) => {
+      const account = connectorCredentialAccount(key);
       // Prime the backend/cache so an adapter that swallows delete errors cannot hide a retained key.
-      await persistence.get(key);
-      await persistence.delete(key);
-      if ((await persistence.get(key)) !== undefined)
+      await persistence.get(account);
+      await persistence.delete(account);
+      if ((await persistence.get(account)) !== undefined)
         throw new Error('credential deletion could not be verified');
     },
   };
