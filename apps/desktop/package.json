@@ -26,6 +26,7 @@
     "electron-updater": "^6.8.3",
     "highlight.js": "11.11.1",
     "html-to-text": "10.0.1",
+    "ignore": "^7.0.6",
     "imapflow": "1.7.8",
     "jszip": "^3.10.1",
     "katex": "0.16.47",

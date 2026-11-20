@@ -442,6 +442,8 @@ export const messages = {
 
     'openPath.linkOpenFailed': 'Could not open this link',
     'openPath.fileNotFound': 'File not found; cannot reveal it',
+    'openPath.fileNameAmbiguous':
+      'Several files share this name; open one from the file list: {paths}',
     'openPath.pathNotAllowed':
       "This path is outside KodaX's authorized locations and cannot be previewed or revealed",
     'openPath.revealFailed': 'Could not reveal in file manager',
@@ -3844,6 +3846,7 @@ export const messages = {
 
     'openPath.linkOpenFailed': '无法打开该链接',
     'openPath.fileNotFound': '未找到该文件，无法定位',
+    'openPath.fileNameAmbiguous': '有多个同名文件，无法确定是哪一个，请在文件列表中打开：{paths}',
     'openPath.pathNotAllowed': '该路径不在 KodaX 已授权的目录范围内，无法预览或定位',
     'openPath.revealFailed': '无法在文件管理器中显示',
     'openPath.directoryNotFound': '未找到该文件夹，无法打开',

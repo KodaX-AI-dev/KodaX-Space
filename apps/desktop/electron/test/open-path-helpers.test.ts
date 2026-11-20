@@ -9,6 +9,7 @@ import {
   isPreviewablePath,
   isTextPreviewPath,
   looksLikeFilePath,
+  toolInputPaths,
   toProjectRelative,
 } from '../../renderer/src/lib/pathClassify.js';
 import {
@@ -164,4 +165,33 @@ test('Partner Delivery URI is stable and the logical output namespace is explici
   assert.equal(isPartnerOutputLogicalPath('partner-output/report.md'), true);
   assert.equal(isPartnerOutputLogicalPath('.\\PARTNER-OUTPUT\\report.md'), true);
   assert.equal(isPartnerOutputLogicalPath('src/partner-output/report.md'), false);
+});
+
+test('toolInputPaths: Session tool inputs list their file paths once, in order', () => {
+  const events = [
+    {
+      kind: 'tool_start',
+      sessionId: 's',
+      toolId: '1',
+      toolName: 'write',
+      input: { path: 'a/报告.xlsx' },
+    },
+    {
+      kind: 'tool_start',
+      sessionId: 's',
+      toolId: '2',
+      toolName: 'edit',
+      input: { file_path: 'b.md' },
+    },
+    {
+      kind: 'tool_start',
+      sessionId: 's',
+      toolId: '3',
+      toolName: 'write',
+      input: { path: 'a/报告.xlsx' },
+    },
+    { kind: 'tool_start', sessionId: 's', toolId: '4', toolName: 'bash', input: { command: 'ls' } },
+    { kind: 'text_delta', sessionId: 's', text: 'path: c.md' },
+  ] as unknown as Parameters<typeof toolInputPaths>[0];
+  assert.deepEqual(toolInputPaths(events), ['a/报告.xlsx', 'b.md']);
 });

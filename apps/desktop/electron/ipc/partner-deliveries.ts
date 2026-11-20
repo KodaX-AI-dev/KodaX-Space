@@ -1,4 +1,5 @@
 import {
+  bestFileNameMatches,
   canonProjectRoot,
   partnerDeliveryPathMatches,
   type PartnerDeliveryReferenceT,
@@ -46,11 +47,21 @@ export async function resolvePartnerDeliveryReference(
     ).filter((delivery) => partnerDeliveryPathMatches(delivery, referencePath));
   })();
 
-  const scoped = candidates.filter(
-    (delivery) =>
-      sameProjectRoot(delivery.projectRoot, input.projectRoot) &&
-      (input.sessionId === undefined || delivery.sessionId === input.sessionId),
-  );
+  const inScope = (delivery: PartnerDeliveryRefT): boolean =>
+    sameProjectRoot(delivery.projectRoot, input.projectRoot) &&
+    (input.sessionId === undefined || delivery.sessionId === input.sessionId);
+  let scoped = candidates.filter(inScope);
+  if (scoped.length === 0 && input.reference.type === 'path' && input.sessionId) {
+    // The agent may have cited its output with a wrong folder; the Session's records know the file.
+    const sessionDeliveries = (await store.list({ sessionId: input.sessionId })).filter(inScope);
+    const best = new Set(
+      bestFileNameMatches(
+        input.reference.path,
+        sessionDeliveries.map((delivery) => delivery.relativePath),
+      ),
+    );
+    scoped = sessionDeliveries.filter((delivery) => best.has(delivery.relativePath));
+  }
   if (scoped.length === 0) return { status: 'not-found', delivery: null };
   if (scoped.length > 1) return { status: 'ambiguous', delivery: null };
 

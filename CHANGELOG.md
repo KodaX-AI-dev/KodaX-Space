@@ -14,9 +14,14 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- `@` file search and the Files list follow the project's root `.gitignore` instead of a fixed folder list. `dist`, `build`, `out`, `target`, `coverage` and hidden folders such as `.agent` or `.vscode` are searchable unless `.gitignore` excludes them; dependency, version-control and cache folders (`node_modules`, `.git`, `__pycache__`, `.venv`, `.gradle`, …) are always skipped. A project with more than 50,000 files reports the search as truncated.
+
 ### Fixed
 
 - Settings → Skills → User/Project ZIP and folder installs accept skills with up to 32,768 files (was 4,096), so icon-heavy skills such as CyberPPT (11,685 files) install. An over-limit zip is now rejected before anything is extracted, and temporary install files are removed with retries (a Windows scanner can hold them briefly); a removal that still fails is logged instead of silently leaving `.install-tmp` behind (Issue 253).
+- Partner answers link produced files in a way that opens. A bare run-output path such as `标书审查/report.xlsx` was resolved against the project root on click and showed "file not found". The Partner profile now tells every Partner run, not only Workbench tasks, to reuse the `kodax-space://partner-delivery/` link a delivery tool returns, cite files written into the project by their project-root-relative path, and never cite a bare run-output path. `write_partner_deliverable` labels that path `Run-output path (not project-relative…)` instead of `Relative path`; older results still parse. Partner profile version `2026-11-20`. A file link the agent got slightly wrong (a missing or extra folder, or a dropped separator before the file name) now opens the file by name when exactly one candidate fits best: first among this Session's Partner deliveries and the paths its tools touched, then in a fresh project search (`project.fileSearch` gains `locate`, which rescans without its 30-second cache or `.gitignore`). Same-named files that tie are listed in a warning instead of guessing one.
 
 ## [0.1.47-beta.2] - 2026-11-17
 

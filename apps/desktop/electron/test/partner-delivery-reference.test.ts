@@ -80,6 +80,44 @@ test('Delivery resolver scopes stable ids and legacy paths to project and Sessio
   }
 });
 
+test('Delivery resolver finds a Session output from a link with a wrong folder', async () => {
+  const { dir, projectRoot, store } = harness();
+  try {
+    const report = await store.writeRunOutput({
+      sessionId: 's1',
+      projectRoot,
+      relativePath: 'reports/标书审查/报告.xlsx',
+      bytes: Buffer.from('xlsx'),
+      producer: 'write_partner_deliverable',
+    });
+    await store.writeRunOutput({
+      sessionId: 's2',
+      projectRoot,
+      relativePath: 'other/报告.xlsx',
+      bytes: Buffer.from('other'),
+      producer: 'write_partner_deliverable',
+    });
+
+    const nearby = await resolvePartnerDeliveryReference(store, {
+      projectRoot,
+      sessionId: 's1',
+      reference: { type: 'path', path: '标书审查/报告.xlsx' },
+    });
+    assert.equal(nearby.status, 'found');
+    assert.equal(nearby.delivery?.id, report.id);
+
+    // Without a Session the name alone is not precise enough to pick a record.
+    const unscoped = await resolvePartnerDeliveryReference(store, {
+      projectRoot,
+      reference: { type: 'path', path: '标书审查/报告.xlsx' },
+    });
+    assert.equal(unscoped.status, 'not-found');
+  } finally {
+    store.invalidate();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('Delivery resolver reports and prunes a registered output whose file disappeared', async () => {
   const { dir, projectRoot, store } = harness();
   try {

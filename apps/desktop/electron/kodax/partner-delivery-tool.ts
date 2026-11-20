@@ -130,7 +130,7 @@ export function makeWritePartnerDeliverableHandler(
       return [
         `Partner deliverable written: ${delivery.title}`,
         `Delivery id: ${delivery.id}`,
-        `Relative path: ${delivery.relativePath}`,
+        `Run-output path (not project-relative; cite the link below instead): ${delivery.relativePath}`,
         partnerDeliveryReferenceLine(delivery),
         `Use this exact link when referencing the output: ${partnerDeliveryMarkdownLink(delivery)}`,
         `Bytes: ${delivery.sizeBytes ?? 0}`,

@@ -4,7 +4,11 @@
 // node:test 直接 import（会拖进 window 全局类型）。这些纯函数单独成模块，既可单测，也让
 // 路径分类规则有单一真理源。
 
-import { looksLikeInteractiveHtml, type ArtifactKindT } from '@kodax-space/space-ipc-schema';
+import {
+  looksLikeInteractiveHtml,
+  type ArtifactKindT,
+  type SessionEvent,
+} from '@kodax-space/space-ipc-schema';
 
 /** 可在 File Viewer 内预览的扩展名（sandbox iframe / 语法高亮）。 */
 export { partnerDeliveryPathMatches as deliveryPathMatches } from '@kodax-space/space-ipc-schema';
@@ -240,4 +244,16 @@ export function toProjectRelative(p: string, projectRoot: string | null): string
     }
   }
   return s.replace(/^\/+/, '');
+}
+
+/** File paths the Session's tools were called with (`path` / `file_path`), once each, in order. */
+export function toolInputPaths(events: readonly SessionEvent[]): readonly string[] {
+  const paths = new Set<string>();
+  for (const event of events) {
+    if (event.kind !== 'tool_start' || !event.input || typeof event.input !== 'object') continue;
+    const input = event.input as { path?: unknown; file_path?: unknown };
+    const path = input.path ?? input.file_path;
+    if (typeof path === 'string' && path.length > 0 && path.length < 512) paths.add(path);
+  }
+  return [...paths];
 }
