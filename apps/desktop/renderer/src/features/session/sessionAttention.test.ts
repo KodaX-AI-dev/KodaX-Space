@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { sessionAttentionKind, summarizeAttention } from './sessionAttention.js';
+import {
+  sessionAttentionKind,
+  summarizeAttention,
+  summarizeSessionAttention,
+} from './sessionAttention.js';
 
 test('attention kind follows awaiting > error > done precedence', () => {
   assert.equal(
@@ -32,5 +36,26 @@ test('summary totals attention Sessions and reports the most urgent kind', () =>
     total: 0,
     top: null,
     counts: { awaiting: 0, error: 0, done: 0 },
+  });
+});
+
+test('a Session group summary uses the same rule for every Session it holds', () => {
+  const statuses: Record<string, 'idle' | 'running' | 'awaiting' | 'error'> = {
+    asked: 'awaiting',
+    failed: 'error',
+    viewedFailure: 'error',
+    finished: 'idle',
+    busy: 'running',
+    quiet: 'idle',
+  };
+  const summary = summarizeSessionAttention(Object.keys(statuses), {
+    statusFor: (sessionId) => statuses[sessionId] ?? 'idle',
+    isUnread: (sessionId) => sessionId === 'finished' || sessionId === 'busy',
+    currentSessionId: 'viewedFailure',
+  });
+  assert.deepEqual(summary, {
+    total: 3,
+    top: 'awaiting',
+    counts: { awaiting: 1, error: 1, done: 1 },
   });
 });

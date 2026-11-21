@@ -48,7 +48,11 @@ import { SidebarFooter } from './SidebarFooter.js';
 import { useSessionStatusMap, type SessionStatus } from '../features/session/useSessionStatus.js';
 import { SessionAwaitingIndicator } from '../features/session/SessionAwaitingIndicator.js';
 import { prioritizeAttentionItems } from '../features/session/sessionInteractionRouting.js';
-import { sessionAttentionKind, summarizeAttention } from '../features/session/sessionAttention.js';
+import {
+  sessionAttentionKind,
+  summarizeSessionAttention,
+  type SessionAttentionContext,
+} from '../features/session/sessionAttention.js';
 import { ProjectAttentionBadge } from './ProjectAttentionBadge.js';
 import { pushToast } from '../store/toastStore.js';
 import { saveProjectOrder } from '../store/projectOrderSync.js';
@@ -103,6 +107,30 @@ export function LeftSidebar({
         (s) => (s.surface ?? 'code') === currentSurface && s.sessionId !== welcomeDraftSessionId,
       ),
     [sessions, currentSurface, welcomeDraftSessionId],
+  );
+  // One status subscription for both surfaces: the current list and the other surface's tab.
+  const listedSessionIds = useMemo(
+    () => sessions.filter((s) => s.sessionId !== welcomeDraftSessionId).map((s) => s.sessionId),
+    [sessions, welcomeDraftSessionId],
+  );
+  const statusMap = useSessionStatusMap(listedSessionIds);
+  const sessionFlags = useAppStore((s) => s.sessionFlags);
+  const otherSurfaceAttention = useMemo(
+    () =>
+      summarizeSessionAttention(
+        sessions
+          .filter(
+            (s) =>
+              (s.surface ?? 'code') !== currentSurface && s.sessionId !== welcomeDraftSessionId,
+          )
+          .map((s) => s.sessionId),
+        {
+          statusFor: (id) => statusMap[id] ?? 'idle',
+          isUnread: (id) => sessionFlags[id]?.unread === true,
+          currentSessionId,
+        },
+      ),
+    [sessions, currentSurface, welcomeDraftSessionId, statusMap, sessionFlags, currentSessionId],
   );
 
   const [sessionLoadStateByScope, setSessionLoadStateByScope] = useState<
@@ -189,7 +217,7 @@ export function LeftSidebar({
       className="workspace-navigation glass ix-zone flex min-h-0 flex-col overflow-hidden bg-surface flex-shrink-0 text-[13px]"
     >
       {/* Surface tab — F045: [Coder][Partner] 切换（Partner 自本版起可点） */}
-      <SurfaceTabs />
+      <SurfaceTabs otherSurfaceAttention={otherSurfaceAttention} />
 
       {/* New session + menus */}
       <div className="p-2 space-y-1">
@@ -248,6 +276,7 @@ export function LeftSidebar({
             其它项目折叠。状态点驱动来自 useSessionStatusMap。 */}
         <ProjectTree
           sessions={visibleSessions}
+          statusMap={statusMap}
           currentSessionId={currentSessionId}
           onSelect={(sessionId) => {
             onNavigate?.();
@@ -266,7 +295,7 @@ export function LeftSidebar({
 /**
  * F040: 多项目可折叠树外层。
  *
- * 顶层 = 已打开过的所有项目（store.projects），按用户拖排顺序，未拖排的按添加顺序在尾部。
+ * 顶层 = 已打开过的所有项目（store.projects），新加的（不在拖排顺序里）在最上、新→旧，其后按用户拖排顺序。
  * 当前项目默认展开且高亮；其它项目折叠态。展开状态持久化到 localStorage（store.expandedProjects）。
  *
  * 每项目内复用 SessionTree（传 projectRoot 只渲染本项目 session）。状态点：
@@ -287,12 +316,14 @@ const DRAG_SOURCE_ROW_CLASS =
 
 function ProjectTree({
   sessions,
+  statusMap,
   currentSessionId,
   onSelect,
   sessionLoadStateByScope,
   onRefreshProjectSessions,
 }: {
   readonly sessions: readonly SessionMeta[];
+  readonly statusMap: Readonly<Record<string, SessionStatus>>;
   readonly currentSessionId: string | null;
   readonly onSelect: (sessionId: string) => void;
   readonly sessionLoadStateByScope: SessionLoadStateByScope;
@@ -360,23 +391,18 @@ function ProjectTree({
     }
   }, [setProjects, t]);
 
-  // 全 session id 列表 → 一次拿状态 map（reducer 内部按 id 切片，比每个 SessionRow 单独 hook 省 N 次 store subscribe）
-  const allSessionIds = useMemo(() => sessions.map((s) => s.sessionId), [sessions]);
-  const statusMap = useSessionStatusMap(allSessionIds);
-
-  // 项目顺序只由用户决定：拖排过的按 projectOrder，其余按添加顺序追加在尾部；使用不会重排。
-  // F043: archived 项目从主列表剔出,单独"Archived (N)"分组展示。
+  // 项目顺序：不在拖排顺序里的（新加的）排最上、按添加时间新→旧；拖排过的按 projectOrder 排在其后。
+  // 使用不会重排。F043: archived 项目从主列表剔出,单独"Archived (N)"分组展示。
   const ordered = useMemo(() => {
     const orderIdx = new Map(projectOrder.map((p, i) => [p, i] as const));
-    const rank = (p: Project): number =>
-      orderIdx.get(canonProjectRootBrowser(p.path)) ?? projectOrder.length;
+    const rank = (p: Project): number => orderIdx.get(canonProjectRootBrowser(p.path)) ?? -1;
     return projects
       .filter((p) => p.archived !== true)
-      .sort((a, b) => rank(a) - rank(b) || a.addedAt - b.addedAt);
+      .sort((a, b) => rank(a) - rank(b) || b.addedAt - a.addedAt);
   }, [projects, projectOrder]);
 
   const archived = useMemo(
-    () => projects.filter((p) => p.archived === true).sort((a, b) => a.addedAt - b.addedAt),
+    () => projects.filter((p) => p.archived === true).sort((a, b) => b.addedAt - a.addedAt),
     [projects],
   );
 
@@ -417,6 +443,14 @@ function ProjectTree({
     [statusMap],
   );
   const sessionFlags = useAppStore((s) => s.sessionFlags);
+  const attentionContext = useMemo<SessionAttentionContext>(
+    () => ({
+      statusFor,
+      isUnread: (sid) => sessionFlags[sid]?.unread === true,
+      currentSessionId,
+    }),
+    [statusFor, sessionFlags, currentSessionId],
+  );
 
   // RenameInput fences Enter + blur so a rename sends exactly one mutation.
   const onRenameCommit = useCallback(
@@ -465,14 +499,9 @@ function ProjectTree({
     // 折叠时项目行汇总"需要你"的 session（待确认 > 出错 > 完成未读），打开后随状态自然消减。
     const attention = isExpanded
       ? null
-      : summarizeAttention(
-          projSessions.map((s) =>
-            sessionAttentionKind({
-              status: statusFor(s.sessionId),
-              unread: sessionFlags[s.sessionId]?.unread === true,
-              isCurrent: s.sessionId === currentSessionId,
-            }),
-          ),
+      : summarizeSessionAttention(
+          projSessions.map((s) => s.sessionId),
+          attentionContext,
         );
     const isRenaming = renamingPath === proj.path;
 
@@ -652,7 +681,21 @@ function ProjectTree({
             aria-expanded={archivedExpanded}
           >
             <Caret open={archivedExpanded} />
-            {t('sidebar.archived')} ({archived.length})
+            <span className="flex-1">
+              {t('sidebar.archived')} ({archived.length})
+            </span>
+            {!archivedExpanded && (
+              <ProjectAttentionBadge
+                summary={summarizeSessionAttention(
+                  archived.flatMap((p) =>
+                    (sessionsByProject.get(canonProjectRootBrowser(p.path)) ?? []).map(
+                      (s) => s.sessionId,
+                    ),
+                  ),
+                  attentionContext,
+                )}
+              />
+            )}
           </button>
           {archivedExpanded && (
             <div className="opacity-60">{archived.map((proj) => renderProject(proj, false))}</div>
@@ -776,15 +819,23 @@ function SessionTree({
   const sessionFlags = useAppStore((s) => s.sessionFlags);
   const showArchived = useAppStore((s) => s.showArchivedSessions);
 
-  // 每个 SessionTree 只渲染自己项目的 session；归档的默认隐藏。
+  // 每个 SessionTree 只渲染自己项目的 session；归档的默认隐藏，但正打开或仍需要你的照常列出。
   const visible = useMemo(() => {
     const projectCanon = canonProjectRootBrowser(projectRoot);
+    const listed = (s: SessionMeta): boolean =>
+      showArchived ||
+      !sessionFlags[s.sessionId]?.archived ||
+      s.sessionId === currentSessionId ||
+      (statusFor !== undefined &&
+        sessionAttentionKind({
+          status: statusFor(s.sessionId),
+          unread: sessionFlags[s.sessionId]?.unread === true,
+          isCurrent: false,
+        }) !== null);
     return sessions.filter(
-      (s) =>
-        (showArchived || !sessionFlags[s.sessionId]?.archived) &&
-        canonProjectRootBrowser(s.projectRoot) === projectCanon,
+      (s) => listed(s) && canonProjectRootBrowser(s.projectRoot) === projectCanon,
     );
-  }, [sessions, sessionFlags, showArchived, projectRoot]);
+  }, [sessions, sessionFlags, showArchived, projectRoot, currentSessionId, statusFor]);
 
   // 排序：pinned 顶部，其余按最近活动；子 session 跟在父 session 下。
   const rendered = useMemo(
