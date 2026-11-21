@@ -10,7 +10,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 const PROBE_MARKER = 'KODAX_RUNTIME_PROBE=';
-const PROBE_TIMEOUT_MS = 30_000;
+// Cold macOS CI runners (Intel above all) can take well past 30 s to boot the published
+// Runtime worker; the probe asserts behaviour, not boot latency, so keep a generous cap.
+const PROBE_TIMEOUT_MS = 60_000;
 const require = createRequire(import.meta.url);
 const EXPECTED_KODAX_VERSION = (
   require('../../../../package-lock.json') as {
