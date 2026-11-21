@@ -1364,10 +1364,19 @@ ${skillMarker}
 test(
   `KodaX ${INSTALLED_KODAX_VERSION} Runtime satisfies Host and external-agent compatibility`,
   {
-    timeout: PROBE_TIMEOUT_MS + 5_000,
+    // One retry fits in the budget: a cold worker boot on a loaded runner can exceed a
+    // single probe without saying anything about compatibility (macos-15-intel, 2 of 6
+    // attempts today), and a retry child either boots or reports a real incompatibility.
+    timeout: PROBE_TIMEOUT_MS * 2 + 10_000,
   },
   async () => {
-    const result = await runPublishedRuntimeWorkerProbe();
+    let result: Record<string, unknown>;
+    try {
+      result = await runPublishedRuntimeWorkerProbe();
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('probe exceeded')) throw error;
+      result = await runPublishedRuntimeWorkerProbe();
+    }
     assert.equal(result.version, INSTALLED_KODAX_VERSION);
     assert.equal(result.createAvailable, true);
     assert.equal(result.connectAvailable, true);
