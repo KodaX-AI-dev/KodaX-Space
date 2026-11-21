@@ -14,6 +14,8 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+## [0.1.47-beta.3] - 2026-11-21
+
 ### Changed
 
 - Pin Registry KodaX SDK `0.7.97-beta.13` exactly in both SDK consumers, and require its `actorSettlementConvergence` v3 capability. Since beta.12 every Stop reaches a final result. When Runtime cannot confirm the sub-agent state was saved, the Run ends failed with `actor_settlement_not_persisted` and the Session refuses new sends while it heals in the background; such a Session no longer blocks Host stop. Failed Runs carry the redacted Provider or local error text in `failureDetail.detail`. New Session IDs are UUIDv7, and SA mode is retired (every root Run uses the managed Worker). beta.13 caches the daemon management preflight, adds a light integration-health query, reads only the first 4 KB of each Session file's first line when listing, and names why a Host recovery finished.
@@ -28,6 +30,11 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Newly opened projects show at the top of the sidebar again, newest first. Since 0.1.47-beta.1 a project that had never been dragged sorted oldest-first, so the list looked reversed after upgrading, and a project opened after a drag landed at the bottom. Dragged projects keep their saved order below the new ones; recent use still never reshuffles the list.
 - Settings → Skills → User/Project ZIP and folder installs accept skills with up to 32,768 files (was 4,096), so icon-heavy skills such as CyberPPT (11,685 files) install. An over-limit zip is now rejected before anything is extracted, and temporary install files are removed with retries (a Windows scanner can hold them briefly); a removal that still fails is logged instead of silently leaving `.install-tmp` behind (Issue 253).
 - Partner answers link produced files in a way that opens. A bare run-output path such as `标书审查/report.xlsx` was resolved against the project root on click and showed "file not found". The Partner profile now tells every Partner run, not only Workbench tasks, to reuse the `kodax-space://partner-delivery/` link a delivery tool returns, cite files written into the project by their project-root-relative path, and never cite a bare run-output path. `write_partner_deliverable` labels that path `Run-output path (not project-relative…)` instead of `Relative path`; older results still parse. Partner profile version `2026-11-20`. A file link the agent got slightly wrong (a missing or extra folder, or a dropped separator before the file name) now opens the file by name when exactly one candidate fits best: first among this Session's Partner deliveries and the paths its tools touched, then in a fresh project search (`project.fileSearch` gains `locate`, which rescans without its 30-second cache or `.gitignore`). Same-named files that tie are listed in a warning instead of guessing one.
+
+### Documentation and qualification
+
+- Align the baseline docs (READMEs, doc index, PRD/HLD/DD, usage, feature list, builtin skills, capability and credential ledgers, known issues) and the user manual with SDK beta.13 and this prerelease: the Stop settlement convergence with its recovering-Session notice, the light integration-health poll, UUIDv7 Session IDs with last-8 labels, sidebar attention coverage and newest-projects-first ordering, the 32,768-file skill installs (Issue 253 released), the Partner file links, and the `.gitignore`-following file search. The in-app `space_manual` topics and the user manual already describe the steady Run mark, the per-sub-agent tokens and the refocus-safe following; the SDK's own `kodax_manual` is never overwritten.
+- This is a prerelease; stable remains v0.1.46. SDK Repo-intelligence Host gaps, Issue 371 history first-read latency, Issue 254 (history paging duplicates during a Run, deferred to the next major version) and external account/customer-OS acceptance remain explicit limitations, not silently closed items.
 
 ## [0.1.47-beta.2] - 2026-11-17
 
