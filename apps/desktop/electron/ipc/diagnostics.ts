@@ -73,9 +73,8 @@ export function registerDiagnosticsChannels(deps: DiagnosticsChannelDeps): void 
     await flushDiagnostics();
     const runtime = runtimeHostAdapter.snapshot();
     const [integrationInspection, sessionInspection] = await Promise.all([
-      captureDiagnosticInspection(
-        runtime.state === 'ready',
-        async () => (await runtimeHostAdapter.inspectDaemonStop()).integrations,
+      captureDiagnosticInspection(runtime.state === 'ready', () =>
+        runtimeHostAdapter.readIntegrationHealth(),
       ),
       input.sessionId
         ? captureDiagnosticInspection(runtime.state === 'ready', () =>

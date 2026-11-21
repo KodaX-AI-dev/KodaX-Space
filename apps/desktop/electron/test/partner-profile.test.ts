@@ -110,11 +110,12 @@ test('Partner prompt overlay includes selected sources', () => {
   assert.match(overlay, /README\.md/);
 });
 
-test('SDK buildSystemPromptSnapshot includes Partner runtime context as prompt-overlay section', async () => {
+test('SDK managed Worker context includes Partner runtime context as prompt-overlay section', async () => {
   _clearPartnerSpaceToolPoliciesForTesting();
   const sdk = await import('@kodax-ai/kodax/coding');
   const overlay = buildPartnerPromptOverlay();
-  const snapshot = await sdk.buildSystemPromptSnapshot(
+  // beta.12 removed buildSystemPromptSnapshot; the managed Worker reads these capability sections.
+  const sections = await sdk.buildCapabilityContextSections(
     {
       provider: 'mock',
       context: {
@@ -125,9 +126,10 @@ test('SDK buildSystemPromptSnapshot includes Partner runtime context as prompt-o
     },
     false,
   );
-  const section = snapshot.sections.find((s) => s.id === 'prompt-overlay');
+  const section = sections.find((s) => s.id === 'prompt-overlay');
   assert.ok(section, 'prompt-overlay section should be present');
   assert.equal(section?.content, overlay);
-  assert.match(snapshot.rendered, /KodaX Space Partner run context/);
-  assert.doesNotMatch(snapshot.rendered, /KodaX Space Partner surface profile/);
+  const rendered = sdk.renderPromptSections(sections);
+  assert.match(rendered, /KodaX Space Partner run context/);
+  assert.doesNotMatch(rendered, /KodaX Space Partner surface profile/);
 });

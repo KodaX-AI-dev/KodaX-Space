@@ -235,6 +235,46 @@ test('context-capacity notice shows the required and available token counts', ()
   });
 });
 
+test('a failed Run shows the redacted Provider error text as a detail row', () => {
+  const markup = renderNotice({
+    id: 'detail_notice',
+    variant: 'error',
+    text: 'Provider request failed.',
+    failureKind: 'provider',
+    failureDetail: {
+      failureKind: 'provider',
+      stage: 'transport',
+      providerErrorCode: 'provider_error',
+      safeMessage: 'Provider request failed.',
+      detail: 'model "gpt-x" does not exist\ncaused by: 404 Not Found',
+    },
+  });
+  assert.match(markup, /Error detail/);
+  assert.match(markup, /model &quot;gpt-x&quot; does not exist\ncaused by: 404 Not Found/);
+});
+
+test('a Stop whose Actor state was not saved reads as a recovering Session, not a model error', () => {
+  const markup = renderNotice({
+    id: 'recovering_notice',
+    variant: 'error',
+    text: 'Actor settlement persistence is unknown.',
+    runtimeRunId: 'run_fenced',
+    action: 'retry',
+    terminal: {
+      revision: 3,
+      kind: 'failed',
+      code: 'actor_settlement_not_persisted',
+      effectOutcome: 'unknown',
+    },
+  });
+  assert.match(markup, /Run stopped/);
+  assert.match(markup, /This session is recovering/);
+  assert.match(markup, /Execution ended with unknown effects/);
+  assert.doesNotMatch(markup, /Run failed|Actor settlement persistence is unknown|>Retry</);
+  assert.doesNotMatch(markup, /font-medium text-danger/);
+  assert.match(markup, /actor_settlement_not_persisted/, 'the terminal code stays in Details');
+});
+
 function renderNotice(props: Omit<Parameters<typeof SystemNotice>[0], 'kind'>): string {
   let markup = '';
   withEnglishLocale(() => {

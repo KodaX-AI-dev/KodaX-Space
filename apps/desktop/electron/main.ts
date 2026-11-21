@@ -154,11 +154,9 @@ import {
   isCoderOwnerRecoveryRestartRequired,
 } from './kodax/coder-owner-recovery-error.js';
 import {
-  handleRuntimeExitRecoveryDialogResponse,
   runRuntimeStartupBoundary,
   runtimeExitFailureDialog,
   runtimeExitFailureRequiresRestart,
-  runtimeExitRecoveryBlockedNotice,
 } from './window/runtime-exit-recovery.js';
 import { permissionRegistry } from './permission/registry.js';
 import { permissionBroker } from './permission/broker.js';
@@ -167,7 +165,6 @@ import { providerConfigStore } from './providers/config.js';
 import {
   initializeDiagnostics,
   flushDiagnostics,
-  getDiagnosticLogDirectory,
   refreshDiagnosticRedactionOptions,
 } from './diagnostics/runtime.js';
 import { registerDiagnosticsChannels } from './ipc/diagnostics.js';
@@ -1507,63 +1504,24 @@ async function showRuntimeExitRecoveryNoticeIfNeeded(): Promise<void> {
   });
 }
 
-async function showRuntimeStartupRecoveryBlocker(
+/** Never blocks startup: log the unverifiable exit for support, then stop re-reading it. */
+async function releaseBlockedStartupExit(
   settlement: Extract<RuntimeExitSettlement, { readonly status: 'blocked' }>,
-): Promise<boolean> {
-  const locale = await resolveCurrentTrayLocale();
-  const zh = locale === 'zh-CN';
-  const notice = runtimeExitRecoveryBlockedNotice(settlement, zh ? 'zh-CN' : 'en');
-  // The dialog stays generic; the SDK/identity cause must still reach the support log.
-  diagnosticsLogger?.warn('runtime', 'startup_exit_recovery_blocked', settlement.message, {
+): Promise<void> {
+  diagnosticsLogger?.warn('runtime', 'startup_exit_recovery_released', settlement.message, {
     reason: settlement.reason,
     nextAction: settlement.nextAction,
+    requestId: settlement.receipt?.requestId,
+    runtimeId: settlement.receipt?.runtimeId,
+    cleanupIssues: settlement.receipt?.cleanup.issues,
   });
-  restoreVisibleExitControlSurface();
-  setVisibleBootStatus(
-    settlement.reason === 'verification_timeout'
-      ? zh
-        ? '上次助手退出验证已等待 30 秒。请查看恢复提示。'
-        : 'Previous Runtime exit verification has waited 30 seconds.'
-      : zh
-        ? '正在等待上次助手退出验证。请查看恢复提示。'
-        : 'Previous Runtime exit verification needs attention.',
-    'close-only',
-  );
-  while (!startupShutdownCoordinator.isShutdownRequested()) {
-    const response = await dialog.showMessageBox({
-      type: 'warning',
-      ...notice,
-      buttons: [
-        zh ? '打开诊断目录' : 'Open diagnostics folder',
-        zh ? '继续验证' : 'Continue verification',
-        zh ? '关闭提示' : 'Dismiss notice',
-      ],
-      defaultId: 1,
-      cancelId: 2,
-      noLink: true,
-    });
-    if (response.response === 1) {
-      setVisibleBootStatus(
-        zh ? '正在重新验证上次助手退出状态…' : 'Verifying the previous Runtime exit again…',
-      );
-      return true;
-    }
-    if (response.response !== 0) return false;
-    await handleRuntimeExitRecoveryDialogResponse(0, {
-      diagnosticsDirectory: () =>
-        getDiagnosticLogDirectory() ?? path.join(app.getPath('userData'), 'diagnostics'),
-      ensureDirectory: (directory) => mkdirSync(directory, { recursive: true }),
-      openDirectory: (directory) => shell.openPath(directory),
-      onOpenError: (error) =>
-        diagnosticsLogger?.warn(
-          'diagnostics',
-          'runtime-exit-recovery-folder-open-failed',
-          'The Runtime recovery diagnostics directory could not be opened.',
-          { error: error.slice(0, 512) },
-        ),
-    });
+  setVisibleBootStatus('Starting Coder Runtime after the previous exit check');
+  try {
+    await runtimeHostAdapter.abandonPendingRuntimeExit();
+  } catch (error) {
+    // Startup still continues; the next launch re-reads the verdict and releases it again.
+    diagnosticsLogger?.warn('runtime', 'startup_exit_recovery_release_failed', undefined, error);
   }
-  return false;
 }
 
 /**
@@ -2492,7 +2450,7 @@ const startupPromise = app
         settle: () => runtimeHostAdapter.resumePendingRuntimeExitSettlement(),
         continueAutomaticRetry: () => !startupShutdownCoordinator.isShutdownRequested(),
         shutdownSignal: startupShutdownCoordinator.shutdownSignal,
-        onBlocked: showRuntimeStartupRecoveryBlocker,
+        releaseBlockedExit: releaseBlockedStartupExit,
         reconcileOwnerPolicy: () =>
           runtimeHostAdapter
             .reconcileStartupOwnerPolicy()
@@ -2582,9 +2540,6 @@ const startupPromise = app
       stopDaemonOnQuit = daemonStopConfirmedBeforeQuit;
       sharedRuntimeExitCommitted = !daemonStopConfirmedBeforeQuit;
       app.quit();
-      return;
-    }
-    if (startupBoundary.action === 'block') {
       return;
     }
     if (startupShutdownCoordinator.isShutdownRequested()) return;

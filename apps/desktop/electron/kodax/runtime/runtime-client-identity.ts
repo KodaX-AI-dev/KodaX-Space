@@ -149,9 +149,14 @@ export class RuntimeClientIdentityStore {
     this.#filePath = filePath;
     this.#directory = directory;
     this.#uuid = uuid;
-    this.#secretStore = secretStore ?? createRuntimeClientFileSecretStore({
-      authFile: path.join(path.basename(directory) === 'space' ? path.dirname(directory) : directory, 'auth.json'),
-    });
+    this.#secretStore =
+      secretStore ??
+      createRuntimeClientFileSecretStore({
+        authFile: path.join(
+          path.basename(directory) === 'space' ? path.dirname(directory) : directory,
+          'auth.json',
+        ),
+      });
   }
 
   loadOrCreate(): Promise<StableRuntimeClientIdentity> {
@@ -230,6 +235,26 @@ export class RuntimeClientIdentityStore {
       throw new Error('Runtime recovery identity changed.');
     const { exitRecovery: _exitRecovery, ...next } = current;
     await this.#replaceStable(current, next);
+  }
+
+  /**
+   * Drop a pending exit recovery without reading its secret. Startup must converge even when
+   * the SDK can never verify that exit; the SDK keeps its receipts as diagnostic evidence.
+   */
+  async abandonExitRecovery(): Promise<boolean> {
+    const installed = await this.#read();
+    if (installed.kind !== 'valid' || !installed.identity.exitRecovery) return false;
+    const { exitRecovery: _exitRecovery, ...next } = installed.identity;
+    await replaceFileIfUnchanged(
+      this.#filePath,
+      identityBytes(next),
+      installed.hash,
+      'Runtime client identity changed concurrently.',
+      MAX_IDENTITY_BYTES,
+    );
+    // Reload so an unreadable current secret can now be replaced instead of rejected.
+    this.#stablePromise = undefined;
+    return true;
   }
 
   async #replaceStable(

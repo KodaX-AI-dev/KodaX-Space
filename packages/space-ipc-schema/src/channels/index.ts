@@ -356,17 +356,20 @@ const historyTurnInvokeChannels = {
   [sessionRewindChannel.name]: sessionRewindChannel,
 } as const;
 
-const sessionInvokeChannels = {
-  [versionChannel.name]: versionChannel,
-  [sandboxStatusChannel.name]: sandboxStatusChannel,
-  [sandboxRefreshChannel.name]: sandboxRefreshChannel,
-  [sandboxSetupChannel.name]: sandboxSetupChannel,
+const runtimeInvokeChannels = {
   [runtimeProfileSnapshotChannel.name]: runtimeProfileSnapshotChannel,
   [runtimeRetryStartupChannel.name]: runtimeRetryStartupChannel,
   [runtimeExtensionHealthChannel.name]: runtimeExtensionHealthChannel,
   [sessionLiveSnapshotChannel.name]: sessionLiveSnapshotChannel,
   [sessionStatisticsChannel.name]: sessionStatisticsChannel,
   [sessionExecutionFactsChannel.name]: sessionExecutionFactsChannel,
+} as const;
+
+const sessionInvokeChannels = {
+  [versionChannel.name]: versionChannel,
+  [sandboxStatusChannel.name]: sandboxStatusChannel,
+  [sandboxRefreshChannel.name]: sandboxRefreshChannel,
+  [sandboxSetupChannel.name]: sandboxSetupChannel,
   [diagnosticsReportChannel.name]: diagnosticsReportChannel,
   [diagnosticsExportChannel.name]: diagnosticsExportChannel,
   [spaceControlResolveChannel.name]: spaceControlResolveChannel,
@@ -588,7 +591,8 @@ const coreInvokeChannels = {
 
 // Keep the declaration type in named parts: flattening the growing registry exceeds
 // TypeScript's declaration serialization limit while losing none of the channel types.
-export const invokeChannels: typeof sessionInvokeChannels &
+export const invokeChannels: typeof runtimeInvokeChannels &
+  typeof sessionInvokeChannels &
   typeof historyTurnInvokeChannels &
   typeof coreInvokeChannels &
   typeof extensionInvokeChannels &
@@ -596,6 +600,7 @@ export const invokeChannels: typeof sessionInvokeChannels &
   typeof connectorOnboardingInvokeChannels &
   typeof partnerComponentInvokeChannels = {
   ...partnerComponentInvokeChannels,
+  ...runtimeInvokeChannels,
   ...sessionInvokeChannels,
   ...historyTurnInvokeChannels,
   ...coreInvokeChannels,

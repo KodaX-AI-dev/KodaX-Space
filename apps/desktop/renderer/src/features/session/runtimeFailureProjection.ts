@@ -15,6 +15,7 @@ function failureDetailsMatch(
     previous.stage === next.stage &&
     previous.providerErrorCode === next.providerErrorCode &&
     previous.safeMessage === next.safeMessage &&
+    previous.detail === next.detail &&
     previous.httpStatus === next.httpStatus &&
     previous.upstreamErrorCode === next.upstreamErrorCode &&
     previous.requestId === next.requestId &&

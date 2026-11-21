@@ -94,6 +94,14 @@ function isSessionPreAdmissionDataChanged(error: unknown): boolean {
   return code === 'data_changed' || code === 'resync_required';
 }
 
+/** KodaX Issue 428: the Host definitively rejects admission while it heals an Actor settlement. */
+function isSessionRecoveringRejection(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || (error as { code?: unknown }).code !== 'conflict')
+    return false;
+  const conflict = (error as { data?: { conflict?: unknown } }).data?.conflict;
+  return conflict === 'actor_settlement_not_persisted' || conflict === 'actor_settlement_retrying';
+}
+
 function isSessionHistoryReadTimeout(error: unknown): boolean {
   if (error && typeof error === 'object' && 'code' in error && error.code === 'read_timeout') {
     return true;
@@ -144,7 +152,7 @@ interface RuntimeAdmissionState {
   readonly restoreDraftOnBoundaryConflict: boolean;
   phase: 'preparing' | 'starting' | RuntimeAdmissionOutcome;
   runId?: string;
-  rejectionReason?: 'session_data_changed' | 'unsupported_capability';
+  rejectionReason?: 'session_data_changed' | 'session_recovering' | 'unsupported_capability';
   readonly promise: Promise<RuntimeAdmissionOutcome>;
   readonly resolve: (outcome: RuntimeAdmissionOutcome) => void;
 }
@@ -1451,9 +1459,11 @@ export class RealKodaXSession implements ManagedSession {
         admission.restoreDraftOnBoundaryConflict &&
         admission.phase !== 'admitted' &&
         admission.phase !== 'not_admitted' &&
-        isSessionPreAdmissionDataChanged(error)
+        (isSessionPreAdmissionDataChanged(error) || isSessionRecoveringRejection(error))
       ) {
-        admission.rejectionReason = 'session_data_changed';
+        admission.rejectionReason = isSessionRecoveringRejection(error)
+          ? 'session_recovering'
+          : 'session_data_changed';
         this.settleRuntimeAdmission(admission, 'not_admitted');
         return error instanceof Error ? error : new Error(String(error));
       }

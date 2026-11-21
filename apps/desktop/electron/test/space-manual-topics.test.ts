@@ -421,7 +421,7 @@ test('Space manual covers the SDK beta.10 merged inputs and the 0.1.47-beta.1 co
   assert.match(own('permissions'), /跳过 \(Esc\)」只跳过当前问题/);
   assert.match(own('permissions'), /全部问题都未作答时这张卡才算跳过/);
   assert.match(own('ui-map'), /显示已归档会话.*开关/);
-  assert.match(own('ui-map'), /拖拽顺序保存在 projects\.json/);
+  assert.match(own('ui-map'), /新打开的项目排在最上方.*拖动顺序保存在 projects\.json/);
   assert.match(own('ui-map'), /红色 failed 徽标/);
   assert.match(own('ui-map'), /live 工具组按工具族/);
   assert.match(own('runtime-host'), /spinner 跟在对话流末尾.*返回最新消息/);
@@ -440,6 +440,17 @@ test('Space manual covers the SDK beta.11 saved Run failures and partial multi-q
   assert.match(own('runtime-host'), /不再显示 CLI 的 Recovery exhausted 提示/);
   assert.match(own('permissions'), /模型收到的结果以 unanswered 列出跳过的问题/);
   assert.match(own('permissions'), /同一批提问中问题文本重复时 SDK 在提问前拒绝/);
+});
+
+test('Space manual covers the SDK beta.12 recovering Session after a Stop', () => {
+  const runtimeHost =
+    SPACE_MANUAL_TOPICS.find((topic) => topic.id === 'runtime-host')?.body.split(
+      '## Inherited KodaX SDK mechanism',
+    )[0] ?? '';
+
+  assert.match(runtimeHost, /actorSettlementConvergence v3.*运行已停止.*后台自动恢复/);
+  assert.match(runtimeHost, /不提供立即重试.*退出并重新打开 Space 即可重启 Host/);
+  assert.match(runtimeHost, /错误详情行/);
 });
 
 test('the installed SDK kodax_manual carries its own startup Job mechanism text, unmodified by Space', () => {

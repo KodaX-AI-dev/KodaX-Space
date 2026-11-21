@@ -46,6 +46,7 @@ const OPTIONAL_FAILURE_FIELDS = [
   ['retryAfterMs', spaceRuntimeFailureDetailSchema.shape.retryAfterMs],
   ['contextTokens', spaceRuntimeFailureDetailSchema.shape.contextTokens],
   ['skillName', spaceRuntimeFailureDetailSchema.shape.skillName],
+  ['detail', spaceRuntimeFailureDetailSchema.shape.detail],
 ] as const satisfies readonly (readonly [string, OptionalFailureFieldSchema])[];
 
 function sanitizeOptionalField(
