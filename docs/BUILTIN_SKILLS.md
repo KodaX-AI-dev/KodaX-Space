@@ -2,7 +2,7 @@
 
 > 2026-11-14：当前工作树已升级为 SDK `0.7.97-beta.9`（Registry），见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
-> 2026-11-17 版本基线：Space `0.1.47-beta.2` / Registry SDK `0.7.97-beta.11`。内置 Skill 脚本在打包版中从 `app.asar.unpacked` 运行，脚本依赖的 npm 包（yaml、fflate）一并解包并由打包 smoke 校验；Windows 注册等待占用 `extensions.json` 的扫描器。本轮发布状态、验收与未关闭边界见 [beta.2 发布记录](releases/v0.1.47-beta.2-release-readiness.md)；beta.1/alpha.5/alpha.4 基线记录保留为已发布历史，下方带日期的旧记录保留历史语境。
+> 2026-11-21 版本基线：Space `0.1.47-beta.3` / Registry SDK `0.7.97-beta.13`。内置 Skill 脚本在打包版中从 `app.asar.unpacked` 运行，脚本依赖的 npm 包（yaml、fflate）一并解包并由打包 smoke 校验；Windows 注册等待占用 `extensions.json` 的扫描器；集成健康（含 Skills）每 2 秒走 Host 轻量健康查询。Settings 的用户/项目 ZIP 与文件夹安装接受最多 32,768 个文件的技能（Issue 253）。本轮发布状态、验收与未关闭边界见 [beta.3 发布记录](releases/v0.1.47-beta.3-release-readiness.md)；beta.2/beta.1/alpha.5/alpha.4 基线记录保留为已发布历史，下方带日期的旧记录保留历史语境。
 
 KodaX Space ships its own vetted skills from `resources/builtin-skills`. They are
 installed with the application under `resources/builtin-skills`, registered

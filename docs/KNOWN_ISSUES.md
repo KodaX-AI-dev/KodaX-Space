@@ -1,12 +1,12 @@
 # Known Issues
 
-Last Updated: 2026-11-19
+Last Updated: 2026-11-21
 
 > 2026-11-14：当前工作树依赖已发布的 Registry SDK `0.7.97-beta.9`（含 beta.8 的 Issues 245–247 原生 Job 启动修复与 Issue 250 的 SDK 侧修复），见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md) 与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
-> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-beta.2 / SDK 0.7.97-beta.13 from the Registry (the beta.2 release used SDK 0.7.97-beta.11; [beta.9 adaptation](releases/kodax-beta9-space-adaptation.md), [beta.8 adaptation](releases/kodax-beta8-space-adaptation.md), [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the beta.1 release used SDK 0.7.97-beta.10; the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [beta.2 release status](releases/v0.1.47-beta.2-release-readiness.md); the published beta.1 and alpha.4 records stay for those releases. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
+> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-beta.3 / SDK 0.7.97-beta.13 from the Registry (the beta.2 release used SDK 0.7.97-beta.11; [beta.9 adaptation](releases/kodax-beta9-space-adaptation.md), [beta.8 adaptation](releases/kodax-beta8-space-adaptation.md), [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the beta.1 release used SDK 0.7.97-beta.10; the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [beta.3 release status](releases/v0.1.47-beta.3-release-readiness.md); the published beta.2, beta.1 and alpha.4 records stay for those releases. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
 ## Issue Index
 
@@ -41,7 +41,7 @@ Last Updated: 2026-11-19
 | 250 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                         | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
 | 251 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
 | 252 | Low      | Resolved in 0.1.47-beta.2                                                                                    | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                            | SDK product view (failure kept only in Run status); fixed by SDK 0.7.97-beta.11       | 2026-11-15 |
-| 253 | Medium   | Resolved in source                                                                                           | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                 | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                      | 2026-11-19 |
+| 253 | Medium   | Resolved in 0.1.47-beta.3                                                                                    | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                 | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                      | 2026-11-19 |
 | 254 | Medium   | Deferred to the next major version                                                                           | During a Run, browsing older history can show a message twice, hide it briefly or place it out of order                                                                                     | KodaX 0.7.97 history pages / product view; Space 0.1.47                               | 2026-11-21 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
@@ -2785,7 +2785,7 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
 
 - **Priority**: Medium (a popular skill cannot be installed from Settings; `git clone` into the
   skills folder works).
-- **Status**: Resolved in source.
+- **Status**: Resolved; released in 0.1.47-beta.3.
 - **Introduced**: Space 0.1.47-beta.1 (Settings skill install). Reported by 苏睿聪 and 天能 on
   0.1.47-beta.1 and beta.2, Windows 11 and macOS.
 - **Created**: 2026-11-19.
@@ -2815,7 +2815,7 @@ retryDelay: 200` and logs a failure through `console.warn` (captured by the diag
     logger). A failed rollback rename is logged too.
   - Existing leftovers from beta.1/beta.2 are not swept; users can delete
     `skills/.install-tmp` by hand.
-- **Fixed**: source after 0.1.47-beta.2.
+- **Fixed**: source after 0.1.47-beta.2; released in 0.1.47-beta.3.
 - **Files changed**: `apps/desktop/electron/skill/install.ts`,
   `apps/desktop/electron/test/skill-install.test.ts`, `CHANGELOG.md`.
 - **Tests added**: `skill-install.test.ts` — "installs a skill zip with more than 4096 files and

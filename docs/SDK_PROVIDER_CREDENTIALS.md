@@ -1,6 +1,6 @@
 # Provider upgrade and account preservation — FEATURE_302 T12-H
 
-Release baseline: Space `0.1.47-beta.2` / Registry KodaX `0.7.97-beta.11`, 2026-11-17. Provider credential leases bind to the authenticated Host, not a profile name (ADR-075). The beta.1 / beta.10 record (2026-11-15), the alpha.5 / beta.4 record (2026-11-09) and the published alpha.4 / beta.1 record (2026-11-04) remain historical.
+Release baseline: Space `0.1.47-beta.3` / Registry KodaX `0.7.97-beta.13`, 2026-11-21. Provider credential leases bind to the authenticated Host, not a profile name (ADR-075). The beta.2 / beta.11 record (2026-11-17), the beta.1 / beta.10 record (2026-11-15), the alpha.5 / beta.4 record (2026-11-09) and the published alpha.4 / beta.1 record (2026-11-04) remain historical.
 Provider and stable client/exit-recovery credentials use SDK permission-protected auth.json.
 Production packaging verifies exact Registry bytes and rejects development links.
 Earlier implementation references below retain their dated evidence; current qualification and

@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树（`0.1.47-beta.1` 候选）的 Registry SDK `0.7.97-beta.10` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。beta.10 把一起回答的多条排队输入合并为一条 canonical 用户消息（`inputIds` 记名），Host 重启不再重复执行已合并输入。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树（`0.1.47-beta.3` 候选）的 Registry SDK `0.7.97-beta.13` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。beta.13 把每次 Stop 一致收敛到最终结果：结算未持久化的 Run 以 `actor_settlement_not_persisted` 结束并在失败详情里显示 Provider 原文，Session 在后台自愈期间拒发新消息（composer 提示“会话恢复中”）；集成健康每 2 秒走 Host 轻量查询；新会话 ID 改用 UUIDv7，未命名会话以末 8 位标注。已发布 Space `v0.1.47-beta.2` 使用 beta.11 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
