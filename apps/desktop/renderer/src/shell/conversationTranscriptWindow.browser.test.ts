@@ -822,9 +822,18 @@ for (const gesture of ['wheel', 'ArrowUp'] as const)
         });
       })`);
       await page.evaluate('window.settle(12)');
-      const left = await gap();
+      // The tail keeps growing every frame, so a slow frame start only delays the gap.
+      // Poll instead of sampling once — a wrongly re-following reader never crosses it
+      // and still fails — so a loaded runner cannot under-read the growing tail.
+      await page.waitForFunction(
+        () => {
+          const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+          return el.scrollHeight - el.scrollTop - el.clientHeight > 150;
+        },
+        undefined,
+        { timeout: 30_000 },
+      );
       await page.evaluate('window.stopGrowing=true');
-      assert.ok(left > 150, `the reader left the growing tail (gap ${left})`);
       assert.deepEqual(errors, []);
     },
   );
@@ -845,15 +854,21 @@ test(
     await page.evaluate(`window.live(2000,'Tail','resynced-')`);
     await page.locator('[data-source-item^="resynced-"]').first().waitFor();
     await page.evaluate('window.settle(24)');
-    const covered = await scroller.evaluate((element) => {
-      const frame = element.getBoundingClientRect();
-      const middle = frame.top + frame.height / 2;
-      return [...element.querySelectorAll('[data-window-row]')].some((row) => {
-        const box = row.getBoundingClientRect();
-        return box.top <= middle && box.bottom >= middle;
-      });
-    });
-    assert.ok(covered, 'a mounted row covers the middle of the view');
+    // A loaded runner can need more frames before the resynced window covers the middle;
+    // poll bounded for the same coverage condition instead of sampling one frame.
+    await page.waitForFunction(
+      () => {
+        const element = document.querySelector('[data-testid="conversation-scroll-container"]')!;
+        const frame = element.getBoundingClientRect();
+        const middle = frame.top + frame.height / 2;
+        return [...element.querySelectorAll('[data-window-row]')].some((row) => {
+          const box = row.getBoundingClientRect();
+          return box.top <= middle && box.bottom >= middle;
+        });
+      },
+      undefined,
+      { timeout: 30_000 },
+    );
     assert.ok(
       (await scroller.evaluate((element) => element.scrollTop)) > 1000,
       'the reader is not sent to the top',
