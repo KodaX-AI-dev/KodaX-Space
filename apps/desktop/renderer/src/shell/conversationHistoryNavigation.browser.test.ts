@@ -484,14 +484,15 @@ historyTest(
     assert.equal(await page.getByRole('button', { name: 'Return to reading position' }).count(), 0);
     // Loaded CI runners can lag a settle-and-wheel round badly (the Intel
     // smoke runner runs this frame-paced dance several times slower than
-    // arm64), so the bottom checks carry their own budget.
+    // arm64), so the bottom checks carry their own budget. The live-return
+    // settle once exceeded even 45 s on a loaded Intel run (fb46a699 smoke).
     await page.waitForFunction(
       () => {
         const el = document.querySelector('[data-testid="conversation-scroll-container"]')!;
         return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
       },
       undefined,
-      { timeout: 45_000 },
+      { timeout: 90_000 },
     );
     // Back in the live view it follows new output again.
     await page.evaluate('window.streaming(true);window.live(24, "FOLLOWED TAIL")');
@@ -502,7 +503,7 @@ historyTest(
         return el.scrollHeight - el.scrollTop - el.clientHeight < 2;
       },
       undefined,
-      { timeout: 45_000 },
+      { timeout: 90_000 },
     );
     assert.equal(
       await page.getByRole('button', { name: 'Jump to bottom', exact: true }).count(),
