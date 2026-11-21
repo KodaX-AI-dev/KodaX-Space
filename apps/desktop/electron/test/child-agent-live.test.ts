@@ -106,3 +106,33 @@ test('root events leave children alone until the root run ends', () => {
   assert.deepEqual(reduceChildAgentLive(children, event('run.completed', { meta: {} }), 3), []);
   assert.equal(reduceChildAgentLive([], event('run.completed', { meta: {} }), 3), undefined);
 });
+
+test("a child's finished steps add up its own token usage, matched by its context agent", () => {
+  // A workflow child streams under a generated child id but reports steps under its actor path.
+  const workflowChild = {
+    ...child,
+    childAgentId: 'gen-7',
+    agentId: '/root/review',
+    contextKind: 'child',
+  };
+  const step = (agentId: string, contextKind = 'child') =>
+    event('run.progress', {
+      kind: 'iteration_end',
+      info: {
+        contextKind,
+        agentId,
+        usage: { inputTokens: 1_000, cachedReadTokens: 4_000, outputTokens: 600 },
+      },
+    });
+  let children = reduceChildAgentLive(
+    [],
+    event('thinking.delta', { text: 'x', meta: workflowChild }),
+    1,
+  )!;
+  children = reduceChildAgentLive(children, step('/root/review'), 2)!;
+  children = reduceChildAgentLive(children, step('/root/review'), 3)!;
+  assert.deepEqual(children[0]!.tokens, { up: 10_000, down: 1_200 });
+
+  assert.equal(reduceChildAgentLive(children, step('/root/other'), 4), undefined);
+  assert.equal(reduceChildAgentLive(children, step('/root/review', 'root'), 4), undefined);
+});

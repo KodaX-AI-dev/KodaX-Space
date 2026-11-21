@@ -12,6 +12,8 @@ export type ChildMeta =
       workflowCorrelation?: { workflowRunId?: string; childAgentId?: string };
       childAgentId?: string;
       childAgentName?: string;
+      /** The child's context agent; its step usage reports under this id. */
+      agentId?: string;
       /**
        * SDK 标记：此事件仅供 live 展示、**不得**进持久 transcript（KodaXActivityEventMeta.liveOnly）。
        * dispatch_child_task 子 agent 的流式事件带此标 + childAgentId，但**不带** workflowCorrelation。
@@ -100,15 +102,15 @@ function readStringArray(
   return strings.length > 0 ? strings : undefined;
 }
 
-function readVerification(data: Record<string, unknown> | undefined): WorkflowVerification | undefined {
+function readVerification(
+  data: Record<string, unknown> | undefined,
+): WorkflowVerification | undefined {
   const value = data?.verification;
   if (value === null || typeof value !== 'object') return undefined;
   const record = value as Record<string, unknown>;
   if (typeof record.ok !== 'boolean') return undefined;
   const enforcement =
-    record.enforcement === 'hard' || record.enforcement === 'warn'
-      ? record.enforcement
-      : undefined;
+    record.enforcement === 'hard' || record.enforcement === 'warn' ? record.enforcement : undefined;
   const changedPaths = readStringArray(record, 'changedPaths', 128);
   const mutationToolCalls = readStringArray(record, 'mutationToolCalls', 64);
   return {
@@ -143,7 +145,7 @@ export function buildWorkflowDigestActivity(
   const summary =
     rawSummaryKind === 'pending'
       ? undefined
-      : readString(data, 'summary') ?? readString(data, 'error');
+      : (readString(data, 'summary') ?? readString(data, 'error'));
   if (!summary && !verification) return null;
 
   const childAgentId = readString(data, 'taskId');

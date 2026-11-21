@@ -28,7 +28,10 @@ const DOT_RADIUS = 0.058;
 const DIM_ALPHA = 0.13;
 /** The tumbling block is drawn slightly smaller than the K so its corners stay inside the canvas. */
 const BLOCK_SCALE = 0.88;
-export const RUN_MARK_PERIOD = 5.6;
+/** A full revolution of tumbling (~4.2s) reads as motion even at 14–18px, then ~2.9s of K. */
+export const RUN_MARK_PERIOD = 7.1;
+/** Spin around Y, radians per second. */
+export const RUN_MARK_SPIN = 1.55;
 
 const VOXELS: readonly Voxel[] = (() => {
   const voxels: Voxel[] = [];
@@ -51,22 +54,22 @@ const ease = (t: number): number => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) 
 /** 0 = tumbling block, 1 = flat K. */
 export function runMarkMorph(t: number): number {
   const u = t % RUN_MARK_PERIOD;
-  if (u < 2.5) return 0;
-  if (u < 3.25) return ease((u - 2.5) / 0.75);
-  if (u < 4.65) return 1;
-  if (u < 5.4) return 1 - ease((u - 4.65) / 0.75);
+  if (u < 4) return 0;
+  if (u < 4.75) return ease((u - 4) / 0.75);
+  if (u < 6.15) return 1;
+  if (u < 6.9) return 1 - ease((u - 6.15) / 0.75);
   return 0;
 }
 
 /** Glint position across the held K (model x), or null outside the glint window. */
 export function runMarkGlint(t: number): number | null {
   const u = t % RUN_MARK_PERIOD;
-  return u >= 3.35 && u <= 4.35 ? -1.3 + (u - 3.35) * 2.6 : null;
+  return u >= 4.85 && u <= 5.85 ? -1.3 + (u - 4.85) * 2.6 : null;
 }
 
 /** The block's tumble at time t: spin around Y, a breathing tilt around X, a slight Z lean. */
 function tumble(t: number): (p: Vec3) => Vec3 {
-  const [sy, cy] = [Math.sin(t * 0.9), Math.cos(t * 0.9)];
+  const [sy, cy] = [Math.sin(t * RUN_MARK_SPIN), Math.cos(t * RUN_MARK_SPIN)];
   const tilt = 0.42 + Math.sin(t * 0.55) * 0.3;
   const [sx, cx] = [Math.sin(tilt), Math.cos(tilt)];
   const [sz, cz] = [Math.sin(0.12), Math.cos(0.12)];

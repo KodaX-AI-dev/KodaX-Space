@@ -2147,6 +2147,9 @@ export function ConversationStreamV2(): JSX.Element {
     if (performance.now() < programmaticScrollIgnoreUntilRef.current) return;
     const scroller = e.currentTarget;
     if (isOwedProgrammaticScroll(scroller)) return;
+    // In the background follow pauses, so the end drifts away and the browser may still move the
+    // view (scroll anchoring). Only a gesture stops following there; focus then catches up.
+    if (wasAtBottomRef.current && !isDocumentActiveForAutoFollow()) return;
     if (scrollSyncRafRef.current !== null) return;
     scrollSyncRafRef.current = requestAnimationFrame(() => {
       scrollSyncRafRef.current = null;

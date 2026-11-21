@@ -25,7 +25,10 @@ function ChildAgentLiveRow({ row }: { row: ChildAgentRow }): JSX.Element {
           <span className="tool-pulse-caret" aria-hidden />
         </span>
       )}
-      <span className="child-agent-row-time">{formatPulseDuration(row.elapsedMs, true)}</span>
+      <span className="child-agent-row-time">
+        {row.tokens && `${row.tokens} · `}
+        {formatPulseDuration(row.elapsedMs, true)}
+      </span>
     </li>
   );
 }

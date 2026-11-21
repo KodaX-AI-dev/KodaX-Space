@@ -69,3 +69,12 @@ test('thinking after a finished tool wins; rows beyond three become an overflow 
     ],
   );
 });
+
+test("a child's own token usage rides beside its elapsed time", () => {
+  const { rows } = childAgentRows(
+    [child('scan', { tokens: { up: 10_000, down: 1_500 } }), child('idle')],
+    2_000,
+  );
+  assert.equal(rows[0]!.tokens, '↑10.0k ↓1.5k');
+  assert.equal(rows[1]!.tokens, undefined);
+});

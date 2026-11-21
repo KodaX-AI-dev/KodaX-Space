@@ -2,6 +2,7 @@
 // A child shows what it is doing now: its latest thinking line, or its current tool and target.
 
 import type { AgentChildLiveT } from '@kodax-space/space-ipc-schema';
+import { formatTokens } from './activityStatus.js';
 import { liveToolRows } from './toolClusterPulse.js';
 
 export const CHILD_ROW_LIMIT = 3;
@@ -14,6 +15,8 @@ export interface ChildAgentRow {
   readonly text: string;
   readonly status?: 'running' | 'done' | 'failed';
   readonly elapsedMs: number;
+  /** ↑ input ↓ output over the child's finished steps. */
+  readonly tokens?: string;
 }
 
 function lastLine(text: string): string {
@@ -31,6 +34,9 @@ function childRow(child: AgentChildLiveT, now: number): ChildAgentRow {
     id: child.id,
     name: child.label.split('/').filter(Boolean).at(-1) ?? child.label,
     elapsedMs: Math.max(0, now - child.startedAt),
+    ...(child.tokens
+      ? { tokens: `↑${formatTokens(child.tokens.up)} ↓${formatTokens(child.tokens.down)}` }
+      : {}),
   };
   // Main clears thinking when a tool starts, so thinking present means it is newer than the tool.
   if (child.thinking || !child.tool) {

@@ -30,7 +30,12 @@ import { childAgentRows } from './childAgentRows.js';
 import { RunMark } from './RunMark.js';
 import { ChildAgentLiveRows } from './ChildAgentLiveRows.js';
 import type { MessageKey } from '../i18n/messages.js';
-import { activityStatusKind, activityStatusText, runTokenTotals } from './activityStatus.js';
+import {
+  activityStatusKind,
+  activityStatusText,
+  formatTokens,
+  runTokenTotals,
+} from './activityStatus.js';
 
 const EMPTY_EVENTS: readonly SessionEvent[] = [];
 
@@ -759,12 +764,6 @@ function estTokens(ascii: number, nonAscii: number): number {
   return Math.max(1, Math.round(ascii / 4 + nonAscii));
 }
 
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
-}
-
 // elapsed 秒数 → 人类可读：< 60s 显示 "Ns"；>= 60s 显示 "Mm SSs"（对齐 KodaX TUI）。
 function formatElapsed(sec: number): string {
   if (sec < 60) return `${sec}s`;
@@ -816,8 +815,8 @@ const SANDBOX_LABEL_KEYS: Readonly<Record<string, MessageKey>> = {
 
 /**
  * Run-level progress at the transcript end. While the transcript's live group shows the work
- * (`liveWorkVisible`), the spinner drops its Run mark and work verb and keeps the task label, elapsed
- * time, step and token totals; any phase the live group cannot show brings both back.
+ * (`liveWorkVisible`), the spinner drops its work verb and keeps the Run mark, task label, elapsed
+ * time, step and token totals; any phase the live group cannot show brings the verb back.
  */
 export function ActivitySpinner({
   liveWorkVisible = false,
@@ -938,7 +937,6 @@ export function ActivitySpinner({
       })
     : activityStatusText(snap.status, sendingTooLong, t);
   const statusKind = activityStatusKind(snap.status);
-  const showMark = !liveWorkVisible || statusKind === 'phase';
   const showStatus = !liveWorkVisible || statusKind !== 'work';
 
   // tool path 显示 basename — 全路径太长，basename + dim 灰显
@@ -974,7 +972,7 @@ export function ActivitySpinner({
   return (
     <div>
       <div className="flex items-center gap-2 text-xs text-fg-muted font-mono px-1 py-0.5">
-        {showMark && <RunMark size={18} />}
+        <RunMark size={18} />
         {showStatus && <span className="text-fg-secondary">{statusBase}</span>}
         {showStatus && toolBase && (
           <FileNameText
