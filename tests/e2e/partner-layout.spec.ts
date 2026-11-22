@@ -374,11 +374,12 @@ test('Partner menu and delete dialog stay above layout and inside the viewport',
 
     const row = page.getByTestId('sidebar-session-row').filter({ hasText: prompt }).first();
     await expect(row).toBeVisible();
+    // F149: archive first — the session context menu offers Delete only for archived rows.
     await row.click({ button: 'right' });
     const menu = page.getByRole('menu');
     await expect(menu).toBeVisible();
-    const deleteMenuItem = page.getByRole('menuitem', { name: /^Delete\b/ });
-    await expect(deleteMenuItem).toBeVisible();
+    const archiveMenuItem = page.getByRole('menuitem', { name: /^Archive\b/ });
+    await expect(archiveMenuItem).toBeVisible();
     await expectSelectorInViewport(page, '[role="menu"]', 'session context menu');
     await saveScreenshot(page, '06-session-menu');
 
@@ -386,13 +387,20 @@ test('Partner menu and delete dialog stay above layout and inside the viewport',
       // A late session-list refresh can legitimately remount the row after the
       // screenshot. Use a short click deadline, then reopen the menu instead of
       // waiting 30 seconds on a locator that has already disappeared.
-      await deleteMenuItem.click({ timeout: 3_000 });
+      await archiveMenuItem.click({ timeout: 3_000 });
     } catch {
       await row.click({ button: 'right' });
-      const reopenedDeleteMenuItem = page.getByRole('menuitem', { name: /^Delete\b/ });
-      await expect(reopenedDeleteMenuItem).toBeVisible();
-      await reopenedDeleteMenuItem.click();
+      const reopenedArchiveMenuItem = page.getByRole('menuitem', { name: /^Archive\b/ });
+      await expect(reopenedArchiveMenuItem).toBeVisible();
+      await reopenedArchiveMenuItem.click();
     }
+    await page.getByRole('button', { name: 'Show archived sessions' }).click();
+    const archivedRow = page.getByTestId('sidebar-session-row').filter({ hasText: prompt }).first();
+    await expect(archivedRow).toBeVisible();
+    await archivedRow.click({ button: 'right' });
+    const deleteMenuItem = page.getByRole('menuitem', { name: /^Delete\b/ });
+    await expect(deleteMenuItem).toBeVisible();
+    await deleteMenuItem.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await expectSelectorInViewport(page, '[role="dialog"]', 'delete dialog');

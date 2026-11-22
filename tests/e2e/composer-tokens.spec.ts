@@ -79,7 +79,12 @@ test('command and skill selection stays local and shows distinct tokens', async 
     await input.fill('/help');
     await expect(page.locator('[data-completion-kind="slash"]').first()).toBeVisible();
     await input.press('Enter');
-    await expect(input.locator('[data-composer-token="command"]')).toHaveText('/help');
+    // The token drops the wire prefix (the icon carries the kind); aria-label keeps it.
+    await expect(input.locator('[data-composer-token="command"]')).toHaveText('help');
+    await expect(input.locator('[data-composer-token="command"]')).toHaveAttribute(
+      'aria-label',
+      '/help',
+    );
     await expect(page.getByTestId('sidebar-session-row')).toHaveCount(0);
     await input.press('Backspace');
     await expect(input).toHaveText('');
@@ -89,7 +94,10 @@ test('command and skill selection stays local and shows distinct tokens', async 
     await page.screenshot({ path: test.info().outputPath('completion-groups.png') });
     const label = await skill.locator('.composer-completion-name').innerText();
     await skill.click();
-    await expect(input.locator('[data-composer-token="skill"]')).toHaveText(label);
+    // Skill labels read like the popover name without the `/` or `/skill:` prefix.
+    await expect(input.locator('[data-composer-token="skill"]')).toHaveText(
+      label.replace(/^\/(?:skill:)?/i, ''),
+    );
     await expect(page.getByTestId('sidebar-session-row')).toHaveCount(0);
     await input.press('Backspace');
     await expect(input).toHaveText('');
