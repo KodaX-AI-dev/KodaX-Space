@@ -14,12 +14,20 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+## [0.1.47-beta.4] - 2026-11-22
+
 ### Changed
 
 - The sidebar has a "Pinned" section above the "Projects" heading, shown only when something is pinned (F149). Pinned tasks come first, newest pin on top, and leave their project list while pinned; pinned projects follow with their task lists and can be dragged within the pinned area without changing the main list. Unpinning a task returns it to its project by time; unpinning a project returns it to its saved place. "Pin project" no longer moves the project to the top of the main list.
 - The project list is one manual order saved in `projects.json`: a newly added project is placed at the top once, and opening or using a project never moves it. The first launch after upgrading saves the order the list already shows.
 - Within a project, running tasks are listed first in the order they were created, so rows no longer swap while they stream; the rest follow by most recent activity. Forked tasks are listed flat like any other task, in the sidebar and in the "+N more" picker.
 - Archive comes before delete. Task and project menus (and the task breadcrumb menu) offer Archive; Delete and Remove are offered only for archived tasks and projects. Hovering a task row shows Pin and Archive buttons. Archiving a pinned task or project unpins it, and unarchiving does not pin it again. Task pin and archive state is saved in `session-flags.json` and survives restarts; deleting a task clears it.
+- `@` completion lists project folders alongside files under the same search and `.gitignore` rules: a folder candidate carries a trailing `/`, and a picked folder becomes a folder reference sent as `@dir/` (link locate and the Files list stay file-only; `project.fileSearch` gained `includeDirectories`). Skill and command labels drop the redundant `/` and `/skill:` prefix — the icon carries the kind — and history reads references the same as the composer: a `/name` skill is told from a command through the command catalog, file and folder references show their names, and the sent text stays in the DOM with only the prefix hidden, so find, copy and e2e text matching see it verbatim.
+
+### Documentation and qualification
+
+- Align the baseline docs (READMEs, doc index, PRD project-selector line, feature list, user manual, in-app `space_manual` topics, the v0.1.47 design and the F031/F149 regression guides) with this prerelease: the F149 pinned area with the manual project order and the archive-first lifecycle, and the composer `@` folder completion with references reading the same in composer and history. The SDK stays `0.7.97-beta.13`; the SDK's own `kodax_manual` is never overwritten.
+- This is a prerelease; stable remains v0.1.46. Issue 371 history first-read latency, Issue 254 (history paging duplicates during a Run, deferred to the next major version), SDK Repo-intelligence Host gaps and external account/customer-OS acceptance remain explicit limitations, not silently closed items.
 
 ## [0.1.47-beta.3] - 2026-11-21
 
