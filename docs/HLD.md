@@ -324,7 +324,7 @@ Space pins the root package and uses its documented public subpath exports. Inte
 ### 5.2 SDK 拉入方式
 
 - **Release/CI**：exact `@kodax-ai/kodax` dependency and lockfile; normal releases require the Registry. Pre-release validation may use a repository-vendored, versioned tgz pinned by lockfile SRI, but only through the explicit local-test packaging entry point. Packaging verifies the locked physical package and required Worker/native sidecars.
-- **同仓开发**：`npm run link:kodax` links the adjacent checkout temporarily; release checks must prove no source link remains.
+- **同仓开发**：`npm run link:kodax` links the adjacent checkout temporarily (`KODAX_REPO` selects another checkout); release checks must prove no source link remains.
 - **Contract policy**：capability negotiation and compatibility probes determine support. Version comparisons may select compatibility code but may not invent a capability.
 
 ### 5.3 CI 不变量

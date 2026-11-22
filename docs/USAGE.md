@@ -31,7 +31,9 @@ KodaX Space 是 npm workspace monorepo。不要只在 `apps/desktop` 中安装�
 根、desktop manifest 与 lockfile 记录一个精确的 KodaX 版本。常规 Release/CI 使用
 Registry 包；预发布测试可在 lockfile 中解析到仓库内带版本号的 vendor tgz，并固定其
 sha512 完整性，通过 `npm run build:test-kodax` 显式构建。开发联调可用
-`npm run link:kodax` 连接同级源码；打包沿用既有依赖一致性检查，
+`npm run link:kodax` 连接同级 `../KodaX` 源码（设置 `KODAX_REPO=<KodaX checkout>`
+可临时改连其他 checkout，如 KodaX-next-dev；打包后恢复链接时沿用同一 checkout）；
+打包沿用既有依赖一致性检查，
 要求两个 manifest、lockfile 与安装包解析同一个版本和完整性，不再增加
 “KodaX 必须 ≥0.7.78”或包元数据生命周期门禁。Runtime 连接按实际能力协商：
 Space 管理的 daemon 必须返回 `daemonOrphanExit:1`，并继续要求

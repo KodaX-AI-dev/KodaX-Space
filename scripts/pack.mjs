@@ -73,7 +73,8 @@ function restoreLink(link) {
   // 先清掉刚装上的发布版实体目录，再恢复原开发布局。
   fs.rmSync(SDK_DIR, { recursive: true, force: true });
   if (link.layout === 'staging') {
-    run('node', ['scripts/link-kodax.mjs'], 'restore KodaX dev staging');
+    const env = link.repo ? { KODAX_REPO: link.repo } : undefined;
+    run('node', ['scripts/link-kodax.mjs'], 'restore KodaX dev staging', env);
     console.log('[pack] restored KodaX dev staging.');
     return;
   }

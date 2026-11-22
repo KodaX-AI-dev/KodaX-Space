@@ -3,6 +3,12 @@ import path from 'node:path';
 
 export const KODAX_DEV_LINK_MARKER = '.kodax-space-dev-link';
 
+/** KodaX checkout to link: KODAX_REPO when set, otherwise the sibling `KodaX` checkout. */
+export function resolveKodaxRepo(spaceRoot, env = process.env) {
+  const override = env.KODAX_REPO?.trim();
+  return override ? path.resolve(override) : path.resolve(spaceRoot, '..', 'KodaX');
+}
+
 function isInside(root, candidate) {
   const relative = path.relative(root, candidate);
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..');
@@ -75,8 +81,11 @@ export function inspectKodaxDevLink(spaceRoot, sdkDir) {
     };
   }
 
-  if (fs.existsSync(path.join(sdkDir, KODAX_DEV_LINK_MARKER))) {
-    return { linked: true, layout: 'staging' };
+  const markerPath = path.join(sdkDir, KODAX_DEV_LINK_MARKER);
+  if (fs.existsSync(markerPath)) {
+    // link-kodax.mjs records the linked checkout so pack.mjs restores the same one.
+    const repo = fs.readFileSync(markerPath, 'utf8').trim();
+    return repo ? { linked: true, layout: 'staging', repo } : { linked: true, layout: 'staging' };
   }
 
   // Compatibility with staging directories created before the marker existed.

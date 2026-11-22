@@ -4,7 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { inspectKodaxDevLink, KODAX_DEV_LINK_MARKER } from '../kodax-dev-link-state.mjs';
+import {
+  inspectKodaxDevLink,
+  KODAX_DEV_LINK_MARKER,
+  resolveKodaxRepo,
+} from '../kodax-dev-link-state.mjs';
 
 async function createFixture(t) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'space-kodax-link-state-'));
@@ -159,5 +163,32 @@ test('nested staging junction is detected even when its target stays inside Spac
   assert.deepEqual(inspectKodaxDevLink(spaceRoot, sdkDir), {
     linked: true,
     layout: 'staging',
+  });
+});
+
+test('KodaX source defaults to the sibling KodaX checkout', () => {
+  const spaceRoot = path.resolve('/work/KodaX-Space-next-dev');
+
+  assert.equal(resolveKodaxRepo(spaceRoot, {}), path.resolve('/work/KodaX'));
+  assert.equal(resolveKodaxRepo(spaceRoot, { KODAX_REPO: '  ' }), path.resolve('/work/KodaX'));
+});
+
+test('KODAX_REPO selects another KodaX checkout', () => {
+  const spaceRoot = path.resolve('/work/KodaX-Space-next-dev');
+
+  assert.equal(
+    resolveKodaxRepo(spaceRoot, { KODAX_REPO: '/work/KodaX-next-dev' }),
+    path.resolve('/work/KodaX-next-dev'),
+  );
+});
+
+test('staging marker reports the linked KodaX checkout for restore', async (t) => {
+  const { spaceRoot, sdkDir, sourceRoot } = await createFixture(t);
+  await writeFile(path.join(sdkDir, KODAX_DEV_LINK_MARKER), sourceRoot, 'utf8');
+
+  assert.deepEqual(inspectKodaxDevLink(spaceRoot, sdkDir), {
+    linked: true,
+    layout: 'staging',
+    repo: sourceRoot,
   });
 });

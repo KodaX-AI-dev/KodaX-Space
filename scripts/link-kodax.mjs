@@ -19,17 +19,18 @@
 //   4. 把 node_modules/ symlink 到 KodaX/node_modules/（SDK 内部依赖能找到）
 //
 // 用法：
-//   npm run link:kodax    # 创建 staging
+//   npm run link:kodax    # 创建 staging（默认链接同级 ../KodaX）
+//   KODAX_REPO=<KodaX checkout> npm run link:kodax  # 临时链接其他 checkout（如 KodaX-next-dev）
 //   npm run unlink:kodax  # 撤回，再按 lockfile 还原实体包
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { KODAX_DEV_LINK_MARKER } from './kodax-dev-link-state.mjs';
+import { KODAX_DEV_LINK_MARKER, resolveKodaxRepo } from './kodax-dev-link-state.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SPACE_ROOT = path.resolve(__dirname, '..');
-const KODAX_REPO = path.resolve(SPACE_ROOT, '..', 'KodaX');
+const KODAX_REPO = resolveKodaxRepo(SPACE_ROOT);
 const STAGING = path.join(SPACE_ROOT, 'node_modules', '@kodax-ai', 'kodax');
 
 const unlinkMode = process.argv.includes('--unlink');
@@ -66,8 +67,9 @@ rimrafSafe(STAGING);
 fs.mkdirSync(STAGING, { recursive: true });
 // Mark the directory before writing package metadata or creating the first
 // junction. If this process is interrupted at any later instruction, pack.mjs
-// must still classify the partial directory as development state.
-fs.writeFileSync(path.join(STAGING, KODAX_DEV_LINK_MARKER), '', 'utf8');
+// must still classify the partial directory as development state. The marker
+// records the linked checkout so pack.mjs restores the same one.
+fs.writeFileSync(path.join(STAGING, KODAX_DEV_LINK_MARKER), KODAX_REPO, 'utf8');
 
 // 2. Write Space-owned package.json — mirror release.mjs subpath exports + name rewrite.
 //    publishConfig / bin / version 直接 borrow KodaX 的，保持版本号一致。
