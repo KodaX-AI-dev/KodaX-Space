@@ -10,6 +10,7 @@ import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState 
 import {
   Check,
   CircleAlert,
+  CircleStop,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -23,8 +24,12 @@ import {
   Workflow,
   Wrench,
 } from 'lucide-react';
-import { isSessionAttachmentPreviewUrl, type SlashCommandMeta } from '@kodax-space/space-ipc-schema';
+import {
+  isSessionAttachmentPreviewUrl,
+  type SlashCommandMeta,
+} from '@kodax-space/space-ipc-schema';
 import type { ConversationMessage } from '../composeMessages.js';
+import { isCancelledNotice } from '../sessionError.js';
 import { useAppStore, type UserImageAttachment } from '../../../store/appStore.js';
 import { Markdown } from './Markdown.js';
 import { Caret } from '../../../components/Caret.js';
@@ -570,29 +575,32 @@ export function UserBubble({
 }): JSX.Element {
   const { t } = useI18n();
   const visibleContent = attachments.length > 0 && content.trim() === '(image)' ? '' : content;
+  const senderLabel = t('message.userQueryLabel');
+  // Chat-style query: right-aligned bubble with a sender avatar, no label row. The footer
+  // keeps its space but only shows on hover / focus so the query reads as one compact block.
   return (
-    <div className="group flex flex-col items-start pt-3" data-testid="user-message-bubble">
-      <div
-        className={[
-          'conversation-user-content inline-block min-w-0 max-w-[min(85%,100%)] overflow-hidden rounded-2xl px-4 py-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] border',
-          'bg-info/10 border-info/30 border-l-[3px] border-l-info/80 text-fg-primary',
-        ].join(' ')}
-      >
-        <div
-          data-testid="user-query-label"
-          className="mb-2 flex items-center gap-1.5 whitespace-normal text-xs font-semibold leading-4 text-info"
-        >
-          <UserRound className="h-3.5 w-3.5" aria-hidden />
-          {t('message.userQueryLabel')}
+    <div className="group/user flex flex-col items-end pt-3" data-testid="user-message-bubble">
+      <div className="flex w-full min-w-0 items-start justify-end gap-2.5">
+        <div className="conversation-user-content min-w-0 max-w-[min(44rem,85%)] overflow-hidden rounded-2xl rounded-tr-md px-4 py-2.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-fg-primary">
+          {visibleContent.length > 0 && <CollapsibleUserMessageContent content={visibleContent} />}
+          {attachments.length > 0 && (
+            <div className={visibleContent.length > 0 ? 'mt-2' : undefined}>
+              <UserImageAttachments attachments={attachments} />
+            </div>
+          )}
         </div>
-        {visibleContent.length > 0 && <CollapsibleUserMessageContent content={visibleContent} />}
-        {attachments.length > 0 && (
-          <div className={visibleContent.length > 0 ? 'mt-2' : undefined}>
-            <UserImageAttachments attachments={attachments} />
-          </div>
-        )}
+        <span
+          data-testid="user-query-label"
+          title={senderLabel}
+          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-info/10 text-info ring-1 ring-info/25"
+        >
+          <UserRound className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          <span className="sr-only">{senderLabel}</span>
+        </span>
       </div>
-      <MessageFooter text={visibleContent} sentAt={sentAt} turnActions={turnActions} />
+      <div className="mr-[34px] opacity-0 transition-opacity focus-within:opacity-100 group-hover/user:opacity-100">
+        <MessageFooter text={visibleContent} sentAt={sentAt} turnActions={turnActions} />
+      </div>
     </div>
   );
 }
@@ -1137,7 +1145,9 @@ function RuntimeFailureTable({
   const { t } = useI18n();
   return (
     <div id={id} hidden={hidden} className="basis-full pl-7 text-xs text-fg-secondary">
-      {terminal && <p>{t(`message.runtimeFailure.effects.${terminal.effectOutcome}`)}</p>}
+      {terminal && terminal.effectOutcome !== 'unknown' && (
+        <p>{t(`message.runtimeFailure.effects.${terminal.effectOutcome}`)}</p>
+      )}
       <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 rounded-md border border-border-default px-2 py-1.5">
         {rows.map((row) => (
           <Fragment key={row.label}>
@@ -1260,7 +1270,20 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
   // SDK actorSettlementConvergence v3: the Stop finished but the Session is fenced while Runtime
   // heals it. This is not a model error, and an immediate resend would be rejected.
   const recovering = terminal?.code === 'actor_settlement_not_persisted';
-  const body = recovering ? t('message.sessionRecovering') : text;
+  // A user Stop arrives through the error channel; it is an outcome, not a failure.
+  const cancelled = !recovering && isCancelledNotice(message);
+  const neutral = recovering || cancelled;
+  const body = recovering
+    ? t('message.sessionRecovering')
+    : cancelled
+      ? t('message.runCancelled')
+      : text;
+  const title = recovering
+    ? 'message.sessionRecoveringTitle'
+    : cancelled
+      ? 'message.runCancelledTitle'
+      : 'message.errorTitle';
+  const NoticeIcon = cancelled ? CircleStop : CircleAlert;
   const actionDef = action && !recovering ? ACTION_BUTTONS[action] : undefined;
   const secondsLeft = useRetryCountdown(retryAvailableAt);
   const countdownActive = action === 'retry' && secondsLeft > 0;
@@ -1268,14 +1291,19 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
   // the text is long or the column is narrow.
   return (
     <div
-      className="conversation-notice notice-in flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-danger/25 px-4 py-2.5 text-left"
+      className={`conversation-notice notice-in flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-2.5 text-left ${
+        neutral ? 'border-border-default' : 'border-danger/25'
+      }`}
       data-testid="system-notice"
-      data-notice-variant="error"
+      data-notice-variant={cancelled ? 'cancelled' : 'error'}
     >
-      <CircleAlert className="h-4 w-4 shrink-0 text-danger" aria-hidden />
+      <NoticeIcon
+        className={`h-4 w-4 shrink-0 ${neutral ? 'text-fg-muted' : 'text-danger'}`}
+        aria-hidden
+      />
       <div className="min-w-0 flex-1 basis-[16rem] break-words">
-        <span className={`font-medium ${recovering ? 'text-fg-primary' : 'text-danger'}`}>
-          {t(recovering ? 'message.sessionRecoveringTitle' : 'message.errorTitle')}
+        <span className={`font-medium ${neutral ? 'text-fg-primary' : 'text-danger'}`}>
+          {t(title)}
         </span>
         {body && (
           <>
@@ -1286,7 +1314,9 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
           </>
         )}
         {terminal?.effectOutcome === 'unknown' && (
-          <div className="text-fg-secondary">{t('message.runtimeFailure.effects.unknown')}</div>
+          <div className={cancelled ? 'text-xs text-fg-muted' : 'text-fg-secondary'}>
+            {t('message.runtimeFailure.effects.unknown')}
+          </div>
         )}
       </div>
       {(rows.length > 0 || actionDef) && (

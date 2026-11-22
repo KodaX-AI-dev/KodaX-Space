@@ -72,8 +72,6 @@ test('user queries have a persistent localized sender label distinct from assist
   assert.match(markup, /data-testid="user-query-label"/);
   assert.match(markup, /你的消息/);
   assert.match(markup, /Find the original task/);
-  assert.match(markup, /border-l-\[3px\]/);
-  assert.match(markup, /bg-info\/10/);
   assert.match(markup, /data-testid="user-query-content"/);
   assert.match(markup, /aria-label="复制消息"/);
   assert.match(markup, /保留到这轮，创建分支/);
@@ -104,7 +102,10 @@ test('history references read like composer tokens: no wire prefix, skills by ca
     ok: true,
     data: { commands: [{ name: 'compact', description: 'Compact' }] },
   });
-  Object.defineProperty(globalThis, 'window', { value: { kodaxSpace: { invoke } }, configurable: true });
+  Object.defineProperty(globalThis, 'window', {
+    value: { kodaxSpace: { invoke } },
+    configurable: true,
+  });
   try {
     await loadCommandsOnce();
     const render = (content: string): string =>
@@ -122,7 +123,10 @@ test('history references read like composer tokens: no wire prefix, skills by ca
     assert.match(text(skillMarkup), /\/im-export now/);
     assert.match(shown(render('/compact')), /data-composer-token="command"[^>]*>compact</);
     const refsMarkup = render('see /skill:code-review and @src/README.md in @src/components/');
-    assert.match(text(refsMarkup), /see \/skill:code-review and @src\/README.md in @src\/components\//);
+    assert.match(
+      text(refsMarkup),
+      /see \/skill:code-review and @src\/README.md in @src\/components\//,
+    );
     const refs = shown(refsMarkup);
     assert.match(refs, /data-composer-token="folder" title="@src\/components\/">components</);
     assert.match(refs, /data-composer-token="skill"[^>]*>code-review</);
@@ -130,4 +134,17 @@ test('history references read like composer tokens: no wire prefix, skills by ca
   } finally {
     Reflect.deleteProperty(globalThis, 'window');
   }
+});
+
+test('a user query is a compact right-aligned bubble with a sender avatar instead of a label row', () => {
+  const markup = withSystemLanguages(['zh-CN'], () =>
+    renderToStaticMarkup(
+      <I18nProvider>
+        <UserBubble content="Find the original task" />
+      </I18nProvider>,
+    ),
+  );
+  assert.match(markup, /items-end/);
+  assert.match(markup, /data-testid="user-query-label"[^>]*title="你的消息"/);
+  assert.doesNotMatch(markup, /border-l-\[3px\]/);
 });

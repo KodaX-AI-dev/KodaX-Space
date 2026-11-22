@@ -59,15 +59,17 @@ test('long user queries keep a four-line preview and can expand or collapse in p
       }, theme);
       const style = await bubble.locator('.conversation-user-content').evaluate((element) => {
         const style = getComputedStyle(element);
+        const row = element.closest('[data-testid="user-message-bubble"]')!.getBoundingClientRect();
+        const box = element.getBoundingClientRect();
         return {
-          border: Number.parseFloat(style.borderLeftWidth),
-          ordinaryBorder: Number.parseFloat(style.borderRightWidth),
+          leftGap: box.left - row.left,
+          rightGap: row.right - box.right,
           background: style.backgroundColor,
           pixelRatio: window.devicePixelRatio,
         };
       });
-      // Chromium snaps border widths to device pixels at fractional desktop scaling.
-      expect(style.border).toBeGreaterThan(style.ordinaryBorder * 2);
+      // Queries sit on the right, next to the sender avatar, apart from assistant prose.
+      expect(style.leftGap).toBeGreaterThan(style.rightGap);
       expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
       await expect(label).toBeInViewport();
       await test.info().attach(`query-${theme}-style.json`, {

@@ -39,6 +39,7 @@ import {
 } from '../store/appStore.js';
 import { composeMessages, type ConversationMessage } from '../features/session/composeMessages.js';
 import { projectProductConversation } from '../features/session/productConversation.js';
+import { isCancelledNotice } from '../features/session/sessionError.js';
 import {
   useProductSessionTranscript,
   productTranscriptSnapshot,
@@ -3584,7 +3585,7 @@ function messageMarkerTone(message: StandardViewMessage): MarkerTone {
     case 'assistant_text':
       return 'assistant';
     case 'system_notice':
-      return message.variant === 'error' ? 'danger' : 'info';
+      return message.variant === 'error' && !isCancelledNotice(message) ? 'danger' : 'info';
     case 'artifact':
       return 'artifact';
   }

@@ -565,9 +565,26 @@ html:not(.q-minimal) .space-shell .ix-zone :is(button, [role='button']):not(:dis
 body:has(.space-shell[data-workspace-mode='settings']) .workspace-menu[role='menu'] {
   display: none;
 }
+/* User query bubble: a light blue tint that fades downward, a hairline blue edge, a top
+   highlight and a soft tinted lift. Depth comes from light, not from a thick accent bar. */
 .conversation-user-content {
   font-size: inherit;
   line-height: 1.7;
+  border: 1px solid rgb(var(--info) / 0.16);
+  background-color: rgb(var(--info) / 0.055);
+  background-image: linear-gradient(180deg, rgb(var(--info) / 0.05), transparent 72%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.55),
+    0 1px 2px rgb(var(--info) / 0.06),
+    0 6px 18px -10px rgb(var(--info) / 0.28);
+}
+.dark .conversation-user-content {
+  border-color: rgb(var(--info) / 0.2);
+  background-color: rgb(var(--info) / 0.08);
+  background-image: linear-gradient(180deg, rgb(var(--info) / 0.06), transparent 72%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 8px 22px -12px rgb(0 0 0 / 0.6);
 }
 .conversation-assistant .markdown-body {
   line-height: 1.8;

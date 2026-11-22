@@ -104,3 +104,30 @@ test('a row already revealed in its session remounts without replaying the entry
   );
   assert.match(renderInRow(null, 'row-r', <RevealProbe wanted />), /data-animate="true"/);
 });
+
+test('a run the user stopped reads as a neutral stop notice, not a run failure', () => {
+  const original = Object.getOwnPropertyDescriptor(navigator, 'languages');
+  Object.defineProperty(navigator, 'languages', { value: ['en-US'], configurable: true });
+  const markup = renderInRow(
+    's-cancel',
+    'notice-c',
+    <SystemNotice
+      kind="system_notice"
+      id="notice-c"
+      variant="error"
+      text="Runtime run was cancelled by the user."
+      runtimeRunId="run-c"
+      failureKind="cancelled"
+      terminal={{ revision: 1, kind: 'interrupted', code: 'interrupted', effectOutcome: 'unknown' }}
+    />,
+  );
+  if (original) Object.defineProperty(navigator, 'languages', original);
+  else delete (navigator as { languages?: readonly string[] }).languages;
+  assert.match(markup, /data-notice-variant="cancelled"/);
+  assert.match(markup, /Stopped/);
+  assert.doesNotMatch(markup, /Run failed/);
+  assert.doesNotMatch(markup, /border-danger|text-danger/);
+  assert.doesNotMatch(markup, /cancelled by the user/);
+  // The unknown-effects warning appears once, even with the details table rendered.
+  assert.equal(markup.split('Execution ended with unknown effects').length - 1, 1);
+});

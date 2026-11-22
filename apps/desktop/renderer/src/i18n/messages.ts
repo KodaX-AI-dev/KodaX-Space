@@ -2988,6 +2988,8 @@ export const messages = {
     'message.action.providerSettings': 'Provider settings',
     'message.errorTitle': 'Run failed',
     'message.sessionRecoveringTitle': 'Run stopped',
+    'message.runCancelledTitle': 'Stopped',
+    'message.runCancelled': 'You stopped this run.',
     'message.sessionRecovering':
       'This session is recovering and accepts new messages once it is ready. If sending is still refused after a few minutes, quit and reopen KodaX Space to restart the Host.',
     'message.runtimeFailure.details': 'Details',
@@ -6028,6 +6030,8 @@ export const messages = {
     'message.action.providerSettings': 'Provider 设置',
     'message.errorTitle': '运行出错',
     'message.sessionRecoveringTitle': '运行已停止',
+    'message.runCancelledTitle': '已停止',
+    'message.runCancelled': '你停止了本次运行。',
     'message.sessionRecovering':
       '此会话正在恢复，恢复完成后即可继续发送。若几分钟后发送仍被拒绝，请退出并重新打开 KodaX Space 以重启 Host。',
     'message.runtimeFailure.details': '详情',
