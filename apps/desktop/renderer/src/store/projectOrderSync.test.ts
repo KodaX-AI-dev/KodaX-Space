@@ -19,54 +19,57 @@ const fakeStorage: StorageLike = {
 (globalThis as { localStorage?: StorageLike }).localStorage = fakeStorage;
 
 const { useAppStore } = await import('./appStore.js');
-const { adoptSavedProjectOrder } = await import('./projectOrderSync.js');
+const { migrateLegacyProjectOrder } = await import('./projectOrderSync.js');
 
 const LEGACY_KEY = 'kodax-space.projectOrder';
+const listed = [{ path: '/c', name: 'c', addedAt: 1, lastUsedAt: 1 }];
 
 function fakeBridge(ok: boolean) {
-  const saved: unknown[] = [];
+  const calls: { channel: string; input: unknown }[] = [];
   const bridge = {
     invoke: async (channel: string, input: unknown) => {
-      assert.equal(channel, 'project.order.set');
-      saved.push(input);
-      return ok ? { ok: true, data: {} } : { ok: false, error: { code: 'INTERNAL', message: 'x' } };
+      calls.push({ channel, input });
+      if (!ok) return { ok: false, error: { code: 'INTERNAL', message: 'x' } };
+      if (channel === 'project.list')
+        return { ok: true, data: { projects: listed, order: ['/c'] } };
+      return { ok: true, data: {} };
     },
   } as unknown as NonNullable<Window['kodaxSpace']>;
-  return { bridge, saved };
+  return { bridge, calls };
 }
 
 beforeEach(() => {
   storage.clear();
-  useAppStore.setState({ projectOrder: [] });
+  useAppStore.setState({ projects: [] });
 });
 
-test('the order saved in projects.json wins and the legacy copy is dropped', async () => {
-  storage.set(LEGACY_KEY, JSON.stringify(['/stale']));
-  const { bridge, saved } = fakeBridge(true);
-  await adoptSavedProjectOrder(bridge, ['/b', '/a']);
-  assert.deepEqual(useAppStore.getState().projectOrder, ['/b', '/a']);
-  assert.deepEqual(saved, []);
-  assert.equal(storage.has(LEGACY_KEY), false);
+test('without a legacy localStorage order nothing is sent', async () => {
+  const { bridge, calls } = fakeBridge(true);
+  await migrateLegacyProjectOrder(bridge, []);
+  assert.deepEqual(calls, []);
 });
 
-test('a legacy localStorage order moves into projects.json once', async () => {
+test('a legacy localStorage order moves into projects.json once and the list refreshes', async () => {
   storage.set(LEGACY_KEY, JSON.stringify(['/c', '/a']));
-  const { bridge, saved } = fakeBridge(true);
-  await adoptSavedProjectOrder(bridge, []);
-  assert.deepEqual(useAppStore.getState().projectOrder, ['/c', '/a']);
-  assert.deepEqual(saved, [{ order: ['/c', '/a'] }]);
+  const { bridge, calls } = fakeBridge(true);
+  await migrateLegacyProjectOrder(bridge, []);
+  assert.deepEqual(calls[0], { channel: 'project.order.set', input: { order: ['/c', '/a'] } });
+  assert.deepEqual(useAppStore.getState().projects, listed);
   assert.equal(storage.has(LEGACY_KEY), false);
 });
 
 test('a failed migration keeps the legacy copy for the next start', async () => {
   storage.set(LEGACY_KEY, JSON.stringify(['/c', '/a']));
   const { bridge } = fakeBridge(false);
-  await adoptSavedProjectOrder(bridge, []);
-  assert.deepEqual(useAppStore.getState().projectOrder, ['/c', '/a']);
+  await migrateLegacyProjectOrder(bridge, []);
+  assert.deepEqual(useAppStore.getState().projects, []);
   assert.equal(storage.get(LEGACY_KEY), JSON.stringify(['/c', '/a']));
 });
 
-test('dragging no longer writes the order to localStorage', () => {
-  useAppStore.getState().setProjectOrder(['/x']);
+test('a saved projects.json order wins: the legacy copy is dropped, not sent', async () => {
+  storage.set(LEGACY_KEY, JSON.stringify(['/c', '/a']));
+  const { bridge, calls } = fakeBridge(true);
+  await migrateLegacyProjectOrder(bridge, ['/a', '/c']);
+  assert.deepEqual(calls, []);
   assert.equal(storage.has(LEGACY_KEY), false);
 });

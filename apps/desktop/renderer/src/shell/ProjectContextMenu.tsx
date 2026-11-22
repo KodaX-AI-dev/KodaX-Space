@@ -1,4 +1,4 @@
-import { FolderOpen, Pencil, Pin, X } from 'lucide-react';
+import { Archive, ArchiveRestore, FolderOpen, Pencil, Pin, PinOff, X } from 'lucide-react';
 import type { Project } from '@kodax-space/space-ipc-schema';
 import { openDirectory } from '../lib/openPath.js';
 import { pushToast } from '../store/toastStore.js';
@@ -6,6 +6,7 @@ import { requestConfirm } from '../store/confirmStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { SidebarContextMenu, type SidebarContextMenuItem } from './SidebarContextMenu.js';
 import {
+  ARCHIVED_PROJECT_CONTEXT_MENU_GROUPS,
   PROJECT_CONTEXT_MENU_GROUPS,
   type ProjectContextMenuActionId,
 } from './sidebarContextMenuModel.js';
@@ -15,7 +16,8 @@ interface ProjectContextMenuProps {
   readonly x: number;
   readonly y: number;
   readonly onClose: () => void;
-  readonly onPinProject: () => void;
+  /** F149: 置顶 / 取消置顶（置顶区）。 */
+  readonly onTogglePin: () => void;
   readonly onStartRename: () => void;
   readonly onProjectsChanged: () => Promise<void>;
 }
@@ -27,7 +29,7 @@ export function ProjectContextMenu({
   x,
   y,
   onClose,
-  onPinProject,
+  onTogglePin,
   onStartRename,
   onProjectsChanged,
 }: ProjectContextMenuProps): JSX.Element {
@@ -51,15 +53,35 @@ export function ProjectContextMenu({
     await onProjectsChanged();
   }
 
+  async function setArchived(archived: boolean): Promise<void> {
+    onClose();
+    if (!window.kodaxSpace) return;
+    const result = await window.kodaxSpace.invoke('project.recent.setArchived', {
+      path: project.path,
+      archived,
+    });
+    if (!result.ok || !result.data.ok) {
+      pushToast(t('menu.project.archiveUpdateFailed'), 'error');
+      return;
+    }
+    pushToast(t(archived ? 'menu.project.archived' : 'menu.project.unarchived'), 'info', 1500);
+    await onProjectsChanged();
+  }
+
+  const pinned = project.pinnedIndex !== undefined;
   const actions: Record<ProjectContextMenuActionId, SidebarContextMenuItem> = {
     'pin-project': {
       id: 'pin-project',
-      label: t('menu.project.pin'),
-      icon: <Pin className={ICON_CLASS} strokeWidth={1.75} aria-hidden />,
+      label: pinned ? t('menu.project.unpin') : t('menu.project.pin'),
+      icon: pinned ? (
+        <PinOff className={ICON_CLASS} strokeWidth={1.75} aria-hidden />
+      ) : (
+        <Pin className={ICON_CLASS} strokeWidth={1.75} aria-hidden />
+      ),
       onSelect: () => {
-        onPinProject();
+        onTogglePin();
         onClose();
-        pushToast(t('menu.project.pinned'), 'success', 1400);
+        pushToast(t(pinned ? 'menu.project.unpinned' : 'menu.project.pinned'), 'success', 1400);
       },
     },
     'open-project-folder': {
@@ -77,6 +99,18 @@ export function ProjectContextMenu({
       icon: <Pencil className={ICON_CLASS} strokeWidth={1.75} aria-hidden />,
       onSelect: onStartRename,
     },
+    'archive-project': {
+      id: 'archive-project',
+      label: t('menu.project.archive'),
+      icon: <Archive className={ICON_CLASS} strokeWidth={1.75} aria-hidden />,
+      onSelect: () => void setArchived(true),
+    },
+    'unarchive-project': {
+      id: 'unarchive-project',
+      label: t('menu.project.unarchive'),
+      icon: <ArchiveRestore className={ICON_CLASS} strokeWidth={1.75} aria-hidden />,
+      onSelect: () => void setArchived(false),
+    },
     'remove-project': {
       id: 'remove-project',
       label: t('menu.project.remove'),
@@ -86,11 +120,11 @@ export function ProjectContextMenu({
     },
   };
 
-  const groups = PROJECT_CONTEXT_MENU_GROUPS.map((group) =>
-    group
-      .filter((actionId) => project.archived !== true || actionId !== 'pin-project')
-      .map((actionId) => actions[actionId]),
-  ).filter((group) => group.length > 0);
+  const archived = project.archived === true;
+  const menuGroups: readonly (readonly ProjectContextMenuActionId[])[] = archived
+    ? ARCHIVED_PROJECT_CONTEXT_MENU_GROUPS
+    : PROJECT_CONTEXT_MENU_GROUPS;
+  const groups = menuGroups.map((group) => group.map((actionId) => actions[actionId]));
 
   return (
     <SidebarContextMenu
@@ -100,7 +134,7 @@ export function ProjectContextMenu({
       groups={groups}
       onClose={onClose}
       width={208}
-      estimatedHeight={project.archived === true ? 152 : 186}
+      estimatedHeight={archived ? 102 : 186}
       testId="project-context-menu"
     />
   );

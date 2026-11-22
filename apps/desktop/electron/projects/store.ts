@@ -22,6 +22,9 @@ const IS_WIN = process.platform === 'win32';
 const SPACE_DATA_DIR = getSpaceDataDir();
 const PROJECTS_FILE = path.join(SPACE_DATA_DIR, 'projects.json');
 
+/** 与 IPC schema 的 projectOrderSchema 上限一致；远大于实际项目数，只为挡住畸形文件。*/
+const PROJECT_ORDER_MAX = 4096;
+
 const fileSchema = z.object({
   version: z.literal(1),
   projects: z.array(
@@ -34,16 +37,53 @@ const fileSchema = z.object({
       archived: z.boolean().optional(),
     }),
   ),
-  /** 用户拖排的项目顺序 (renderer 的 canonProjectRoot 路径)。缺省 = 从未拖排。
+  /** F149: 项目主列表的完整手动顺序 (canonProjectRoot 路径)。缺省 / 缺项按 addedAt 新→旧补在最前。
    *  放在 main 端文件而非 localStorage：dev (localhost) 与打包版 (app://) 的 localStorage 不互通。 */
-  order: z.array(z.string().min(1).max(4096)).max(256).optional(),
+  order: z.array(z.string().min(1).max(4096)).max(PROJECT_ORDER_MAX).optional(),
+  /** F149: 置顶项目 (canon 路径)，同时是置顶区内的顺序。不改 order：取消置顶即回原位。 */
+  pinned: z.array(z.string().min(1).max(4096)).max(PROJECT_ORDER_MAX).optional(),
 });
 
 export type Project = z.infer<typeof fileSchema>['projects'][number];
 
+const canon = (p: string): string => canonProjectRoot(p, IS_WIN);
+
+/**
+ * F149: 项目主列表 = 一条手动顺序。saved 里没有的项目（新加入 / 旧文件 / 外部编辑）
+ * 按 addedAt 新→旧排在最前；saved 里已不存在的路径丢掉。
+ */
+export function normalizeProjectOrder(
+  projects: readonly Project[],
+  saved: readonly string[],
+): string[] {
+  const present = new Set(projects.map((p) => canon(p.path)));
+  const kept = [...new Set(saved)].filter((c) => present.has(c));
+  const keptSet = new Set(kept);
+  const missing = projects
+    .filter((p) => !keptSet.has(canon(p.path)))
+    .sort((a, b) => b.addedAt - a.addedAt)
+    .map((p) => canon(p.path));
+  return [...new Set(missing), ...kept];
+}
+
+/** F149: 置顶只保留仍在列表、未归档的项目，各一次（归档 / 移除即取消置顶）。*/
+function normalizePinnedProjects(projects: readonly Project[], saved: readonly string[]): string[] {
+  const pinnable = new Set(projects.filter((p) => p.archived !== true).map((p) => canon(p.path)));
+  return [...new Set(saved)].filter((c) => pinnable.has(c));
+}
+
+function sortByOrder(projects: readonly Project[], order: readonly string[]): Project[] {
+  const idx = new Map(order.map((c, i) => [c, i] as const));
+  const rank = (p: Project): number => idx.get(canon(p.path)) ?? -1;
+  return [...projects].sort((a, b) => rank(a) - rank(b));
+}
+
 export class ProjectStore {
   private cached: Project[] | null = null;
   private cachedOrder: string[] = [];
+  private cachedPinned: string[] = [];
+  /** projects.json 是否已存有 order（升级前的旧文件没有，第一次写入后才有）。*/
+  private orderSaved = false;
   private writeLock: Promise<void> = Promise.resolve();
 
   constructor(
@@ -63,12 +103,11 @@ export class ProjectStore {
         );
         this.cached = [];
       } else {
-        this.cachedOrder = parsed.data.order ?? [];
         // 文件可能被外部（别的进程 / 攻击者 / 手工编辑）写入畸形 path——
         // schema 只确保字符串；不验证语义。这里再过一遍 validateProjectRoot 把
         // 非绝对 / 含 .. / 含 NUL 的条目 drop 掉。filename basename 是显示用的，
         // 不影响实际打开行为（实际打开走 IPC 边界还会再 validate 一次）。
-        this.cached = parsed.data.projects.filter((p) => {
+        const valid = parsed.data.projects.filter((p) => {
           try {
             validateProjectRoot(p.path);
             return true;
@@ -79,6 +118,9 @@ export class ProjectStore {
             return false;
           }
         });
+        this.cachedPinned = parsed.data.pinned ?? [];
+        this.orderSaved = parsed.data.order !== undefined;
+        this.cached = this.orderedList(valid, parsed.data.order ?? []);
       }
     } catch (err) {
       // ENOENT = 首次启动；其他错误也按"启动空列表"处理，写新文件时会覆盖
@@ -189,12 +231,19 @@ export class ProjectStore {
     });
   }
 
+  /** 主列表顺序（canon 路径），覆盖全部项目（含已归档）。*/
   async order(): Promise<string[]> {
     await this.list();
     return [...this.cachedOrder];
   }
 
-  /** 替换用户拖排顺序。renderer 每次拖排都发送完整的可见顺序。*/
+  /** projects.json 是否已存有主列表顺序；没有时 renderer 才迁移旧 localStorage 顺序。*/
+  async hasSavedOrder(): Promise<boolean> {
+    await this.list();
+    return this.orderSaved;
+  }
+
+  /** 替换主列表顺序。renderer 拖排时发送完整顺序；缺项按 normalizeProjectOrder 补齐。*/
   async setOrder(order: readonly string[]): Promise<void> {
     await this.mutate((list) => {
       this.cachedOrder = [...order];
@@ -202,10 +251,33 @@ export class ProjectStore {
     });
   }
 
+  /** F149: 置顶项目 (canon 路径)，按置顶区顺序。*/
+  async pinned(): Promise<string[]> {
+    await this.list();
+    return [...this.cachedPinned];
+  }
+
+  /** 替换置顶列表（置顶 / 取消置顶 / 置顶区拖排都发完整列表）。*/
+  async setPinned(pinned: readonly string[]): Promise<void> {
+    await this.mutate((list) => {
+      this.cachedPinned = [...pinned];
+      return { list, ret: undefined };
+    });
+  }
+
+  /** 规范化主列表顺序与置顶列表，返回按顺序排好的项目。*/
+  private orderedList(list: readonly Project[], saved: readonly string[]): Project[] {
+    this.cachedOrder = normalizeProjectOrder(list, saved);
+    this.cachedPinned = normalizePinnedProjects(list, this.cachedPinned);
+    return sortByOrder(list, this.cachedOrder);
+  }
+
   /** 测试用：丢内存 cache 强制下次 list 重新读盘。*/
   invalidate(): void {
     this.cached = null;
     this.cachedOrder = [];
+    this.cachedPinned = [];
+    this.orderSaved = false;
   }
 
   /**
@@ -225,8 +297,9 @@ export class ProjectStore {
     try {
       const current = await this.list();
       const { list, ret } = apply([...current]); // copy 防 mutation 泄露
-      this.cached = list;
-      await this.persistLocked(list);
+      this.cached = this.orderedList(list, this.cachedOrder);
+      await this.persistLocked(this.cached);
+      this.orderSaved = true;
       return ret;
     } finally {
       release();
@@ -238,8 +311,11 @@ export class ProjectStore {
     // mode 0o700 / 0o600：projects.json 含用户项目路径，可能泄露 proprietary 代码名等。
     // Windows 忽略 mode，POSIX 强制 user-only。
     await fs.mkdir(this.dir, { recursive: true, mode: 0o700 });
-    const order = this.cachedOrder.length > 0 ? { order: this.cachedOrder } : {};
-    const payload = JSON.stringify({ version: 1, projects: list, ...order }, null, 2);
+    const payload = JSON.stringify(
+      { version: 1, projects: list, order: this.cachedOrder, pinned: this.cachedPinned },
+      null,
+      2,
+    );
     await replaceFileWithoutFollowingAliases(
       this.filePath,
       Buffer.from(payload, 'utf8'),

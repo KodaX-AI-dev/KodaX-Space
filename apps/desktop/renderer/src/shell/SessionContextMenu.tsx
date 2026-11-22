@@ -8,9 +8,11 @@ import { useSurfaceStore } from '../store/surface.js';
 import { requestConfirm } from '../store/confirmStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { pushToast } from '../store/toastStore.js';
+import { toggleSessionFlagPersisted } from '../store/sessionFlagSync.js';
 import { latestSelectorTurnIndex, messageForSelectorTurn } from '../features/session/turnIndex.js';
 import { SidebarContextMenu, type SidebarContextMenuItem } from './SidebarContextMenu.js';
 import {
+  ARCHIVED_SESSION_CONTEXT_MENU_GROUPS,
   SESSION_CONTEXT_MENU_GROUPS,
   type SessionContextMenuActionId,
 } from './sidebarContextMenuModel.js';
@@ -135,9 +137,13 @@ export function SessionContextMenu({
   const actions: Record<SessionContextMenuActionId, SidebarContextMenuItem> = {
     'pin-session': {
       id: 'pin-session',
-      label: flags?.pinned ? t('menu.session.unpin') : t('menu.session.pin'),
+      label: flags?.pinnedAt !== undefined ? t('menu.session.unpin') : t('menu.session.pin'),
       onSelect: () => {
-        toggleFlag(session.sessionId, 'pinned');
+        void toggleSessionFlagPersisted(
+          session.sessionId,
+          'pinned',
+          t('sidebar.sessionFlagSaveFailed'),
+        );
         onClose();
       },
     },
@@ -183,6 +189,30 @@ export function SessionContextMenu({
       label: t('menu.session.continueInNewTask'),
       onSelect: () => void onFork(),
     },
+    'archive-session': {
+      id: 'archive-session',
+      label: t('menu.session.archive'),
+      onSelect: () => {
+        void toggleSessionFlagPersisted(
+          session.sessionId,
+          'archived',
+          t('sidebar.sessionFlagSaveFailed'),
+        );
+        onClose();
+      },
+    },
+    'unarchive-session': {
+      id: 'unarchive-session',
+      label: t('menu.session.unarchive'),
+      onSelect: () => {
+        void toggleSessionFlagPersisted(
+          session.sessionId,
+          'archived',
+          t('sidebar.sessionFlagSaveFailed'),
+        );
+        onClose();
+      },
+    },
     'delete-session': {
       id: 'delete-session',
       label: t('menu.session.delete'),
@@ -191,9 +221,11 @@ export function SessionContextMenu({
     },
   };
 
-  const groups = SESSION_CONTEXT_MENU_GROUPS.map((group) =>
-    group.map((actionId) => actions[actionId]),
-  );
+  const menuGroups: readonly (readonly SessionContextMenuActionId[])[] =
+    flags?.archivedAt !== undefined
+      ? ARCHIVED_SESSION_CONTEXT_MENU_GROUPS
+      : SESSION_CONTEXT_MENU_GROUPS;
+  const groups = menuGroups.map((group) => group.map((actionId) => actions[actionId]));
 
   return (
     <SidebarContextMenu

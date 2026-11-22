@@ -26,6 +26,11 @@ export { truncateZodError, type SafeZodIssue, type SafeZodErrorDetails } from '.
 
 export { canonProjectRoot } from './path-canon.js';
 export { bestFileNameMatches } from './path-match.js';
+export {
+  applySessionFlagChange,
+  type SessionFlagChange,
+  type SessionFlagEntry,
+} from './session-flags.js';
 
 export { invokeChannels, pushChannels } from './channels/index.js';
 export type { InvokeChannels, PushChannels } from './channels/index.js';
@@ -182,6 +187,8 @@ export {
   sessionCancelChannel,
   sessionListChannel,
   sessionDeleteChannel,
+  sessionFlagsListChannel,
+  sessionFlagsSetChannel,
   sessionSetTitleChannel,
   sessionSetReasoningModeChannel,
   sessionSetProviderChannel,
@@ -252,6 +259,7 @@ export {
   projectRecentRenameChannel,
   projectRecentSetArchivedChannel,
   projectOrderSetChannel,
+  projectPinnedSetChannel,
   projectGitStatsChannel,
   projectGitStatusChannel,
   projectGitChangesChannel,

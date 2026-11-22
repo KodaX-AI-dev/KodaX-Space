@@ -46,3 +46,23 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
   next.splice(to, 0, items[from] as T);
   return next;
 }
+
+/** 只在可见项之间移动（from / to 是可见序号）；隐藏项（如已归档）留在完整顺序里的原槽位。 */
+export function moveWithinVisible<T>(
+  all: readonly T[],
+  isVisible: (item: T) => boolean,
+  from: number,
+  to: number,
+): T[] {
+  const slots = all.flatMap((item, i) => (isVisible(item) ? [i] : []));
+  const moved = moveItem(
+    slots.map((i) => all[i] as T),
+    from,
+    to,
+  );
+  const next = [...all];
+  slots.forEach((slot, k) => {
+    next[slot] = moved[k] as T;
+  });
+  return next;
+}

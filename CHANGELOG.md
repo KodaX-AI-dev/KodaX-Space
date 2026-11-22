@@ -14,6 +14,13 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- The sidebar has a pinned area above the project list (F149). Pinned tasks come first, newest pin on top, and leave their project list while pinned; pinned projects follow with their task lists and can be dragged within the pinned area without changing the main list. Unpinning a task returns it to its project by time; unpinning a project returns it to its saved place. "Pin project" no longer moves the project to the top of the main list.
+- The project list is one manual order saved in `projects.json`: a newly added project is placed at the top once, and opening or using a project never moves it. The first launch after upgrading saves the order the list already shows.
+- Within a project, running tasks are listed first in the order they were created, so rows no longer swap while they stream; the rest follow by most recent activity. Forked tasks are listed flat like any other task, in the sidebar and in the "+N more" picker.
+- Archive comes before delete. Task and project menus (and the task breadcrumb menu) offer Archive; Delete and Remove are offered only for archived tasks and projects. Hovering a task row shows Pin and Archive buttons. Archiving a pinned task or project unpins it, and unarchiving does not pin it again. Task pin and archive state is saved in `session-flags.json` and survives restarts; deleting a task clears it.
+
 ## [0.1.47-beta.3] - 2026-11-21
 
 ### Changed

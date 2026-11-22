@@ -1,17 +1,31 @@
 export const PROJECT_CONTEXT_MENU_GROUPS = [
   ['pin-project', 'open-project-folder', 'rename-project'],
-  ['remove-project'],
+  ['archive-project'],
 ] as const;
 
+// F149: 先归档、再移除——移除只对已归档的项目提供。
+export const ARCHIVED_PROJECT_CONTEXT_MENU_GROUPS = [
+  ['unarchive-project', 'remove-project'],
+] as const;
+
+// F149: 先归档、再删除——日常菜单只有归档；删除只对已归档的任务提供。
 export const SESSION_CONTEXT_MENU_GROUPS = [
   ['pin-session', 'rename-session', 'toggle-session-unread'],
   ['open-session-folder', 'copy-working-directory', 'copy-session-id'],
   ['continue-in-new-session'],
-  ['delete-session'],
+  ['archive-session'],
 ] as const;
 
-export type ProjectContextMenuActionId = (typeof PROJECT_CONTEXT_MENU_GROUPS)[number][number];
-export type SessionContextMenuActionId = (typeof SESSION_CONTEXT_MENU_GROUPS)[number][number];
+export const ARCHIVED_SESSION_CONTEXT_MENU_GROUPS = [
+  ['unarchive-session', 'delete-session'],
+] as const;
+
+export type ProjectContextMenuActionId =
+  | (typeof PROJECT_CONTEXT_MENU_GROUPS)[number][number]
+  | (typeof ARCHIVED_PROJECT_CONTEXT_MENU_GROUPS)[number][number];
+export type SessionContextMenuActionId =
+  | (typeof SESSION_CONTEXT_MENU_GROUPS)[number][number]
+  | (typeof ARCHIVED_SESSION_CONTEXT_MENU_GROUPS)[number][number];
 
 interface ContextMenuPositionInput {
   readonly x: number;

@@ -19,7 +19,7 @@ if(channel==='session.list')return{ok:true,data:{sessions}};
 if(channel==='session.listRunning')return{ok:true,data:{peers:[]}};
 return{ok:false,error:{message:'Unused fixture channel: '+channel}};
 }};
-useAppStore.setState({projects,projectOrder:[],expandedProjects:{},sessions,currentSessionId:'current',currentProjectPath:'/cur',
+useAppStore.setState({projects,expandedProjects:{},sessions,currentSessionId:'current',currentProjectPath:'/cur',
 sessionFlags:{done:{unread:true}},eventsBySession:{failed:[{kind:'session_error',sessionId:'failed',error:'boom'}]}});
 window.store=useAppStore;
 createRoot(document.getElementById('root')).render(<I18nProvider><div style={{width:280,height:600,display:'flex',flexDirection:'column'}}><LeftSidebar onOpenSettings={()=>{}}/></div></I18nProvider>);
@@ -41,7 +41,7 @@ if(channel==='session.list')return{ok:true,data:{sessions:sessions.filter((s)=>s
 if(channel==='session.listRunning')return{ok:true,data:{peers:[]}};
 return{ok:false,error:{message:'Unused fixture channel: '+channel}};
 }};
-useAppStore.setState({projects,projectOrder:[],expandedProjects:{},sessions,currentSessionId:'current',currentProjectPath:'/cur',
+useAppStore.setState({projects,expandedProjects:{},sessions,currentSessionId:'current',currentProjectPath:'/cur',
 showArchivedSessions:false,archivedProjectsExpanded:false,
 sessionFlags:{shelved:{archived:true,unread:true},old:{unread:true},partnerDone:{unread:true}}});
 createRoot(document.getElementById('root')).render(<I18nProvider><div style={{width:280,height:600,display:'flex',flexDirection:'column'}}><LeftSidebar onOpenSettings={()=>{}}/></div></I18nProvider>);

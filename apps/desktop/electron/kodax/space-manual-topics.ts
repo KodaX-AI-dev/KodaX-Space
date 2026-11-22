@@ -317,7 +317,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     summary:
       'Space 的主界面：左侧项目/会话，顶部环境与活动，中央对话，右侧 Task Dock，底部 composer。',
     body: text(
-      '左侧栏：项目列表、最近会话、归档项目、会话切换与项目管理；筛选菜单已由单个“显示已归档会话”开关替代，开启后归档行变暗显示。新打开的项目排在最上方（越新越靠上），拖动后按拖动顺序保存在 projects.json，之后新打开的项目仍排在最上方；该顺序由开发版与打包版共享；会话先按置顶、再按最近活动排序。导航模式和 Files 模式底部都保留 Settings 入口。',
+      '左侧栏：置顶区（置顶会话、置顶项目）、项目列表、最近会话、归档项目、会话切换与项目管理；筛选菜单已由单个“显示已归档会话”开关替代，开启后归档行变暗显示。项目列表是一个手动顺序，新加入的项目放在最上，拖动后保存在 projects.json，由开发版与打包版共享；项目内运行中的会话在前，其余按最近活动排序。导航模式和 Files 模式底部都保留 Settings 入口。',
       '进入 Settings 后，设置分类替代项目/文件导航，原工作区在后台保持挂载。返回工作区、关闭设置或按 Escape 后恢复原导航模式、宽度、文件搜索和草稿，后台运行不会因进入设置而停止。',
       '右上角版本与企业版/社区版徽标打开运行时诊断，显示当前构建、已加载 SDK、许可证与能力边界。打开、连接变化和手动刷新均重读状态；中文/英文跟随界面语言。技术详情保留声明依赖、诊断信息版本、平台与原始诊断，Memory policy 是策略标识而非 SDK 包版本。查看诊断不会执行沙箱设置或启动任务。',
       '后台 Session 等待权限或 ask_user 时，左侧栏显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 与 guardrail 授权以对话流内的聚焦提问卡呈现，全部待答卡并存可答，composer 上方的召回停靠条显示计数并可定位闪光到队首卡。切换 Session 不会丢失耐久队列中的请求。',
@@ -484,7 +484,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'sessions',
     title: 'Projects and sessions',
-    summary: '左侧栏管理项目、会话、归档、最近会话和 session 级操作。',
+    summary: '左侧栏管理项目、会话、置顶区、归档、最近会话和 session 级操作。',
     body: text(
       '/goal <objective> [--tokens N] stores a goal in the shared Host, after the Session has a conversation entry. Empty Sessions must receive an input before a goal can be created; Space preserves that Host restriction. status reads actual Host state/usage; pause/resume/clear are persisted. Goal completion/blocking is Host-managed. /model default clears the Session override and stays cleared after Main resumes the Session. Quick Ask waits for the real Run terminal state, with no local 60-second completion.',
       'Project 是本地工作目录；Session 是围绕某个 project 的连续对话。',
@@ -497,7 +497,10 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '用户提问带固定的本地化发送者标签、浅蓝背景和左侧强调边，长提问仍可展开、收起与复制全文。标签不会进入复制内容；图片和轮次操作入口保留。',
       'Ctrl/Cmd+F 默认查找已加载内容，包含当前显示的实时文字；零匹配可显式搜索已保存会话。保存检索不覆盖未保存输出，相关结果数不代表全文出现次数。点击结果优先定位上下文，无法定位则提供原文，也可单独查看原文；返回结果恢复原阅读页、查询与焦点。定位和恢复位置不会被当成用户翻页操作。',
       '',
-      '左侧栏可打开/移除/归档项目，项目排序可持久化；展开项目会显示最近会话，更多会话通过 picker overlay 搜索。Session 可以新建、选择、重命名、删除、Fork、Rewind 或通过 /new、/sessions、/load、/delete、/fork、/rewind 等命令管理。',
+      '左侧栏可打开、置顶、归档项目；展开项目会显示最近会话，更多会话通过 picker overlay 搜索。Session 可以新建、选择、重命名、置顶、归档、Fork、Rewind 或通过 /new、/sessions、/load、/delete、/fork、/rewind 等命令管理。',
+      '置顶区在项目列表上方：置顶的 Session 在前（最近置顶的在最上），置顶期间离开所属项目；置顶项目带着会话列表排在其后，可在置顶区内拖排，不影响主列表。取消置顶后 Session 按时间回到项目，项目回到主列表原位置。Coder 与 Partner 各自只显示本工作面的置顶 Session，置顶项目两边共用。',
+      '项目主列表是一个手动顺序（projects.json）：新项目加入时放在最上，打开或使用不改变顺序。项目内运行中的 Session 排在最前、按开始时间排列，流式输出时不换位；其余按最近活动排序；Fork 出的 Session 平铺显示。',
+      '先归档、再删除：未归档 Session 与项目的右键菜单和面包屑菜单只有归档，悬停 Session 行可直接置顶或归档；删除 Session、移除项目只对已归档条目提供。归档会取消置顶，取消归档不恢复置顶；置顶与归档状态保存在 session-flags.json 与 projects.json，重启后保持。',
       '侧栏项目和 Session 重命名可按 Enter 或移开焦点保存一次，Escape 取消；输入法选词确认不会提前提交。保存被拒绝时保留原名称并显示错误提示；右键菜单按 Escape 返回触发位置。',
       '删除 Session 时，列表行会先进入“删除中”状态并禁用重复操作；删除成功后再收起并移除，失败则保留原行和可见错误。',
       '',
@@ -516,6 +519,10 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'project list',
       '项目列表',
       '左侧栏',
+      '置顶',
+      'pin',
+      '归档',
+      'archive',
       'history',
     ],
     nextTopics: [

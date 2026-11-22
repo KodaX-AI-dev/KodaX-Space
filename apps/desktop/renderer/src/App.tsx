@@ -16,7 +16,8 @@ import type {
   SpaceVersionOutput,
 } from '@kodax-space/space-ipc-schema';
 import { useAppStore } from './store/appStore.js';
-import { adoptSavedProjectOrder } from './store/projectOrderSync.js';
+import { migrateLegacyProjectOrder } from './store/projectOrderSync.js';
+import { loadSessionFlags } from './store/sessionFlagSync.js';
 import { replaceProductSessionView } from './store/productSessionView.js';
 import { replaceChildAgentLive } from './store/childAgentLive.js';
 import { pushToast } from './store/toastStore.js';
@@ -798,7 +799,11 @@ export default function App(): JSX.Element {
       const listR = await bridge.invoke('project.list', undefined).catch(() => null);
       const projects = listR && listR.ok ? listR.data.projects : [];
       useAppStore.getState().setProjects(projects);
-      if (listR && listR.ok) void adoptSavedProjectOrder(bridge, listR.data.order);
+      if (listR && listR.ok) void migrateLegacyProjectOrder(bridge, listR.data.order);
+      void loadSessionFlags(bridge).then((ok) => {
+        if (!ok)
+          console.warn('[session.flags] load failed; pinned / archived tasks show unflagged');
+      });
 
       // 已经有 currentProjectPath（localStorage 恢复 / 用户已操作）→ 不覆盖
       if (useAppStore.getState().currentProjectPath) return;

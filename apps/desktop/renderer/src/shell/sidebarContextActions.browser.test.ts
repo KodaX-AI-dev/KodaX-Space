@@ -11,7 +11,7 @@ import{LeftSidebar}from'./LeftSidebar.tsx';import{I18nProvider}from'../i18n/I18n
 import{useAppStore}from'../store/appStore.ts';import{useToastStore}from'../store/toastStore.ts';
 const session={sessionId:'s',title:'Original task',surface:'code',projectRoot:'/project',createdAt:1,lastActivityAt:1};
 const project={path:'/project',name:'Project',lastUsedAt:1};
-window.flags=()=>useAppStore.getState().sessionFlags.s;window.calls=[];window.fail=false;window.toasts=()=>useToastStore.getState().toasts;
+window.flags=()=>useAppStore.getState().sessionFlags.s;window.calls=[];window.fail=false;window.failFlags=false;window.toasts=()=>useToastStore.getState().toasts;
 window.kodaxSpace={platform:'win32',on:()=>()=>{},invoke:async(channel,input)=>{
 window.calls.push({channel,input});
 if(channel==='session.list')return{ok:true,data:{sessions:[session]}};
@@ -19,6 +19,7 @@ if(channel==='session.listRunning')return{ok:true,data:{peers:[]}};
 if(channel==='project.list')return{ok:true,data:{projects:[project]}};
 if(channel==='session.setTitle'){if(!window.fail)session.title=input.title;return{ok:true,data:{ok:!window.fail}};}
 if(channel==='project.recent.rename'){project.name=input.name;return{ok:true,data:{renamed:true}};}
+if(channel==='session.flags.set'){if(window.failFlags)return{ok:false,error:{message:'disk full'}};return{ok:true,data:{flags:input.pinned?{s:{pinnedAt:123}}:{}}};}
 if(channel==='shell.openPath')return{ok:true,data:{opened:true}};
 return{ok:false,error:{message:'Unused fixture channel'}};
 }};
@@ -135,7 +136,28 @@ test(
       await page.locator('[data-menu-action="' + action + '"]').click();
       assert.equal(await page.getByRole('menu').count(), 0);
     }
-    assert.deepEqual(await page.evaluate('window.flags()'), { pinned: true, unread: true });
+    // Pin is saved by main (survives a restart); unread stays renderer-only.
+    assert.deepEqual(await page.evaluate('window.flags()'), { pinnedAt: 123, unread: true });
+    assert.deepEqual(
+      await page.evaluate("window.calls.filter(call=>call.channel==='session.flags.set')"),
+      [{ channel: 'session.flags.set', input: { sessionId: 's', pinned: true } }],
+    );
+    const errorToasts = (): Promise<number> =>
+      page.evaluate("window.toasts().filter(toast=>toast.tone==='error').length");
+    const errorsBefore = await errorToasts();
+    await page.evaluate('window.failFlags=true');
+    await row.click({ button: 'right' });
+    await page.locator('[data-menu-action="pin-session"]').click();
+    await page.waitForFunction(
+      (count) =>
+        (window as unknown as { toasts(): { tone: string }[] })
+          .toasts()
+          .filter((toast) => toast.tone === 'error').length > count,
+      errorsBefore,
+    );
+    // A failed save rolls the unpin back.
+    assert.deepEqual(await page.evaluate('window.flags()'), { pinnedAt: 123, unread: true });
+    await page.evaluate('window.failFlags=false');
     await row.click({ button: 'right' });
     await page.keyboard.press('ArrowDown');
     assert.equal(

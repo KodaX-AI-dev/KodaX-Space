@@ -19,18 +19,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
+  ArchiveRestore,
   Plus,
   ChevronDown,
   Ellipsis,
   FolderTree,
   Monitor,
   Pin,
+  PinOff,
   Blocks,
   SquarePen,
 } from 'lucide-react';
 import { SurfaceTabs } from './SurfaceTabs.js';
-import { moveItem } from './sortPreview.js';
-import { useDragSort } from './useDragSort.js';
+import { moveWithinVisible } from './sortPreview.js';
+import { useDragSort, type DragSort } from './useDragSort.js';
 import { useAppStore } from '../store/appStore.js';
 import { startNewConversation } from '../store/newConversation.js';
 import { useSurfaceStore } from '../store/surface.js';
@@ -44,6 +46,8 @@ import {
 import { SessionContextMenu } from './SessionContextMenu.js';
 import { ProjectContextMenu } from './ProjectContextMenu.js';
 import { ProjectSessionPicker } from './ProjectSessionPicker.js';
+import { sortPinnedSessions, sortProjectSessions } from './sessionOrder.js';
+import { usePinnedSessionsOutsideWindow } from './usePinnedSessionsOutsideWindow.js';
 import { SidebarFooter } from './SidebarFooter.js';
 import { useSessionStatusMap, type SessionStatus } from '../features/session/useSessionStatus.js';
 import { SessionAwaitingIndicator } from '../features/session/SessionAwaitingIndicator.js';
@@ -55,7 +59,8 @@ import {
 } from '../features/session/sessionAttention.js';
 import { ProjectAttentionBadge } from './ProjectAttentionBadge.js';
 import { pushToast } from '../store/toastStore.js';
-import { saveProjectOrder } from '../store/projectOrderSync.js';
+import { toggleSessionFlagPersisted } from '../store/sessionFlagSync.js';
+import { savePinnedProjects, saveProjectOrder } from '../store/projectOrderSync.js';
 import type { Project } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
@@ -272,6 +277,17 @@ export function LeftSidebar({
             {currentProjectPath ? t('sidebar.noSessionsYet') : t('sidebar.openFolderToStart')}
           </div>
         )}
+        <PinnedTasks
+          key={currentSurface}
+          sessions={visibleSessions}
+          loadedIds={listedSessionIds}
+          statusMap={statusMap}
+          currentSessionId={currentSessionId}
+          onSelect={(sessionId) => {
+            onNavigate?.();
+            setCurrentSession(sessionId);
+          }}
+        />
         {/* F040: 多项目可折叠树。currentProjectPath 默认展开 + 高亮；
             其它项目折叠。状态点驱动来自 useSessionStatusMap。 */}
         <ProjectTree
@@ -336,9 +352,7 @@ function ProjectTree({
   const currentProjectPath = useAppStore((s) => s.currentProjectPath);
   const expandedProjects = useAppStore((s) => s.expandedProjects);
   const toggleProjectExpanded = useAppStore((s) => s.toggleProjectExpanded);
-  // v0.1.9 Step 7 — 拖排顺序 + archived 折叠状态 (持久化)
-  const projectOrder = useAppStore((s) => s.projectOrder);
-  const setProjectOrder = useAppStore((s) => s.setProjectOrder);
+  // archived 折叠状态 (持久化)
   const archivedExpanded = useAppStore((s) => s.archivedProjectsExpanded);
   const setArchivedExpanded = useAppStore((s) => s.setArchivedProjectsExpanded);
 
@@ -391,38 +405,58 @@ function ProjectTree({
     }
   }, [setProjects, t]);
 
-  // 项目顺序：不在拖排顺序里的（新加的）排最上、按添加时间新→旧；拖排过的按 projectOrder 排在其后。
-  // 使用不会重排。F043: archived 项目从主列表剔出,单独"Archived (N)"分组展示。
-  const ordered = useMemo(() => {
-    const orderIdx = new Map(projectOrder.map((p, i) => [p, i] as const));
-    const rank = (p: Project): number => orderIdx.get(canonProjectRootBrowser(p.path)) ?? -1;
-    return projects
-      .filter((p) => p.archived !== true)
-      .sort((a, b) => rank(a) - rank(b) || b.addedAt - a.addedAt);
-  }, [projects, projectOrder]);
+  // F149: project.list 已按 projects.json 的手动顺序返回（新项目在最上），这里不再重排。
+  // 置顶项目进置顶区（按 pinnedIndex），不改主列表 order——取消置顶即回原位。
+  // F043: archived 项目从主列表剔出,单独"Archived (N)"分组展示。
+  const ordered = useMemo(() => projects.filter(isMainListProject), [projects]);
+  const pinnedProjects = useMemo(() => pinnedProjectList(projects), [projects]);
+  const archived = useMemo(() => projects.filter((p) => p.archived === true), [projects]);
 
-  const archived = useMemo(
-    () => projects.filter((p) => p.archived === true).sort((a, b) => b.addedAt - a.addedAt),
-    [projects],
-  );
-
-  // 拖排 / 置顶都基于用户当前看到的顺序计算,结果写进 projects.json (dev 与打包版共享)。
+  // 拖排只移动可见行，隐藏项目留在原槽位；完整顺序写进 projects.json (dev 与打包版共享)。
   const moveProject = useCallback(
     (from: number, to: number): void => {
-      const next = moveItem(
-        ordered.map((p) => canonProjectRootBrowser(p.path)),
-        from,
-        to,
-      );
-      setProjectOrder(next);
+      const next = moveWithinVisible(projects, isMainListProject, from, to);
+      setProjects(next);
       if (!window.kodaxSpace) return;
-      void saveProjectOrder(window.kodaxSpace, next).then((saved) => {
-        if (!saved) pushToast(t('sidebar.projectOrderSaveFailed'), 'error');
+      const order = next.map((p) => canonProjectRootBrowser(p.path));
+      void saveProjectOrder(window.kodaxSpace, order).then((saved) => {
+        if (saved) return;
+        pushToast(t('sidebar.projectOrderSaveFailed'), 'error');
+        void refreshProjects();
       });
     },
-    [ordered, setProjectOrder, t],
+    [projects, setProjects, refreshProjects, t],
   );
   const dragSort = useDragSort(ordered.length, moveProject);
+
+  // F149: 置顶 / 取消置顶 / 置顶区拖排都写完整置顶列表 (projects.json 的 pinned)。
+  const setPinned = useCallback(
+    (pinned: readonly string[]): void => {
+      setProjects(withPinnedIndex(projects, pinned));
+      if (!window.kodaxSpace) return;
+      void savePinnedProjects(window.kodaxSpace, pinned).then((saved) => {
+        if (saved) return;
+        pushToast(t('sidebar.projectPinSaveFailed'), 'error');
+        void refreshProjects();
+      });
+    },
+    [projects, setProjects, refreshProjects, t],
+  );
+  const pinnedPaths = useMemo(
+    () => pinnedProjects.map((p) => canonProjectRootBrowser(p.path)),
+    [pinnedProjects],
+  );
+  const movePinnedProject = useCallback(
+    (from: number, to: number): void => {
+      const next = [...pinnedPaths];
+      const [moved] = next.splice(from, 1);
+      if (moved === undefined) return;
+      next.splice(to, 0, moved);
+      setPinned(next);
+    },
+    [pinnedPaths, setPinned],
+  );
+  const pinnedDragSort = useDragSort(pinnedProjects.length, movePinnedProject);
 
   // 按 projectRoot 把 sessions 分组（用 canonProjectRoot 比较，避免 windows 大小写 / trailing
   // slash / 分隔符差异）。reviewer MED-2: 用不可变 spread 而非 push 原地改，遵循项目 immutability 规则。
@@ -475,12 +509,12 @@ function ProjectTree({
   // ⚠️ 早 return 必须放在所有 hooks 之后 —— 否则首次启动 (projects 空) 提前 return 会跳过
   //    下面的 onRenameCommit useCallback，项目注入后又执行，hooks 顺序不一致 → React #310 → 白屏。
   //    这是个反复踩过的坑：新增 hook 一律加在这行之前。
-  if (ordered.length === 0 && archived.length === 0) return null;
+  if (ordered.length === 0 && pinnedProjects.length === 0 && archived.length === 0) return null;
 
   const renderProject = (
     proj: Project,
     treatAsCurrent: boolean,
-    sortIndex?: number,
+    sort?: { readonly index: number; readonly drag: DragSort },
   ): JSX.Element => {
     const projCanon = canonProjectRootBrowser(proj.path);
     const defaultExpanded = treatAsCurrent;
@@ -508,20 +542,20 @@ function ProjectTree({
     // 项目 row 整行可拖排 (指针拖动,见 useDragSort)。archived 项目不参与排序;重命名中 /
     // 上下文菜单开着时禁拖,避免和输入框选字、菜单交互打架。
     const isCtxMenuOnRow = projCtxMenu?.project.path === proj.path;
-    const canDrag = sortIndex !== undefined && !isRenaming && !isCtxMenuOnRow;
-    const isDragSource = sortIndex !== undefined && dragSort.draggingIndex === sortIndex;
+    const canDrag = sort !== undefined && !isRenaming && !isCtxMenuOnRow;
+    const isDragSource = sort !== undefined && sort.drag.draggingIndex === sort.index;
     return (
       <div
         key={proj.path}
-        ref={sortIndex !== undefined ? dragSort.itemRef(sortIndex) : undefined}
-        style={sortIndex !== undefined ? dragSort.itemStyle(sortIndex) : undefined}
+        ref={sort?.drag.itemRef(sort.index)}
+        style={sort?.drag.itemStyle(sort.index)}
         className="mb-1"
       >
         <div
           onPointerDown={(e) => {
-            if (sortIndex === undefined || !canDrag) return;
+            if (sort === undefined || !canDrag) return;
             if ((e.target as HTMLElement).closest('[data-drag-ignore]')) return;
-            dragSort.onHandlePointerDown(sortIndex, e);
+            sort.drag.onHandlePointerDown(sort.index, e);
           }}
           className={`group/projectrow w-full text-xs px-2 py-1 rounded flex items-center gap-1.5 ${
             treatAsCurrent
@@ -646,7 +680,7 @@ function ProjectTree({
                 sessions={projSessions}
                 currentSessionId={currentSessionId}
                 onSelect={onSelect}
-                projectRoot={proj.path}
+                scope={{ projectRoot: proj.path }}
                 statusFor={statusFor}
                 maxVisible={visibleLimit}
                 initialVisible={SESSIONS_PER_PROJECT_INITIAL_VISIBLE}
@@ -662,15 +696,28 @@ function ProjectTree({
     );
   };
 
+  const isCurrentProject = (proj: Project): boolean =>
+    currentProjectPath !== null &&
+    canonProjectRootBrowser(proj.path) === canonProjectRootBrowser(currentProjectPath);
+
   return (
-    <div onClickCapture={dragSort.onClickCapture}>
-      {ordered.map((proj, index) => {
-        const projCanon = canonProjectRootBrowser(proj.path);
-        const isCurrent = currentProjectPath
-          ? projCanon === canonProjectRootBrowser(currentProjectPath)
-          : false;
-        return renderProject(proj, isCurrent, index);
-      })}
+    <div>
+      {pinnedProjects.length > 0 && (
+        <div
+          data-testid="sidebar-pinned-projects"
+          className="mb-2"
+          onClickCapture={pinnedDragSort.onClickCapture}
+        >
+          {pinnedProjects.map((proj, index) =>
+            renderProject(proj, isCurrentProject(proj), { index, drag: pinnedDragSort }),
+          )}
+        </div>
+      )}
+      <div onClickCapture={dragSort.onClickCapture}>
+        {ordered.map((proj, index) =>
+          renderProject(proj, isCurrentProject(proj), { index, drag: dragSort }),
+        )}
+      </div>
 
       {archived.length > 0 && (
         <div className="mt-3 pt-2 border-t border-border-default/40">
@@ -709,9 +756,14 @@ function ProjectTree({
           x={projCtxMenu.x}
           y={projCtxMenu.y}
           onClose={() => setProjCtxMenu(null)}
-          onPinProject={() => {
-            const index = ordered.findIndex((p) => p.path === projCtxMenu.project.path);
-            if (index > 0) moveProject(index, 0);
+          onTogglePin={() => {
+            const target = canonProjectRootBrowser(projCtxMenu.project.path);
+            // 新置顶的放在置顶区最上；取消置顶回到主列表原位（order 未动）。
+            setPinned(
+              pinnedPaths.includes(target)
+                ? pinnedPaths.filter((p) => p !== target)
+                : [target, ...pinnedPaths],
+            );
           }}
           onStartRename={() => {
             setRenamingPath(projCtxMenu.project.path);
@@ -727,10 +779,8 @@ function ProjectTree({
           projectName={pickerProject.name}
           projectPath={pickerProject.path}
           surface={currentSurface}
-          // 把本项目所有 session 按 lastActivityAt desc 排好传进去
-          sessions={(sessionsByProject.get(canonProjectRootBrowser(pickerProject.path)) ?? [])
-            .slice()
-            .sort((a, b) => b.lastActivityAt - a.lastActivityAt)}
+          sessions={sessionsByProject.get(canonProjectRootBrowser(pickerProject.path)) ?? []}
+          statusFor={statusFor}
           currentSessionId={currentSessionId}
           onSelect={(sid) => {
             useAppStore.getState().setCurrentProject(pickerProject.path);
@@ -776,8 +826,8 @@ interface SessionTreeProps {
   readonly sessions: readonly SessionMeta[];
   readonly currentSessionId: string | null;
   readonly onSelect: (sessionId: string) => void;
-  /** F040: 该树所属项目；只渲染这个项目的 session。 */
-  readonly projectRoot: string;
+  /** F040: 项目树只渲染该项目未置顶的 session；F149 'pinned' = 置顶区，只渲染置顶的。 */
+  readonly scope: { readonly projectRoot: string } | 'pinned';
   /** F040: 每行末尾的状态点。idle 不渲染（避免噪音）；缺省整个 sidebar 都不显示状态。 */
   readonly statusFor?: (sessionId: string) => SessionStatus;
   /** 默认显示上限。超过 cap 时下方渲染展开/全部/折叠动作；undefined = 不 cap (legacy). */
@@ -796,17 +846,88 @@ function canonProjectRootBrowser(p: string): string {
   return canonProjectRoot(p, IS_WIN);
 }
 
+/** 项目主列表显示的项目（已归档的进底部 Archived 分组，置顶的进置顶区）。 */
+function isMainListProject(p: Project): boolean {
+  return p.archived !== true && p.pinnedIndex === undefined;
+}
+
+/** F149: 置顶区的项目，按置顶区顺序。 */
+function pinnedProjectList(projects: readonly Project[]): Project[] {
+  return projects
+    .filter((p) => p.archived !== true && p.pinnedIndex !== undefined)
+    .sort((a, b) => (a.pinnedIndex ?? 0) - (b.pinnedIndex ?? 0));
+}
+
+/** F149: 按新的置顶列表 (canon 路径) 重写每个项目的 pinnedIndex（乐观更新用）。 */
+function withPinnedIndex(projects: readonly Project[], pinned: readonly string[]): Project[] {
+  return projects.map(({ pinnedIndex: _old, ...p }) => {
+    const index = pinned.indexOf(canonProjectRootBrowser(p.path));
+    return index < 0 ? p : { ...p, pinnedIndex: index };
+  });
+}
+
 // 项目下默认显示 5 个最近 session；每次轻量展开 5 个，最多内联 20 个。
 // 再多时走中央 picker 模糊搜 + 选，避免长列表把其它项目挤出视野。
 const SESSIONS_PER_PROJECT_INITIAL_VISIBLE = 5;
 const SESSIONS_PER_PROJECT_STEP = 5;
 const SESSIONS_PER_PROJECT_INLINE_MAX = 20;
 
+/**
+ * F149: 置顶区（置顶任务部分）——当前工作面的置顶任务，最近置顶的在最上，不受项目加载窗口
+ * 与项目展开状态影响。窗口外的置顶任务按 id 补齐；点开时先切到它的项目（同 "+N more"）。
+ */
+function PinnedTasks({
+  sessions,
+  loadedIds,
+  statusMap,
+  currentSessionId,
+  onSelect,
+}: {
+  readonly sessions: readonly SessionMeta[];
+  readonly loadedIds: readonly string[];
+  readonly statusMap: Readonly<Record<string, SessionStatus>>;
+  readonly currentSessionId: string | null;
+  readonly onSelect: (sessionId: string) => void;
+}): JSX.Element | null {
+  const currentSurface = useSurfaceStore((s) => s.currentSurface);
+  const sessionFlags = useAppStore((s) => s.sessionFlags);
+  const pinnedIds = useMemo(
+    () => Object.keys(sessionFlags).filter((id) => sessionFlags[id]?.pinnedAt !== undefined),
+    [sessionFlags],
+  );
+  const loaded = useMemo(() => new Set(loadedIds), [loadedIds]);
+  const fetched = usePinnedSessionsOutsideWindow(pinnedIds, loaded, currentSurface);
+  const outside = useMemo(() => fetched.filter((s) => !loaded.has(s.sessionId)), [fetched, loaded]);
+  const candidates = useMemo(() => [...sessions, ...outside], [sessions, outside]);
+  const outsideIds = useMemo(() => outside.map((s) => s.sessionId), [outside]);
+  const outsideStatus = useSessionStatusMap(outsideIds);
+  const statusFor = useCallback(
+    (sid: string): SessionStatus => statusMap[sid] ?? outsideStatus[sid] ?? 'idle',
+    [statusMap, outsideStatus],
+  );
+  if (!candidates.some((s) => sessionFlags[s.sessionId]?.pinnedAt !== undefined)) return null;
+  return (
+    <div data-testid="sidebar-pinned-tasks" className="mb-2">
+      <SessionTree
+        sessions={candidates}
+        currentSessionId={currentSessionId}
+        onSelect={(sessionId) => {
+          const target = outside.find((s) => s.sessionId === sessionId);
+          if (target) useAppStore.getState().setCurrentProject(target.projectRoot);
+          onSelect(sessionId);
+        }}
+        scope="pinned"
+        statusFor={statusFor}
+      />
+    </div>
+  );
+}
+
 function SessionTree({
   sessions,
   currentSessionId,
   onSelect,
-  projectRoot,
+  scope,
   statusFor,
   maxVisible,
   initialVisible,
@@ -820,11 +941,16 @@ function SessionTree({
   const showArchived = useAppStore((s) => s.showArchivedSessions);
 
   // 每个 SessionTree 只渲染自己项目的 session；归档的默认隐藏，但正打开或仍需要你的照常列出。
+  // F149: 置顶任务只在置顶区出现。scope 对象每次渲染新建，memo 只依赖它的项目路径。
+  const scopeRoot = scope === 'pinned' ? null : scope.projectRoot;
   const visible = useMemo(() => {
-    const projectCanon = canonProjectRootBrowser(projectRoot);
+    const projectCanon = scopeRoot === null ? null : canonProjectRootBrowser(scopeRoot);
+    const inScope = (s: SessionMeta): boolean =>
+      (sessionFlags[s.sessionId]?.pinnedAt !== undefined) === (projectCanon === null) &&
+      (projectCanon === null || canonProjectRootBrowser(s.projectRoot) === projectCanon);
     const listed = (s: SessionMeta): boolean =>
       showArchived ||
-      !sessionFlags[s.sessionId]?.archived ||
+      sessionFlags[s.sessionId]?.archivedAt === undefined ||
       s.sessionId === currentSessionId ||
       (statusFor !== undefined &&
         sessionAttentionKind({
@@ -832,15 +958,15 @@ function SessionTree({
           unread: sessionFlags[s.sessionId]?.unread === true,
           isCurrent: false,
         }) !== null);
-    return sessions.filter(
-      (s) => listed(s) && canonProjectRootBrowser(s.projectRoot) === projectCanon,
-    );
-  }, [sessions, sessionFlags, showArchived, projectRoot, currentSessionId, statusFor]);
+    return sessions.filter((s) => inScope(s) && listed(s));
+  }, [sessions, sessionFlags, showArchived, scopeRoot, currentSessionId, statusFor]);
 
-  // 排序：pinned 顶部，其余按最近活动；子 session 跟在父 session 下。
   const rendered = useMemo(
-    () => buildSessionTreeOrder(visible, (id) => Boolean(sessionFlags[id]?.pinned)),
-    [visible, sessionFlags],
+    () =>
+      scopeRoot === null
+        ? sortPinnedSessions(visible, (id) => sessionFlags[id]?.pinnedAt)
+        : sortProjectSessions(visible, statusFor),
+    [visible, statusFor, scopeRoot, sessionFlags],
   );
   // 右键菜单状态：哪个 session + 屏幕坐标
   const [ctxMenu, setCtxMenu] = useState<{ session: SessionMeta; x: number; y: number } | null>(
@@ -856,13 +982,13 @@ function SessionTree({
     return prioritizeAttentionItems(rendered, {
       maxVisible,
       currentId: currentSessionId,
-      getId: (node) => node.session.sessionId,
-      needsAttention: (node) =>
+      getId: (session) => session.sessionId,
+      needsAttention: (session) =>
         statusFor !== undefined &&
         sessionAttentionKind({
-          status: statusFor(node.session.sessionId),
-          unread: sessionFlags[node.session.sessionId]?.unread === true,
-          isCurrent: node.session.sessionId === currentSessionId,
+          status: statusFor(session.sessionId),
+          unread: sessionFlags[session.sessionId]?.unread === true,
+          isCurrent: session.sessionId === currentSessionId,
         }) !== null,
     });
   }, [rendered, maxVisible, currentSessionId, statusFor, sessionFlags]);
@@ -888,11 +1014,10 @@ function SessionTree({
 
   return (
     <>
-      {cappedRendered.map(({ session, depth }) => (
+      {cappedRendered.map((session) => (
         <SessionRow
           key={session.sessionId}
           session={session}
-          depth={depth}
           isSelected={session.sessionId === currentSessionId}
           flags={sessionFlags[session.sessionId]}
           isRenaming={renamingSessionId === session.sessionId}
@@ -954,54 +1079,8 @@ function SessionTree({
   );
 }
 
-interface SessionTreeNode {
-  readonly session: SessionMeta;
-  readonly depth: number;
-}
-
-/** DFS pre-order，root 按 (pinned 优先) → lastActivityAt 倒序；children 同样倒序。 */
-export function buildSessionTreeOrder(
-  sessions: readonly SessionMeta[],
-  isPinned: (sessionId: string) => boolean = () => false,
-): readonly SessionTreeNode[] {
-  const byId = new Map<string, SessionMeta>(sessions.map((s) => [s.sessionId, s]));
-  const childrenByParent = new Map<string, SessionMeta[]>();
-  const roots: SessionMeta[] = [];
-  for (const s of sessions) {
-    if (s.parentSessionId !== undefined && byId.has(s.parentSessionId)) {
-      const bucket = childrenByParent.get(s.parentSessionId) ?? [];
-      bucket.push(s);
-      childrenByParent.set(s.parentSessionId, bucket);
-    } else {
-      roots.push(s);
-    }
-  }
-  // pinned 在前，其后按 lastActivityAt 倒序
-  const orderFn = (a: SessionMeta, b: SessionMeta): number => {
-    const pa = isPinned(a.sessionId) ? 1 : 0;
-    const pb = isPinned(b.sessionId) ? 1 : 0;
-    if (pa !== pb) return pb - pa;
-    return b.lastActivityAt - a.lastActivityAt;
-  };
-  roots.sort(orderFn);
-  for (const list of childrenByParent.values()) list.sort(orderFn);
-
-  const out: SessionTreeNode[] = [];
-  const visited = new Set<string>();
-  function walk(s: SessionMeta, depth: number): void {
-    if (visited.has(s.sessionId)) return; // cycle guard
-    visited.add(s.sessionId);
-    out.push({ session: s, depth });
-    const kids = childrenByParent.get(s.sessionId) ?? [];
-    for (const c of kids) walk(c, depth + 1);
-  }
-  for (const r of roots) walk(r, 0);
-  return out;
-}
-
 function SessionRow({
   session,
-  depth,
   isSelected,
   flags,
   isRenaming,
@@ -1012,9 +1091,8 @@ function SessionRow({
   onCancelRename,
 }: {
   session: SessionMeta;
-  depth: number;
   isSelected: boolean;
-  flags: { pinned?: boolean; archived?: boolean; unread?: boolean } | undefined;
+  flags: { pinnedAt?: number; archivedAt?: number; unread?: boolean } | undefined;
   isRenaming: boolean;
   /** F040: per-session 状态点。'idle' 不渲染。 */
   status?: SessionStatus;
@@ -1029,8 +1107,7 @@ function SessionRow({
   // 两者由 lib/deleteSession.ts 流程驱动。
   const deleting = useAppStore((s) => s.deletingSessionIds.has(session.sessionId));
   const removing = useAppStore((s) => s.removingSessionIds.has(session.sessionId));
-  const indent = Math.min(depth, 4); // 不无限缩进；4 层就够
-  const padLeft = `${1.6 + indent * 0.9}rem`;
+  const padLeft = '1.6rem';
   const timeLabel = formatSidebarTime(session.lastActivityAt, effectiveLocale);
   const runtimeFallbackLabel =
     session.runtimeMetadataSource === 'current-default-fallback'
@@ -1081,7 +1158,7 @@ function SessionRow({
         removing ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr]'
       }`}
     >
-      <div className="min-h-0 overflow-hidden">
+      <div className="group/sessionitem relative min-h-0 overflow-hidden">
         <button
           type="button"
           data-testid="sidebar-session-row"
@@ -1098,7 +1175,11 @@ function SessionRow({
           aria-busy={deleting}
           aria-current={isSelected ? 'page' : undefined}
           className={`group/sessionrow w-full min-w-0 text-left text-xs px-2 py-1 rounded grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-2 min-h-[1.625rem] transition-opacity duration-150 ${
-            deleting ? 'opacity-40 pointer-events-none' : flags?.archived ? 'opacity-60' : ''
+            deleting
+              ? 'opacity-40 pointer-events-none'
+              : flags?.archivedAt !== undefined
+                ? 'opacity-60'
+                : ''
           } ${
             isSelected
               ? 'bg-surface-3 text-fg-primary'
@@ -1110,7 +1191,13 @@ function SessionRow({
           <span className="min-w-0 truncate">
             {session.title?.trim() || t('sidebar.session.untitled')}
           </span>
-          <span className="sidebar-session-meta flex min-w-0 items-center justify-end gap-1.5 text-xs text-fg-muted">
+          <span
+            className={`sidebar-session-meta flex min-w-0 items-center justify-end gap-1.5 text-xs text-fg-muted ${
+              deleting
+                ? ''
+                : 'group-hover/sessionitem:invisible group-focus-within/sessionitem:invisible'
+            }`}
+          >
             {deleting ? (
               <span
                 className="sidebar-status-spinner sidebar-status-spinner--mini"
@@ -1142,7 +1229,7 @@ function SessionRow({
                     title={statusLabel ?? undefined}
                   />
                 )}
-                {flags?.pinned && (
+                {flags?.pinnedAt !== undefined && (
                   <span aria-label={t('sidebar.status.pinned')} title={t('sidebar.status.pinned')}>
                     <Pin className="h-3 w-3 text-fg-muted" strokeWidth={1.9} aria-hidden />
                   </span>
@@ -1152,7 +1239,61 @@ function SessionRow({
             )}
           </span>
         </button>
+        {!deleting && <SessionRowActions session={session} flags={flags} />}
       </div>
+    </div>
+  );
+}
+
+/** F149: 任务行悬停按钮——置顶 / 归档（已归档只显示取消归档）。不切换当前任务。 */
+function SessionRowActions({
+  session,
+  flags,
+}: {
+  session: SessionMeta;
+  flags: { pinnedAt?: number; archivedAt?: number } | undefined;
+}): JSX.Element {
+  const { t } = useI18n();
+  const title = session.title?.trim() || t('sidebar.session.untitled');
+  const archived = flags?.archivedAt !== undefined;
+  const pinned = flags?.pinnedAt !== undefined;
+  const toggle = (flag: 'pinned' | 'archived'): void => {
+    void toggleSessionFlagPersisted(session.sessionId, flag, t('sidebar.sessionFlagSaveFailed'));
+  };
+  const buttonClass =
+    'inline-flex h-6 w-6 items-center justify-center rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary';
+  const archiveLabel = archived ? t('menu.session.unarchive') : t('menu.session.archive');
+  const pinLabel = pinned ? t('menu.session.unpin') : t('menu.session.pin');
+  return (
+    <div className="absolute inset-y-0 right-1 flex items-center gap-0.5 opacity-0 group-hover/sessionitem:opacity-100 group-focus-within/sessionitem:opacity-100">
+      {!archived && (
+        <button
+          type="button"
+          className={buttonClass}
+          aria-label={`${pinLabel}: ${title}`}
+          title={pinLabel}
+          onClick={() => toggle('pinned')}
+        >
+          {pinned ? (
+            <PinOff className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          ) : (
+            <Pin className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          )}
+        </button>
+      )}
+      <button
+        type="button"
+        className={buttonClass}
+        aria-label={`${archiveLabel}: ${title}`}
+        title={archiveLabel}
+        onClick={() => toggle('archived')}
+      >
+        {archived ? (
+          <ArchiveRestore className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        ) : (
+          <Archive className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        )}
+      </button>
     </div>
   );
 }

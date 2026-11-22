@@ -53,7 +53,14 @@ test('a legacy localStorage project order moves into projects.json', async () =>
   try {
     const { page } = space;
     await page.waitForTimeout(2000);
-    const seeded = ['/proj/a', '/proj/b', '/proj/c'];
+    const listOrder = (): Promise<string[] | null> =>
+      page.evaluate(async () => {
+        const result = await window.kodaxSpace!.invoke('project.list', undefined);
+        return result.ok ? result.data.order : null;
+      });
+    // main 补齐并清理旧顺序：已知项目按旧顺序排，不存在的路径被丢掉。
+    const known = [...((await listOrder()) ?? [])].reverse();
+    const seeded = [...known, '/proj/missing'];
     await page.evaluate((order) => {
       window.localStorage.setItem('kodax-space.projectOrder', JSON.stringify(order));
     }, seeded);
@@ -63,11 +70,7 @@ test('a legacy localStorage project order moves into projects.json', async () =>
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem('kodax-space.projectOrder')))
       .toBeNull();
-    const saved = await page.evaluate(async () => {
-      const result = await window.kodaxSpace!.invoke('project.list', undefined);
-      return result.ok ? result.data.order : null;
-    });
-    expect(saved).toEqual(seeded);
+    expect(await listOrder()).toEqual(known);
   } finally {
     await space.close();
   }

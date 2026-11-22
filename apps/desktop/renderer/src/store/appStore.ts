@@ -48,6 +48,7 @@ import type {
   AgentActorTreeSnapshotT,
   SessionHistoryItem,
   SessionProductItem,
+  SessionFlagEntry,
 } from '@kodax-space/space-ipc-schema';
 import { bufferIndexForSelectorTurn } from '../features/session/turnIndex.js';
 import {
@@ -193,9 +194,10 @@ export interface Notification {
   readonly dismissOnOutsideInteraction?: boolean;
 }
 
-type SessionFlagName = 'pinned' | 'archived' | 'unread';
+/** 只在 renderer 内的标记；置顶 / 归档由主进程持久化（sessionFlagSync.ts）。 */
+type SessionFlagName = 'unread';
 type SessionFlagsById = Readonly<
-  Record<string, { pinned?: boolean; archived?: boolean; unread?: boolean } | undefined>
+  Record<string, { pinnedAt?: number; archivedAt?: number; unread?: boolean } | undefined>
 >;
 
 /** Renderer-only ownership marker for events reconstructed from a replaceable history window. */
@@ -747,11 +749,9 @@ interface AppState {
    *  暂在 Space 这层托管)。 */
   pendingModel: string | null;
   /**
-   * Session UX flags — alpha.1 阶段不持久化（重启清空）。
-   *   - pinned：sidebar Recents 顶部置顶
-   *   - archived：sidebar 默认隐藏（用 sort/filter 弹窗 → Archived 才显示）
-   *   - unread：sidebar 标题旁加 ● 圆点（用户标记，非自动）
-   * v0.1.x SDK 出持久化字段后迁移到 SessionMeta。
+   * Session UX flags。
+   *   - pinnedAt / archivedAt：F149 由主进程 session-flags.json 持久化（毫秒时间戳，缺省即否）
+   *   - unread：sidebar 标题旁加 ● 圆点，仅 renderer 内存（重启清空）
    */
   sessionFlags: SessionFlagsById;
   /** UI 主题。dark = 当前默认；light = zinc-100 系；'system' = 跟 OS prefers-color-scheme。
@@ -798,13 +798,6 @@ interface AppState {
   /** Backward-compatible boolean view of mascotMode. */
   mascotEnabled: boolean;
   nativeCompletionNotificationsEnabled: boolean;
-  /**
-   * v0.1.9 Step 7 — 用户手动拖动排过的项目顺序 (canonProjectRoot 形态)。
-   *   - 空数组 = 没拖过,LeftSidebar 按添加时间新→旧显示
-   *   - 非空 = 不在本数组里的(新加的)按添加时间新→旧排最上,其后按本数组顺序
-   * 持久化在 main 端 projects.json (project.order.set)，见 projectOrderSync.ts。
-   */
-  projectOrder: readonly string[];
   /** v0.1.9 Step 7 — sidebar "Archived (N)" 折叠组的展开状态。默认折叠,localStorage 持久化。*/
   archivedProjectsExpanded: boolean;
   /**
@@ -1046,9 +1039,11 @@ interface AppState {
   setPendingPermissionMode(mode: SessionMeta['permissionMode'] | null): void;
   setPendingAgentMode(mode: SessionMeta['agentMode'] | null): void;
   setPendingModel(model: string | null): void;
-  /** Session UX flags — 局部状态 (alpha.1 不持久化)。toggle 形 + 合并形 set 函数。*/
+  /** unread 标记 — 仅 renderer 内存。toggle 形 + 合并形 set 函数。*/
   toggleSessionFlag(sessionId: string, flag: SessionFlagName): void;
   setSessionFlag(sessionId: string, flag: SessionFlagName, value: boolean): void;
+  /** F149: 用主进程的置顶 / 归档标记整体替换本地副本，保留 renderer 内的 unread。*/
+  replacePersistedSessionFlags(flags: Readonly<Record<string, SessionFlagEntry>>): void;
   setShowArchivedSessions(show: boolean): void;
   setTheme(theme: 'dark' | 'light' | 'system'): void;
   /** F060：切视觉质量档。立即应用 <html> class + 写 localStorage。*/
@@ -1102,11 +1097,6 @@ interface AppState {
   setNativeCompletionNotificationsEnabled(enabled: boolean): void;
   /** KX-I-02: 标记某 (session, kind) 已被 promote 过(或用户主动开/关过),不再 auto。 */
   markPopoutPromoted(sessionId: string, kind: string): void;
-  /**
-   * 写入用户拖排后的完整 active 项目顺序 (canonProjectRoot 形态,即 sidebar 当前可见顺序)。
-   * 由调用方算好顺序,store 只负责持久化,避免 store 与 sidebar 对"未排过项目"的排序不一致。
-   */
-  setProjectOrder(order: readonly string[]): void;
   /** v0.1.9 Step 7 — 切"Archived (N)"折叠组展开状态。立即写 localStorage。 */
   setArchivedProjectsExpanded(expanded: boolean): void;
 }
@@ -1208,7 +1198,7 @@ function nextMascotMode(mode: MascotMode): MascotMode {
 
 /**
  * 旧版本存在 localStorage 的项目拖排顺序 (canonProjectRoot 路径数组)。现在顺序存于
- * projects.json，这里只作首屏初值与一次性迁移来源（见 projectOrderSync.ts）。
+ * projects.json，这里只作一次性迁移来源（见 projectOrderSync.ts）。
  * 坏值 (非 JSON / 非数组 / 元素非 string / 超 256 项) 一律返空。
  */
 export function readLegacyProjectOrder(): readonly string[] {
@@ -1288,7 +1278,7 @@ function setSessionFlagValue(
   const cur = flags[sessionId] ?? {};
   if (Boolean(cur[flag]) === value) return flags;
   const next = { ...cur, [flag]: value };
-  if (!next.pinned && !next.archived && !next.unread) {
+  if (next.pinnedAt === undefined && next.archivedAt === undefined && !next.unread) {
     const { [sessionId]: _drop, ...rest } = flags;
     return rest;
   }
@@ -6553,7 +6543,6 @@ export const useAppStore = create<AppState>((setState) => {
       lsGet(LS_KEY_NATIVE_COMPLETION_NOTIFICATIONS),
     ),
     promotedPopoutsBySession: {},
-    projectOrder: readLegacyProjectOrder(),
     archivedProjectsExpanded: lsGet('kodax-space.archivedProjectsExpanded') === '1',
 
     setProjects: (projects) => set({ projects }),
@@ -9729,11 +9718,6 @@ export const useAppStore = create<AppState>((setState) => {
         };
       }),
 
-    setProjectOrder: (order) => {
-      // projects.json 的 order 上限 256 项,这里同上限截断,保证写入的值能被读回。
-      set({ projectOrder: order.slice(0, 256) });
-    },
-
     setArchivedProjectsExpanded: (expanded) => {
       lsSet('kodax-space.archivedProjectsExpanded', expanded ? '1' : '0');
       set({ archivedProjectsExpanded: expanded });
@@ -9791,6 +9775,18 @@ export const useAppStore = create<AppState>((setState) => {
       set((state) => {
         const sessionFlags = setSessionFlagValue(state.sessionFlags, sessionId, flag, value);
         if (sessionFlags === state.sessionFlags) return state;
+        return { sessionFlags };
+      }),
+    replacePersistedSessionFlags: (flags) =>
+      set((state) => {
+        const sessionFlags: Record<
+          string,
+          { pinnedAt?: number; archivedAt?: number; unread?: boolean }
+        > = {};
+        for (const [id, entry] of Object.entries(flags)) sessionFlags[id] = { ...entry };
+        for (const [id, entry] of Object.entries(state.sessionFlags)) {
+          if (entry?.unread) sessionFlags[id] = { ...sessionFlags[id], unread: true };
+        }
         return { sessionFlags };
       }),
 

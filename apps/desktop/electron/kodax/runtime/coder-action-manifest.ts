@@ -115,6 +115,8 @@ export const FROZEN_V0131_CODER_ENTRYPOINTS = [
   'session.history',
   'session.statistics',
   'session.executionFacts',
+  'session.flags.list',
+  'session.flags.set',
   'session.list',
   'session.listRunning',
   'session.liveSnapshot',

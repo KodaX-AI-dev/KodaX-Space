@@ -7,6 +7,7 @@ import { BrowserWindow, dialog } from 'electron';
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { debuglog } from 'node:util';
+import { canonProjectRoot } from '@kodax-space/space-ipc-schema';
 import { registerChannel } from './register.js';
 import { validateProjectRoot } from './validate.js';
 import {
@@ -25,7 +26,21 @@ export function registerProjectChannels(): void {
   // project.list
   registerChannel('project.list', async () => {
     const projects = await projectStore.list();
-    return { projects, order: await projectStore.order() };
+    const pinned = await projectStore.pinned();
+    return {
+      projects: projects.map((p) => {
+        const pinnedIndex = pinned.indexOf(canonProjectRoot(p.path, process.platform === 'win32'));
+        return pinnedIndex < 0 ? p : { ...p, pinnedIndex };
+      }),
+      // 空 = projects.json 还没存过顺序（升级前的旧文件），renderer 据此决定是否迁移旧 localStorage 顺序。
+      order: (await projectStore.hasSavedOrder()) ? await projectStore.order() : [],
+    };
+  });
+
+  // project.pinned.set — F149 置顶项目列表（含置顶区顺序）；只影响显示，不碰 allowlist。
+  registerChannel('project.pinned.set', async (input) => {
+    await projectStore.setPinned(input.pinned);
+    return {};
   });
 
   // project.order.set — 用户拖排的项目顺序；只影响显示顺序，不碰 allowlist。

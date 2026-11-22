@@ -1,6 +1,6 @@
 interface AttentionSessionFlags {
-  readonly pinned?: boolean;
-  readonly archived?: boolean;
+  readonly pinnedAt?: number;
+  readonly archivedAt?: number;
   readonly unread?: boolean;
 }
 

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { canonProjectRoot } from '@kodax-space/space-ipc-schema';
 import { createProjectStore } from '../projects/store.js';
 
 let tmpDir = '';
@@ -252,32 +253,123 @@ test('rename + setArchived: independent fields, no mutual interference', async (
   assert.equal(list[0].archived, true);
 });
 
-test('order: empty until set, then persisted and kept across other mutations', async () => {
+const canon = (p: string): string => canonProjectRoot(p, process.platform === 'win32');
+
+test('order: a new project goes to the front; reopening a project keeps its place', async () => {
   const store = createProjectStore(storeFile, tmpDir);
   const a = path.join(tmpDir, 'a');
   const b = path.join(tmpDir, 'b');
   await store.addOrBump(a);
-  assert.deepEqual(await store.order(), []);
+  await store.addOrBump(b);
+  assert.deepEqual(await store.order(), [canon(b), canon(a)]);
 
-  await store.setOrder([b, a]);
+  await store.setOrder([canon(a), canon(b)]);
   await store.addOrBump(b);
   await store.rename(a, 'Renamed');
   await store.setArchived(b, true);
 
   const reloaded = createProjectStore(storeFile, tmpDir);
-  assert.deepEqual(await reloaded.order(), [b, a]);
-  assert.equal((await reloaded.list()).length, 2);
+  assert.deepEqual(await reloaded.order(), [canon(a), canon(b)]);
+  assert.deepEqual(
+    (await reloaded.list()).map((p) => p.path),
+    [a, b],
+  );
 });
 
-test('order: a file written before order existed still loads its projects', async () => {
+test('order: projects missing from the saved order go first, newest added first', async () => {
+  const p = (name: string, addedAt: number) => ({
+    path: path.join(tmpDir, name),
+    name,
+    addedAt,
+    lastUsedAt: 99 - addedAt,
+  });
   await fs.writeFile(
     storeFile,
     JSON.stringify({
       version: 1,
-      projects: [{ path: path.join(tmpDir, 'old'), name: 'old', addedAt: 1, lastUsedAt: 1 }],
+      projects: [p('old', 1), p('dragged1', 2), p('newer', 3), p('dragged2', 4)],
+      order: [canon(path.join(tmpDir, 'dragged2')), canon(path.join(tmpDir, 'dragged1'))],
     }),
   );
   const store = createProjectStore(storeFile, tmpDir);
-  assert.equal((await store.list()).length, 1);
-  assert.deepEqual(await store.order(), []);
+  assert.deepEqual(
+    (await store.list()).map((x) => x.name),
+    ['newer', 'old', 'dragged2', 'dragged1'],
+  );
+});
+
+test('order: a file written before order existed lists newest added first', async () => {
+  await fs.writeFile(
+    storeFile,
+    JSON.stringify({
+      version: 1,
+      projects: [
+        { path: path.join(tmpDir, 'old'), name: 'old', addedAt: 1, lastUsedAt: 9 },
+        { path: path.join(tmpDir, 'new'), name: 'new', addedAt: 2, lastUsedAt: 1 },
+      ],
+    }),
+  );
+  const store = createProjectStore(storeFile, tmpDir);
+  assert.deepEqual(
+    (await store.list()).map((x) => x.name),
+    ['new', 'old'],
+  );
+  // The list shows the filled-in order, but nothing is saved until the first write,
+  // so a legacy localStorage order can still be migrated.
+  assert.equal(await store.hasSavedOrder(), false);
+  await store.rename(path.join(tmpDir, 'old'), 'Old');
+  assert.equal(await store.hasSavedOrder(), true);
+  assert.equal(await createProjectStore(storeFile, tmpDir).hasSavedOrder(), true);
+});
+
+test('order: removing a project drops it from the order; a partial order keeps the rest first', async () => {
+  const store = createProjectStore(storeFile, tmpDir);
+  const [a, b, c] = ['a', 'b', 'c'].map((n) => path.join(tmpDir, n));
+  for (const x of [a, b, c]) await store.addOrBump(x!);
+  await store.remove(b!);
+  assert.deepEqual(await store.order(), [canon(c!), canon(a!)]);
+
+  // A legacy order naming only some projects keeps the unnamed ones on top.
+  await store.setOrder([canon(a!)]);
+  assert.deepEqual(await store.order(), [canon(c!), canon(a!)]);
+});
+
+test('order: more than 256 projects still reload', async () => {
+  const store = createProjectStore(storeFile, tmpDir);
+  for (let i = 0; i < 260; i += 1) await store.addOrBump(path.join(tmpDir, `p${i}`));
+  const reloaded = createProjectStore(storeFile, tmpDir);
+  assert.equal((await reloaded.list()).length, 260);
+  assert.equal((await reloaded.order()).length, 260);
+});
+
+test('pinned: the pinned order survives a restart and keeps the main order untouched', async () => {
+  const store = createProjectStore(storeFile, tmpDir);
+  const [a, b, c] = ['a', 'b', 'c'].map((n) => path.join(tmpDir, n));
+  for (const x of [a, b, c]) await store.addOrBump(x!);
+  await store.setPinned([canon(a!), canon(c!)]);
+
+  const reloaded = createProjectStore(storeFile, tmpDir);
+  assert.deepEqual(await reloaded.pinned(), [canon(a!), canon(c!)]);
+  assert.deepEqual(await reloaded.order(), [canon(c!), canon(b!), canon(a!)]);
+});
+
+test('pinned: archiving or removing unpins; unarchiving does not pin again', async () => {
+  const store = createProjectStore(storeFile, tmpDir);
+  const [a, b] = ['a', 'b'].map((n) => path.join(tmpDir, n));
+  for (const x of [a, b]) await store.addOrBump(x!);
+  await store.setPinned([canon(a!), canon(b!)]);
+  await store.setArchived(a!, true);
+  await store.remove(b!);
+  assert.deepEqual(await store.pinned(), []);
+  await store.setArchived(a!, false);
+  assert.deepEqual(await store.pinned(), []);
+});
+
+test('pinned: keeps only known, unarchived projects once each', async () => {
+  const store = createProjectStore(storeFile, tmpDir);
+  const [a, b] = ['a', 'b'].map((n) => path.join(tmpDir, n));
+  for (const x of [a, b]) await store.addOrBump(x!);
+  await store.setArchived(b!, true);
+  await store.setPinned([canon(a!), canon(path.join(tmpDir, 'gone')), canon(a!), canon(b!)]);
+  assert.deepEqual(await store.pinned(), [canon(a!)]);
 });

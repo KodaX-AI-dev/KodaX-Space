@@ -86,6 +86,7 @@ test('restore preserves connector scope while deletion removes its runtime sidec
     deleteRuntime: (id) => store.delete(id),
     clearGoal: () => undefined,
     deleteLocalNotices: async () => undefined,
+    deleteFlags: async () => undefined,
   });
   assert.equal(await store.read('restored-connectors'), null);
 });

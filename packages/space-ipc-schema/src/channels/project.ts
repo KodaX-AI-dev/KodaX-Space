@@ -16,12 +16,14 @@ const projectSchema = z.object({
   lastUsedAt: z.number().int().nonnegative(),
   /** F043 v0.1.8: 归档项目默认在 LeftSidebar 隐藏；未设字段 = 未归档 */
   archived: z.boolean().optional(),
+  /** F149: 置顶项目在置顶区内的位置（0 = 最上）；缺省 = 未置顶。project.list 从 projects.json 的 pinned 派生。 */
+  pinnedIndex: z.number().int().nonnegative().optional(),
 });
 
 export type Project = z.infer<typeof projectSchema>;
 
-/** 用户拖排的项目顺序 (canonProjectRoot 路径)；空 = 从未拖排，按添加时间新→旧显示。 */
-const projectOrderSchema = z.array(z.string().min(1).max(4096)).max(256);
+/** F149: 完整的项目主列表顺序；上限只挡畸形输入（与 main 端 projects.json 一致）。*/
+const projectOrderSchema = z.array(z.string().min(1).max(4096)).max(4096);
 
 // ---- project.list ----
 export const projectListChannel = {
@@ -30,6 +32,7 @@ export const projectListChannel = {
   input: z.undefined(),
   output: z.object({
     projects: z.array(projectSchema),
+    /** projects.json 中已保存的主列表顺序；空 = 尚未保存（projects 仍按补齐后的顺序返回）。 */
     order: projectOrderSchema,
   }),
 } as const;
@@ -41,6 +44,14 @@ export const projectOrderSetChannel = {
   name: 'project.order.set',
   direction: 'invoke',
   input: z.object({ order: projectOrderSchema }),
+  output: z.object({}),
+} as const;
+
+/** F149: 替换置顶项目列表（canon 路径，置顶区顺序）；与 project.order.set 对称。 */
+export const projectPinnedSetChannel = {
+  name: 'project.pinned.set',
+  direction: 'invoke',
+  input: z.object({ pinned: projectOrderSchema }),
   output: z.object({}),
 } as const;
 
@@ -208,9 +219,11 @@ export const projectFileSearchChannel = {
     limit: z.number().int().positive().max(100).optional(),
     /** 点击链接定位刚生成的文件时用：跳过 cache 重扫,不套 .gitignore,结果不写 cache */
     locate: z.boolean().optional(),
+    /** `@` 补全同时列文件夹（结尾带 `/`）；定位与文件面板只要文件，不传 */
+    includeDirectories: z.boolean().optional(),
   }),
   output: z.object({
-    /** posix 风格相对路径,如 'src/foo/bar.ts' */
+    /** posix 风格相对路径,如 'src/foo/bar.ts';文件夹结尾带 '/',如 'src/foo/' */
     paths: z.array(z.string().min(1).max(2048)).max(100),
     /** 是否截断 — true 表示还有更多匹配未返回,或遍历撞到文件数上限 */
     truncated: z.boolean(),

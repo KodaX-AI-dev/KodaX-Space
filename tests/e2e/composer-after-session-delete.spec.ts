@@ -36,6 +36,10 @@ test('composer remains focusable after deleting the current session', async () =
     // dialogs steal the renderer's keyboard focus and the textarea can't recover it).
     // Note: a native confirm would be auto-dismissed by Playwright and would NOT
     // reproduce the focus loss, which is why the old test gave false confidence.
+    // F149: archive first — Delete is only offered for an archived task.
+    // The task row's hover button is labelled "Archive: <title>"; this is the breadcrumb menu item.
+    await page.getByRole('button', { name: /^Archive(?!:)\b/ }).click();
+    await page.getByRole('button', { name: 'Session options' }).click();
     await page.getByRole('button', { name: /^Delete\b/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
 

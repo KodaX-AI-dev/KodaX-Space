@@ -668,7 +668,15 @@ test('Partner sources can be attached and removed, and deleting the session reco
 
     const row = page.getByTestId('sidebar-session-row').filter({ hasText: prompt }).first();
     await expect(row).toBeVisible();
+    // F149: archive first, then delete from the archived list.
     await row.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: /^Archive\b/ }).click();
+    await page.getByRole('button', { name: 'Show archived sessions' }).click();
+    await page
+      .getByTestId('sidebar-session-row')
+      .filter({ hasText: prompt })
+      .first()
+      .click({ button: 'right' });
     await page.getByRole('menuitem', { name: /^Delete\b/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
 

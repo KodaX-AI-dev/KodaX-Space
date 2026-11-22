@@ -12,6 +12,7 @@ import {
   providerIsConfigured,
 } from '../kodax/host.js';
 import { projectStore } from '../projects/store.js';
+import { sessionFlagStore } from '../projects/session-flag-store.js';
 import { settingsStore } from '../settings/store.js';
 
 // v0.1.5: canonProjectRoot 抽到 schema 包共享 util（renderer + main 同一实现），
@@ -535,6 +536,7 @@ export interface SessionDeleteOperations {
   readonly clearGoal: (sessionId: string) => void;
   readonly deleteRuntime: (sessionId: string) => Promise<void>;
   readonly deleteLocalNotices: (sessionId: string) => Promise<void>;
+  readonly deleteFlags: (sessionId: string) => Promise<void>;
 }
 
 export async function deleteSessionForIpc(
@@ -544,6 +546,7 @@ export async function deleteSessionForIpc(
     clearGoal: clearSlashGoalForSession,
     deleteRuntime: (id) => getSessionRuntimeStore().delete(id),
     deleteLocalNotices: (id) => getSessionLocalNoticeStore().delete(id),
+    deleteFlags: (id) => sessionFlagStore.remove(id),
   },
 ): Promise<{ deleted: boolean; reason?: 'session_running' }> {
   const deleted = await operations.deleteSession(sessionId);
@@ -551,6 +554,7 @@ export async function deleteSessionForIpc(
   operations.clearGoal(sessionId);
   await operations.deleteRuntime(sessionId);
   await operations.deleteLocalNotices(sessionId);
+  await operations.deleteFlags(sessionId);
   return { deleted: true };
 }
 
@@ -1282,6 +1286,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
   //     （比如 session 存了 /Users/foo/proj，renderer 传 /Users/foo/proj/ 应该匹配）
   // Read-only hydration deliberately stays outside executable Coder admission. Navigation must
   // not delay a mode switch or complete exit after all real work has stopped.
+  const SESSION_LIST_SCAN_LIMIT = 50_000;
   registerChannel('session.list', async (input) => {
     // reviewer MEDIUM-3: projectFilter 必须在传给 listMerged 前 normalize，
     // 让 SDK 层和 IPC 层比较同一形态（避免 Windows 路径 / 大小写 / trailing
@@ -1297,10 +1302,12 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     // 比较兜底）。
     // F045: surface 过滤透传给 host.listMerged（在合并 in-flight ∪ persisted 后统一 filter）。
     // 不传 = 全部（含历史无 tag 的，向后兼容）。Coder = surface!=='partner'，Partner = 'partner'。
+    // F149: sessionIds 按 id 取（置顶任务可能在最近窗口外），扫描到 schema 上限再过滤。
+    const wantedIds = input?.sessionIds === undefined ? undefined : new Set(input.sessionIds);
     const merged = await kodaxHost.listMerged({
       projectRoot: projectFilter,
       surface: input?.surface,
-      limit: input?.limit,
+      limit: wantedIds === undefined ? input?.limit : SESSION_LIST_SCAN_LIMIT,
     });
 
     // Persisted session 没有真运行时设置——磁盘上只 SDK lineage + gitRoot。先准备一份
@@ -1342,6 +1349,7 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
     );
     const withTs = merged
       .filter((m) => {
+        if (wantedIds !== undefined && !wantedIds.has(m.sessionId)) return false;
         if (projectFilter === undefined) return true;
         if (m.kind === 'in-flight') {
           return canonProjectRoot(m.projectRoot) === projectFilter;
@@ -1472,6 +1480,12 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
   registerChannel('session.delete', (input) =>
     runWithCoderAdmission(options, () => deleteSessionForIpc(input.sessionId)),
   );
+
+  // F149: 任务置顶 / 归档标记——Space 自己的侧栏状态，不触碰会话本身，故不走 Coder admission。
+  registerChannel('session.flags.list', async () => ({ flags: await sessionFlagStore.list() }));
+  registerChannel('session.flags.set', async (input) => ({
+    flags: await sessionFlagStore.set(input.sessionId, input),
+  }));
 
   // session.setTitle
   registerChannel('session.setTitle', (input) =>

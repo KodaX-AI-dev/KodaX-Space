@@ -666,6 +666,8 @@ export const sessionListChannel = {
       surface: surfaceSchema.optional(),
       /** 最近列表默认 200；全量会话选择器可按需扩大，仍受主进程硬上限保护。 */
       limit: z.number().int().min(1).max(50_000).optional(),
+      /** F149: 只返回这些 sessionId（置顶区补齐最近窗口外的置顶任务）；给出时忽略 limit。 */
+      sessionIds: z.array(z.string().min(1).max(256)).max(1000).optional(),
     })
     .optional(),
   output: z.object({
@@ -686,6 +688,34 @@ export const sessionSetTitleChannel = {
   output: z.object({
     ok: z.boolean(),
   }),
+} as const;
+
+// ---- Invoke: session.flags.list / session.flags.set ---- (F149)
+//
+// 任务置顶 / 归档标记，Space 主进程持久化（不走 SDK archiveSession）。毫秒时间戳，缺省即未置顶 / 未归档。
+const sessionFlagEntrySchema = z.object({
+  pinnedAt: z.number().int().positive().optional(),
+  archivedAt: z.number().int().positive().optional(),
+});
+const sessionFlagMapSchema = z.record(z.string().min(1), sessionFlagEntrySchema);
+
+export const sessionFlagsListChannel = {
+  name: 'session.flags.list',
+  direction: 'invoke',
+  input: z.undefined(),
+  output: z.object({ flags: sessionFlagMapSchema }),
+} as const;
+
+/** 主进程保证：归档即取消置顶；已归档的任务不能置顶；取消归档不恢复置顶。返回全部标记。 */
+export const sessionFlagsSetChannel = {
+  name: 'session.flags.set',
+  direction: 'invoke',
+  input: z.object({
+    sessionId: z.string().min(1),
+    pinned: z.boolean().optional(),
+    archived: z.boolean().optional(),
+  }),
+  output: z.object({ flags: sessionFlagMapSchema }),
 } as const;
 
 // ---- Invoke: session.delete ----

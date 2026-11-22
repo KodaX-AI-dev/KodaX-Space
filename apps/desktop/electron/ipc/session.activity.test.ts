@@ -227,3 +227,59 @@ test('session.list repairs out-of-page activity and ordering with no additional 
   assert.equal(historyCalls, 0);
   assert.equal(observations.mock.callCount(), 0);
 });
+
+test('session.list with sessionIds returns just those sessions, even outside the recent window', async (t) => {
+  const summary = (id: string, at: number) => ({
+    id,
+    title: id,
+    msgCount: 2,
+    createdAt: new Date(at).toISOString(),
+    lastMessageAt: new Date(at).toISOString(),
+  });
+  setSessionStoreImpl({
+    listSessions: async (options?: { limit?: number }) =>
+      [summary('newest', 300), summary('middle', 200), summary('oldest', 100)].slice(
+        0,
+        options?.limit ?? 200,
+      ),
+    loadSession: async () => {
+      throw new Error('Listing must not read transcripts');
+    },
+    forkSession: async () => null,
+    rewindSession: async () => null,
+    deleteSession: async () => ({ ok: true }),
+    watchSessions: () => ({ close() {} }),
+  });
+  setSessionTitleStoreForTesting({
+    read: async () => null,
+    set: async () => {},
+    delete: async () => {},
+  });
+  setUserConfigImpl({ loadConfig: () => ({}), registerCustomProviders: () => undefined });
+  t.after(() => {
+    setSessionStoreImpl(null);
+    setSessionTitleStoreForTesting(null);
+    setUserConfigImpl(null);
+  });
+  t.mock.method(settingsStore, 'load', async () => ({}));
+  t.mock.method(providerConfigStore, 'load', async () => undefined);
+  t.mock.method(providerConfigStore, 'getDefaultProviderId', () => null);
+  t.mock.method(getSessionRuntimeStore(), 'read', async () => null);
+  t.mock.method(runtimeProjectionController, 'profileSnapshot', () => ({
+    connection: { state: 'connecting', changedAt: 1, stale: true, capabilities: [] },
+    projectionRevision: 0,
+    sessions: [],
+    interactions: [],
+    notifications: [],
+  }));
+  const invoke = handlers.get('session.list');
+  assert.ok(invoke);
+  const result = (await invoke({}, { limit: 1, sessionIds: ['oldest'] })) as IpcResult<
+    ChannelOutput<'session.list'>
+  >;
+  if (!result.ok) throw new Error(result.error.message);
+  assert.deepEqual(
+    result.data.sessions.map((session) => session.sessionId),
+    ['oldest'],
+  );
+});

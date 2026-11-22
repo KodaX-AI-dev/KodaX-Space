@@ -271,6 +271,9 @@ test('busy session deletion preserves all local sidecars', async () => {
     deleteLocalNotices: async () => {
       cleanupCalls.push('notices');
     },
+    deleteFlags: async () => {
+      cleanupCalls.push('flags');
+    },
   });
 
   assert.deepEqual(result, { deleted: false, reason: 'session_running' });
@@ -288,8 +291,11 @@ test('successful session deletion clears every local sidecar', async () => {
     deleteLocalNotices: async () => {
       cleanupCalls.push('notices');
     },
+    deleteFlags: async () => {
+      cleanupCalls.push('flags');
+    },
   });
 
   assert.deepEqual(result, { deleted: true });
-  assert.deepEqual(cleanupCalls, ['goal', 'runtime', 'notices']);
+  assert.deepEqual(cleanupCalls, ['goal', 'runtime', 'notices', 'flags']);
 });

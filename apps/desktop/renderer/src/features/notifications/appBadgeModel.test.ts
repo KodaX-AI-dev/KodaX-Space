@@ -23,8 +23,8 @@ test('attention badge ignores unrelated flags and repeated requests in one Sessi
   assert.equal(
     countAttentionSessions({
       sessionFlags: {
-        pinned: { pinned: true },
-        archived: { archived: true },
+        pinned: { pinnedAt: 1 },
+        archived: { archivedAt: 1 },
       },
       permissionRequests: [{ sessionId: 'same' }, { sessionId: 'same' }],
       askUserRequests: [{ sessionId: 'same' }],

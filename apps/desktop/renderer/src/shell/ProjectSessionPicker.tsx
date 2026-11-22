@@ -9,14 +9,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SessionMeta, Surface } from '@kodax-space/space-ipc-schema';
 import { createMatcher } from '../lib/fuzzy.js';
+import type { SessionStatus } from '../features/session/useSessionStatus.js';
+import { sortProjectSessions } from './sessionOrder.js';
 import { Portal } from '../components/Portal.js';
+import { useAppStore } from '../store/appStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 
 interface ProjectSessionPickerProps {
   readonly projectName: string;
   readonly projectPath: string;
   readonly surface: Surface;
-  readonly sessions: readonly SessionMeta[]; // 已 sort 好 (按 lastActivityAt desc)
+  readonly sessions: readonly SessionMeta[];
+  /** 与左侧栏同序：运行中稳定在前，其余按最近活动（sortProjectSessions）。 */
+  readonly statusFor: (sessionId: string) => SessionStatus;
   readonly currentSessionId: string | null;
   readonly onSelect: (sessionId: string) => void;
   readonly onClose: () => void;
@@ -45,6 +50,7 @@ export function ProjectSessionPicker({
   projectPath,
   surface,
   sessions,
+  statusFor,
   currentSessionId,
   onSelect,
   onClose,
@@ -81,9 +87,7 @@ export function ProjectSessionPicker({
           setLoadAllFailed(true);
           return;
         }
-        setAvailableSessions(
-          result.data.sessions.slice().sort((a, b) => b.lastActivityAt - a.lastActivityAt),
-        );
+        setAvailableSessions(result.data.sessions);
       })
       .catch(() => {
         if (!cancelled) setLoadAllFailed(true);
@@ -96,18 +100,29 @@ export function ProjectSessionPicker({
     };
   }, [projectPath, surface]);
 
-  // fuzzy filter — query 空时按 lastActivity 原序；非空跑 fzf-lite
+  // F149: 置顶任务在置顶区，不出现在所属项目的列表里（与左侧栏一致）。
+  const sessionFlags = useAppStore((s) => s.sessionFlags);
+  const orderedSessions = useMemo(
+    () =>
+      sortProjectSessions(
+        availableSessions.filter((s) => sessionFlags[s.sessionId]?.pinnedAt === undefined),
+        statusFor,
+      ),
+    [availableSessions, sessionFlags, statusFor],
+  );
+
+  // fuzzy filter — query 空时按左侧栏同序；非空跑 fzf-lite
   const filtered = useMemo(() => {
     if (query.trim().length === 0) {
-      return availableSessions.map((s, i) => ({ session: s, score: -i })); // 保留输入顺序
+      return orderedSessions.map((s, i) => ({ session: s, score: -i })); // 保留输入顺序
     }
     const matcher = matcherRef.current;
-    matcher.setCandidates(availableSessions.map((s) => s.title || s.sessionId));
+    matcher.setCandidates(orderedSessions.map((s) => s.title || s.sessionId));
     const results = matcher.search(query, 200);
     const out: { session: SessionMeta; score: number }[] = [];
     // FIFO bucket 防同名 collision (F026 review HIGH-2 同款 pattern)
     const buckets = new Map<string, SessionMeta[]>();
-    for (const s of availableSessions) {
+    for (const s of orderedSessions) {
       const k = s.title || s.sessionId;
       const arr = buckets.get(k);
       if (arr === undefined) buckets.set(k, [s]);
@@ -120,7 +135,7 @@ export function ProjectSessionPicker({
       out.push({ session: s, score: r.score });
     }
     return out;
-  }, [query, availableSessions]);
+  }, [query, orderedSessions]);
 
   useEffect(() => {
     setActiveIdx(0);

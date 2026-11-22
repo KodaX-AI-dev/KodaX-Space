@@ -41,6 +41,7 @@ import { deleteSessionWithFeedback } from '../lib/deleteSession.js';
 import { performHistoryTurnAction, usesProductHistoryActions } from '../lib/historyTurnAction.js';
 import { requestConfirm } from '../store/confirmStore.js';
 import { pushToast } from '../store/toastStore.js';
+import { toggleSessionFlagPersisted } from '../store/sessionFlagSync.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import {
   latestSelectorTurnIndex,
@@ -70,6 +71,8 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
   const latestTurnIndex = latestSelectorTurnIndex(userMessages);
   const previousTurnIndex = previousSelectorTurnIndex(userMessages);
   const sessionFlags = useAppStore((s) => s.sessionFlags[sessionId]);
+  // F149: archive first, then delete — delete only for archived tasks; archived tasks can't be pinned.
+  const archived = sessionFlags?.archivedAt !== undefined;
   const toggleFlag = useAppStore((s) => s.toggleSessionFlag);
   const session = sessions.find((x) => x.sessionId === sessionId);
 
@@ -88,7 +91,7 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
         w: () => void doRewind(),
         l: () => setShowLineage((v) => !v),
         p: () => {
-          toggleFlag(sessionId, 'pinned');
+          void toggleSessionFlagPersisted(sessionId, 'pinned', t('sidebar.sessionFlagSaveFailed'));
           onClose();
         },
         u: () => {
@@ -96,11 +99,17 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
           onClose();
         },
         a: () => {
-          toggleFlag(sessionId, 'archived');
+          void toggleSessionFlagPersisted(
+            sessionId,
+            'archived',
+            t('sidebar.sessionFlagSaveFailed'),
+          );
           onClose();
         },
         escape: () => onClose(),
       };
+      if (archived) delete map.p;
+      else delete map.d;
       const fn = map[key];
       if (fn) {
         e.preventDefault();
@@ -110,7 +119,7 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renaming, sessionId, latestTurnIndex, previousTurnIndex]);
+  }, [renaming, sessionId, latestTurnIndex, previousTurnIndex, archived]);
 
   async function doRename(): Promise<void> {
     const trimmed = newTitle.trim();
@@ -357,15 +366,23 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
         disabled
         hint={t('menu.session.externalAppHint')}
       />
-      <MenuRow
-        Icon={sessionFlags?.pinned ? PinOff : Pin}
-        label={sessionFlags?.pinned ? t('menu.session.unpin') : t('menu.session.pin')}
-        shortcut="P"
-        onClick={() => {
-          toggleFlag(sessionId, 'pinned');
-          onClose();
-        }}
-      />
+      {!archived && (
+        <MenuRow
+          Icon={sessionFlags?.pinnedAt !== undefined ? PinOff : Pin}
+          label={
+            sessionFlags?.pinnedAt !== undefined ? t('menu.session.unpin') : t('menu.session.pin')
+          }
+          shortcut="P"
+          onClick={() => {
+            void toggleSessionFlagPersisted(
+              sessionId,
+              'pinned',
+              t('sidebar.sessionFlagSaveFailed'),
+            );
+            onClose();
+          }}
+        />
+      )}
       <MenuRow
         Icon={Circle}
         label={sessionFlags?.unread ? t('menu.session.markRead') : t('menu.session.markUnread')}
@@ -430,22 +447,30 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
         hint={t('menu.session.moveToGroupUnavailable')}
       />
       <MenuRow
-        Icon={sessionFlags?.archived ? ArchiveRestore : Archive}
-        label={sessionFlags?.archived ? t('menu.session.unarchive') : t('menu.session.archive')}
+        Icon={archived ? ArchiveRestore : Archive}
+        label={archived ? t('menu.session.unarchive') : t('menu.session.archive')}
         shortcut="A"
         onClick={() => {
-          toggleFlag(sessionId, 'archived');
+          void toggleSessionFlagPersisted(
+            sessionId,
+            'archived',
+            t('sidebar.sessionFlagSaveFailed'),
+          );
           onClose();
         }}
       />
-      <div className="border-t border-border-default my-1" />
-      <MenuRow
-        Icon={Trash2}
-        label={t('menu.session.delete')}
-        shortcut="D"
-        onClick={() => void doDelete()}
-        danger
-      />
+      {archived && (
+        <>
+          <div className="border-t border-border-default my-1" />
+          <MenuRow
+            Icon={Trash2}
+            label={t('menu.session.delete')}
+            shortcut="D"
+            onClick={() => void doDelete()}
+            danger
+          />
+        </>
+      )}
     </div>
   );
 }
