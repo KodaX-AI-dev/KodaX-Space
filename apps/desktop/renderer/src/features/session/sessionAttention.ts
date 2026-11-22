@@ -38,3 +38,30 @@ export function summarizeAttention(kinds: Iterable<AttentionKind | null>): Atten
   const top = ATTENTION_PRIORITY.find((kind) => counts[kind] > 0) ?? null;
   return { total, top, counts };
 }
+
+export interface SessionAttentionContext {
+  readonly statusFor: (sessionId: string) => SessionStatus;
+  readonly isUnread: (sessionId: string) => boolean;
+  readonly currentSessionId: string | null;
+}
+
+export function attentionKindOf(
+  sessionId: string,
+  context: SessionAttentionContext,
+): AttentionKind | null {
+  return sessionAttentionKind({
+    status: context.statusFor(sessionId),
+    unread: context.isUnread(sessionId),
+    isCurrent: sessionId === context.currentSessionId,
+  });
+}
+
+/** One rule for every place that summarizes hidden Sessions (project, archived group, surface). */
+export function summarizeSessionAttention(
+  sessionIds: Iterable<string>,
+  context: SessionAttentionContext,
+): AttentionSummary {
+  const kinds: (AttentionKind | null)[] = [];
+  for (const sessionId of sessionIds) kinds.push(attentionKindOf(sessionId, context));
+  return summarizeAttention(kinds);
+}

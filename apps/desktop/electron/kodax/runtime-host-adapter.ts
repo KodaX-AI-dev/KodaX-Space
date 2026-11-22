@@ -31,6 +31,7 @@ import type {
   RuntimeDaemonManagementState,
   RuntimeDaemonPreflight,
   RuntimeForkSessionInput,
+  RuntimeIntegrationHealth,
   RuntimeOwnerPolicyState,
   RuntimeOwnerState,
   RuntimeRewindSessionInput,
@@ -529,7 +530,9 @@ function isRuntimeResyncRequired(error: unknown): boolean {
 /** A read crossed a live Session writer; a fresh read can succeed with no history change. */
 function isHistoryReadBoundaryConflict(error: unknown): boolean {
   if (runtimeErrorCode(error) !== 'resync_required') return false;
-  return (error as { readonly data?: { readonly reason?: unknown } }).data?.reason === 'writer_active';
+  return (
+    (error as { readonly data?: { readonly reason?: unknown } }).data?.reason === 'writer_active'
+  );
 }
 
 function isSessionIdentityReadConflict(error: unknown): boolean {
@@ -1387,7 +1390,10 @@ interface RuntimeProjectionPush {
 }
 
 interface RuntimeIdentityStoreLike extends Partial<
-  Pick<RuntimeClientIdentityStore, 'retireInstance' | 'openExitRecovery' | 'clearExitRecovery'>
+  Pick<
+    RuntimeClientIdentityStore,
+    'retireInstance' | 'openExitRecovery' | 'clearExitRecovery' | 'abandonExitRecovery'
+  >
 > {
   openInstance(metadata: {
     readonly name: string;
@@ -1493,6 +1499,8 @@ export interface RuntimeHostAdapterOptions {
   /**
    * Fallback cadence for integration-health projection. KodaX watches the
    * files inside the daemon but does not publish a management-change event.
+   * Only Hosts with the preflight-free health query are polled; an older Host
+   * is read once per attachment because its read runs a full daemon preflight.
    * Test/custom runtimes default to disabled unless they opt in explicitly.
    */
   readonly integrationHealthPollMs?: number;
@@ -1543,6 +1551,15 @@ function runtimeCapabilityVersion(runtime: KodaXDaemonRuntime, name: string): nu
   if (typeof capability !== 'object' || capability === null) return 0;
   const version = (capability as { version?: unknown }).version;
   return Number.isSafeInteger(version) && Number(version) > 0 ? Number(version) : 0;
+}
+
+function supportsIntegrationHealthQuery(runtime: KodaXDaemonRuntime): boolean {
+  const capability = runtime.capabilities?.integrationConfigResilience;
+  return (
+    typeof capability === 'object' &&
+    capability !== null &&
+    (capability as { healthQuery?: unknown }).healthQuery === true
+  );
 }
 
 function projectSessionStopReceipt(
@@ -1633,9 +1650,9 @@ function assertSpaceDaemonRequiredCapabilities(runtime: KodaXDaemonRuntime): voi
         'Install a compatible KodaX package and restart the Coder daemon.',
     );
   }
-  if (runtimeCapabilityVersion(runtime, 'actorSettlementConvergence') < 2) {
+  if (runtimeCapabilityVersion(runtime, 'actorSettlementConvergence') < 3) {
     throw new Error(
-      'KodaX Runtime does not support the required actorSettlementConvergence v2 capability. ' +
+      'KodaX Runtime does not support the required actorSettlementConvergence v3 capability. ' +
         'Install a compatible KodaX package and restart the Coder daemon.',
     );
   }
@@ -1816,7 +1833,7 @@ export function assertSpaceRuntimeSdkRequiredCapabilities(sdk: {
 }): void {
   const capabilities = sdk.KODAX_RUNTIME_SDK_CAPABILITIES;
   const missing = [
-    ...(capabilities?.actorSettlementConvergence === 2 ? [] : ['actorSettlementConvergence v2']),
+    ...(capabilities?.actorSettlementConvergence === 3 ? [] : ['actorSettlementConvergence v3']),
     ...(capabilities?.conversationHistory === 2 ? [] : ['conversationHistory v2']),
     ...(capabilities?.crashOutcomeModel === 2 ? [] : ['crashOutcomeModel v2']),
     ...(capabilities?.daemonOrphanExit === 1 ? [] : ['daemonOrphanExit v1']),
@@ -2529,7 +2546,7 @@ export class RuntimeHostAdapter {
         durableRecoveryQueries: 1,
         daemonManagement: 1,
         managedRunDurability: 1,
-        actorSettlementConvergence: 2,
+        actorSettlementConvergence: 3,
         runtimeEventCoalescing: 1,
         sandboxRuntime: 11,
         productClient: 1,
@@ -3494,15 +3511,16 @@ export class RuntimeHostAdapter {
     if (this.integrationHealthPollMs <= 0) return;
     const scheduleNext = (): void => {
       if (this.state !== 'ready' || this.runtime !== runtime || this.rollbackInProgress) return;
+      if (!supportsIntegrationHealthQuery(runtime)) return;
       this.integrationHealthPollTimer = setTimeout(() => {
         this.integrationHealthPollTimer = undefined;
         void this.pollIntegrationHealth(runtime).finally(scheduleNext);
       }, this.integrationHealthPollMs);
       this.integrationHealthPollTimer.unref?.();
     };
-    // Management inspection is auxiliary and may need a stable daemon-wide revision. Run it in
-    // its own background lane so a conflict or long read cannot delay profile, history, or live
-    // recovery. The in-flight guard prevents overlapping inspections if one remains pending.
+    // Integration health is auxiliary. Run it in its own background lane so a conflict or long
+    // read cannot delay profile, history, or live recovery. The in-flight guard prevents
+    // overlapping reads if one remains pending.
     void this.pollIntegrationHealth(runtime).finally(scheduleNext);
   }
 
@@ -3522,20 +3540,15 @@ export class RuntimeHostAdapter {
     }
     this.integrationHealthPollRuntime = runtime;
     try {
-      const management = await runtime.daemon.inspect();
+      const health = await this.readRuntimeIntegrationHealth(runtime);
       if (this.state !== 'ready' || this.runtime !== runtime || this.rollbackInProgress) return;
-      if (management.runtimeId !== runtime.identity.runtimeId) {
-        throw new Error(
-          'Coder daemon management runtimeId does not match the attached Runtime identity.',
-        );
-      }
-      const nextFingerprint = this.fingerprintIntegrationHealth(management.integrations);
+      const nextFingerprint = this.fingerprintIntegrationHealth(health);
       if (nextFingerprint === this.integrationHealthFingerprint) {
         this.integrationHealthPollWarningShown = false;
         return;
       }
       const previousHealth = this.integrationHealth;
-      const nextHealth = management.integrations;
+      const nextHealth = health;
       this.integrationHealth = nextHealth;
       try {
         await this.refreshProfile(this.currentProfileCursor());
@@ -8887,6 +8900,24 @@ export class RuntimeHostAdapter {
     return (await this.inspectDaemonStop()).preflight;
   }
 
+  async readIntegrationHealth(): Promise<RuntimeIntegrationHealth | undefined> {
+    return this.readRuntimeIntegrationHealth(await this.requireRuntime());
+  }
+
+  /** Reads health without the daemon preflight when the Host supports it (KodaX Issue 430). */
+  private async readRuntimeIntegrationHealth(
+    runtime: KodaXDaemonRuntime,
+  ): Promise<RuntimeIntegrationHealth | undefined> {
+    if (supportsIntegrationHealthQuery(runtime)) return runtime.daemon.integrations();
+    const management = await runtime.daemon.inspect();
+    if (management.runtimeId !== runtime.identity.runtimeId) {
+      throw new Error(
+        'Coder daemon management runtimeId does not match the attached Runtime identity.',
+      );
+    }
+    return management.integrations;
+  }
+
   async inspectDaemonStop(): Promise<RuntimeDaemonManagementState> {
     const runtime = await this.requireRuntime();
     const state = await runtime.daemon.inspect();
@@ -9033,6 +9064,14 @@ export class RuntimeHostAdapter {
             console.warn('[runtime] exit attachment close failed:', sanitizeDiagnosticError(error)),
           );
     }
+  }
+
+  /**
+   * Stop re-reading an exit the SDK cannot verify, so the next startup is not blocked again.
+   * The SDK owner lock and sandbox admission still guard against a live competing Host.
+   */
+  abandonPendingRuntimeExit(): Promise<boolean> {
+    return this.identityStore.abandonExitRecovery?.() ?? Promise.resolve(false);
   }
 
   /** Resume SDK-owned exit recovery before startup owner reconciliation. */

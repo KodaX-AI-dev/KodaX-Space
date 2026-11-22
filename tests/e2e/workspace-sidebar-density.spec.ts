@@ -14,10 +14,15 @@ test('dense Chinese project navigation and task details remain usable together',
   try {
     const { page } = space;
     await page.setViewportSize({ width: 1920, height: 1032 });
-    await seedDenseProjects(space);
+    const primaryRoot = await seedDenseProjects(space);
     await selectAppearance(page, 'Dark');
-    await page.getByTestId('sidebar-session-row').first().click();
-    await emitPlan(space);
+    // Newest-first project ordering makes the globally first row belong to the newest
+    // project; pick a session of the seeded git project so the Changes section has content.
+    const primarySessionRow = sessionRowInProject(page, primaryRoot).first();
+    const sessionId = await primarySessionRow.getAttribute('data-session-id');
+    if (!sessionId) throw new Error('Missing selected session');
+    await primarySessionRow.click();
+    await emitPlan(space, sessionId);
     await page.getByLabel('显示右侧侧边栏', { exact: true }).click();
     await expect(page.locator('[data-task-dock-section="plan"]')).toContainText('验证项目切换');
     const composer = page.getByTestId('composer-input');
@@ -29,7 +34,7 @@ test('dense Chinese project navigation and task details remain usable together',
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(page.getByTestId('right-sidebar')).toBeVisible();
     await captureDensity(page, '03-dense-1280');
-    await showAgentAndChanges(space);
+    await showAgentAndChanges(space, sessionId);
     await captureDensity(page, '04-agents-changes-1280');
     await page
       .getByTestId('right-sidebar')
@@ -43,12 +48,7 @@ test('dense Chinese project navigation and task details remain usable together',
   }
 });
 
-async function showAgentAndChanges(space: SpaceInstance): Promise<void> {
-  const sessionId = await space.page
-    .getByTestId('sidebar-session-row')
-    .first()
-    .getAttribute('data-session-id');
-  if (!sessionId) throw new Error('Missing selected session');
+async function showAgentAndChanges(space: SpaceInstance, sessionId: string): Promise<void> {
   const event = agentDisplayEvent(sessionId);
   await space.app.evaluate(({ BrowserWindow }, payload) => {
     BrowserWindow.getAllWindows()[0].webContents.send('session.event', payload);
@@ -91,7 +91,15 @@ function agentDisplayEvent(sessionId: string): SessionEvent {
   };
 }
 
-async function seedDenseProjects(space: SpaceInstance): Promise<void> {
+/** Session rows of one project block; the project row carries its full path in `title`. */
+function sessionRowInProject(page: Page, projectRoot: string) {
+  return page
+    .getByTitle(projectRoot, { exact: true })
+    .locator('..')
+    .getByTestId('sidebar-session-row');
+}
+
+async function seedDenseProjects(space: SpaceInstance): Promise<string> {
   const roots = ['KodaX', 'RSIHarness', 'KodaX Space'].map((name) =>
     path.join(space.testDataDir, name),
   );
@@ -135,6 +143,7 @@ async function seedDenseProjects(space: SpaceInstance): Promise<void> {
   }, roots);
   await space.seedProject(roots[0]);
   await expect(space.page.getByTestId('sidebar-session-row')).toHaveCount(15);
+  return roots[0];
 }
 
 async function selectAppearance(page: Page, theme: string): Promise<void> {
@@ -150,12 +159,7 @@ async function selectAppearance(page: Page, theme: string): Promise<void> {
   await expect(settings).toHaveCount(0);
 }
 
-async function emitPlan(space: SpaceInstance): Promise<void> {
-  const sessionId = await space.page
-    .getByTestId('sidebar-session-row')
-    .first()
-    .getAttribute('data-session-id');
-  if (!sessionId) throw new Error('Missing selected session');
+async function emitPlan(space: SpaceInstance, sessionId: string): Promise<void> {
   const events: SessionEvent[] = [
     {
       kind: 'text_delta',

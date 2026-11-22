@@ -32,7 +32,7 @@
 
 ### 下载安装包
 
-稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，仍为 `v0.1.46`；本轮预发布目标为 [`v0.1.47-beta.1`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-beta.1)，实际发布与验收状态以[发布记录](docs/releases/v0.1.47-beta.1-release-readiness.md)为准，源码就绪不代表已发布。预发布不替代稳定版更新。
+稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，仍为 `v0.1.46`；本轮预发布目标为 [`v0.1.47-beta.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-beta.3)，实际发布与验收状态以[发布记录](docs/releases/v0.1.47-beta.3-release-readiness.md)为准，源码就绪不代表已发布。预发布不替代稳定版更新。
 
 | 平台    | 安装包                                            |
 | ------- | ------------------------------------------------- |
@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前工作树精确依赖已发布的 SDK `0.7.97-beta.11`（失败 Run 的错误保留在对话中；Run 工作时可继续加载更早的历史页；打包版内置 Skill 从 `app.asar.unpacked` 运行）。beta.10 起提供排队消息合并显示、数据复制到新位置与中断消息撤回。** 适配见 [beta.9 接入记录](docs/releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](docs/releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](docs/releases/kodax-beta7-space-adaptation.md)，此前验收见 [beta.4](docs/releases/kodax-beta4-space-adaptation.md)、[beta.3](docs/releases/kodax-beta3-space-adaptation.md)与[beta.2](docs/releases/kodax-beta2-space-adaptation.md)接入记录。已发布的 Space `0.1.47-alpha.4` 使用 beta.1 原始构建，其[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)记录当次验收。Root/Desktop 使用同一 SDK，lockfile 和成品门禁核验 Registry 字节。
+**当前工作树精确依赖已发布的 SDK `0.7.97-beta.13`（会话恢复期间发送被拒时提示“正在恢复”，不再显示 Host 报错；Skill 运行保存用户原话；会话数量上千时读取仍然很快）。beta.12 起每次停止都有最终结果，子 Agent 状态未保存的会话在后台自动恢复，失败 Run 显示 Provider 原始错误文本。beta.11 起失败 Run 的错误保留在对话中、Run 工作时可继续加载更早的历史页、打包版内置 Skill 从 `app.asar.unpacked` 运行；beta.10 起提供排队消息合并显示、数据复制到新位置与中断消息撤回。** 适配见 [beta.9 接入记录](docs/releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](docs/releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](docs/releases/kodax-beta7-space-adaptation.md)，此前验收见 [beta.4](docs/releases/kodax-beta4-space-adaptation.md)、[beta.3](docs/releases/kodax-beta3-space-adaptation.md)与[beta.2](docs/releases/kodax-beta2-space-adaptation.md)接入记录。已发布的 Space `0.1.47-alpha.4` 使用 beta.1 原始构建，其[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)记录当次验收。Root/Desktop 使用同一 SDK，lockfile 和成品门禁核验 Registry 字节。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。
@@ -100,7 +100,7 @@ npm run dev
 
 Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS ad-hoc 构建没有 Developer ID 或公证，仍需手动下载 DMG 更新。Partner 经共享 Host 使用 Agent 模式，保留内置库、shell/write/子 Agent 和外部账号验收边界。
 
-见[本次发布准备](docs/releases/v0.1.47-beta.1-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
+见[本次发布准备](docs/releases/v0.1.47-beta.3-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
 
 ## 当前正式版本
 

@@ -2,13 +2,33 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  handleRuntimeExitRecoveryDialogResponse,
   resolveRuntimeExitRecoveryStartup,
   runtimeExitFailureDialog,
   runtimeExitFailureRequiresRestart,
-  runtimeExitRecoveryBlockedNotice,
   runRuntimeStartupBoundary,
 } from '../window/runtime-exit-recovery.js';
+
+const unexpectedRelease = async (): Promise<void> => {
+  throw new Error('unexpected exit-record release');
+};
+
+function recordingStartup(order: string[]) {
+  return {
+    releaseBlockedExit: async (settlement: { readonly reason: string }) => {
+      order.push(`release:${settlement.reason}`);
+    },
+    reconcileOwnerPolicy: async () => {
+      order.push('owner-reconcile');
+      return true;
+    },
+    prepareStartup: async () => {
+      order.push('prepare');
+    },
+    initializeRuntime: () => {
+      order.push('initialize');
+    },
+  };
+}
 
 test('failed ACL cleanup names the real recovery action instead of promising to keep Space open', () => {
   const dialog = runtimeExitFailureDialog(
@@ -36,6 +56,7 @@ test('the actual startup boundary orders settlement, owner reconciliation, and i
   const decision = await runRuntimeStartupBoundary({
     recoveryRequested: true,
     scanPendingExit: true,
+    releaseBlockedExit: unexpectedRelease,
     settle: async () => {
       order.push('settle');
       return {
@@ -66,6 +87,7 @@ test('successful recovery exits before owner reconciliation or initialization', 
   const decision = await runRuntimeStartupBoundary({
     recoveryRequested: true,
     scanPendingExit: true,
+    releaseBlockedExit: unexpectedRelease,
     settle: async () => {
       order.push('settle');
       return { status: 'recovered', repairs: ['windows_sandbox_acl'] };
@@ -171,44 +193,34 @@ test('shutdown aborts an automatic recovery wait without showing a stale blocker
   assert.deepEqual(await decisionPromise, { action: 'cancelled' });
 });
 
-test('a stalled SDK verification becomes an actionable block within the startup budget', async (context) => {
+test('a stalled SDK verification is released after the startup budget and Space still starts', async (context) => {
   context.mock.timers.enable({ apis: ['setTimeout'] });
+  const order: string[] = [];
   let decision: Awaited<ReturnType<typeof runRuntimeStartupBoundary>> | undefined;
-  let prepared = false;
   const pending = runRuntimeStartupBoundary({
     recoveryRequested: false,
     scanPendingExit: true,
     settle: () => new Promise(() => undefined),
-    reconcileOwnerPolicy: async () => {
-      prepared = true;
-      return true;
-    },
-    prepareStartup: async () => {
-      prepared = true;
-    },
-    initializeRuntime: () => {
-      prepared = true;
-    },
+    ...recordingStartup(order),
   }).then((result) => {
     decision = result;
   });
 
   context.mock.timers.tick(30_000);
-  await new Promise<void>((resolve) => setImmediate(resolve));
-
-  assert.equal(decision?.action, 'block');
-  assert.equal(prepared, false);
-  if (decision?.action === 'block') {
-    assert.equal(decision.settlement.status, 'blocked');
-    assert.equal(decision.settlement.nextAction, 'retry-automatically');
-  }
   await pending;
+
+  assert.equal(decision?.action, 'continue');
+  assert.deepEqual(order, [
+    'release:verification_timeout',
+    'owner-reconcile',
+    'prepare',
+    'initialize',
+  ]);
 });
 
-test('the recovery budget also bounds repeated pending results without releasing Runtime admission', async (context) => {
+test('repeated pending results are bounded by the budget and then released', async (context) => {
   context.mock.timers.enable({ apis: ['setTimeout'] });
-  let decision: Awaited<ReturnType<typeof runRuntimeStartupBoundary>> | undefined;
-  let prepared = false;
+  const order: string[] = [];
   const pending = runRuntimeStartupBoundary({
     recoveryRequested: false,
     scanPendingExit: true,
@@ -219,40 +231,28 @@ test('the recovery budget also bounds repeated pending results without releasing
       message: 'outcome missing',
     }),
     waitBeforeAutomaticRetry: () => new Promise(() => undefined),
-    reconcileOwnerPolicy: async () => {
-      prepared = true;
-      return true;
-    },
-    prepareStartup: async () => {
-      prepared = true;
-    },
-    initializeRuntime: () => {
-      prepared = true;
-    },
-  }).then((result) => {
-    decision = result;
+    ...recordingStartup(order),
   });
   await new Promise<void>((resolve) => setImmediate(resolve));
   context.mock.timers.tick(30_000);
-  await new Promise<void>((resolve) => setImmediate(resolve));
 
-  assert.equal(decision?.action, 'block');
-  assert.equal(prepared, false);
-  await pending;
+  assert.equal((await pending).action, 'continue');
+  assert.deepEqual(order, [
+    'release:verification_timeout',
+    'owner-reconcile',
+    'prepare',
+    'initialize',
+  ]);
 });
 
-test('shutdown cancels a hung recovery read and never displays a retry blocker', async () => {
+test('shutdown cancels a hung recovery read without releasing the exit record', async () => {
   const shutdown = new AbortController();
-  let displayed = false;
   const pending = runRuntimeStartupBoundary({
     recoveryRequested: false,
     scanPendingExit: true,
     shutdownSignal: shutdown.signal,
     settle: () => new Promise(() => undefined),
-    onBlocked: async () => {
-      displayed = true;
-      return false;
-    },
+    releaseBlockedExit: unexpectedRelease,
     reconcileOwnerPolicy: async () => {
       throw new Error('unexpected owner transition');
     },
@@ -265,81 +265,6 @@ test('shutdown cancels a hung recovery read and never displays a retry blocker',
   });
   shutdown.abort();
   assert.deepEqual(await pending, { action: 'cancelled' });
-  assert.equal(displayed, false);
-});
-
-test('explicit verification retry resumes the same startup boundary only after SDK recovery succeeds', async () => {
-  const order: string[] = [];
-  let reads = 0;
-  const decision = await runRuntimeStartupBoundary({
-    recoveryRequested: false,
-    scanPendingExit: true,
-    settle: async () =>
-      ++reads === 1
-        ? {
-            status: 'blocked',
-            reason: 'cleanup_unverified',
-            nextAction: 'manual-recovery',
-            message: 'verification unavailable',
-          }
-        : { status: 'recovered', repairs: [] },
-    onBlocked: async () => {
-      order.push('retry');
-      return true;
-    },
-    reconcileOwnerPolicy: async () => {
-      order.push('reconcile');
-      return true;
-    },
-    prepareStartup: async () => {
-      order.push('prepare');
-    },
-    initializeRuntime: () => {
-      order.push('initialize');
-    },
-  });
-
-  assert.equal(decision.action, 'continue');
-  assert.deepEqual(order, ['retry', 'reconcile', 'prepare', 'initialize']);
-  assert.equal(reads, 2);
-});
-
-test('shutdown closes startup admission even while the recovery dialog is awaiting user input', async () => {
-  const shutdown = new AbortController();
-  let shown = false;
-  let decision: Awaited<ReturnType<typeof runRuntimeStartupBoundary>> | undefined;
-  const pending = runRuntimeStartupBoundary({
-    recoveryRequested: false,
-    scanPendingExit: true,
-    shutdownSignal: shutdown.signal,
-    settle: async () => ({
-      status: 'blocked',
-      reason: 'owner_unverified',
-      nextAction: 'manual-recovery',
-      message: 'owner unverified',
-    }),
-    onBlocked: () => {
-      shown = true;
-      return new Promise(() => undefined);
-    },
-    reconcileOwnerPolicy: async () => {
-      throw new Error('unexpected owner transition');
-    },
-    prepareStartup: async () => {
-      throw new Error('unexpected preparation');
-    },
-    initializeRuntime: () => {
-      throw new Error('unexpected Host startup');
-    },
-  }).then((result) => {
-    decision = result;
-  });
-  await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.equal(shown, true);
-  shutdown.abort();
-  await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.deepEqual(decision, { action: 'cancelled' });
-  await pending;
 });
 
 test('shutdown cancellation prevents owner reconciliation and Runtime initialization', async () => {
@@ -359,16 +284,7 @@ test('shutdown cancellation prevents owner reconciliation and Runtime initializa
       await new Promise<void>(() => undefined);
     },
     shutdownSignal: shutdown.signal,
-    reconcileOwnerPolicy: async () => {
-      order.push('owner-reconcile');
-      return true;
-    },
-    prepareStartup: async () => {
-      order.push('prepare');
-    },
-    initializeRuntime: () => {
-      order.push('initialize');
-    },
+    ...recordingStartup(order),
   });
 
   while (order.length === 0) await Promise.resolve();
@@ -378,36 +294,50 @@ test('shutdown cancellation prevents owner reconciliation and Runtime initializa
   assert.deepEqual(order, ['wait']);
 });
 
-test('unverified containment blocks the full startup boundary before starting a competitor', async () => {
-  const order: string[] = [];
-  const settlement = {
+// Customer report (0.1.47-beta.2): a persisted `cleanup_failed` receipt never changes, so
+// every relaunch and every "Continue verification" re-read the same verdict forever.
+for (const settlement of [
+  {
+    status: 'blocked' as const,
+    reason: 'cleanup_failed' as const,
+    nextAction: 'manual-recovery' as const,
+    message: 'Runtime recovery is blocked: cleanup_failed.',
+  },
+  {
     status: 'blocked' as const,
     reason: 'containment_active' as const,
     nextAction: 'restart-system' as const,
     message: 'Job is still active',
-  };
-  const decision = await runRuntimeStartupBoundary({
-    recoveryRequested: true,
-    scanPendingExit: true,
-    settle: async () => {
-      order.push('settle');
-      return settlement;
-    },
-    reconcileOwnerPolicy: async () => {
-      order.push('owner-reconcile');
-      return true;
-    },
-    prepareStartup: async () => {
-      order.push('prepare');
-    },
-    initializeRuntime: () => {
-      order.push('initialize');
-    },
-  });
+  },
+  {
+    status: 'blocked' as const,
+    reason: 'owner_unverified' as const,
+    nextAction: 'relaunch-space' as const,
+    message: 'owner unverified',
+  },
+]) {
+  test(`a terminal ${settlement.reason} exit verdict is released and never blocks startup`, async () => {
+    const order: string[] = [];
+    const decision = await runRuntimeStartupBoundary({
+      recoveryRequested: true,
+      scanPendingExit: true,
+      settle: async () => {
+        order.push('settle');
+        return settlement;
+      },
+      ...recordingStartup(order),
+    });
 
-  assert.deepEqual(decision, { action: 'block', settlement });
-  assert.deepEqual(order, ['settle']);
-});
+    assert.deepEqual(decision, { action: 'continue', settlement });
+    assert.deepEqual(order, [
+      'settle',
+      `release:${settlement.reason}`,
+      'owner-reconcile',
+      'prepare',
+      'initialize',
+    ]);
+  });
+}
 
 test('ordinary startup performs no exit settlement work', async () => {
   let calls = 0;
@@ -439,126 +369,4 @@ test('ordinary daemon startup resumes a crash ticket but continues after recover
     settlement: { status: 'recovered', repairs: ['windows_process_tree'] },
   });
   assert.equal(calls, 1);
-});
-
-test('foreign Windows ACL recovery blocks show actionable localized guidance', () => {
-  const notice = runtimeExitRecoveryBlockedNotice(
-    {
-      status: 'blocked',
-      reason: 'cleanup_failed',
-      nextAction: 'restart-system',
-      message: 'Windows sandbox ACL recovery found a foreign or unverifiable owner marker.',
-    },
-    'zh-CN',
-  );
-
-  assert.equal(notice.message, 'Space 未启动新的 Coder Runtime');
-  assert.match(notice.detail, /重启 Windows/);
-  assert.match(notice.detail, /打开诊断目录/);
-  assert.doesNotMatch(notice.detail, /foreign or unverifiable owner marker/i);
-});
-
-test('English ACL blocks provide the reachable boot-dialog recovery action', () => {
-  const notice = runtimeExitRecoveryBlockedNotice(
-    {
-      status: 'blocked',
-      reason: 'cleanup_failed',
-      nextAction: 'restart-system',
-      message: 'Windows sandbox ACL recovery found a foreign or unverifiable owner marker.',
-    },
-    'en',
-  );
-
-  assert.match(notice.detail, /Restart Windows/);
-  assert.match(notice.detail, /Open diagnostics folder/);
-  assert.doesNotMatch(notice.detail, /foreign or unverifiable owner marker/i);
-});
-
-test('unverifiable ACL markers request support instead of another ineffective reboot', () => {
-  const notice = runtimeExitRecoveryBlockedNotice(
-    {
-      status: 'blocked',
-      reason: 'cleanup_failed',
-      nextAction: 'manual-recovery',
-      message: 'Windows sandbox ACL cleanup was not confirmed because its marker is unreadable.',
-    },
-    'zh-CN',
-  );
-
-  assert.match(notice.detail, /打开诊断目录/);
-  assert.match(notice.detail, /联系支持/);
-  assert.doesNotMatch(notice.detail, /重启 Windows/);
-});
-
-test('generic blocked notices project bounded actions without raw SDK paths', () => {
-  for (const [nextAction, expected] of [
-    ['restart-system', /重启 Windows/],
-    ['relaunch-space', /重新打开 Space/],
-    ['manual-recovery', /联系支持/],
-  ] as const) {
-    const notice = runtimeExitRecoveryBlockedNotice(
-      {
-        status: 'blocked',
-        reason: 'cleanup_unverified',
-        nextAction,
-        message: 'Owner state unreadable at C:\\Users\\alice\\.kodax\\runtime\\state.json\u0000',
-      },
-      'zh-CN',
-    );
-
-    assert.match(notice.detail, expected);
-    assert.match(notice.detail, /打开诊断目录/);
-    assert.doesNotMatch(notice.detail, /alice|state\.json|\u0000/i);
-  }
-});
-
-test('the boot-dialog diagnostics action opens only on the explicit first button', async () => {
-  const calls: string[] = [];
-  const action = {
-    diagnosticsDirectory: () => 'C:\\safe\\diagnostics',
-    ensureDirectory: (directory: string) => calls.push(`ensure:${directory}`),
-    openDirectory: async (directory: string) => {
-      calls.push(`open:${directory}`);
-      return '';
-    },
-    onOpenError: (error: string) => calls.push(`error:${error}`),
-  };
-
-  await assert.doesNotReject(async () => {
-    assert.equal(await handleRuntimeExitRecoveryDialogResponse(1, action), 'closed');
-    assert.deepEqual(calls, []);
-    assert.equal(await handleRuntimeExitRecoveryDialogResponse(0, action), 'opened');
-  });
-  assert.deepEqual(calls, ['ensure:C:\\safe\\diagnostics', 'open:C:\\safe\\diagnostics']);
-});
-
-test('the boot-dialog diagnostics action reports shell open failures', async () => {
-  const calls: string[] = [];
-  const outcome = await handleRuntimeExitRecoveryDialogResponse(0, {
-    diagnosticsDirectory: () => 'C:\\safe\\diagnostics',
-    ensureDirectory: () => calls.push('ensure'),
-    openDirectory: async () => 'access denied',
-    onOpenError: (error) => calls.push(`error:${error}`),
-  });
-
-  assert.equal(outcome, 'failed');
-  assert.deepEqual(calls, ['ensure', 'error:access denied']);
-});
-
-test('the boot-dialog diagnostics action contains directory preparation failures', async () => {
-  const calls: string[] = [];
-  const outcome = await handleRuntimeExitRecoveryDialogResponse(0, {
-    diagnosticsDirectory: () => 'C:\\safe\\diagnostics',
-    ensureDirectory: () => {
-      throw new Error('directory unavailable');
-    },
-    openDirectory: async () => {
-      calls.push('open');
-      return '';
-    },
-    onOpenError: (error) => calls.push(`error:${error}`),
-  });
-
-  assert.equal(outcome, 'failed');
-  assert.deepEqual(calls, ['error:directory unavailable']);
 });

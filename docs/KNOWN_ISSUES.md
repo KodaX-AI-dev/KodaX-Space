@@ -1,46 +1,48 @@
 # Known Issues
 
-Last Updated: 2026-11-17
+Last Updated: 2026-11-21
 
 > 2026-11-14：当前工作树依赖已发布的 Registry SDK `0.7.97-beta.9`（含 beta.8 的 Issues 245–247 原生 Job 启动修复与 Issue 250 的 SDK 侧修复），见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md) 与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
-> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-beta.2 / SDK 0.7.97-beta.11 from the Registry ([beta.9 adaptation](releases/kodax-beta9-space-adaptation.md), [beta.8 adaptation](releases/kodax-beta8-space-adaptation.md), [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the beta.1 release used SDK 0.7.97-beta.10; the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [beta.2 release status](releases/v0.1.47-beta.2-release-readiness.md); the published beta.1 and alpha.4 records stay for those releases. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
+> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-beta.3 / SDK 0.7.97-beta.13 from the Registry (the beta.2 release used SDK 0.7.97-beta.11; [beta.9 adaptation](releases/kodax-beta9-space-adaptation.md), [beta.8 adaptation](releases/kodax-beta8-space-adaptation.md), [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the beta.1 release used SDK 0.7.97-beta.10; the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [beta.3 release status](releases/v0.1.47-beta.3-release-readiness.md); the published beta.2, beta.1 and alpha.4 records stay for those releases. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
 ## Issue Index
 
-| ID  | Priority | Status                                                                                                       | Title                                                                                                                                                                                                      | Introduced                                                                            | Created    |
-| --- | -------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------- |
-| 022 | Medium   | In Progress                                                                                                  | KodaX Runtime lacks a general per-invocation execution service for Partner helper migration                                                                                                                | KodaX 0.7.66 adoption                                                                 | 2026-07-10 |
-| 043 | High     | In Progress                                                                                                  | Unsigned macOS releases repeatedly request the login password for Provider Keychain access                                                                                                                 | v0.1.4                                                                                | 2026-07-14 |
-| 083 | High     | In Progress                                                                                                  | Late accepted daemon interrupt can be terminalized without delivery when its Run finishes during finalization                                                                                              | v0.1.32 development                                                                   | 2026-07-22 |
-| 118 | Medium   | In Progress                                                                                                  | Space rejects large source images before KodaX can normalize them                                                                                                                                          | v0.1.9                                                                                | 2026-07-27 |
-| 133 | High     | In Progress                                                                                                  | macOS/Linux quit and failed Windows complete-exit could leave an invisible Coder daemon without a control surface                                                                                          | v0.1.32 daemon adoption                                                               | 2026-07-28 |
-| 136 | High     | In Progress                                                                                                  | Restored transcript merging and legacy compaction reconciliation can relocate or physically duplicate conversation history                                                                                 | KodaX 0.7.50 / Space v0.1.27; exposed more broadly by 0.7.74                          | 2026-07-30 |
-| 142 | Medium   | In Progress                                                                                                  | Full-effects history restoration mounts and animates an entire long transcript beneath a live backdrop surface                                                                                             | current ConversationStreamV2 / full-effects renderer                                  | 2026-07-30 |
-| 143 | High     | In Progress                                                                                                  | Per-fragment Runtime stream events saturate persistence, IPC, and long-Session renderer updates                                                                                                            | KodaX typed Runtime streaming + current Space event bridge                            | 2026-07-30 |
-| 146 | High     | In Progress                                                                                                  | Stop can cross a history writer boundary and Runtime cancellation can end as a credential failure                                                                                                          | v0.1.34 development / KodaX 0.7.79 integration                                        | 2026-08-01 |
-| 165 | High     | Open                                                                                                         | Stop on a managed daemon Run left it stuck as stop_outcome_unconfirmed; spinner never cleared and sends failed with stale_run                                                                              | KodaX 0.7.79 managed-task Stop / Space run-phase projection                           | 2026-08-04 |
-| 184 | High     | In Progress                                                                                                  | A continued Run could attach cumulative prior-turn output to the latest query while ambiguous compaction survived reload                                                                                   | v0.1.38 daemon live projection / KodaX 0.7.87 compaction                              | 2026-08-15 |
-| 208 | High     | In Progress                                                                                                  | Assistant-side transcript disorder survived the Issue 207 hotfix: answer content painted above its own/previous query, whole turns swallowed, tool chips lost — cured only by manual reload                | <= v0.1.46-alpha.6 live/canonical dual-plane reconciliation                           | 2026-09-07 |
-| 213 | Medium   | ready                                                                                                        | SDK Full RepoIntel routing can rebuild for 9–16 seconds before model work begins                                                                                                                           | Observed SDK 0.7.96-rc.3 / Space v0.1.46-beta.1                                       | 2026-09-13 |
-| 216 | High     | Original fix released in rc.2; compaction telemetry follow-up fixed in source; customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics                                                                                                                                   | Observed v0.1.46-beta.4-fix.1 / rc.1                                                  | 2026-09-21 |
-| 217 | Medium   | Resolved in source; native macOS verification pending                                                        | Background Git queries repeatedly trigger the macOS developer-tools installer                                                                                                                              | Observed v0.1.46-rc.3 / SDK v0.7.96-rc.10; first affected version unknown             | 2026-09-23 |
-| 218 | High     | Legacy fix superseded; intermittent switch case under investigation                                          | Queued inputs and whole answers duplicate after reload; recovered live history omits completed tools                                                                                                       | Observed v0.1.46-rc.5                                                                 | 2026-09-28 |
-| 225 | Medium   | ready                                                                                                        | Intermittent packaged Runtime cold startup exceeds its readiness deadline                                                                                                                                  | Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9                                         | 2026-10-25 |
-| 230 | High     | Resolved in source                                                                                           | Linux hidden titlebar omits minimize/maximize/close controls                                                                                                                                               | Reported v0.1.46                                                                      | 2026-10-28 |
-| 231 | Medium   | ready                                                                                                        | Linux CLI sandbox guidance omits the missing Node interpreter                                                                                                                                              | Reported 2026-10-23; CLI version unknown                                              | 2026-10-28 |
-| 232 | High     | Resolved in source                                                                                           | Startup updater downloads automatically and lacks a stable-channel guard                                                                                                                                   | Existing F022 behavior                                                                | 2026-10-28 |
-| 244 | Low      | ready                                                                                                        | Cold-open newest history read grows with Session file size                                                                                                                                                 | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4                                     | 2026-11-10 |
-| 245 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize                                                                                                                    | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
-| 246 | High     | Resolved in 0.1.47-beta.1                                                                                    | Windows Job verification failure leaves Coder unavailable without an actionable recovery flow                                                                                                              | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
-| 247 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | New-conversation task summary says Ready while the Coder backend has failed to start                                                                                                                       | Observed Space 0.1.47-alpha.5; first affected version unknown                         | 2026-11-12 |
-| 248 | High     | Resolved in 0.1.47-beta.1                                                                                    | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret                                                                                 | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
-| 249 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Sent prompt stays (fully or partly) in the composer when a line ends with a line break                                                                                                                     | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11             | 2026-11-13 |
-| 250 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                                        | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
-| 251 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                               | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
-| 252 | Low      | Resolved in 0.1.47-beta.2                                                                                    | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                                         | SDK product view (failure kept only in Run status); fixed by SDK 0.7.97-beta.11       | 2026-11-15 |
+| ID  | Priority | Status                                                                                                       | Title                                                                                                                                                                                       | Introduced                                                                            | Created    |
+| --- | -------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------- |
+| 022 | Medium   | In Progress                                                                                                  | KodaX Runtime lacks a general per-invocation execution service for Partner helper migration                                                                                                 | KodaX 0.7.66 adoption                                                                 | 2026-07-10 |
+| 043 | High     | In Progress                                                                                                  | Unsigned macOS releases repeatedly request the login password for Provider Keychain access                                                                                                  | v0.1.4                                                                                | 2026-07-14 |
+| 083 | High     | In Progress                                                                                                  | Late accepted daemon interrupt can be terminalized without delivery when its Run finishes during finalization                                                                               | v0.1.32 development                                                                   | 2026-07-22 |
+| 118 | Medium   | In Progress                                                                                                  | Space rejects large source images before KodaX can normalize them                                                                                                                           | v0.1.9                                                                                | 2026-07-27 |
+| 133 | High     | In Progress                                                                                                  | macOS/Linux quit and failed Windows complete-exit could leave an invisible Coder daemon without a control surface                                                                           | v0.1.32 daemon adoption                                                               | 2026-07-28 |
+| 136 | High     | In Progress                                                                                                  | Restored transcript merging and legacy compaction reconciliation can relocate or physically duplicate conversation history                                                                  | KodaX 0.7.50 / Space v0.1.27; exposed more broadly by 0.7.74                          | 2026-07-30 |
+| 142 | Medium   | In Progress                                                                                                  | Full-effects history restoration mounts and animates an entire long transcript beneath a live backdrop surface                                                                              | current ConversationStreamV2 / full-effects renderer                                  | 2026-07-30 |
+| 143 | High     | In Progress                                                                                                  | Per-fragment Runtime stream events saturate persistence, IPC, and long-Session renderer updates                                                                                             | KodaX typed Runtime streaming + current Space event bridge                            | 2026-07-30 |
+| 146 | High     | In Progress                                                                                                  | Stop can cross a history writer boundary and Runtime cancellation can end as a credential failure                                                                                           | v0.1.34 development / KodaX 0.7.79 integration                                        | 2026-08-01 |
+| 165 | High     | Open                                                                                                         | Stop on a managed daemon Run left it stuck as stop_outcome_unconfirmed; spinner never cleared and sends failed with stale_run                                                               | KodaX 0.7.79 managed-task Stop / Space run-phase projection                           | 2026-08-04 |
+| 184 | High     | In Progress                                                                                                  | A continued Run could attach cumulative prior-turn output to the latest query while ambiguous compaction survived reload                                                                    | v0.1.38 daemon live projection / KodaX 0.7.87 compaction                              | 2026-08-15 |
+| 208 | High     | In Progress                                                                                                  | Assistant-side transcript disorder survived the Issue 207 hotfix: answer content painted above its own/previous query, whole turns swallowed, tool chips lost — cured only by manual reload | <= v0.1.46-alpha.6 live/canonical dual-plane reconciliation                           | 2026-09-07 |
+| 213 | Medium   | ready                                                                                                        | SDK Full RepoIntel routing can rebuild for 9–16 seconds before model work begins                                                                                                            | Observed SDK 0.7.96-rc.3 / Space v0.1.46-beta.1                                       | 2026-09-13 |
+| 216 | High     | Original fix released in rc.2; compaction telemetry follow-up fixed in source; customer verification pending | Windows credential restoration, Shell usability and packaged diagnostics                                                                                                                    | Observed v0.1.46-beta.4-fix.1 / rc.1                                                  | 2026-09-21 |
+| 217 | Medium   | Resolved in source; native macOS verification pending                                                        | Background Git queries repeatedly trigger the macOS developer-tools installer                                                                                                               | Observed v0.1.46-rc.3 / SDK v0.7.96-rc.10; first affected version unknown             | 2026-09-23 |
+| 218 | High     | Legacy fix superseded; intermittent switch case under investigation                                          | Queued inputs and whole answers duplicate after reload; recovered live history omits completed tools                                                                                        | Observed v0.1.46-rc.5                                                                 | 2026-09-28 |
+| 225 | Medium   | ready                                                                                                        | Intermittent packaged Runtime cold startup exceeds its readiness deadline                                                                                                                   | Observed v0.1.47-alpha.3 / SDK 0.7.97-alpha.9                                         | 2026-10-25 |
+| 230 | High     | Resolved in source                                                                                           | Linux hidden titlebar omits minimize/maximize/close controls                                                                                                                                | Reported v0.1.46                                                                      | 2026-10-28 |
+| 231 | Medium   | ready                                                                                                        | Linux CLI sandbox guidance omits the missing Node interpreter                                                                                                                               | Reported 2026-10-23; CLI version unknown                                              | 2026-10-28 |
+| 232 | High     | Resolved in source                                                                                           | Startup updater downloads automatically and lacks a stable-channel guard                                                                                                                    | Existing F022 behavior                                                                | 2026-10-28 |
+| 244 | Low      | ready                                                                                                        | Cold-open newest history read grows with Session file size                                                                                                                                  | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4                                     | 2026-11-10 |
+| 245 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Settings diagnostic export omits daemon startup evidence when Runtime cannot initialize                                                                                                     | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
+| 246 | High     | Resolved in 0.1.47-beta.1                                                                                    | Windows Job verification failure leaves Coder unavailable without an actionable recovery flow                                                                                               | Observed Space 0.1.47-alpha.5 / SDK 0.7.97-beta.4; first affected version unknown     | 2026-11-12 |
+| 247 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | New-conversation task summary says Ready while the Coder backend has failed to start                                                                                                        | Observed Space 0.1.47-alpha.5; first affected version unknown                         | 2026-11-12 |
+| 248 | High     | Resolved in 0.1.47-beta.1                                                                                    | Linux upgrade from 0.1.46 blocks startup forever when the locked OS keyring cannot return the legacy Runtime client secret                                                                  | Space 0.1.47-alpha.5 (secret moved from keychain to auth.json); reported on Kylin V10 | 2026-11-13 |
+| 249 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Sent prompt stays (fully or partly) in the composer when a line ends with a line break                                                                                                      | Space 0.1.47-alpha.5 (Lexical composer, 2e8bbd7e); reported on Windows 11             | 2026-11-13 |
+| 250 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | Quit with nothing running fails while a `kodax` CLI shares the Host                                                                                                                         | Source after 0.1.47-alpha.5 (shared Host, 4a28edda); observed with SDK 0.7.97-beta.8  | 2026-11-13 |
+| 251 | Medium   | Resolved in 0.1.47-beta.1                                                                                    | A query sent into an existing Session disappears when the spinner turns from sent to working, then reappears                                                                                | Space 0.1.47-alpha.2 (SDK product view, `ec154569`)                                   | 2026-11-14 |
+| 252 | Low      | Resolved in 0.1.47-beta.2                                                                                    | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                            | SDK product view (failure kept only in Run status); fixed by SDK 0.7.97-beta.11       | 2026-11-15 |
+| 253 | Medium   | Resolved in 0.1.47-beta.3                                                                                    | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                 | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                      | 2026-11-19 |
+| 254 | Medium   | Deferred to the next major version                                                                           | During a Run, browsing older history can show a message twice, hide it briefly or place it out of order                                                                                     | KodaX 0.7.97 history pages / product view; Space 0.1.47                               | 2026-11-21 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -2779,16 +2781,97 @@ a locked object`, autologin without keyring unlock) it throws "OS-protected stor
   the Provider settings action, and keeps it after a later successful Run without a
   "Recovery exhausted" notice.
 
+## Issue 253 — Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data
+
+- **Priority**: Medium (a popular skill cannot be installed from Settings; `git clone` into the
+  skills folder works).
+- **Status**: Resolved; released in 0.1.47-beta.3.
+- **Introduced**: Space 0.1.47-beta.1 (Settings skill install). Reported by 苏睿聪 and 天能 on
+  0.1.47-beta.1 and beta.2, Windows 11 and macOS.
+- **Created**: 2026-11-19.
+- **Original problem**: Settings → 技能 → [上传] 用户 ZIP with `CyberPPT.zip` (19,438 KB). The
+  button spins, then stops; no skill appears in `~/.kodax/skills`, while
+  `skills/.install-tmp/` holds `skill-<pid>-<ts>-<nonce>.zip` and a partly filled
+  `extract-<pid>-<ts>-<nonce>/`.
+- **Reproduction**: the public CyberPPT repo zip (`crazyykhllc-bit/CyberPPT`, `name: cyber-ppt`)
+  has 11,685 entries, 11,639 of them under `assets/icons`. `installSkillFromPath('archive', …)`
+  throws `archive has more than 4096 entries`; the Settings page shows it as `HANDLER_ERROR`
+  above the install locations.
+- **Root cause**:
+  - `apps/desktop/electron/skill/install.ts` capped archives and folders at
+    `MAX_ENTRIES = 4096`. Extraction counted entries while writing, so the first 4,096 files were
+    on disk before the error. The byte (512 MB) and per-entry ratio (100:1) guards already bound
+    zip bombs; the count cap was the only blocker.
+  - Temporary files were removed with `fsp.rm(...).catch(() => undefined)` and no retry. On the
+    reporter's Windows machine the removal of freshly written files failed (most likely a scanner
+    or indexer holding them; not reproduced locally) and the error was discarded, so the
+    temporary zip and partial extract stayed behind.
+- **Resolution (2026-11-19)**:
+  - `MAX_ENTRIES` is 32,768. `extractZip` checks yauzl's central-directory `entryCount` before
+    extracting (`archive has N entries; the limit is 32768`), so an over-limit zip writes nothing;
+    the per-entry counter is gone because yauzl reads exactly `entryCount` entries.
+  - `removeTemp` removes temporary zip/extract/copy/backup paths with `maxRetries: 5,
+retryDelay: 200` and logs a failure through `console.warn` (captured by the diagnostics
+    logger). A failed rollback rename is logged too.
+  - Existing leftovers from beta.1/beta.2 are not swept; users can delete
+    `skills/.install-tmp` by hand.
+- **Fixed**: source after 0.1.47-beta.2; released in 0.1.47-beta.3.
+- **Files changed**: `apps/desktop/electron/skill/install.ts`,
+  `apps/desktop/electron/test/skill-install.test.ts`, `CHANGELOG.md`.
+- **Tests added**: `skill-install.test.ts` — "installs a skill zip with more than 4096 files and
+  leaves no install temp" (5,000 icons; red before the fix) and "rejects an over-limit skill zip
+  before extracting any entry" (32,769 entries; red before the fix). The real CyberPPT repo zip
+  installs as `cyber-ppt` with an empty `.install-tmp`.
+
+## Issue 254 — During a Run, browsing older history can show a message twice, hide it briefly or place it out of order
+
+- **Priority**: Medium (the conversation settles once the Run ends; nothing is lost on disk).
+- **Status**: Deferred to the next major version (decision 2026-11-21). The fix needs SDK changes
+  first; the current version keeps SDK 0.7.97-beta.13 and the existing Space mitigations.
+- **Introduced**: KodaX 0.7.97 history pages and product view (ADR-010 keeps history and view IDs
+  in separate namespaces); Space 0.1.47 stitches the two.
+- **Created**: 2026-11-21.
+- **Symptom**: while a Run is writing, scrolling up through older pages, switching back with
+  "Return to latest" or the 30-second newest-page refresh can show the same message twice, drop
+  one for a moment or put it in a different place.
+- **Root cause (SDK, verified unchanged in beta.12 and beta.13)**: an item's identity is derived
+  from its content on every read instead of being assigned once when it is written.
+  - G1: history item IDs are `${sessionId}:history:${revision}:${entryIndex}#${ordinal}`, with a
+    content-hash revision, so every write changes every history ID and none matches the live view.
+  - G2: the view re-reads storage on every commit and merges by position, content
+    (`isSettledCanonicalDuplicate`), text and time (`findLegacyDisplayMatch`) and sha256
+    fingerprints; a draft's ID (`${runId}:${providerRequestId}:${kind}`) differs from its saved
+    ID (`output:${outputId}:${kind}:N`).
+  - G3: display history (`uiHistory`) is stored apart from the lineage and merged on restore.
+    beta.13 appends a delta during a Run but still rewrites the file after it.
+  - G4: the view keeps a 150-item window that is replaced whole with no gap marker.
+  - G5: history pages and the view share no boundary; the `observe()` `seq` watermark is not
+    exposed.
+  - G6: user items appear only after they are persisted, so the client shows its own copy first.
+- **Current mitigations (Space 0.1.47-beta.2)**: the renderer (`shell/sessionHistoryPaging.ts`, `store/productSessionView.ts`) keeps
+  loaded older pages on a failed refresh, switches to the live view at once on "Return to latest"
+  and defers the newest-page refresh until the Run ends; the Host adapter retries a newest-page
+  read once on `resync_required` with `writer_active`.
+- **Planned fix (next major version)**:
+  - SDK P1: assign each item one ID at write time (`inputId`, `outputId` + block, `callId`, or
+    lineage entry `id` + block), use it in both history pages and the view, and expose a monotonic
+    `seq` per saved item. P2: drafts keep their final ID; remove content/time matching. P4:
+    `uiHistory` append-only or folded into the lineage. Needs a new ADR replacing the ADR-010 ID
+    namespace rule.
+  - Space P3 (after SDK P1): one transcript keyed by item ID with gap markers, live items winning
+    over history pages; remove the stitching in `shell/sessionHistoryPaging.ts` and `store/productSessionView.ts`.
+- **Related**: Issues 136 and 218 (restore and reload duplicates).
+
 ## Summary
 
-- Total: 29
-- Open: 1
+- Total: 31
+- Open: 2
 - Ready: 4
 - In Progress: 11
-- Resolved, awaiting release or verification: 11
+- Resolved, awaiting release or verification: 12
 - Other (partially fixed / under investigation): 2
 - High: 15
-- Medium: 12
+- Medium: 14
 - Low: 2
 - Next ready to resolve: 222
 - Archived (resolved and delivered): see [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md)

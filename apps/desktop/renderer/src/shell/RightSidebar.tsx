@@ -46,6 +46,7 @@ import {
   toProjectRelative,
   isAbsolutePathOutsideProject,
 } from '../lib/openPath.js';
+import { toolInputPaths } from '../lib/pathClassify.js';
 import { Caret } from '../components/Caret.js';
 import { FileNameText } from '../components/FileNameText.js';
 import { ArtifactsView } from '../features/artifact/ArtifactsView.js';
@@ -2246,29 +2247,16 @@ interface ContextRefs {
 
 function collectContextRefs(events: readonly SessionEvent[]): ContextRefs {
   const toolCounts = new Map<string, number>();
-  const files = new Set<string>();
   for (const ev of events) {
     if (ev.kind === 'tool_start') {
-      const name = (ev as { toolName?: string }).toolName;
-      if (typeof name === 'string') {
-        toolCounts.set(name, (toolCounts.get(name) ?? 0) + 1);
-      }
-      const input = (ev as { input?: unknown }).input;
-      if (input && typeof input === 'object') {
-        const path =
-          (input as { path?: unknown; file_path?: unknown }).path ??
-          (input as { file_path?: unknown }).file_path;
-        if (typeof path === 'string' && path.length > 0 && path.length < 512) {
-          files.add(path);
-        }
-      }
+      toolCounts.set(ev.toolName, (toolCounts.get(ev.toolName) ?? 0) + 1);
     }
   }
   return {
     tools: [...toolCounts.entries()]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count),
-    files: [...files],
+    files: [...toolInputPaths(events)],
   };
 }
 

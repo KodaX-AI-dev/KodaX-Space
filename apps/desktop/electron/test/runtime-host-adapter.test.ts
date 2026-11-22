@@ -11,6 +11,7 @@ import type {
   KodaXDaemonRuntime,
   RuntimeConnectionState,
   RuntimeDaemonManagementState,
+  RuntimeIntegrationHealth,
   RuntimeRunHandle,
   RuntimeRunResult,
   RuntimeRunStatus,
@@ -1053,10 +1054,10 @@ test('a recovered newest history boundary is read without reopening an invalidat
   fake.runtime.sessions.readHistory = async () => {
     if (!fresh) {
       conflict = true;
-      throw Object.assign(
-        new Error('Session main file moved during the read boundary'),
-        { code: 'resync_required', data: { reason: 'writer_active' } },
-      );
+      throw Object.assign(new Error('Session main file moved during the read boundary'), {
+        code: 'resync_required',
+        data: { reason: 'writer_active' },
+      });
     }
     return {
       revision: 'usable',
@@ -1823,7 +1824,7 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
   assert.doesNotThrow(() =>
     assertSpaceRuntimeSdkRequiredCapabilities({
       KODAX_RUNTIME_SDK_CAPABILITIES: {
-        actorSettlementConvergence: 2,
+        actorSettlementConvergence: 3,
         conversationHistory: 2,
         crashOutcomeModel: 2,
         daemonOrphanExit: 1,
@@ -1848,7 +1849,7 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
     () =>
       assertSpaceRuntimeSdkRequiredCapabilities({
         KODAX_RUNTIME_SDK_CAPABILITIES: {
-          actorSettlementConvergence: 2,
+          actorSettlementConvergence: 3,
           conversationHistory: 2,
           crashOutcomeModel: 2,
           daemonOrphanExit: 1,
@@ -1874,7 +1875,7 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
     () =>
       assertSpaceRuntimeSdkRequiredCapabilities({
         KODAX_RUNTIME_SDK_CAPABILITIES: {
-          actorSettlementConvergence: 1,
+          actorSettlementConvergence: 2,
           conversationHistory: 2,
           crashOutcomeModel: 2,
           daemonOrphanExit: 1,
@@ -1889,13 +1890,13 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
           sharedSessionSettings: 2,
         },
       }),
-    /installed KodaX SDK.*actorSettlementConvergence v2/i,
+    /installed KodaX SDK.*actorSettlementConvergence v3/i,
   );
   assert.throws(
     () =>
       assertSpaceRuntimeSdkRequiredCapabilities({
         KODAX_RUNTIME_SDK_CAPABILITIES: {
-          actorSettlementConvergence: 2,
+          actorSettlementConvergence: 3,
           conversationHistory: 1,
           crashOutcomeModel: 2,
           daemonOrphanExit: 1,
@@ -1916,7 +1917,7 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
     () =>
       assertSpaceRuntimeSdkRequiredCapabilities({
         KODAX_RUNTIME_SDK_CAPABILITIES: {
-          actorSettlementConvergence: 2,
+          actorSettlementConvergence: 3,
           conversationHistory: 2,
           crashOutcomeModel: 2,
           daemonOrphanExit: 1,
@@ -1934,7 +1935,7 @@ test('required SDK capabilities are checked before daemon auto-start', () => {
   );
   assert.throws(
     () => assertSpaceRuntimeSdkRequiredCapabilities({}),
-    /installed KodaX SDK.*actorSettlementConvergence v2.*conversationHistory v2.*crashOutcomeModel v2.*daemonOrphanExit v1.*daemonShutdownVerification v1.*effectiveConfig v1.*liveOutputSegments v1.*managedRunDurability v1.*productClient v1.*runtimeEventCoalescing v1.*runtimeAutoModeGuardrail v6.*sandboxRuntime v11.*sharedSessionSettings v2/i,
+    /installed KodaX SDK.*actorSettlementConvergence v3.*conversationHistory v2.*crashOutcomeModel v2.*daemonOrphanExit v1.*daemonShutdownVerification v1.*effectiveConfig v1.*liveOutputSegments v1.*managedRunDurability v1.*productClient v1.*runtimeEventCoalescing v1.*runtimeAutoModeGuardrail v6.*sandboxRuntime v11.*sharedSessionSettings v2/i,
   );
 });
 
@@ -2029,6 +2030,7 @@ function createFakeRuntime(runtimeId = 'rt_test', workModeLocked?: boolean) {
     hostToolRevokes: [] as string[],
     submitted: [] as unknown[],
     daemonInspections: 0,
+    integrationReads: 0,
     daemonStops: [] as unknown[],
     permissionGrantRevokes: [] as Array<{ grantId: string; expectedRevision: number }>,
     permissionResponses: [] as Array<{
@@ -2169,7 +2171,7 @@ function createFakeRuntime(runtimeId = 'rt_test', workModeLocked?: boolean) {
       learningCenter: { version: 1 },
       skillLearningLoop: { version: 1 },
       a2aConfigReconciler: { version: 1 },
-      integrationConfigResilience: { version: 1 },
+      integrationConfigResilience: { version: 1, healthQuery: true },
       operationDeduplication: { version: 1, retentionMs: 900_000 },
       sessionObservation: { version: 1, maxBufferedEvents: 256 },
       afterTurnInput: { version: 1 },
@@ -2210,7 +2212,7 @@ function createFakeRuntime(runtimeId = 'rt_test', workModeLocked?: boolean) {
         bootstrapGrace: true,
       },
       managedRunDurability: { version: 1 },
-      actorSettlementConvergence: { version: 2 },
+      actorSettlementConvergence: { version: 3 },
       liveOutputSegments: { version: 1 },
       runtimeEventCoalescing: { version: 1 },
       sessionEventJournal: { version: 1 },
@@ -2798,6 +2800,11 @@ function createFakeRuntime(runtimeId = 'rt_test', workModeLocked?: boolean) {
           },
           ...(integrationHealth ? { integrations: structuredClone(integrationHealth) } : {}),
         } as RuntimeDaemonManagementState;
+      },
+      integrations: async () => {
+        calls.integrationReads += 1;
+        if (!integrationHealth) throw new Error('fixture integration health is unset');
+        return structuredClone(integrationHealth);
       },
       stopForInline: async (input: unknown) => {
         calls.daemonStops.push(input);
@@ -3894,7 +3901,11 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
 
   await Promise.all([adapter.initialize('0.1.30'), adapter.initialize('ignored-after-start')]);
   assert.equal(options.length, 1);
-  assert.equal(options[0] !== undefined && 'profile' in options[0], false, 'One Host serves each KODAX_HOME');
+  assert.equal(
+    options[0] !== undefined && 'profile' in options[0],
+    false,
+    'One Host serves each KODAX_HOME',
+  );
   assert.equal(options[0]?.autoStart, true);
   assert.equal(
     options[0]?.homeDir,
@@ -3928,7 +3939,7 @@ test('runtime selection attaches one Coder daemon with stable identity and requi
   assert.equal(options[0]?.requirements?.durableRecoveryQueries, 1);
   assert.equal(options[0]?.requirements?.daemonManagement, 1);
   assert.equal(options[0]?.requirements?.daemonOrphanExit, undefined);
-  assert.equal(options[0]?.requirements?.actorSettlementConvergence, 2);
+  assert.equal(options[0]?.requirements?.actorSettlementConvergence, 3);
   assert.equal(options[0]?.requirements?.daemonShutdownVerification, undefined);
   assert.equal(options[0]?.requirements?.runtimeEventCoalescing, 1);
   assert.equal(options[0]?.requirements?.crashOutcomeModel, 2);
@@ -4295,9 +4306,9 @@ test('integration health polling projects daemon watcher changes without reconne
 test('a stuck integration inspection from a retired Runtime does not block the replacement', async () => {
   const retired = createFakeRuntime();
   const replacement = createFakeRuntime();
-  retired.runtime.daemon.inspect = () => {
-    retired.calls.daemonInspections += 1;
-    return new Promise<RuntimeDaemonManagementState>(() => undefined);
+  retired.runtime.daemon.integrations = () => {
+    retired.calls.integrationReads += 1;
+    return new Promise<RuntimeIntegrationHealth>(() => undefined);
   };
   replacement.setIntegrationHealth({
     state: 'degraded',
@@ -4331,20 +4342,74 @@ test('a stuck integration inspection from a retired Runtime does not block the r
   });
 
   await adapter.initialize();
-  await waitForTest(() => retired.calls.daemonInspections === 1);
+  await waitForTest(() => retired.calls.integrationReads === 1);
   retired.disconnect(true);
   await waitForTest(() => adapter.snapshot().state === 'uninitialized');
   await adapter.initialize();
 
   await waitForTest(
     () =>
-      replacement.calls.daemonInspections > 0 &&
+      replacement.calls.integrationReads > 0 &&
       controller.profileSnapshot().connection.integrations?.state === 'degraded',
   );
   assert.equal(
     controller.profileSnapshot().connection.integrations?.domains[0]?.diagnostic?.message,
     'replacement Runtime health',
   );
+  await adapter.close();
+});
+
+test('integration health polling uses the cheap health query, never the management preflight', async () => {
+  const fake = createFakeRuntime();
+  const controller = new RuntimeProjectionController(
+    createPendingSdkRuntimeProjection(100).profileSnapshot(),
+  );
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    projectionController: controller,
+    integrationHealthPollMs: 5,
+  });
+
+  await adapter.initialize();
+  await waitForTest(() => fake.calls.integrationReads >= 3);
+
+  assert.equal(controller.profileSnapshot().connection.integrations?.state, 'healthy');
+  assert.equal(fake.calls.daemonInspections, 0);
+  assert.equal((await adapter.readIntegrationHealth())?.state, 'healthy');
+  assert.equal(fake.calls.daemonInspections, 0);
+  await adapter.close();
+});
+
+test('an older Host without the health query is inspected once instead of polled', async () => {
+  const fake = createFakeRuntime();
+  Object.assign(fake.runtime.capabilities!, { integrationConfigResilience: { version: 1 } });
+  const controller = new RuntimeProjectionController(
+    createPendingSdkRuntimeProjection(100).profileSnapshot(),
+  );
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    runtimeFactory: async () => fake.runtime,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
+    projectionController: controller,
+    integrationHealthPollMs: 5,
+  });
+
+  await adapter.initialize();
+  await waitForTest(
+    () => controller.profileSnapshot().connection.integrations?.state === 'healthy',
+  );
+  await new Promise<void>((resolve) => setTimeout(resolve, 50));
+
+  assert.equal(fake.calls.daemonInspections, 1);
+  assert.equal(fake.calls.integrationReads, 0);
+  assert.equal((await adapter.readIntegrationHealth())?.state, 'healthy');
+  assert.equal(fake.calls.daemonInspections, 2);
   await adapter.close();
 });
 
@@ -5900,21 +5965,26 @@ test('persistent startup failure pauses bounded retries and an explicit retry ca
   let calls = 0;
   let repaired = false;
   const adapter = new RuntimeHostAdapter({
-    mode: 'runtime', profileRoot: path.resolve('C:\\isolated-profile'),
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
     projectionController: controller,
-    identityStore: testIdentityStore, runtimeEventParser: testRuntimeEventParser,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
     runtimeFactory: async () => {
       calls += 1;
-      if (!repaired) throw Object.assign(new Error('Windows Job verification unavailable'), {
-        code: 'daemon_startup_failed', reason: 'child_exit', retryable: true,
-      });
+      if (!repaired)
+        throw Object.assign(new Error('Windows Job verification unavailable'), {
+          code: 'daemon_startup_failed',
+          reason: 'child_exit',
+          retryable: true,
+        });
       return fake.runtime;
     },
   });
   try {
     await assert.rejects(adapter.initialize(), /Job verification/);
     await waitForTest(() => calls >= 3, 8_000);
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     assert.equal(controller.profileSnapshot().connection.state, 'disconnected');
     await assert.rejects(adapter.initialize(), /retry/i);
     assert.equal(calls, 3, 'background requests must not bypass the retry limit');
@@ -5922,7 +5992,9 @@ test('persistent startup failure pauses bounded retries and an explicit retry ca
     adapter.requestStartupRetry();
     await waitForTest(() => adapter.hasReadyRuntime(), 2_000);
     assert.equal(calls, 4);
-  } finally { await adapter.close(); }
+  } finally {
+    await adapter.close();
+  }
 });
 
 test('after the fast retries are exhausted Space keeps retrying slowly and recovers on its own', async () => {
@@ -5931,14 +6003,19 @@ test('after the fast retries are exhausted Space keeps retrying slowly and recov
   let calls = 0;
   let repaired = false;
   const adapter = new RuntimeHostAdapter({
-    mode: 'runtime', profileRoot: path.resolve('C:\\isolated-profile'),
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
     projectionController: controller,
-    identityStore: testIdentityStore, runtimeEventParser: testRuntimeEventParser,
+    identityStore: testIdentityStore,
+    runtimeEventParser: testRuntimeEventParser,
     runtimeFactory: async () => {
       calls += 1;
-      if (!repaired) throw Object.assign(new Error('Windows Job verification unavailable'), {
-        code: 'daemon_startup_failed', reason: 'child_exit', retryable: true,
-      });
+      if (!repaired)
+        throw Object.assign(new Error('Windows Job verification unavailable'), {
+          code: 'daemon_startup_failed',
+          reason: 'child_exit',
+          retryable: true,
+        });
       return fake.runtime;
     },
   });
@@ -5948,14 +6025,19 @@ test('after the fast retries are exhausted Space keeps retrying slowly and recov
   try {
     await assert.rejects(adapter.initialize(), /Job verification/);
     await waitForTest(() => calls >= 3, 8_000);
-    await waitForTest(() => controller.profileSnapshot().connection.state === 'disconnected', 2_000);
+    await waitForTest(
+      () => controller.profileSnapshot().connection.state === 'disconnected',
+      2_000,
+    );
     await assert.rejects(adapter.initialize(), /retry/i);
     // Slow background retries continue while the UI keeps the failed state and Retry action.
     await waitForTest(() => calls >= 5, 4_000);
     assert.equal(controller.profileSnapshot().connection.state, 'disconnected');
     repaired = true;
     await waitForTest(() => adapter.hasReadyRuntime(), 4_000);
-  } finally { await adapter.close(); }
+  } finally {
+    await adapter.close();
+  }
 });
 
 test('Space leaves daemon capability replacement to the SDK and fails closed on rejection', async () => {
@@ -8844,9 +8926,9 @@ test('history and live recovery do not wait for daemon management inspection', a
   });
 
   await adapter.initialize();
-  fake.runtime.daemon.inspect = () => {
-    fake.calls.daemonInspections += 1;
-    return new Promise<RuntimeDaemonManagementState>(() => undefined);
+  fake.runtime.daemon.integrations = () => {
+    fake.calls.integrationReads += 1;
+    return new Promise<RuntimeIntegrationHealth>(() => undefined);
   };
   const privateAdapter = adapter as unknown as {
     pollIntegrationHealth(runtime: KodaXDaemonRuntime): Promise<void>;
@@ -8868,9 +8950,9 @@ test('history and live recovery do not wait for daemon management inspection', a
 
   assert.equal(recovered.length, sessionIds.length * 2);
   assert.equal(
-    fake.calls.daemonInspections,
+    fake.calls.integrationReads,
     1,
-    'the blocked management lane remains single-flight',
+    'the blocked integration-health lane remains single-flight',
   );
   await adapter.close();
 });
@@ -13918,8 +14000,8 @@ test('busy daemon mutation conflicts cannot split terminal events from the live 
   await adapter.ensureObserved('s_1');
   await waitForTest(() => controller.profileSnapshot().connection.integrations !== undefined);
   const initialIntegrations = controller.profileSnapshot().connection.integrations;
-  fake.runtime.daemon.inspect = async () => {
-    fake.calls.daemonInspections += 1;
+  fake.runtime.daemon.integrations = async () => {
+    fake.calls.integrationReads += 1;
     throw Object.assign(new Error('Runtime daemon has in-flight mutations: sessions.submit (1).'), {
       code: 'conflict',
     });
@@ -13946,7 +14028,7 @@ test('busy daemon mutation conflicts cannot split terminal events from the live 
   await waitForTest(
     () => controller.sessionLiveSnapshot('s_1').activeRun?.runId === 'run_profile_conflict',
   );
-  await waitForTest(() => fake.calls.daemonInspections >= 2);
+  await waitForTest(() => fake.calls.integrationReads >= 2);
 
   assert.equal(controller.profileSnapshot().connection.state, 'ready');
   assert.equal(controller.profileSnapshot().connection.stale, false);
@@ -14643,7 +14725,9 @@ test('accepted input publishes its image projection before a concurrent idle rea
           type: 'user',
           inputId: result.inputId!,
           text: 'with image',
-          attachments: [{ kind: 'image', path: 'host-owned-immutable.png', mediaType: 'image/png' }],
+          attachments: [
+            { kind: 'image', path: 'host-owned-immutable.png', mediaType: 'image/png' },
+          ],
         },
       ],
     });
@@ -16150,4 +16234,24 @@ test('daemon capability upgrade failures explain restart and active blockers', a
   );
   assert.doesNotMatch(attemptedAdapter.snapshot().error ?? '', /reconnect automatically/i);
   await attemptedAdapter.close();
+});
+
+test('a blocked startup abandons only the Space-owned exit recovery record', async () => {
+  let abandoned = 0;
+  const adapter = new RuntimeHostAdapter({
+    mode: 'runtime',
+    profileRoot: path.resolve('C:\\isolated-profile'),
+    identityStore: {
+      ...testIdentityStore,
+      abandonExitRecovery: async () => {
+        abandoned += 1;
+        return true;
+      },
+    },
+    runtimeEventParser: testRuntimeEventParser,
+    runtimeFactory: async () => Promise.reject(new Error('unexpected Space Runtime attach')),
+  });
+
+  assert.equal(await adapter.abandonPendingRuntimeExit(), true);
+  assert.equal(abandoned, 1);
 });

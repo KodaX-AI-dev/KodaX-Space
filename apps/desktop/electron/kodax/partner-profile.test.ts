@@ -50,5 +50,13 @@ test('Partner verifies connector results and does not reward silent local fallba
     PARTNER_PROFILE_VERIFICATION.instructions?.join('\n') ?? '',
     /creation status.*content verification/i,
   );
-  assert.equal(PARTNER_AGENT_PROFILE.version, '2026-11-02');
+  assert.equal(PARTNER_AGENT_PROFILE.version, '2026-11-20');
+});
+
+test('Partner cites produced files through links that resolve from the conversation', () => {
+  // Bare run-output paths are joined to the project root on click and are not found there.
+  assert.match(PARTNER_PROFILE_INSTRUCTIONS, /kodax-space:\/\/partner-delivery\//);
+  assert.match(PARTNER_PROFILE_INSTRUCTIONS, /never cite a bare run-output path/i);
+  assert.match(PARTNER_PROFILE_INSTRUCTIONS, /relative to the project root/i);
+  assert.doesNotMatch(PARTNER_PROFILE_INSTRUCTIONS, /local paths for workspace evidence/i);
 });

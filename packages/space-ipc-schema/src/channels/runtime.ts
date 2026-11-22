@@ -302,6 +302,8 @@ export const spaceRuntimeFailureDetailSchema = z
     // Keep a bounded default path for codes introduced by a newer compatible Runtime.
     providerErrorCode: spaceRuntimeProviderErrorCodeSchema.or(spaceRuntimeFailureIdentifierSchema),
     safeMessage: z.string().min(1).max(MAX_RUNTIME_FAILURE_MESSAGE),
+    // Redacted Provider or local error text (SDK ADR-078); safeMessage stays the fixed summary.
+    detail: z.string().min(1).max(MAX_RUNTIME_FAILURE_MESSAGE).optional(),
     skillName: z
       .string()
       .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/)

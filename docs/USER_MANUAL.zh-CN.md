@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树（`0.1.47-beta.1` 候选）的 Registry SDK `0.7.97-beta.10` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。beta.10 把一起回答的多条排队输入合并为一条 canonical 用户消息（`inputIds` 记名），Host 重启不再重复执行已合并输入。已发布 Space `v0.1.47-alpha.4` 使用 beta.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树（`0.1.47-beta.3` 候选）的 Registry SDK `0.7.97-beta.13` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。beta.13 把每次 Stop 一致收敛到最终结果：结算未持久化的 Run 以 `actor_settlement_not_persisted` 结束并在失败详情里显示 Provider 原文，Session 在后台自愈期间拒发新消息（composer 提示“会话恢复中”）；集成健康每 2 秒走 Host 轻量查询；新会话 ID 改用 UUIDv7，未命名会话以末 8 位标注。已发布 Space `v0.1.47-beta.2` 使用 beta.11 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -155,7 +155,9 @@ _图 1：已打开示例项目但尚未创建会话时的 Coder 工作台。实�
 
 如果后台 Session 正在等待权限或 ask_user 回答，左侧栏会显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 问题以该 Session 对话流尾部的聚焦提问卡呈现（v0.1.44 之前的全屏模态已移除），全部待答卡并存可答，composer 上方的召回停靠条显示待答计数并可定位闪光到队首卡。请求仍保存在全局耐久队列中，切换 Session 不会丢失或误消费。
 
-左侧栏的筛选/分组/排序菜单已被一个“显示已归档会话”开关替代，开启后归档会话以变暗的行显示。项目保持加入顺序（新项目排在末尾）直到被拖动，拖拽后的顺序保存在 projects.json，开发版与打包版共享同一顺序；会话先按置顶、再按最近活动排序。拖动项目时会预览落点，其他项目让位，`Escape` 取消。
+侧栏没有列出的地方也会提示需要你的 Session（等待确认、出错、完成未读）：未选中的 Coder/Partner 标签和折叠的“已归档”项目分组，与折叠项目一样显示标记和数量；需要你或正打开的已归档会话，即使未开启“显示已归档会话”也会列在所属项目中，处理后再隐藏。
+
+左侧栏的筛选/分组/排序菜单已被一个“显示已归档会话”开关替代，开启后归档会话以变暗的行显示。新打开的项目排在最上方（越新越靠上），拖动后按拖动顺序保存在 projects.json，之后新打开的项目仍排在最上方；该顺序由开发版与打包版共享；会话先按置顶、再按最近活动排序。拖动项目时会预览落点，其他项目让位，`Escape` 取消。
 
 v0.1.44 还把需要注意的**唯一 Session 数**同步到操作系统原生应用图标：Windows 任务栏与托盘、macOS Dock，以及受桌面环境支持的 Linux launcher。同一 Session 即使同时有未读结果、权限请求和 AskUser，也只计一次。聚焦并查看该 Session 会清除未读结果；权限或 AskUser 只有在实际解决/取消后才退出计数。不支持数字角标的 Linux 桌面会安全忽略，不影响任务。
 
@@ -216,7 +218,7 @@ macOS 请在“系统设置 → 通知 → KodaX Space”允许通知并开启�
 
 Ctrl/Cmd+F 默认查找“已加载内容”，包含当前已显示的实时文字，不切换历史来源；零匹配时可显式“搜索已保存会话”。保存检索不包含尚未保存的实时输出，也不将相关结果条数当作全文出现次数。点击保存结果会优先定位到对话上下文，无法定位时提供原文；也可单独“查看原文”。“返回结果”恢复原阅读页、查询和结果焦点；定位和恢复位置不会被当成用户翻页操作。
 
-Run 工作时，对话流尾部的实时工具组显示正在做什么：按工具族（读、改、运行、其他、失败）在标签上显示图标、调用次数与累计耗时，最近三个操作带目标和时长滚动，模型思考时显示最新一行 thinking；等待审批的工具显示手势图标和“等待审批”，以错误结果结束的工具卡带红色 failed 徽标。Run 结束后工具组保留各族计数、总时间和输出 token。Run 的 spinner 固定显示在 composer 上方整轮可见：实时工具组展示工作期间，spinner 收起动画和文字，只保留已用时间、步骤、活动 todo 与 ↑输入（含缓存）/↓输出 token；发送中、排队、等待回答、等待子 Agent、压缩和停止等阶段恢复 comet 与文字说明。主 Agent 等待子 Agent 时，spinner 附加“Agents working: N”和每个运行中子 Agent 的一行实时进度（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失。动画跟随视觉质量设置和系统减少动态效果偏好。
+Run 工作时，对话流尾部的实时工具组显示正在做什么：按工具族（读、改、运行、其他、失败）在标签上显示图标、调用次数与累计耗时，最近三个操作带目标和时长滚动，模型思考时显示最新一行 thinking；等待审批的工具显示手势图标和“等待审批”，以错误结果结束的工具卡带红色 failed 徽标。Run 结束后工具组保留各族计数、总时间和输出 token。Run 的 spinner 跟在对话流末尾，带 KodaX Run 标记（点阵方块翻滚后压平成像素 K）：实时工具组展示工作期间，spinner 保留 Run 标记，收起文字，只显示已用时间、步骤、活动 todo 与 ↑输入（含缓存）/↓输出 token；发送中、排队、等待回答、等待子 Agent、压缩和停止等阶段恢复文字说明。向上翻看历史时，“返回最新消息”按钮带上 Run 标记、已用时间和运行中的子 Agent 数。主 Agent 等待子 Agent 时，spinner 附加“Agents working: N”和每个运行中子 Agent 的一行实时进度（名称、最新 thinking 或当前工具与目标、该子 Agent 已完成步骤的 ↑输入/↓输出 token 与已运行时长），行随子 Agent 结束消失。动画跟随视觉质量设置和系统减少动态效果偏好。
 
 长会话默认只挂载视口附近的消息（F144 窗口化）：无论加载了多少历史，滚动、加载更早或更新页、跳到最新消息都保持流畅；搜索和问题轨跳转即时定位，展开行与入口提示在重新挂载后保留。
 
@@ -632,7 +634,8 @@ watcher、最近 reload 和诊断状态。`Dedicated integration file` 表示已
 如果某个独立 integration 文件无效，Runtime 会继续使用 last-known-good 配置并返回
 有界诊断；Space 会指明应检查的规范路径，不会删除、重写或静默重置用户配置。Space
 会自动刷新 daemon watcher 的健康状态，修复被点名文件后通常会在数秒内恢复 healthy，
-无需重启 Coder。若迁移期间发现 revision 已被其他客户端更新，Space 会要求 reload 后
+无需重启 Coder。自 SDK beta.13 起，自动刷新每 2 秒走 Host 的轻量健康查询，不再触发完整
+管理预检；旧 Host 只在连接时读取一次，Host 重启后恢复自动刷新。若迁移期间发现 revision 已被其他客户端更新，Space 会要求 reload 后
 重试，不会覆盖新数据；inbound A2A authentication/authority 变化仍可能要求安全重启
 Runtime owner。
 

@@ -126,7 +126,7 @@ async function sessionCommands(ctx: CommandContext): Promise<readonly CommandIte
   return sessions.map((s) => ({
     id: `session:${s.sessionId}`,
     kind: 'session' as const,
-    label: s.title || s.sessionId.slice(0, 8),
+    label: s.title || s.sessionId.slice(-8),
     hint: `${s.provider} - ${new Date(s.lastActivityAt).toLocaleString(ctx.locale)}`,
     searchText: `${s.title ?? ''} ${s.sessionId} ${s.provider}`.trim(),
     onPick: () => {

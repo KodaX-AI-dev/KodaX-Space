@@ -1046,6 +1046,71 @@ test('daemon Coder returns a factual draft rejection when Run admission exhausts
   await waitForTest(() => !session.isRunning());
 });
 
+for (const conflict of ['actor_settlement_not_persisted', 'actor_settlement_retrying']) {
+  test(`daemon Coder restores the draft while the Host heals the Session (${conflict})`, async (t) => {
+    const adapter = runtimeHostAdapter as unknown as Record<string, unknown>;
+    const patchedMethods = new Map<
+      string,
+      { readonly existed: boolean; readonly value: unknown }
+    >();
+    const patchMethod = (name: string, value: unknown): void => {
+      patchedMethods.set(name, {
+        existed: Object.prototype.hasOwnProperty.call(adapter, name),
+        value: adapter[name],
+      });
+      adapter[name] = value;
+    };
+    t.after(() => {
+      for (const [name, original] of patchedMethods) {
+        if (original.existed) adapter[name] = original.value;
+        else delete adapter[name];
+      }
+    });
+
+    let startAttempts = 0;
+    patchMethod('isRuntimeSelected', () => true);
+    patchMethod('initialize', async () => undefined);
+    patchMethod('ensureSession', async () => false);
+    patchMethod('ensureObserved', async () => undefined);
+    patchMethod('activeRunId', () => undefined);
+    patchMethod('findActiveRunId', async () => undefined);
+    patchMethod('updateSessionSettings', async () => undefined);
+    patchMethod('startManagedRun', async () => {
+      startAttempts += 1;
+      // KodaX Issue 428: the daemon rejects admission with the protocol code and keeps the
+      // Runtime reason in data.conflict.
+      throw Object.assign(new Error('Actor settlement is not persisted.'), {
+        code: 'conflict',
+        data: { conflict },
+      });
+    });
+
+    const events: Array<{ readonly kind?: string }> = [];
+    const session = new RealKodaXSession({
+      sessionId: `session_recovering_${conflict}`,
+      projectRoot: process.cwd(),
+      provider: 'test-provider',
+      reasoningMode: 'balanced',
+      permissionMode: 'accept-edits',
+      surface: 'code',
+      emit: (event) => events.push(event),
+      requestPermission: async () => 'allow_once',
+    });
+
+    assert.deepEqual(await session.send('keep this draft while the Session heals'), {
+      accepted: false,
+      reason: 'session_recovering',
+      queueMode: 'interrupt',
+    });
+    assert.equal(startAttempts, 1);
+    assert.equal(
+      events.some((event) => event.kind === 'session_error'),
+      false,
+    );
+    await waitForTest(() => !session.isRunning());
+  });
+}
+
 test('an internally started prompt reports a boundary failure instead of failing silently', async (t) => {
   const adapter = runtimeHostAdapter as unknown as Record<string, unknown>;
   const patchedMethods = new Map<string, { readonly existed: boolean; readonly value: unknown }>();
@@ -1384,7 +1449,8 @@ test('active daemon run preserves interrupt intent and requires explicit after-t
 
   let submittedInput: Record<string, unknown> | undefined;
   let settingsUpdate:
-    { readonly sessionId: string; readonly patch: Record<string, unknown> } | undefined;
+    | { readonly sessionId: string; readonly patch: Record<string, unknown> }
+    | undefined;
   const settingsUpdates: Array<{
     readonly sessionId: string;
     readonly patch: Record<string, unknown>;
@@ -1582,7 +1648,8 @@ test('daemon run refreshes settings and leaves raw Skill preparation to Host', a
   });
 
   let settingsUpdate:
-    { readonly sessionId: string; readonly patch: Record<string, unknown> } | undefined;
+    | { readonly sessionId: string; readonly patch: Record<string, unknown> }
+    | undefined;
   let managedRunInput: Record<string, unknown> | undefined;
   let managedRunCalls = 0;
   patchMethod('initialize', async () => undefined);

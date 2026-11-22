@@ -148,6 +148,13 @@ const agentChildLiveSchema = z
     id: z.string().min(1).max(2048),
     label: z.string().min(1).max(2048),
     startedAt: z.number().finite(),
+    /** The child's context agent (a workflow actor path), which its step usage reports under. */
+    agentId: z.string().min(1).max(2048).optional(),
+    /** ↑ input (cache included) and ↓ output summed over the child's finished steps. */
+    tokens: z
+      .object({ up: z.number().finite().nonnegative(), down: z.number().finite().nonnegative() })
+      .strict()
+      .optional(),
     /** Tail of the thinking (or reply) text streamed since the child's last tool call. */
     thinking: z.string().max(400).optional(),
     /** The child's latest tool call; input keeps only short string fields. */

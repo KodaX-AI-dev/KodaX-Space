@@ -3,12 +3,6 @@ import { isWindowsAclRecoveryText } from '../kodax/sandbox-controller.js';
 
 type BlockedRuntimeExitSettlement = Extract<RuntimeExitSettlement, { readonly status: 'blocked' }>;
 
-export interface RuntimeExitRecoveryBlockedNotice {
-  readonly title: string;
-  readonly message: string;
-  readonly detail: string;
-}
-
 export interface RuntimeExitFailureDialogPresentation {
   readonly title: string;
   readonly message: string;
@@ -64,106 +58,6 @@ export function runtimeExitFailureDialog(
         : 'Keep Space open to preserve the current state. Force close stops work owned by this Space and exits completely.',
     buttons: [firstAction, zh ? '强行关闭 Space' : 'Force close Space'],
   };
-}
-
-export interface RuntimeExitRecoveryDiagnosticsAction {
-  readonly diagnosticsDirectory: () => string;
-  readonly ensureDirectory: (directory: string) => void;
-  readonly openDirectory: (directory: string) => Promise<string>;
-  readonly onOpenError: (error: string) => void;
-}
-
-export async function handleRuntimeExitRecoveryDialogResponse(
-  response: number,
-  action: RuntimeExitRecoveryDiagnosticsAction,
-): Promise<'closed' | 'opened' | 'failed'> {
-  if (response !== 0) return 'closed';
-  const directory = action.diagnosticsDirectory();
-  try {
-    action.ensureDirectory(directory);
-    const openError = await action.openDirectory(directory);
-    if (!openError) return 'opened';
-    action.onOpenError(openError);
-    return 'failed';
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    action.onOpenError(message.slice(0, 512));
-    return 'failed';
-  }
-}
-
-export function runtimeExitRecoveryBlockedNotice(
-  settlement: BlockedRuntimeExitSettlement,
-  locale: 'zh-CN' | 'en',
-): RuntimeExitRecoveryBlockedNotice {
-  const zh = locale === 'zh-CN';
-  if (settlement.reason === 'verification_timeout') {
-    return {
-      title: zh ? '助手恢复验证仍在等待' : 'Assistant recovery verification is still pending',
-      message: zh
-        ? '上次助手退出状态在 30 秒内尚未确认'
-        : 'The previous Runtime exit could not be verified within 30 seconds',
-      detail: zh
-        ? '请选择“继续验证”以等待当前检查或重新检查。也可以打开诊断目录。助手将在安全验证完成后启动，请保留原恢复文件。'
-        : 'Choose “Continue verification” to wait for the current check or recheck recovery, or open the diagnostics folder. The assistant starts after safety verification completes. Preserve the recovery files.',
-    };
-  }
-  if (isWindowsAclRecoveryText(settlement.message)) {
-    const action = zh
-      ? runtimeExitRecoveryActionZh(settlement.nextAction)
-      : runtimeExitRecoveryActionEn(settlement.nextAction);
-    return {
-      title: zh ? 'Runtime 退出恢复被阻止' : 'Runtime exit recovery blocked',
-      message: zh
-        ? 'Space 未启动新的 Coder Runtime'
-        : 'Space did not start a competing Coder Runtime',
-      detail: zh
-        ? `Windows 命令沙箱的 ACL 所有者状态暂时无法安全确认。${action} 请勿手动删除 ACL marker。`
-        : `The Windows command sandbox ACL owner state could not be verified safely. ${action} Do not delete ACL markers manually.`,
-    };
-  }
-  const action = zh
-    ? runtimeExitRecoveryActionZh(settlement.nextAction)
-    : runtimeExitRecoveryActionEn(settlement.nextAction);
-  return {
-    title: zh ? 'Runtime 退出恢复被阻止' : 'Runtime exit recovery blocked',
-    message: zh
-      ? 'Space 未启动新的 Coder Runtime'
-      : 'Space did not start a competing Coder Runtime',
-    detail: zh
-      ? `${action} 错误代码：${settlement.reason}。`
-      : `${action} Error code: ${settlement.reason}.`,
-  };
-}
-
-function runtimeExitRecoveryActionZh(
-  nextAction: BlockedRuntimeExitSettlement['nextAction'],
-): string {
-  if (nextAction === 'restart-system') {
-    return '请重启 Windows 后重新打开 Space；若问题仍存在，请在此阻断窗口选择“打开诊断目录”并联系支持。';
-  }
-  if (nextAction === 'relaunch-space') {
-    return '请完全退出并重新打开 Space；若问题仍存在，请在此阻断窗口选择“打开诊断目录”并联系支持。';
-  }
-  if (nextAction === 'retry-automatically') {
-    return '请选择“继续验证”以等待或重新检查恢复状态。助手将在安全验证完成后启动。';
-  }
-  return '请勿反复重启或手动删除恢复文件；请在此阻断窗口选择“打开诊断目录”并联系支持。';
-}
-
-function runtimeExitRecoveryActionEn(
-  nextAction: BlockedRuntimeExitSettlement['nextAction'],
-): string {
-  if (nextAction === 'restart-system') {
-    return 'Restart Windows and reopen Space. If the problem returns, choose “Open diagnostics folder” in this blocking window and contact support.';
-  }
-  if (nextAction === 'relaunch-space') {
-    return 'Fully exit and reopen Space. If the problem returns, choose “Open diagnostics folder” in this blocking window and contact support.';
-  }
-  if (nextAction === 'retry-automatically') {
-    return 'Choose “Continue verification” to wait for or recheck recovery. The assistant starts after safety verification completes.';
-  }
-  return 'Do not repeatedly restart or delete recovery files. Choose “Open diagnostics folder” in this blocking window and contact support.';
 }
 
 export type RuntimeExitRecoveryStartupDecision =
@@ -325,6 +219,12 @@ async function resolveBoundedRuntimeExitRecovery(
   return { action: 'block', settlement };
 }
 
+/**
+ * Startup always converges. The exit check is bounded and advisory: a verdict that cannot
+ * prove a clean exit (a persisted `cleanup_failed`, an expired 30-second wait, ...) never
+ * changes on its own, so blocking on it would trap every later launch. The SDK owner lock
+ * and sandbox admission remain the guards against a live competing Host.
+ */
 export async function runRuntimeStartupBoundary(input: {
   readonly recoveryRequested: boolean;
   readonly scanPendingExit: boolean;
@@ -335,14 +235,13 @@ export async function runRuntimeStartupBoundary(input: {
   ) => Promise<void>;
   readonly continueAutomaticRetry?: () => boolean;
   readonly shutdownSignal?: AbortSignal;
-  readonly onBlocked?: (
-    settlement: Extract<RuntimeExitSettlement, { readonly status: 'blocked' }>,
-  ) => Promise<boolean>;
+  /** Records the verdict and stops re-reading it; must not throw. */
+  readonly releaseBlockedExit: (settlement: BlockedRuntimeExitSettlement) => Promise<void>;
   readonly reconcileOwnerPolicy: () => Promise<boolean>;
   readonly prepareStartup: () => Promise<void>;
   readonly initializeRuntime: (ownerPolicyReady: boolean) => void;
-}): Promise<RuntimeExitRecoveryStartupDecision> {
-  const recoveryInput = {
+}): Promise<Exclude<RuntimeExitRecoveryStartupDecision, { readonly action: 'block' }>> {
+  const decision = await resolveRuntimeExitRecoveryStartup({
     requested: input.recoveryRequested,
     scanPending: input.scanPendingExit,
     settle: input.settle,
@@ -353,22 +252,18 @@ export async function runRuntimeStartupBoundary(input: {
       ? { continueAutomaticRetry: input.continueAutomaticRetry }
       : {}),
     ...(input.shutdownSignal !== undefined ? { shutdownSignal: input.shutdownSignal } : {}),
-  };
-  let decision = await resolveRuntimeExitRecoveryStartup(recoveryInput);
-  const onBlocked = input.onBlocked;
-  while (decision.action === 'block' && onBlocked) {
+  });
+  if (decision.action === 'cancelled' || decision.action === 'exit') return decision;
+  if (decision.action === 'block') {
+    await input.releaseBlockedExit(decision.settlement);
     if (shutdownSignalAborted(input.shutdownSignal)) return { action: 'cancelled' };
-    const settlement = decision.settlement;
-    const retry = await waitForRecoveryOperation(() => onBlocked(settlement), input.shutdownSignal);
-    if (shutdownSignalAborted(input.shutdownSignal)) return { action: 'cancelled' };
-    if (!retry) return decision;
-    decision = await resolveRuntimeExitRecoveryStartup(recoveryInput);
   }
-  if (decision.action !== 'continue') return decision;
   const ownerPolicyReady = await input.reconcileOwnerPolicy();
   if (shutdownSignalAborted(input.shutdownSignal)) return { action: 'cancelled' };
   await input.prepareStartup();
   if (shutdownSignalAborted(input.shutdownSignal)) return { action: 'cancelled' };
   input.initializeRuntime(ownerPolicyReady);
-  return decision;
+  return decision.settlement === undefined
+    ? { action: 'continue' }
+    : { action: 'continue', settlement: decision.settlement };
 }

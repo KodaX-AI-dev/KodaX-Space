@@ -11,13 +11,20 @@ import { Code2, Handshake } from 'lucide-react';
 import { PARTNER_ENABLED, useSurfaceStore, type Surface } from '../store/surface.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { setSpaceSurface } from '../space-control/semanticActions.js';
+import type { AttentionSummary } from '../features/session/sessionAttention.js';
+import { ProjectAttentionBadge } from './ProjectAttentionBadge.js';
 
 const TABS: readonly { surface: Surface; label: string; Icon: typeof Code2 }[] = [
   { surface: 'code', label: 'Coder', Icon: Code2 },
   { surface: 'partner', label: 'Partner', Icon: Handshake },
 ];
 
-export function SurfaceTabs(): JSX.Element {
+/** The other surface's Sessions are not listed, so its tab carries what needs the user there. */
+export function SurfaceTabs({
+  otherSurfaceAttention,
+}: {
+  readonly otherSurfaceAttention?: AttentionSummary;
+}): JSX.Element {
   const { t } = useI18n();
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
 
@@ -52,6 +59,9 @@ export function SurfaceTabs(): JSX.Element {
               <Icon className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden /> {label}
               {disabled && (
                 <span className="text-[10px] opacity-80">· {t('surface.inDevelopment')}</span>
+              )}
+              {!active && !disabled && otherSurfaceAttention && (
+                <ProjectAttentionBadge summary={otherSurfaceAttention} />
               )}
             </span>
           </button>

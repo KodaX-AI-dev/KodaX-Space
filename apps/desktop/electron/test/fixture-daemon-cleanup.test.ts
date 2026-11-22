@@ -150,10 +150,20 @@ function isAlive(pid: number): boolean {
   }
 }
 
+async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {
+  for (let elapsed = 0; elapsed < timeoutMs; elapsed += 25) {
+    if (!isAlive(pid)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return !isAlive(pid);
+}
+
 test('forced launch close kills a live wrapper together with its pipe-holding descendants', async () => {
   const { child, grandchildPid } = await launchWithPipeHoldingGrandchild(false);
   assert.equal(await forceCloseLaunch(child, 5_000), 'tree');
-  assert.equal(isAlive(grandchildPid), false);
+  // The wrapper closing only proves the group was signalled; an orphaned descendant can
+  // answer kill(pid, 0) until init reaps it, so allow bounded time for the death to land.
+  assert.equal(await waitForExit(grandchildPid, 5_000), true);
 });
 
 test('forced launch close releases pipes still held by a descendant outside the tree', async () => {

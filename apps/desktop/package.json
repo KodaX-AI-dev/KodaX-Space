@@ -1,6 +1,6 @@
 {
   "name": "@kodax-space/desktop",
-  "version": "0.1.47-beta.1",
+  "version": "0.1.47-beta.3",
   "description": "KodaX Space desktop app — Electron main + Vite renderer",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
-    "@kodax-ai/kodax": "0.7.97-beta.11",
+    "@kodax-ai/kodax": "0.7.97-beta.13",
     "@kodax-space/space-ipc-schema": "*",
     "@kodax-space/space-ui-kit": "*",
     "@lexical/clipboard": "0.53.0",
@@ -26,6 +26,7 @@
     "electron-updater": "^6.8.3",
     "highlight.js": "11.11.1",
     "html-to-text": "10.0.1",
+    "ignore": "^7.0.6",
     "imapflow": "1.7.8",
     "jszip": "^3.10.1",
     "katex": "0.16.47",

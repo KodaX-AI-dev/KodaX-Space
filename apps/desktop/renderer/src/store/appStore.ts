@@ -800,8 +800,8 @@ interface AppState {
   nativeCompletionNotificationsEnabled: boolean;
   /**
    * v0.1.9 Step 7 — 用户手动拖动排过的项目顺序 (canonProjectRoot 形态)。
-   *   - 空数组 = 没拖过,LeftSidebar 按添加顺序显示
-   *   - 非空 = 按本数组顺序排在前,不在本数组里的项目按添加顺序排到尾
+   *   - 空数组 = 没拖过,LeftSidebar 按添加时间新→旧显示
+   *   - 非空 = 不在本数组里的(新加的)按添加时间新→旧排最上,其后按本数组顺序
    * 持久化在 main 端 projects.json (project.order.set)，见 projectOrderSync.ts。
    */
   projectOrder: readonly string[];

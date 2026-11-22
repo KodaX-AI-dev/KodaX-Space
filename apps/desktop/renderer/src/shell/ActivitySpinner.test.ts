@@ -32,7 +32,7 @@ test('events arriving before the Product view never supply a client token estima
   const html = renderToStaticMarkup(
     createElement(TestI18nProvider, null, createElement(ActivitySpinner)),
   );
-  assert.match(html, /activity-spinner-comet/);
+  assert.match(html, /data-testid="run-mark"/);
   assert.doesNotMatch(html, /~[\d.]+(?:k)? tokens/);
 });
 
@@ -147,16 +147,17 @@ function renderRuntimeSpinner(
   );
 }
 
-test('beside a working live group the spinner drops its comet but keeps the task and run totals', (t) => {
+test('beside a working live group the spinner keeps its mark, the task and run totals', (t) => {
   const html = renderRuntimeSpinner(t, { phase: 'running', liveWorkVisible: true });
-  assert.doesNotMatch(html, /activity-spinner-comet/);
+  // The mark is the Run's heartbeat: it never drops out while the Run works.
+  assert.match(html, /data-testid="run-mark"/);
   assert.match(html, /调研三个上游仓库源码/);
   // ↑ = input with cache (2 × 5k), ↓ = output (600 + 900).
   assert.match(html, /↑10\.0k/);
   assert.match(html, /↓1\.5k/);
 });
 
-test('a phase the live group cannot show brings the comet and the phase text back', (t) => {
+test('a phase the live group cannot show brings the phase text back', (t) => {
   // 固定 zh-CN：断言本地化的等待文案，不随 CI 主机的系统语言变化。
   const previousDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', {
@@ -165,7 +166,7 @@ test('a phase the live group cannot show brings the comet and the phase text bac
   });
   try {
     const html = renderRuntimeSpinner(t, { phase: 'waiting_permission', liveWorkVisible: true });
-    assert.match(html, /activity-spinner-comet/);
+    assert.match(html, /data-testid="run-mark"/);
     assert.match(html, /等待批准/);
   } finally {
     if (previousDescriptor) Object.defineProperty(globalThis, 'localStorage', previousDescriptor);

@@ -22,11 +22,13 @@ import {
   isAbsolutePathOutsideProject,
   isPreviewablePath,
   isCodePath,
+  toolInputPaths,
   toProjectRelative,
 } from './pathClassify.js';
 import { detectKind, type RichPreviewKind } from '../features/preview/binaryUtils.js';
 import { partnerDeliveryPreviewVersion } from './generatedResourceRef.js';
 import {
+  bestFileNameMatches,
   isPartnerOutputLogicalPath,
   parsePartnerDeliveryUri,
   type ArtifactKindT,
@@ -368,7 +370,13 @@ export async function openFileInViewer(rawPath: string, ctx?: OpenCtx): Promise<
     return false;
   }
 
-  return previewFileInViewer(path, { projectRoot, notifyOnError: true });
+  if (await previewFileInViewer(path, { projectRoot })) return true;
+  const located = await locateByFileName(path, projectRoot, activeSessionId);
+  if (located.length > 1) {
+    notifyFileNameAmbiguous(located);
+    return false;
+  }
+  return previewFileInViewer(located[0] ?? path, { projectRoot, notifyOnError: true });
 }
 
 function openDiffPanelForPath(rawPath: string, projectRoot: string): void {
@@ -445,10 +453,79 @@ async function pathHasDiff(rawPath: string, projectRoot: string): Promise<boolea
   return checked ? false : null;
 }
 
+type Surface = NonNullable<OpenCtx['surface']>;
+
+/** Open the exact path: diff / File Viewer in the project, then a Partner Delivery. */
+async function openAtPath(
+  path: string,
+  projectRoot: string | null,
+  sessionId: string | null,
+  surface: Surface,
+): Promise<'done' | 'not-found'> {
+  if (isCodePath(path) && projectRoot) {
+    if ((await pathHasDiff(path, projectRoot)) === true) {
+      openDiffPanelForPath(path, projectRoot);
+      return 'done';
+    }
+    if (await previewFileInViewer(path, { projectRoot })) return 'done';
+  } else if (isPreviewablePath(path) && projectRoot) {
+    if (await previewFileInViewer(path, { projectRoot })) return 'done';
+  }
+  if (surface === 'partner') {
+    const result = await openPartnerDeliveryPath(path, projectRoot, sessionId);
+    if (result === 'opened') return 'done';
+    if (result === 'ambiguous' || result === 'missing') {
+      notifyPartnerDeliveryFailure(result);
+      return 'done';
+    }
+  }
+  return 'not-found';
+}
+
+/**
+ * A link the agent got slightly wrong (missing or extra folder): find the file by name, first among
+ * the paths this Session's tools touched, then in the project. More than one result is a tie.
+ */
+async function locateByFileName(
+  path: string,
+  projectRoot: string,
+  sessionId: string | null,
+): Promise<readonly string[]> {
+  const events = sessionId ? (useAppStore.getState().eventsBySession[sessionId] ?? []) : [];
+  const touched = toolInputPaths(events)
+    .filter((p) => !isAbsolutePathOutsideProject(p, projectRoot))
+    .map((p) => toProjectRelative(p, projectRoot));
+  const fromSession = bestFileNameMatches(path, touched);
+  if (fromSession.length > 0) return fromSession;
+
+  const bridge = window.kodaxSpace;
+  const name = path.replace(/\\/g, '/').split('/').filter(Boolean).at(-1);
+  if (!bridge || !name) return [];
+  try {
+    const r = await bridge.invoke('project.fileSearch', {
+      projectRoot,
+      query: name,
+      limit: 100,
+      locate: true,
+    });
+    return r.ok ? bestFileNameMatches(path, r.data.paths) : [];
+  } catch {
+    return [];
+  }
+}
+
+function notifyFileNameAmbiguous(paths: readonly string[]): void {
+  pushToast(
+    translateMessage('openPath.fileNameAmbiguous', { paths: paths.slice(0, 3).join(', ') }),
+    'warning',
+  );
+}
+
 /**
  * 智能路由：点一个文件路径应该发生什么。ctx 缺省时从 store 读当前 session/project/surface。
  *   代码型有变更 → App 内 diff；代码型无变更/预览型 → File Viewer；其它 → 文件管理器定位。
- * 上游分支失败（无项目、文件不存在等）一律优雅回退到 reveal。
+ * 精确路径找不到时按文件名在本 Session 工具记录和项目里找唯一同名文件；
+ * 仍失败（无项目、文件不存在等）一律优雅回退到 reveal。
  */
 export async function openFileSmart(rawPath: string, ctx?: OpenCtx): Promise<void> {
   const path = rawPath.trim();
@@ -475,40 +552,13 @@ export async function openFileSmart(rawPath: string, ctx?: OpenCtx): Promise<voi
     return;
   }
 
-  if (isCodePath(path) && projectRoot) {
-    const hasDiff = await pathHasDiff(path, projectRoot);
-    if (hasDiff === true) {
-      openDiffPanelForPath(path, projectRoot);
-      return;
-    }
-    const ok = await previewFileInViewer(path, { projectRoot });
-    if (ok) return;
-    if (surface === 'partner') {
-      const deliveryResult = await openPartnerDeliveryPath(path, projectRoot, sessionId);
-      if (deliveryResult === 'opened') return;
-      if (deliveryResult === 'ambiguous' || deliveryResult === 'missing') {
-        notifyPartnerDeliveryFailure(deliveryResult);
-        return;
-      }
-    }
-    await revealPath(path, projectRoot);
+  if ((await openAtPath(path, projectRoot, sessionId, surface)) === 'done') return;
+  const located = projectRoot ? await locateByFileName(path, projectRoot, sessionId) : [];
+  if (located.length > 1) {
+    notifyFileNameAmbiguous(located);
     return;
   }
-
-  if (isPreviewablePath(path) && projectRoot) {
-    const ok = await previewFileInViewer(path, { projectRoot });
-    if (ok) return;
-    // 预览失败（二进制/过大/不存在）→ 回退到定位。
-  }
-
-  if (surface === 'partner') {
-    const deliveryResult = await openPartnerDeliveryPath(path, projectRoot, sessionId);
-    if (deliveryResult === 'opened') return;
-    if (deliveryResult === 'ambiguous' || deliveryResult === 'missing') {
-      notifyPartnerDeliveryFailure(deliveryResult);
-      return;
-    }
-  }
-
-  await revealPath(path, projectRoot);
+  const target = located[0];
+  if (target && (await openAtPath(target, projectRoot, sessionId, surface)) === 'done') return;
+  await revealPath(target ?? path, projectRoot);
 }

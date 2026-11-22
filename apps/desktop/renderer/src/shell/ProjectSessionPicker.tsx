@@ -250,7 +250,7 @@ export function ProjectSessionPicker({
                         </span>
                       )}
                       <span className="truncate flex-1" title={session.title || session.sessionId}>
-                        {session.title || session.sessionId.slice(0, 8)}
+                        {session.title || session.sessionId.slice(-8)}
                       </span>
                       <span
                         className="text-[11px] text-fg-muted font-mono flex-shrink-0"

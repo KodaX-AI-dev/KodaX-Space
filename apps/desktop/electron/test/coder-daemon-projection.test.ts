@@ -219,6 +219,7 @@ test('Runtime Run projection preserves credential-safe provider failure details'
       providerErrorCode: 'tls_error',
       safeMessage: 'The secure provider connection failed.',
       requestId: 'req_projection',
+      detail: 'connect ECONNRESET 203.0.113.7:443',
     },
     terminal: {
       revision: 1,
@@ -237,6 +238,7 @@ test('Runtime Run projection preserves credential-safe provider failure details'
     providerErrorCode: 'tls_error',
     safeMessage: 'The secure provider connection failed.',
     requestId: 'req_projection',
+    detail: 'connect ECONNRESET 203.0.113.7:443',
   });
   assert.equal(projected.retriable, true);
   assert.equal(projected.action, 'check_network');
@@ -310,6 +312,7 @@ test('Runtime Run projection omits malformed optional identifiers', () => {
           requestId: 'unsafe=request value',
           retryAfterMs: -1,
           contextTokens: { required: -1, available: 10 },
+          detail: '',
         },
       });
     } finally {
@@ -335,6 +338,7 @@ test('Runtime Run projection omits malformed optional identifiers', () => {
           'requestId',
           'retryAfterMs',
           'contextTokens.required',
+          'detail',
         ],
       },
     ],
@@ -1727,7 +1731,12 @@ test('tool sandbox events keep degraded read roots and every Runtime fallback re
     [43, 'session_reset_pending'],
     [44, 'acl_transition_pending'],
   ] as const) {
-    const fallback = { version: 1, state: 'fallback', reason, execution: 'normal_permission_policy' };
+    const fallback = {
+      version: 1,
+      state: 'fallback',
+      reason,
+      execution: 'normal_permission_policy',
+    };
     assert.ok(reducer.apply(sandboxEvent(seq, fallback)));
     assert.deepEqual(reducer.snapshot().activeTools[0]?.sandbox, fallback);
   }

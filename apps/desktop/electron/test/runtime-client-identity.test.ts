@@ -37,7 +37,11 @@ test('accepted exit rotates the fenced identity and retains its offline recovery
   assert.notEqual(next.instanceSecret, first.instanceSecret);
   assert.equal(recovery?.instanceId, first.instanceId);
   assert.equal(recovery?.instanceSecret, first.instanceSecret);
-  assert.equal(recovery !== undefined && 'profile' in recovery, false, 'One Host serves each KODAX_HOME');
+  assert.equal(
+    recovery !== undefined && 'profile' in recovery,
+    false,
+    'One Host serves each KODAX_HOME',
+  );
   assert.doesNotMatch(await fs.readFile(file, 'utf8'), new RegExp(first.instanceSecret));
   await restarted.clearExitRecovery(first.instanceId);
   assert.equal(await restarted.openExitRecovery(metadata), undefined);
@@ -48,12 +52,22 @@ test('an exit recovery recorded with a Host profile before ADR-075 still opens w
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const metadata = { name: 'Space', version: 'fixture' };
   const first = await store.openInstance(metadata);
-  await store.retireInstance(first.instanceId, { requestId: 'exit-fixture', runtimeId: 'host-fixture' });
-  const stored = JSON.parse(await fs.readFile(file, 'utf8')) as { exitRecovery: Record<string, unknown> };
+  await store.retireInstance(first.instanceId, {
+    requestId: 'exit-fixture',
+    runtimeId: 'host-fixture',
+  });
+  const stored = JSON.parse(await fs.readFile(file, 'utf8')) as {
+    exitRecovery: Record<string, unknown>;
+  };
   stored.exitRecovery.profile = 'coder';
   await fs.writeFile(file, JSON.stringify(stored));
 
-  const recovery = await new RuntimeClientIdentityStore(file, dir, randomUUID, secrets).openExitRecovery(metadata);
+  const recovery = await new RuntimeClientIdentityStore(
+    file,
+    dir,
+    randomUUID,
+    secrets,
+  ).openExitRecovery(metadata);
 
   assert.equal(recovery?.instanceSecret, first.instanceSecret);
   assert.equal(recovery !== undefined && 'profile' in recovery, false);
@@ -274,9 +288,12 @@ test('a locked keychain cannot block startup: the unreadable legacy identity is 
   assert.notEqual(after.secretAccount, stored.secretAccount);
   assert.equal(await restarted.openExitRecovery(metadata), undefined);
   // The replacement is durable: the next start no longer touches the keychain.
-  const again = await new RuntimeClientIdentityStore(file, dir, randomUUID, file2Secrets).openInstance(
-    metadata,
-  );
+  const again = await new RuntimeClientIdentityStore(
+    file,
+    dir,
+    randomUUID,
+    file2Secrets,
+  ).openInstance(metadata);
   assert.equal(again.instanceId, next.instanceId);
   assert.equal(again.instanceSecret, next.instanceSecret);
 });
@@ -286,12 +303,19 @@ test('a locked keychain still blocks when a pending exit recovery depends on the
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const metadata = { name: 'Space', version: 'fixture' };
   const first = await store.openInstance(metadata);
-  await store.retireInstance(first.instanceId, { requestId: 'exit-fixture', runtimeId: 'host-fixture' });
+  await store.retireInstance(first.instanceId, {
+    requestId: 'exit-fixture',
+    runtimeId: 'host-fixture',
+  });
 
   const locked = lockedLegacySecretStore(new Map());
   const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, locked);
   await assert.rejects(restarted.openExitRecovery(metadata), /OS-protected storage is required/);
-  assert.match(await fs.readFile(file, 'utf8'), /exitRecovery/, 'recovery authority is not discarded');
+  assert.match(
+    await fs.readFile(file, 'utf8'),
+    /exitRecovery/,
+    'recovery authority is not discarded',
+  );
 });
 
 test('a legacy secret missing from a reset keychain is replaced instead of blocking startup', async (t) => {
@@ -308,7 +332,9 @@ test('a legacy secret missing from a reset keychain is replaced instead of block
       emptied.set(account, secret);
     },
   };
-  const next = await new RuntimeClientIdentityStore(file, dir, randomUUID, secrets).openInstance(metadata);
+  const next = await new RuntimeClientIdentityStore(file, dir, randomUUID, secrets).openInstance(
+    metadata,
+  );
   assert.equal(next.clientId, first.clientId);
   assert.notEqual(next.instanceId, first.instanceId);
 });
@@ -318,9 +344,35 @@ test('a missing legacy secret still blocks when a pending exit recovery depends 
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const metadata = { name: 'Space', version: 'fixture' };
   const first = await store.openInstance(metadata);
-  await store.retireInstance(first.instanceId, { requestId: 'exit-fixture', runtimeId: 'host-fixture' });
-  const secrets: RuntimeClientSecretStore = { read: async () => undefined, write: async () => undefined };
+  await store.retireInstance(first.instanceId, {
+    requestId: 'exit-fixture',
+    runtimeId: 'host-fixture',
+  });
+  const secrets: RuntimeClientSecretStore = {
+    read: async () => undefined,
+    write: async () => undefined,
+  };
   const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, secrets);
   await assert.rejects(restarted.openExitRecovery(metadata), /secret is missing/);
   assert.match(await fs.readFile(file, 'utf8'), /exitRecovery/);
+});
+
+test('a blocked startup can abandon its exit recovery even when that secret is missing', async (t) => {
+  const { dir, file, store } = await tempStore();
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const metadata = { name: 'Space', version: 'fixture' };
+  const first = await store.openInstance(metadata);
+  await store.retireInstance(first.instanceId, {
+    requestId: 'exit-fixture',
+    runtimeId: 'host-fixture',
+  });
+  const secrets: RuntimeClientSecretStore = {
+    read: async () => undefined,
+    write: async () => undefined,
+  };
+  const restarted = new RuntimeClientIdentityStore(file, dir, randomUUID, secrets);
+
+  assert.equal(await restarted.abandonExitRecovery(), true);
+  assert.doesNotMatch(await fs.readFile(file, 'utf8'), /exitRecovery/);
+  assert.equal(await restarted.abandonExitRecovery(), false);
 });

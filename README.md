@@ -32,7 +32,7 @@
 
 ### Download a release
 
-Preview target and release status: [`v0.1.47-beta.1`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-beta.1), subject to the [qualification record](docs/releases/v0.1.47-beta.1-release-readiness.md). Stable downloads remain [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest); prereleases do not replace stable updates.
+Preview target and release status: [`v0.1.47-beta.3`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-beta.3), subject to the [qualification record](docs/releases/v0.1.47-beta.3-release-readiness.md). Stable downloads remain [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest); prereleases do not replace stable updates.
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |
@@ -90,7 +90,7 @@ npm run dev
 
 ## Current Source Baseline
 
-**The working tree pins the published SDK `0.7.97-beta.11` exactly (a failed Run's error stays in the conversation; older history pages load while a Run is working; packaged builtin Skills run from `app.asar.unpacked`). beta.10 added the merged queued messages, the data copy to a new location and steer withdrawal.** See the [beta.9 adaptation](docs/releases/kodax-beta9-space-adaptation.md), the [beta.8 adaptation](docs/releases/kodax-beta8-space-adaptation.md), the [beta.7 adaptation](docs/releases/kodax-beta7-space-adaptation.md) and the earlier [beta.4](docs/releases/kodax-beta4-space-adaptation.md) / [beta.3](docs/releases/kodax-beta3-space-adaptation.md) / [beta.2](docs/releases/kodax-beta2-space-adaptation.md) integration records. The published Space `0.1.47-alpha.4` uses the original beta.1 build; its [qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md) records that release. Root and Desktop resolve the same SDK; the lockfile and package gates verify the Registry bytes.
+**The working tree pins the published SDK `0.7.97-beta.13` exactly (a send refused while a Session recovers says so instead of showing a Host error; a Skill run saves the user's exact words; Session reads stay fast with thousands of Sessions). beta.12 gave every Stop a final result, recovers a Session whose sub-agent state was not saved in the background and shows the Provider's error text for failed Runs. beta.11 keeps a failed Run's error in the conversation, loads older history pages while a Run is working and runs packaged builtin Skills from `app.asar.unpacked`; beta.10 added the merged queued messages, the data copy to a new location and steer withdrawal.** See the [beta.9 adaptation](docs/releases/kodax-beta9-space-adaptation.md), the [beta.8 adaptation](docs/releases/kodax-beta8-space-adaptation.md), the [beta.7 adaptation](docs/releases/kodax-beta7-space-adaptation.md) and the earlier [beta.4](docs/releases/kodax-beta4-space-adaptation.md) / [beta.3](docs/releases/kodax-beta3-space-adaptation.md) / [beta.2](docs/releases/kodax-beta2-space-adaptation.md) integration records. The published Space `0.1.47-alpha.4` uses the original beta.1 build; its [qualification](docs/releases/v0.1.47-alpha.4-release-readiness.md) records that release. Root and Desktop resolve the same SDK; the lockfile and package gates verify the Registry bytes.
 
 - Shared Coder uses the public SDK input, current-view, history/search, statistics and lifecycle contracts. Current and historical windows stay separate; image, long-body, tool and Artifact identities survive refresh without duplicate conversation assembly.
 - New Coder sessions remain drafts until their first accepted input is saved. Old empty records are hidden only after complete SDK history proves them empty; files and recoverable state remain. Sidebar recency follows actual messages rather than settings or metadata writes.
@@ -100,7 +100,7 @@ npm run dev
 
 Existing sandbox, credential and exit boundaries remain in effect. macOS ad-hoc builds remain unnotarized and require a manual DMG update. Partner uses the shared Host in Agent mode, bundled library and explicit external-account acceptance limits.
 
-See [release preparation](docs/releases/v0.1.47-beta.1-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
+See [release preparation](docs/releases/v0.1.47-beta.3-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
 
 ## Current Release
 

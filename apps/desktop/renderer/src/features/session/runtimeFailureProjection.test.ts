@@ -31,6 +31,13 @@ test('same-id notice projection changes when structured Runtime diagnostics are 
     false,
   );
   assert.equal(
+    runtimeFailureProjectionMatches(previous, {
+      ...previous,
+      failureDetail: { ...previous.failureDetail!, detail: 'upstream said 404' },
+    }),
+    false,
+  );
+  assert.equal(
     runtimeFailureProjectionMatches(previous, { ...previous, runtimeRunId: 'run_2' }),
     false,
   );

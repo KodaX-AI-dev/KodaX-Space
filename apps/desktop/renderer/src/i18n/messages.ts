@@ -442,6 +442,8 @@ export const messages = {
 
     'openPath.linkOpenFailed': 'Could not open this link',
     'openPath.fileNotFound': 'File not found; cannot reveal it',
+    'openPath.fileNameAmbiguous':
+      'Several files share this name; open one from the file list: {paths}',
     'openPath.pathNotAllowed':
       "This path is outside KodaX's authorized locations and cannot be previewed or revealed",
     'openPath.revealFailed': 'Could not reveal in file manager',
@@ -2980,6 +2982,9 @@ export const messages = {
     'message.action.retry': 'Retry',
     'message.action.providerSettings': 'Provider settings',
     'message.errorTitle': 'Run failed',
+    'message.sessionRecoveringTitle': 'Run stopped',
+    'message.sessionRecovering':
+      'This session is recovering and accepts new messages once it is ready. If sending is still refused after a few minutes, quit and reopen KodaX Space to restart the Host.',
     'message.runtimeFailure.details': 'Details',
     'message.runtimeFailure.terminalKind': 'Terminal state',
     'message.runtimeFailure.terminalCode': 'Terminal code',
@@ -2995,6 +3000,7 @@ export const messages = {
     'message.runtimeFailure.httpStatus': 'HTTP status',
     'message.runtimeFailure.upstreamCode': 'Upstream code',
     'message.runtimeFailure.requestId': 'Request ID',
+    'message.runtimeFailure.detail': 'Error detail',
     'message.runtimeFailure.retryAfterMs': 'Retry after',
     'message.runtimeFailure.contextTokens': 'Context tokens (required / available)',
     'message.input': 'input',
@@ -3844,6 +3850,7 @@ export const messages = {
 
     'openPath.linkOpenFailed': '无法打开该链接',
     'openPath.fileNotFound': '未找到该文件，无法定位',
+    'openPath.fileNameAmbiguous': '有多个同名文件，无法确定是哪一个，请在文件列表中打开：{paths}',
     'openPath.pathNotAllowed': '该路径不在 KodaX 已授权的目录范围内，无法预览或定位',
     'openPath.revealFailed': '无法在文件管理器中显示',
     'openPath.directoryNotFound': '未找到该文件夹，无法打开',
@@ -6010,6 +6017,9 @@ export const messages = {
     'message.action.retry': '重试',
     'message.action.providerSettings': 'Provider 设置',
     'message.errorTitle': '运行出错',
+    'message.sessionRecoveringTitle': '运行已停止',
+    'message.sessionRecovering':
+      '此会话正在恢复，恢复完成后即可继续发送。若几分钟后发送仍被拒绝，请退出并重新打开 KodaX Space 以重启 Host。',
     'message.runtimeFailure.details': '详情',
     'message.runtimeFailure.terminalKind': '执行终态',
     'message.runtimeFailure.terminalCode': '终态原因',
@@ -6025,6 +6035,7 @@ export const messages = {
     'message.runtimeFailure.httpStatus': 'HTTP 状态码',
     'message.runtimeFailure.upstreamCode': '上游错误码',
     'message.runtimeFailure.requestId': 'Request ID',
+    'message.runtimeFailure.detail': '错误详情',
     'message.runtimeFailure.retryAfterMs': '建议重试等待',
     'message.runtimeFailure.contextTokens': '上下文 token（需要 / 可用）',
     'message.input': '输入',

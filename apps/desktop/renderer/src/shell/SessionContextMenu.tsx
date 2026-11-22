@@ -121,7 +121,7 @@ export function SessionContextMenu({
     const confirmed = await requestConfirm({
       title: t('menu.session.deleteTitle'),
       message: t('menu.session.deleteMessage', {
-        title: session.title ?? session.sessionId.slice(0, 8),
+        title: session.title ?? session.sessionId.slice(-8),
       }),
       confirmLabel: t('menu.session.delete'),
       danger: true,
@@ -200,7 +200,7 @@ export function SessionContextMenu({
       x={x}
       y={y}
       ariaLabel={t('menu.session.actions', {
-        title: session.title ?? session.sessionId.slice(0, 8),
+        title: session.title ?? session.sessionId.slice(-8),
       })}
       groups={groups}
       onClose={onClose}

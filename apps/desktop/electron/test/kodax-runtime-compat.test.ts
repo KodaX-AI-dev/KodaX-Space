@@ -10,7 +10,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 const PROBE_MARKER = 'KODAX_RUNTIME_PROBE=';
-const PROBE_TIMEOUT_MS = 30_000;
+// Cold macOS CI runners (Intel above all) can take well past 30 s to boot the published
+// Runtime worker; the probe asserts behaviour, not boot latency, so keep a generous cap.
+const PROBE_TIMEOUT_MS = 60_000;
 const require = createRequire(import.meta.url);
 const EXPECTED_KODAX_VERSION = (
   require('../../../../package-lock.json') as {
@@ -348,7 +350,7 @@ const SHARED_DAEMON_REQUIREMENTS = {
   daemonManagement: 1,
   daemonOrphanExit: 1,
   managedRunDurability: 1,
-  actorSettlementConvergence: 2,
+  actorSettlementConvergence: 3,
   liveOutputSegments: 1,
   runtimeEventCoalescing: 1,
   sandboxRuntime: 11,
@@ -658,7 +660,7 @@ try {
       a2aConfigReconciler: a2aConfigCapability?.version === 1,
       daemonOrphanExit: daemonOrphanExitCapability?.version === 1,
       managedRunDurability: managedRunDurabilityCapability?.version === 1,
-      actorSettlementConvergence: actorSettlementConvergenceCapability?.version === 2,
+      actorSettlementConvergence: actorSettlementConvergenceCapability?.version === 3,
       liveOutputSegments: liveOutputSegmentsCapability?.version === 1,
       runtimeEventCoalescing: runtimeEventCoalescingCapability?.version === 1,
       productHistoryBoundaries: productHistoryBoundariesCapability?.version === 1,
@@ -867,8 +869,8 @@ try {
       runtime: runtime.capabilities.managedRunDurability?.version === 1,
     },
     actorSettlementConvergence: {
-      sdk: KODAX_RUNTIME_SDK_CAPABILITIES.actorSettlementConvergence === 2,
-      runtime: runtime.capabilities.actorSettlementConvergence?.version === 2,
+      sdk: KODAX_RUNTIME_SDK_CAPABILITIES.actorSettlementConvergence === 3,
+      runtime: runtime.capabilities.actorSettlementConvergence?.version === 3,
     },
     sandboxRuntime: {
       sdk: KODAX_RUNTIME_SDK_CAPABILITIES.sandboxRuntime === 11,
@@ -1199,7 +1201,7 @@ test('Space pins the same SDK in both manifests and verifies local candidate int
   const lock = require('../../../../package-lock.json') as {
     packages: Record<string, { version?: string; resolved?: string; integrity?: string }>;
   };
-  const expected = '0.7.97-beta.11';
+  const expected = '0.7.97-beta.13';
   const rootPin = root.dependencies['@kodax-ai/kodax']!;
   const desktopPin = desktop.dependencies['@kodax-ai/kodax']!;
   assert.equal(INSTALLED_KODAX_VERSION, expected);
@@ -1210,9 +1212,14 @@ test('Space pins the same SDK in both manifests and verifies local candidate int
     assert.equal(path.basename(candidate), `kodax-ai-kodax-${expected}.tgz`);
     assert.equal(path.resolve(rootPath, 'apps/desktop', desktopPin.slice(5)), candidate);
     assert.equal(desktopPin.startsWith('file:'), true);
-    assert.equal(path.resolve(rootPath, lock.packages['node_modules/@kodax-ai/kodax']!.resolved!.slice(5)), candidate);
-    assert.equal(lock.packages['node_modules/@kodax-ai/kodax']?.integrity,
-      `sha512-${createHash('sha512').update(readFileSync(candidate)).digest('base64')}`);
+    assert.equal(
+      path.resolve(rootPath, lock.packages['node_modules/@kodax-ai/kodax']!.resolved!.slice(5)),
+      candidate,
+    );
+    assert.equal(
+      lock.packages['node_modules/@kodax-ai/kodax']?.integrity,
+      `sha512-${createHash('sha512').update(readFileSync(candidate)).digest('base64')}`,
+    );
     return;
   }
   assert.equal(rootPin, expected);
@@ -1232,9 +1239,13 @@ test(
     await mkdir(projectPath);
     const credentialName = 'KODAX_SPACE_RAW_SKILL_PROBE_KEY';
     const previousCredential = process.env[credentialName];
+    const providerBodies: string[] = [];
     const server = createServer((request, response) => {
-      request.resume();
+      let body = '';
+      request.setEncoding('utf8');
+      request.on('data', (chunk: string) => (body += chunk));
       request.once('end', () => {
+        providerBodies.push(body);
         response.writeHead(200, { 'content-type': 'text/event-stream' });
         response.end(
           `data: ${JSON.stringify({
@@ -1292,28 +1303,38 @@ test(
         surface: 'code',
         tag: 'code',
       });
-      const rawUserInput = '/code-review src/a.ts';
-      const executionPrompt = 'User request: expanded private execution overlay';
-      const handle = await runtime.runs.start({
+      // Space sends the raw text through acceptInput; the Host prepares the Skill itself.
+      const skillMarker = 'PRIVATE-SKILL-BODY-MARKER';
+      const skillDir = path.join(projectPath, '.kodax', 'skills', 'probe-review');
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        path.join(skillDir, 'SKILL.md'),
+        `---
+name: probe-review
+description: raw input probe
+---
+${skillMarker}
+`,
+      );
+      const rawUserInput = '/probe-review src/a.ts';
+      const accepted = await runtime.runs.acceptInput({
         sessionId: session.id,
-        prompt: executionPrompt,
-        mode: 'coding',
-        options: {
-          provider: 'space-raw-skill-probe',
-          model: 'space-probe-model',
-          maxIter: 1,
-          agentMode: 'sa',
-          lsp: false,
-          context: { rawUserInput, disableAutoTaskReroute: true, repoIntelligenceMode: 'off' },
-        },
+        inputId: 'space-input-raw-skill',
+        text: rawUserInput,
+        delivery: 'immediate',
       });
-      assert.equal((await handle.result).phase, 'completed');
+      assert.ok(accepted.runId);
+      assert.equal((await runtime.runs.await(accepted.runId)).phase, 'completed');
       const transcript = await runtime.sessions.transcript(session.id);
       assert.ok(transcript);
       const userMessages = transcript.messages.filter((message) => message.role === 'user');
       assert.equal(userMessages.length, 1);
       assert.equal(userMessages[0]?.content, rawUserInput);
-      assert.equal(JSON.stringify(transcript.messages).includes(executionPrompt), false);
+      assert.equal(JSON.stringify(transcript.messages).includes(skillMarker), false);
+      assert.ok(
+        providerBodies.some((body) => body.includes(skillMarker)),
+        'the Host must still expand the Skill for the model',
+      );
     } finally {
       if (runtime) {
         const state = await sdk.getKodaXRuntimeOwnerState({ homeDir });
@@ -1343,10 +1364,19 @@ test(
 test(
   `KodaX ${INSTALLED_KODAX_VERSION} Runtime satisfies Host and external-agent compatibility`,
   {
-    timeout: PROBE_TIMEOUT_MS + 5_000,
+    // One retry fits in the budget: a cold worker boot on a loaded runner can exceed a
+    // single probe without saying anything about compatibility (macos-15-intel, 2 of 6
+    // attempts today), and a retry child either boots or reports a real incompatibility.
+    timeout: PROBE_TIMEOUT_MS * 2 + 10_000,
   },
   async () => {
-    const result = await runPublishedRuntimeWorkerProbe();
+    let result: Record<string, unknown>;
+    try {
+      result = await runPublishedRuntimeWorkerProbe();
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('probe exceeded')) throw error;
+      result = await runPublishedRuntimeWorkerProbe();
+    }
     assert.equal(result.version, INSTALLED_KODAX_VERSION);
     assert.equal(result.createAvailable, true);
     assert.equal(result.connectAvailable, true);

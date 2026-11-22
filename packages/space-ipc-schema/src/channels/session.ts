@@ -537,6 +537,7 @@ const sessionSendRejectionReasonSchema = z.enum([
   'unsupported_capability',
   'interrupt_window_closed',
   'session_data_changed',
+  'session_recovering',
   'session_history_unavailable',
   'cancelled_before_admission',
   'skill_requires_idle',

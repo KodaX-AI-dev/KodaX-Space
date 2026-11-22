@@ -6,7 +6,6 @@
 import { BrowserWindow, dialog } from 'electron';
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { debuglog } from 'node:util';
 import { registerChannel } from './register.js';
 import { validateProjectRoot } from './validate.js';
@@ -19,6 +18,7 @@ import {
 import { projectStore } from '../projects/store.js';
 import { assertNoGitInstallPrompt } from '../kodax/git-install-prompt.js';
 import { resolveInsideProject, toPosixRelative } from './files-core.js';
+import { walkProjectFiles } from './project-file-walk.js';
 import type { ProjectGitStatsDaily } from '@kodax-space/space-ipc-schema';
 
 export function registerProjectChannels(): void {
@@ -501,8 +501,10 @@ export function registerProjectChannels(): void {
   // project.fileSearch — @path autocomplete 后端
   //
   // 实现:
-  //   1) Module-level cache: projectRoot → { ts, paths[] }; 30s TTL。命中直接 filter。
-  //   2) Cache miss: walkProjectFiles 异步遍历, 跳过 IGNORED_DIRS, 上限 50_000 文件。
+  //   1) walkProjectFiles (project-file-walk.ts) 遍历：项目根 .gitignore + 内置依赖/版本库/缓存目录，
+  //      上限 50_000 文件；撞上限时 truncated=true。
+  //   2) Module-level cache: projectRoot → { ts, paths[] }; 30s TTL。
+  //      locate（点击链接定位）时重扫、不套 .gitignore、结果不写 cache。
   //   3) Query substring 大小写不敏感; 排序: 1) basename 命中 2) path 命中 3) 字典序。
   //
   // 性能: 50k 文件的子串扫 ~5-15ms, popover 体感秒级以下。
@@ -511,29 +513,35 @@ export function registerProjectChannels(): void {
     const limit = input.limit ?? 30;
     const query = input.query.trim().toLowerCase();
 
-    let paths: readonly string[];
-    const cached = fileSearchCache.get(projectRoot);
+    const cached = input.locate ? undefined : fileSearchCache.get(projectRoot);
+    let listing: { paths: readonly string[]; capped: boolean };
     if (cached && Date.now() - cached.ts < FILE_SEARCH_TTL_MS) {
-      paths = cached.paths;
+      listing = cached;
     } else {
-      const raw = await walkProjectFiles(projectRoot, FILE_SEARCH_HARD_CAP).catch(() => []);
+      const walked = await walkProjectFiles(projectRoot, {
+        hardCap: FILE_SEARCH_HARD_CAP,
+        respectGitignore: !input.locate,
+      });
       // 入 cache 前 pre-sort: BFS walk 顺序不是字典序,如果搜索 loop 早退会丢前面应该
       // 排序到顶的项 (审查 M4)。一次性 sort 50k 字符串 ~10-20ms,缓存命中后零成本。
-      raw.sort();
-      paths = raw;
-      fileSearchCache.set(projectRoot, { ts: Date.now(), paths });
-      // LRU 兜底防 cache 涨爆
-      while (fileSearchCache.size > 16) {
-        const k = fileSearchCache.keys().next().value;
-        if (k === undefined) break;
-        fileSearchCache.delete(k);
+      walked.paths.sort();
+      listing = walked;
+      if (!input.locate) {
+        fileSearchCache.set(projectRoot, { ts: Date.now(), ...walked });
+        // LRU 兜底防 cache 涨爆
+        while (fileSearchCache.size > 16) {
+          const k = fileSearchCache.keys().next().value;
+          if (k === undefined) break;
+          fileSearchCache.delete(k);
+        }
       }
     }
+    const { paths, capped } = listing;
 
     // 空 query → 前 N 个 (alphabetical) 给 user 一个起步清单
     if (query.length === 0) {
       const out = paths.slice(0, limit);
-      return { paths: [...out], truncated: paths.length > limit };
+      return { paths: [...out], truncated: capped || paths.length > limit };
     }
 
     // 过滤 + 排序: basename 命中优先于 path 命中。paths 已预排序,扫一遍即得到
@@ -550,77 +558,19 @@ export function registerProjectChannels(): void {
       }
     }
     const merged = [...basenameHits, ...pathHits];
-    const truncated = merged.length > limit;
+    const truncated = capped || merged.length > limit;
     return { paths: merged.slice(0, limit), truncated };
   });
 }
 
-// ---- project.fileSearch cache + walker ----
+// ---- project.fileSearch cache ----
 
 const FILE_SEARCH_TTL_MS = 30_000;
 const FILE_SEARCH_HARD_CAP = 50_000;
-const fileSearchCache = new Map<string, { ts: number; paths: readonly string[] }>();
-
-// 启发式跳过: 不扫这些目录(performance + 内容不会被 @path 引用)
-const IGNORED_DIRS = new Set<string>([
-  'node_modules',
-  '.git',
-  '.svn',
-  '.hg',
-  '.idea',
-  '.vscode',
-  'dist',
-  'build',
-  'out',
-  'target',
-  '.next',
-  '.nuxt',
-  '.turbo',
-  '.cache',
-  '.parcel-cache',
-  '__pycache__',
-  '.venv',
-  'venv',
-  'coverage',
-  '.coverage',
-  '.pytest_cache',
-]);
-
-/** Walk projectRoot 收集 posix 相对路径,跳过 IGNORED_DIRS。BFS 限上限文件数。 */
-async function walkProjectFiles(root: string, hardCap: number): Promise<string[]> {
-  const results: string[] = [];
-  const queue: string[] = ['']; // 相对路径,空串 = root 本身
-  while (queue.length > 0 && results.length < hardCap) {
-    const rel = queue.shift()!;
-    const absDir = rel === '' ? root : path.join(root, rel);
-    let entries;
-    try {
-      entries = await fs.readdir(absDir, { withFileTypes: true });
-    } catch {
-      continue; // permissions / 不存在 — 静默跳过
-    }
-    for (const ent of entries) {
-      if (results.length >= hardCap) break;
-      const childRel = rel === '' ? ent.name : `${rel}/${ent.name}`;
-      // 显式跳 symlink: 任何 link (无论指 dir / file / 其他) 都不走入,防 cycle (审查 M1)。
-      // node_modules/.bin 内的 symlink 链 + monorepo 跨链都会触发,不 skip 会无限循环。
-      // skip 后用户在 picker 里看不到 link target,但相对于死循环这是可接受 trade-off。
-      if (ent.isSymbolicLink()) continue;
-      if (ent.isDirectory()) {
-        if (IGNORED_DIRS.has(ent.name)) continue;
-        if (ent.name.startsWith('.')) {
-          // 隐藏目录(.something) 多数也跳过,但 .kodax / .github 等用户可能想引用 → 白名单
-          if (ent.name !== '.kodax' && ent.name !== '.github') continue;
-        }
-        queue.push(childRel);
-      } else if (ent.isFile()) {
-        results.push(childRel);
-      }
-      // sockets / FIFO 等其他类型自动 fall-through 不处理
-    }
-  }
-  return results;
-}
+const fileSearchCache = new Map<
+  string,
+  { ts: number; paths: readonly string[]; capped: boolean }
+>();
 
 // gitStatus cache (类比 gitStats 但 key 更简单 — 不带 sinceDays)
 type GitStatusOutput = {

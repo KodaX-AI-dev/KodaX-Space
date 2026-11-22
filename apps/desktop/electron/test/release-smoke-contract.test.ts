@@ -14,7 +14,7 @@ test('packaged dependency smoke requires the 0.7.97 unified contract set', async
   );
 
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.daemonOrphanExit\s*!==\s*1/);
-  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.actorSettlementConvergence\s*!==\s*2/);
+  assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.actorSettlementConvergence\s*!==\s*3/);
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.daemonShutdownVerification\s*!==\s*1/);
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.productClient\s*!==\s*1/);
   assert.match(source, /KODAX_RUNTIME_SDK_CAPABILITIES\?\.conversationHistory\s*!==\s*2/);

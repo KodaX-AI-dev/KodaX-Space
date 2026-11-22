@@ -1057,6 +1057,7 @@ export function runtimeFailureRows(message: RuntimeFailureDetailsProps): Runtime
   add('message.runtimeFailure.httpStatus', failureDetail?.httpStatus);
   add('message.runtimeFailure.upstreamCode', failureDetail?.upstreamErrorCode);
   add('message.runtimeFailure.requestId', failureDetail?.requestId);
+  add('message.runtimeFailure.detail', failureDetail?.detail);
   add(
     'message.runtimeFailure.retryAfterMs',
     failureDetail?.retryAfterMs === undefined ? undefined : `${failureDetail.retryAfterMs} ms`,
@@ -1089,7 +1090,7 @@ function RuntimeFailureTable({
         {rows.map((row) => (
           <Fragment key={row.label}>
             <dt className="text-fg-muted">{t(row.label)}</dt>
-            <dd className="min-w-0 break-all text-fg-primary">{row.value}</dd>
+            <dd className="min-w-0 whitespace-pre-wrap break-all text-fg-primary">{row.value}</dd>
           </Fragment>
         ))}
       </dl>
@@ -1204,7 +1205,11 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
   const [detailsOpen, setDetailsOpen] = useRowDisclosure(DisclosurePart.errorDetails, false);
   const detailsId = useId();
   const rows = runtimeFailureRows(message);
-  const actionDef = action ? ACTION_BUTTONS[action] : undefined;
+  // SDK actorSettlementConvergence v3: the Stop finished but the Session is fenced while Runtime
+  // heals it. This is not a model error, and an immediate resend would be rejected.
+  const recovering = terminal?.code === 'actor_settlement_not_persisted';
+  const body = recovering ? t('message.sessionRecovering') : text;
+  const actionDef = action && !recovering ? ACTION_BUTTONS[action] : undefined;
   const secondsLeft = useRetryCountdown(retryAvailableAt);
   const countdownActive = action === 'retry' && secondsLeft > 0;
   // Lines follow content length: title, message and actions share one row and only wrap when
@@ -1217,13 +1222,15 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
     >
       <CircleAlert className="h-4 w-4 shrink-0 text-danger" aria-hidden />
       <div className="min-w-0 flex-1 basis-[16rem] break-words">
-        <span className="font-medium text-danger">{t('message.errorTitle')}</span>
-        {text && (
+        <span className={`font-medium ${recovering ? 'text-fg-primary' : 'text-danger'}`}>
+          {t(recovering ? 'message.sessionRecoveringTitle' : 'message.errorTitle')}
+        </span>
+        {body && (
           <>
             <span className="text-fg-muted" aria-hidden>
               {' · '}
             </span>
-            <span className="whitespace-pre-wrap text-fg-secondary">{text}</span>
+            <span className="whitespace-pre-wrap text-fg-secondary">{body}</span>
           </>
         )}
         {terminal?.effectOutcome === 'unknown' && (

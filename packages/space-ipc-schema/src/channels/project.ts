@@ -20,7 +20,7 @@ const projectSchema = z.object({
 
 export type Project = z.infer<typeof projectSchema>;
 
-/** 用户拖排的项目顺序 (canonProjectRoot 路径)；空 = 从未拖排，按添加顺序显示。 */
+/** 用户拖排的项目顺序 (canonProjectRoot 路径)；空 = 从未拖排，按添加时间新→旧显示。 */
 const projectOrderSchema = z.array(z.string().min(1).max(4096)).max(256);
 
 // ---- project.list ----
@@ -189,10 +189,10 @@ export const projectGitDiffChannel = {
 // SuggestionsDisplay 等价)。
 //
 // 实现策略 (main 端):
-//   - 启动期 lazy 扫: 每个 project 第一次查询时 walk projectRoot 收集相对路径,filter
-//     掉 node_modules / .git / dist / build 等 (heuristics + .gitignore basic patterns)。
-//     结果存 module-level cache + 30s TTL,后续命中 cache 立即返回。
-//   - 单次扫上限 50_000 文件 (大 monorepo 防内存炸),超出截断。
+//   - 启动期 lazy 扫: 每个 project 第一次查询时 walk projectRoot 收集相对路径,按项目根
+//     .gitignore 过滤,内置只跳依赖/版本库/缓存目录 (node_modules / .git / __pycache__ 等);
+//     隐藏目录照常收录。结果存 module-level cache + 30s TTL,后续命中 cache 立即返回。
+//   - 单次扫上限 50_000 文件 (大 monorepo 防内存炸),超出截断并返回 truncated=true。
 //   - query 是简单 substring (case-insensitive)。subsequence/fuzzy 后续优化。
 //
 // **不返回内容**: 只回相对路径 (raw string)。文件读还是走 files.read。
@@ -206,11 +206,13 @@ export const projectFileSearchChannel = {
     query: z.string().max(512),
     /** 默认 30 条,popover 显示足够 */
     limit: z.number().int().positive().max(100).optional(),
+    /** 点击链接定位刚生成的文件时用：跳过 cache 重扫,不套 .gitignore,结果不写 cache */
+    locate: z.boolean().optional(),
   }),
   output: z.object({
     /** posix 风格相对路径,如 'src/foo/bar.ts' */
     paths: z.array(z.string().min(1).max(2048)).max(100),
-    /** 是否截断 — true 表示还有更多匹配未返回,UI 显示"+N more" hint */
+    /** 是否截断 — true 表示还有更多匹配未返回,或遍历撞到文件数上限 */
     truncated: z.boolean(),
   }),
 } as const;

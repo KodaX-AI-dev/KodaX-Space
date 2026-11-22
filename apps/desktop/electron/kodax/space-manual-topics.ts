@@ -152,7 +152,9 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       'SDK beta.11：失败的 Run 在对话中保留一条错误消息，刷新或继续下一次 Run 后仍在原位置；Space 不再显示 CLI 的 Recovery exhausted 提示。打包版的内置 Skill 脚本从 app.asar.unpacked 运行，其依赖的 yaml、fflate 一并解包。',
       '',
-      'Run 工作时，对话流尾部的 live 工具组显示正在做什么：按工具族（读、改、运行、其他、失败）在标签上显示图标、调用次数与总耗时，最新三个动作带目标与时长滚动，模型思考时显示最新 thinking 行；等待审批的工具显示手势图标与“等待审批”。Run 结束后工具组保留各族计数与总时间、输出 token。Run 的 spinner 固定在 composer 上方整轮可见：live 工具组展示工作期间 spinner 收起动画文字，只保留已用时间、步骤、活动 todo 与 ↑输入（含缓存）/↓输出 token；发送中、排队、等待审批或回答、等待子 Agent、压缩与停止等阶段恢复 comet 与文字。主 Agent 等待子 Agent 时，spinner 增加“Agents working: N”并为每个运行中的子 Agent 显示一行实时进度（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失。',
+      'SDK beta.12（actorSettlementConvergence v3）：每次停止都有最终结果。若停止后 Actor 状态无法确认保存，Run 以“运行已停止”结束（终态 actor_settlement_not_persisted、副作用未知），该会话在后台自动恢复，无需重启 Host；恢复期间 Space 不提供立即重试，新消息会被拒绝并保留在输入框中（SDK beta.13 起提示“此会话正在恢复”），恢复完成后即可继续发送。若几分钟后仍被拒绝，退出并重新打开 Space 即可重启 Host（这类会话不再阻止 Host 停止）。Space 要求 v3，空闲的旧版 Host 会被替换。失败的 Run 在详情中显示 Provider 或本地错误的原文（已去除凭据，错误详情行）；摘要文字不变。新会话 ID 为 UUIDv7，未命名会话以 ID 末 8 位显示。',
+      '',
+      'Run 工作时，对话流尾部的 live 工具组显示正在做什么：按工具族（读、改、运行、其他、失败）在标签上显示图标、调用次数与总耗时，最新三个动作带目标与时长滚动，模型思考时显示最新 thinking 行；等待审批的工具显示手势图标与“等待审批”。Run 结束后工具组保留各族计数与总时间、输出 token。Run 的 spinner 跟在对话流末尾，带 KodaX Run 标记（点阵方块翻滚后压平成像素 K）：live 工具组展示工作期间 spinner 保留 Run 标记、收起文字，只显示已用时间、步骤、活动 todo 与 ↑输入（含缓存）/↓输出 token；发送中、排队、等待审批或回答、等待子 Agent、压缩与停止等阶段恢复文字。向上翻看历史时，“返回最新消息”按钮带上 Run 标记、已用时间和运行中的子 Agent 数。主 Agent 等待子 Agent 时，spinner 增加“Agents working: N”并为每个运行中的子 Agent 显示一行实时进度（名称、最新 thinking 或当前工具与目标、该子 Agent 已完成步骤的 ↑输入/↓输出 token 与已运行时长），行随子 Agent 结束消失。',
       '',
       '以下为历史发布与迁移记录。旧退出 API、journal/replay 与旧会话创建流程不代表当前行为；请优先采用以上当前 Product 契约及 background-runtime、sessions 主题。',
       'v0.1.45 中，Coder daemon 记录稳定 runId、有序事件、transcript 和共享设置，并承接 compact、fork、rewind、队列、权限/AskUser、Workflow 观察与控制、Learning Center、目录/MCP 发现和配置 External Agent 的 Actor/Turn。多个受信任客户端可观察同一 Coder 会话。F141 只增加启动 owner 的安全选择，不改变这些 daemon-native 与 Space host-provider 边界。',
@@ -315,7 +317,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
     summary:
       'Space 的主界面：左侧项目/会话，顶部环境与活动，中央对话，右侧 Task Dock，底部 composer。',
     body: text(
-      '左侧栏：项目列表、最近会话、归档项目、会话切换与项目管理；筛选菜单已由单个“显示已归档会话”开关替代，开启后归档行变暗显示。项目保持加入顺序（新项目排在末尾）直到被拖动，拖拽顺序保存在 projects.json，开发版与打包版共享；会话先按置顶、再按最近活动排序。导航模式和 Files 模式底部都保留 Settings 入口。',
+      '左侧栏：项目列表、最近会话、归档项目、会话切换与项目管理；筛选菜单已由单个“显示已归档会话”开关替代，开启后归档行变暗显示。新打开的项目排在最上方（越新越靠上），拖动后按拖动顺序保存在 projects.json，之后新打开的项目仍排在最上方；该顺序由开发版与打包版共享；会话先按置顶、再按最近活动排序。导航模式和 Files 模式底部都保留 Settings 入口。',
       '进入 Settings 后，设置分类替代项目/文件导航，原工作区在后台保持挂载。返回工作区、关闭设置或按 Escape 后恢复原导航模式、宽度、文件搜索和草稿，后台运行不会因进入设置而停止。',
       '右上角版本与企业版/社区版徽标打开运行时诊断，显示当前构建、已加载 SDK、许可证与能力边界。打开、连接变化和手动刷新均重读状态；中文/英文跟随界面语言。技术详情保留声明依赖、诊断信息版本、平台与原始诊断，Memory policy 是策略标识而非 SDK 包版本。查看诊断不会执行沙箱设置或启动任务。',
       '后台 Session 等待权限或 ask_user 时，左侧栏显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 与 guardrail 授权以对话流内的聚焦提问卡呈现，全部待答卡并存可答，composer 上方的召回停靠条显示计数并可定位闪光到队首卡。切换 Session 不会丢失耐久队列中的请求。',
@@ -809,7 +811,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '父 Agent 在等待子 Agent 时收到的新用户提示仍是真实用户消息。0.7.77 会把它交给当前 Agent并通知 Space 记录到 transcript，同时绑定正确的 live turn；每条队列消息只出队一次。未确认的 root completion 会在硬重启后恢复一次，同进程 Runtime 重建按 child turnId 去重，已确认或旧版历史完成不会重放。',
       '',
-      'Space 的主 transcript 和 root live draft 只显示 root 正文、thinking、工具和 Todo。主 Agent 等待子 Agent 时，composer 上方的 spinner 附加“Agents working: N”和每个运行中子 Agent 的实时行（名称、最新 thinking 或当前工具与目标、已运行时长），行随子 Agent 结束消失；子 Agent 的正文仍不进入 root transcript，完整活动继续留在 Agents/Workflow 面板。若子正文混入父回复，或 wait_agent 因普通进度反复返回，应记录 sessionId、runId、actorPath/turnId 和日志。',
+      'Space 的主 transcript 和 root live draft 只显示 root 正文、thinking、工具和 Todo。主 Agent 等待子 Agent 时，对话流末尾的 spinner 附加“Agents working: N”和每个运行中子 Agent 的实时行（名称、最新 thinking 或当前工具与目标、该子 Agent 已完成步骤的 ↑输入/↓输出 token 与已运行时长），行随子 Agent 结束消失；子 Agent 的正文仍不进入 root transcript，完整活动继续留在 Agents/Workflow 面板。若子正文混入父回复，或 wait_agent 因普通进度反复返回，应记录 sessionId、runId、actorPath/turnId 和日志。',
     ),
     aliases: [
       'wait_agent',
@@ -866,7 +868,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '旧 ~/.kodax/config.json#mcpServers 仍可只读兼容，但不是新写入位置。Settings -> Runtime 会直接展示 SDK 迁移计划，并提供“迁移集成配置”按钮；它只创建缺失的分离文件，不覆盖目标，也不删除旧字段。也可使用 `kodax integrations migrate` 预览，再用 `kodax integrations migrate --apply` 生成分离文件；确认目标文件有效后才考虑 `--cleanup-legacy`。`.mcpb` 安装/卸载通过 SDK MCP CRUD 写入新的 integrations/mcp.json。',
       '',
-      '0.7.89 对无效更新继续使用 last-known-good，并把 invalid-config、activation-failed 或 watcher-degraded 诊断按域返回。Space 会自动轮询 daemon 管理状态并刷新 Settings 中的集成健康信息；修复被点名文件后通常会在数秒内恢复 healthy，无需重启 Coder。并发写入发现 revision 已改变时，Space 要求 reload 后重试，不覆盖更新的数据。',
+      '0.7.89 对无效更新继续使用 last-known-good，并把 invalid-config、activation-failed 或 watcher-degraded 诊断按域返回。Space 每 2 秒通过 SDK 的轻量集成健康查询（integrationConfigResilience.healthQuery，不触发 daemon 全量 preflight）刷新 Settings 中的集成健康信息；修复被点名文件后通常会在数秒内恢复 healthy，无需重启 Coder。连接到不支持该查询的旧版 Host 时，Space 只在连接时读取一次，重启 Host 后恢复自动刷新。并发写入发现 revision 已改变时，Space 要求 reload 后重试，不覆盖更新的数据。',
       '',
       'Space MCP Manager 拥有 server 子进程、状态和日志；Coder 的 MCP 工具发现/reload 同步 Runtime，但 v0.1.44 不会启动第二套桌面 MCP manager。',
       '',
