@@ -270,7 +270,7 @@ Repointel 的核心调用契约（`status / warm / preturn / context-pack / impa
 
 #### 5.1.1 Code Workspace（核心面板）
 
-- 项目选择器：列出最近打开的项目（git root + 工作区目录）
+- 项目选择器：列出打开过的项目（git root + 工作区目录；F149 起为一个手动顺序，新加入项目置顶一次，使用不再重排）
 - 多 session 抽屉：每个 session 一行卡片（标题 / provider / 当前模式 / 最后活动）
 - 主交互区：
   - 对话流（含 tool call 折叠卡片）

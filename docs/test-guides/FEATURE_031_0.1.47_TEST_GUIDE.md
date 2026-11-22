@@ -12,6 +12,11 @@ Source enhancement, 2026-11-06; not a published release. The approved [design](.
 
 ## Automated acceptance
 
+### 2026-11-22 @ folder completion and verbatim history (ships in 0.1.47-beta.4)
+
+- `@` completion lists project folders alongside files under the same `.gitignore` and exclusion rules (folder candidates carry a trailing `/`), opted in through the `project.fileSearch` `includeDirectories` input; link locate and the Files panel stay file-only. A picked folder becomes a folder token sent as `@dir/`. `project-file-walk.test.ts` covers the walk flag; `ComposerTokenAppearance.browser.test.ts` and `SlashCommandCompletion.browser.test.ts` cover the popover and the prefix-less skill/command labels (the icon carries the kind).
+- History now tells a `/name` skill from a command through the command catalog and shows file and folder names exactly like the composer; the sent text stays in the DOM with only the prefix hidden, so find, copy and e2e text matching see it verbatim. `userBubble.test.ts` covers the rendering; `tests/e2e/sdk-provider-fixture.ts` matches the verbatim text.
+
 ### 2026-11-09 command history regression
 
 - Local slash echoes now render as command receipts, outside the user-query navigation. Their durable owner is the Space local-notice store. `session.localNotice.append` no longer also calls SDK `appendNotice`, which publishes a second visible info item.
@@ -30,7 +35,7 @@ Source enhancement, 2026-11-06; not a published release. The approved [design](.
 ## Human checks
 
 1. Open a project, type `/`, choose a command/skill using Tab or Enter. Inspect grouped names, descriptions, type icons and stable amber selection. Enter accepts without sending. Escape dismisses only the current surface. Shift+Enter inserts a newline; Ctrl/Cmd+Enter retains queue semantics.
-2. Type `@` and select files with ordinary, long, Chinese, spaced and bracketed names. Inspect the filename label and full reference detail; keep two same-name files from different directories distinguishable through their full details.
+2. Type `@` and select files with ordinary, long, Chinese, spaced and bracketed names. Inspect the filename label and full reference detail; keep two same-name files from different directories distinguishable through their full details. Folder candidates end with `/`; picking one inserts an `@dir/` folder token, and the Files panel never lists folders.
 3. Continue typing after a token. Move left/right, delete from both sides, select across a token, cut/copy/paste, undo/redo. No partial path should remain. Delete one of two identical inserted references without deleting the other. Auto-added spacing must not swallow authored text.
 4. Click a token or use Alt+Down near it. Inspect full identity, copy reference, remove, close and keyboard return. Copy failure must show feedback. Busy/read-only input must not mutate.
 5. Confirm Chinese IME candidates using Enter/space and arrows. Composing must not send or select completion. Try multi-line input and boundary history navigation.
