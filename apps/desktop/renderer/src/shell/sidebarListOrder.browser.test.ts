@@ -382,3 +382,29 @@ test(
     assert.deepEqual(errors, []);
   },
 );
+
+test(
+  'the pinned area has its own "Pinned" heading above the "Projects" heading',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openFixture(t);
+    const area = page.locator('[data-testid="sidebar-pinned-area"]');
+    assert.equal(await area.count(), 0);
+
+    await page.evaluate(() =>
+      (window as unknown as { store: { setState(s: object): void } }).store.setState({
+        sessionFlags: { live: { pinnedAt: 5 } },
+      }),
+    );
+    await area.locator('[data-session-id="live"]').waitFor();
+    const headings = await page.evaluate(() => {
+      const sidebar = document.querySelector('[data-testid="left-sidebar"]')!;
+      return Array.from(sidebar.querySelectorAll('span'))
+        .map((span) => span.textContent?.trim() ?? '')
+        .filter((text) => text === 'Pinned' || text === 'Projects');
+    });
+    assert.deepEqual(headings, ['Pinned', 'Projects']);
+    assert.equal(await page.getByRole('region', { name: 'Pinned' }).count(), 1);
+    assert.deepEqual(errors, []);
+  },
+);

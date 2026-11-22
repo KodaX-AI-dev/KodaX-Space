@@ -16,7 +16,7 @@
 // ADR-004 v2 决策：常驻 Coder/Partner tab。F045 起 Partner 可点（抽到 SurfaceTabs 组件，
 // 接 surface store）；LeftSidebar 是两 surface 共用的全局导航（项目 / session / surface tab）。
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Archive,
   ArchiveRestore,
@@ -268,30 +268,14 @@ export function LeftSidebar({
           peers.length === 0 时整段隐藏不占空间。 */}
       <RunningPeersPanel />
 
-      {/* Projects 标题 + 显示已归档开关 */}
-      <RecentsHeader />
-
       <div className="flex-1 overflow-y-auto px-1.5 pb-2">
-        {visibleSessions.length === 0 && projects.length === 0 && (
-          <div className="text-xs text-fg-muted px-2 py-3">
-            {currentProjectPath ? t('sidebar.noSessionsYet') : t('sidebar.openFolderToStart')}
-          </div>
-        )}
-        <PinnedTasks
-          key={currentSurface}
+        {/* F040: 多项目可折叠树。currentProjectPath 默认展开 + 高亮；
+            其它项目折叠。状态点驱动来自 useSessionStatusMap。
+            F149: 置顶区在最上，其下是 Projects 标题（含显示已归档开关），再下是主列表。 */}
+        <ProjectTree
+          header={<RecentsHeader />}
           sessions={visibleSessions}
           loadedIds={listedSessionIds}
-          statusMap={statusMap}
-          currentSessionId={currentSessionId}
-          onSelect={(sessionId) => {
-            onNavigate?.();
-            setCurrentSession(sessionId);
-          }}
-        />
-        {/* F040: 多项目可折叠树。currentProjectPath 默认展开 + 高亮；
-            其它项目折叠。状态点驱动来自 useSessionStatusMap。 */}
-        <ProjectTree
-          sessions={visibleSessions}
           statusMap={statusMap}
           currentSessionId={currentSessionId}
           onSelect={(sessionId) => {
@@ -301,6 +285,11 @@ export function LeftSidebar({
           sessionLoadStateByScope={sessionLoadStateByScope}
           onRefreshProjectSessions={loadProjectSessions}
         />
+        {visibleSessions.length === 0 && projects.length === 0 && (
+          <div className="text-xs text-fg-muted px-2 py-3">
+            {currentProjectPath ? t('sidebar.noSessionsYet') : t('sidebar.openFolderToStart')}
+          </div>
+        )}
       </div>
 
       <SidebarFooter onOpenSettings={onOpenSettings} />
@@ -331,14 +320,19 @@ const DRAG_SOURCE_ROW_CLASS =
   'bg-surface-3 shadow-lg ring-1 ring-border-default/60 [&_button]:before:hidden';
 
 function ProjectTree({
+  header,
   sessions,
+  loadedIds,
   statusMap,
   currentSessionId,
   onSelect,
   sessionLoadStateByScope,
   onRefreshProjectSessions,
 }: {
+  /** 置顶区与主列表之间的标题行（Projects + 显示已归档开关）。 */
+  readonly header: ReactNode;
   readonly sessions: readonly SessionMeta[];
+  readonly loadedIds: readonly string[];
   readonly statusMap: Readonly<Record<string, SessionStatus>>;
   readonly currentSessionId: string | null;
   readonly onSelect: (sessionId: string) => void;
@@ -505,11 +499,6 @@ function ProjectTree({
     },
     [refreshProjects, t],
   );
-
-  // ⚠️ 早 return 必须放在所有 hooks 之后 —— 否则首次启动 (projects 空) 提前 return 会跳过
-  //    下面的 onRenameCommit useCallback，项目注入后又执行，hooks 顺序不一致 → React #310 → 白屏。
-  //    这是个反复踩过的坑：新增 hook 一律加在这行之前。
-  if (ordered.length === 0 && pinnedProjects.length === 0 && archived.length === 0) return null;
 
   const renderProject = (
     proj: Project,
@@ -702,17 +691,27 @@ function ProjectTree({
 
   return (
     <div>
-      {pinnedProjects.length > 0 && (
-        <div
-          data-testid="sidebar-pinned-projects"
-          className="mb-2"
-          onClickCapture={pinnedDragSort.onClickCapture}
-        >
-          {pinnedProjects.map((proj, index) =>
-            renderProject(proj, isCurrentProject(proj), { index, drag: pinnedDragSort }),
-          )}
-        </div>
-      )}
+      <PinnedArea
+        key={currentSurface}
+        sessions={sessions}
+        loadedIds={loadedIds}
+        statusMap={statusMap}
+        currentSessionId={currentSessionId}
+        onSelect={onSelect}
+        projects={
+          pinnedProjects.length === 0 ? null : (
+            <div
+              data-testid="sidebar-pinned-projects"
+              onClickCapture={pinnedDragSort.onClickCapture}
+            >
+              {pinnedProjects.map((proj, index) =>
+                renderProject(proj, isCurrentProject(proj), { index, drag: pinnedDragSort }),
+              )}
+            </div>
+          )
+        }
+      />
+      {header}
       <div onClickCapture={dragSort.onClickCapture}>
         {ordered.map((proj, index) =>
           renderProject(proj, isCurrentProject(proj), { index, drag: dragSort }),
@@ -873,22 +872,27 @@ const SESSIONS_PER_PROJECT_STEP = 5;
 const SESSIONS_PER_PROJECT_INLINE_MAX = 20;
 
 /**
- * F149: 置顶区（置顶任务部分）——当前工作面的置顶任务，最近置顶的在最上，不受项目加载窗口
- * 与项目展开状态影响。窗口外的置顶任务按 id 补齐；点开时先切到它的项目（同 "+N more"）。
+ * F149: 置顶区——"置顶"标题下，先是当前工作面的置顶任务（最近置顶的在最上，不受项目加载窗口
+ * 与项目展开状态影响），再是置顶项目。两者都没有时整段不渲染。
+ * 窗口外的置顶任务按 id 补齐；点开时先切到它的项目（同 "+N more"）。
  */
-function PinnedTasks({
+function PinnedArea({
   sessions,
   loadedIds,
   statusMap,
   currentSessionId,
   onSelect,
+  projects,
 }: {
   readonly sessions: readonly SessionMeta[];
   readonly loadedIds: readonly string[];
   readonly statusMap: Readonly<Record<string, SessionStatus>>;
   readonly currentSessionId: string | null;
   readonly onSelect: (sessionId: string) => void;
+  /** 置顶项目行；null = 没有置顶项目。 */
+  readonly projects: ReactNode;
 }): JSX.Element | null {
+  const { t } = useI18n();
   const currentSurface = useSurfaceStore((s) => s.currentSurface);
   const sessionFlags = useAppStore((s) => s.sessionFlags);
   const pinnedIds = useMemo(
@@ -905,21 +909,30 @@ function PinnedTasks({
     (sid: string): SessionStatus => statusMap[sid] ?? outsideStatus[sid] ?? 'idle',
     [statusMap, outsideStatus],
   );
-  if (!candidates.some((s) => sessionFlags[s.sessionId]?.pinnedAt !== undefined)) return null;
+  const hasTasks = candidates.some((s) => sessionFlags[s.sessionId]?.pinnedAt !== undefined);
+  if (!hasTasks && projects === null) return null;
   return (
-    <div data-testid="sidebar-pinned-tasks" className="mb-2">
-      <SessionTree
-        sessions={candidates}
-        currentSessionId={currentSessionId}
-        onSelect={(sessionId) => {
-          const target = outside.find((s) => s.sessionId === sessionId);
-          if (target) useAppStore.getState().setCurrentProject(target.projectRoot);
-          onSelect(sessionId);
-        }}
-        scope="pinned"
-        statusFor={statusFor}
-      />
-    </div>
+    <section data-testid="sidebar-pinned-area" aria-label={t('sidebar.pinned')}>
+      <div className={SIDEBAR_SECTION_HEADING_CLASS}>
+        <span>{t('sidebar.pinned')}</span>
+      </div>
+      {hasTasks && (
+        <div data-testid="sidebar-pinned-tasks">
+          <SessionTree
+            sessions={candidates}
+            currentSessionId={currentSessionId}
+            onSelect={(sessionId) => {
+              const target = outside.find((s) => s.sessionId === sessionId);
+              if (target) useAppStore.getState().setCurrentProject(target.projectRoot);
+              onSelect(sessionId);
+            }}
+            scope="pinned"
+            statusFor={statusFor}
+          />
+        </div>
+      )}
+      {projects}
+    </section>
   );
 }
 
@@ -1474,12 +1487,16 @@ function RunningPeersPanel(): JSX.Element | null {
 
 const EMPTY_PEERS: readonly RunningSessionInfoT[] = [];
 
+// 置顶区与 Projects 的标题行。在滚动区内（px-1.5），px-2.5 与原来区外的 px-4 对齐。
+const SIDEBAR_SECTION_HEADING_CLASS =
+  'px-2.5 pt-4 pb-2 text-xs text-fg-muted flex justify-between items-center';
+
 function RecentsHeader(): JSX.Element {
   const { t } = useI18n();
   const showArchived = useAppStore((s) => s.showArchivedSessions);
   const setShowArchived = useAppStore((s) => s.setShowArchivedSessions);
   return (
-    <div className="px-4 pt-4 pb-2 text-xs text-fg-muted flex justify-between items-center flex-shrink-0">
+    <div className={SIDEBAR_SECTION_HEADING_CLASS}>
       {/* F043 v0.1.9: "Projects" — 项目折叠树。右侧唯一开关：显示已归档的 session。 */}
       <span>{t('sidebar.projects')}</span>
       <button
