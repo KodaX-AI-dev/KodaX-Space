@@ -1528,7 +1528,7 @@ export const messages = {
     'composer.searching': 'Searching…',
     'composer.searchFailed': 'Search failed. Esc to close and retry.',
     'composer.noMatches': 'No matches. Esc to close.',
-    'atPath.files': '@ Files',
+    'atPath.files': '@ Files & folders',
     'atPath.insertNavigateHint': 'Tab / Enter to insert · ↑↓ to navigate',
 
     'agent.fallbackTitle': 'Worker',
@@ -4864,7 +4864,7 @@ export const messages = {
     'composer.searching': '正在搜索…',
     'composer.searchFailed': '搜索失败，Esc 关闭后重试',
     'composer.noMatches': '暂无匹配，Esc 关闭',
-    'atPath.files': '@ 文件',
+    'atPath.files': '@ 文件和文件夹',
     'atPath.insertNavigateHint': 'Tab / Enter 插入 · ↑↓ 导航',
 
     'agent.fallbackTitle': '执行代理',

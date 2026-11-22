@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { walkProjectFiles } from '../ipc/project-file-walk.js';
+import { projectSearchEntries, rankProjectPaths, walkProjectFiles } from '../ipc/project-file-walk.js';
 
 async function makeProject(files: Record<string, string>): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), 'kodax-walk-'));
@@ -90,4 +90,51 @@ test('hitting the cap is reported', async () => {
     assert.equal(paths.length, 2);
     assert.equal(capped, true);
   });
+});
+
+test('folders are collected under the same exclusions as files', async () => {
+  await withProject(
+    {
+      '.gitignore': 'dist/\n',
+      'dist/a.js': '',
+      'node_modules/x/index.js': '',
+      'src/ui/button.tsx': '',
+      'docs/a.md': '',
+    },
+    async (root) => {
+      const { directories } = await walkProjectFiles(root, { hardCap: 100 });
+      assert.deepEqual([...directories].sort(), ['docs', 'src', 'src/ui']);
+    },
+  );
+});
+
+test('@ candidates list a folder (trailing /) before its contents and rank it by its name', () => {
+  const walked = {
+    paths: ['src/ui/button.tsx', 'src/components.ts', 'docs/a.md'],
+    directories: ['src/components', 'docs', 'src'],
+    capped: false,
+  };
+  assert.deepEqual(projectSearchEntries(walked, false), [
+    'docs/a.md',
+    'src/components.ts',
+    'src/ui/button.tsx',
+  ]);
+  const entries = projectSearchEntries(walked, true);
+  assert.deepEqual(entries, [
+    'docs/',
+    'docs/a.md',
+    'src/',
+    'src/components.ts',
+    'src/components/',
+    'src/ui/button.tsx',
+  ]);
+  assert.deepEqual(rankProjectPaths(entries, 'comp', 10), {
+    paths: ['src/components.ts', 'src/components/'],
+    truncated: false,
+  });
+  assert.deepEqual(rankProjectPaths(entries, 'SRC', 2), {
+    paths: ['src/', 'src/components.ts'],
+    truncated: true,
+  });
+  assert.deepEqual(rankProjectPaths(entries, '', 2), { paths: ['docs/', 'docs/a.md'], truncated: true });
 });

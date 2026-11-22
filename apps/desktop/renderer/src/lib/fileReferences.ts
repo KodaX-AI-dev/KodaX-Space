@@ -18,7 +18,7 @@ export function projectFileReference(root: string, relative: string, platform: P
   const href = full.startsWith('//')
     ? `file:${encoded}`
     : `file://${encoded.startsWith('/') ? '' : '/'}${encoded}`;
-  const name = relative.split('/').at(-1) ?? relative;
+  const name = relative.split('/').filter(Boolean).at(-1) ?? relative;
   return `[${name.replace(/([\\[\]])/g, '\\$1')}](<${href}>)`;
 }
 

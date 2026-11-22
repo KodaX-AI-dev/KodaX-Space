@@ -23,7 +23,8 @@ test('inline references stay legible, align with prose and truncate without chan
             <nav>
               <button onClick={()=>insert({kind:'command',label:'/review',value:'/review'},0)}>Command</button>
               <button onClick={()=>insert({kind:'file',label:'README.md',value:'@src/README.md'})}>File</button>
-              <button onClick={()=>insert({kind:'skill',label:'code-review',value:'/skill:code-review'})}>Skill</button>
+              <button onClick={()=>insert({kind:'skill',label:'/skill:code-review',value:'/skill:code-review'})}>Skill</button>
+              <button onClick={()=>insert({kind:'folder',label:'components',value:'@src/components/'})}>Folder</button>
               <button onClick={()=>insert({kind:'file',label:'很长的文件名称-long-reference-with-distinguishing-directory-and-extra-context.ts',value:'@src/long-source.ts'})}>Long file</button>
             </nav><output>{value}</output>
           </main>;
@@ -42,14 +43,14 @@ test('inline references stay legible, align with prose and truncate without chan
     .replace(/^@tailwind.*$/gm, '');
   const browser = await chromium.launch({ headless: true });
   try {
-    const page = await browser.newPage({ viewport: { width: 920, height: 420 } });
+    const page = await browser.newPage({ viewport: { width: 920, height: 420 }, deviceScaleFactor: 2 });
     await page.setContent(`<style>${stylesheet}
       body{margin:36px;background:rgb(var(--surface));color:rgb(var(--fg-primary));font-family:var(--ui)}
       h1{font-size:18px;font-weight:500;margin:0 0 20px}.test-frame{position:relative;padding:20px;border:1px solid rgb(var(--border-default));border-radius:12px}
       nav,output{display:none}
       </style><div id="root"></div>`);
     await page.addScriptTag({ content: bundle.outputFiles[0]!.text });
-    for (const name of ['Command', 'File', 'Skill', 'Long file']) {
+    for (const name of ['Command', 'File', 'Skill', 'Folder', 'Long file']) {
       await page
         .getByRole('button', { name, exact: true, includeHidden: true })
         .dispatchEvent('click');
@@ -61,7 +62,17 @@ test('inline references stay legible, align with prose and truncate without chan
     const canonical = await page.locator('output').textContent();
     assert.equal(
       canonical,
-      '/review 请检查 @src/README.md /skill:code-review @src/long-source.ts 中英混排 abc 123',
+      '/review 请检查 @src/README.md /skill:code-review @src/components/ @src/long-source.ts 中英混排 abc 123',
+    );
+    assert.deepEqual(
+      await editor.locator('[data-composer-token]').allTextContents(),
+      [
+        'review',
+        'README.md',
+        'code-review',
+        'components',
+        '很长的文件名称-long-reference-with-distinguishing-directory-and-extra-context.ts',
+      ],
     );
     await mkdir('artifacts/composer-light-references', { recursive: true });
     for (const theme of ['light', 'dark']) {

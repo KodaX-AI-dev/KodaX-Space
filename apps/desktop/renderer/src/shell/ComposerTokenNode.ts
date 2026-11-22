@@ -7,7 +7,7 @@ import {
 } from 'lexical';
 
 export interface ComposerToken {
-  readonly kind: 'file' | 'skill' | 'command';
+  readonly kind: 'file' | 'folder' | 'skill' | 'command';
   readonly label: string;
   /** Existing wire representation, never an expanded prompt or hidden instruction. */
   readonly value: string;

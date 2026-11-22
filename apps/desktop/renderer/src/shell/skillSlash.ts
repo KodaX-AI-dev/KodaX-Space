@@ -45,3 +45,8 @@ export function parseLegacySkillToken(token: string): string | null {
   const match = token.match(/^skill:(.+)$/i);
   return match?.[1] ?? null;
 }
+
+/** Inline references show their kind with an icon, so the `/` and `/skill:` wire prefixes are noise. */
+export function commandReferenceLabel(text: string): string {
+  return text.replace(/^\/(?:skill:)?/i, '');
+}

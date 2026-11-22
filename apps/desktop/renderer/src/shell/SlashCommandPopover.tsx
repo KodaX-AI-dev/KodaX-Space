@@ -547,7 +547,12 @@ function buildSlashArgSuggestions(
   return filterSlashArgItems(suggestions, prefix);
 }
 
-async function loadCommandsOnce(): Promise<SlashCommandMeta[]> {
+/** Synchronous read so already-loaded consumers render the right reference kind on first paint. */
+export function peekSlashCommands(): readonly SlashCommandMeta[] | null {
+  return cachedCommands;
+}
+
+export async function loadCommandsOnce(): Promise<SlashCommandMeta[]> {
   if (cachedCommands) return cachedCommands;
   if (!window.kodaxSpace) return [];
   const result = await window.kodaxSpace.invoke('slash.discover', undefined);

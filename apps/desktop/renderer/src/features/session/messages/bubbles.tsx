@@ -23,7 +23,7 @@ import {
   Workflow,
   Wrench,
 } from 'lucide-react';
-import { isSessionAttachmentPreviewUrl } from '@kodax-space/space-ipc-schema';
+import { isSessionAttachmentPreviewUrl, type SlashCommandMeta } from '@kodax-space/space-ipc-schema';
 import type { ConversationMessage } from '../composeMessages.js';
 import { useAppStore, type UserImageAttachment } from '../../../store/appStore.js';
 import { Markdown } from './Markdown.js';
@@ -37,6 +37,8 @@ import { parseFileReferences, type ParsedFileReference } from '../../../lib/file
 import { useI18n } from '../../../i18n/I18nProvider.js';
 import type { MessageKey } from '../../../i18n/messages.js';
 import { dispatchOpenFileViewer } from '../../artifact/transientArtifact.js';
+import { commandReferenceLabel, hasSkillSlashConflict } from '../../../shell/skillSlash.js';
+import { loadCommandsOnce, peekSlashCommands } from '../../../shell/SlashCommandPopover.js';
 // OC-21: side-effect import 让内置 tool renderers (write/edit/multi_edit) 注册到 registry
 import './toolRenderers.js';
 import { DisclosurePart, RowDisclosureOwner, useRowDisclosure } from './rowDisclosure.js';
@@ -266,8 +268,51 @@ function FileReferenceLink({ file }: { file: ParsedFileReference }): JSX.Element
   );
 }
 
-/** Read-only wire references: no editor, catalog fetch or prompt expansion in message history. */
+/** The command catalog tells a leading `/name` skill from a command; null until it has loaded. */
+function useSlashCommands(): readonly SlashCommandMeta[] | null {
+  const [commands, setCommands] = useState(peekSlashCommands);
+  useEffect(() => {
+    if (commands) return;
+    let live = true;
+    loadCommandsOnce().then(
+      (loaded) => {
+        if (live && window.kodaxSpace) setCommands(loaded);
+      },
+      (error: unknown) => console.error('[slash.discover] history reference kind failed', error),
+    );
+    return () => {
+      live = false;
+    };
+  }, [commands]);
+  return commands;
+}
+
+function referenceKind(
+  value: string,
+  commands: readonly SlashCommandMeta[] | null,
+): 'file' | 'folder' | 'skill' | 'command' {
+  if (value.startsWith('@')) return value.endsWith('/') ? 'folder' : 'file';
+  if (value.startsWith('/skill:')) return 'skill';
+  return commands && !hasSkillSlashConflict(value.slice(1), commands) ? 'skill' : 'command';
+}
+
+/** Shows only the label like a composer token, while the DOM keeps the sent text verbatim. */
+function WireReference({ value, label }: { value: string; label: string }): JSX.Element {
+  const at = value.lastIndexOf(label);
+  if (at < 0) return <>{label}</>;
+  const after = at + label.length;
+  return (
+    <>
+      {at > 0 && <span className="composer-token-wire">{value.slice(0, at)}</span>}
+      {label}
+      {after < value.length && <span className="composer-token-wire">{value.slice(after)}</span>}
+    </>
+  );
+}
+
+/** Read-only wire references shown like composer tokens; no editor or prompt expansion. */
 function InlineTextReferences({ text, leading }: { text: string; leading: boolean }): JSX.Element {
+  const commands = useSlashCommands();
   const pattern =
     /(^|\s)(\/skill:[\w.-]+|@[^\s<>()[\]"'`,;!?，。；！？]+)|^\/[a-zA-Z][\w-]*(?=\s|$)/g;
   const nodes: React.ReactNode[] = [];
@@ -278,7 +323,7 @@ function InlineTextReferences({ text, leading }: { text: string; leading: boolea
     const start = match.index + prefix.length;
     if (!match[2] && !leading) continue;
     nodes.push(text.slice(end, start));
-    const kind = value.startsWith('@') ? 'file' : value.startsWith('/skill:') ? 'skill' : 'command';
+    const kind = referenceKind(value, commands);
     nodes.push(
       <span
         key={start}
@@ -286,7 +331,14 @@ function InlineTextReferences({ text, leading }: { text: string; leading: boolea
         data-composer-token={kind}
         title={value}
       >
-        {value}
+        <WireReference
+          value={value}
+          label={
+            value.startsWith('@')
+              ? value.slice(1).split('/').filter(Boolean).at(-1) || value
+              : commandReferenceLabel(value)
+          }
+        />
       </span>,
     );
     end = start + value.length;

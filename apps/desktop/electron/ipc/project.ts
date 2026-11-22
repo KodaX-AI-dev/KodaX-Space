@@ -19,7 +19,7 @@ import {
 import { projectStore } from '../projects/store.js';
 import { assertNoGitInstallPrompt } from '../kodax/git-install-prompt.js';
 import { resolveInsideProject, toPosixRelative } from './files-core.js';
-import { walkProjectFiles } from './project-file-walk.js';
+import { projectSearchEntries, rankProjectPaths, walkProjectFiles } from './project-file-walk.js';
 import type { ProjectGitStatsDaily } from '@kodax-space/space-ipc-schema';
 
 export function registerProjectChannels(): void {
@@ -521,15 +521,14 @@ export function registerProjectChannels(): void {
   //   2) Module-level cache: projectRoot → { ts, paths[] }; 30s TTL。
   //      locate（点击链接定位）时重扫、不套 .gitignore、结果不写 cache。
   //   3) Query substring 大小写不敏感; 排序: 1) basename 命中 2) path 命中 3) 字典序。
+  //   4) includeDirectories (只有 @ 补全用) 额外列文件夹, 以结尾 `/` 标记。
   //
   // 性能: 50k 文件的子串扫 ~5-15ms, popover 体感秒级以下。
   registerChannel('project.fileSearch', async (input) => {
     const projectRoot = await projectStore.assertAllowed(input.projectRoot);
     const limit = input.limit ?? 30;
-    const query = input.query.trim().toLowerCase();
-
     const cached = input.locate ? undefined : fileSearchCache.get(projectRoot);
-    let listing: { paths: readonly string[]; capped: boolean };
+    let listing: FileSearchListing;
     if (cached && Date.now() - cached.ts < FILE_SEARCH_TTL_MS) {
       listing = cached;
     } else {
@@ -537,12 +536,15 @@ export function registerProjectChannels(): void {
         hardCap: FILE_SEARCH_HARD_CAP,
         respectGitignore: !input.locate,
       });
-      // 入 cache 前 pre-sort: BFS walk 顺序不是字典序,如果搜索 loop 早退会丢前面应该
-      // 排序到顶的项 (审查 M4)。一次性 sort 50k 字符串 ~10-20ms,缓存命中后零成本。
-      walked.paths.sort();
-      listing = walked;
+      // 入 cache 前 pre-sort: 排序结果直接决定同级命中的先后，缓存命中后零成本 (审查 M4)。
+      listing = {
+        ts: Date.now(),
+        files: projectSearchEntries(walked, false),
+        withDirectories: projectSearchEntries(walked, true),
+        capped: walked.capped,
+      };
       if (!input.locate) {
-        fileSearchCache.set(projectRoot, { ts: Date.now(), ...walked });
+        fileSearchCache.set(projectRoot, listing);
         // LRU 兜底防 cache 涨爆
         while (fileSearchCache.size > 16) {
           const k = fileSearchCache.keys().next().value;
@@ -551,30 +553,12 @@ export function registerProjectChannels(): void {
         }
       }
     }
-    const { paths, capped } = listing;
-
-    // 空 query → 前 N 个 (alphabetical) 给 user 一个起步清单
-    if (query.length === 0) {
-      const out = paths.slice(0, limit);
-      return { paths: [...out], truncated: capped || paths.length > limit };
-    }
-
-    // 过滤 + 排序: basename 命中优先于 path 命中。paths 已预排序,扫一遍即得到
-    // 字典序的 basenameHits / pathHits。**不早退** — 否则可能漏掉后段优先级更高
-    // 的项 (审查 M4)。50k 字符串扫一遍 ~5-15ms,对 UI 可接受。
-    const basenameHits: string[] = [];
-    const pathHits: string[] = [];
-    for (const p of paths) {
-      const base = p.slice(p.lastIndexOf('/') + 1).toLowerCase();
-      if (base.includes(query)) {
-        basenameHits.push(p);
-      } else if (p.toLowerCase().includes(query)) {
-        pathHits.push(p);
-      }
-    }
-    const merged = [...basenameHits, ...pathHits];
-    const truncated = capped || merged.length > limit;
-    return { paths: merged.slice(0, limit), truncated };
+    const ranked = rankProjectPaths(
+      input.includeDirectories ? listing.withDirectories : listing.files,
+      input.query,
+      limit,
+    );
+    return { paths: ranked.paths, truncated: listing.capped || ranked.truncated };
   });
 }
 
@@ -582,10 +566,13 @@ export function registerProjectChannels(): void {
 
 const FILE_SEARCH_TTL_MS = 30_000;
 const FILE_SEARCH_HARD_CAP = 50_000;
-const fileSearchCache = new Map<
-  string,
-  { ts: number; paths: readonly string[]; capped: boolean }
->();
+type FileSearchListing = {
+  readonly ts: number;
+  readonly files: readonly string[];
+  readonly withDirectories: readonly string[];
+  readonly capped: boolean;
+};
+const fileSearchCache = new Map<string, FileSearchListing>();
 
 // gitStatus cache (类比 gitStats 但 key 更简单 — 不带 sinceDays)
 type GitStatusOutput = {

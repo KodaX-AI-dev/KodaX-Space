@@ -1,7 +1,7 @@
 // AtPathPopover — `@path/file.ts` 自动补全 (REPL SuggestionsDisplay 等价, v0.1.x)
 //
 // 触发: BottomBar textarea 内容里 caret 之前最近的 `@xxx` token (xxx 中不能有空白)。
-//   - 用户打 "@" → query = ""           → 弹"最近 N 个文件"清单
+//   - 用户打 "@" → query = ""           → 弹前 N 个文件/文件夹清单（文件夹以 `/` 结尾）
 //   - 继续打 "@src/fo"  → query = "src/fo" → IPC project.fileSearch substring 匹配
 //   - Tab / Enter → 接受当前 active 项,把 `@token` 换成 `@selected/path`
 //   - ↑/↓ → 移动 active
@@ -9,7 +9,7 @@
 //
 // 键盘事件: BottomBar onKeyDown 优先派发到本 popover (如果 open); 否则走原逻辑 (history 翻 / send 等)。
 
-import { FileText } from 'lucide-react';
+import { FileText, Folder } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { FileNameText } from '../components/FileNameText.js';
 import { useI18n } from '../i18n/I18nProvider.js';
@@ -99,6 +99,7 @@ export function AtPathPopover({
           projectRoot,
           query: token.query,
           limit: 20,
+          includeDirectories: true,
         })
         .then((r) => {
           if (cancelled) return;
@@ -192,8 +193,10 @@ export function AtPathPopover({
         )}
         {matches.map((p, i) => {
           const isActive = i === active;
-          const basename = p.slice(p.lastIndexOf('/') + 1);
-          const dirname = p.slice(0, p.length - basename.length);
+          const folder = p.endsWith('/');
+          const bare = folder ? p.slice(0, -1) : p;
+          const basename = bare.slice(bare.lastIndexOf('/') + 1);
+          const dirname = bare.slice(0, bare.length - basename.length);
           return (
             <li key={p}>
               <button
@@ -210,7 +213,11 @@ export function AtPathPopover({
                 className={`composer-completion-row ${isActive ? 'is-active' : ''}`}
                 title={p}
               >
-                <FileText size={16} aria-hidden="true" />
+                {folder ? (
+                  <Folder size={16} aria-hidden="true" />
+                ) : (
+                  <FileText size={16} aria-hidden="true" />
+                )}
                 <span className="composer-completion-copy">
                   <FileNameText name={basename} className="text-fg-primary" title={p} />
                   {dirname && (

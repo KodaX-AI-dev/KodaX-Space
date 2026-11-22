@@ -2866,10 +2866,13 @@ export function BottomBar(): JSX.Element {
                 caret={caret}
                 projectRoot={currentProjectPath}
                 onAccept={(replacement, tokenStart, tokenEnd) => {
+                  // Folder candidates end with `/`; the slash stays on the wire so history knows.
+                  const folder = replacement.endsWith('/');
+                  const relative = folder ? replacement.slice(0, -1) : replacement;
                   textareaRef.current?.insertToken(tokenStart, tokenEnd, {
-                    kind: 'file',
-                    label: replacement.split('/').at(-1) ?? replacement,
-                    detail: `${currentProjectPath}/${replacement}`,
+                    kind: folder ? 'folder' : 'file',
+                    label: relative.split('/').at(-1) ?? relative,
+                    detail: `${currentProjectPath}/${relative}`,
                     value: projectFileReference(
                       currentProjectPath ?? '',
                       replacement,

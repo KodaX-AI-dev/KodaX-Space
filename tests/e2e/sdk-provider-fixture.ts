@@ -626,7 +626,7 @@ export async function sendSdkPrompt(space: SpaceInstance, prompt: string, key = 
   const composer = space.page.getByTestId('composer-input');
   await composer.fill(prompt);
   // Raw fixture prompts submit the literal reference instead of choosing a completion.
-  if (await space.page.getByRole('listbox', { name: '@ Files', exact: true }).isVisible())
+  if (await space.page.getByRole('listbox', { name: '@ Files & folders', exact: true }).isVisible())
     await composer.press('Escape');
   await composer.press(key);
   await expect(

@@ -27,6 +27,7 @@ window.kodaxSpace={platform:'win32',on:()=>()=>{},invoke:async(channel,input)=>{
  }
  if(channel==='skill.discover')return{ok:true,data:{skills:[{name:'example-skill',path:'/skills/example',description:'Example skill'}]}};
  if(channel==='slash.exec'){window.executed.push({name:input.name,args:input.args});return{ok:true,data:{ok:true}};}
+ if(channel==='project.fileSearch'){window.fileSearchInput=input;return{ok:true,data:{paths:['src/components/','src/components.ts'],truncated:false}};}
  return{ok:false,error:{message:'Not used in this scenario'}};
 }};
 useAppStore.setState({currentProjectPath:'/project',currentSessionId:'s',
@@ -113,7 +114,7 @@ test(
     await page.getByRole('listbox').waitFor();
     await page.keyboard.press('Tab');
     await settle(page);
-    assert.equal(await editor.textContent(), '/help ');
+    assert.equal(await editor.textContent(), 'help ');
     assert.equal(await page.getByRole('listbox').count(), 0);
     await page.keyboard.press('Space');
     await settle(page);
@@ -194,13 +195,13 @@ test(
     await page.getByRole('option', { name: /sessions/ }).waitFor();
     await page.keyboard.press('Tab');
     await settle(page);
-    assert.equal(await editor.textContent(), '/sessions ');
+    assert.equal(await editor.textContent(), 'sessions ');
     assert.equal(await page.getByRole('listbox').count(), 0);
     await editor.fill('/comp');
     await page.getByRole('option', { name: /compact/ }).waitFor();
     await page.keyboard.press('Tab');
     await settle(page);
-    assert.equal(await editor.textContent(), '/compact ');
+    assert.equal(await editor.textContent(), 'compact ');
     assert.equal(await page.getByRole('listbox').count(), 0);
     await editor.fill('/mode au');
     await page.getByRole('option', { name: /^auto/ }).waitFor();
@@ -246,7 +247,7 @@ test(
     assert.equal(await editor.locator('[data-composer-token="skill"]').count(), 1);
     assert.equal(await page.getByRole('listbox').count(), 0);
     await page.keyboard.type('do the work');
-    assert.equal(await editor.textContent(), '/example-skill do the work');
+    assert.equal(await editor.textContent(), 'example-skill do the work');
     assert.deepEqual(errors, []);
   },
 );
@@ -280,6 +281,25 @@ test(
     await settle(page);
     assert.deepEqual(await page.evaluate('window.executed'), []);
     assert.ok((await editor.innerText()).startsWith('/help zzz'));
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  '@ completion offers folders and inserts a folder reference that keeps its trailing slash',
+  { skip: !browserAvailable },
+  async (t) => {
+    const { page, editor, errors } = await openComposer(t);
+    await editor.fill('see @comp');
+    const options = page.getByRole('option');
+    await options.nth(1).waitFor();
+    assert.equal(await page.evaluate('window.fileSearchInput.includeDirectories'), true);
+    assert.equal(await options.first().getAttribute('title'), 'src/components/');
+    await page.keyboard.press('Enter');
+    await settle(page);
+    const folder = editor.locator('[data-composer-token="folder"]');
+    assert.equal(await folder.textContent(), 'components');
+    assert.equal(await folder.getAttribute('aria-label'), '@src/components/');
     assert.deepEqual(errors, []);
   },
 );

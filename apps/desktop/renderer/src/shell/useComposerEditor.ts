@@ -31,6 +31,7 @@ import {
 } from './ComposerTokenNode';
 import { editorText, selectOffsets, selectionOffsets, wireText } from './composerEditorProjection';
 import type { ComposerEditorHandle, ComposerEditorProps } from './composerEditorTypes';
+import { commandReferenceLabel } from './skillSlash';
 type Snapshot = { value: string; start: number; end: number };
 
 export function useComposerState(props: ComposerEditorProps, editor: LexicalEditor) {
@@ -131,8 +132,12 @@ export function useComposerHandle(
       setSelectionRange(start, end) {
         editor.update(() => selectOffsets(start, end), { discrete: true });
       },
-      insertToken(start, end, token) {
+      insertToken(start, end, inserted) {
         if (!editor.isEditable()) return;
+        const token =
+          inserted.kind === 'skill' || inserted.kind === 'command'
+            ? { ...inserted, label: commandReferenceLabel(inserted.label) }
+            : inserted;
         editor.update(
           () => {
             const before = editorText();
@@ -163,20 +168,24 @@ export function useComposerHandle(
 }
 
 function disambiguateFileToken(token: import('./ComposerTokenNode').ComposerToken): string {
-  if (token.kind !== 'file') return token.label;
+  if (token.kind !== 'file' && token.kind !== 'folder') return token.label;
   const siblings = $getRoot()
     .getAllTextNodes()
     .filter(
       (node): node is ComposerTokenNode =>
         node instanceof ComposerTokenNode &&
-        node.__token.kind === 'file' &&
+        node.__token.kind === token.kind &&
         node.__token.label === token.label,
     );
   const tokens = [...siblings.map((node) => node.__token), token];
   const unique = [...new Map(tokens.map((item) => [item.value, item])).values()];
   if (unique.length < 2) return token.label;
   const segments = (item: typeof token) =>
-    (item.detail ?? item.value).replace(/^@/, '').replace(/\\/g, '/').split('/');
+    (item.detail ?? item.value)
+      .replace(/^@/, '')
+      .replace(/\\/g, '/')
+      .replace(/\/$/, '')
+      .split('/');
   let depth = 2;
   const maxDepth = Math.max(...unique.map((item) => segments(item).length));
   while (

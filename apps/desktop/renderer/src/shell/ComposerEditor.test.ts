@@ -123,7 +123,7 @@ test('composer keeps canonical input through atomic deletion, undo, copy and ext
     assert.equal(await editor.locator('[data-composer-token]').count(), 0);
     await page.getByText('Clear', { exact: true }).click();
     await page.getByText('Skill', { exact: true }).click();
-    assert.equal(await editor.locator('[data-composer-token="skill"]').textContent(), '/review');
+    assert.equal(await editor.locator('[data-composer-token="skill"]').textContent(), 'review');
     assert.equal(await page.locator('output').textContent(), '/skill:review ');
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('Delete');

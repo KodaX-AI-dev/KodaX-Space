@@ -37,7 +37,12 @@ const SKIPPED_DIRS = new Set<string>([
 ]);
 
 export type WalkOptions = { readonly hardCap: number; readonly respectGitignore?: boolean };
-export type WalkResult = { readonly paths: string[]; readonly capped: boolean };
+export type WalkResult = {
+  readonly paths: string[];
+  /** Folders passing the same exclusions, so `@` can reference a folder. */
+  readonly directories: string[];
+  readonly capped: boolean;
+};
 
 async function loadRootGitignore(root: string): Promise<Ignore | null> {
   try {
@@ -49,10 +54,11 @@ async function loadRootGitignore(root: string): Promise<Ignore | null> {
   }
 }
 
-/** BFS 收集 posix 相对路径；capped = 达到 hardCap 后停止，结果不全。 */
+/** BFS 收集 posix 相对路径（文件 + 文件夹）；capped = 文件数达到 hardCap 后停止，结果不全。 */
 export async function walkProjectFiles(root: string, options: WalkOptions): Promise<WalkResult> {
   const gitignore = options.respectGitignore === false ? null : await loadRootGitignore(root);
   const paths: string[] = [];
+  const directories: string[] = [];
   const queue: string[] = ['']; // 相对路径，空串 = root
   while (queue.length > 0) {
     const rel = queue.shift()!;
@@ -68,12 +74,42 @@ export async function walkProjectFiles(root: string, options: WalkOptions): Prom
       const childRel = rel === '' ? ent.name : `${rel}/${ent.name}`;
       if (ent.isDirectory()) {
         if (SKIPPED_DIRS.has(ent.name) || gitignore?.ignores(`${childRel}/`)) continue;
+        directories.push(childRel);
         queue.push(childRel);
       } else if (ent.isFile() && !gitignore?.ignores(childRel)) {
-        if (paths.length >= options.hardCap) return { paths, capped: true };
+        if (paths.length >= options.hardCap) return { paths, directories, capped: true };
         paths.push(childRel);
       }
     }
   }
-  return { paths, capped: false };
+  return { paths, directories, capped: false };
+}
+
+/** Search candidates, pre-sorted so a folder (trailing `/`) precedes its contents. */
+export function projectSearchEntries(walked: WalkResult, includeDirectories: boolean): string[] {
+  const entries = includeDirectories
+    ? [...walked.paths, ...walked.directories.map((dir) => `${dir}/`)]
+    : [...walked.paths];
+  return entries.sort();
+}
+
+/** Case-insensitive substring match: name hits first, then path hits, each in sorted order. */
+export function rankProjectPaths(
+  entries: readonly string[],
+  query: string,
+  limit: number,
+): { paths: string[]; truncated: boolean } {
+  const needle = query.trim().toLowerCase();
+  if (needle.length === 0)
+    return { paths: entries.slice(0, limit), truncated: entries.length > limit };
+  const nameHits: string[] = [];
+  const pathHits: string[] = [];
+  // No early exit: a later entry can still outrank earlier ones.
+  for (const entry of entries) {
+    const bare = entry.endsWith('/') ? entry.slice(0, -1) : entry;
+    if (bare.slice(bare.lastIndexOf('/') + 1).toLowerCase().includes(needle)) nameHits.push(entry);
+    else if (entry.toLowerCase().includes(needle)) pathHits.push(entry);
+  }
+  const merged = [...nameHits, ...pathHits];
+  return { paths: merged.slice(0, limit), truncated: merged.length > limit };
 }

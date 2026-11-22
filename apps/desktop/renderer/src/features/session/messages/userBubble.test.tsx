@@ -3,6 +3,7 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '../../../i18n/I18nProvider.js';
 import { LocalNoticeBubble, ToolCallCard, UserBubble } from './bubbles.js';
+import { loadCommandsOnce } from '../../../shell/SlashCommandPopover.js';
 
 /** The provider follows the system languages; pin them so assertions never depend on the host OS. */
 function withSystemLanguages<T>(languages: readonly string[], render: () => T): T {
@@ -96,4 +97,37 @@ test('a tool that finished with an error result shows a failed badge, not done',
   );
   assert.match(markup, />failed</);
   assert.doesNotMatch(markup, />done</);
+});
+
+test('history references read like composer tokens: no wire prefix, skills by catalog, file names', async () => {
+  const invoke = async () => ({
+    ok: true,
+    data: { commands: [{ name: 'compact', description: 'Compact' }] },
+  });
+  Object.defineProperty(globalThis, 'window', { value: { kodaxSpace: { invoke } }, configurable: true });
+  try {
+    await loadCommandsOnce();
+    const render = (content: string): string =>
+      renderToStaticMarkup(
+        <I18nProvider>
+          <UserBubble content={content} />
+        </I18nProvider>,
+      );
+    // Hidden wire text keeps the DOM text verbatim; only the label is shown.
+    const shown = (markup: string): string =>
+      markup.replace(/<span class="composer-token-wire">[^<]*<\/span>/g, '');
+    const text = (markup: string): string => markup.replace(/<[^>]+>/g, '');
+    const skillMarkup = render('/im-export now');
+    assert.match(shown(skillMarkup), /data-composer-token="skill"[^>]*>im-export</);
+    assert.match(text(skillMarkup), /\/im-export now/);
+    assert.match(shown(render('/compact')), /data-composer-token="command"[^>]*>compact</);
+    const refsMarkup = render('see /skill:code-review and @src/README.md in @src/components/');
+    assert.match(text(refsMarkup), /see \/skill:code-review and @src\/README.md in @src\/components\//);
+    const refs = shown(refsMarkup);
+    assert.match(refs, /data-composer-token="folder" title="@src\/components\/">components</);
+    assert.match(refs, /data-composer-token="skill"[^>]*>code-review</);
+    assert.match(refs, /data-composer-token="file" title="@src\/README.md">README.md</);
+  } finally {
+    Reflect.deleteProperty(globalThis, 'window');
+  }
 });
