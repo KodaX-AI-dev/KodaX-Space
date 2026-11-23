@@ -12,7 +12,7 @@
 
 type CapRule = { match: RegExp; cap: number };
 
-// 数值与 SDK 0.7.97-rc.1 对齐；同一 model 在多个 provider 上窗口不同时取最小值。
+// 数值与 SDK 0.7.97-rc.2 对齐；同一 model 在多个 provider 上窗口不同时取最小值。
 // model-context-caps.test.ts 逐条对照 SDK，任何过报都会失败。
 // **过报(over-claim)是危险方向**——会让用户误以为"还有大把空间"却提前压缩；这里逐条按 SDK 真值订正。
 // 顺序敏感：更具体的规则必须在通配前面（first-match wins）。
@@ -44,8 +44,8 @@ const RULES: readonly CapRule[] = [
   // Qwen 3.5 plus 256k；Token Plan 的 3.6 / 3.7 / 3.8 是 1M。
   { match: /^qwen3\.5/, cap: 256_000 },
   { match: /^qwen3\.[678]/, cap: 1_000_000 },
-  // GLM-5.2 / 5.3 (Zhipu / Z.ai Coding Plan) - 1M; keep before the broader GLM-5 fallback.
-  { match: /^glm-5\.[23](?:-flash|-highspeed)?$/, cap: 1_000_000 },
+  // GLM-5.2 / 5.3 / 5.4 (Zhipu / Z.ai Coding Plan) - 1M; keep before the broader GLM-5 fallback.
+  { match: /^glm-5\.[234](?:-flash|-highspeed)?$/, cap: 1_000_000 },
   // GLM-5 / GLM-5.1 / GLM-5 Turbo - 200k fallback.
   { match: /^glm-5(?:$|\.1$|-turbo$)/, cap: 200_000 },
   // GLM-4.7 - 200k.

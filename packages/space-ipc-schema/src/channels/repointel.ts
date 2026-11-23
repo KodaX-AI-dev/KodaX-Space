@@ -33,6 +33,10 @@ export const repointelStatusChannel = {
     // a misleading "idle" whenever the current session simply hasn't invoked repo-intel
     // yet. null when the SDK inspection itself failed.
     effectiveEngine: z.enum(['off', 'light', 'full']).nullable(),
+    // The KodaX config mode. Under the default `auto` the Host offers only the git-based
+    // repo tools and leaves the semantic index off (effectiveEngine 'off'), so the chip
+    // labels that state "Git" instead of idle. Absent when the inspection failed.
+    configuredMode: z.enum(['auto', 'off', 'light', 'full']).optional(),
     engineStatus: z.enum(['disabled', 'ok', 'limited', 'unavailable', 'warming']).nullable(),
     initialized: z.boolean().optional(),
     runtimeId: z.string().min(1).optional(),

@@ -8,6 +8,15 @@ import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 
 const WARM_SUPPORTED_REASON =
   'KodaX SDK exposes built-in best-effort repo-intelligence prewarm; use /repointel warm to start it for the current project.';
+const GIT_ONLY_REASON =
+  'Git-based repo tools (repo_overview, changed_scope, changed_diff) are on. The semantic index is opt-in: set repoIntelligenceMode to "full" or "light" in KodaX config to enable it and its prewarm.';
+
+type RepoIntelMode = 'auto' | 'off' | 'light' | 'full';
+
+function warmReason(configuredMode: RepoIntelMode, requestedMode: string, offReason: string): string {
+  if (requestedMode !== 'off') return WARM_SUPPORTED_REASON;
+  return configuredMode === 'auto' ? GIT_ONLY_REASON : offReason;
+}
 
 function canReadDirectory(dir: string): boolean {
   try {
@@ -50,6 +59,7 @@ async function sdkDiagnostics(
   readonly warmSupported: boolean;
   readonly warmReason: string;
   readonly effectiveEngine: 'off' | 'light' | 'full' | null;
+  readonly configuredMode?: RepoIntelMode;
   readonly engineStatus: 'disabled' | 'ok' | 'limited' | 'unavailable' | 'warming' | null;
   readonly diagnostics: readonly RepointelStatusItemT[];
   readonly initialized?: boolean;
@@ -62,11 +72,13 @@ async function sdkDiagnostics(
       const status = await runtimeHostAdapter.inspectRepoIntelligence(sessionId);
       return {
         warmSupported: status.requestedMode !== 'off',
-        warmReason:
-          status.requestedMode === 'off'
-            ? 'Repo intelligence is disabled by Host settings.'
-            : WARM_SUPPORTED_REASON,
+        warmReason: warmReason(
+          status.configuredMode,
+          status.requestedMode,
+          'Repo intelligence is disabled by Host settings.',
+        ),
         effectiveEngine: status.effectiveEngine,
+        configuredMode: status.configuredMode,
         engineStatus: status.status,
         initialized: status.initialized,
         runtimeId: status.runtimeId,
@@ -119,11 +131,13 @@ async function sdkDiagnostics(
     }
     return {
       warmSupported: inspection.requestedMode !== 'off',
-      warmReason:
-        inspection.requestedMode === 'off'
-          ? 'Repo intelligence is disabled by KodaX config.'
-          : WARM_SUPPORTED_REASON,
+      warmReason: warmReason(
+        inspection.configuredMode,
+        inspection.requestedMode,
+        'Repo intelligence is disabled by KodaX config.',
+      ),
       effectiveEngine: inspection.effectiveEngine,
+      configuredMode: inspection.configuredMode,
       engineStatus: inspection.status,
       diagnostics,
     };
@@ -202,6 +216,7 @@ async function buildStatus(
     warmReason: sdk.warmReason,
     entitled,
     effectiveEngine: entitled ? sdk.effectiveEngine : 'off',
+    ...(entitled && sdk.configuredMode ? { configuredMode: sdk.configuredMode } : {}),
     engineStatus: entitled ? sdk.engineStatus : 'disabled',
     initialized: sdk.initialized,
     runtimeId: sdk.runtimeId,

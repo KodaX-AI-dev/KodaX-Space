@@ -18,6 +18,7 @@ import { useSurfaceStore } from '../store/surface.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { SettingsModal } from '../features/settings/SettingsModal.js';
 import { projectShellChrome } from './shellChromeProjection.js';
+import { repointelReadyMode } from './repointelPillMode.js';
 
 export function ChipBar(): JSX.Element | null {
   const projectPath = useAppStore((s) => s.currentProjectPath);
@@ -249,6 +250,8 @@ const REPOINTEL_MODE_LABEL: Record<string, string> = {
   light: 'Light',
   full: 'Full',
   auto: 'auto',
+  // Default `auto`: git-based repo tools on, semantic index opt-in.
+  git: 'Git',
   // Legacy values (pre-0.7.57) kept for back-compat with older SDK traces.
   oss: 'OSS',
   'premium-shared': 'Premium (shared)',
@@ -344,17 +347,12 @@ function RepointelChip({ projectPath }: { readonly projectPath: string }): JSX.E
 
   // Pill state: a live trace (repo-intel actually ran THIS session) wins and shows its
   // mode as "active"; otherwise fall back to engine READINESS from status (Full/Light when
-  // enabled + healthy) so a licensed, ready repo-intel isn't shown as a misleading "idle"
-  // just because this session hasn't invoked it yet. Only genuinely off/unknown → 'idle'.
+  // enabled + healthy, Git under the default auto mode) so a licensed, ready repo-intel
+  // isn't shown as a misleading "idle" just because this session hasn't invoked it yet.
+  // Only genuinely off/unknown → 'idle'.
   const latest = latestTraces[0];
   const liveMode = latest?.mode;
-  const readyMode =
-    status &&
-    status.initialized !== false &&
-    (status.engineStatus === 'ok' || status.engineStatus === 'limited') &&
-    (status.effectiveEngine === 'full' || status.effectiveEngine === 'light')
-      ? status.effectiveEngine
-      : undefined;
+  const readyMode = repointelReadyMode(status);
   const mode = liveMode ?? readyMode;
   const active = liveMode !== undefined;
   const modeLabel = mode ? (REPOINTEL_MODE_LABEL[mode] ?? mode) : 'idle';
@@ -363,7 +361,7 @@ function RepointelChip({ projectPath }: { readonly projectPath: string }): JSX.E
       ? 'bg-fg-muted'
       : mode === 'full' || mode === 'premium-shared' || mode === 'premium-native'
         ? 'bg-info'
-        : mode === 'light' || mode === 'oss'
+        : mode === 'light' || mode === 'oss' || mode === 'git'
           ? 'bg-ok'
           : 'bg-warn';
   const titleStatus = active

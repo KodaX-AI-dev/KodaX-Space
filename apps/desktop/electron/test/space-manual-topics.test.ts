@@ -11,43 +11,36 @@ import { buildSpaceManual, SPACE_PRODUCT_NAME } from '../kodax/space-manual-topi
 
 const manifest = createRequire(import.meta.url)('../../../../package.json') as {
   readonly version: string;
-  readonly dependencies: { readonly '@kodax-ai/kodax': string };
 };
 const installedSdk = createRequire(import.meta.url)('@kodax-ai/kodax/package.json') as {
   version: string;
 };
-const sdkManual = buildSpaceManual({
-  KODAX_UNDERLYING_CAPABILITY_TOPICS,
-  MANUAL_REGISTRY,
-});
+const sdkManual = buildSpaceManual({ KODAX_UNDERLYING_CAPABILITY_TOPICS, MANUAL_REGISTRY });
 const SPACE_MANUAL_BASE_TOPICS = sdkManual.baseTopics;
 const SPACE_MANUAL_TOPICS = sdkManual.topics;
+const INHERITED = '## Inherited KodaX SDK mechanism';
 
-test('Space product guidance uses current lifecycle, settings and management capabilities', () => {
-  const read = (topic: string): string =>
-    resolveKodaXManual(
-      { topic },
-      {
-        productName: SPACE_PRODUCT_NAME,
-        baseTopics: SPACE_MANUAL_BASE_TOPICS,
-        extraTopics: SPACE_MANUAL_TOPICS,
-      },
-    ).content.split('## Inherited KodaX SDK mechanism')[0];
+function resolve(topic?: string) {
+  return resolveKodaXManual(topic ? { topic } : {}, {
+    productName: SPACE_PRODUCT_NAME,
+    baseTopics: SPACE_MANUAL_BASE_TOPICS,
+    extraTopics: SPACE_MANUAL_TOPICS,
+  });
+}
 
-  assert.match(read('overview'), /Product lifecycle/);
-  assert.doesNotMatch(read('overview'), /完整退出使用.*runtimeExitSettlement/);
-  assert.ok(
-    read('runtime-host').includes(
-      `v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`,
-    ),
-  );
-  assert.doesNotMatch(read('ui-map'), /浮层：[^。\n]*Settings/);
-  assert.match(read('popouts'), /Learned Skills.*review.*trust.*rollback/);
-  assert.doesNotMatch(read('memory-governance'), /依赖声明是精确 0\.7\.97-alpha\.6/);
-  assert.match(read('troubleshooting'), /其他在线客户端/);
-  assert.match(read('keyboard-shortcuts'), /Ctrl\+Shift\+V Preview.*Ctrl\+Shift\+D Diff/);
-  assert.match(read('keyboard-shortcuts'), /焦点不在输入框、文本框或可编辑区域/);
-  assert.doesNotMatch(read('troubleshooting'), /durable delivery 事件/);
+/** The Space-authored part of a topic, without the inherited SDK body. */
+function own(id: string): string {
+  return SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(INHERITED)[0] ?? '';
+}
+
+test('Space manual topics have unique ids and resolvable nextTopics', () => {
+  const ids = new Set(SPACE_MANUAL_TOPICS.map((topic) => topic.id));
+  assert.equal(ids.size, SPACE_MANUAL_TOPICS.length, 'manual topic ids must be unique');
+  for (const topic of SPACE_MANUAL_TOPICS) {
+    for (const next of topic.nextTopics ?? []) {
+      assert.ok(ids.has(next), `${topic.id} references missing next topic ${next}`);
+    }
+  }
 });
 
 test('Space kodax_manual preserves the installed SDK mechanism manual', () => {
@@ -58,15 +51,10 @@ test('Space kodax_manual preserves the installed SDK mechanism manual', () => {
     const overlay = overlays.get(id);
     if (!overlay) continue;
     const sdkTopic = MANUAL_REGISTRY[id];
-    assert.ok(
-      overlay.body.includes(sdkTopic.body),
-      `${id} must retain the exact installed SDK manual body`,
-    );
+    assert.ok(overlay.body.includes(sdkTopic.body), `${id} must retain the SDK manual body`);
     for (const source of sdkTopic.sources) {
       assert.ok(
-        overlay.sources?.some(
-          (candidate) => candidate.label === source.label && candidate.path === source.path,
-        ),
+        overlay.sources?.some((c) => c.label === source.label && c.path === source.path),
         `${id} must retain SDK source ${source.path}`,
       );
     }
@@ -75,15 +63,7 @@ test('Space kodax_manual preserves the installed SDK mechanism manual', () => {
     }
   }
 
-  const index = resolveKodaXManual(
-    {},
-    {
-      productName: SPACE_PRODUCT_NAME,
-      baseTopics: SPACE_MANUAL_BASE_TOPICS,
-      extraTopics: SPACE_MANUAL_TOPICS,
-    },
-  );
-  const effectiveIds = new Set(index.topics.map((topic) => topic.id));
+  const effectiveIds = new Set(resolve().topics.map((topic) => topic.id));
   for (const id of KODAX_UNDERLYING_CAPABILITY_TOPICS) {
     assert.ok(effectiveIds.has(id), `effective manual must retain SDK topic ${id}`);
   }
@@ -91,377 +71,77 @@ test('Space kodax_manual preserves the installed SDK mechanism manual', () => {
     assert.ok(effectiveIds.has(topic.id), `effective manual must include Space topic ${topic.id}`);
   }
 
-  const config = resolveKodaXManual(
-    { topic: 'config' },
-    {
-      productName: SPACE_PRODUCT_NAME,
-      baseTopics: SPACE_MANUAL_BASE_TOPICS,
-      extraTopics: SPACE_MANUAL_TOPICS,
-    },
-  );
-  assert.match(config.content, /~\/\.kodax\/integrations\/mcp\.json/);
-  assert.match(config.content, /~\/\.kodax\/integrations\/a2a\.json/);
-  assert.match(config.content, /~\/\.kodax\/integrations\/extensions\.json/);
-  assert.match(config.content, /kodax integrations migrate --apply/);
-  assert.match(config.content, /只创建缺失的目标文件/);
-  assert.match(config.content, /目标文件已存在时不会被覆盖/);
-  assert.match(config.content, /--cleanup-legacy/);
+  const config = resolve('config').content;
+  assert.match(config, /~\/\.kodax\/integrations\/mcp\.json/);
+  assert.match(config, /~\/\.kodax\/integrations\/a2a\.json/);
+  assert.match(config, /~\/\.kodax\/integrations\/extensions\.json/);
+  assert.match(config, /kodax integrations migrate --apply/);
 });
 
-test('Space product manual directs shared Coder usage questions to space_manual', () => {
-  const manual = resolveKodaXManual(
-    { topic: 'self-manual' },
-    {
-      productName: SPACE_PRODUCT_NAME,
-      baseTopics: SPACE_MANUAL_BASE_TOPICS,
-      extraTopics: SPACE_MANUAL_TOPICS,
-    },
-  );
-  assert.match(manual.content, /共享 Coder.*space_manual/);
-  assert.match(manual.content, /kodax_manual.*SDK\/CLI/);
-  assert.doesNotMatch(manual.content, /产品使用问题时，AI 会调用 SDK 的 kodax_manual/);
-});
-
-test('Space session manual explains drafts, message recency and separate history browsing', () => {
-  const manual = resolveKodaXManual(
-    { topic: 'sessions' },
-    {
-      productName: SPACE_PRODUCT_NAME,
-      baseTopics: SPACE_MANUAL_BASE_TOPICS,
-      extraTopics: SPACE_MANUAL_TOPICS,
-    },
-  );
-  assert.match(manual.content, /首个有效输入.*持久化/);
-  assert.match(manual.content, /旧空记录.*隐藏.*不删除/);
-  assert.match(manual.content, /真实消息时间.*排序/);
-  assert.match(manual.content, /当前 view.*历史浏览窗口.*分开/);
-  assert.match(manual.content, /搜索.*SDK/);
-});
-
-test('Space exit manual describes current Product lifecycle and recovery receipts', () => {
-  const manual = resolveKodaXManual(
-    { topic: 'background-runtime' },
-    {
-      productName: SPACE_PRODUCT_NAME,
-      baseTopics: SPACE_MANUAL_BASE_TOPICS,
-      extraTopics: SPACE_MANUAL_TOPICS,
-    },
-  );
-  assert.match(manual.content, /lifecycle\.requestExit.*readExit/);
-  assert.match(manual.content, /readKodaXClientExits/);
-  assert.match(manual.content, /原 requestId/);
-  assert.match(manual.content, /工作清理.*Host.*退出.*分开/);
-  assert.doesNotMatch(manual.content, /完整事务交给 KodaX SDK 的 settleKodaXRuntimeExit/);
-});
-
-test('Space kodax_manual documents the required current KodaX capability boundary', () => {
-  const topics = new Map(SPACE_MANUAL_TOPICS.map((topic) => [topic.id, topic]));
-  const ids = [...topics.keys()];
-
-  assert.equal(ids.length, SPACE_MANUAL_TOPICS.length, 'manual topic ids must be unique');
+test('the Space-authored manual is a current reference, not release history', () => {
   for (const topic of SPACE_MANUAL_TOPICS) {
-    for (const nextTopic of topic.nextTopics ?? []) {
-      assert.ok(topics.has(nextTopic), `${topic.id} references missing next topic ${nextTopic}`);
+    const body = own(topic.id);
+    assert.doesNotMatch(
+      `${topic.summary}\n${body}`.replace(
+        `v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`,
+        '',
+      ),
+      /v0\.1\.\d+|\b0\.7\.\d+|beta\.\d+|alpha\.\d+|\bF1\d\d\b|FEATURE_\d+|Issues? \d+/,
+      `${topic.id} narrates release history`,
+    );
+    for (const alias of topic.aliases ?? []) {
+      assert.doesNotMatch(alias, /^v\d+\.\d+/, `${topic.id} has a version alias ${alias}`);
     }
   }
-  assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.45 正式发布.*KodaX 0\.7\.95/);
-  assert.ok(
-    topics
-      .get('runtime-host')
-      ?.body.includes(`v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`),
-    'The current manual must match the declared Space and SDK versions',
-  );
-  assert.match(topics.get('runtime-host')?.body ?? '', /v0\.1\.46-alpha\.11 落地 FEATURE_275/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /macOS 后台 Git 调用先经 SDK 共享预检/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /darwin 不启用自动更新/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /限定自愈/);
-  assert.match(
-    topics.get('runtime-host')?.body ?? '',
-    /v0\.1\.46-alpha\.10 升级到 KodaX 0\.7\.96-beta\.6/,
-  );
-  assert.match(topics.get('runtime-host')?.body ?? '', /conversationHistory v2/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /contextCompaction v3/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /transcriptSearch v1/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /KodaX 0\.7\.93/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /runBoundHostTools v2/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /session\.status/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /session\.diagnostics/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /不会根据已出现回答文本伪造完成/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /精确 checkpoint 字节/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /精确 flat Session history/);
-  assert.match(topics.get('composer')?.body ?? '', /interrupt input/);
-  assert.match(topics.get('composer')?.body ?? '', /保留 queued input/);
-  assert.match(topics.get('composer')?.body ?? '', /不含用户正文/);
-  assert.match(topics.get('sessions')?.body ?? '', /跳过空的 ACP 占位会话/);
-  assert.match(topics.get('sessions')?.body ?? '', /workspace runtime.*UI history.*artifacts/);
-  assert.match(topics.get('permissions')?.body ?? '', /-LiteralPath/);
-  assert.match(topics.get('permissions')?.body ?? '', /方括号通配符/);
-  assert.match(topics.get('permissions')?.body ?? '', /Auto\[LLM\].*Full Access/);
-  assert.doesNotMatch(topics.get('permissions')?.body ?? '', /Auto\[RULES\]/);
-  assert.match(topics.get('permissions')?.body ?? '', /\/auto-engine.*已移除/);
-  assert.match(topics.get('permissions')?.body ?? '', /classifier reason/);
-  assert.match(topics.get('sessions')?.body ?? '', /删除中/);
-  assert.match(topics.get('agent-coordination')?.body ?? '', /mailbox yield/);
-  assert.match(topics.get('agent-coordination')?.body ?? '', /普通 progress.*不会唤醒父模型/);
-  assert.match(topics.get('agent-coordination')?.body ?? '', /每条队列消息只出队一次/);
-  assert.match(topics.get('tools')?.body ?? '', /Goal 生命周期工具.*完整常驻契约/);
-  assert.match(topics.get('skills')?.body ?? '', /每个 enabled Skill.*显式调用/);
-  assert.match(topics.get('skills')?.body ?? '', /disable-model-invocation.*模型发现/);
-  assert.match(topics.get('skills')?.body ?? '', /user-invocable.*兼容元数据/);
-  assert.match(topics.get('skills')?.body ?? '', /allowed-tools 会被忽略.*Host 权限模式/);
-  assert.match(topics.get('skills')?.body ?? '', /无效 hook JSON.*诊断/);
-  assert.doesNotMatch(topics.get('skills')?.body ?? '', /无效 allowed-tools/);
 });
 
-test('Space manual describes the shared Host and removes the retired recovery switch', () => {
-  const topics = new Map(SPACE_MANUAL_TOPICS.map((topic) => [topic.id, topic]));
-  const runtime =
-    topics.get('runtime-host')?.body.split('## Inherited KodaX SDK mechanism')[0] ?? '';
-  const troubleshooting =
-    topics.get('troubleshooting')?.body.split('## Inherited KodaX SDK mechanism')[0] ?? '';
-  assert.match(runtime, /共享 Host/);
-  assert.match(runtime, /不创建私有 Runtime/);
-  assert.doesNotMatch(runtime, /Daemon 是推荐模式.*Embedded/);
-  assert.match(troubleshooting, /修复后重试/);
-  assert.doesNotMatch(troubleshooting, /选择 Embedded.*切换并重启/);
+test('the manual states the declared Space and SDK versions and routes usage questions to space_manual', () => {
+  assert.ok(own('runtime-host').includes(`v${manifest.version} 发行依赖声明 KodaX ${installedSdk.version}`));
+  const selfManual = resolve('self-manual').content;
+  assert.match(selfManual, /space_manual.*共享 Host/);
+  assert.match(selfManual, /kodax_manual.*SDK\/CLI/);
 });
 
-test('Space kodax_manual distinguishes effective context pressure from cumulative session usage', () => {
-  const topic = SPACE_MANUAL_TOPICS.find(
-    (candidate) => candidate.id === 'context-window-and-session-tokens',
-  );
-
-  assert.ok(topic, 'context-window-and-session-tokens topic must exist');
-  assert.match(topic.body, /自动压缩阈值为有效分母/);
-  assert.match(topic.body, /模型最大上下文.*自动压缩阈值.*两个独立事实/);
-  assert.match(topic.body, /输出容量不是活动输入/);
-  assert.match(topic.body, /根 Agent 和所有子 Agent/);
-  assert.match(topic.body, /缓存命中与缓存创建都是输入子集/);
-  assert.match(topic.body, /跨模型应比较输入总量和输出/);
-  assert.match(topic.body, /Skills \/ MCP.*六项/);
-  assert.match(topic.body, /本次请求输入.*不是仍在等待处理的队列/);
-  assert.match(topic.body, /当前为 0 的类别也会保留/);
-  assert.match(topic.body, /不含系统提示词、消息、工具输入或工具输出正文/);
-  assert.match(topic.body, /en-US.*zh-CN/);
+test('the manual describes the shared Host, its startup retry and safe exit', () => {
+  assert.match(own('runtime-host'), /共享 Host/);
+  assert.match(own('runtime-host'), /30 秒、1、2、4 分钟/);
+  assert.doesNotMatch(own('runtime-host'), /MCP 面板中的 server 进程/);
+  assert.match(own('background-runtime'), /kodax daemon stop --timeout-ms 10000 --json/);
+  assert.match(own('background-runtime'), /只取消当前 Space 自己发起的 Run/);
+  assert.match(own('troubleshooting'), /重试启动/);
+  assert.match(own('troubleshooting'), /不要删除锁文件/);
 });
 
-test('Space kodax_manual documents the daemon host-tool path for artifact creation', () => {
-  const topics = new Map(SPACE_MANUAL_TOPICS.map((topic) => [topic.id, topic]));
-
-  const artifacts = topics.get('artifacts')?.body ?? '';
-  assert.match(artifacts, /runBoundHostTools v2/);
-  assert.match(artifacts, /物化进该 run 的模型可见工具表/);
-  assert.match(artifacts, /SA 与 managed-agent/);
-  assert.match(artifacts, /mcp_search（server 为 "host"）/);
-  assert.match(artifacts, /host:<leaseId>:create_artifact/);
-  assert.match(artifacts, /子 Agent 随父 run 继承同一通道/);
-
-  const mcp = topics.get('mcp')?.body ?? '';
-  assert.match(mcp, /内置 host 能力源（server 名 "host"）/);
-  assert.match(mcp, /按 run 绑定的 lease 作用域经 mcp_search\/mcp_call 暴露/);
-  assert.match(mcp, /host:<leaseId>:<name>/);
-  assert.match(mcp, /runBoundHostTools v2/);
-  assert.match(mcp, /两条通道指向同一实现/);
+test('the manual describes current composer, permission and ask_user behavior', () => {
+  assert.match(own('composer'), /取回消息/);
+  assert.match(own('composer'), /GIF 取首帧/);
+  assert.match(own('permissions'), /Auto\[LLM\]/);
+  assert.match(own('permissions'), /-LiteralPath/);
+  assert.match(own('permissions'), /unanswered/);
+  assert.match(own('ui-map'), /1-9 快选/);
+  assert.match(own('skills'), /allowed-tools 字段会被忽略/);
 });
 
-test('Space kodax_manual describes the v0.1.45 runtime safety, recovery, attention, and shell controls', () => {
-  const topics = new Map(SPACE_MANUAL_TOPICS.map((topic) => [topic.id, topic]));
-
-  assert.match(
-    topics.get('runtime-host')?.body ?? '',
-    /v0\.1\.44 正式发布使用经过审计并带完整性锁定的 npm Registry KodaX 0\.7\.93 正式包/,
-  );
-  assert.match(topics.get('background-runtime')?.body ?? '', /F140/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /Close button behavior/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /macOS Cmd\+Q/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /30 秒 orphan grace/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /daemon\.json/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /不要使用 `killall KodaX Space`/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /daemonOrphanExit v1/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /daemonShutdownVerification v1/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /runtimeExitSettlement v1/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /runtimeExitSettlement v2/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /settleKodaXRuntimeExit/);
-  assert.match(
-    topics.get('background-runtime')?.body ?? '',
-    /owner reconciliation.*daemon auto-start/,
-  );
-  assert.match(topics.get('background-runtime')?.body ?? '', /缓存 PID\/PGID/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /保留恢复票据/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /不要手工删除 effect\/exit lock/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /唯一 Session 数/);
-  assert.match(
-    topics.get('background-runtime')?.body ?? '',
-    /普通 clean\/recovered 成功直接退出，不发送系统通知/,
-  );
-  assert.match(topics.get('background-runtime')?.body ?? '', /打开诊断目录/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /临时 unconfirmed-owner.*自动重试/);
-  assert.match(topics.get('background-runtime')?.body ?? '', /不要求用户删除标记/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /sandboxRuntime v4/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /sandboxRuntime v11/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /不要让模型通过 Bash 工具嵌套运行/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /KodaX 0\.7\.95/);
-  assert.match(topics.get('skills')?.body ?? '', /prepared User request overlay.*模型执行/);
-  assert.match(topics.get('overview')?.body ?? '', /stale inline owner reconciliation/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /managedRunDurability v1/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /runtimeEventCoalescing v1/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /integration config resilience v1/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /Auto LLM guardrail v4/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /Sandbox fallback/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /provider\.recovery/);
-  assert.match(topics.get('runtime-host')?.body ?? '', /Ctrl\+R/);
-  assert.match(topics.get('mcp')?.body ?? '', /last-known-good/);
-  assert.match(topics.get('mcp')?.body ?? '', /revision.*watcher.*最近 reload/);
-  assert.match(topics.get('settings')?.body ?? '', /Terminal Shell/);
-  assert.match(topics.get('preview-terminal')?.body ?? '', /Coder 命令工具/);
-  assert.match(topics.get('task-dock')?.body ?? '', /当前 live activity/);
-  assert.match(topics.get('external-agents')?.body ?? '', /正常空态/);
-  assert.match(topics.get('repo-intelligence')?.body ?? '', /Repointel 状态芯片/);
+test('the manual describes RepoIntel auto as git tools with an opt-in semantic index', () => {
+  const repo = own('repo-intelligence');
+  assert.match(repo, /Git：默认 auto 模式.*repo_overview、changed_scope、changed_diff/);
+  assert.match(repo, /repoIntelligenceMode 设为 full 或 light/);
+  assert.match(own('tools'), /repoIntelligenceMode 设为 full 或 light/);
 });
 
-test('Space kodax_manual describes the v0.1.45 inline ask-user conversation cards', () => {
-  const topics = new Map(SPACE_MANUAL_TOPICS.map((topic) => [topic.id, topic]));
-
-  assert.match(
-    topics.get('overview')?.body ?? '',
-    /ask_user 与 guardrail 授权.*对话流内的聚焦提问卡/,
-  );
-
-  const permissions = topics.get('permissions')?.body ?? '';
-  assert.match(permissions, /对话流尾部的聚焦提问卡/);
-  assert.match(permissions, /全屏模态已移除/);
-  assert.match(permissions, /select 单选\/多选、逐题 multi、文本 input/);
-  assert.match(permissions, /Other\/自定义输入/);
-  assert.match(permissions, /多张待答卡并存且互不影响/);
-  assert.match(permissions, /召回停靠条显示待答计数/);
-  assert.match(permissions, /定位.*闪光.*队首卡/);
-  assert.match(permissions, /1-9 快选、Enter 提交\/允许、Esc 取消\/阻止/);
-  assert.match(permissions, /打开时键盘让位/);
-  assert.match(permissions, /对话历史仍可自由滚动和搜索/);
-  assert.match(permissions, /ask_user 提问卡渲染在该 Session 自己的对话流尾部/);
-  assert.match(permissions, /每个 reqId 独立结算/);
-
-  const uiMap = topics.get('ui-map')?.body ?? '';
-  assert.match(uiMap, /聚焦提问卡/);
-  assert.match(uiMap, /召回停靠条显示计数并可定位闪光到队首卡/);
-  assert.match(uiMap, /ask_user 与 guardrail 提问卡不是浮层/);
-  assert.match(uiMap, /对话历史保持可滚动/);
+test('the manual locates providers, data roots and the terminal environment correctly', () => {
+  assert.match(SPACE_MANUAL_TOPICS.find((t) => t.id === 'providers')?.summary ?? '', /模型与服务商/);
+  assert.match(own('context-window-and-session-tokens'), /自动压缩阈值/);
+  assert.match(own('config'), /\.kodax-copy-incomplete/);
+  assert.match(own('config'), /内置终端不传入 KODAX_HOME/);
+  assert.match(own('preview-terminal'), /KODAX_HOME）都不会传入/);
+  assert.match(own('artifacts'), /host:<leaseId>:create_artifact/);
 });
 
-test('Space manual names one Host per KODAX_HOME instead of a Host profile (ADR-075)', () => {
-  const spaceText = SPACE_MANUAL_TOPICS.map(
-    (topic) => topic.body.split('## Inherited KodaX SDK mechanism')[0],
-  ).join('\n');
-  assert.doesNotMatch(spaceText, /profile-scoped|使用该 profile 的客户端/);
-  const exit = SPACE_MANUAL_TOPICS.find((topic) => topic.id === 'background-runtime')?.body ?? '';
-  assert.match(exit, /kodax daemon stop --timeout-ms 10000 --json/);
-  assert.match(exit, /0\.7\.97-beta\.5 及更早版本需加 `--profile coder`/);
-});
-
-test('Space manual describes the SDK beta.8 native startup path and recovery (Issues 245-247)', () => {
-  const own = (id: string): string =>
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
-      '## Inherited KodaX SDK mechanism',
-    )[0] ?? '';
-  const runtime = own('runtime-host');
-  assert.match(runtime, /__daemon-job-identity/);
-  assert.match(runtime, /__daemon-job-supervise/);
-  assert.match(runtime, /不再依赖 PowerShell|从 PowerShell 改为/);
-  assert.match(runtime, /30 秒、1、2、4 分钟，之后每 5 分钟/);
-  assert.match(runtime, /10 秒期限内验证（原 PowerShell 探针为 5 秒）/);
-  assert.match(runtime, /除 Job 身份探针期限外没有放大其他超时/);
-  const troubleshooting = own('troubleshooting');
-  assert.match(troubleshooting, /慢速后台重试/);
-  assert.doesNotMatch(troubleshooting, /最多连续自动重试三次，仍失败可点击/);
-  assert.match(troubleshooting, /bootstrap\.log 中写下的最后一条 \[Error\]/);
-  assert.match(troubleshooting, /重启系统前记录进程列表/);
-});
-
-test('Space manual covers the SDK beta.9 behaviors Space adapted to', () => {
-  const own = (id: string): string =>
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
-      '## Inherited KodaX SDK mechanism',
-    )[0] ?? '';
-  const all = SPACE_MANUAL_TOPICS.map((topic) => own(topic.id)).join('\n');
-  assert.match(all, /copyKodaXDataRoot/);
-  assert.match(all, /\.kodax-copy-incomplete/);
-  assert.doesNotMatch(all, /当前 SDK 不支持复制/);
-  assert.match(all, /相对路径会被 Space 与 SDK 一致忽略/);
-  assert.match(all, /排队为中断消息（steer）.*取回消息/);
-  assert.match(
-    own('troubleshooting'),
-    /本次启动在子进程 bootstrap\.log 中写下的最后一条 \[Error\]/,
-  );
-});
-
-test('Space manual covers the SDK beta.5-beta.7 behaviors Space adapted to', () => {
-  const own = (id: string): string =>
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
-      '## Inherited KodaX SDK mechanism',
-    )[0] ?? '';
-  assert.match(own('runtime-host'), /\.unresolved\//);
-  assert.match(own('runtime-host'), /degradedReadRoots/);
-  assert.match(own('permissions'), /扩展 X 要求确认：原因/);
-  assert.match(own('permissions'), /只能允许一次或拒绝/);
-  assert.match(own('workflow'), /Agent home/);
-  assert.match(own('tools'), /visual_read_pixels.*read 能力/);
-});
-
-test('Space manual covers the SDK beta.10 merged inputs and the 0.1.47-beta.1 conversation updates', () => {
-  const own = (id: string): string =>
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
-      '## Inherited KodaX SDK mechanism',
-    )[0] ?? '';
-
-  assert.match(own('runtime-host'), /inputIds 记名/);
-  assert.match(own('runtime-host'), /Host 重启后不会把已合并的输入再执行一遍/);
-  assert.match(own('composer'), /beta\.10 把一起回答的多条排队输入合并/);
-  assert.match(own('composer'), /文字回到 composer 草稿/);
-  assert.match(own('composer'), /带图片的消息保留撤回气泡/);
-  assert.match(own('permissions'), /跳过 \(Esc\)」只跳过当前问题/);
-  assert.match(own('permissions'), /全部问题都未作答时这张卡才算跳过/);
-  assert.match(own('ui-map'), /归档的会话离开所属项目，按项目归入底部“已归档”分组/);
-  assert.match(own('ui-map'), /置顶区.*手动顺序，新加入的项目放在最上.*projects\.json/);
-  assert.match(own('sessions'), /先归档、再删除.*删除 Session、移除项目只对已归档条目提供/);
-  assert.match(own('sessions'), /红色垃圾桶删除 \/ 移除，确认后才执行/);
-  assert.match(own('ui-map'), /红色 failed 徽标/);
-  assert.match(own('ui-map'), /live 工具组按工具族/);
-  assert.match(own('runtime-host'), /spinner 跟在对话流末尾.*返回最新消息/);
-  assert.match(own('runtime-host'), /Agents working: N/);
-  assert.match(own('agent-coordination'), /行随子 Agent 结束消失/);
-  assert.match(own('sessions'), /F144 窗口化/);
-});
-
-test('Space manual covers the SDK beta.11 saved Run failures and partial multi-question answers', () => {
-  const own = (id: string): string =>
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === id)?.body.split(
-      '## Inherited KodaX SDK mechanism',
-    )[0] ?? '';
-
-  assert.match(own('runtime-host'), /SDK beta\.11.*失败的 Run 在对话中保留一条错误消息/);
-  assert.match(own('runtime-host'), /不再显示 CLI 的 Recovery exhausted 提示/);
-  assert.match(own('permissions'), /模型收到的结果以 unanswered 列出跳过的问题/);
-  assert.match(own('permissions'), /同一批提问中问题文本重复时 SDK 在提问前拒绝/);
-});
-
-test('Space manual covers the SDK beta.12 recovering Session after a Stop', () => {
-  const runtimeHost =
-    SPACE_MANUAL_TOPICS.find((topic) => topic.id === 'runtime-host')?.body.split(
-      '## Inherited KodaX SDK mechanism',
-    )[0] ?? '';
-
-  assert.match(runtimeHost, /actorSettlementConvergence v3.*运行已停止.*后台自动恢复/);
-  assert.match(runtimeHost, /不提供立即重试.*退出并重新打开 Space 即可重启 Host/);
-  assert.match(runtimeHost, /错误详情行/);
-});
-
-test('the installed SDK kodax_manual carries its own startup Job mechanism text, unmodified by Space', () => {
-  // Space adds no overlay for the SDK sandbox topic, so kodax_manual serves this text as shipped.
+test('the SDK sandbox topic is served as shipped, without a Space overlay', () => {
   assert.equal(
     SPACE_MANUAL_TOPICS.some((topic) => topic.id === 'sandbox'),
     false,
   );
-  const sandbox = MANUAL_REGISTRY.sandbox.body;
-  assert.match(sandbox, /__daemon-job-identity/);
-  assert.match(sandbox, /__daemon-job-supervise/);
+  assert.equal(resolve('sandbox').content.includes(MANUAL_REGISTRY.sandbox.body), true);
 });

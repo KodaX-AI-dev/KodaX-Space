@@ -12,6 +12,22 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 > v0.1.7 内容 (F011/F023/F024/F026/F038) 跟 v0.1.8 一起发。GitHub Releases 顶部仍是 v0.1.5，
 > 0.1.7 这条 section 留作历史记录、git log 引用入口。
 
+## [Unreleased]
+
+### Changed
+
+- Pin KodaX SDK `0.7.97-rc.2`. By default, RepoIntel now offers only what git can answer: under the default `auto` mode agents get `repo_overview`, `changed_scope` and `changed_diff`. The semantic tools, injected module/impact context and the index prewarm need `repoIntelligenceMode` `full` or `light`. The index moved from the workspace's `.agent/repo-intelligence/` to `<config home>/repo-intelligence/`. Switching models no longer leaks the previous model's thinking into replies (SDK Issue 441), and Gemini replays another model's tool calls as real calls (SDK Issue 442).
+- For licensed users on the default `auto` mode, the Repointel chip reads "Git" with a green dot instead of "idle". `/repointel` and the chip popover now say that the git tools are on and that the semantic index is opt-in, instead of "Repo intelligence is disabled by Host settings". The status reports the configured mode (`configuredMode`).
+- The fallback context limits cover `glm-5.4` (1M), matching the SDK listing.
+- Rewrite the in-app `space_manual` topics as a current product reference. Version and Issue history is removed, and stale facts are corrected:
+  - RepoIntel modes;
+  - the Models & providers path;
+  - the built-in terminal does not inherit `KODAX_HOME`;
+  - MCP servers are owned by the shared Host;
+  - Smart Popout focuses Task Dock sections.
+
+  A test keeps release history out of the Space-authored text. The SDK's own `kodax_manual` is not overwritten.
+
 ## [0.1.47-rc.1] - 2026-11-23
 
 ### Changed

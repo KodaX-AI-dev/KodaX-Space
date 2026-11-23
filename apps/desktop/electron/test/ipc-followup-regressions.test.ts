@@ -113,6 +113,26 @@ test('repo status and explicit warm use the execution Host cache, preserving uni
   });
 });
 
+test('repo status under the default auto mode reports git tools on and the semantic index as opt-in', async (t) => {
+  const fixture = await loadFixture(t, 'repointel', 'registerRepointelChannels', {
+    './register.js': channelRegistration,
+    '../kodax/repo-intel-gate.js': 'export const isRepoIntelEntitled=async()=>true;',
+    '../kodax/sdk-extensions.js':
+      'export const loadSpaceSdkCoding=async()=>{throw Error("must not probe Main")};',
+    '../kodax/runtime-host-adapter.js':
+      'export const runtimeHostAdapter={isRuntimeSelected:()=>true,inspectRepoIntelligence:async(id)=>({runtimeId:"actual-host",sessionId:id,workspaceRoot:state.directory,configuredMode:"auto",requestedMode:"off",effectiveEngine:"off",status:"ok",initialized:true,warnings:[]})};',
+  });
+  const status = (await fixture.channels['repointel.status']!({
+    probe: false,
+    sessionId: 'session',
+  })) as ChannelOutput<'repointel.status'>;
+  assert.equal(status.configuredMode, 'auto');
+  assert.equal(status.warmSupported, false);
+  assert.match(status.warmReason, /repo_overview, changed_scope, changed_diff/);
+  assert.match(status.warmReason, /repoIntelligenceMode.*full.*light/);
+  assert.doesNotMatch(status.warmReason, /disabled/);
+});
+
 test('permission.list preserves Host grant failures instead of presenting local rules as the whole list', async (t) => {
   const fixture = await loadFixture(t, 'permission', 'registerPermissionChannels', {
     './register.js': channelRegistration,

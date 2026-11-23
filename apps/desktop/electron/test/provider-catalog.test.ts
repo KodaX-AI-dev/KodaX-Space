@@ -127,12 +127,13 @@ test('apiKeyEnv values match KodaX upstream catalog (env var naming convention)'
   }
 });
 
-test('zhipu-coding catalog tracks the KodaX rc.1 GLM-5.3 family', () => {
+test('zhipu-coding catalog tracks the KodaX rc.2 GLM-5.3 family and glm-5.4', () => {
   const provider = getBuiltin('zhipu-coding');
   assert.ok(provider);
   assert.equal(provider.defaultModel, 'glm-5.3');
   assert.deepEqual(provider.models, [
     'glm-5.3',
+    'glm-5.4',
     'glm-5.3-highspeed',
     'glm-5.3-flash',
     'glm-5.2',
