@@ -25,6 +25,7 @@ import { askUserBroker } from '../permission/ask-user-broker.js';
 import { installSessionStoreMock, type MockSessionState } from './_helpers/session-store-mock.js';
 import { setSessionStoreImpl } from '../kodax/session-store.js';
 import { _resetMemoryStoreForTesting, setKey } from '../providers/keychain.js';
+import { getBuiltin } from '../providers/catalog.js';
 import {
   getScopedProviderCredential,
   getProvider,
@@ -182,7 +183,7 @@ for (const surface of ['code', 'partner'] as const)
     assert.deepEqual(compactInput, {
       sessionId,
       provider: 'anthropic',
-      model: 'claude-sonnet-4-6',
+      model: getBuiltin('anthropic')?.defaultModel,
     });
   });
 

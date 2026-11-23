@@ -1201,7 +1201,7 @@ test('Space pins the same SDK in both manifests and verifies local candidate int
   const lock = require('../../../../package-lock.json') as {
     packages: Record<string, { version?: string; resolved?: string; integrity?: string }>;
   };
-  const expected = '0.7.97-beta.13';
+  const expected = '0.7.97-rc.1';
   const rootPin = root.dependencies['@kodax-ai/kodax']!;
   const desktopPin = desktop.dependencies['@kodax-ai/kodax']!;
   assert.equal(INSTALLED_KODAX_VERSION, expected);

@@ -38,7 +38,11 @@ function providerCredentialMode(provider: ProviderInfo | undefined): CredentialM
 }
 
 function providerHasManagedKey(provider: ProviderInfo | undefined): boolean {
-  return provider?.configuredSource === 'keychain' || provider?.configuredSource === 'file' || provider?.configuredSource === 'both';
+  return (
+    provider?.configuredSource === 'keychain' ||
+    provider?.configuredSource === 'file' ||
+    provider?.configuredSource === 'both'
+  );
 }
 
 function providerModelsCsv(provider: ProviderInfo | undefined): string {
@@ -116,12 +120,12 @@ const MODEL_PLACEHOLDERS: Record<
   { readonly defaultModel: string; readonly models: string }
 > = {
   openai: {
-    defaultModel: 'gpt-5.3-codex',
-    models: 'gpt-5.3-codex, gpt-5.3',
+    defaultModel: 'gpt-6.2-sol',
+    models: 'gpt-6.2-sol, gpt-6.2-astra',
   },
   anthropic: {
-    defaultModel: 'claude-sonnet-4-6',
-    models: 'claude-sonnet-4-6, claude-opus-4-7',
+    defaultModel: 'claude-sonnet-5-5',
+    models: 'claude-sonnet-5-5, claude-opus-5-5',
   },
 };
 

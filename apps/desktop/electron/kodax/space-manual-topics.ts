@@ -908,6 +908,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'SDK Extensions 按 Host 的配置目录发现与加载；Space 不为扩展创建另一个 Session Runtime。PowerShell exec 默认 NoLogo/NoProfile/NonInteractive，依赖个人 profile 函数或 alias 的扩展须显式初始化。',
       '',
       '只从可信来源安装扩展。会改状态或访问外部资源的扩展工具仍应受权限模式、MCP 工具声明和用户确认约束。',
+      '',
+      '扩展处理器内部经 invokeTool / executeProcess 发起的工具调用（如 tool_call 转发的 artifact_render）不生成单独的工具卡，进度显示在模型发起的那张卡上；它们仍经过权限、沙箱与审批，审批卡按工具名与输入显示（SDK rc.1）。Run 结束后对话流不会留下“正在运行”的工具卡；旧版本留下的这类记录在重新打开会话时被移除。',
     ),
     aliases: [
       'extension',

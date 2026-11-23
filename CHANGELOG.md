@@ -14,6 +14,15 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- Pin KodaX SDK `0.7.97-rc.1` (Issue 255). A finished task no longer shows tool cards stuck on "正在运行": tool calls an extension makes internally (such as `tool_call` forwarding to `artifact_render`) no longer get cards of their own, and their progress shows on the card the model started. A Run that ends settles any card still marked running. Reopening an older Session removes such leftovers. These calls still go through permissions, the sandbox and approval, and their approval cards show the tool name and input.
+- Follow the SDK rc.1 model catalog. The disaster-recovery default models are now Claude Sonnet 5.5, GPT-6.2 Sol, Qwen3.8 Max and MiMo v2.6 Pro, with a test that keeps them equal to the SDK defaults. The fallback context limits cover Claude Fable 5.2 / Opus 5 / Sonnet 5, GPT-6.x / 5.6 / 5.5 (1.05M), Qwen3.8 Flash, GLM-5.3-highspeed and DeepSeek V4.1 Flash. The custom Provider form suggests current model names.
+
+### Fixed
+
+- A settled tool group's status chip no longer clips its tool tallies, labels or stats. The 30rem cap is gone: the chip fits its content up to the row width, and only the tool-name summary truncates (Issue 255).
+
 ## [0.1.47-beta.4] - 2026-11-22
 
 ### Changed

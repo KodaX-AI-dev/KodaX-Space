@@ -3345,12 +3345,14 @@ function ProcessReceiptRow({
       {receipts.map((receipt) => {
         const ringClass = searchRingClassFor(receipt.id, currentMatchId, matchSet);
         // The live tail fills the rest of the line so its feed can follow the column width.
+        // A settled tool group sizes to its content; only its tool-name summary truncates when
+        // the row is narrower, so tallies, labels and stats are never clipped.
         const live = followTail && receipt === receipts.at(-1);
-        const receiptStyle: CSSProperties = live
-          ? { flex: '1 1 auto', minWidth: 0, maxWidth: '100%' }
-          : receipt.kind === 'tool_cluster'
-            ? { flex: '0 1 auto', minWidth: 0, maxWidth: 'min(30rem, 100%)' }
-            : { flex: '0 0 auto', minWidth: 0, maxWidth: '100%' };
+        const receiptStyle: CSSProperties = {
+          flex: live ? '1 1 auto' : receipt.kind === 'tool_cluster' ? '0 1 auto' : '0 0 auto',
+          minWidth: 0,
+          maxWidth: '100%',
+        };
         return (
           <div
             key={receipt.id}

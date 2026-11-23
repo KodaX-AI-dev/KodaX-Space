@@ -1,6 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-11-21
+Last Updated: 2026-11-23
+
+> 2026-11-23: the working tree pins Registry SDK `0.7.97-rc.1` (Issue 255; model catalog refresh). The 0.1.47-beta.4 release used SDK `0.7.97-beta.13`.
 
 > 2026-11-14：当前工作树依赖已发布的 Registry SDK `0.7.97-beta.9`（含 beta.8 的 Issues 245–247 原生 Job 启动修复与 Issue 250 的 SDK 侧修复），见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md) 与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)；下方 alpha.5 发布准备记录保留原语境。
 
@@ -43,6 +45,7 @@ Last Updated: 2026-11-21
 | 252 | Low      | Resolved in 0.1.47-beta.2                                                                                    | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                            | SDK product view (failure kept only in Run status); fixed by SDK 0.7.97-beta.11       | 2026-11-15 |
 | 253 | Medium   | Resolved in 0.1.47-beta.3                                                                                    | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                 | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                      | 2026-11-19 |
 | 254 | Medium   | Deferred to the next major version                                                                           | During a Run, browsing older history can show a message twice, hide it briefly or place it out of order                                                                                     | KodaX 0.7.97 history pages / product view; Space 0.1.47                               | 2026-11-21 |
+| 255 | Medium   | Resolved in source (SDK 0.7.97-rc.1)                                                                         | A finished task still shows tool cards as running, and the settled tool-group chip clips its tallies                                                                                        | SDK 0.7.97 extension nested tool calls; Space 0.1.30 receipt width cap                | 2026-11-22 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -2862,16 +2865,58 @@ retryDelay: 200` and logs a failure through `console.warn` (captured by the diag
     over history pages; remove the stitching in `shell/sessionHistoryPaging.ts` and `store/productSessionView.ts`.
 - **Related**: Issues 136 and 218 (restore and reload duplicates).
 
+## Issue 255 — A finished task still shows tool cards as running, and the settled tool-group chip clips its tallies
+
+- **Priority**: Medium (the work itself completed; the transcript misreports it and Ctrl+R does
+  not clear it).
+- **Status**: Resolved in source — Space pins SDK 0.7.97-rc.1 and widens the receipt; awaiting
+  release.
+- **Introduced**: SDK 0.7.97 view items for extension nested tool calls (observed on Space
+  0.1.47-beta.3 with SDK 0.7.97-beta.12/13); the width cap dates from Space 0.1.30.
+- **Created**: 2026-11-22.
+- **Original problem**: after a task that rendered PDF pages with `tool_call → artifact_render`
+  finished, several tool cards still read "正在运行 write…" and reload kept them. The settled tool
+  group's status chip was cut off on the right.
+- **Root cause**:
+  - SDK: a tool call that an extension handler made through `scope.invokeTool` or
+    `executeProcess` (including the `tool_call` bridge's own `${callId}:artifact_render`
+    invocation) emitted `onToolUseStart` and created a view item, but no result was ever
+    recorded for it, so the item stayed `running`; persistence and restore kept it. The real
+    Session `01a20157…` held 40 such items.
+  - Space: `ProcessReceiptRow` capped a settled `tool_cluster` receipt at `min(30rem, 100%)`.
+    The chip button is `overflow-hidden`, and its count, thinking/running labels, family tallies
+    and the stats beside it do not shrink, so a wide group lost the tool-name summary first and
+    then its tallies.
+- **Resolution (2026-11-23)**:
+  - SDK 0.7.97-rc.1 (its Issue 433): nested calls emit no view-level start and keep their
+    permission/sandbox checks; progress lands on the model-issued call; a terminal Run settles its
+    `running`/`awaiting_approval` items as `cancelled`; restore drops old records with no result
+    and no matching `tool_use`. Space approvals already show a request by tool name and input, so
+    nested approvals need no change.
+  - Space removes the 30rem cap: a settled tool group sizes to its content up to the row width and
+    only the tool-name summary truncates.
+- **Verification**: `tests/e2e/nested-tool-call.spec.ts` runs a real `tool_call → artifact_render`
+  through the local SDK provider and requires one `success` item (`nested-render`) and no
+  "Running" card after reopening; with SDK beta.13 swapped in it fails with three `running`
+  items. A copy of Session `01a20157…` restored by rc.1 in an isolated profile has 68 tool items,
+  all `success`. `tests/e2e/conversation-receipts-scroll.spec.ts` ("a settled tool group shows
+  every tally instead of clipping them") failed before the width change (tool names clipped by
+  111 px at 1600 px).
+- **Files changed**: `package.json`, `apps/desktop/package.json`, `package-lock.json`,
+  `apps/desktop/renderer/src/shell/ConversationStreamV2.tsx`,
+  `apps/desktop/electron/test/kodax-runtime-compat.test.ts`, `tests/e2e/sdk-provider-fixture.ts`,
+  `tests/e2e/nested-tool-call.spec.ts`, `tests/e2e/conversation-receipts-scroll.spec.ts`.
+
 ## Summary
 
-- Total: 31
+- Total: 32
 - Open: 2
 - Ready: 4
 - In Progress: 11
-- Resolved, awaiting release or verification: 12
+- Resolved, awaiting release or verification: 13
 - Other (partially fixed / under investigation): 2
 - High: 15
-- Medium: 14
+- Medium: 15
 - Low: 2
 - Next ready to resolve: 222
 - Archived (resolved and delivered): see [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md)

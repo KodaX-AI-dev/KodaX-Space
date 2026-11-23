@@ -127,12 +127,13 @@ test('apiKeyEnv values match KodaX upstream catalog (env var naming convention)'
   }
 });
 
-test('zhipu-coding catalog tracks the KodaX 0.7.96 GLM-5.3 family', () => {
+test('zhipu-coding catalog tracks the KodaX rc.1 GLM-5.3 family', () => {
   const provider = getBuiltin('zhipu-coding');
   assert.ok(provider);
   assert.equal(provider.defaultModel, 'glm-5.3');
   assert.deepEqual(provider.models, [
     'glm-5.3',
+    'glm-5.3-highspeed',
     'glm-5.3-flash',
     'glm-5.2',
     'glm-5-turbo',
@@ -175,6 +176,20 @@ test('KodaX 0.7.89 disaster fallbacks promote GLM-5.3 for overseas coding routes
   assert.equal(providers.find((item) => item.id === 'zai-coding')?.defaultModel, 'glm-5.3');
   assert.equal(providers.find((item) => item.id === 'ark-coding')?.defaultModel, 'glm-5.3');
 });
+
+test('disaster fallbacks follow the published SDK default models', async () => {
+  const llm = await import('@kodax-ai/kodax/llm');
+  const fallbacks = new Map(buildFallbackProviders().map((p) => [p.id, p.defaultModel]));
+  const drift = BUILTIN_PROVIDERS.filter((p) => !isCliBridgeId(p.id))
+    .filter((p) => fallbacks.get(p.id) !== p.defaultModel)
+    .map((p) => `${p.id}: fallback ${fallbacks.get(p.id)} vs SDK ${p.defaultModel}`);
+  assert.deepEqual(drift, []);
+  assert.equal(fallbacks.get('codex-cli'), llm.getCodexCliDefaultModel());
+});
+
+function isCliBridgeId(id: string): boolean {
+  return id === 'codex-cli' || id === 'gemini-cli';
+}
 
 test('zai-coding catalog follows the KodaX 0.7.89 GLM-5.3 default', () => {
   const provider = getBuiltin('zai-coding');

@@ -583,3 +583,70 @@ for (const scenario of [
     }
   });
 }
+
+function wideClusterEvents(sessionId: string): SessionEvent[] {
+  const tools: Array<[string, Record<string, unknown>]> = [
+    ['read', { file_path: 'src/receipt-width/first.ts' }],
+    ['grep', { pattern: 'receiptWidth' }],
+    ['write', { file_path: 'src/receipt-width/second.ts', content: 'export {};' }],
+    ['edit', { file_path: 'src/receipt-width/third.ts' }],
+    ['bash', { command: 'npm run receipt-width-check' }],
+    ['skill', { name: 'receipt-width-skill' }],
+    ['web_search', { query: 'receipt width regression' }],
+    ['web_fetch', { url: 'https://example.com/receipt-width' }],
+  ];
+  return [
+    { kind: 'text_delta', sessionId, text: 'Wide settled tool group follows.' },
+    ...tools.flatMap(([toolName, input], index): SessionEvent[] => [
+      ...(index === 4
+        ? [{ kind: 'thinking_delta', sessionId, text: 'Check the remaining files.' } as const]
+        : []),
+      { kind: 'tool_start', sessionId, toolId: `wide-${index}`, toolName, input },
+      { kind: 'tool_result', sessionId, toolId: `wide-${index}`, toolName, content: 'ok' },
+    ]),
+    { kind: 'text_delta', sessionId, text: '\n\nWide tool group settled.' },
+    { kind: 'session_complete', sessionId },
+  ];
+}
+
+test('a settled tool group shows every tally instead of clipping them', async () => {
+  const testId = `conversation-receipt-width-${Date.now()}`;
+  const projectDir = await createProject(testId);
+  const space = await launchSpace(testId);
+  try {
+    const { page } = space;
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await space.seedProject(projectDir);
+    const sessionId = await createSession(space, 'seed receipt width audit');
+    await emitSessionEvents(space, wideClusterEvents(sessionId));
+    const receipt = page.getByTestId('process-receipt-tool_cluster').last();
+    await expect(receipt.getByTestId('tool-cluster-tallies')).toBeVisible({ timeout: 10_000 });
+    await expect(receipt.locator('[data-family]')).toHaveCount(5);
+
+    const fit = await receipt.evaluate((element) => {
+      const chip = element.querySelector('button');
+      const summary = chip?.querySelector('.truncate');
+      const tallies = element.querySelector('[data-testid="tool-cluster-tallies"]');
+      const stats = element.querySelector('[data-testid="tool-cluster-stats"]');
+      if (!(chip instanceof HTMLElement) || !(summary instanceof HTMLElement) || !tallies) {
+        throw new Error('Missing tool chip parts');
+      }
+      return {
+        chipOverflow: chip.scrollWidth - chip.clientWidth,
+        summaryOverflow: summary.scrollWidth - summary.clientWidth,
+        talliesOverflow: tallies.getBoundingClientRect().right - chip.getBoundingClientRect().right,
+        statsOverflow: stats
+          ? stats.getBoundingClientRect().right - element.getBoundingClientRect().right
+          : 0,
+      };
+    });
+    // A wide row has room for the whole group: nothing is clipped or ellipsized.
+    expect(fit.summaryOverflow, 'tool names should not be ellipsized').toBeLessThanOrEqual(1);
+    expect(fit.chipOverflow, 'chip content must not be clipped').toBeLessThanOrEqual(1);
+    expect(fit.talliesOverflow, 'tallies must stay inside the chip').toBeLessThanOrEqual(1);
+    expect(fit.statsOverflow, 'stats must stay inside the receipt').toBeLessThanOrEqual(1);
+  } finally {
+    await space.close();
+    await fs.rm(projectDir, { recursive: true, force: true });
+  }
+});

@@ -62,13 +62,13 @@ const SPACE_OVERRIDES: Record<string, SpaceOverride> = {
     displayName: 'Anthropic',
     protocol: 'anthropic',
     fallbackApiKeyEnv: 'ANTHROPIC_API_KEY',
-    fallbackDefaultModel: 'claude-sonnet-4-6',
+    fallbackDefaultModel: 'claude-sonnet-5-5',
   },
   openai: {
     displayName: 'OpenAI',
     protocol: 'openai',
     fallbackApiKeyEnv: 'OPENAI_API_KEY',
-    fallbackDefaultModel: 'gpt-5.3-codex',
+    fallbackDefaultModel: 'gpt-6.2-sol',
   },
   deepseek: {
     displayName: 'DeepSeek',
@@ -100,7 +100,7 @@ const SPACE_OVERRIDES: Record<string, SpaceOverride> = {
     displayName: 'Qwen Token Plan',
     protocol: 'anthropic',
     fallbackApiKeyEnv: 'QWEN_TOKEN_API_KEY',
-    fallbackDefaultModel: 'qwen3.8-max-preview',
+    fallbackDefaultModel: 'qwen3.8-max',
   },
   zhipu: {
     displayName: 'Zhipu (BigModel)',
@@ -133,7 +133,7 @@ const SPACE_OVERRIDES: Record<string, SpaceOverride> = {
     displayName: 'MiMo Coding (Xiaomi)',
     protocol: 'anthropic',
     fallbackApiKeyEnv: 'MIMO_CODING_API_KEY',
-    fallbackDefaultModel: 'mimo-v2.5-pro',
+    fallbackDefaultModel: 'mimo-v2.6-pro',
   },
   // 小米 MiMo 直连版（SDK 2026-05-25 新增，与订阅版 mimo-coding 并列）。
   // mimo 继承 KodaXAnthropicCompatProvider → protocol=anthropic（不是兜底的 openai）。
@@ -141,7 +141,7 @@ const SPACE_OVERRIDES: Record<string, SpaceOverride> = {
     displayName: 'MiMo (Xiaomi)',
     protocol: 'anthropic',
     fallbackApiKeyEnv: 'MIMO_API_KEY',
-    fallbackDefaultModel: 'mimo-v2.5-pro',
+    fallbackDefaultModel: 'mimo-v2.6-pro',
   },
   'ark-coding': {
     displayName: 'Volcengine Ark Coding',
@@ -161,9 +161,9 @@ const SPACE_OVERRIDES: Record<string, SpaceOverride> = {
     displayName: 'Codex CLI (OpenAI)',
     protocol: 'codex-cli',
     // CLI bridge：启动后由 loadCliBridgeModels 换成 SDK 列表（本地 CLI 配置的默认在首位）
-    defaultModelFallback: 'gpt-5.4',
+    defaultModelFallback: 'gpt-6.2-sol',
     fallbackApiKeyEnv: 'OPENAI_API_KEY',
-    fallbackDefaultModel: 'gpt-5.4',
+    fallbackDefaultModel: 'gpt-6.2-sol',
   },
 };
 

@@ -9,6 +9,7 @@ import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import type { SessionEvent } from '@kodax-space/space-ipc-schema';
 import { kodaxHost } from '../kodax/host.js';
+import { getBuiltin } from '../providers/catalog.js';
 import { setRendererTarget } from '../ipc/push.js';
 import { permissionBroker } from '../permission/broker.js';
 import {
@@ -86,7 +87,7 @@ test('setProvider replaces a stale override with the new provider default model'
     model: 'gpt-5.3-codex',
   });
   assert.equal(kodaxHost.setProvider(sessionId, 'anthropic'), true);
-  assert.equal(kodaxHost.get(sessionId)?.model, 'claude-sonnet-4-6');
+  assert.equal(kodaxHost.get(sessionId)?.model, getBuiltin('anthropic')?.defaultModel);
 });
 
 test('setProvider preserves a model override when the provider is unchanged', () => {

@@ -80,7 +80,24 @@ test('fallback caps track SDK beta.9 flagship windows', () => {
     assert.equal(getModelContextCap(model), 1_000_000, model);
   }
   assert.equal(getModelContextCap('gpt-5.4'), 1_050_000);
+  assert.equal(getModelContextCap('gpt-5.4-mini'), 400_000);
   assert.equal(getModelContextCap('kimi-k3.1-pro'), 1_024_000);
   assert.equal(getModelContextCap('k3.1-pro-highspeed'), 1_048_576);
   assert.equal(getModelContextCap('qwen3.5-plus'), 256_000);
+});
+
+test('fallback caps track the SDK rc.1 catalog refresh', () => {
+  for (const model of [
+    'claude-fable-5-2',
+    'claude-opus-5',
+    'claude-sonnet-5',
+    'qwen3.8-flash',
+    'glm-5.3-highspeed',
+    'deepseek-v4.1-flash',
+  ]) {
+    assert.equal(getModelContextCap(model), 1_000_000, model);
+  }
+  for (const model of ['gpt-6.2-sol', 'gpt-6.1-terra', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.5']) {
+    assert.equal(getModelContextCap(model), 1_050_000, model);
+  }
 });

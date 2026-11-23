@@ -93,6 +93,7 @@ export async function createLocalSdkProvider() {
   const requestInstructions: string[] = [];
   const requestModels: string[] = [];
   const questionResults: unknown[] = [];
+  const nestedToolResults: string[] = [];
   let forkContext:
     | {
         users: unknown[];
@@ -448,6 +449,34 @@ export async function createLocalSdkProvider() {
       ]);
       return;
     }
+    const nestedResult = parsed.messages.find(
+      (message) => message.role === 'tool' && message.tool_call_id === 'nested-render',
+    );
+    if (nestedResult) {
+      // The rendered pixels follow as a user image turn, so match the call id, not the prompt.
+      const content = nestedResult.content;
+      nestedToolResults.push(typeof content === 'string' ? content : JSON.stringify(content));
+      reply(response, 'NESTED_RENDER_DONE');
+      return;
+    }
+    if (prompt === 'NESTED_RENDER') {
+      // tool_call forwards to the artifacts extension, whose handler makes internal tool calls.
+      reply(response, '', [
+        {
+          index: 0,
+          id: 'nested-render',
+          type: 'function',
+          function: {
+            name: 'tool_call',
+            arguments: JSON.stringify({
+              name: 'artifact_render',
+              input: { path: path.join(projectRoot, 'pixel.png') },
+            }),
+          },
+        },
+      ]);
+      return;
+    }
     if (prompt === 'SDK_TOOLS' && parsed.messages.at(-1)?.role !== 'tool') {
       reply(response, '', [
         {
@@ -502,6 +531,7 @@ export async function createLocalSdkProvider() {
       return forkContext;
     },
     questionResults,
+    nestedToolResults,
     url: `http://127.0.0.1:${address.port}/v1`,
     requests,
     get preparedCommandRequests() {
