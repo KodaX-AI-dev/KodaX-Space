@@ -122,6 +122,11 @@ test(
     assert.equal(await page.evaluate('window.toasts().length'), 0);
     const retry = answer.getByRole('button', { name: 'Retry', exact: true });
     await retry.waitFor();
+    assert.doesNotMatch(
+      (await answer.locator('.conversation-message-footer').getAttribute('class')) ?? '',
+      /(^| )opacity-0( |$)/,
+      'the newest reply keeps its actions visible without hover',
+    );
     await answer.locator('.conversation-message-footer button').first().click();
     assert.equal(await page.evaluate('window.copied'), undefined);
     await page.evaluate('window.good=true');

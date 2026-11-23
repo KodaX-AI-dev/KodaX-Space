@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '../../../i18n/I18nProvider.js';
-import { LocalNoticeBubble, ToolCallCard, UserBubble } from './bubbles.js';
+import { AssistantBubble, LocalNoticeBubble, ToolCallCard, UserBubble } from './bubbles.js';
 import { loadCommandsOnce } from '../../../shell/SlashCommandPopover.js';
 
 /** The provider follows the system languages; pin them so assertions never depend on the host OS. */
@@ -152,4 +152,52 @@ test('a user query is a compact left-aligned bubble led by a sender avatar inste
     'the avatar leads the bubble',
   );
   assert.doesNotMatch(markup, /border-l-\[3px\]/);
+});
+
+/** The class list of the first message footer in the markup. */
+function footerClass(markup: string): string {
+  const match = /class="(conversation-message-footer[^"]*)"/.exec(markup);
+  assert.ok(match, 'a message footer renders');
+  return match[1]!;
+}
+
+test('message actions stay hidden until the pointer is anywhere on the message', () => {
+  const markups = [
+    renderToStaticMarkup(
+      <I18nProvider>
+        <UserBubble content="Plan the migration" sentAt={1} />
+      </I18nProvider>,
+    ),
+    renderToStaticMarkup(
+      <I18nProvider>
+        <AssistantBubble text="Done." sentAt={1} completed />
+      </I18nProvider>,
+    ),
+  ];
+  for (const markup of markups) {
+    assert.match(markup, /^<div class="[^"]*group\/message/);
+    const footer = footerClass(markup);
+    assert.match(footer, /(^| )opacity-0( |$)/);
+    assert.match(footer, /group-hover\/message:opacity-100/);
+    assert.match(footer, /focus-within:opacity-100/);
+  }
+});
+
+test('the latest reply keeps its actions visible without hover', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider>
+      <AssistantBubble text="Done." sentAt={1} completed latest />
+    </I18nProvider>,
+  );
+  assert.doesNotMatch(footerClass(markup), /(^| )opacity-0( |$)/);
+});
+
+test('hovering the actions expands only the label under the pointer', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider>
+      <UserBubble content="Plan the migration" sentAt={1} />
+    </I18nProvider>,
+  );
+  assert.doesNotMatch(markup, /group-hover\/footer:/);
+  assert.match(markup, /group-hover\/action:max-w-/);
 });

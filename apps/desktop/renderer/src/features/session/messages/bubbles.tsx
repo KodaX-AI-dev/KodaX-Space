@@ -125,8 +125,8 @@ function collapseLargeText(text: string, t: Translate): CollapseResult {
 // ---- Message footer (copy + relative time) ----
 //
 // 替代之前的 "✓ complete" 横条——视觉更轻，对每个 user/assistant message 都挂一个
-// 尾巴：[复制 icon] + "Xd ago"。hover bubble 时显示，非 hover 时 dim 或隐藏避免视觉
-// 噪音。Claude Desktop 同款风格。
+// 尾巴：[复制 icon] + "Xd ago"。鼠标在整条消息（带 group/message 的外层）任意位置或
+// 键盘聚焦时才显示，最新一条回复常显（pinned）。
 interface TurnFooterActions {
   readonly savedTurn?: boolean;
   readonly onFork?: () => void;
@@ -139,12 +139,15 @@ function MessageFooter({
   sentAt,
   turnActions,
   inline = false,
+  pinned = false,
 }: {
   text: string;
   sentAt?: number;
   turnActions?: TurnFooterActions;
   /** Sits at the end of a one-line notice row and only shows on hover / keyboard focus. */
   inline?: boolean;
+  /** Stays visible without hover; otherwise it shows while the enclosing `group/message` is hovered. */
+  pinned?: boolean;
 }): JSX.Element {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
@@ -166,19 +169,21 @@ function MessageFooter({
   const forkLabel = t(turnActions?.savedTurn ? 'session.turnForkHere' : 'message.forkFromHere');
   const rewindLabel = t(turnActions?.savedTurn ? 'session.turnRewindHere' : 'message.rewindToHere');
 
-  // 时间 + action 图标都常驻显示 (dim)。hover 到 footer 或单个 action 时展开文字；
+  // hover 到单个 action 时只展开它自己的文字，其余按钮和时间不位移；
   // 标签保持单行和稳定行高，避免中文在 max-width 动画中换行引发 hover 抖动。
   const actionButtonClass =
     'group/action inline-flex h-4 min-w-0 items-center gap-1 whitespace-nowrap leading-none text-fg-muted hover:text-fg-primary transition-colors';
   const actionLabelClass =
-    'inline-block max-w-0 overflow-hidden whitespace-nowrap leading-none opacity-0 transition-[max-width,opacity] duration-150 group-hover/footer:max-w-[7.5rem] group-hover/footer:opacity-100 group-hover/action:max-w-[7.5rem] group-hover/action:opacity-100 group-focus-visible/action:max-w-[7.5rem] group-focus-visible/action:opacity-100';
+    'inline-block max-w-0 overflow-hidden whitespace-nowrap leading-none opacity-0 transition-[max-width,opacity] duration-150 group-hover/action:max-w-[7.5rem] group-hover/action:opacity-100 group-focus-visible/action:max-w-[7.5rem] group-focus-visible/action:opacity-100';
 
   return (
     <div
-      className={`conversation-message-footer group/footer flex min-h-5 items-center gap-3 text-xs leading-none ${
+      className={`conversation-message-footer flex min-h-5 items-center gap-3 text-xs leading-none ${
         inline
           ? 'shrink-0 opacity-0 transition-opacity group-hover/notice:opacity-100 focus-within:opacity-100'
-          : 'mt-2'
+          : pinned
+            ? 'mt-2'
+            : 'mt-2 opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100'
       }`}
     >
       <button
@@ -584,9 +589,9 @@ export function UserBubble({
   const senderLabel = t('message.userQueryLabel');
   // Chat-style query: left-aligned bubble led by a sender avatar, no label row. Left
   // alignment keeps the query in the same reading column as the reply on wide panes. The
-  // footer stays visible (dim icons + time) like every other message; labels expand on hover.
+  // footer shows while the pointer is anywhere on the query, like every other message.
   return (
-    <div className="group/user flex flex-col items-start pt-3" data-testid="user-message-bubble">
+    <div className="group/message flex flex-col items-start pt-3" data-testid="user-message-bubble">
       <div className="flex w-full min-w-0 items-start justify-start gap-2.5">
         <span
           data-testid="user-query-label"
@@ -640,7 +645,7 @@ export function LocalNoticeBubble({
   }
   return (
     <div
-      className="group flex flex-col items-start"
+      className="group/message flex flex-col items-start"
       data-testid="local-notice-bubble"
       data-notice-variant="output"
     >
@@ -695,7 +700,7 @@ export function QueuedUserBubble({
   const visibleContent = attachments.length > 0 && content.trim() === '(image)' ? '' : content;
   return (
     <div
-      className="group flex flex-col items-start"
+      className="group/message flex flex-col items-start"
       data-testid="queued-user-message-bubble"
       data-status={status}
     >
@@ -746,6 +751,7 @@ export function AssistantBubble({
   savedActions,
   onForkTurn,
   onRewindTurn,
+  latest = false,
 }: {
   text: string;
   thinking?: string;
@@ -756,6 +762,8 @@ export function AssistantBubble({
   savedActions?: TurnFooterActions;
   onForkTurn?: (turnIndex: number) => void;
   onRewindTurn?: (turnIndex: number) => void;
+  /** The newest reply in the conversation keeps its actions visible without hover. */
+  latest?: boolean;
 }): JSX.Element {
   const { t } = useI18n();
   const [showThinking, setShowThinking] = useRowDisclosure(DisclosurePart.assistantThinking, false);
@@ -771,7 +779,7 @@ export function AssistantBubble({
   // 「对话即文档」—— assistant 不包 bubble，直接 markdown 进入文档流。
   // thinking 改成一行折叠摘要 (▸ Thinking)，跟外层 ToolCluster header 视觉一致。
   return (
-    <div className="conversation-assistant group">
+    <div className="conversation-assistant group/message">
       {thinking !== undefined && (
         <button
           type="button"
@@ -818,7 +826,12 @@ export function AssistantBubble({
         )}
       </div>
       {text.length > 0 && (
-        <MessageFooter text={text} sentAt={sentAt} turnActions={savedActions ?? turnActions} />
+        <MessageFooter
+          text={text}
+          sentAt={sentAt}
+          turnActions={savedActions ?? turnActions}
+          pinned={latest}
+        />
       )}
     </div>
   );
@@ -1196,7 +1209,7 @@ function InformationNotice({
   const body = text;
   return (
     <div
-      className={`conversation-notice notice-in group/notice flex gap-3 rounded-xl border border-border-default px-4 text-left text-fg-secondary ${
+      className={`conversation-notice notice-in group/notice group/message flex gap-3 rounded-xl border border-border-default px-4 text-left text-fg-secondary ${
         collapsed ? 'items-start py-3' : 'items-center py-2.5'
       }`}
       data-testid="system-notice"

@@ -1383,6 +1383,14 @@ export function ConversationStreamV2(): JSX.Element {
       );
   }, [activity.tailLive, productTranscript?.browsingOlder, renderItems]);
   const liveTailId = liveTail?.id;
+  // The newest reply keeps its copy / fork / rewind actions visible; older ones show on hover.
+  const latestReplyId = useMemo(
+    () =>
+      [...renderItems]
+        .reverse()
+        .find((item) => item.kind === 'message' && item.message.kind === 'assistant_text')?.id,
+    [renderItems],
+  );
   // The spinner steps back while a working live group or thinking chip shows the work.
   const liveWorkVisible = activity.working && liveTail?.kind === 'receipts';
   const pinnedRows = useMemo(() => {
@@ -2779,6 +2787,7 @@ export function ConversationStreamV2(): JSX.Element {
         animateEntry={index >= renderItems.length - RESTORED_REVEAL_TAIL_ITEMS}
         liveTail={item.id === liveTailId}
         liveWorking={item.id === liveTailId && activity.working}
+        latestReply={item.id === latestReplyId}
         queryOwnerId={queryOwnerByRenderItemId.get(item.id)}
         feedSize={renderItems.length}
         expanded={expanded}
@@ -3402,6 +3411,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   animateEntry,
   liveTail,
   liveWorking,
+  latestReply,
   queryOwnerId,
   feedSize,
   expanded,
@@ -3424,6 +3434,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
   readonly animateEntry: boolean;
   readonly liveTail: boolean;
   readonly liveWorking: boolean;
+  readonly latestReply: boolean;
   readonly queryOwnerId: string | undefined;
   /** Rows in the whole transcript; the window mounts only some of them. */
   readonly feedSize: number;
@@ -3515,6 +3526,7 @@ const ConversationRenderRow = memo(function ConversationRenderRow({
           turnIndex={message.turnIndex}
           completed={message.completed}
           savedActions={savedActions}
+          latest={latestReply}
           canRewind={
             !onProductTurn && message.turnIndex !== undefined
               ? canRewindSelectorTurn(userMessages, message.turnIndex)
