@@ -578,7 +578,7 @@ export function UserBubble({
   const senderLabel = t('message.userQueryLabel');
   // Chat-style query: left-aligned bubble led by a sender avatar, no label row. Left
   // alignment keeps the query in the same reading column as the reply on wide panes. The
-  // footer keeps its space but only shows on hover / focus so the query reads as one block.
+  // footer stays visible (dim icons + time) like every other message; labels expand on hover.
   return (
     <div className="group/user flex flex-col items-start pt-3" data-testid="user-message-bubble">
       <div className="flex w-full min-w-0 items-start justify-start gap-2.5">
@@ -599,7 +599,7 @@ export function UserBubble({
           )}
         </div>
       </div>
-      <div className="ml-[34px] opacity-0 transition-opacity focus-within:opacity-100 group-hover/user:opacity-100">
+      <div className="ml-[34px]">
         <MessageFooter text={visibleContent} sentAt={sentAt} turnActions={turnActions} />
       </div>
     </div>
