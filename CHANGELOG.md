@@ -12,13 +12,16 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 > v0.1.7 内容 (F011/F023/F024/F026/F038) 跟 v0.1.8 一起发。GitHub Releases 顶部仍是 v0.1.5，
 > 0.1.7 这条 section 留作历史记录、git log 引用入口。
 
-## [Unreleased]
+## [0.1.47-rc.2] - 2026-11-24
 
 ### Changed
 
 - Pin KodaX SDK `0.7.97-rc.2`. By default, RepoIntel now offers only what git can answer: under the default `auto` mode agents get `repo_overview`, `changed_scope` and `changed_diff`. The semantic tools, injected module/impact context and the index prewarm need `repoIntelligenceMode` `full` or `light`. The index moved from the workspace's `.agent/repo-intelligence/` to `<config home>/repo-intelligence/`. Switching models no longer leaks the previous model's thinking into replies (SDK Issue 441), and Gemini replays another model's tool calls as real calls (SDK Issue 442).
 - For licensed users on the default `auto` mode, the Repointel chip reads "Git" with a green dot instead of "idle". `/repointel` and the chip popover now say that the git tools are on and that the semantic index is opt-in, instead of "Repo intelligence is disabled by Host settings". The status reports the configured mode (`configuredMode`).
 - The fallback context limits cover `glm-5.4` (1M), matching the SDK listing.
+- Compaction, model-switch and runtime status notices are markers centred on a hairline instead of generic cards. `/compact` shows "Context compacted" with the tokens before and after (for example 142k → 31.4k), a meter of how much was kept and the reduction; the exact counts are in the tooltip. `/model` and the model picker leave "Model switched" naming both models, with the provider shown only when it changes. Back-to-back switches fold into one marker, a switch back to the previous model leaves none, and a switch before the first turn is not drawn. The SDK's own compaction, wait, warning and done notices map to icons and tones, and the auto-compaction line is localized. Markers are saved with the local notices and restored from history; their text stays available for copy and search.
+- In-progress labels (the activity status, live thinking and the running tool group) get a text sweep. While compacting, the spinner shows a live marker where the settled one will land instead of the Run mark. The sweep is off under the minimal visual quality and with reduced motion.
+- Message footers (copy, fork, rewind and time) stay hidden until the pointer is anywhere on the message or a footer button has keyboard focus, so tool-heavy turns no longer stack a dim action row under every text segment. The newest assistant reply keeps its footer visible. Hovering the footer expands only the label under the pointer, so the time no longer shifts.
 - Rewrite the in-app `space_manual` topics as a current product reference. Version and Issue history is removed, and stale facts are corrected:
   - RepoIntel modes;
   - the Models & providers path;
@@ -27,6 +30,15 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
   - Smart Popout focuses Task Dock sections.
 
   A test keeps release history out of the Space-authored text. The SDK's own `kodax_manual` is not overwritten.
+
+### Fixed
+
+- A Stop whose receipt came back unconfirmed stayed in the composer as "Retry pending Stop request" until it was clicked, so after a restart the composer kept offering to retry a Stop for a Run that had already ended. The composer now drops the current Session's pending Stop records as soon as the Run is reported as ended.
+
+### Documentation and qualification
+
+- Align the baseline docs (READMEs, PRD, doc index, feature list, version design, detailed design, usage, user manual, known issues, capability ledger) with this release candidate: the rc.2 SDK adoption with the git-only default RepoIntel and the "Git" Repointel chip, the timeline markers with the live text sweep, and the message footers that appear on message hover. The in-app `space_manual` topics are rewritten as a current product reference with the SDK adoption; the SDK's own `kodax_manual` is never overwritten.
+- This is a release-candidate prerelease; stable remains v0.1.46. Issue 371 history first-read latency, Issue 254 (history paging duplicates during a Run, deferred to the next major version), SDK Repo-intelligence Host gaps and external account/customer-OS acceptance remain explicit limitations, not silently closed items. Qualification is tracked in the [rc.2 readiness record](docs/releases/v0.1.47-rc.2-release-readiness.md).
 
 ## [0.1.47-rc.1] - 2026-11-23
 

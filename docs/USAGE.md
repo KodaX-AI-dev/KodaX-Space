@@ -1,5 +1,7 @@
 # KodaX Space 运行与开发指南
 
+> 2026-11-24 发布准备：版本基线更新为 Space `0.1.47-rc.2` / npm Registry `@kodax-ai/kodax@0.7.97-rc.2`（自 SDK rc.1 升级）：默认 `auto` 仓库智能只提供基于 git 的工具，语义索引需 `repoIntelligenceMode` `full` / `light`（许可证有效时 Repointel 芯片显示 “Git”），跨模型推理不再泄漏为回复文本，`zhipu-coding` 新增 `glm-5.4`；对话中的压缩与模型切换显示为时间线标记，消息操作栏在悬停时显示，待确认的 Stop 重试入口在运行结束后自动清除。发布门见 [rc.2 发布记录](releases/v0.1.47-rc.2-release-readiness.md)；下方 rc.1 发布准备记录保留原语境。
+
 > 2026-11-23 发布准备：版本基线更新为 Space `0.1.47-rc.1` / npm Registry `@kodax-ai/kodax@0.7.97-rc.1`（自 beta.13 升级，SDK Issue 433 / Space Issue 255）：任务结束后不再残留“正在运行”的工具卡（扩展内部嵌套工具调用不再单独生成工具项、Run 终态结算残留卡片、重开旧会话移除残留），模型目录与灾备默认模型刷新（Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed、MiMo v2.6）；侧栏归档任务与项目收敛为底部单一 “Archived (N)” 分区，用户查询为紧凑浅蓝气泡、用户停止显示中性提示。发布门见 [rc.1 发布记录](releases/v0.1.47-rc.1-release-readiness.md)；下方 beta.3 发布准备记录保留原语境。
 
 > 2026-11-21 发布准备：版本基线更新为 Space `0.1.47-beta.3` / npm Registry `@kodax-ai/kodax@0.7.97-beta.13`（Stop 收敛 v3：结算未持久化的 Run 以 `actor_settlement_not_persisted` 收尾、Session 自愈期间拒发消息显示 `session_recovering`；集成健康每 2 秒走轻量查询；Session ID 改用 UUIDv7 并以末 8 位标注未命名会话；Settings 技能 ZIP 安装上限 32,768 文件；`@` 文件搜索跟随 `.gitignore`；每个子 Agent 行显示自己的 token、Run 标记稳定显示）；见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)，发布门见 [beta.3 发布记录](releases/v0.1.47-beta.3-release-readiness.md)；下方 beta.2 发布准备记录保留原语境。

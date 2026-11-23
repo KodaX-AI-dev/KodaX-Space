@@ -1,5 +1,7 @@
 # KodaX Space 文档中心
 
+> 2026-11-24 发布准备：版本基线更新为 Space `0.1.47-rc.2` / npm Registry `@kodax-ai/kodax@0.7.97-rc.2`（自 rc.1 的 SDK rc.1 升级），四个 workspace 与 lockfile 统一版本。SDK rc.2 的 RepoIntel phase 0 让默认 `auto` 模式只提供基于 git 的仓库工具，语义索引需 `repoIntelligenceMode` `full` / `light`，许可证有效时 Repointel 芯片显示 “Git”；跨模型推理不再泄漏为回复文本，新增 `glm-5.4`。随发：压缩与模型切换的时间线标记及进行中文字扫光、悬停显示的消息操作栏（最新回复常显）、待确认 Stop 记录在运行结束后自动清除；应用内 `space_manual` 改写为当前产品参考。发布门见 [rc.2 发布记录](releases/v0.1.47-rc.2-release-readiness.md)；下方 rc.1 发布准备记录保留原语境。
+
 > 2026-11-23 发布准备：版本基线更新为 Space `0.1.47-rc.1` / npm Registry `@kodax-ai/kodax@0.7.97-rc.1`（自 beta.4 的 beta.13 升级，SDK Issue 433 / Space Issue 255），四个 workspace 与 lockfile 统一版本。随发：任务结束后不再残留“正在运行”的工具卡（扩展内部嵌套工具调用不再单独生成 View 工具项，Run 终态结算残留卡片，重开旧会话移除残留）、模型目录刷新（Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed、MiMo v2.6）与灾备默认模型对齐、settled 工具组状态芯片不再裁剪 tally；侧栏归档任务与项目收敛为底部单一 “Archived (N)” 分区（默认折叠、空时隐藏、折叠时带注意力角标，归档任务按项目分组，悬停提供取消归档与删除）；用户查询为紧凑浅蓝气泡左对齐，用户停止显示中性提示。发布门见 [rc.1 发布记录](releases/v0.1.47-rc.1-release-readiness.md)；下方 beta.4 发布准备记录保留原语境。
 
 > 2026-11-22 发布准备：版本基线更新为 Space `0.1.47-beta.4` / npm Registry `@kodax-ai/kodax@0.7.97-beta.13`（与 beta.3 相同，本版无 SDK 变更），四个 workspace 与 lockfile 统一版本。随发 F149 侧栏生命周期（全局“置顶”区置于“项目”之上、`projects.json` 单一手动项目顺序、运行中任务按创建顺序稳定在前、先归档再删除，任务置顶/归档状态保存在 `session-flags.json`）与 composer 增强（`@` 补全列出项目文件夹并以 `@dir/` 引用发送，链接定位与文件列表仍只列文件；技能/命令标签去冗余前缀；历史引用显示与 composer 一致、发送原文逐字保留）。发布门见 [beta.4 发布记录](releases/v0.1.47-beta.4-release-readiness.md)；下方 beta.3 发布准备记录保留原语境。
@@ -16,7 +18,7 @@
 
 Space 产品用法由只读 Host Tool `space_manual` 提供，SDK/CLI 机制仍由内建 `kodax_manual` 提供；组合主题保留当前 SDK 原始正文与来源。真实 Coder 与 Partner 经共享 Host 的 Space 扩展组合产品手册，SDK 内建手册不被覆盖。
 
-当前发布范围、跨平台门禁和 SDK/真机边界见 [rc.1 发布记录](releases/v0.1.47-rc.1-release-readiness.md)。旧 alpha.2–beta.4 发布资料保留原版本指纹。
+当前发布范围、跨平台门禁和 SDK/真机边界见 [rc.2 发布记录](releases/v0.1.47-rc.2-release-readiness.md)。旧 alpha.2–rc.1 发布资料保留原版本指纹。
 
 ## 我想要……
 
@@ -61,8 +63,9 @@ Space 产品用法由只读 Host Tool `space_manual` 提供，SDK/CLI 机制仍�
 | `KNOWN_ISSUES.md`                                    | 当前问题                         | 已解决项保留结论，新增问题需有复现和状态                                 |
 | `BUILTIN_SKILLS.md`                                  | builtin 分发维护                 | 固定来源、许可、补丁、更新和打包完整性                                   |
 | `features/v0.1.47.md`                                | 当前候选设计                     | 0.1.47 系列设计；当前 SDK 依赖与恢复验收见 beta.7 接入                   |
-| `releases/v0.1.47-rc.1-release-readiness.md`         | 当前预发布记录                   | SDK rc.1 接入与工具卡结算、F149 归档分区、用户气泡与停止提示、候选门禁 |
-| `releases/v0.1.47-beta.4-release-readiness.md`       | 上一预发布记录                   | F149 置顶区与归档生命周期、composer `@` 文件夹补全、候选门禁 |
+| `releases/v0.1.47-rc.2-release-readiness.md`         | 当前预发布记录                   | SDK rc.2 接入（RepoIntel auto 仅 git、芯片 “Git”）、时间线标记、悬停操作栏、Stop 记录结算、候选门禁 |
+| `releases/v0.1.47-rc.1-release-readiness.md`         | 上一预发布记录                   | SDK rc.1 接入与工具卡结算、F149 归档分区、用户气泡与停止提示、候选门禁 |
+| `releases/v0.1.47-beta.4-release-readiness.md`       | 已发布预发布记录                 | F149 置顶区与归档生命周期、composer `@` 文件夹补全、候选门禁 |
 | `releases/v0.1.47-beta.3-release-readiness.md`       | 已发布预发布记录                 | beta.13 适配（Stop 收敛 v3）、Issue 253 收口、侧栏注意力与 Partner 文件链接、候选门禁 |
 | `releases/v0.1.47-beta.2-release-readiness.md`       | 已发布预发布记录                 | beta.11 适配、Issue 252 收口、Run 期间历史与内置 Skill 打包修复、候选门禁 |
 | `releases/v0.1.47-beta.1-release-readiness.md`       | 已发布预发布记录                 | beta.5–beta.10 适配、Issues 245–252 修复、对话实时工作显示、候选门禁       |
