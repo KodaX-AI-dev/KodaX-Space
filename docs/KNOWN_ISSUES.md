@@ -1,6 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-11-23
+Last Updated: 2026-11-24
+
+> 2026-11-24: the working tree pins Registry SDK `0.7.97-rc.2` (RepoIntel phase 0: the default `auto` mode offers only the git-based repo tools and the semantic index is opt-in; the previous model's thinking no longer leaks into replies, SDK Issue 441). The 0.1.47-rc.1 release used SDK `0.7.97-rc.1` (Issue 255, released).
 
 > 2026-11-23: the working tree pins Registry SDK `0.7.97-rc.1` (Issue 255; model catalog refresh). The 0.1.47-beta.4 release used SDK `0.7.97-beta.13`.
 
@@ -45,7 +47,7 @@ Last Updated: 2026-11-23
 | 252 | Low      | Resolved in 0.1.47-beta.2                                                                                    | A failed Run's error leaves the transcript on the next send; only a CLI-only "Recovery exhausted" notice remains                                                                            | SDK product view (failure kept only in Run status); fixed by SDK 0.7.97-beta.11       | 2026-11-15 |
 | 253 | Medium   | Resolved in 0.1.47-beta.3                                                                                    | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                 | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                      | 2026-11-19 |
 | 254 | Medium   | Deferred to the next major version                                                                           | During a Run, browsing older history can show a message twice, hide it briefly or place it out of order                                                                                     | KodaX 0.7.97 history pages / product view; Space 0.1.47                               | 2026-11-21 |
-| 255 | Medium   | Resolved in source (SDK 0.7.97-rc.1)                                                                         | A finished task still shows tool cards as running, and the settled tool-group chip clips its tallies                                                                                        | SDK 0.7.97 extension nested tool calls; Space 0.1.30 receipt width cap                | 2026-11-22 |
+| 255 | Medium   | Resolved in 0.1.47-rc.1                                                                                      | A finished task still shows tool cards as running, and the settled tool-group chip clips its tallies                                                                                        | SDK 0.7.97 extension nested tool calls; Space 0.1.30 receipt width cap                | 2026-11-22 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -307,6 +309,8 @@ an implemented Space fix or a guarantee that selecting Light fixes history reads
 ### Verification
 
 See [Issue 213 performance guide](test-guides/ISSUE_213_v0.1.46_REGRESSION_GUIDE.md).
+
+2026-11-24 note: SDK `0.7.97-rc.2` (Space `0.1.47-rc.2`) makes the default `auto` RepoIntel mode git-only, so a Session that never opts into `repoIntelligenceMode` `full`/`light` no longer runs the Full routing computation described above. The Full/Light latency itself was not re-measured for rc.2; the issue stays `ready`.
 
 ## Issue 208: Assistant-side transcript disorder survived the Issue 207 hotfix — answer content above its own query, whole turns swallowed, tool chips lost
 
@@ -2869,8 +2873,8 @@ retryDelay: 200` and logs a failure through `console.warn` (captured by the diag
 
 - **Priority**: Medium (the work itself completed; the transcript misreports it and Ctrl+R does
   not clear it).
-- **Status**: Resolved in source — Space pins SDK 0.7.97-rc.1 and widens the receipt; awaiting
-  release.
+- **Status**: Resolved in 0.1.47-rc.1 — Space pins SDK 0.7.97-rc.1 and widens the receipt
+  (published 2026-11-23; see the [rc.1 verification](releases/v0.1.47-rc.1-release-verification.md)).
 - **Introduced**: SDK 0.7.97 view items for extension nested tool calls (observed on Space
   0.1.47-beta.3 with SDK 0.7.97-beta.12/13); the width cap dates from Space 0.1.30.
 - **Created**: 2026-11-22.

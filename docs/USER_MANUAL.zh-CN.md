@@ -155,6 +155,10 @@ _图 1：已打开示例项目但尚未创建会话时的 Coder 工作台。实�
 
 如果后台 Session 正在等待权限或 ask_user 回答，左侧栏会显示醒目的等待标记和项目级数量，并在有界列表中优先保留这些 Session。权限 modal 只显示当前可见 Session 的请求；v0.1.45 起 ask_user 问题以该 Session 对话流尾部的聚焦提问卡呈现（v0.1.44 之前的全屏模态已移除），全部待答卡并存可答，composer 上方的召回停靠条显示待答计数并可定位闪光到队首卡。请求仍保存在全局耐久队列中，切换 Session 不会丢失或误消费。
 
+对话流里的每条消息（你的提问与 Agent 回复）在鼠标悬停到这条消息的任意位置，或键盘聚焦到它的按钮时，才显示复制、时间、从这里 Fork / 回退到这里；最新一条回复的操作栏始终显示。悬停时只展开指针所在的那个标签，时间不会左右位移。
+
+压缩、切换模型这类会话边界以居中的时间线标记显示，而不是一张输出卡片：手动 `/compact` 显示压缩前后 Token（如 142k → 31.4k）、保留比例和缩减百分比，悬停可看精确数值；`/model` 或模型选择器的切换显示前后模型（只有跨 Provider 时才带 Provider 名）。连续切换合并为一个标记，切回原模型不显示，第一轮对话之前的切换也不显示。标记随会话保存，重新打开后仍在原位置；压缩进行中，运行末尾先显示带扫光的实时提示。
+
 侧栏没有列出的地方也会提示需要你的 Session（等待确认、出错、完成未读）：未选中的 Coder/Partner 标签和折叠的“已归档”分组，与折叠项目一样显示标记和数量。
 
 归档的会话离开所属项目，按项目归入左侧栏底部的“已归档”分组，与归档的项目放在一起（默认折叠，没有归档内容时不显示）；归档成功时会提示它的去向。在该分组中悬停会话或项目，可直接取消归档，或点红色垃圾桶删除会话 / 移除项目，确认后才执行（移除项目不会改动磁盘上的文件夹）。
@@ -418,6 +422,7 @@ PowerShell 的 `-Path` 支持 `[...]` 通配符。最新版 KodaX 会把这类�
 - 一起被回答的多条排队输入显示为一条合并后的用户消息（SDK beta.10，每条原始输入以 `inputIds` 记名）；Host 重启不会把已合并的输入再执行一遍，也不会重新排队。
 - 若 Runtime 无法持久化 durable `run.input.delivered` 事件，该 input 仍保持 queued，发送调用返回错误并由 Space 恢复草稿；Runtime 只记录不含用户输入正文的有界 `runtime.warning`，不能把这次失败当作已送达。
 - 停止任务会清理不应继续的后续提示；不要把 queue 气泡是否消失当作唯一交付依据，排障时同时记录 `sessionId`、`runId` 和 `inputId`。
+- 停止请求未得到确认时，停止按钮变为“重试停止”，可原样重试同一次请求；这次运行一旦结束（界面或 Host 报告它已终止），该入口自动清除，重启后也不会再为已结束的运行显示。
 
 ## 9. Provider、Model、Effort 与工作模式
 
@@ -461,6 +466,7 @@ KodaX 0.7.77 会为确认兼容的内置 Provider 建立稳定的提示词缓存
 - 选择器保留你的意图，另行显示上次请求实际发送的档位和回退原因。该记录只适用于对应模型与选择；请求成功或没有可见 Thinking 都不能证明某档位已生效或不受支持。
 - `Ctrl+Shift+E` 打开/循环可用 effort；`Ctrl+T` 保留为旧式循环快捷键。
 - Thinking 是模型输出行为，不等于 Effort。
+- 会话内切换模型（`/model` 或模型选择器）在对话流留下“已切换模型”时间线标记，此后的轮次使用新模型；从其他模型切过来时，上一个模型的思考不会再出现在新模型的回复正文里。
 
 ### Agent Mode
 
@@ -499,6 +505,8 @@ v0.1.46-alpha.8 的手动 `/compact` 会立即显示命令，等待回显及已�
 
 v0.1.46-alpha.9 起使用 KodaX 0.7.96-beta.4：手动与自动压缩共用同一条摘要思考策略（与主 turn 的推理强度相互独立，默认在支持的模型上关闭摘要思考）；成功的压缩会记录有界的摘要请求指标与持久化提交耗时，Space 只在上下文量规的最近压缩信息中显示摘要请求次数——map/reduce 展开为多次摘要调用时可见，单次调用不显示。
 
+0.1.47-rc.2 起，手动与自动压缩都在对话流的原位置留下时间线标记（见[界面地图](#5-界面地图)）：手动 `/compact` 显示压缩前后 Token，自动压缩显示“上下文已自动压缩”与压缩前规模。标记只说明边界，历史消息本身不会被删除或折叠。
+
 v0.1.46-alpha.10 起使用 KodaX 0.7.96-beta.6：内置 deepseek 别名改走 DeepSeek 官方 Anthropic 兼容端点（api.deepseek.com/anthropic），默认模型为 `deepseek-flash`（DeepSeek-V4.1-Flash，1M 上下文、384000 最大输出、原生图片输入）；纯文本的 `deepseek-v4-pro` 仍可在 /model 中选择，视觉实验模型 `deepseek-v4-flash-vision-exp` 从目录移除（其图片能力并入 deepseek-flash）。恢复的会话历史重放到严格端点不再报 400：被打断的孤儿工具调用会以显式中断标记补答，而不是悄悄丢弃。Windows 沙箱 setup generation 升到 11，profile 与 SSH 依赖的 ACL 排除对齐 Codex 语义；公开能力版本不变。
 
 v0.1.46-alpha.11 起使用 KodaX 0.7.96-rc.1 并把权限 authority 门禁升到 v6：Runtime 与直接 SDK 的文本写权限对齐，Auto 档经审查允许的工作区外写入会真实生效，Full Access 直写，被拒路径保持隔离，会话内切换权限模式立即生效。停止正在运行的会话时，一次停止只会取消该 owner 既有队列边界内的任务，之后发出的新任务不会被误停；结果未知时会保留原样重试入口（沿用原 Session/Run 标识），该行为自 rc.3 起保留至当前构建：SDK 会原子拒绝绑定已结束 Run 的首次停止请求，已接受的旧请求仍可原样重试，无需新增重放接口。rc.2 daemon 缺能力时曾只停止指定 Run；rc.3 已通过发布包会话队列取消验证，Space 现在要求对应能力并移除该降级。daemon 结构化错误位于 error.data 时，Space 也会正确识别过期首次请求。打包版真实执行、停止、重试与历史显示验收已通过，图片颜色识别仍有不一致样本。转录可靠性修复（FEATURE_275）：同一 Run 内 settle 一条输入不再误删同 Run 的其他输入，已绘制内容不会因为分页/淘汰竞争而消失；`/repair-identity` 只提交用户核实过的身份映射并经 SDK 审计。SDK 报 `identity_repair_invalid` 时保留可读历史；`local_execution` 失败显示结构化错误，不再误导用户去配置 Provider 或自动重试。
@@ -526,6 +534,8 @@ Quick Ask 的临时 session 会尽力在关闭时清理。点击 Continue in Cod
 Smart Popout Director 在首次出现 plan、diff 或 task 信号时自动打开一次对应面板。可在 Settings → Preferences 关闭。
 
 v0.1.44 的 Task Dock 以当前 Run 的 live activity 为准：活跃 Agent/Workflow 不会因较旧的 canonical snapshot 消失，结束后也不会被旧状态继续占位。Runtime 的 repo-intelligence trace 会投影到 Repointel 状态芯片，供你确认索引/检索活动；它不创建第二份 Runtime 状态。
+
+0.1.47-rc.2 起，KodaX 默认的 `auto` 仓库智能模式只提供基于 git 的工具（`repo_overview` / `changed_scope` / `changed_diff`）：许可证有效时，composer 上方的 Repointel 芯片显示绿点 “Git”，而不是 “idle”。语义索引、注入的模块/影响上下文和索引预热需要把 `repoIntelligenceMode` 设为 `full` 或 `light`，索引保存在 KodaX 配置目录的 `repo-intelligence/` 下，不再写入项目的 `.agent/` 目录；`/repointel` 与芯片弹窗会说明当前状态和开启方法。
 
 Settings → Preferences → Terminal Shell 可选择 Space PTY 与 Coder 命令工具共同使用的
 shell。Space 会从所选 shell 的登录环境解析 `PATH`，再剥离常见 `*_KEY`、`*_TOKEN`

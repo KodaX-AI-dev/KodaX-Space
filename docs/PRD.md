@@ -357,6 +357,7 @@ Repointel 的核心调用契约（`status / warm / preturn / context-pack / impa
 #### 5.1.6 Repointel 集成
 
 - 状态条（顶栏右侧）只展示 Runtime 已公开的 repository-intelligence 状态/诊断
+- 默认 `auto` 模式只提供基于 git 的仓库工具（`repo_overview` / `changed_scope` / `changed_diff`），许可证有效时芯片显示 “Git” 而非 “idle”；语义索引、注入上下文与预热需要用户在 KodaX 配置中把 `repoIntelligenceMode` 设为 `full` 或 `light`
 - warm/trace 操作仅在 Runtime capability 明确提供时出现；不把内部 hook 包装成稳定的“一键 warm”合同
 - 不暴露 Repointel 内部结果对象；只展示 KodaX 内核已公开的状态字段
 - 安装/未安装的引导：未安装时给一键安装指引（指向 KodaX-private 官方 release artifact）
