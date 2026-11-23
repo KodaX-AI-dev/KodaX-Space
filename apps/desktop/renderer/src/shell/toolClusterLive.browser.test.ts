@@ -382,7 +382,9 @@ test(
     await page.evaluate('window.compact();window.settle()');
     await cluster.locator('.tool-pulse-paused').waitFor();
     assert.equal(await cluster.getByTestId('tool-cluster-live-feed').isVisible(), true);
-    assert.equal(await spinner.getByTestId('run-mark').count(), 1);
+    // Compaction draws its live marker where the settled marker will land, in place of the Run mark.
+    assert.equal(await spinner.getByTestId('timeline-marker-live').count(), 1);
+    assert.equal(await spinner.getByTestId('run-mark').count(), 0);
     assert.match((await spinner.textContent()) ?? '', /Compacting context/);
     assert.deepEqual(errors, []);
   },
