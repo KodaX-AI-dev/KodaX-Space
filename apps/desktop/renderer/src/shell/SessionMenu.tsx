@@ -37,7 +37,7 @@ import { shouldActivateSessionForCurrentScope } from '../lib/sessionActivation.j
 import { SessionLineagePanel } from '../features/session/SessionLineagePanel.js';
 import { useSurfaceStore } from '../store/surface.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
-import { deleteSessionWithFeedback } from '../lib/deleteSession.js';
+import { confirmDeleteSession } from '../lib/deleteSession.js';
 import { performHistoryTurnAction, usesProductHistoryActions } from '../lib/historyTurnAction.js';
 import { requestConfirm } from '../store/confirmStore.js';
 import { pushToast } from '../store/toastStore.js';
@@ -140,18 +140,10 @@ export function SessionMenu({ sessionId, onClose }: SessionMenuProps): JSX.Eleme
   }
 
   async function doDelete(): Promise<void> {
-    if (!window.kodaxSpace) return;
-    const confirmed = await requestConfirm({
-      title: t('menu.session.deleteTitle'),
-      message: t('menu.session.deleteMessage', { title: session?.title ?? sessionId }),
-      confirmLabel: t('menu.session.delete'),
-      danger: true,
-    });
-    if (!confirmed) return;
-    // 统一流程：在途守卫 + "删除中"反馈 + 收起动画后移除（见 lib/deleteSession.ts）。
+    // 统一流程：确认 + 在途守卫 + "删除中"反馈 + 收起动画后移除（见 lib/deleteSession.ts）。
     // 键盘 D 连按 / 多入口并发由该流程内部守卫。本地数据仍等 IPC 成功才动（F033 MEDIUM-4）。
-    await deleteSessionWithFeedback(sessionId, t);
-    onClose();
+    const outcome = await confirmDeleteSession(sessionId, session?.title ?? sessionId, t);
+    if (outcome !== 'ignored') onClose();
   }
 
   /**

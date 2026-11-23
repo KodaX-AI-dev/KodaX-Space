@@ -576,19 +576,12 @@ export function UserBubble({
   const { t } = useI18n();
   const visibleContent = attachments.length > 0 && content.trim() === '(image)' ? '' : content;
   const senderLabel = t('message.userQueryLabel');
-  // Chat-style query: right-aligned bubble with a sender avatar, no label row. The footer
-  // keeps its space but only shows on hover / focus so the query reads as one compact block.
+  // Chat-style query: left-aligned bubble led by a sender avatar, no label row. Left
+  // alignment keeps the query in the same reading column as the reply on wide panes. The
+  // footer keeps its space but only shows on hover / focus so the query reads as one block.
   return (
-    <div className="group/user flex flex-col items-end pt-3" data-testid="user-message-bubble">
-      <div className="flex w-full min-w-0 items-start justify-end gap-2.5">
-        <div className="conversation-user-content min-w-0 max-w-[min(44rem,85%)] overflow-hidden rounded-2xl rounded-tr-md px-4 py-2.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-fg-primary">
-          {visibleContent.length > 0 && <CollapsibleUserMessageContent content={visibleContent} />}
-          {attachments.length > 0 && (
-            <div className={visibleContent.length > 0 ? 'mt-2' : undefined}>
-              <UserImageAttachments attachments={attachments} />
-            </div>
-          )}
-        </div>
+    <div className="group/user flex flex-col items-start pt-3" data-testid="user-message-bubble">
+      <div className="flex w-full min-w-0 items-start justify-start gap-2.5">
         <span
           data-testid="user-query-label"
           title={senderLabel}
@@ -597,8 +590,16 @@ export function UserBubble({
           <UserRound className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           <span className="sr-only">{senderLabel}</span>
         </span>
+        <div className="conversation-user-content min-w-0 max-w-[min(44rem,85%)] overflow-hidden rounded-2xl rounded-tl-md px-4 py-2.5 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-fg-primary">
+          {visibleContent.length > 0 && <CollapsibleUserMessageContent content={visibleContent} />}
+          {attachments.length > 0 && (
+            <div className={visibleContent.length > 0 ? 'mt-2' : undefined}>
+              <UserImageAttachments attachments={attachments} />
+            </div>
+          )}
+        </div>
       </div>
-      <div className="mr-[34px] opacity-0 transition-opacity focus-within:opacity-100 group-hover/user:opacity-100">
+      <div className="ml-[34px] opacity-0 transition-opacity focus-within:opacity-100 group-hover/user:opacity-100">
         <MessageFooter text={visibleContent} sentAt={sentAt} turnActions={turnActions} />
       </div>
     </div>

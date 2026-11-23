@@ -18,10 +18,15 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 - Pin KodaX SDK `0.7.97-rc.1` (Issue 255). A finished task no longer shows tool cards stuck on "正在运行": tool calls an extension makes internally (such as `tool_call` forwarding to `artifact_render`) no longer get cards of their own, and their progress shows on the card the model started. A Run that ends settles any card still marked running. Reopening an older Session removes such leftovers. These calls still go through permissions, the sandbox and approval, and their approval cards show the tool name and input.
 - Follow the SDK rc.1 model catalog. The disaster-recovery default models are now Claude Sonnet 5.5, GPT-6.2 Sol, Qwen3.8 Max and MiMo v2.6 Pro, with a test that keeps them equal to the SDK defaults. The fallback context limits cover Claude Fable 5.2 / Opus 5 / Sonnet 5, GPT-6.x / 5.6 / 5.5 (1.05M), Qwen3.8 Flash, GLM-5.3-highspeed and DeepSeek V4.1 Flash. The custom Provider form suggests current model names.
+- Archived tasks and projects now share one "Archived (N)" section at the bottom of the sidebar (F149). It is collapsed by default, hidden when nothing is archived, and shows an attention badge for its tasks while collapsed. Archived tasks are grouped under their project name. They leave the project list and the "+N more" picker, including the open task, and archiving one shows where it went. Before, a "Show archived sessions" toggle beside "Projects" had no label, looked like it did nothing when no task was archived, and kept open or attention-needing archived tasks in their project.
+- Hovering an archived task or project shows "Unarchive" and a red trash button (Delete task / Remove). Both ask for confirmation first, using the existing dialog. Archived projects no longer offer the new-task button. The project menu's Remove now uses the same trash icon.
+- User queries are a compact light-blue bubble aligned left, led by a small sender avatar, so they share the reply's reading column on wide panes. The separate label row and thick accent bar are gone, and the copy/time footer shows on hover or focus.
+- A run you stopped shows a neutral "Stopped" notice with a localized message, a grey timeline marker and the unknown-effects warning once. Before, it showed as a red "Run failed" with the SDK's English message and the warning twice.
 
 ### Fixed
 
 - A settled tool group's status chip no longer clips its tool tallies, labels or stats. The 30rem cap is gone: the chip fits its content up to the row width, and only the tool-name summary truncates (Issue 255).
+- The "Return to newest messages" button sits on the conversation's centre line again. Its pop-in animation used to override the centring transform and push it right by half its width, which zooming made obvious.
 
 ## [0.1.47-beta.4] - 2026-11-22
 

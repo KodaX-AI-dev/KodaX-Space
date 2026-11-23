@@ -394,7 +394,12 @@ test('Partner menu and delete dialog stay above layout and inside the viewport',
       await expect(reopenedArchiveMenuItem).toBeVisible();
       await reopenedArchiveMenuItem.click();
     }
-    await page.getByRole('button', { name: 'Show archived sessions' }).click();
+    // Archived tasks move to the bottom "Archived" section; its fold state persists.
+    const archivedHeader = page
+      .getByTestId('sidebar-archived-section')
+      .getByRole('button', { name: /^Archived/ });
+    if ((await archivedHeader.getAttribute('aria-expanded')) !== 'true')
+      await archivedHeader.click();
     const archivedRow = page.getByTestId('sidebar-session-row').filter({ hasText: prompt }).first();
     await expect(archivedRow).toBeVisible();
     await archivedRow.click({ button: 'right' });

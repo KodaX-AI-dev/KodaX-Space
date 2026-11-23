@@ -42,8 +42,8 @@ if(channel==='session.listRunning')return{ok:true,data:{peers:[]}};
 return{ok:false,error:{message:'Unused fixture channel: '+channel}};
 }};
 useAppStore.setState({projects,expandedProjects:{},sessions,currentSessionId:'current',currentProjectPath:'/cur',
-showArchivedSessions:false,archivedProjectsExpanded:false,
-sessionFlags:{shelved:{archived:true,unread:true},old:{unread:true},partnerDone:{unread:true}}});
+archivedProjectsExpanded:false,
+sessionFlags:{shelved:{archivedAt:1,unread:true},old:{unread:true},partnerDone:{unread:true}}});
 createRoot(document.getElementById('root')).render(<I18nProvider><div style={{width:280,height:600,display:'flex',flexDirection:'column'}}><LeftSidebar onOpenSettings={()=>{}}/></div></I18nProvider>);
 `;
 
@@ -155,14 +155,14 @@ test(
     await partnerTab.getByRole('img', unread).waitFor();
     assert.equal(await page.getByRole('button', { name: /Coder/ }).getByRole('img').count(), 0);
 
-    // The collapsed Archived group carries its project's unread Session.
+    // The collapsed Archived section carries both the archived project's unread Session and
+    // the archived task of an open project; the task waits there, not in its project list.
     const archivedGroup = page.getByRole('button', { name: /Archived/ });
-    await archivedGroup.getByRole('img', unread).waitFor();
-
-    // An archived Session that still needs the user is listed in its open project.
+    await archivedGroup.getByRole('img', { name: '2 finished, unread', exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: /^shelved/ }).count(), 0);
+    await archivedGroup.click();
     await page
-      .getByRole('button', { name: /^shelved/ })
-      .first()
+      .locator('[data-testid="sidebar-archived-section"] [data-session-id="shelved"]')
       .waitFor();
     assert.deepEqual(errors, []);
   },

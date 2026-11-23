@@ -6,11 +6,13 @@ import { build } from 'esbuild';
 import { chromium, type Page } from 'playwright';
 
 // The project list is one manual order owned by main (projects.json); the sidebar shows it as
-// returned, never re-sorting by added time or recent use. Sessions hide archived rows behind one toggle.
+// returned, never re-sorting by added time or recent use. Archived tasks and projects share one
+// collapsed "Archived" section at the bottom.
 const fixture = `
 import React from 'react';import{createRoot}from'react-dom/client';
 import{LeftSidebar}from'./LeftSidebar.tsx';import{I18nProvider}from'../i18n/I18nProvider.tsx';
-import{useAppStore}from'../store/appStore.ts';
+import{useAppStore}from'../store/appStore.ts';import{useConfirmStore}from'../store/confirmStore.ts';
+import{useToastStore}from'../store/toastStore.ts';
 const projects=[
 {path:'/p/charlie',name:'charlie',addedAt:3,lastUsedAt:5},
 {path:'/p/alpha',name:'alpha',addedAt:1,lastUsedAt:1},
@@ -19,12 +21,15 @@ const meta=(sessionId,lastActivityAt,createdAt=1,extra={})=>({sessionId,title:se
 const sessions=[meta('live',2),meta('shelved',3),meta('runOld',100,10),meta('runNew',50,20),meta('forked',60,5,{parentSessionId:'live'}),meta('partnerTask',70,1,{surface:'partner'})];
 const outsideWindow=[meta('farAway',1,1,{projectRoot:'/p/bravo'})];
 window.store=useAppStore;window.fixtureSessions=sessions;window.idLookups=[];
-window.flagCalls=[];window.archiveCalls=[];window.pinCalls=[];
+window.flagCalls=[];window.archiveCalls=[];window.pinCalls=[];window.deleteCalls=[];window.removeCalls=[];
+window.confirmStore=useConfirmStore;window.toastStore=useToastStore;
 window.kodaxSpace={platform:'linux',rendererReady:()=>{},on:()=>()=>{},invoke:async(channel,input)=>{
 if(channel==='settings.get')return{ok:true,data:{languageMode:'en-US',effectiveLocale:'en-US'}};
 if(channel==='project.list')return{ok:true,data:{projects:[...projects]}};
 if(channel==='project.pinned.set'){const pins=input.pinned.map((p)=>p.split(String.fromCharCode(92)).join('/'));window.pinCalls.push(pins);for(let i=0;i<projects.length;i++){const{pinnedIndex,...rest}=projects[i];const at=pins.indexOf(rest.path);projects[i]=at<0?rest:{...rest,pinnedIndex:at};}return{ok:true,data:{}};}
 if(channel==='project.recent.setArchived'){window.archiveCalls.push(input);const i=projects.findIndex((p)=>p.path===input.path);projects[i]={...projects[i],archived:input.archived};return{ok:true,data:{ok:true}};}
+if(channel==='project.recent.remove'){window.removeCalls.push(input);projects.splice(projects.findIndex((p)=>p.path===input.path),1);return{ok:true,data:{removed:true}};}
+if(channel==='session.delete'){window.deleteCalls.push(input);return{ok:true,data:{deleted:true}};}
 if(channel==='session.list'){if(input?.sessionIds){window.idLookups.push(input);return{ok:true,data:{sessions:outsideWindow.filter((s)=>input.sessionIds.includes(s.sessionId))}};}return{ok:true,data:{sessions}};}
 if(channel==='session.listRunning')return{ok:true,data:{peers:[]}};
 if(channel==='session.flags.set'){window.flagCalls.push(input);const flags={};for(const[id,f]of Object.entries(useAppStore.getState().sessionFlags)){const{unread,...kept}=f??{};if(Object.keys(kept).length)flags[id]=kept;}return{ok:true,data:{flags}};}
@@ -173,31 +178,163 @@ test(
     assert.ok(!liveActions.includes('delete-session'));
     await page.keyboard.press('Escape');
 
-    await page.getByRole('button', { name: 'Show archived sessions' }).click();
+    await page.getByRole('button', { name: /^Archived/ }).click();
     await page.locator('[data-session-id="shelved"]').click({ button: 'right' });
     assert.deepEqual(await menuActions(page), ['unarchive-session', 'delete-session']);
     assert.deepEqual(errors, []);
   },
 );
 
+type Win = {
+  store: { getState(): Record<string, unknown>; setState(s: object): void };
+  confirmStore: {
+    getState(): {
+      current: { id: number; title?: string; danger: boolean } | null;
+      settle(id: number, ok: boolean): void;
+    };
+  };
+  toastStore: { getState(): { toasts: readonly { message: string }[] } };
+};
+
+const archivedSection = (page: Page) => page.locator('[data-testid="sidebar-archived-section"]');
+
+async function confirmPending(page: Page): Promise<{ title?: string; danger: boolean }> {
+  await page.waitForFunction(() => (window as unknown as Win).confirmStore.getState().current);
+  return page.evaluate(() => {
+    const current = (window as unknown as Win).confirmStore.getState().current!;
+    return { title: current.title, danger: current.danger };
+  });
+}
+
+function settleConfirm(page: Page, ok: boolean): Promise<void> {
+  return page.evaluate((accept) => {
+    const confirm = (window as unknown as Win).confirmStore.getState();
+    confirm.settle(confirm.current!.id, accept);
+  }, ok);
+}
+
 test(
-  'archived sessions stay hidden until the archived toggle is on',
+  'archived tasks leave their project list for the bottom Archived section',
   { skip: !existsSync(chromium.executablePath()) },
   async (t) => {
     const { page, errors } = await openFixture(t);
     await page.getByRole('button', { name: /^live/ }).waitFor();
     assert.equal(await page.getByRole('button', { name: /^shelved/ }).count(), 0);
+    // One place for everything archived: no separate toggle next to "Projects".
+    assert.equal(await page.getByRole('button', { name: 'Show archived sessions' }).count(), 0);
 
-    const toggle = page.getByRole('button', { name: 'Show archived sessions' });
-    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
-    await toggle.click();
-    const shelved = page.getByRole('button', { name: /^shelved/ });
+    const header = page.getByRole('button', { name: /^Archived \(1\)/ });
+    assert.equal(await header.getAttribute('aria-expanded'), 'false');
+    await header.click();
+    const shelved = archivedSection(page).locator('[data-session-id="shelved"]');
     await shelved.waitFor();
-    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
-    // Archived rows stay recognisable among the active ones.
+    // Grouped under the project it belongs to, dimmed like other archived items.
+    assert.equal(await archivedSection(page).getByText('alpha', { exact: true }).count(), 1);
     assert.match((await shelved.getAttribute('class')) ?? '', /\bopacity-60\b/);
-    // The old filter / group / sort menu is gone.
     assert.equal(await page.getByRole('button', { name: 'Filter projects / sessions' }).count(), 0);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'archiving the open task moves it to the Archived section and says where it went',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openFixture(t);
+    await page.evaluate(() =>
+      (window as unknown as Win).store.setState({ currentSessionId: 'live' }),
+    );
+    const live = page.locator('[data-session-id="live"]');
+    await live.hover();
+    await page.getByRole('button', { name: 'Archive: live' }).click();
+    await live.waitFor({ state: 'detached' });
+    const toasts = await page.evaluate(() =>
+      (window as unknown as Win).toastStore.getState().toasts.map((toast) => toast.message),
+    );
+    assert.ok(
+      toasts.some((message) => /bottom of the sidebar/.test(message)),
+      toasts.join(' | '),
+    );
+
+    await page.getByRole('button', { name: /^Archived \(2\)/ }).click();
+    await archivedSection(page).locator('[data-session-id="live"][aria-current="page"]').waitFor();
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'an archived task unarchives from its hover button back into its project',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openFixture(t);
+    await page.getByRole('button', { name: /^Archived/ }).click();
+    await archivedSection(page).locator('[data-session-id="shelved"]').hover();
+    // Archived tasks are not pinned; their actions are unarchive and delete.
+    assert.equal(await page.getByRole('button', { name: 'Pin task: shelved' }).count(), 0);
+    await page.getByRole('button', { name: 'Unarchive: shelved' }).click();
+    await page.getByRole('button', { name: /^Archived/ }).waitFor({ state: 'detached' });
+    assert.ok((await sessionRowIds(page, false)).includes('shelved'));
+    assert.deepEqual(await page.evaluate('window.flagCalls'), [
+      { sessionId: 'shelved', archived: false },
+    ]);
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'an archived task deletes from a red hover button only after confirming',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openFixture(t);
+    await page.getByRole('button', { name: /^Archived/ }).click();
+    const shelved = archivedSection(page).locator('[data-session-id="shelved"]');
+    await shelved.hover();
+    const remove = page.getByRole('button', { name: 'Delete task: shelved' });
+    assert.match((await remove.getAttribute('class')) ?? '', /\btext-danger\b/);
+
+    await remove.click();
+    assert.deepEqual(await confirmPending(page), { title: 'Delete task', danger: true });
+    await settleConfirm(page, false);
+    assert.deepEqual(await page.evaluate('window.deleteCalls'), []);
+
+    await shelved.hover();
+    await remove.click();
+    await confirmPending(page);
+    await settleConfirm(page, true);
+    await shelved.waitFor({ state: 'detached' });
+    assert.deepEqual(await page.evaluate('window.deleteCalls'), [{ sessionId: 'shelved' }]);
+    await page.getByRole('button', { name: /^Archived/ }).waitFor({ state: 'detached' });
+    assert.deepEqual(errors, []);
+  },
+);
+
+test(
+  'an archived project offers unarchive and a red remove that confirms first, but no new task',
+  { skip: !existsSync(chromium.executablePath()) },
+  async (t) => {
+    const { page, errors } = await openFixture(t);
+    await page.evaluate(() => {
+      const store = (window as unknown as Win).store;
+      const projects = store.getState().projects as { path: string }[];
+      store.setState({
+        projects: projects.map((p) => (p.path === '/p/bravo' ? { ...p, archived: true } : p)),
+      });
+    });
+    await page.getByRole('button', { name: /^Archived \(2\)/ }).click();
+    await page.getByRole('button', { name: 'bravo', exact: true }).hover();
+    assert.equal(
+      await page.getByRole('button', { name: 'New session in this project: bravo' }).count(),
+      0,
+    );
+    assert.equal(await page.getByRole('button', { name: 'Unarchive: bravo' }).count(), 1);
+    const remove = page.getByRole('button', { name: 'Remove: bravo' });
+    assert.match((await remove.getAttribute('class')) ?? '', /\btext-danger\b/);
+
+    await remove.click();
+    assert.equal((await confirmPending(page)).danger, true);
+    await settleConfirm(page, true);
+    await page.getByRole('button', { name: 'bravo', exact: true }).waitFor({ state: 'detached' });
+    assert.deepEqual(await page.evaluate('window.removeCalls'), [{ path: '/p/bravo' }]);
     assert.deepEqual(errors, []);
   },
 );
@@ -216,11 +353,16 @@ test(
     await alpha.waitFor({ state: 'detached' });
     assert.deepEqual(await projectNames(page), ['charlie', 'bravo']);
 
-    await page.getByRole('button', { name: /^Archived/ }).click();
+    // alpha's archived task "shelved" now sits inside the archived project, not in its own group.
+    await page.getByRole('button', { name: /^Archived \(1\)/ }).click();
     await alpha.click({ button: 'right' });
     assert.deepEqual(await menuActions(page), ['unarchive-project', 'remove-project']);
     await page.locator('[data-menu-action="unarchive-project"]').click();
-    await page.getByRole('button', { name: /^Archived/ }).waitFor({ state: 'detached' });
+    // Back in the main list; "shelved" stays archived under an "alpha" label in the section.
+    await page.getByRole('button', { name: 'alpha', exact: true }).waitFor();
+    await page
+      .locator('[data-testid="sidebar-archived-section"] [data-session-id="shelved"]')
+      .waitFor();
     assert.deepEqual(await projectNames(page), ['charlie', 'alpha', 'bravo']);
     assert.deepEqual(await page.evaluate('window.archiveCalls'), [
       { path: '/p/alpha', archived: true },
@@ -349,7 +491,7 @@ test(
 );
 
 test(
-  'the "Show all" picker leaves pinned tasks out, like the project list',
+  'the "Show all" picker leaves pinned and archived tasks out, like the project list',
   { skip: !existsSync(chromium.executablePath()) },
   async (t) => {
     const { page, errors } = await openFixture(t);
@@ -378,6 +520,7 @@ test(
     await picker.getByText('filler0', { exact: true }).waitFor();
     const titles = await picker.locator('li button span.truncate').allTextContents();
     assert.equal(titles.includes('live'), false);
+    assert.equal(titles.includes('shelved'), false);
     assert.equal(titles.includes('runOld'), true);
     assert.deepEqual(errors, []);
   },

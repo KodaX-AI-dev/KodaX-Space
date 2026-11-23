@@ -3127,7 +3127,8 @@ export function ConversationStreamV2(): JSX.Element {
           + .lift 柔影，明确浮在对话流之上，深浅两色都清晰可见（旧用 surface-3 在深色里几乎隐形）。
           chevron 用 2.5 描边补足「细 V 不够显眼」；hover 时 outline 微光环（用 outline 不用 ring，
           避免和 .lift 的 box-shadow 抢同一属性、hover 反而丢掉浮影）。
-          外层 div 负责居中定位，内层 button 的 .ix-pop 悬停缩放不和居中 translate 打架。 */}
+          外层 div 撑满宽度用 flex 居中——不能用 translate 居中：.reveal-marker 的弹出动画写 transform
+          且 fill both，会覆盖 translate，把按钮推偏半个自身宽度（缩放后更明显）。 */}
         {productTranscript?.browsingOlder && liveReadingPosition.current && !searchOpen && (
           <button
             type="button"
@@ -3147,7 +3148,7 @@ export function ConversationStreamV2(): JSX.Element {
           </button>
         )}
         {(showJumpToBottom || historyPaging.hasNewer || latestJumpRequest !== null) && (
-          <div className="reveal-marker absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+          <div className="reveal-marker pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center">
             <button
               type="button"
               onClick={jumpToBottom}
@@ -3155,7 +3156,7 @@ export function ConversationStreamV2(): JSX.Element {
               title={t('conversation.returnToNewest')}
               disabled={latestJumpRequest !== null}
               aria-busy={latestJumpRequest !== null}
-              className="ix-pop h-9 rounded-full flex items-center justify-center gap-2 px-3 text-xs bg-surface-4 border border-border-default lift text-fg-secondary hover:text-fg-primary hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-border-strong"
+              className="ix-pop pointer-events-auto h-9 rounded-full flex items-center justify-center gap-2 px-3 text-xs bg-surface-4 border border-border-default lift text-fg-secondary hover:text-fg-primary hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-border-strong"
             >
               {latestJumpRequest !== null ? (
                 <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden />

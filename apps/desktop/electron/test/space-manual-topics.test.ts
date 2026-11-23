@@ -420,9 +420,10 @@ test('Space manual covers the SDK beta.10 merged inputs and the 0.1.47-beta.1 co
   assert.match(own('composer'), /带图片的消息保留撤回气泡/);
   assert.match(own('permissions'), /跳过 \(Esc\)」只跳过当前问题/);
   assert.match(own('permissions'), /全部问题都未作答时这张卡才算跳过/);
-  assert.match(own('ui-map'), /显示已归档会话.*开关/);
+  assert.match(own('ui-map'), /归档的会话离开所属项目，按项目归入底部“已归档”分组/);
   assert.match(own('ui-map'), /置顶区.*手动顺序，新加入的项目放在最上.*projects\.json/);
   assert.match(own('sessions'), /先归档、再删除.*删除 Session、移除项目只对已归档条目提供/);
+  assert.match(own('sessions'), /红色垃圾桶删除 \/ 移除，确认后才执行/);
   assert.match(own('ui-map'), /红色 failed 徽标/);
   assert.match(own('ui-map'), /live 工具组按工具族/);
   assert.match(own('runtime-host'), /spinner 跟在对话流末尾.*返回最新消息/);

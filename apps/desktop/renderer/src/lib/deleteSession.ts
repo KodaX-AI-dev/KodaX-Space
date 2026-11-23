@@ -8,6 +8,7 @@
 
 import { useAppStore } from '../store/appStore.js';
 import { pushToast } from '../store/toastStore.js';
+import { requestConfirm } from '../store/confirmStore.js';
 import type { MessageKey } from '../i18n/messages.js';
 
 /** 与行收起 CSS transition 时长一致（LeftSidebar.SessionRow / SessionList 的 duration-200）。*/
@@ -30,10 +31,7 @@ export async function deleteSessionWithFeedback(
   const bridge = window.kodaxSpace;
   if (!bridge) return 'failed';
   const initial = useAppStore.getState();
-  if (
-    initial.deletingSessionIds.has(sessionId) ||
-    initial.removingSessionIds.has(sessionId)
-  ) {
+  if (initial.deletingSessionIds.has(sessionId) || initial.removingSessionIds.has(sessionId)) {
     return 'ignored';
   }
   initial.markSessionDeleting(sessionId);
@@ -67,4 +65,21 @@ export async function deleteSessionWithFeedback(
     pushToast(err instanceof Error ? err.message : t('common.unknownError'), 'error');
     return 'failed';
   }
+}
+
+/** Asks before deleting; the ▾ menu, the context menu and the archived row's button share it. */
+export async function confirmDeleteSession(
+  sessionId: string,
+  title: string,
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string,
+): Promise<DeleteSessionOutcome> {
+  if (!window.kodaxSpace) return 'failed';
+  const confirmed = await requestConfirm({
+    title: t('menu.session.deleteTitle'),
+    message: t('menu.session.deleteMessage', { title }),
+    confirmLabel: t('menu.session.delete'),
+    danger: true,
+  });
+  if (!confirmed) return 'ignored';
+  return deleteSessionWithFeedback(sessionId, t);
 }

@@ -1,11 +1,10 @@
 import type { SessionMeta } from '@kodax-space/space-ipc-schema';
-import { deleteSessionWithFeedback } from '../lib/deleteSession.js';
+import { confirmDeleteSession } from '../lib/deleteSession.js';
 import { performHistoryTurnAction, usesProductHistoryActions } from '../lib/historyTurnAction.js';
 import { openDirectory } from '../lib/openPath.js';
 import { shouldActivateSessionForCurrentScope } from '../lib/sessionActivation.js';
 import { useAppStore } from '../store/appStore.js';
 import { useSurfaceStore } from '../store/surface.js';
-import { requestConfirm } from '../store/confirmStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { pushToast } from '../store/toastStore.js';
 import { toggleSessionFlagPersisted } from '../store/sessionFlagSync.js';
@@ -119,19 +118,8 @@ export function SessionContextMenu({
 
   async function onDelete(): Promise<void> {
     onClose();
-    if (!window.kodaxSpace) return;
-    const confirmed = await requestConfirm({
-      title: t('menu.session.deleteTitle'),
-      message: t('menu.session.deleteMessage', {
-        title: session.title ?? session.sessionId.slice(-8),
-      }),
-      confirmLabel: t('menu.session.delete'),
-      danger: true,
-    });
-    if (!confirmed) return;
-
-    // 统一流程：在途守卫 + "删除中"反馈 + 收起动画后移除（见 lib/deleteSession.ts）。
-    await deleteSessionWithFeedback(session.sessionId, t);
+    // 统一流程：确认 + 在途守卫 + "删除中"反馈 + 收起动画后移除（见 lib/deleteSession.ts）。
+    await confirmDeleteSession(session.sessionId, session.title ?? session.sessionId.slice(-8), t);
   }
 
   const actions: Record<SessionContextMenuActionId, SidebarContextMenuItem> = {

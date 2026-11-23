@@ -29,6 +29,7 @@ import {
   PinOff,
   Blocks,
   SquarePen,
+  Trash2,
 } from 'lucide-react';
 import { SurfaceTabs } from './SurfaceTabs.js';
 import { moveWithinVisible } from './sortPreview.js';
@@ -64,7 +65,8 @@ import { savePinnedProjects, saveProjectOrder } from '../store/projectOrderSync.
 import type { Project } from '@kodax-space/space-ipc-schema';
 import { useI18n } from '../i18n/I18nProvider.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
-import { ROW_COLLAPSE_CLASS } from '../lib/deleteSession.js';
+import { confirmDeleteSession, ROW_COLLAPSE_CLASS } from '../lib/deleteSession.js';
+import { confirmRemoveProject, setProjectArchived } from './projectActions.js';
 import { runningPeerAction } from './runningPeerAction.js';
 import {
   sessionLoadScopeKey,
@@ -329,7 +331,7 @@ function ProjectTree({
   sessionLoadStateByScope,
   onRefreshProjectSessions,
 }: {
-  /** 置顶区与主列表之间的标题行（Projects + 显示已归档开关）。 */
+  /** 置顶区与主列表之间的标题行（Projects）。 */
   readonly header: ReactNode;
   readonly sessions: readonly SessionMeta[];
   readonly loadedIds: readonly string[];
@@ -463,6 +465,42 @@ function ProjectTree({
     return map;
   }, [sessions]);
 
+  // F149: 已归档的任务离开所属项目的列表，集中到底部"已归档"分组（按项目分组）；
+  // 已归档项目的列表照常列出它的全部任务。置顶任务只在置顶区（归档会取消置顶）。
+  const sessionFlags = useAppStore((s) => s.sessionFlags);
+  const projectSessions = useCallback(
+    (proj: Project): readonly SessionMeta[] => {
+      const all = sessionsByProject.get(canonProjectRootBrowser(proj.path)) ?? [];
+      return proj.archived === true
+        ? all
+        : all.filter((s) => sessionFlags[s.sessionId]?.archivedAt === undefined);
+    },
+    [sessionsByProject, sessionFlags],
+  );
+  const archivedTaskGroups = useMemo(
+    () =>
+      [...pinnedProjects, ...ordered]
+        .map((project) => ({
+          project,
+          sessions: (sessionsByProject.get(canonProjectRootBrowser(project.path)) ?? []).filter(
+            (s) =>
+              sessionFlags[s.sessionId]?.archivedAt !== undefined &&
+              sessionFlags[s.sessionId]?.pinnedAt === undefined,
+          ),
+        }))
+        .filter((group) => group.sessions.length > 0),
+    [pinnedProjects, ordered, sessionsByProject, sessionFlags],
+  );
+  const archivedSessionIds = useMemo(
+    () => [
+      ...archivedTaskGroups.flatMap((group) => group.sessions.map((s) => s.sessionId)),
+      ...archived.flatMap((p) => projectSessions(p).map((s) => s.sessionId)),
+    ],
+    [archivedTaskGroups, archived, projectSessions],
+  );
+  const archivedCount =
+    archived.length + archivedTaskGroups.reduce((n, group) => n + group.sessions.length, 0);
+
   // statusFor 闭包：从 statusMap 取，O(1)。给每个 SessionTree 共享同一个 closure。
   // reviewer MED-1: useCallback 让 reference 稳定跟 statusMap 走，避免 statusMap 没变时
   // 每次 ProjectTree 渲染都新建函数让下游 SessionTree 误重渲染。
@@ -470,7 +508,6 @@ function ProjectTree({
     (sid: string): SessionStatus => statusMap[sid] ?? 'idle',
     [statusMap],
   );
-  const sessionFlags = useAppStore((s) => s.sessionFlags);
   const attentionContext = useMemo<SessionAttentionContext>(
     () => ({
       statusFor,
@@ -505,11 +542,11 @@ function ProjectTree({
     treatAsCurrent: boolean,
     sort?: { readonly index: number; readonly drag: DragSort },
   ): JSX.Element => {
-    const projCanon = canonProjectRootBrowser(proj.path);
     const defaultExpanded = treatAsCurrent;
     const explicit = proj.path in expandedProjects ? expandedProjects[proj.path] : undefined;
     const isExpanded = explicit !== undefined ? explicit : defaultExpanded;
-    const projSessions = sessionsByProject.get(projCanon) ?? [];
+    const projSessions = projectSessions(proj);
+    const isArchivedProject = proj.archived === true;
     const sessionLoadState =
       sessionLoadStateByScope[sessionLoadScopeKey(proj.path, currentSurface)] ??
       (window.kodaxSpace ? 'loading' : 'loaded');
@@ -561,7 +598,7 @@ function ProjectTree({
           <button
             type="button"
             onClick={() => toggleProjectAndRefresh(proj.path, defaultExpanded, isExpanded)}
-            className="text-fg-muted flex-shrink-0"
+            className={`text-fg-muted flex-shrink-0 ${isArchivedProject ? 'opacity-60' : ''}`}
             aria-label={isExpanded ? t('sidebar.collapseProject') : t('sidebar.expandProject')}
             aria-expanded={isExpanded}
           >
@@ -578,7 +615,7 @@ function ProjectTree({
             <button
               type="button"
               onClick={() => toggleProjectAndRefresh(proj.path, defaultExpanded, isExpanded)}
-              className="flex-1 text-left truncate"
+              className={`flex-1 text-left truncate ${isArchivedProject ? 'opacity-60' : ''}`}
               aria-expanded={isExpanded}
             >
               {proj.name}
@@ -602,8 +639,27 @@ function ProjectTree({
               title={t('sidebar.loadingSessions')}
             />
           )}
+          {/* F149: 已归档项目只有取消归档与移除（移除先确认，红色以防误点）。 */}
+          {!isRenaming && isArchivedProject && (
+            <ArchivedItemActions
+              name={proj.name}
+              unarchiveLabel={t('menu.project.unarchive')}
+              deleteLabel={t('menu.project.remove')}
+              onUnarchive={() =>
+                void setProjectArchived(proj, false, t).then((ok) =>
+                  ok ? refreshProjects() : undefined,
+                )
+              }
+              onDelete={() =>
+                void confirmRemoveProject(proj, t).then((ok) =>
+                  ok ? refreshProjects() : undefined,
+                )
+              }
+              className="opacity-0 group-hover/projectrow:opacity-100 group-focus-within/projectrow:opacity-100"
+            />
+          )}
           {/* F132: Codex-aligned project actions — menu first, then new task. */}
-          {!isRenaming && (
+          {!isRenaming && !isArchivedProject && (
             <span
               data-drag-ignore
               className={`flex shrink-0 items-center gap-0.5 transition-opacity ${
@@ -718,8 +774,12 @@ function ProjectTree({
         )}
       </div>
 
-      {archived.length > 0 && (
-        <div className="mt-3 pt-2 border-t border-border-default/40">
+      {archivedCount > 0 && (
+        <section
+          data-testid="sidebar-archived-section"
+          aria-label={t('sidebar.archived')}
+          className="mt-3 pt-2 border-t border-border-default/40"
+        >
           <button
             type="button"
             onClick={() => setArchivedExpanded(!archivedExpanded)}
@@ -728,25 +788,37 @@ function ProjectTree({
           >
             <Caret open={archivedExpanded} />
             <span className="flex-1">
-              {t('sidebar.archived')} ({archived.length})
+              {t('sidebar.archived')} ({archivedCount})
             </span>
             {!archivedExpanded && (
               <ProjectAttentionBadge
-                summary={summarizeSessionAttention(
-                  archived.flatMap((p) =>
-                    (sessionsByProject.get(canonProjectRootBrowser(p.path)) ?? []).map(
-                      (s) => s.sessionId,
-                    ),
-                  ),
-                  attentionContext,
-                )}
+                summary={summarizeSessionAttention(archivedSessionIds, attentionContext)}
               />
             )}
           </button>
           {archivedExpanded && (
-            <div className="opacity-60">{archived.map((proj) => renderProject(proj, false))}</div>
+            <>
+              {archivedTaskGroups.map((group) => (
+                <div key={group.project.path} className="mb-1">
+                  <div
+                    className="truncate px-2 py-1 text-[11px] text-fg-muted"
+                    title={group.project.path}
+                  >
+                    {group.project.name}
+                  </div>
+                  <SessionTree
+                    sessions={group.sessions}
+                    currentSessionId={currentSessionId}
+                    onSelect={onSelect}
+                    scope={{ projectRoot: group.project.path }}
+                    statusFor={statusFor}
+                  />
+                </div>
+              ))}
+              {archived.map((proj) => renderProject(proj, false))}
+            </>
           )}
-        </div>
+        </section>
       )}
 
       {projCtxMenu && (
@@ -778,7 +850,8 @@ function ProjectTree({
           projectName={pickerProject.name}
           projectPath={pickerProject.path}
           surface={currentSurface}
-          sessions={sessionsByProject.get(canonProjectRootBrowser(pickerProject.path)) ?? []}
+          sessions={projectSessions(pickerProject)}
+          includeArchived={pickerProject.archived === true}
           statusFor={statusFor}
           currentSessionId={currentSessionId}
           onSelect={(sid) => {
@@ -825,7 +898,10 @@ interface SessionTreeProps {
   readonly sessions: readonly SessionMeta[];
   readonly currentSessionId: string | null;
   readonly onSelect: (sessionId: string) => void;
-  /** F040: 项目树只渲染该项目未置顶的 session；F149 'pinned' = 置顶区，只渲染置顶的。 */
+  /**
+   * F040: 项目树只渲染该项目未置顶的 session；F149 'pinned' = 置顶区，只渲染置顶的。
+   * 归档与否由调用方先筛好（项目列表 / 底部"已归档"分组）。
+   */
   readonly scope: { readonly projectRoot: string } | 'pinned';
   /** F040: 每行末尾的状态点。idle 不渲染（避免噪音）；缺省整个 sidebar 都不显示状态。 */
   readonly statusFor?: (sessionId: string) => SessionStatus;
@@ -951,9 +1027,8 @@ function SessionTree({
 }: SessionTreeProps): JSX.Element {
   const { t } = useI18n();
   const sessionFlags = useAppStore((s) => s.sessionFlags);
-  const showArchived = useAppStore((s) => s.showArchivedSessions);
 
-  // 每个 SessionTree 只渲染自己项目的 session；归档的默认隐藏，但正打开或仍需要你的照常列出。
+  // 每个 SessionTree 只渲染自己项目的 session。
   // F149: 置顶任务只在置顶区出现。scope 对象每次渲染新建，memo 只依赖它的项目路径。
   const scopeRoot = scope === 'pinned' ? null : scope.projectRoot;
   const visible = useMemo(() => {
@@ -961,18 +1036,8 @@ function SessionTree({
     const inScope = (s: SessionMeta): boolean =>
       (sessionFlags[s.sessionId]?.pinnedAt !== undefined) === (projectCanon === null) &&
       (projectCanon === null || canonProjectRootBrowser(s.projectRoot) === projectCanon);
-    const listed = (s: SessionMeta): boolean =>
-      showArchived ||
-      sessionFlags[s.sessionId]?.archivedAt === undefined ||
-      s.sessionId === currentSessionId ||
-      (statusFor !== undefined &&
-        sessionAttentionKind({
-          status: statusFor(s.sessionId),
-          unread: sessionFlags[s.sessionId]?.unread === true,
-          isCurrent: false,
-        }) !== null);
-    return sessions.filter((s) => inScope(s) && listed(s));
-  }, [sessions, sessionFlags, showArchived, scopeRoot, currentSessionId, statusFor]);
+    return sessions.filter(inScope);
+  }, [sessions, sessionFlags, scopeRoot]);
 
   const rendered = useMemo(
     () =>
@@ -1258,7 +1323,7 @@ function SessionRow({
   );
 }
 
-/** F149: 任务行悬停按钮——置顶 / 归档（已归档只显示取消归档）。不切换当前任务。 */
+/** F149: 任务行悬停按钮——置顶 / 归档；已归档的是取消归档 / 删除（先确认）。不切换当前任务。 */
 function SessionRowActions({
   session,
   flags,
@@ -1273,41 +1338,99 @@ function SessionRowActions({
   const toggle = (flag: 'pinned' | 'archived'): void => {
     void toggleSessionFlagPersisted(session.sessionId, flag, t('sidebar.sessionFlagSaveFailed'));
   };
-  const buttonClass =
-    'inline-flex h-6 w-6 items-center justify-center rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary';
-  const archiveLabel = archived ? t('menu.session.unarchive') : t('menu.session.archive');
+  const hoverClass =
+    'absolute inset-y-0 right-1 opacity-0 group-hover/sessionitem:opacity-100 group-focus-within/sessionitem:opacity-100';
+  if (archived) {
+    return (
+      <ArchivedItemActions
+        name={title}
+        unarchiveLabel={t('menu.session.unarchive')}
+        deleteLabel={t('menu.session.delete')}
+        onUnarchive={() => toggle('archived')}
+        onDelete={() => void confirmDeleteSession(session.sessionId, title, t)}
+        className={hoverClass}
+      />
+    );
+  }
+  const archiveLabel = t('menu.session.archive');
   const pinLabel = pinned ? t('menu.session.unpin') : t('menu.session.pin');
   return (
-    <div className="absolute inset-y-0 right-1 flex items-center gap-0.5 opacity-0 group-hover/sessionitem:opacity-100 group-focus-within/sessionitem:opacity-100">
-      {!archived && (
-        <button
-          type="button"
-          className={buttonClass}
-          aria-label={`${pinLabel}: ${title}`}
-          title={pinLabel}
-          onClick={() => toggle('pinned')}
-        >
-          {pinned ? (
-            <PinOff className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          ) : (
-            <Pin className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          )}
-        </button>
-      )}
+    <div className={`${hoverClass} flex items-center gap-0.5`}>
       <button
         type="button"
-        className={buttonClass}
+        className={ROW_ACTION_BUTTON_CLASS}
+        aria-label={`${pinLabel}: ${title}`}
+        title={pinLabel}
+        onClick={() => toggle('pinned')}
+      >
+        {pinned ? (
+          <PinOff className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        ) : (
+          <Pin className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        )}
+      </button>
+      <button
+        type="button"
+        className={ROW_ACTION_BUTTON_CLASS}
         aria-label={`${archiveLabel}: ${title}`}
         title={archiveLabel}
         onClick={() => toggle('archived')}
       >
-        {archived ? (
-          <ArchiveRestore className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        ) : (
-          <Archive className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        )}
+        <Archive className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
       </button>
     </div>
+  );
+}
+
+const ROW_ACTION_BUTTON_CLASS =
+  'inline-flex h-6 w-6 items-center justify-center rounded-md text-fg-muted hover:bg-hover-bg hover:text-fg-primary';
+
+/**
+ * F149: 已归档任务 / 项目的悬停按钮——取消归档 + 删除（项目为"移除"）。
+ * 删除常驻红色垃圾桶，点击后先弹确认，避免误删。
+ */
+function ArchivedItemActions({
+  name,
+  unarchiveLabel,
+  deleteLabel,
+  onUnarchive,
+  onDelete,
+  className,
+}: {
+  readonly name: string;
+  readonly unarchiveLabel: string;
+  readonly deleteLabel: string;
+  readonly onUnarchive: () => void;
+  readonly onDelete: () => void;
+  readonly className: string;
+}): JSX.Element {
+  return (
+    <span data-drag-ignore className={`flex shrink-0 items-center gap-0.5 ${className}`}>
+      <button
+        type="button"
+        className={ROW_ACTION_BUTTON_CLASS}
+        aria-label={`${unarchiveLabel}: ${name}`}
+        title={unarchiveLabel}
+        onClick={(e) => {
+          e.stopPropagation();
+          onUnarchive();
+        }}
+      >
+        <ArchiveRestore className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </button>
+      <button
+        type="button"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-danger hover:bg-danger/10"
+        aria-label={`${deleteLabel}: ${name}`}
+        title={deleteLabel}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </button>
+    </span>
   );
 }
 
@@ -1493,24 +1616,10 @@ const SIDEBAR_SECTION_HEADING_CLASS =
 
 function RecentsHeader(): JSX.Element {
   const { t } = useI18n();
-  const showArchived = useAppStore((s) => s.showArchivedSessions);
-  const setShowArchived = useAppStore((s) => s.setShowArchivedSessions);
   return (
     <div className={SIDEBAR_SECTION_HEADING_CLASS}>
-      {/* F043 v0.1.9: "Projects" — 项目折叠树。右侧唯一开关：显示已归档的 session。 */}
+      {/* F043 v0.1.9: "Projects" — 项目折叠树。已归档的任务与项目在底部"已归档"分组。 */}
       <span>{t('sidebar.projects')}</span>
-      <button
-        type="button"
-        onClick={() => setShowArchived(!showArchived)}
-        className={`rounded p-0.5 hover:bg-hover-bg hover:text-fg-primary ${
-          showArchived ? 'text-fg-primary bg-hover-bg' : 'text-fg-muted'
-        }`}
-        aria-pressed={showArchived}
-        aria-label={t('sidebar.showArchivedSessions')}
-        title={t('sidebar.showArchivedSessions')}
-      >
-        <Archive className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </button>
     </div>
   );
 }

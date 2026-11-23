@@ -9,6 +9,7 @@ import {
 import { useAppStore } from './appStore.js';
 import { pushToast } from './toastStore.js';
 import { invokeWithTimeout } from '../lib/ipcInvokeWithTimeout.js';
+import { translateMessage } from '../i18n/I18nProvider.js';
 
 type Bridge = NonNullable<Window['kodaxSpace']>;
 type PersistedFlags = Record<string, SessionFlagEntry>;
@@ -56,13 +57,20 @@ export async function changeSessionFlags(
   return false;
 }
 
-/** 切换置顶 / 归档（按当前状态取反），供菜单与行按钮使用。 */
-export function toggleSessionFlagPersisted(
+/**
+ * 切换置顶 / 归档（按当前状态取反），供菜单、快捷键与行按钮使用。
+ * 归档的任务离开项目列表、进侧栏底部"已归档"分组，所以归档成功时提示它去了哪里。
+ */
+export async function toggleSessionFlagPersisted(
   sessionId: string,
   flag: 'pinned' | 'archived',
   failedMessage: string,
 ): Promise<boolean> {
   const entry = useAppStore.getState().sessionFlags[sessionId];
   const on = (flag === 'pinned' ? entry?.pinnedAt : entry?.archivedAt) !== undefined;
-  return changeSessionFlags(sessionId, { [flag]: !on }, failedMessage);
+  const saved = await changeSessionFlags(sessionId, { [flag]: !on }, failedMessage);
+  if (saved && flag === 'archived' && !on) {
+    pushToast(translateMessage('sidebar.taskArchivedHint'), 'success', 3000);
+  }
+  return saved;
 }

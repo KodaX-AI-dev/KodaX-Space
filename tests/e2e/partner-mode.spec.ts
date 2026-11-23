@@ -671,7 +671,12 @@ test('Partner sources can be attached and removed, and deleting the session reco
     // F149: archive first, then delete from the archived list.
     await row.click({ button: 'right' });
     await page.getByRole('menuitem', { name: /^Archive\b/ }).click();
-    await page.getByRole('button', { name: 'Show archived sessions' }).click();
+    // Archived tasks move to the bottom "Archived" section; its fold state persists.
+    const archivedHeader = page
+      .getByTestId('sidebar-archived-section')
+      .getByRole('button', { name: /^Archived/ });
+    if ((await archivedHeader.getAttribute('aria-expanded')) !== 'true')
+      await archivedHeader.click();
     await page
       .getByTestId('sidebar-session-row')
       .filter({ hasText: prompt })

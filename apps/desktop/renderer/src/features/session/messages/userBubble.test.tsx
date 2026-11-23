@@ -136,7 +136,7 @@ test('history references read like composer tokens: no wire prefix, skills by ca
   }
 });
 
-test('a user query is a compact right-aligned bubble with a sender avatar instead of a label row', () => {
+test('a user query is a compact left-aligned bubble led by a sender avatar instead of a label row', () => {
   const markup = withSystemLanguages(['zh-CN'], () =>
     renderToStaticMarkup(
       <I18nProvider>
@@ -144,7 +144,12 @@ test('a user query is a compact right-aligned bubble with a sender avatar instea
       </I18nProvider>,
     ),
   );
-  assert.match(markup, /items-end/);
+  assert.match(markup, /items-start/);
+  assert.doesNotMatch(markup, /items-end|justify-end/);
   assert.match(markup, /data-testid="user-query-label"[^>]*title="你的消息"/);
+  assert.ok(
+    markup.indexOf('data-testid="user-query-label"') < markup.indexOf('conversation-user-content'),
+    'the avatar leads the bubble',
+  );
   assert.doesNotMatch(markup, /border-l-\[3px\]/);
 });

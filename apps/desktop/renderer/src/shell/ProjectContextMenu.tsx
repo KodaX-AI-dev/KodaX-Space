@@ -1,9 +1,9 @@
-import { Archive, ArchiveRestore, FolderOpen, Pencil, Pin, PinOff, X } from 'lucide-react';
+import { Archive, ArchiveRestore, FolderOpen, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
 import type { Project } from '@kodax-space/space-ipc-schema';
 import { openDirectory } from '../lib/openPath.js';
 import { pushToast } from '../store/toastStore.js';
-import { requestConfirm } from '../store/confirmStore.js';
 import { useI18n } from '../i18n/I18nProvider.js';
+import { confirmRemoveProject, setProjectArchived } from './projectActions.js';
 import { SidebarContextMenu, type SidebarContextMenuItem } from './SidebarContextMenu.js';
 import {
   ARCHIVED_PROJECT_CONTEXT_MENU_GROUPS,
@@ -36,36 +36,13 @@ export function ProjectContextMenu({
   const { t } = useI18n();
 
   async function onRemove(): Promise<void> {
-    if (!window.kodaxSpace) return;
-    const confirmed = await requestConfirm({
-      message: t('menu.project.removeConfirm', { name: project.name }),
-      danger: true,
-      confirmLabel: t('menu.project.remove'),
-    });
-    if (!confirmed) return;
     onClose();
-    const result = await window.kodaxSpace.invoke('project.recent.remove', { path: project.path });
-    if (!result.ok || !result.data.removed) {
-      pushToast(t('menu.project.removeFailed'), 'error');
-      return;
-    }
-    pushToast(t('menu.project.removed'), 'info', 1500);
-    await onProjectsChanged();
+    if (await confirmRemoveProject(project, t)) await onProjectsChanged();
   }
 
   async function setArchived(archived: boolean): Promise<void> {
     onClose();
-    if (!window.kodaxSpace) return;
-    const result = await window.kodaxSpace.invoke('project.recent.setArchived', {
-      path: project.path,
-      archived,
-    });
-    if (!result.ok || !result.data.ok) {
-      pushToast(t('menu.project.archiveUpdateFailed'), 'error');
-      return;
-    }
-    pushToast(t(archived ? 'menu.project.archived' : 'menu.project.unarchived'), 'info', 1500);
-    await onProjectsChanged();
+    if (await setProjectArchived(project, archived, t)) await onProjectsChanged();
   }
 
   const pinned = project.pinnedIndex !== undefined;
@@ -114,7 +91,7 @@ export function ProjectContextMenu({
     'remove-project': {
       id: 'remove-project',
       label: t('menu.project.remove'),
-      icon: <X className={ICON_CLASS} strokeWidth={1.75} aria-hidden />,
+      icon: <Trash2 className={ICON_CLASS} strokeWidth={1.75} aria-hidden />,
       danger: true,
       onSelect: () => void onRemove(),
     },

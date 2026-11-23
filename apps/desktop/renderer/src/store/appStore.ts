@@ -760,8 +760,6 @@ interface AppState {
   /** F060 视觉质量档（Liquid Glass 总开关）。持久化到 localStorage。
    *  minimal=实色无模糊 / balanced=玻璃+光标高光（默认）/ full=半透明中央区+更厚玻璃。 */
   visualQuality: VisualQuality;
-  /** 侧栏是否连同已归档的 session 一起显示（默认隐藏，不持久化）。*/
-  showArchivedSessions: boolean;
   /**
    * Transcript view — Claude Desktop 截图 7 同款。
    *   - normal: 默认 (assistant 消息 + tool calls)
@@ -1044,7 +1042,6 @@ interface AppState {
   setSessionFlag(sessionId: string, flag: SessionFlagName, value: boolean): void;
   /** F149: 用主进程的置顶 / 归档标记整体替换本地副本，保留 renderer 内的 unread。*/
   replacePersistedSessionFlags(flags: Readonly<Record<string, SessionFlagEntry>>): void;
-  setShowArchivedSessions(show: boolean): void;
   setTheme(theme: 'dark' | 'light' | 'system'): void;
   /** F060：切视觉质量档。立即应用 <html> class + 写 localStorage。*/
   setVisualQuality(q: VisualQuality): void;
@@ -6511,7 +6508,6 @@ export const useAppStore = create<AppState>((setState) => {
     pendingAgentMode: readPersistedAgentMode(),
     pendingModel: readPersistedModel(),
     sessionFlags: {},
-    showArchivedSessions: false,
     theme:
       (typeof window !== 'undefined' &&
         (localStorage.getItem('kodax-space.theme') as 'dark' | 'light' | 'system' | null)) ||
@@ -9736,7 +9732,6 @@ export const useAppStore = create<AppState>((setState) => {
         };
       }),
 
-    setShowArchivedSessions: (show) => set({ showArchivedSessions: show }),
     setTheme: (theme) => {
       if (typeof window !== 'undefined') {
         try {

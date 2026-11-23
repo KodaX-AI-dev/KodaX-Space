@@ -485,6 +485,13 @@ test('packaged SDK history reports are readable and one bottom arrow reaches the
     ).toHaveCount(0);
     const bottom = space.page.getByRole('button', { name: 'Jump to bottom', exact: true });
     await expect(bottom).toHaveCount(1);
+    // The arrow sits on the conversation's centre line once its pop-in animation settles.
+    const centreOffset = async () => {
+      const [button, pane] = await Promise.all([bottom.boundingBox(), stream.boundingBox()]);
+      if (!button || !pane) return Number.POSITIVE_INFINITY;
+      return Math.abs(button.x + button.width / 2 - (pane.x + pane.width / 2));
+    };
+    await expect.poll(centreOffset).toBeLessThan(2);
     await bottom.click();
     await expect.poll(ids).toEqual(newest);
     await expect

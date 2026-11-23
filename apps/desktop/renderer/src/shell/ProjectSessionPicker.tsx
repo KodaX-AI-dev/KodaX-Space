@@ -20,6 +20,8 @@ interface ProjectSessionPickerProps {
   readonly projectPath: string;
   readonly surface: Surface;
   readonly sessions: readonly SessionMeta[];
+  /** F149: 已归档项目列出全部任务；其余项目的已归档任务在侧栏底部"已归档"分组，不在这里。 */
+  readonly includeArchived: boolean;
   /** 与左侧栏同序：运行中稳定在前，其余按最近活动（sortProjectSessions）。 */
   readonly statusFor: (sessionId: string) => SessionStatus;
   readonly currentSessionId: string | null;
@@ -50,6 +52,7 @@ export function ProjectSessionPicker({
   projectPath,
   surface,
   sessions,
+  includeArchived,
   statusFor,
   currentSessionId,
   onSelect,
@@ -100,15 +103,19 @@ export function ProjectSessionPicker({
     };
   }, [projectPath, surface]);
 
-  // F149: 置顶任务在置顶区，不出现在所属项目的列表里（与左侧栏一致）。
+  // F149: 置顶任务在置顶区、已归档任务在"已归档"分组，都不出现在所属项目的列表里（与左侧栏一致）。
   const sessionFlags = useAppStore((s) => s.sessionFlags);
   const orderedSessions = useMemo(
     () =>
       sortProjectSessions(
-        availableSessions.filter((s) => sessionFlags[s.sessionId]?.pinnedAt === undefined),
+        availableSessions.filter(
+          (s) =>
+            sessionFlags[s.sessionId]?.pinnedAt === undefined &&
+            (includeArchived || sessionFlags[s.sessionId]?.archivedAt === undefined),
+        ),
         statusFor,
       ),
-    [availableSessions, sessionFlags, statusFor],
+    [availableSessions, sessionFlags, statusFor, includeArchived],
   );
 
   // fuzzy filter — query 空时按左侧栏同序；非空跑 fzf-lite

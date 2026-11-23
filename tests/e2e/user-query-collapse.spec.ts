@@ -68,8 +68,8 @@ test('long user queries keep a four-line preview and can expand or collapse in p
           pixelRatio: window.devicePixelRatio,
         };
       });
-      // Queries sit on the right, next to the sender avatar, apart from assistant prose.
-      expect(style.leftGap).toBeGreaterThan(style.rightGap);
+      // Queries sit on the left behind the sender avatar, in the reply's reading column.
+      expect(style.leftGap).toBeLessThan(style.rightGap);
       expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
       await expect(label).toBeInViewport();
       await test.info().attach(`query-${theme}-style.json`, {
