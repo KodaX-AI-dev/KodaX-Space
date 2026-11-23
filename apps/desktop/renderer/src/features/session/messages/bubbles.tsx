@@ -2,7 +2,12 @@ import { ProductItemBody, useProductBodyPreview } from './ProductItemBody.js';
 import { ThinkingText } from './ThinkingText.js';
 import { QueuedInputRecovery } from './QueuedInputRecovery.js';
 import { ProductToolOriginal } from './ProductToolOriginal.js';
-import { LineageDivider } from './LineageDivider.js';
+import {
+  isSdkMarkerNotice,
+  LineageMarker,
+  LocalNoticeMarkerView,
+  SdkNoticeMarker,
+} from './TimelineMarker.js';
 // Bubble + ToolCallCard + SystemNotice 组件集合。
 // 单文件聚合：每个组件 < 80 行，共享 ConversationMessage 类型，拆分反而提高复杂度。
 
@@ -15,6 +20,7 @@ import {
   ChevronRight,
   ChevronUp,
   Copy,
+  CornerDownRight,
   GitFork,
   ImageOff,
   Info,
@@ -610,24 +616,41 @@ export function LocalNoticeBubble({
   content,
   sentAt,
   variant,
+  marker,
 }: Extract<ConversationMessage, { kind: 'local_notice' }>): JSX.Element {
   const { t } = useI18n();
-  const label = t(
-    variant === 'echo' ? 'session.localNoticeSlashLabel' : 'session.localNoticeOutputLabel',
-  );
-  return (
-    <div className="group flex flex-col items-start" data-testid="local-notice-bubble">
+  if (marker) return <LocalNoticeMarkerView marker={marker} />;
+  if (variant === 'echo') {
+    // A command receipt: a compact chip in the composer's token style, not a log box.
+    return (
       <div
-        className={[
-          'inline-block max-w-[88%] rounded-lg border px-3 py-2 text-[12px]',
-          'bg-surface-3/70 border-border-default text-fg-secondary',
-        ].join(' ')}
+        className="group/notice flex items-center gap-2"
+        data-testid="local-notice-bubble"
+        data-notice-variant="echo"
       >
-        <div className="mb-1 text-[10px] font-mono uppercase tracking-[0.12em] text-warn">
-          {label}
+        <span className="inline-flex max-w-[88%] items-center rounded-lg border border-border-default bg-surface-2 px-2.5 py-1 text-xs text-fg-secondary shadow-sm">
+          <span className="sr-only">{t('session.localNoticeSlashLabel')}</span>
+          <span className="min-w-0 whitespace-pre-wrap break-words">
+            <UserMessageContent content={content} />
+          </span>
+        </span>
+        <MessageFooter text={content} sentAt={sentAt} inline />
+      </div>
+    );
+  }
+  return (
+    <div
+      className="group flex flex-col items-start"
+      data-testid="local-notice-bubble"
+      data-notice-variant="output"
+    >
+      <div className="max-w-[88%] overflow-hidden rounded-lg border border-border-default bg-surface-2/60 text-xs">
+        <div className="flex items-center gap-1.5 border-b border-border-default/60 px-3 py-1 text-[11px] text-fg-muted">
+          <CornerDownRight className="h-3 w-3" aria-hidden />
+          {t('session.localNoticeOutputLabel')}
         </div>
-        <div className="font-mono leading-relaxed whitespace-pre-wrap break-words">
-          {variant === 'echo' ? <UserMessageContent content={content} /> : content}
+        <div className="px-3 py-2 font-mono leading-relaxed whitespace-pre-wrap break-words text-fg-secondary">
+          {content}
         </div>
       </div>
       <MessageFooter text={content} sentAt={sentAt} />
@@ -1218,6 +1241,8 @@ export function SystemNotice(message: SystemNoticeMessage): JSX.Element {
   const { t } = useI18n();
   const { variant, text, lineageKind, sentAt } = message;
 
+  if (variant === 'info' && message.icon !== undefined && isSdkMarkerNotice(message.icon, text))
+    return <SdkNoticeMarker icon={message.icon} text={text} />;
   if (variant === 'info')
     return <InformationNotice text={text} sentAt={sentAt} taskResult={message.taskResult} />;
   if (variant === 'lineage' && lineageKind !== undefined) {
@@ -1233,7 +1258,7 @@ export function SystemNotice(message: SystemNoticeMessage): JSX.Element {
               { count: message.omittedItems ?? 0 },
             );
     return (
-      <LineageDivider
+      <LineageMarker
         kind={lineageKind}
         label={label}
         {...(lineageKind === 'branch_summary' && text ? { detail: text } : {})}

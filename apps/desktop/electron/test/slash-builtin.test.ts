@@ -720,6 +720,39 @@ test('/model default remains cleared when Main resumes the persisted Session', a
   assert.equal((await runtimeStore.read(sessionId))?.model, undefined);
 });
 
+test('/model returns a timeline marker naming both models only when the model changes', async () => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: 'C:\\tmp\\proj',
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-6',
+  });
+  const switched = await runCmd('model', sessionId, ['claude-opus-4-7']);
+  assert.deepEqual(switched.marker, {
+    kind: 'model_change',
+    from: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+    to: { provider: 'anthropic', model: 'claude-opus-4-7' },
+  });
+  const unchanged = await runCmd('model', sessionId, ['claude-opus-4-7']);
+  assert.equal(unchanged.ok, true);
+  assert.equal(unchanged.marker, undefined);
+});
+
+test('/compact returns a compaction marker with the measured token counts', async (t) => {
+  const { sessionId } = kodaxHost.createSession({
+    projectRoot: 'C:\\tmp\\proj',
+    provider: 'mock',
+  });
+  t.mock.method(kodaxHost, 'requestCompact', async () => ({
+    ok: true,
+    compacted: true,
+    tokensBefore: 142_000,
+    tokensAfter: 31_000,
+  }));
+  const result = await runCmd('compact', sessionId);
+  assert.equal(result.echo, true);
+  assert.deepEqual(result.marker, { kind: 'compaction', tokensBefore: 142_000, tokensAfter: 31_000 });
+});
+
 test('/model without arg returns usage', async () => {
   const { sessionId } = kodaxHost.createSession({
     projectRoot: 'C:\\tmp\\proj',

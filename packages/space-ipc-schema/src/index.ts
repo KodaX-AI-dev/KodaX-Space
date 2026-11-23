@@ -215,6 +215,8 @@ export {
   type RunningSessionInfoT,
   type SessionHistoryItem,
   type SessionLocalNotice,
+  localNoticeMarkerSchema,
+  type LocalNoticeMarker,
   sessionEventChannel,
   reasoningModeSchema,
   type PermissionMode,

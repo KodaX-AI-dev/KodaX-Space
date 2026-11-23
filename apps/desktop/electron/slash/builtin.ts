@@ -93,6 +93,30 @@ async function commitRuntimeSlashMutation(
   return { ok: false, message: `session not found: ${sessionId}` };
 }
 
+type ModelRef = { provider: string; model?: string };
+
+function sessionModelRef(sessionId: string): ModelRef | undefined {
+  const session = kodaxHost.get(sessionId);
+  if (!session) return undefined;
+  // Name the provider default concretely so the marker reads "A → B", not "A → default".
+  const model = session.model ?? getBuiltin(session.provider)?.defaultModel;
+  return { provider: session.provider, ...(model ? { model } : {}) };
+}
+
+/** A model switch that took effect also returns a timeline marker naming both ends. */
+async function commitModelSlashMutation(
+  sessionId: string,
+  mutate: () => boolean,
+  successMessage: string,
+): Promise<SlashHandlerResult> {
+  const from = sessionModelRef(sessionId);
+  const result = await commitRuntimeSlashMutation(sessionId, mutate, successMessage);
+  const to = sessionModelRef(sessionId);
+  if (!result.ok || !from || !to) return result;
+  if (from.provider === to.provider && from.model === to.model) return result;
+  return { ...result, marker: { kind: 'model_change', from, to } };
+}
+
 function compactSlashMessage(message: string, max = 1900): string {
   if (message.length <= max) return message;
   return `${message.slice(0, max - 12)}\n... truncated`;
@@ -1730,7 +1754,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       // 'default' 清除 override
       const isClear = target === 'default';
       if (isClear) {
-        return commitRuntimeSlashMutation(
+        return commitModelSlashMutation(
           ctx.sessionId,
           () => kodaxHost.setModel(ctx.sessionId, undefined),
           'model -> provider default (cleared override)',
@@ -1750,7 +1774,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
             message: `Unknown model "${targetModel}" for provider ${providerId}.\nAvailable: ${providerInfo.models.join(', ')}`,
           };
         }
-        return commitRuntimeSlashMutation(
+        return commitModelSlashMutation(
           ctx.sessionId,
           () => kodaxHost.setModel(ctx.sessionId, targetModel),
           `model -> ${providerId}/${targetModel} (applies on next send)`,
@@ -1784,7 +1808,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
             message: `Unknown model "${targetModel}" for provider ${targetProvider}.\nAvailable: ${targetProviderInfo.models.join(', ')}`,
           };
         }
-        return commitRuntimeSlashMutation(
+        return commitModelSlashMutation(
           ctx.sessionId,
           () => {
             const providerOk = kodaxHost.setProvider(ctx.sessionId, targetProvider);
@@ -1795,7 +1819,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
       }
 
       if (target === 'mock' || isBuiltinId(target)) {
-        return commitRuntimeSlashMutation(
+        return commitModelSlashMutation(
           ctx.sessionId,
           () => {
             const providerOk = kodaxHost.setProvider(ctx.sessionId, target);
@@ -1824,7 +1848,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
         };
       }
 
-      return commitRuntimeSlashMutation(
+      return commitModelSlashMutation(
         ctx.sessionId,
         () => kodaxHost.setModel(ctx.sessionId, target),
         `model -> ${target} (applies on next send)`,
@@ -2195,6 +2219,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommandDef[] = [
         ok: true,
         message: `Compacted context: ${tokensBefore.toLocaleString('en-US')} → ${tokensAfter.toLocaleString('en-US')} tokens (${reductionPercent.toFixed(1)}% reduction).`,
         echo: true,
+        marker: { kind: 'compaction', tokensBefore, tokensAfter },
       };
     },
   },

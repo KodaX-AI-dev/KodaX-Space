@@ -228,6 +228,12 @@ export function ModelEffortSelector(): JSX.Element {
             return;
           }
           upsertSession({ ...session, provider: providerId, model });
+          if (r.data.marker) {
+            void useAppStore.getState().appendLocalNotice(session.sessionId, r.data.message ?? '', {
+              variant: 'output',
+              marker: r.data.marker,
+            });
+          }
         }
         // The picker also defines the next-Session model preference. Keep this
         // fresh even when the selected model was already active and no slash

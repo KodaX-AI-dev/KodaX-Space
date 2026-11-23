@@ -19,6 +19,7 @@
 // 设计原则：纯函数。给定相同输入产相同输出，便于 useMemo + 单元测试。
 
 import type {
+  LocalNoticeMarker,
   SessionEvent,
   SessionProductItem,
   SpaceRuntimeFailureDetailT,
@@ -50,6 +51,7 @@ export type ConversationMessage =
       content: string;
       sentAt: number;
       variant: 'echo' | 'output';
+      marker?: LocalNoticeMarker;
     }
   | {
       kind: 'queued_user';
@@ -107,6 +109,8 @@ export type ConversationMessage =
       id: string;
       taskResult?: SessionProductItem['taskResult'];
       variant: 'iteration' | 'error' | 'sidecar' | 'workflow' | 'lineage' | 'info';
+      /** SDK display-item glyph (✨ compaction, ⏳ wait, ⚠ warning…); picks the info presentation. */
+      icon?: string;
       /** iteration: "iter 1/30 · 1280 tokens"; error: 错误文本；sidecar: verifier 可读消息；
        *  lineage: fork/rewind branch_summary 或 compaction 的历史提示条（v0.1.x）。
        *  v0.1.x: 'complete' variant 已废弃——assistant bubble footer 自带 "Xd ago"，
@@ -285,6 +289,7 @@ export function composeMessages({
         variant:
           row.notice.variant ??
           (row.notice.content.trimStart().startsWith('/') ? 'echo' : 'output'),
+        ...(row.notice.marker !== undefined ? { marker: row.notice.marker } : {}),
       });
       return;
     }

@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { z } from 'zod';
-import type { SessionLocalNotice } from '@kodax-space/space-ipc-schema';
+import { localNoticeMarkerSchema, type SessionLocalNotice } from '@kodax-space/space-ipc-schema';
 import { getSpaceDataDir } from './data-paths.js';
 import {
   AtomicFileTransactionError,
@@ -27,6 +27,7 @@ const persistedNoticeSchema = z
     content: z.string().max(MAX_LOCAL_NOTICE_TEXT),
     sentAt: z.number().int().nonnegative(),
     variant: z.enum(['echo', 'output']).optional(),
+    marker: localNoticeMarkerSchema.optional(),
   })
   .strict();
 
@@ -79,6 +80,7 @@ function normalizeNotice(notice: SessionLocalNotice): SessionLocalNotice {
     content: notice.content,
     sentAt: notice.sentAt,
     ...(notice.variant !== undefined ? { variant: notice.variant } : {}),
+    ...(notice.marker !== undefined ? { marker: notice.marker } : {}),
   };
 }
 

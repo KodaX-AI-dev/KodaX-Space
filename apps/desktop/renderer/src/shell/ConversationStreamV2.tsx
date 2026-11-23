@@ -39,6 +39,7 @@ import {
 } from '../store/appStore.js';
 import { composeMessages, type ConversationMessage } from '../features/session/composeMessages.js';
 import { projectProductConversation } from '../features/session/productConversation.js';
+import { coalesceModelChangeMarkers } from '../features/session/timelineMarkers.js';
 import { isCancelledNotice } from '../features/session/sessionError.js';
 import {
   useProductSessionTranscript,
@@ -482,6 +483,7 @@ function viewMessagesShareProjection(previous: ViewMessage, next: ViewMessage): 
         next.kind === 'local_notice' &&
         previous.content === next.content &&
         previous.variant === next.variant &&
+        previous.marker === next.marker &&
         previous.sentAt === next.sentAt
       );
     case 'queued_user':
@@ -687,8 +689,10 @@ function estimateRenderItemHeight(
   }
   const message = item.message;
   switch (message.kind) {
-    case 'user':
     case 'local_notice':
+      if (message.marker) return 36;
+      return estimateTextBlockHeight(message.content, 64);
+    case 'user':
     case 'queued_user':
       return estimateTextBlockHeight(message.content, 64);
     case 'assistant_text':
@@ -1121,9 +1125,11 @@ export function ConversationStreamV2(): JSX.Element {
   ]);
   const messages = useMemo(
     () =>
-      productConversation
-        ? decorateProductFailureNotices(eventMessages, runtimeLive, runtimeProfileSession)
-        : appendRuntimeFailureNotices(eventMessages, runtimeLive, runtimeProfileSession),
+      coalesceModelChangeMarkers(
+        productConversation
+          ? decorateProductFailureNotices(eventMessages, runtimeLive, runtimeProfileSession)
+          : appendRuntimeFailureNotices(eventMessages, runtimeLive, runtimeProfileSession),
+      ),
     [eventMessages, runtimeLive, runtimeProfileSession, productConversation],
   );
   const [locatedSearchItem, setLocatedSearchItem] = useState<string | null>(null);
@@ -3789,7 +3795,7 @@ function ThinkingBlock({
       >
         {live ? <span className="tool-pulse-spin" aria-hidden /> : <Caret open={expanded} />}
         <span className="rounded border border-thinking/20 bg-thinking/10 px-1.5 py-0.5 text-thinking/90">
-          {tokenLabel}
+          <span className={live ? 'text-sweep text-sweep--thinking' : undefined}>{tokenLabel}</span>
         </span>
       </button>
       {live && (
@@ -3932,7 +3938,7 @@ function ToolCluster({
             key={live ? cluster.totalTools : 'settled'}
             className={`shrink-0 text-fg-secondary group-hover/receipt:text-fg-primary${live ? ' tool-pulse-count' : ''}`}
           >
-            {label}
+            <span className={live ? 'text-sweep' : undefined}>{label}</span>
           </span>
           {toolNameSummary && (
             <span className="min-w-0 truncate text-fg-faint">

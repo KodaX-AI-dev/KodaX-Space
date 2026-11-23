@@ -28,6 +28,7 @@ import { useI18n } from '../i18n/I18nProvider.js';
 import { useChildAgentLive } from '../store/childAgentLive.js';
 import { childAgentRows } from './childAgentRows.js';
 import { RunMark } from './RunMark.js';
+import { CompactingMarker } from '../features/session/messages/TimelineMarker.js';
 import { ChildAgentLiveRows } from './ChildAgentLiveRows.js';
 import type { MessageKey } from '../i18n/messages.js';
 import {
@@ -968,12 +969,21 @@ export function ActivitySpinner({
   }
   const tail = [elapsedStr, iterStr, tokenStr, liveTokStr, childStr].filter(Boolean).join(' · ');
   const children = childAgentRows(childAgents, Date.now());
+  // Compaction is drawn where its marker will land, so running and settled read as one boundary.
+  if (snap.compacting && !snap.contextCapacity) {
+    return (
+      <div>
+        <CompactingMarker label={statusBase} {...(elapsedStr ? { elapsed: elapsedStr } : {})} />
+        <ChildAgentLiveRows rows={children.rows} overflow={children.overflow} />
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex items-center gap-2 text-xs text-fg-muted font-mono px-1 py-0.5">
         <RunMark size={18} />
-        {showStatus && <span className="text-fg-secondary">{statusBase}</span>}
+        {showStatus && <span className="text-sweep text-fg-secondary">{statusBase}</span>}
         {showStatus && toolBase && (
           <FileNameText
             name={toolBase}

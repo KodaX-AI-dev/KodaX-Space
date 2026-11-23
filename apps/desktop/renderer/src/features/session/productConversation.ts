@@ -160,6 +160,7 @@ function displayItem(
     id: item.id,
     ...body,
     variant: item.type === 'error' ? 'error' : item.type === 'sidecar' ? 'sidecar' : 'info',
+    ...(item.icon !== undefined ? { icon: item.icon } : {}),
     text: item.text,
     taskResult: item.taskResult,
     sentAt: item.timestamp,

@@ -4,7 +4,11 @@
 // 镜像；只镜像 desktop 实际能实现的 handler）。User 命令扫 ~/.kodax/commands/*.md
 // frontmatter (KodaX REPL 兼容路径)，留 F035 完整实现，stub 这里返回 []。
 
-import type { SlashCommandMeta, SlashCommandSource } from '@kodax-space/space-ipc-schema';
+import type {
+  LocalNoticeMarker,
+  SlashCommandMeta,
+  SlashCommandSource,
+} from '@kodax-space/space-ipc-schema';
 
 export interface SlashHandlerContext {
   sessionId: string;
@@ -18,6 +22,8 @@ export interface SlashHandlerResult {
   echo?: boolean;
   /** true → renderer 清空当前 session 的消息流（/clear 专用，独立于 name 匹配）。*/
   clearStream?: boolean;
+  /** A conversation boundary the renderer draws as a timeline marker instead of echoing output. */
+  marker?: LocalNoticeMarker;
 }
 
 export interface SlashCommandDef extends SlashCommandMeta {

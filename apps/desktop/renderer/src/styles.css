@@ -1529,6 +1529,72 @@ html:not(.q-minimal) .copy-pulse {
 html:not(.q-minimal) .notice-in {
   animation: ks-notice-in var(--motion-normal) var(--ease-expo) both;
 }
+/* 时间线 marker：两侧细线从 pill 向外画出，压缩量规从 0 填充到剩余比例。 */
+@keyframes ks-marker-line {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+@keyframes ks-marker-meter {
+  from {
+    transform: scaleX(0);
+  }
+}
+html:not(.q-minimal) .timeline-marker-line {
+  animation: ks-marker-line var(--motion-slow) var(--ease-expo) both;
+}
+.timeline-marker-line--start {
+  transform-origin: right center;
+}
+.timeline-marker-line--end {
+  transform-origin: left center;
+}
+html:not(.q-minimal) .timeline-marker-meter {
+  transform-origin: left center;
+  animation: ks-marker-meter var(--motion-slow) var(--ease-expo) 120ms both;
+}
+/* 进行中文字扫光：只用于"正在发生"的标签（思考、工具运行、压缩中），结束即静止。
+   极简档与减弱动效下整条规则不生效，文字保持原色而不是一张静止渐变。 */
+@keyframes ks-text-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.q-minimal) .text-sweep {
+    --sweep-base: rgb(var(--fg-muted));
+    --sweep-hi: rgb(var(--fg-primary));
+    background-image: linear-gradient(
+      90deg,
+      var(--sweep-base) 0%,
+      var(--sweep-base) 38%,
+      var(--sweep-hi) 50%,
+      var(--sweep-base) 62%,
+      var(--sweep-base) 100%
+    );
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: ks-text-sweep 2.2s ease-in-out infinite;
+  }
+  html:not(.q-minimal) .text-sweep--run {
+    --sweep-base: rgb(var(--run) / 0.6);
+    --sweep-hi: rgb(var(--run));
+  }
+  html:not(.q-minimal) .text-sweep--thinking {
+    --sweep-base: rgb(var(--thinking) / 0.55);
+    --sweep-hi: rgb(var(--thinking));
+  }
+  .tool-pulse-paused .text-sweep {
+    animation-play-state: paused;
+  }
+}
 /* Conversation tail activity indicator: CSS-driven comet ring, no React frame timer. */
 .activity-spinner-comet {
   display: inline-block;
@@ -2472,6 +2538,8 @@ html:not(.q-minimal) .collapse-track {
   html:not(.q-minimal) .reveal-marker,
   html:not(.q-minimal) .copy-pulse,
   html:not(.q-minimal) .notice-in,
+  html:not(.q-minimal) .timeline-marker-line,
+  html:not(.q-minimal) .timeline-marker-meter,
   .activity-spinner-comet,
   .sidebar-status-spinner,
   .sidebar-status-awaiting,

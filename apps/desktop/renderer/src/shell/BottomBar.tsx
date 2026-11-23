@@ -1303,7 +1303,7 @@ export function BottomBar(): JSX.Element {
         );
         return false;
       }
-      const { ok, message, echo, clearStream, unknownCommand } = result.data;
+      const { ok, message, echo, clearStream, unknownCommand, marker } = result.data;
       if (ok && name.toLowerCase() === 'repointel' && args[0]?.toLowerCase() === 'warm')
         useAppStore
           .getState()
@@ -1313,6 +1313,11 @@ export function BottomBar(): JSX.Element {
       }
       if (ok && message?.startsWith('__action__:')) {
         await dispatchSlashAction(sessionId, name, args, message.slice('__action__:'.length));
+        return false;
+      }
+      if (ok && marker) {
+        // The timeline marker states the outcome (A → B, tokens saved); an echo would repeat it.
+        void appendUserMessage(sessionId, message ?? commandEcho, { variant: 'output', marker });
         return false;
       }
       if (echo && message) {

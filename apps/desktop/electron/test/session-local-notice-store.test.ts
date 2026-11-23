@@ -62,6 +62,24 @@ test('SessionLocalNoticeStore appends and restores local slash notices', async (
   ]);
 });
 
+test('SessionLocalNoticeStore keeps a notice timeline marker across restore', async () => {
+  const marker = {
+    kind: 'model_change' as const,
+    from: { provider: 'zhipu', model: 'glm-4.6' },
+    to: { provider: 'anthropic' },
+  };
+  await store.append('s_marker', {
+    id: 'ln_marker',
+    content: 'Model set to anthropic',
+    sentAt: 2000,
+    variant: 'output',
+    marker,
+  });
+  assert.deepEqual(await store.list('s_marker'), [
+    { id: 'ln_marker', content: 'Model set to anthropic', sentAt: 2000, variant: 'output', marker },
+  ]);
+});
+
 test('Space-owned notice is durable before its optional SDK audit append runs', async () => {
   const notice = {
     id: 'ln_audit_success',

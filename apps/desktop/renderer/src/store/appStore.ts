@@ -25,6 +25,7 @@ import {
   type TranscriptUnit,
 } from './transcriptPlanes.js';
 import type {
+  LocalNoticeMarker,
   Project,
   ProviderInfo,
   SessionMeta,
@@ -455,6 +456,14 @@ export interface LocalNoticeMessage {
   readonly content: string;
   readonly sentAt: number;
   readonly variant?: 'echo' | 'output';
+  /** Draws the notice as a timeline marker; `content` stays its plain-text form. */
+  readonly marker?: LocalNoticeMarker;
+}
+
+export interface LocalNoticeOptions {
+  readonly sentAt?: number;
+  readonly variant?: 'echo' | 'output';
+  readonly marker?: LocalNoticeMarker;
 }
 
 export interface WorkflowNoticeMessage {
@@ -946,7 +955,7 @@ interface AppState {
   appendLocalNotice(
     sessionId: string,
     content: string,
-    options?: number | { readonly sentAt?: number; readonly variant?: 'echo' | 'output' },
+    options?: number | LocalNoticeOptions,
   ): Promise<void>;
   restoreLocalNotices(sessionId: string, notices: readonly LocalNoticeMessage[]): void;
   /**
@@ -5368,9 +5377,7 @@ function resolveLiveUserOrdinal(userMessages: readonly UserMessage[], turnId: st
   return maxOrdinal + 1;
 }
 
-function normalizeLocalNoticeOptions(
-  options?: number | { readonly sentAt?: number; readonly variant?: 'echo' | 'output' },
-): { sentAt?: number; variant?: 'echo' | 'output' } {
+function normalizeLocalNoticeOptions(options?: number | LocalNoticeOptions): LocalNoticeOptions {
   if (typeof options === 'number') return { sentAt: options };
   return options ?? {};
 }
@@ -5387,10 +5394,7 @@ function randomLocalNoticeSuffix(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function createLocalNotice(
-  content: string,
-  options?: number | { readonly sentAt?: number; readonly variant?: 'echo' | 'output' },
-): LocalNoticeMessage {
+function createLocalNotice(content: string, options?: number | LocalNoticeOptions): LocalNoticeMessage {
   const normalized = normalizeLocalNoticeOptions(options);
   const sentAt = normalized.sentAt ?? nextLocalTranscriptSentAt();
   lastLocalTranscriptSentAt = Math.max(lastLocalTranscriptSentAt, sentAt);
@@ -5399,6 +5403,7 @@ function createLocalNotice(
     content,
     sentAt,
     variant: normalized.variant ?? defaultLocalNoticeVariant(content),
+    ...(normalized.marker !== undefined ? { marker: normalized.marker } : {}),
   };
 }
 
@@ -7646,6 +7651,7 @@ export const useAppStore = create<AppState>((setState) => {
               content: item.content,
               sentAt: item.sentAt,
               ...(item.variant !== undefined ? { variant: item.variant } : {}),
+              ...(item.marker !== undefined ? { marker: item.marker } : {}),
             });
           } else {
             // A bounded page can begin after a history_truncation in the middle of a turn. Keep

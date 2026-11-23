@@ -13,6 +13,7 @@
 // handler 实现走 Space 自己的 host / store / settings 路径。
 
 import { z } from 'zod';
+import { localNoticeMarkerSchema } from './session.js';
 
 // ---- 命令元数据（discover 输出）----
 //
@@ -83,6 +84,8 @@ export const slashExecChannel = {
     message: z.string().max(2048).optional(),
     echo: z.boolean().optional(),
     clearStream: z.boolean().optional(),
+    /** The command changed a conversation boundary (compaction, model); shown as a timeline marker. */
+    marker: localNoticeMarkerSchema.optional(),
     /**
      * F035 reviewer HIGH-3: 显式 routing 信号——main 找不到 name 对应的 slash command
      * 时 true。renderer 据此走 skill fallback (skill.invoke)，**不**再靠 message

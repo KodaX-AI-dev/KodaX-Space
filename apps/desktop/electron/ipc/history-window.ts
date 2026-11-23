@@ -24,6 +24,7 @@ function toLocalNoticeHistoryItem(notice: SessionLocalNotice): LocalNoticeHistor
     content: notice.content,
     sentAt: notice.sentAt,
     ...(notice.variant !== undefined ? { variant: notice.variant } : {}),
+    ...(notice.marker !== undefined ? { marker: notice.marker } : {}),
   };
 }
 

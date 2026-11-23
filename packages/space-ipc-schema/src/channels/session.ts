@@ -962,11 +962,35 @@ const historyWorkflowNoticeSchema = z.object({
 });
 
 const localNoticeVariantSchema = z.enum(['echo', 'output']);
+const noticeTokenCountSchema = z.number().int().nonnegative().max(10_000_000);
+const noticeModelRefSchema = z.object({
+  provider: z.string().min(1).max(128),
+  /** Absent: the provider's default model. */
+  model: z.string().min(1).max(256).optional(),
+});
+/**
+ * A local notice that marks a conversation boundary instead of printing command output. The
+ * renderer draws it as a timeline marker; `content` stays as the plain-text form for copy/search.
+ */
+export const localNoticeMarkerSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('compaction'),
+    tokensBefore: noticeTokenCountSchema,
+    tokensAfter: noticeTokenCountSchema,
+  }),
+  z.object({
+    kind: z.literal('model_change'),
+    from: noticeModelRefSchema,
+    to: noticeModelRefSchema,
+  }),
+]);
+export type LocalNoticeMarker = z.infer<typeof localNoticeMarkerSchema>;
 const sessionLocalNoticeSchema = z.object({
   id: z.string().min(1).max(128),
   content: z.string().max(MAX_TEXT_CHUNK),
   sentAt: z.number().int().nonnegative(),
   variant: localNoticeVariantSchema.optional(),
+  marker: localNoticeMarkerSchema.optional(),
 });
 export type SessionLocalNotice = z.infer<typeof sessionLocalNoticeSchema>;
 
