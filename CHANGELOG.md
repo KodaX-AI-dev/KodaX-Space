@@ -12,7 +12,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 > v0.1.7 内容 (F011/F023/F024/F026/F038) 跟 v0.1.8 一起发。GitHub Releases 顶部仍是 v0.1.5，
 > 0.1.7 这条 section 留作历史记录、git log 引用入口。
 
-## [Unreleased]
+## [0.1.47-rc.1] - 2026-11-23
 
 ### Changed
 
@@ -27,6 +27,11 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 - A settled tool group's status chip no longer clips its tool tallies, labels or stats. The 30rem cap is gone: the chip fits its content up to the row width, and only the tool-name summary truncates (Issue 255).
 - The "Return to newest messages" button sits on the conversation's centre line again. Its pop-in animation used to override the centring transform and push it right by half its width, which zooming made obvious.
+
+### Documentation and qualification
+
+- Align the baseline docs (READMEs, doc index, feature list, user manual baseline line) with this release candidate: the rc.1 SDK adoption with settled tool groups and the refreshed model catalog, the unified Archived sidebar section (F149), and the compact user query bubbles with the neutral stop notice. The in-app `space_manual` topics, the v0.1.47 design, the F149 test guide and the capability ledger already describe them with the feature commits; the SDK's own `kodax_manual` is never overwritten.
+- This is a release-candidate prerelease; stable remains v0.1.46. Issue 371 history first-read latency, Issue 254 (history paging duplicates during a Run, deferred to the next major version), SDK Repo-intelligence Host gaps and external account/customer-OS acceptance remain explicit limitations, not silently closed items. Qualification is tracked in the [rc.1 readiness record](docs/releases/v0.1.47-rc.1-release-readiness.md).
 
 ## [0.1.47-beta.4] - 2026-11-22
 

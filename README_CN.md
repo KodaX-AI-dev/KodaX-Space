@@ -32,7 +32,7 @@
 
 ### 下载安装包
 
-稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，仍为 `v0.1.46`；本轮预发布目标为 [`v0.1.47-beta.4`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-beta.4)，实际发布与验收状态以[发布记录](docs/releases/v0.1.47-beta.4-release-readiness.md)为准，源码就绪不代表已发布。预发布不替代稳定版更新。
+稳定版安装包见[最新正式发布](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest)，仍为 `v0.1.46`；本轮预发布目标为 [`v0.1.47-rc.1`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-rc.1)，实际发布与验收状态以[发布记录](docs/releases/v0.1.47-rc.1-release-readiness.md)为准，源码就绪不代表已发布。预发布不替代稳定版更新。
 
 | 平台    | 安装包                                            |
 | ------- | ------------------------------------------------- |
@@ -100,7 +100,7 @@ npm run dev
 
 Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS ad-hoc 构建没有 Developer ID 或公证，仍需手动下载 DMG 更新。Partner 经共享 Host 使用 Agent 模式，保留内置库、shell/write/子 Agent 和外部账号验收边界。
 
-见[本次发布准备](docs/releases/v0.1.47-beta.4-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
+见[本次发布准备](docs/releases/v0.1.47-rc.1-release-readiness.md)、[版本设计](docs/features/v0.1.47.md)、[用户手册](docs/USER_MANUAL.zh-CN.md)和[能力台账](docs/KODAX_CAPABILITY_LEDGER.md)。
 
 ## 当前正式版本
 

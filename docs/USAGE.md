@@ -1,5 +1,7 @@
 # KodaX Space 运行与开发指南
 
+> 2026-11-23 发布准备：版本基线更新为 Space `0.1.47-rc.1` / npm Registry `@kodax-ai/kodax@0.7.97-rc.1`（自 beta.13 升级，SDK Issue 433 / Space Issue 255）：任务结束后不再残留“正在运行”的工具卡（扩展内部嵌套工具调用不再单独生成工具项、Run 终态结算残留卡片、重开旧会话移除残留），模型目录与灾备默认模型刷新（Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed、MiMo v2.6）；侧栏归档任务与项目收敛为底部单一 “Archived (N)” 分区，用户查询为紧凑浅蓝气泡、用户停止显示中性提示。发布门见 [rc.1 发布记录](releases/v0.1.47-rc.1-release-readiness.md)；下方 beta.3 发布准备记录保留原语境。
+
 > 2026-11-21 发布准备：版本基线更新为 Space `0.1.47-beta.3` / npm Registry `@kodax-ai/kodax@0.7.97-beta.13`（Stop 收敛 v3：结算未持久化的 Run 以 `actor_settlement_not_persisted` 收尾、Session 自愈期间拒发消息显示 `session_recovering`；集成健康每 2 秒走轻量查询；Session ID 改用 UUIDv7 并以末 8 位标注未命名会话；Settings 技能 ZIP 安装上限 32,768 文件；`@` 文件搜索跟随 `.gitignore`；每个子 Agent 行显示自己的 token、Run 标记稳定显示）；见 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)、[beta.7 适配](releases/kodax-beta7-space-adaptation.md)，发布门见 [beta.3 发布记录](releases/v0.1.47-beta.3-release-readiness.md)；下方 beta.2 发布准备记录保留原语境。
 
 > 2026-11-09 发布准备：版本基线更新为 Space `0.1.47-alpha.5` / npm Registry `@kodax-ai/kodax@0.7.97-beta.4`，四个 workspace 与 lockfile 统一版本。当前公共接口以 [beta.4 适配](releases/kodax-beta4-space-adaptation.md)为准；发布门与验证状态见 [alpha.5 发布记录](releases/v0.1.47-alpha.5-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。

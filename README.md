@@ -32,7 +32,7 @@
 
 ### Download a release
 
-Preview target and release status: [`v0.1.47-beta.4`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-beta.4), subject to the [qualification record](docs/releases/v0.1.47-beta.4-release-readiness.md). Stable downloads remain [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest); prereleases do not replace stable updates.
+Preview target and release status: [`v0.1.47-rc.1`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/tag/v0.1.47-rc.1), subject to the [qualification record](docs/releases/v0.1.47-rc.1-release-readiness.md). Stable downloads remain [`v0.1.46`](https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest); prereleases do not replace stable updates.
 
 | Platform | Package                                                 |
 | -------- | ------------------------------------------------------- |
@@ -100,7 +100,7 @@ npm run dev
 
 Existing sandbox, credential and exit boundaries remain in effect. macOS ad-hoc builds remain unnotarized and require a manual DMG update. Partner uses the shared Host in Agent mode, bundled library and explicit external-account acceptance limits.
 
-See [release preparation](docs/releases/v0.1.47-beta.4-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
+See [release preparation](docs/releases/v0.1.47-rc.1-release-readiness.md), [version design](docs/features/v0.1.47.md), [user manual](docs/USER_MANUAL.zh-CN.md) and [capability ledger](docs/KODAX_CAPABILITY_LEDGER.md).
 
 ## Current Release
 
