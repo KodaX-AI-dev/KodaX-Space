@@ -21,3 +21,22 @@ export function readPendingSessionStops(storage: StopStorage): PendingSessionSto
 export function writePendingSessionStops(storage: StopStorage, records: PendingSessionStops): void {
   storage.setItem(key, JSON.stringify(pendingSchema.parse(records)));
 }
+
+/**
+ * A terminal Run needs no Stop retry: drop its pending records so no stale retry control remains.
+ * Returns the remaining records, or undefined when nothing was settled (storage untouched).
+ */
+export function settlePendingSessionStops(
+  storage: StopStorage,
+  sessionId: string,
+  terminalRunIds: readonly string[],
+): PendingSessionStops | undefined {
+  const records = readPendingSessionStops(storage);
+  const settled = Object.values(records).filter(
+    (request) => request.sessionId === sessionId && terminalRunIds.includes(request.runId),
+  );
+  if (settled.length === 0) return undefined;
+  for (const request of settled) delete records[request.requestId];
+  writePendingSessionStops(storage, records);
+  return records;
+}

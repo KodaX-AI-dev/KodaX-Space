@@ -3,7 +3,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUp, FileText, Folder, Plus, X } from 'lucide-react';
-import { readPendingSessionStops, writePendingSessionStops } from './pendingSessionStop';
+import {
+  readPendingSessionStops,
+  settlePendingSessionStops,
+  writePendingSessionStops,
+} from './pendingSessionStop';
 import {
   MAX_SOURCE_IMAGE_BYTES,
   type ChannelInput,
@@ -603,6 +607,25 @@ export function BottomBar(): JSX.Element {
   const pendingStop = sessionPendingStops.find(
     (request) => request.runId === currentRuntimeStopRunId,
   );
+  const liveTerminalRunId = useAppStore((s) =>
+    currentSessionId
+      ? s.liveProjectionBySession[currentSessionId]?.lastTerminalRun?.runId
+      : undefined,
+  );
+  const profileTerminalRunId = useAppStore((s) =>
+    currentSessionId
+      ? s.runtimeProfile?.sessions.find((session) => session.sessionId === currentSessionId)
+          ?.lastTerminalRun?.runId
+      : undefined,
+  );
+  useEffect(() => {
+    if (!currentSessionId) return;
+    const terminalRunIds = [liveTerminalRunId, profileTerminalRunId].filter(
+      (runId): runId is string => runId !== undefined,
+    );
+    const records = settlePendingSessionStops(localStorage, currentSessionId, terminalRunIds);
+    if (records) setPendingStops(records);
+  }, [currentSessionId, liveTerminalRunId, profileTerminalRunId, pendingStops]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Paste/drop warnings are local to the composer.
   const [imageErr, setImageErr] = useState<string | null>(null);
