@@ -166,7 +166,7 @@ Windows、macOS、Linux 沿用现有沙箱、凭据和退出边界；macOS ad-ho
 | Review workspace   | 用于查看 diff 和文件评审。                                                                                                                                                                                      |
 | Artifact workspace | 用于预览、检查、导出生成产物。                                                                                                                                                                                  |
 | Terminal workspace | 作用域绑定到当前项目的真实 PTY 多 tab 终端。                                                                                                                                                                    |
-| MCP 和 Skills      | KodaX MCP servers 与 skills 的桌面管理和展示入口，并随包提供经审查的 `frontend-slides` 与 `huashu-design` builtin。                                                                                             |
+| MCP 和 Skills      | KodaX MCP servers 与 skills 的桌面管理和展示入口，并随包提供经审查的 `frontend-slides` 等 builtin。                                                                                                             |
 | Memory Governance  | 评审、批准、拒绝、检查 memory proposals 和 approved references。                                                                                                                                                |
 | Partner surface    | 已启用 workspace-first 知识工作界面，提供 Sources、KB、Outputs、checkpoint 写入、Office/PDF 便利生成与本地 policy/audit。                                                                                       |
 | External Agents    | KodaX 0.7.89 Runtime 配置的 Coder Agent 使用独占 Actor owner、durable managed Run 和统一 Actor/Turn 任务；Space Reference Agent 保留主窗口管理和 durable Task Dock 干预路径。MCP Tasks 与受治理 HTTP 继续门控。 |

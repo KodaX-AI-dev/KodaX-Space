@@ -225,7 +225,7 @@ npm run build:linux
 2. `npm run build:smoke` 通过；
 3. pack 自动导入所有 KodaX public facade，按 Node ancestor 规则验证完整传递依赖，确认
    `app.asar.unpacked` 中的 native SQLite，并实际加载 `better-sqlite3`；
-4. `npm run skills:check` 通过，打包后的 Space builtin 文件集/字节与 lock 完全一致，Huashu 三个有序补丁及大小写不敏感的推广签名禁词门禁有效，SDK builtin Markdown 也仍在 `app.asar`；
+4. `npm run skills:check` 通过，打包后的 Space builtin 文件集/字节与 lock 完全一致，大小写不敏感的推广签名禁词门禁有效，SDK builtin Markdown 也仍在 `app.asar`；
 5. Provider、创建会话、发送消息、后台 Session 权限/AskUser、session restore、fork/rewind/compact 完成人工冒烟；
 6. Windows 本地产物由 pack 自动运行真实 `win-unpacked/KodaX Space.exe` boot smoke，
    CI 的 Windows/macOS/Linux 产物均通过对应 package/boot smoke；

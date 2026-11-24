@@ -661,11 +661,11 @@ Runtime owner。
 
 - 用户 Skill：`~/.kodax/skills/`
 - 项目 Skill：`<project>/.kodax/skills/`
-- Space builtin：安装包自带 `frontend-slides` 与 `huashu-design`，应用启动时自动注册，无需复制到用户目录。Space 分发的 Huashu 适配已移除默认推广水印/签名的标记与指令，但仍保留上游 MIT 许可证和作者信息。
+- Space builtin：安装包自带 `frontend-slides`、`feishu-office-suite`、partner-\* 与通用办公/写作类 Skill，应用启动时自动注册，无需复制到用户目录。
 - 在 `/` 补全中调用；重名时使用 `/skill:<name>`。
 - 每个请求只能激活一个显式 Skill；包含多个已注册 Skill 引用时，Space 会在内容展开、Hook 和任务启动前拒绝，并保留原输入供用户修改。
 - 用户/项目 Skill 可按 KodaX 的发现优先级覆盖同名 builtin；覆盖只影响当前发现结果，不会改写安装包内文件。
-- builtin 表示 skill 本体随应用提供，不表示所有可选工具都被嵌入。Huashu 的浏览器、视频、TTS、AI 评审等扩展流程仍可能需要 Node/Python package、Playwright 浏览器、`ffmpeg`、POSIX-compatible shell 或 API 凭据；不使用这些流程时无需准备。
+- builtin 表示 skill 本体随应用提供，不表示所有可选工具都被嵌入。部分 builtin 的扩展流程仍可能需要 Node/Python package、Playwright 浏览器、`ffmpeg`、POSIX-compatible shell 或 API 凭据；不使用这些流程时无需准备。
 - 本机可能存在的 `pdf`、`pptx`、`xlsx`、`docx` skill 不随 Space 分发，因为当前来源许可证禁止复制、修改或再分发。Space 仍可预览这些文件格式；这与是否打包同名 skill 是两件事。
 - `AGENTS.md` 与 markdown agents 提供项目规则和角色，Agent picker 用 `@agent-name` 插入。
 - SDK beta.4 继续将 `~/.kodax/rules/*.md` 和 `<project>/.kodax/rules/*.md` 的 Markdown 片段注入 Host 提示词，规则请在编辑器中修改。Agents → Context 只加载 `AGENTS.md`，并按原路径编辑全局、项目根或 `<project>/.kodax/AGENTS.md`；创建入口不会覆盖已加载的项目根文件，其他来源没有内联写入权限。

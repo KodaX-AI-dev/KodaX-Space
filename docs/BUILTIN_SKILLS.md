@@ -93,16 +93,6 @@ Recommended maintenance policy:
 6. Run the complete release gate on the final candidate. A previously packaged
    snapshot does not validate a newly synchronized tree.
 
-For `huashu-design`, review all three ordered patches on every update:
-
-1. `huashu-design-no-watermark.patch` removes the upstream default watermark
-   contract;
-2. `huashu-design-builtin-portability.patch` replaces machine-specific paths and local
-   assumptions with builtin-relative/configured locations;
-3. `huashu-design-remove-promotional-signatures.patch` removes remaining
-   promotional signatures, corner marks, dangling watermark code or
-   instructions, and replaces demo finales with neutral `YOUR BRAND` examples.
-
 The synchronizer performs a case-insensitive forbidden-text check after all
 patches. An upstream rename or newly introduced signature must stop the update
 for review; do not weaken the scan to make a moving patch pass. The MIT license

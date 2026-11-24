@@ -464,7 +464,6 @@ test('repository builtin snapshot contains the formal Feishu expert skill and de
     'draft-response',
     'feishu-office-suite',
     'frontend-slides',
-    'huashu-design',
     'interview-prep',
     'knowledge-synthesis',
     'onboarding',

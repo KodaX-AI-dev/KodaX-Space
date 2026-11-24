@@ -22,41 +22,6 @@
       ]
     },
     {
-      "name": "huashu-design",
-      "repository": "https://github.com/alchaincyf/huashu-design.git",
-      "ref": "4fc7bfdbd5ec3fa2d43ce7a6433de60976a5e4b1",
-      "installedPath": "huashu-design",
-      "sourceSubdir": ".",
-      "license": {
-        "sourcePath": "LICENSE",
-        "destinationPath": "LICENSE",
-        "sha256": "6d6a2a9caf2e6d2b76974050427053b2892d8aa4c33fd168ce63a537fcee9d96"
-      },
-      "exclude": [
-        ".git/**",
-        ".gitignore",
-        "README.md",
-        "README.en.md",
-        "test-prompts.json"
-      ],
-      "patches": [
-        "builtin-skill-patches/huashu-design-space-adaptation.patch"
-      ],
-      "forbiddenText": [
-        "created by huashu-design",
-        "huashu · design",
-        "huashu<span",
-        "huasheng.ai/huashu-design-hero",
-        "Skill 推广水印",
-        "默认带水印",
-        "动画场景必加",
-        "~/.claude/",
-        "写作/.env",
-        "/path/to/claude-design",
-        "design-philosophy skill"
-      ]
-    },
-    {
       "name": "partner-product-management",
       "sourcePath": "first-party-skills/partner-product-management"
     },

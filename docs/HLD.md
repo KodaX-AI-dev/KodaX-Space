@@ -384,9 +384,8 @@ Skill 继续通过 KodaX public Skill API 与 Space compatibility bridge 管理�
 - UI 提供 Skill 浏览器和安装入口；目录发现/调用保持现有 public Skill bridge
 - 显式 `/<skill>` 或 query 中段 `/skill:<name>` 执行只走一次幂等 `session.send`：Renderer 沿普通发送路径原样提交用户文本与附件，不解析、重建或附带第二份 Skill 意图。Electron main 在同一 admission 内用可信 registry 识别 Skill，保留 token 后的原始参数后缀，执行启动钩子并把结构化 `skillInvocation` 交给 Runtime。Renderer 不接收展开正文、工具策略、路径或 hook 命令；忙碌 Session、未知的明确 Skill 和 fork-context Skill 均事实性拒绝，不降级成普通文本
 - 自然语言触发逻辑在 KodaX；Space 在触发后显示 `skill-active` 标签
-- F135 把 `frontend-slides` 与 `huashu-design` 作为 Space-owned plugin root 注册，并在 UI 中映射为 `builtin`。资源位于安装包 `resources/builtin-skills` 而非 `app.asar`，使 Python/Node/shell/二进制资产获得普通文件系统路径；启动注册 best-effort，单个 builtin 故障不会阻止应用启动；Coder daemon 模式下，Space-owned builtin 目录与 Runtime 目录按名称合并并由 Space builtin 优先去重
+- F135 把 `frontend-slides` 等 Space builtin 作为 Space-owned plugin root 注册，并在 UI 中映射为 `builtin`。资源位于安装包 `resources/builtin-skills` 而非 `app.asar`，使 Python/Node/shell/二进制资产获得普通文件系统路径；启动注册 best-effort，单个 builtin 故障不会阻止应用启动；Coder daemon 模式下，Space-owned builtin 目录与 Runtime 目录按名称合并并由 Space builtin 优先去重
 - builtin 来源由上游 Git revision、许可哈希、Space 补丁和逐文件 SHA-256 lock 固定；同步拒绝许可漂移、symlink、secret/dynamic shell 风险和 release 中的 `installed:` 临时 revision，package smoke 要求文件集与字节完全一致
-- `huashu-design` 依次应用 no-watermark、builtin portability、remaining-signature-removal 三个可审查补丁；分发默认不含推广水印/签名标记、指令或悬空代码，但保留上游 MIT 许可与作者信息。其可选浏览器/视频/TTS/AI-review pipeline 仍由外部依赖和凭据提供，不伪装成安装包已内嵌能力
 - 本地 `pdf`/`pptx`/`xlsx`/`docx` skill 的当前许可不允许再分发，因此不进入 Space builtin；文件预览/现有 Office writer 与是否分发同名 skill 是独立能力
 
 Space 将 plugin-root 内容标成 `builtin` 只是产品来源分类，不降低信任边界：权限、
