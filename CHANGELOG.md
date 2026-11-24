@@ -40,6 +40,10 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 - Align the baseline docs (READMEs, PRD, doc index, feature list, version design, detailed design, usage, user manual, known issues, capability ledger) with this release candidate: the rc.2 SDK adoption with the git-only default RepoIntel and the "Git" Repointel chip, the timeline markers with the live text sweep, and the message footers that appear on message hover. The in-app `space_manual` topics are rewritten as a current product reference with the SDK adoption; the SDK's own `kodax_manual` is never overwritten.
 - This is a release-candidate prerelease; stable remains v0.1.46. Issue 371 history first-read latency, Issue 254 (history paging duplicates during a Run, deferred to the next major version), SDK Repo-intelligence Host gaps and external account/customer-OS acceptance remain explicit limitations, not silently closed items. Qualification is tracked in the [rc.2 readiness record](docs/releases/v0.1.47-rc.2-release-readiness.md).
 
+### Known issues
+
+- On macOS, opening the transcript search before a newly opened Session has scrolled to its newest messages, then closing it, returns the transcript to the top instead of the newest messages; "Return to newest messages" brings it back. Seen in the packaged macOS ARM acceptance of this release (Issue 256); Windows, macOS Intel and Linux passed the same case.
+
 ## [0.1.47-rc.1] - 2026-11-23
 
 ### Changed

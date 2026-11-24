@@ -48,6 +48,7 @@ Last Updated: 2026-11-24
 | 253 | Medium   | Resolved in 0.1.47-beta.3                                                                                    | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                 | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                      | 2026-11-19 |
 | 254 | Medium   | Deferred to the next major version                                                                           | During a Run, browsing older history can show a message twice, hide it briefly or place it out of order                                                                                     | KodaX 0.7.97 history pages / product view; Space 0.1.47                               | 2026-11-21 |
 | 255 | Medium   | Resolved in 0.1.47-rc.1                                                                                      | A finished task still shows tool cards as running, and the settled tool-group chip clips its tallies                                                                                        | SDK 0.7.97 extension nested tool calls; Space 0.1.30 receipt width cap                | 2026-11-22 |
+| 256 | Medium   | ready - root cause traced on the macOS runner; fix not in 0.1.47-rc.2                                        | Closing the transcript search can leave macOS at the top of the live view instead of the newest messages                                                                                    | Space 0.1.47-rc.2 packaged macOS ARM acceptance; not seen through rc.1                | 2026-11-24 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -2911,16 +2912,64 @@ retryDelay: 200` and logs a failure through `console.warn` (captured by the diag
   `apps/desktop/electron/test/kodax-runtime-compat.test.ts`, `tests/e2e/sdk-provider-fixture.ts`,
   `tests/e2e/nested-tool-call.spec.ts`, `tests/e2e/conversation-receipts-scroll.spec.ts`.
 
+## Issue 256 — Closing the transcript search can leave macOS at the top of the live view instead of the newest messages
+
+- **Priority**: Medium (the visible "Return to newest messages" button recovers; observed on macOS only).
+- **Status**: ready — root cause traced on the macOS runner; the fix is not part of 0.1.47-rc.2.
+- **Introduced**: first seen in the packaged macOS ARM acceptance of Space 0.1.47-rc.2 (SDK 0.7.97-rc.2); the
+  same acceptance passed on the same runner image for 0.1.47-beta.1 through rc.1.
+- **Created**: 2026-11-24.
+- **Original problem**: after a saved-history search locates results outside the live window and the reader
+  returns to the results, pressing Escape to close the search can leave the transcript at the top of the
+  live view ("Browse history messages" above its first rows) with "Return to newest messages" shown,
+  instead of returning to the newest messages where the search started.
+- **Reproduction**: `tests/e2e/sdk-history-navigation.spec.ts:309` "saved history search locates a question
+  outside the live window and restores the selected result" against the packaged app on GitHub's
+  `macos-latest` runner (macos-26-arm64, image 20261117.0516.1). Release run 45299294645 failed it on all
+  three attempts of the first macOS ARM acceptance job and on the first attempt of that job's re-run; it
+  passed on the re-run's retry (31 passed, 1 flaky). Windows, macOS Intel and Ubuntu passed all 32 cases
+  without a retry in the same run, as did the four source E2E shards. The assertion is
+  `expect(stream).toContainText('HISTORY_ANSWER_259')` after Escape; the captured page shows the mounted
+  rows `HISTORY_ANSWER_220`–`HISTORY_QUESTION_222` under the browse button.
+- **Context**: not reproduced locally on Windows against the packaged 0.1.47-rc.2 build, neither with the
+  1024×677 viewport of the macOS runner (24 runs) nor with 4×, 8× and 20× CPU throttling; a frame trace there
+  shows the live window mounting its first rows for one frame after the restore and the view returning to
+  the bottom on the next frame. The rc.2 renderer changes do not touch the search, scroll or windowing
+  paths (`closeSearch`, `returnFromLocatedSearch` and `useTranscriptWindow` are unchanged since rc.1), so
+  the trigger is not identified; the timing of the Host's live-view updates after `located.restore()` and
+  macOS scroll behaviour are candidates.
+- **Root cause** (three instrumented runs of the case on that runner, 52 repeats, 17 failures:
+  [45310778094](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/45310778094),
+  [45313727077](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/45313727077),
+  [45317430572](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/45317430572), branch
+  `diag/rc2-macos-search-return`): when a Session opens, the newest rows are mounted while the scroller is
+  still at the top, and the follow to the bottom runs in a later animation frame. On the loaded macOS runner
+  that frame comes 300–650 ms late, and the case presses Ctrl+F before it. `rememberScrollSnapshot` then
+  records `scrollTop` 0 with `atBottom: false`. The transcript does reach the bottom during the locate and
+  return steps, but `closeSearch` restores the position captured at Ctrl+F: the anchor row is no longer
+  mounted, so `restoreScrollSnapshot` falls back to the scroll ratio 0 and writes `scrollTop` 0. The
+  assertion before Ctrl+F only requires the newest message to be in the DOM, which windowing satisfies
+  before the reader is at the bottom. Nothing in the browser scrolls: every jump is an application write
+  (`ConversationStreamV2.tsx` `restoreScrollSnapshot` and `restoreViewportScrollAnchor`). The search, scroll
+  and windowing code is unchanged since rc.1, whose single run on the same image passed; whether rc.1 is
+  merely luckier there is not established. Not reproduced on Windows in 24 local runs against the packaged
+  build, including the macOS viewport and 4×–20× CPU throttling.
+- **Missing information**: a manual check on an Intel Mac (its single acceptance run passed).
+- **Proposed solution**: the spec waits until the scroller is at the bottom before pressing Ctrl+F;
+  separately, `closeSearch` should not restore a position captured before the
+  transcript's first follow when the reader is at the bottom when the search closes. Until then,
+  "Return to newest messages" brings the transcript back.
+
 ## Summary
 
-- Total: 32
+- Total: 33
 - Open: 2
-- Ready: 4
+- Ready: 5
 - In Progress: 11
 - Resolved, awaiting release or verification: 13
 - Other (partially fixed / under investigation): 2
 - High: 15
-- Medium: 15
+- Medium: 16
 - Low: 2
 - Next ready to resolve: 222
 - Archived (resolved and delivered): see [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md)
