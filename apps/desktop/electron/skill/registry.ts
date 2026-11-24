@@ -135,33 +135,6 @@ export function toSkillMeta(
 export type SkillMeta = ReturnType<typeof toSkillMeta>;
 
 /**
- * Merge independently discovered skill catalogs without duplicate slash rows.
- *
- * `preferred` is intentionally emitted first and wins by name. The daemon
- * catalog is authoritative for runtime-owned skills, while Space-owned
- * builtins are preferred so the item shown by the Composer resolves through
- * the same local registry used by `skill.invoke`.
- */
-export function mergeSkillMetas(
-  preferred: readonly SkillMeta[],
-  fallback: readonly SkillMeta[],
-  limit = 256,
-): SkillMeta[] {
-  if (limit <= 0) return [];
-  const names = new Set<string>();
-  const merged: SkillMeta[] = [];
-  for (const catalog of [preferred, fallback]) {
-    for (const skill of catalog) {
-      if (names.has(skill.name)) continue;
-      names.add(skill.name);
-      merged.push(skill);
-      if (merged.length >= limit) return merged;
-    }
-  }
-  return merged;
-}
-
-/**
  * 预扫 skill content 是否含 `` !`...` `` dynamic-context 模板（SDK VariableResolver
  * 会用 execSync 跑这些命令）。alpha.1 阶段一律拒绝——SDK execSync 完全绕过 F029/F030
  * permission broker，等同于"任意 SKILL.md 都能拿主进程 fs/network 权限"，违反 KodaX Space
