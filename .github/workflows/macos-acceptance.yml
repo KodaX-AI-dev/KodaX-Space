@@ -73,7 +73,7 @@ jobs:
           set -euo pipefail
           npm run e2e:run -- \
             tests/e2e/zz-diag-search-return.spec.ts \
-            --retries=0 --repeat-each=12 | tee macos-acceptance-evidence/packaged-tests.log
+            --retries=0 --repeat-each=20 | tee macos-acceptance-evidence/packaged-tests.log
       - name: Summarize E2E attempts
         if: always()
         run: node scripts/ci-report.mjs
