@@ -10,7 +10,7 @@
 #   - Linux:    out/KodaX-Space-${version}-x86_64.AppImage (AppImage, x64)
 #               out/KodaX-Space-${version}-amd64.deb       (deb, x64)
 #
-# 体积目标：< 200 MB（asar 压缩 + 排除 test/cache/source map）
+# 体积目标：< 200 MB（排除 test/cache/source map 与运行时不用的依赖；Electron 本体约占一半）
 
 appId: ai.kodax.space
 productName: KodaX Space
@@ -52,17 +52,13 @@ files:
   # Ship the complete runtime chain through extraResources instead.
   - '!**/node_modules/@anthropic-ai/sandbox-runtime/**'
   - 'package.json'
-  # KodaX builtin skills are runtime resources, not documentation. Restore
-  # SKILL.md plus Markdown support files after the broad Markdown exclusion
-  # below; otherwise development discovers them but packaged apps do not.
-  - from: node_modules/@kodax-ai/kodax/dist/builtin
-    to: node_modules/@kodax-ai/kodax/dist/builtin
-    filter:
-      - '**/*.{md,markdown}'
-  - from: node_modules/@kodax-ai/kodax/dist/artifacts/skills
-    to: node_modules/@kodax-ai/kodax/dist/artifacts/skills
-    filter:
-      - '**/*.{md,markdown}'
+  # pdfjs-dist lists @napi-rs/canvas (~36 MB native Skia) only as an optional
+  # dependency for rendering pages inside Node. Nothing here does that: the SDK
+  # injects build/pdf.mjs into a Chromium page as text, and Space's source
+  # extraction worker bundles the standard build for text only. The legacy/
+  # build is unused for the same reason.
+  - '!**/node_modules/@napi-rs/canvas*/**'
+  - '!**/node_modules/pdfjs-dist/legacy/**'
   - '!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,HISTORY.md,LICENSE,license,*.d.ts.map}'
   - '!**/node_modules/.cache/**'
   # 只排除 100% 测试框架约定目录（jest 的 __tests__/__mocks__，永不属于运行时）。
@@ -83,6 +79,22 @@ files:
   - '!**/.env.*'
   - '!**/*.{key,pem}'
   - '!**/{credentials,secrets}.json'
+  # KodaX builtin skills are runtime resources, not documentation. Restore
+  # SKILL.md plus Markdown support files after the broad Markdown exclusion
+  # above; otherwise development discovers them but packaged apps do not.
+  # ⚠️ Keep these from/to entries LAST. electron-builder groups string patterns
+  # that follow a from/to entry into a separate set and merges that set AHEAD of
+  # the earlier patterns, so every exclusion above would sit before the
+  # dist-electron / apps/desktop/dist includes and be re-included by them (this
+  # once shipped ~44 MB of renderer source maps).
+  - from: node_modules/@kodax-ai/kodax/dist/builtin
+    to: node_modules/@kodax-ai/kodax/dist/builtin
+    filter:
+      - '**/*.{md,markdown}'
+  - from: node_modules/@kodax-ai/kodax/dist/artifacts/skills
+    to: node_modules/@kodax-ai/kodax/dist/artifacts/skills
+    filter:
+      - '**/*.{md,markdown}'
 
 asar: true
 

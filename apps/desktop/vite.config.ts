@@ -15,7 +15,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: true,
+    // Match the main bundle (build-main.mjs): production builds ship no source maps.
+    sourcemap: false,
     target: 'es2022',
   },
   // F011: xterm.js 是 CJS-only 包 (no module field)。预声明让 vite 首次启动就预优化，

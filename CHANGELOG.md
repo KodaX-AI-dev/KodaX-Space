@@ -12,6 +12,17 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 > v0.1.7 内容 (F011/F023/F024/F026/F038) 跟 v0.1.8 一起发。GitHub Releases 顶部仍是 v0.1.5，
 > 0.1.7 这条 section 留作历史记录、git log 引用入口。
 
+## [Unreleased]
+
+### Removed
+
+- Stop shipping the `huashu-design` builtin Skill. It was a pinned upstream snapshot that was no longer kept in sync, and its bundled background-music and specimen assets added about 37 MB to every installer. Users who want it can install it as a user or project Skill.
+
+### Fixed
+
+- Installer exclusions now apply to the app's own build output. electron-builder had moved them ahead of the `dist-electron` and `apps/desktop/dist` includes, so about 44 MB of renderer source maps shipped in `app.asar`. The renderer production build also stops emitting source maps, matching the main bundle.
+- Stop packaging `@napi-rs/canvas` (an optional pdfjs dependency, about 36 MB of native Skia) and the unused `pdfjs-dist/legacy` build. PDF rendering runs PDF.js inside Chromium, and PDF text extraction never draws a page. With the `huashu-design` removal, the Windows installer drops from 215 MB to 157 MB.
+
 ## [0.1.47-rc.2] - 2026-11-24
 
 ### Changed
