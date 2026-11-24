@@ -19,10 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15-intel
-            arch: x64
-            unpacked: mac
-          - os: macos-15
+          # Diagnostic branch: match the release workflow's failing runner (macos-26-arm64).
+          - os: macos-latest
             arch: arm64
             unpacked: mac-arm64
     steps:
@@ -39,25 +37,7 @@ jobs:
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
       - run: npm run build:packages
       - run: node scripts/ensure-sqlite-native.mjs node
-      - name: Native credential Git and notification regressions
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p macos-acceptance-evidence
-          node --test --test-timeout=120000 --test-concurrency=1 \
-            --import ./scripts/test/isolated-credential-profile.mjs --import tsx \
-            apps/desktop/electron/providers/file-credentials.native.test.ts \
-            apps/desktop/electron/providers/file-credentials.test.ts \
-            apps/desktop/electron/providers/file-credentials.upgrade.test.ts \
-            apps/desktop/electron/providers/legacy-discovery.test.ts \
-            apps/desktop/electron/providers/legacy-storage-retry.test.ts \
-            apps/desktop/electron/providers/provider-storage.test.ts \
-            apps/desktop/electron/test/windows-credential-migration.test.ts \
-            apps/desktop/electron/kodax/runtime/runtime-client-secret-file.test.ts \
-            apps/desktop/electron/kodax/git-install-prompt.test.ts \
-            apps/desktop/electron/window/app-badge.test.ts \
-            scripts/test/mac-notification-package.test.mjs \
-            | tee macos-acceptance-evidence/native-tests.tap
+      - run: mkdir -p macos-acceptance-evidence
       - name: Build macOS installer
         run: npm run build:mac:${{ matrix.arch }}
         env:
@@ -92,25 +72,8 @@ jobs:
         run: |
           set -euo pipefail
           npm run e2e:run -- \
-            tests/e2e/renderer-boot.spec.ts \
-            tests/e2e/provider-file-credentials.spec.ts \
-            tests/e2e/native-notifications.spec.ts \
-            tests/e2e/settings-navigation.spec.ts \
-            tests/e2e/startup-overlay.spec.ts \
-            tests/e2e/composer-tokens.spec.ts \
-            tests/e2e/window-throttling.spec.ts \
-            tests/e2e/sdk-work-mode.spec.ts \
-            tests/e2e/sdk-beta1-adaptation.spec.ts \
-            tests/e2e/sdk-beta3-adaptation.spec.ts \
-            tests/e2e/sdk-unified-contract.spec.ts \
-            tests/e2e/sdk-product-output.spec.ts \
-            tests/e2e/sdk-restored-history.spec.ts \
-            tests/e2e/sdk-history-navigation.spec.ts \
-            tests/e2e/sdk-alpha11-lifecycle.spec.ts \
-            tests/e2e/sdk-ui-contract-acceptance.spec.ts \
-            tests/e2e/sdk-migration-gaps.spec.ts \
-            tests/e2e/partner-bundled.spec.ts \
-            --retries=0 | tee macos-acceptance-evidence/packaged-tests.log
+            tests/e2e/zz-diag-search-return.spec.ts \
+            --retries=0 --repeat-each=12 | tee macos-acceptance-evidence/packaged-tests.log
       - name: Summarize E2E attempts
         if: always()
         run: node scripts/ci-report.mjs
