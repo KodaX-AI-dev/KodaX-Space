@@ -4,23 +4,36 @@
 // URL, then pdfjs starts it internally. The viewer renders PDFs as a continuous
 // vertical document with lazy-rendered page canvases so Artifact/Preview reading
 // stays fluid without keeping every page canvas in memory.
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { base64ToBytes } from './binaryUtils.js';
 import { isPdfPageCountSupported, PDF_MAX_PAGE_COUNT } from './pdfPreviewLimits.js';
+import { pdfScrollTopForPage } from './pdfScrollNavigation.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
+import { PreviewUnavailable } from './PreviewUnavailable.js';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const PDF_MAX_SCALE = 1.25;
 const PDF_MIN_SCALE = 0.2;
 const PDF_PAGE_GUTTER = 32;
+const PDF_PAGE_SCROLL_MARGIN = 16;
 const DEFAULT_PAGE_SIZE = { width: 760, height: 980 } as const;
 
 interface Props {
   readonly base64: string;
+  /** Rendered under the error message, e.g. "open with default app". */
+  readonly fallbackAction?: ReactNode;
 }
 
 interface PageSize {
@@ -119,12 +132,13 @@ function PdfPageCanvas({
   );
 }
 
-export function PdfViewer({ base64 }: Props): JSX.Element {
+export function PdfViewer({ base64, fallbackAction }: Props): JSX.Element {
   const { t } = useI18n();
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const pageElementsRef = useRef<Map<number, HTMLDivElement>>(new Map());
   const scrollFrameRef = useRef<number | null>(null);
+  const programmaticScrollRef = useRef(false);
   const [doc, setDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -229,26 +243,28 @@ export function PdfViewer({ base64 }: Props): JSX.Element {
 
   const updateCurrentPageFromScroll = useCallback(() => {
     const scroller = scrollerRef.current;
-    if (scroller === null || totalPages <= 0) return;
+    // While a button/keyboard jump is animating, the requested page wins;
+    // the center-of-viewport heuristic would otherwise snap it back.
+    if (scroller === null || programmaticScrollRef.current) return;
 
     const containerRect = scroller.getBoundingClientRect();
     const viewportCenter = containerRect.top + scroller.clientHeight * 0.48;
-    let nextPage = pageNum;
+    let nextPage: number | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
 
-    pageElementsRef.current.forEach((element, pageNumber) => {
+    for (const [pageNumber, element] of pageElementsRef.current) {
       const rect = element.getBoundingClientRect();
-      if (rect.bottom < containerRect.top || rect.top > containerRect.bottom) return;
+      if (rect.bottom < containerRect.top || rect.top > containerRect.bottom) continue;
       const pageCenter = rect.top + rect.height / 2;
       const distance = Math.abs(pageCenter - viewportCenter);
       if (distance < bestDistance) {
         bestDistance = distance;
         nextPage = pageNumber;
       }
-    });
+    }
 
-    setPageNum((current) => (current === nextPage ? current : nextPage));
-  }, [pageNum, totalPages]);
+    if (nextPage !== null) setPageNum(nextPage);
+  }, []);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -261,12 +277,24 @@ export function PdfViewer({ base64 }: Props): JSX.Element {
         updateCurrentPageFromScroll();
       });
     };
+    const endProgrammaticScroll = (): void => {
+      programmaticScrollRef.current = false;
+    };
+    const userScrollEvents = ['wheel', 'touchstart', 'pointerdown'] as const;
 
     scroller.addEventListener('scroll', scheduleUpdate, { passive: true });
+    scroller.addEventListener('scrollend', endProgrammaticScroll);
+    for (const name of userScrollEvents) {
+      scroller.addEventListener(name, endProgrammaticScroll, { passive: true });
+    }
     scheduleUpdate();
 
     return () => {
       scroller.removeEventListener('scroll', scheduleUpdate);
+      scroller.removeEventListener('scrollend', endProgrammaticScroll);
+      for (const name of userScrollEvents) {
+        scroller.removeEventListener(name, endProgrammaticScroll);
+      }
       if (scrollFrameRef.current !== null) {
         window.cancelAnimationFrame(scrollFrameRef.current);
         scrollFrameRef.current = null;
@@ -322,10 +350,22 @@ export function PdfViewer({ base64 }: Props): JSX.Element {
       const pageElement = pageElementsRef.current.get(targetPage);
       if (scroller === null || pageElement === undefined) return;
 
-      scroller.scrollTo({
-        top: Math.max(0, pageElement.offsetTop - 16),
-        behavior,
+      // Measure against the scroller viewport: offsetTop is relative to an outer
+      // positioned ancestor and overshoots by the toolbar height.
+      const top = pdfScrollTopForPage({
+        scrollTop: scroller.scrollTop,
+        pageOffsetInViewport:
+          pageElement.getBoundingClientRect().top - scroller.getBoundingClientRect().top,
+        clientHeight: scroller.clientHeight,
+        scrollHeight: scroller.scrollHeight,
+        margin: PDF_PAGE_SCROLL_MARGIN,
       });
+      // Already there (e.g. last pages clamped at document bottom): no scroll
+      // event will fire, so keep the requested page without suppressing.
+      if (Math.abs(top - scroller.scrollTop) < 1) return;
+
+      programmaticScrollRef.current = true;
+      scroller.scrollTo({ top, behavior });
     },
     [totalPages],
   );
@@ -382,7 +422,7 @@ export function PdfViewer({ base64 }: Props): JSX.Element {
   }, []);
 
   if (err !== null) {
-    return <div className="p-3 text-xs text-danger">{err}</div>;
+    return <PreviewUnavailable tone="danger" message={err} action={fallbackAction} />;
   }
   if (busy || doc === null) {
     return <div className="p-3 text-xs text-fg-muted">{t('preview.loadingPdf')}</div>;

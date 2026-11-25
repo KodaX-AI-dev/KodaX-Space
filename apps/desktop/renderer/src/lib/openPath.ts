@@ -274,6 +274,31 @@ export async function openDirectory(
   }
 }
 
+/** File Viewer fallback: open an allowlisted document/media file with the OS default app. */
+export async function openFileWithSystem(
+  rawPath: string,
+  projectRoot?: string | null,
+): Promise<boolean> {
+  const bridge = window.kodaxSpace;
+  if (!bridge) return false;
+  try {
+    const r = await bridge.invoke(
+      'shell.openFile',
+      projectRoot ? { path: rawPath, projectRoot } : { path: rawPath },
+    );
+    if (r.ok && r.data.opened) return true;
+    if (r.ok && r.data.reason === 'not-allowed') {
+      pushToast(translateMessage('openPath.pathNotAllowed'), 'warning');
+      return false;
+    }
+    pushToast(translateMessage('openPath.systemOpenFailed'), 'error');
+    return false;
+  } catch {
+    pushToast(translateMessage('openPath.systemOpenFailed'), 'error');
+    return false;
+  }
+}
+
 /** Load one allowed project file into a transient File Viewer snapshot. */
 export async function loadFileViewerSnapshot(
   rawPath: string,

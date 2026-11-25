@@ -6,9 +6,10 @@
 //   - shell.revealPath   → shell.showItemInFolder：在系统文件管理器里定位高亮该文件。
 //   - shell.openExternal → shell.openExternal：用系统浏览器打开 http(s) URL。
 //
-// 为什么只做 reveal + openExternal，不做 shell.openPath（用默认程序打开任意文件）：
+// 为什么不开放"用默认程序打开任意文件"：
 //   showItemInFolder 只是"在 Explorer/Finder 里选中"——**永不执行**目标，哪怕它是 .exe。
-//   openPath 会用 OS 默认程序打开，对 .exe / .bat 等于执行，是 RCE 面，故本版不开。
+//   openPath 会用 OS 默认程序打开，对 .exe / .bat 等于执行，是 RCE 面。因此 shell.openFile
+//   只放行固定的文档/媒体扩展名白名单（见下），shell.openDirectory 只放行目录。
 //   "在 App 内预览网页" 走 File Viewer 的 files.read（沙盒 iframe），不碰 shell。
 //
 // 安全：
@@ -63,6 +64,71 @@ export const shellOpenDirectoryChannel = {
   }),
   output: z.object({
     opened: z.boolean(),
+  }),
+} as const;
+
+// ---- Invoke: shell.openFile ----
+//
+// Fallback when the in-app File Viewer cannot show a file (too large, parse failure):
+// hand an allowlisted document/media file to the OS default app. Same path allowlist as
+// shell.revealPath, plus main-side guards that keep this from becoming an execution
+// surface: the target must be a regular file AND its extension must be on a fixed
+// document/media allowlist (no .exe/.bat/.lnk/.html, no macro-enabled Office formats).
+// Document/media types the File Viewer previews. Deliberately excludes executables,
+// shortcuts, scripts, HTML/SVG (browser script) and macro-capable Office formats.
+const SYSTEM_OPEN_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
+  'pdf',
+  'docx',
+  'xlsx',
+  'pptx',
+  'ppsx',
+  'potx',
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'bmp',
+  'ico',
+  'avif',
+  'mp4',
+  'm4v',
+  'mov',
+  'webm',
+  'ogv',
+  'mkv',
+  'avi',
+  'mp3',
+  'wav',
+  'm4a',
+  'aac',
+  'flac',
+  'opus',
+  'ogg',
+  'oga',
+  'txt',
+  'md',
+  'log',
+  'json',
+]);
+
+/** Shared by renderer (show the button) and main (enforce): may shell.openFile open this path? */
+export function isSystemOpenableFilePath(filePath: string): boolean {
+  const base = filePath.slice(Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')) + 1);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 && SYSTEM_OPEN_FILE_EXTENSIONS.has(base.slice(dot + 1).toLowerCase());
+}
+
+export const shellOpenFileChannel = {
+  name: 'shell.openFile',
+  direction: 'invoke',
+  input: z.object({
+    path: safePathSchema,
+    projectRoot: safePathSchema.optional(),
+  }),
+  output: z.object({
+    opened: z.boolean(),
+    reason: z.enum(['not-found', 'not-allowed', 'unsupported-type', 'failed']).optional(),
   }),
 } as const;
 

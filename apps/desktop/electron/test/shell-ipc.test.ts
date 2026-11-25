@@ -28,7 +28,7 @@ function makeDeps(overrides: Partial<ShellHandlerDeps> = {}): {
   const deps: ShellHandlerDeps = {
     realpath: async (target) => realpaths.get(target) ?? target,
     access: async () => {},
-    stat: async () => ({ isDirectory: () => true }),
+    stat: async () => ({ isDirectory: () => true, isFile: () => false }),
     listProjects: async () => [{ path: projectRoot }],
     assertProjectAllowed: async (root) => {
       if (root !== projectRoot) throw new Error('project not allowed');
@@ -90,7 +90,7 @@ test('shell.openDirectory enters an allowed project directory instead of selecti
 
 test('shell.openDirectory rejects files and shell open failures', async () => {
   const { deps, openedPaths, projectRoot } = makeDeps({
-    stat: async () => ({ isDirectory: () => false }),
+    stat: async () => ({ isDirectory: () => false, isFile: () => true }),
   });
   const handlers = createShellHandlers(deps);
 
@@ -99,7 +99,7 @@ test('shell.openDirectory rejects files and shell open failures', async () => {
 
   const failed = createShellHandlers({
     ...deps,
-    stat: async () => ({ isDirectory: () => true }),
+    stat: async () => ({ isDirectory: () => true, isFile: () => false }),
     openPath: async () => 'Explorer rejected the path',
   });
   assert.deepEqual(await failed.openDirectory({ path: projectRoot }), { opened: false });
@@ -183,4 +183,92 @@ test('shell.revealPath distinguishes permission and shell failures from missing 
     revealed: false,
     reason: 'failed',
   });
+});
+
+const FILE_STAT = { stat: async () => ({ isDirectory: () => false, isFile: () => true }) };
+
+test('shell.openFile opens allowlisted document types with the system default app', async () => {
+  const { deps, openedPaths, projectRoot } = makeDeps(FILE_STAT);
+  const handlers = createShellHandlers(deps);
+
+  assert.deepEqual(await handlers.openFile({ path: 'slides/deck.PPTX', projectRoot }), {
+    opened: true,
+  });
+  assert.deepEqual(openedPaths, [path.join(projectRoot, 'slides', 'deck.PPTX')]);
+});
+
+test('shell.openFile never opens executable or macro-capable types', async () => {
+  const { deps, openedPaths, projectRoot } = makeDeps(FILE_STAT);
+  const handlers = createShellHandlers(deps);
+
+  for (const name of [
+    'run.exe',
+    'run.bat',
+    'run.cmd',
+    'x.ps1',
+    'x.lnk',
+    'deck.pptm',
+    'a.html',
+    'noext',
+  ]) {
+    assert.deepEqual(await handlers.openFile({ path: name, projectRoot }), {
+      opened: false,
+      reason: 'unsupported-type',
+    });
+  }
+  assert.deepEqual(openedPaths, []);
+});
+
+test('shell.openFile rejects paths outside the allowlist, directories and missing files', async () => {
+  const { deps, openedPaths, projectRoot, outsideRoot } = makeDeps(FILE_STAT);
+
+  assert.deepEqual(
+    await createShellHandlers(deps).openFile({ path: path.join(outsideRoot, 'a.pdf') }),
+    { opened: false, reason: 'not-allowed' },
+  );
+
+  const dir = createShellHandlers({
+    ...deps,
+    stat: async () => ({ isDirectory: () => true, isFile: () => false }),
+  });
+  assert.deepEqual(await dir.openFile({ path: 'folder.pdf', projectRoot }), {
+    opened: false,
+    reason: 'not-found',
+  });
+
+  const missing = createShellHandlers({
+    ...deps,
+    stat: async () => {
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    },
+  });
+  assert.deepEqual(await missing.openFile({ path: 'gone.pdf', projectRoot }), {
+    opened: false,
+    reason: 'not-found',
+  });
+  assert.deepEqual(openedPaths, []);
+});
+
+test('shell.openFile reports a failed system open', async () => {
+  const { deps, projectRoot } = makeDeps({
+    ...FILE_STAT,
+    openPath: async () => 'No application is associated',
+  });
+  assert.deepEqual(await createShellHandlers(deps).openFile({ path: 'report.docx', projectRoot }), {
+    opened: false,
+    reason: 'failed',
+  });
+});
+
+test('shell.openFile rejects an allowlisted name that resolves to an executable', async () => {
+  const { deps, openedPaths, projectRoot } = makeDeps({
+    ...FILE_STAT,
+    realpath: async (target) =>
+      target.endsWith('.pdf') ? target.replace(/\.pdf$/, '.exe') : target,
+  });
+  assert.deepEqual(
+    await createShellHandlers(deps).openFile({ path: path.join(projectRoot, 'a.pdf') }),
+    { opened: false, reason: 'unsupported-type' },
+  );
+  assert.deepEqual(openedPaths, []);
 });

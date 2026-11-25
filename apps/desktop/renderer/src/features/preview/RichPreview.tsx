@@ -2,6 +2,11 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { PREVIEW_SIZE_CAPS, formatBytes, type RichPreviewKind } from './binaryUtils.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import { textFilePresentation } from './previewPresentation.js';
+import {
+  OpenWithSystemButton,
+  PreviewUnavailable,
+  type SystemOpenTarget,
+} from './PreviewUnavailable.js';
 
 const PdfViewer = lazy(() => import('./PdfViewer.js').then((m) => ({ default: m.PdfViewer })));
 const DocxViewer = lazy(() => import('./DocxViewer.js').then((m) => ({ default: m.DocxViewer })));
@@ -38,6 +43,8 @@ export function RichPreview({
   const [truncated, setTruncated] = useState<{ size: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Absolute on-disk path reported by store-backed reads (artifact/delivery).
+  const [storedPath, setStoredPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (!window.kodaxSpace) return;
@@ -67,6 +74,7 @@ export function RichPreview({
     setErr(null);
     setBase64(null);
     setTruncated(null);
+    setStoredPath(null);
 
     const request = (() => {
       if (fileSource === 'artifact-store') {
@@ -96,6 +104,8 @@ export function RichPreview({
           setErr(t('preview.failedLoadFile'));
           return;
         }
+        const storePath = 'path' in r.data ? r.data.path : undefined;
+        if (typeof storePath === 'string' && storePath.length > 0) setStoredPath(storePath);
         if (r.data.truncated) {
           setTruncated({ size: r.data.size });
           return;
@@ -111,21 +121,33 @@ export function RichPreview({
     };
   }, [projectRoot, path, kind, t, fileSource, artifactId, deliveryId, version]);
 
+  const systemOpenTarget: SystemOpenTarget | null =
+    fileSource === 'workspace'
+      ? projectRoot
+        ? { path, projectRoot }
+        : null
+      : storedPath !== null
+        ? { path: storedPath }
+        : null;
+  const fallbackAction =
+    systemOpenTarget !== null ? <OpenWithSystemButton target={systemOpenTarget} /> : null;
+
   if (busy && base64 === null) {
     return <div className="p-3 text-xs text-fg-muted">{t('preview.loading')}</div>;
   }
   if (err !== null) {
-    return <div className="p-3 text-xs text-danger">{err}</div>;
+    return <PreviewUnavailable tone="danger" message={err} action={fallbackAction} />;
   }
   if (truncated !== null) {
     return (
-      <div className="p-4 text-xs text-fg-muted text-center">
-        {t('preview.fileTooLarge', {
+      <PreviewUnavailable
+        message={t('preview.fileTooLarge', {
           size: formatBytes(truncated.size),
           kind: kind.toUpperCase(),
           cap: formatBytes(PREVIEW_SIZE_CAPS[kind]),
         })}
-      </div>
+        action={fallbackAction}
+      />
     );
   }
   if (base64 === null)
@@ -136,10 +158,10 @@ export function RichPreview({
       <Suspense
         fallback={<div className="p-3 text-xs text-fg-muted">{t('preview.loadingViewer')}</div>}
       >
-        {kind === 'pdf' && <PdfViewer base64={base64} />}
-        {kind === 'docx' && <DocxViewer base64={base64} />}
-        {kind === 'xlsx' && <XlsxViewer base64={base64} />}
-        {kind === 'pptx' && <PptxViewer base64={base64} />}
+        {kind === 'pdf' && <PdfViewer base64={base64} fallbackAction={fallbackAction} />}
+        {kind === 'docx' && <DocxViewer base64={base64} fallbackAction={fallbackAction} />}
+        {kind === 'xlsx' && <XlsxViewer base64={base64} fallbackAction={fallbackAction} />}
+        {kind === 'pptx' && <PptxViewer base64={base64} fallbackAction={fallbackAction} />}
         {kind === 'text' && (
           <TextFileViewer
             base64={base64}
@@ -150,7 +172,12 @@ export function RichPreview({
           />
         )}
         {(kind === 'image' || kind === 'video' || kind === 'audio') && (
-          <MediaFileViewer base64={base64} path={path} kind={kind} />
+          <MediaFileViewer
+            base64={base64}
+            path={path}
+            kind={kind}
+            fallbackAction={fallbackAction}
+          />
         )}
       </Suspense>
     </div>

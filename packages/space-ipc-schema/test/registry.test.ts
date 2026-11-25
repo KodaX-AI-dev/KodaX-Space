@@ -31,6 +31,8 @@ import {
   clipboardReadImageChannel,
   shellRevealPathChannel,
   shellOpenDirectoryChannel,
+  shellOpenFileChannel,
+  isSystemOpenableFilePath,
   ok,
   fail,
   isLicenseActive,
@@ -176,6 +178,42 @@ test('shell.revealPath accepts bounded failure reasons and legacy responses', ()
     shellRevealPathChannel.output.safeParse({ revealed: false, reason: 'outside-project' }).success,
     false,
   );
+});
+
+test('shell.openFile is registered with bounded failure reasons', () => {
+  assert.equal(invokeChannels['shell.openFile'], shellOpenFileChannel);
+  assert.ok(INVOKE_CHANNEL_NAMES.has('shell.openFile'));
+  assert.equal(
+    shellOpenFileChannel.input.safeParse({ path: 'deck.pptx', projectRoot: 'C:/workspace' })
+      .success,
+    true,
+  );
+  for (const reason of ['not-found', 'not-allowed', 'unsupported-type', 'failed']) {
+    assert.equal(shellOpenFileChannel.output.safeParse({ opened: false, reason }).success, true);
+  }
+  assert.equal(
+    shellOpenFileChannel.output.safeParse({ opened: false, reason: 'executed' }).success,
+    false,
+  );
+});
+
+test('isSystemOpenableFilePath allows documents and media but never executables', () => {
+  for (const ok of ['C:\\a\\deck.PPTX', 'docs/report.pdf', 'clip.mp4', 'notes.md']) {
+    assert.equal(isSystemOpenableFilePath(ok), true, ok);
+  }
+  for (const bad of [
+    'run.exe',
+    'a.bat',
+    'x.lnk',
+    'deck.pptm',
+    'page.html',
+    'pic.svg',
+    'dir.pdf\\evil',
+    '.pdf',
+    'noext',
+  ]) {
+    assert.equal(isSystemOpenableFilePath(bad), false, bad);
+  }
 });
 
 test('INVOKE_CHANNEL_NAMES is derived from invokeChannels keys', () => {

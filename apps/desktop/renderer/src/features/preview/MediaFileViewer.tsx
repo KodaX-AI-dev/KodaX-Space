@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { base64ToBytes, mimeForPath, type RichPreviewKind } from './binaryUtils.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import { FileNameText } from '../../components/FileNameText.js';
@@ -7,6 +7,8 @@ interface MediaFileViewerProps {
   readonly base64: string;
   readonly path: string;
   readonly kind: Extract<RichPreviewKind, 'image' | 'video' | 'audio'>;
+  /** Rendered with the failure message, e.g. "open with default app". */
+  readonly fallbackAction?: ReactNode;
 }
 
 interface GifStats {
@@ -102,7 +104,12 @@ function useBlobUrl(bytes: Uint8Array<ArrayBuffer> | null, mime: string): string
   return url;
 }
 
-export function MediaFileViewer({ base64, path, kind }: MediaFileViewerProps): JSX.Element {
+export function MediaFileViewer({
+  base64,
+  path,
+  kind,
+  fallbackAction,
+}: MediaFileViewerProps): JSX.Element {
   const { t } = useI18n();
   const bytes = useMemo(() => base64ToBytes(base64), [base64]);
   const stats = kind === 'image' ? gifStats(bytes, path) : null;
@@ -123,7 +130,7 @@ export function MediaFileViewer({ base64, path, kind }: MediaFileViewerProps): J
         data-testid="media-image-viewer"
       >
         {suppressAnimatedGif && stats !== null ? (
-          <LargeAnimatedGifFallback label={label} stats={stats} />
+          <LargeAnimatedGifFallback label={label} stats={stats} action={fallbackAction} />
         ) : url === null ? (
           <div className="p-3 text-xs text-fg-muted">{t('preview.loadingViewer')}</div>
         ) : (
@@ -136,7 +143,7 @@ export function MediaFileViewer({ base64, path, kind }: MediaFileViewerProps): J
             />
           </div>
         )}
-        {failed && <MediaError message={t('preview.mediaUnsupported')} />}
+        {failed && <MediaError message={t('preview.mediaUnsupported')} action={fallbackAction} />}
       </div>
     );
   }
@@ -160,7 +167,7 @@ export function MediaFileViewer({ base64, path, kind }: MediaFileViewerProps): J
             className="max-h-full max-w-full rounded bg-black shadow-lg"
           />
         </div>
-        {failed && <MediaError message={t('preview.mediaUnsupported')} />}
+        {failed && <MediaError message={t('preview.mediaUnsupported')} action={fallbackAction} />}
       </div>
     );
   }
@@ -179,7 +186,12 @@ export function MediaFileViewer({ base64, path, kind }: MediaFileViewerProps): J
           onError={() => setFailed(true)}
           className="w-full"
         />
-        {failed && <div className="mt-3 text-xs text-danger">{t('preview.mediaUnsupported')}</div>}
+        {failed && (
+          <div className="mt-3 flex flex-col items-start gap-2 text-xs text-danger">
+            {t('preview.mediaUnsupported')}
+            {fallbackAction}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -188,9 +200,11 @@ export function MediaFileViewer({ base64, path, kind }: MediaFileViewerProps): J
 function LargeAnimatedGifFallback({
   label,
   stats,
+  action,
 }: {
   readonly label: string;
   readonly stats: GifStats;
+  readonly action?: ReactNode;
 }): JSX.Element {
   const { t } = useI18n();
   return (
@@ -207,15 +221,23 @@ function LargeAnimatedGifFallback({
             frames: stats.frames,
           })}
         </div>
+        {action !== undefined && action !== null && <div className="mt-3">{action}</div>}
       </div>
     </div>
   );
 }
 
-function MediaError({ message }: { readonly message: string }): JSX.Element {
+function MediaError({
+  message,
+  action,
+}: {
+  readonly message: string;
+  readonly action?: ReactNode;
+}): JSX.Element {
   return (
-    <div className="pointer-events-none absolute bottom-3 left-1/2 max-w-[80%] -translate-x-1/2 rounded border border-border-default bg-surface px-3 py-1.5 text-xs text-danger shadow">
+    <div className="absolute bottom-3 left-1/2 max-w-[80%] -translate-x-1/2 flex items-center gap-3 rounded border border-border-default bg-surface px-3 py-1.5 text-xs text-danger shadow">
       {message}
+      {action}
     </div>
   );
 }

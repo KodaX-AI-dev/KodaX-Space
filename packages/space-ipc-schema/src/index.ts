@@ -250,7 +250,9 @@ export {
 export {
   shellRevealPathChannel,
   shellOpenDirectoryChannel,
+  shellOpenFileChannel,
   shellOpenExternalChannel,
+  isSystemOpenableFilePath,
 } from './channels/shell.js';
 
 export {

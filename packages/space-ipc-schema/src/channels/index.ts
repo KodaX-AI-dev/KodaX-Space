@@ -280,6 +280,7 @@ import {
 import {
   shellRevealPathChannel,
   shellOpenDirectoryChannel,
+  shellOpenFileChannel,
   shellOpenExternalChannel,
 } from './shell.js';
 import {
@@ -555,6 +556,7 @@ const coreInvokeChannels = {
   [clipboardDiscardImageChannel.name]: clipboardDiscardImageChannel,
   [shellRevealPathChannel.name]: shellRevealPathChannel,
   [shellOpenDirectoryChannel.name]: shellOpenDirectoryChannel,
+  [shellOpenFileChannel.name]: shellOpenFileChannel,
   [shellOpenExternalChannel.name]: shellOpenExternalChannel,
   [artifactCreateChannel.name]: artifactCreateChannel,
   [artifactListChannel.name]: artifactListChannel,

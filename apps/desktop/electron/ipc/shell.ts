@@ -1,10 +1,12 @@
 // Shell IPC handlers: reveal a file, open an allowed directory, or open an external URL.
 //
-// openPath is exposed only behind a directory stat check. Arbitrary local files
-// remain blocked because opening .exe/.bat/etc via OS file associations is an RCE surface.
+// openPath is exposed only for directories, or for regular files whose extension is on
+// the shared isSystemOpenableFilePath allowlist. Anything else stays blocked because opening .exe/.bat/etc via
+// OS file associations is an RCE surface.
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { createRequire } from 'node:module';
+import { isSystemOpenableFilePath } from '@kodax-space/space-ipc-schema';
 import { registerChannel } from './register.js';
 import { resolveInsideProject } from './files-core.js';
 import { projectStore } from '../projects/store.js';
@@ -16,7 +18,9 @@ export interface ShellHandlerDeps {
   readonly isWin?: boolean;
   readonly realpath: (target: string) => Promise<string>;
   readonly access: (target: string) => Promise<void>;
-  readonly stat: (target: string) => Promise<{ readonly isDirectory: () => boolean }>;
+  readonly stat: (
+    target: string,
+  ) => Promise<{ readonly isDirectory: () => boolean; readonly isFile: () => boolean }>;
   readonly listProjects: () => Promise<readonly { readonly path: string }[]>;
   readonly assertProjectAllowed: (projectRoot: string) => Promise<void>;
   readonly resolveInsideProject: (projectRoot: string, relativePath: string) => Promise<string>;
@@ -51,6 +55,7 @@ function isWithin(child: string, parent: string, isWin = IS_WIN): boolean {
 }
 
 type RevealFailureReason = 'not-found' | 'not-allowed' | 'failed';
+type OpenFileFailureReason = RevealFailureReason | 'unsupported-type';
 
 type ResolveRevealTargetResult =
   | { readonly ok: true; readonly target: string }
@@ -141,6 +146,10 @@ export function createShellHandlers(deps: ShellHandlerDeps): {
     readonly path: string;
     readonly projectRoot?: string;
   }) => Promise<{ opened: boolean }>;
+  readonly openFile: (input: {
+    readonly path: string;
+    readonly projectRoot?: string;
+  }) => Promise<{ readonly opened: boolean; readonly reason?: OpenFileFailureReason }>;
   readonly openExternal: (input: { readonly url: string }) => Promise<{ opened: boolean }>;
 } {
   return {
@@ -171,6 +180,29 @@ export function createShellHandlers(deps: ShellHandlerDeps): {
         return { opened: errorMessage.length === 0 };
       } catch {
         return { opened: false };
+      }
+    },
+
+    async openFile(input) {
+      if (!isSystemOpenableFilePath(input.path))
+        return { opened: false, reason: 'unsupported-type' };
+      const resolved = await resolveRevealTarget(input, deps);
+      if (!resolved.ok) return { opened: false, reason: resolved.reason };
+      try {
+        // The allowlist must also hold for the symlink-resolved file that is actually opened.
+        if (!isSystemOpenableFilePath(await deps.realpath(resolved.target))) {
+          return { opened: false, reason: 'unsupported-type' };
+        }
+        const targetStat = await deps.stat(resolved.target);
+        if (!targetStat.isFile()) return { opened: false, reason: 'not-found' };
+      } catch (error) {
+        return { opened: false, reason: fsFailureReason(error) };
+      }
+      try {
+        const errorMessage = await deps.openPath(resolved.target);
+        return errorMessage.length === 0 ? { opened: true } : { opened: false, reason: 'failed' };
+      } catch {
+        return { opened: false, reason: 'failed' };
       }
     },
 
@@ -211,5 +243,6 @@ export function registerShellChannels(): void {
 
   registerChannel('shell.revealPath', (input) => handlers.revealPath(input));
   registerChannel('shell.openDirectory', (input) => handlers.openDirectory(input));
+  registerChannel('shell.openFile', (input) => handlers.openFile(input));
   registerChannel('shell.openExternal', (input) => handlers.openExternal(input));
 }

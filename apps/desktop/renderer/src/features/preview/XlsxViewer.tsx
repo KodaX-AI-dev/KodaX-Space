@@ -1,7 +1,8 @@
 // XlsxViewer — F024 .xlsx / .xls rendering.
 // SheetJS parsing runs in a disposable Web Worker; this component only renders
 // structured-clone-safe sheet DTOs and owns the Worker lifecycle.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { PreviewUnavailable } from './PreviewUnavailable.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import {
   XLSX_PREVIEW_MAX_CELLS,
@@ -12,9 +13,11 @@ import { startXlsxPreviewWorker } from './xlsxPreviewWorkerClient.js';
 
 interface Props {
   readonly base64: string;
+  /** Rendered under the error message, e.g. "open with default app". */
+  readonly fallbackAction?: ReactNode;
 }
 
-export function XlsxViewer({ base64 }: Props): JSX.Element {
+export function XlsxViewer({ base64, fallbackAction }: Props): JSX.Element {
   const { t } = useI18n();
   const [sheets, setSheets] = useState<readonly XlsxPreviewSheetDto[]>([]);
   const [activeSheet, setActiveSheet] = useState(0);
@@ -39,7 +42,7 @@ export function XlsxViewer({ base64 }: Props): JSX.Element {
   if (err !== null) {
     const key =
       err === 'decode' ? 'preview.failedDecodeSpreadsheet' : 'preview.failedParseSpreadsheet';
-    return <div className="p-3 text-xs text-danger">{t(key)}</div>;
+    return <PreviewUnavailable tone="danger" message={t(key)} action={fallbackAction} />;
   }
   if (busy)
     return <div className="p-3 text-xs text-fg-muted">{t('preview.parsingSpreadsheet')}</div>;

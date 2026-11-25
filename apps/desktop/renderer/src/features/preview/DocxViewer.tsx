@@ -1,13 +1,16 @@
 // DOCX conversion runs in a one-shot Web Worker. Only its bounded HTML result
 // reaches this component, where an explicit allowlist sanitizer remains the
 // final defense before rendering.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { PreviewUnavailable } from './PreviewUnavailable.js';
 import { useI18n } from '../../i18n/I18nProvider.js';
 import { isDocxPreviewHtmlWithinLimit, type DocxPreviewErrorCode } from './docxPreviewProtocol.js';
 import { startDocxPreviewWorker } from './docxPreviewWorkerClient.js';
 
 interface Props {
   readonly base64: string;
+  /** Rendered under the error message, e.g. "open with default app". */
+  readonly fallbackAction?: ReactNode;
 }
 
 const ALLOWED_TAGS = new Set([
@@ -85,7 +88,7 @@ function walkAndSanitize(node: Element): void {
   }
 }
 
-export function DocxViewer({ base64 }: Props): JSX.Element {
+export function DocxViewer({ base64, fallbackAction }: Props): JSX.Element {
   const { t } = useI18n();
   const [html, setHtml] = useState<string | null>(null);
   const [err, setErr] = useState<DocxPreviewErrorCode | null>(null);
@@ -115,7 +118,7 @@ export function DocxViewer({ base64 }: Props): JSX.Element {
         : err === 'too-large'
           ? 'preview.docxPreviewTooLarge'
           : 'preview.failedRenderDocx';
-    return <div className="p-3 text-xs text-danger">{t(key)}</div>;
+    return <PreviewUnavailable tone="danger" message={t(key)} action={fallbackAction} />;
   }
   if (busy) return <div className="p-3 text-xs text-fg-muted">{t('preview.renderingDocx')}</div>;
   if (html === null)
