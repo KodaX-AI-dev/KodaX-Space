@@ -237,6 +237,16 @@ npm run build:linux
 `resedit@1.7.2` 直接修改 PE icon/version resources，不再扫描或启动缓存中的
 `rcedit.exe`。相关依赖和资源门禁失败必须让安装/打包失败，不能用 `|| true` 吞掉。
 
+Linux 正式包的原生模块按 glibc 2.28 构建。发布工作流在 `npm ci` 之后、打包之前，于
+`quay.io/pypa/manylinux_2_28_x86_64` 容器内运行 `scripts/linux-native-glibc228.sh`，重编译
+SQLite 目录（Artifacts、Partner 知识索引）使用的 `better-sqlite3` 和内置终端使用的 `node-pty`；
+打包后再用 `node scripts/check-linux-glibc.mjs out/linux-unpacked` 校验包内全部 ELF，任何一个
+引用高于 `GLIBC_2.28` / `GLIBCXX_3.4.25` / `CXXABI_1.3.11` 符号的文件都会让构建失败。直接在
+较新发行版上执行 `npm run build:linux` 得到的包只保证兼容构建机的 glibc，不能据此宣称支持
+RHEL 8 家族系统；Anolis OS 8 等 glibc 2.28 系统请使用 AppImage，并安装 `libX11-xcb` 与
+`fuse-libs`。背景与实测见 [Linux glibc 2.28 构建调研](research/kodax-space-linux-glibc-2-28-build.md)
+与 [Anolis OS 8 兼容性调研](research/kodax-space-anolis-8-compatibility.md)。
+
 正式 `build:pack` 会下载 lockfile 锁定的 KodaX Registry tarball 并校验 URL、SRI 与安装
 字节。当前源码通过 `EnvHttpProxyAgent` 读取标准代理环境；代理凭据不会写入日志。下载和
 dispatcher teardown 都有界，超时或非法 URL 会明确失败并结束进程。如果构建停在

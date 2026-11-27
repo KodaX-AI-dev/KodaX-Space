@@ -13,7 +13,7 @@
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/KodaX-AI-dev/KodaX-Space?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-KAI--FCL-orange?style=flat-square"></a>
   <a href="https://github.com/KodaX-AI-dev/KodaX-Space/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/KodaX-AI-dev/KodaX-Space/ci.yml?style=flat-square&label=ci"></a>
-  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.97--rc.2-2ea44f?style=flat-square">
+  <img alt="KodaX SDK" src="https://img.shields.io/badge/KodaX_SDK-0.7.97--rc.3-2ea44f?style=flat-square">
   <img alt="platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-34495e?style=flat-square">
 </p>
 
@@ -90,7 +90,7 @@ npm run dev
 
 ## 当前源码基线
 
-**当前工作树精确依赖已发布的 SDK `0.7.97-rc.2`（RepoIntel 默认只提供基于 git 的 `repo_overview` / `changed_scope` / `changed_diff`，语义索引需把 `repoIntelligenceMode` 设为 `full` 或 `light` 才启用；切换模型后不再把思考写进回复；新增 `glm-5.4`）。rc.1 起（任务结束后不再留下“正在运行”的工具卡，扩展内部发起的调用也一样，重新打开旧会话会移除此类残留；模型目录新增 Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed 与 MiMo v2.6）。beta.13 起（会话恢复期间发送被拒时提示“正在恢复”，不再显示 Host 报错；Skill 运行保存用户原话；会话数量上千时读取仍然很快）。beta.12 起每次停止都有最终结果，子 Agent 状态未保存的会话在后台自动恢复，失败 Run 显示 Provider 原始错误文本。beta.11 起失败 Run 的错误保留在对话中、Run 工作时可继续加载更早的历史页、打包版内置 Skill 从 `app.asar.unpacked` 运行；beta.10 起提供排队消息合并显示、数据复制到新位置与中断消息撤回。** 适配见 [beta.9 接入记录](docs/releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](docs/releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](docs/releases/kodax-beta7-space-adaptation.md)，此前验收见 [beta.4](docs/releases/kodax-beta4-space-adaptation.md)、[beta.3](docs/releases/kodax-beta3-space-adaptation.md)与[beta.2](docs/releases/kodax-beta2-space-adaptation.md)接入记录。已发布的 Space `0.1.47-alpha.4` 使用 beta.1 原始构建，其[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)记录当次验收。Root/Desktop 使用同一 SDK，lockfile 和成品门禁核验 Registry 字节。
+**当前工作树精确依赖已发布的 SDK `0.7.97-rc.3`（server 声明为只读的 MCP 工具在 Plan 和“接受编辑”模式下直接执行，MCP 调用可以取消，Windows 沙箱辅助程序不再通过 PowerShell 写入，ffmpeg 安装在固定位置时可审阅视频）。rc.2 起（RepoIntel 默认只提供基于 git 的 `repo_overview` / `changed_scope` / `changed_diff`，语义索引需把 `repoIntelligenceMode` 设为 `full` 或 `light` 才启用；切换模型后不再把思考写进回复；新增 `glm-5.4`）。rc.1 起（任务结束后不再留下“正在运行”的工具卡，扩展内部发起的调用也一样，重新打开旧会话会移除此类残留；模型目录新增 Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed 与 MiMo v2.6）。beta.13 起（会话恢复期间发送被拒时提示“正在恢复”，不再显示 Host 报错；Skill 运行保存用户原话；会话数量上千时读取仍然很快）。beta.12 起每次停止都有最终结果，子 Agent 状态未保存的会话在后台自动恢复，失败 Run 显示 Provider 原始错误文本。beta.11 起失败 Run 的错误保留在对话中、Run 工作时可继续加载更早的历史页、打包版内置 Skill 从 `app.asar.unpacked` 运行；beta.10 起提供排队消息合并显示、数据复制到新位置与中断消息撤回。** 适配见 [beta.9 接入记录](docs/releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](docs/releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](docs/releases/kodax-beta7-space-adaptation.md)，此前验收见 [beta.4](docs/releases/kodax-beta4-space-adaptation.md)、[beta.3](docs/releases/kodax-beta3-space-adaptation.md)与[beta.2](docs/releases/kodax-beta2-space-adaptation.md)接入记录。已发布的 Space `0.1.47-alpha.4` 使用 beta.1 原始构建，其[发布记录](docs/releases/v0.1.47-alpha.4-release-readiness.md)记录当次验收。Root/Desktop 使用同一 SDK，lockfile 和成品门禁核验 Registry 字节。
 
 - 共享 Coder 输入、当前聊天、历史分页/搜索、统计和退出均使用 SDK 公共契约。当前 view 与历史窗口分开，保留图片、长正文、工具和 Artifact 身份，刷新不重复拼接对话。
 - 普通 Coder 新会话在首个有效输入保存后才落盘；旧空记录仅在完整历史确认后隐藏，不删除原文件。侧栏使用真实消息时间，设置与元数据不会把旧会话顶到最前。

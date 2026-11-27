@@ -481,6 +481,8 @@ The release integrates SDK beta.1 and the recorded Space follow-up fixes. F145/F
 
 ### Current-release addition - 2026-07-23: distribute vetted Space builtin skills
 
+2026-11-24 note: the `huashu-design` snapshot is no longer shipped. It was a pinned upstream copy that had stopped being kept in sync, and its bundled background music and style specimens added about 37 MB to every installer. F135 still ships `frontend-slides` and the other pinned builtins; the bullets below record the original 2026-07-23 addition.
+
 - F135 packages `frontend-slides` and `huashu-design` as installer-owned resources registered through the public Skill plugin bridge; clean-profile users do not copy either skill into `~/.kodax/skills`.
 - Every source is pinned to an upstream Git revision and approved license hash. Reviewable Space patches remove Huashu's promotional watermark/signature and machine-specific assumptions; the generated tree is locked by exact file path, size, and SHA-256.
 - Coder discovery merges Space-owned builtins with the Runtime daemon catalog by name, preferring the Space entry so both shipped skills remain available in slash completion without duplicates.
