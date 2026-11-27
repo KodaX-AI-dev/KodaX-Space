@@ -83,7 +83,7 @@ test('startup failure names security software when a Windows native artifact is 
     ),
   );
   assert.match(html, /%LOCALAPPDATA%\\KodaXNativeArtifactsV3/);
-  assert.match(html, /security software|安全软件/);
+  assert.match(html, /security software|安全软件/i);
   assert.match(html, /native artifact is unavailable/);
 
   // SDK 0.7.97-rc.3 names the quarantine case with its own non-retryable reason.
