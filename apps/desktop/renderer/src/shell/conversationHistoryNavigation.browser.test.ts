@@ -28,7 +28,13 @@ historyTest(
     });
     const browse = page.getByRole('button', { name: 'Browse history messages', exact: true });
     await browse.waitFor({ timeout: 3000 });
-    await page.getByText('Opens at the most recent saved messages.', { exact: true }).waitFor();
+    // The live rows open mid-turn, so the destination names the saved query.
+    await page
+      .getByText(
+        "This turn's query and earlier steps are in saved history. Opens at the most recent saved messages.",
+        { exact: true },
+      )
+      .waitFor();
     assert.equal(await page.getByText('Start of this conversation', { exact: true }).count(), 0);
     await browse.click();
     // The saved page opens at its newest message; its first row is a spacer there.
@@ -50,6 +56,39 @@ historyTest(
     await search.getByRole('searchbox').fill('not in the loaded content');
     await search.getByRole('button', { name: 'Search saved conversation', exact: true }).click();
     assert.equal(await search.getByRole('combobox').inputValue(), 'session');
+    assert.deepEqual(errors, []);
+  },
+);
+
+historyTest(
+  'a live view that starts mid-turn says the query is saved and counts its steps as a minimum',
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    page.setDefaultTimeout(3500);
+    await page.evaluate('window.primeTurn(false)');
+    await page
+      .getByText(
+        "This turn's query and earlier steps are in saved history. Opens at the most recent saved messages.",
+        { exact: true },
+      )
+      .waitFor();
+    await page.getByText('Ran at least 3 commands', { exact: true }).waitFor();
+    // Clusters after a query in the window are complete.
+    await page.getByText('Ran 2 commands', { exact: true }).waitFor();
+    assert.equal(await page.getByText('Ran 3 commands', { exact: true }).count(), 0);
+    assert.deepEqual(errors, []);
+  },
+);
+
+historyTest(
+  'a live view that starts at a query keeps exact counts and the plain destination',
+  async (t) => {
+    const { page, errors } = await openHistoryFixture(t);
+    page.setDefaultTimeout(3500);
+    await page.evaluate('window.primeTurn(true)');
+    await page.getByText('Opens at the most recent saved messages.', { exact: true }).waitFor();
+    await page.getByText('Ran 3 commands', { exact: true }).waitFor();
+    assert.equal(await page.getByText('Ran at least 3 commands', { exact: true }).count(), 0);
     assert.deepEqual(errors, []);
   },
 );

@@ -67,6 +67,15 @@ window.primeLive=async()=>{
   replaceProductSessionView({sessionId:'s',runtimeId:'rt',revision:1,
     items:Array.from({length:20},(_,i)=>({id:'view-'+i,type:'assistant',outputId:'output-'+i,text:'Live '+i+'\\n\\n'+('Current paragraph.\\n\\n').repeat(6)}))});
 };
+const turnTool=(id)=>({id,type:'tool',text:'',tool:{name:'read',callId:id,status:'success',resultRecorded:true,inputText:'{"file_path":"a.ts"}'}});
+window.primeTurn=async(withQuery)=>{
+  await restoreNewestSessionHistory('s','code');
+  replaceProductSessionView({sessionId:'s',runtimeId:'rt',revision:1,items:[
+    ...(withQuery?[{id:'turn-q',type:'user',text:'Turn query'}]:[]),
+    {id:'head-think',type:'thinking',text:'look around'},turnTool('h1'),turnTool('h2'),turnTool('h3'),
+    {id:'next-q',type:'user',text:'Next query'},
+    {id:'next-think',type:'thinking',text:'next step'},turnTool('n1'),turnTool('n2')]});
+};
 `;
 
 export const browserAvailable = existsSync(chromium.executablePath());

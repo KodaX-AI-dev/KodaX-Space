@@ -187,6 +187,8 @@ type ToolClusterMessage = {
   subClusters: SubCluster[];
   totalTools: number;
   turnIndex?: number;
+  /** The turn began before the shown window, so `totalTools` counts only part of it. */
+  partial?: true;
 };
 
 type ArtifactMessage = {
@@ -528,6 +530,7 @@ function viewMessagesShareProjection(previous: ViewMessage, next: ViewMessage): 
         next.kind === 'tool_cluster' &&
         previous.totalTools === next.totalTools &&
         previous.turnIndex === next.turnIndex &&
+        previous.partial === next.partial &&
         subClustersShareProjection(previous.subClusters, next.subClusters)
       );
     case 'thinking':
@@ -754,6 +757,21 @@ function artifactMessageFromTool(tool: ToolCallMsg): ArtifactMessage | null {
     ...(summary ? { summary } : {}),
     ...(snapshot ? { snapshot } : {}),
   };
+}
+
+/** The window opens inside a turn: its first content row is not a query. */
+function startsMidTurn(messages: readonly ConversationMessage[]): boolean {
+  const first = messages.find((m) => m.kind !== 'local_notice' && m.kind !== 'system_notice');
+  return first !== undefined && first.kind !== 'user' && first.kind !== 'queued_user';
+}
+
+/** Marks the tool groups before the window's first query: their turn began outside it. */
+function markCutTurnHead(messages: readonly ViewMessage[]): ViewMessage[] {
+  const firstQuery = messages.findIndex((m) => m.kind === 'user' || m.kind === 'queued_user');
+  const end = firstQuery < 0 ? messages.length : firstQuery;
+  return messages.map((m, index) =>
+    index < end && m.kind === 'tool_cluster' ? { ...m, partial: true } : m,
+  );
 }
 
 function groupTools(
@@ -1141,13 +1159,16 @@ export function ConversationStreamV2(): JSX.Element {
   } | null>(null);
   const readingView =
     locatedSearchItem && transcriptView !== 'verbose' ? 'thinking' : transcriptView;
+  // The query of the window's first turn is in saved history only.
+  const turnStartSaved = canOpenSavedPage && startsMidTurn(messages);
   const viewMessages = useMemo(() => {
-    const fresh = groupTools(messages, readingView, t);
+    const grouped = groupTools(messages, readingView, t);
+    const fresh = turnStartSaved ? markCutTurnHead(grouped) : grouped;
     const previous = viewMessagesCacheRef.current;
     return previous?.sessionId === currentSessionId
       ? retainStableViewMessages(previous.messages, fresh)
       : fresh;
-  }, [messages, readingView, t, currentSessionId]);
+  }, [messages, readingView, t, currentSessionId, turnStartSaved]);
   useLayoutEffect(() => {
     viewMessagesCacheRef.current = { sessionId: currentSessionId, messages: viewMessages };
   }, [currentSessionId, viewMessages]);
@@ -2874,9 +2895,11 @@ export function ConversationStreamV2(): JSX.Element {
                       </button>
                       <span className="text-xs text-fg-secondary">
                         {t(
-                          canOpenSavedPage
-                            ? 'conversation.savedPageDestination'
-                            : 'conversation.scrollForEarlier',
+                          !canOpenSavedPage
+                            ? 'conversation.scrollForEarlier'
+                            : turnStartSaved
+                              ? 'conversation.savedPageTurnStart'
+                              : 'conversation.savedPageDestination',
                         )}
                       </span>
                     </>
@@ -3900,8 +3923,11 @@ function ToolCluster({
     }
     wasLive.current = live;
   }, [live]);
-  const label =
-    cluster.totalTools === 1
+  const label = cluster.partial
+    ? cluster.totalTools === 1
+      ? t('conversation.ranAtLeastOneCommand')
+      : t('conversation.ranAtLeastCommands', { count: cluster.totalTools })
+    : cluster.totalTools === 1
       ? t('conversation.ranOneCommand')
       : t('conversation.ranCommands', { count: cluster.totalTools });
   const thinkingLabel = cluster.subClusters.some((step) => step.thinking)
