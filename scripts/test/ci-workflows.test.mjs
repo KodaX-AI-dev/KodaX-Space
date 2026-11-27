@@ -123,3 +123,17 @@ test('source runners install Electron before entering bounded unit or UI tests',
     assert.ok(job.steps[prepare]['timeout-minutes'] > 0);
   }
 });
+
+test('Linux release packages glibc 2.28 native modules and gates every shipped ELF', async () => {
+  const steps = (await workflow('release.yml')).jobs.build.steps;
+  const at = (name) => steps.findIndex((step) => step.name === name);
+  const rebuild = at('Rebuild Linux native modules for glibc 2.28');
+  const pack = at('Build installer');
+  const gate = at('Verify Linux glibc 2.28 compatibility');
+  assert.ok(at('Install dependencies') < rebuild && rebuild < pack && pack < gate);
+  assert.match(steps[rebuild].run, /manylinux_2_28_x86_64/);
+  assert.match(steps[rebuild].run, /scripts\/linux-native-glibc228\.sh/);
+  assert.match(steps[gate].run, /check-linux-glibc\.mjs "out\/\$\{\{ matrix\.unpacked \}\}"/);
+  assert.equal(steps[rebuild].if, "matrix.os == 'ubuntu-latest'");
+  assert.equal(steps[gate].if, "matrix.os == 'ubuntu-latest'");
+});

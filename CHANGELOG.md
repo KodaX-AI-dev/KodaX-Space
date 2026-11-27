@@ -25,6 +25,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ### Fixed
 
+- The Linux x64 package runs on glibc 2.28 systems such as Anolis OS 8.10 and other RHEL 8-family distributions. The SQLite catalog (Artifacts, Partner knowledge index) and the built-in Terminal used to fail there because their native modules required glibc 2.34 or 2.42. Release builds now compile both modules in a glibc 2.28 container and fail if any shipped Linux binary needs a newer glibc or libstdc++. On these systems, use the AppImage, with `libX11-xcb` and `fuse-libs` installed.
 - A long Run whose query has scrolled out of the live view no longer looks like a lone "Ran N commands" row: the saved-history boundary says the turn's query is in saved history, and the tool groups before the first query in view read "Ran at least N commands".
 - Upgrading an `.mcpb` extension keeps the `enabledTools` / `disabledTools` you set on its server instead of overwriting them.
 - Installer exclusions now apply to the app's own build output. electron-builder had moved them ahead of the `dist-electron` and `apps/desktop/dist` includes, so about 44 MB of renderer source maps shipped in `app.asar`. The renderer production build also stops emitting source maps, matching the main bundle.

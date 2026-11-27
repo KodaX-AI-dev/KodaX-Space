@@ -104,6 +104,16 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei xvfb gnome-keyring libsecret-1-0
 
+      # The runner's glibc drifts with ubuntu-latest (2.42 by rc.2); RHEL 8-family
+      # targets such as Anolis OS 8 have 2.28. Recompile the shipped native modules
+      # in a glibc 2.28 container before packaging picks them up.
+      - name: Rebuild Linux native modules for glibc 2.28
+        if: matrix.os == 'ubuntu-latest'
+        run: >-
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp
+          -v "$PWD:/work" -w /work quay.io/pypa/manylinux_2_28_x86_64
+          bash scripts/linux-native-glibc228.sh
+
       - name: Configure npm script-shell (Windows)
         if: runner.os == 'Windows'
         # npm 默认在 Windows 用 cmd.exe 跑 script —— cmd 不展开 `electron/test/*.test.ts`
@@ -132,6 +142,10 @@ jobs:
           KODAX_HOME: ${{ runner.os == 'Windows' && format('{0}/kodax-space-pack-smoke-home/.kodax', runner.temp) || '' }}
           # 关闭 native rebuild 在 CI（keytar 在 v0.1.0 是 optional + memory fallback）
           npm_config_build_from_source: 'false'
+
+      - name: Verify Linux glibc 2.28 compatibility
+        if: matrix.os == 'ubuntu-latest'
+        run: node scripts/check-linux-glibc.mjs "out/${{ matrix.unpacked }}"
 
       - name: Verify macOS application signature
         if: runner.os == 'macOS'
