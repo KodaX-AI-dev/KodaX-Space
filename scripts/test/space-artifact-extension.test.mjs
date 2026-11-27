@@ -10,6 +10,7 @@ import test from 'node:test';
 import {
   default as registerSpaceArtifacts,
   resolveArtifactNode,
+  resolveFfmpeg,
   resolveLibreOffice,
   resolveSpaceArtifactImports,
 } from '../../resources/space-artifacts.mjs';
@@ -94,6 +95,36 @@ test('Space injects LibreOffice only from fixed install locations', () => {
   );
   assert.equal(
     resolveLibreOffice({}, 'linux', () => false),
+    undefined,
+  );
+});
+
+test('Space injects ffmpeg for video review only from fixed install locations', () => {
+  const installed = (file) => (candidate) => candidate === file;
+  const windows = {
+    ProgramFiles: 'C:\\Program Files',
+    LOCALAPPDATA: 'C:\\Users\\u\\AppData\\Local',
+    ProgramData: 'C:\\ProgramData',
+    USERPROFILE: 'relative',
+    PATH: 'C:\\project\\bin',
+  };
+  const winget = 'C:\\Users\\u\\AppData\\Local\\Microsoft\\WinGet\\Links\\ffmpeg.exe';
+  assert.equal(resolveFfmpeg(windows, 'win32', installed(winget)), winget);
+  assert.equal(
+    resolveFfmpeg(windows, 'win32', installed('C:\\project\\bin\\ffmpeg.exe')),
+    undefined,
+  );
+  assert.equal(
+    resolveFfmpeg(windows, 'win32', installed('relative\\scoop\\shims\\ffmpeg.exe')),
+    undefined,
+  );
+  assert.equal(
+    resolveFfmpeg({}, 'darwin', installed('/opt/homebrew/bin/ffmpeg')),
+    '/opt/homebrew/bin/ffmpeg',
+  );
+  assert.equal(resolveFfmpeg({}, 'linux', installed('/usr/bin/ffmpeg')), '/usr/bin/ffmpeg');
+  assert.equal(
+    resolveFfmpeg({}, 'linux', () => false),
     undefined,
   );
 });

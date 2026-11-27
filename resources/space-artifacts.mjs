@@ -96,9 +96,30 @@ export function resolveLibreOffice(
   return candidates.find((candidate) => exists(candidate));
 }
 
+// Same fixed-location rule. ffmpeg has no Windows installer, so these are the package managers'
+// stable entry points (winget link, Chocolatey/Scoop shims). The SDK checks `-version` before decoding.
+export function resolveFfmpeg(env = process.env, platform = process.platform, exists = existsSync) {
+  const windows = [
+    [env.ProgramFiles, 'ffmpeg', 'bin'],
+    [env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links'],
+    [env.ProgramData, 'chocolatey', 'bin'],
+    [env.USERPROFILE, 'scoop', 'shims'],
+  ];
+  const candidates =
+    platform === 'win32'
+      ? windows
+          .filter(([root]) => root && path.win32.isAbsolute(root))
+          .map((parts) => path.win32.join(...parts, 'ffmpeg.exe'))
+      : platform === 'darwin'
+        ? ['/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg']
+        : ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg'];
+  return candidates.find((candidate) => exists(candidate));
+}
+
 export default async function registerSpaceArtifacts(api) {
   const nodeExecutable = await resolveArtifactNode();
   const libreOfficeExecutable = resolveLibreOffice();
+  const ffmpegExecutable = resolveFfmpeg();
   const imports = resolveSpaceArtifactImports();
   const [{ registerArtifactTools }, { executeManagedProcess }] = await Promise.all([
     import(imports.artifact),
@@ -108,5 +129,6 @@ export default async function registerSpaceArtifacts(api) {
     execute: executeManagedProcess,
     nodeExecutable,
     ...(libreOfficeExecutable ? { libreOfficeExecutable } : {}),
+    ...(ffmpegExecutable ? { ffmpegExecutable } : {}),
   });
 }

@@ -701,6 +701,7 @@ test('a proposal creates only a review record and a live switch to plan blocks l
 test('the run adapter preserves existing MCP capability and lifecycle methods without taking ownership', async () => {
   const calls: string[] = [];
   const owners = [{}];
+  const abort = new AbortController();
   const base: ExtensionRuntimeContract & Pick<KodaXExtensionRuntime, 'emit' | 'runHook'> = {
     async emit(event) {
       assert.equal(this, base);
@@ -731,7 +732,11 @@ test('the run adapter preserves existing MCP capability and lifecycle methods wi
       freshness: 'cached',
     }),
     describeCapability: async () => ({ description: 'existing tool' }),
-    executeCapability: async () => ({ kind: 'tool', content: 'existing execute' }),
+    executeCapability: async (_provider, _id, _input, options) => {
+      // MCP cancellation (SDK 0.7.97-rc.3) reaches the base through the run adapter.
+      assert.equal(options?.signal, abort.signal);
+      return { kind: 'tool', content: 'existing execute' };
+    },
     readCapability: async () => ({ kind: 'resource', content: 'existing read' }),
     getCapabilityPrompt: async () => 'existing prompt',
     getCapabilityPromptContext: async () => 'existing context',
@@ -770,7 +775,10 @@ test('the run adapter preserves existing MCP capability and lifecycle methods wi
     freshness: 'cached',
   });
   assert.deepEqual(await runtime.describeCapability('mcp', 'id'), { description: 'existing tool' });
-  assert.equal((await runtime.executeCapability('existing', 'id', {})).content, 'existing execute');
+  assert.equal(
+    (await runtime.executeCapability('existing', 'id', {}, { signal: abort.signal })).content,
+    'existing execute',
+  );
   assert.equal((await runtime.readCapability('mcp', 'id')).content, 'existing read');
   assert.equal(await runtime.getCapabilityPrompt('mcp', 'id'), 'existing prompt');
   assert.equal(await runtime.getCapabilityPromptContext('mcp'), 'existing context');

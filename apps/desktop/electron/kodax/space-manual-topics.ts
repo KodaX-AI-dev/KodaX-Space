@@ -1130,7 +1130,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       'Space 中有三类“扩展”：',
       '',
       '1. MCP / .mcpb / .dxt 包：在 MCP 面板安装、查看和移除，能力以 MCP 工具暴露给 agent。详见 mcp。',
-      '2. SDK extensions：由共享 Host 从 ~/.kodax/extensions 和 ~/.kodax/integrations/extensions.json 中声明的路径加载。Space 自带的 space-builtins 与 space-artifacts 扩展也以这种方式注册到 Host，并在启动时确认已激活。',
+      '2. SDK extensions：由共享 Host 从 ~/.kodax/extensions 和 ~/.kodax/integrations/extensions.json 中声明的路径加载。Space 自带的 space-builtins 与 space-artifacts 扩展也以这种方式注册到 Host，并在启动时确认已激活。space-artifacts 只从固定安装位置注入 LibreOffice（DOCX 渲染）和 ffmpeg（视频审阅；Windows 为 winget、Chocolatey、Scoop 或 Program Files\\ffmpeg\\bin，macOS 为 Homebrew，Linux 为 /usr/bin 或 /usr/local/bin），不从 PATH 或工作区查找；没有 ffmpeg 时视频保持未验证。',
       '3. Space Extension packages：在 Settings -> Capabilities -> Extensions & components（扩展与连接组件）中管理。启用后会向 Partner 添加插件库；安装本身不连接账号，也不改变 Skills。插件页面与桌面 API、本地文件和凭据相互隔离。',
       '',
       '命令：',

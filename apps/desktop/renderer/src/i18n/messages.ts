@@ -1126,6 +1126,8 @@ export const messages = {
       'Conversations and tool execution need this local service. You can still open Settings.',
     'runtime.startup.retry': 'Retry startup',
     'runtime.startup.failureDetails': 'Failure details',
+    'runtime.startup.nativeArtifactBlocked':
+      'A local KodaX security component could not be prepared. Security software may have blocked or quarantined kodax-windows-sandbox.exe. Trust the KodaX Space install folder and %LOCALAPPDATA%\\KodaXNativeArtifactsV3 (or restore the file from quarantine), then retry startup.',
     'shell.runtime': 'Runtime',
     'shell.closeDiagnostics': 'Close diagnostics',
     'shell.license': 'license',
@@ -4495,6 +4497,8 @@ export const messages = {
     'runtime.startup.serviceDescription': '对话和工具执行需要此本地服务。你仍可打开设置。',
     'runtime.startup.retry': '重试启动',
     'runtime.startup.failureDetails': '失败详情',
+    'runtime.startup.nativeArtifactBlocked':
+      '本地安全组件准备失败，kodax-windows-sandbox.exe 可能被安全软件拦截或隔离。请在安全软件中信任 KodaX Space 安装目录和 %LOCALAPPDATA%\\KodaXNativeArtifactsV3（或从隔离区恢复该文件），然后点击“重试启动”。',
     'shell.runtime': '运行时',
     'shell.closeDiagnostics': '关闭诊断',
     'shell.license': '许可',

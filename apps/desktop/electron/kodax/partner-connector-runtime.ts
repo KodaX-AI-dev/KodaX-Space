@@ -43,6 +43,7 @@ const readInput = z
 type ExecuteCapability = NonNullable<ExtensionRuntimeContract['executeCapability']>;
 type CapabilityProvider = Parameters<ExecuteCapability>[0];
 type CapabilityArgs = Parameters<ExecuteCapability>[2];
+type CapabilityExecuteOptions = Parameters<ExecuteCapability>[3];
 type CapabilityResult = Awaited<ReturnType<ExecuteCapability>>;
 type PartnerBaseRuntime = ExtensionRuntimeContract &
   Partial<Pick<KodaXExtensionRuntime, 'emit' | 'runHook'>>;
@@ -54,6 +55,7 @@ interface PartnerCapabilityExecutionOptions {
   readonly provider: CapabilityProvider;
   readonly id: string;
   readonly args: CapabilityArgs;
+  readonly options: CapabilityExecuteOptions | undefined;
 }
 
 export interface PartnerConnectorRunService {
@@ -307,12 +309,13 @@ async function executePartnerCapability({
   provider,
   id,
   args,
+  options,
 }: PartnerCapabilityExecutionOptions): Promise<CapabilityResult> {
   const unavailable = (): never => {
     throw new Error('Capability is not active in this Partner run.');
   };
   if (provider !== 'mcp' || !id.startsWith(CAPABILITY_PREFIX))
-    return base?.executeCapability(provider, id, args) ?? unavailable();
+    return base?.executeCapability(provider, id, args, options) ?? unavailable();
   if (!tools.some((tool) => tool.capabilityId === id)) return unavailable();
   if (id === CAPABILITY_PREFIX + 'propose' && context.getCurrentPermissionMode?.() === 'plan')
     throw new Error('Connector writes are blocked by plan mode.');
@@ -449,8 +452,8 @@ function partnerRuntimeContract(
       base?.getCapabilityPrompt(provider, id, args) ?? unavailable(),
     getCapabilityPromptContext: (provider) =>
       base?.getCapabilityPromptContext(provider) ?? Promise.resolve(undefined),
-    executeCapability: (provider, id, args) =>
-      executePartnerCapability({ base, context, service, tools, provider, id, args }),
+    executeCapability: (provider, id, args, options) =>
+      executePartnerCapability({ base, context, service, tools, provider, id, args, options }),
     ...(base?.searchCapabilitySnapshot
       ? { searchCapabilitySnapshot: base.searchCapabilitySnapshot.bind(base) }
       : {}),

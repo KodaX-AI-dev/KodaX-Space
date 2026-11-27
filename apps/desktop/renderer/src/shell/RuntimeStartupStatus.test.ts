@@ -58,4 +58,49 @@ test('startup status explains long waits and failures, and clears when Space is 
   assert.match(render(), /Retry startup|重试启动/);
   initial.runtimeConnection = { ...initial.runtimeConnection, state: 'disconnected' };
   assert.match(render(), /Retry startup|重试启动/);
+  assert.doesNotMatch(render(), /KodaXNativeArtifactsV3/);
+});
+
+test('startup failure names security software when a Windows native artifact is unavailable', (t) => {
+  const initial = useAppStore.getInitialState();
+  const original = { ...initial };
+  t.after(() => Object.assign(initial, original));
+  initial.runtimeConnection = {
+    state: 'disconnected',
+    changedAt: 3,
+    stale: true,
+    capabilities: [],
+    // Real customer reason (Issue 257), as sanitized and truncated by main.
+    reason:
+      'Runtime daemon launch failed: A compatible KodaX shellSandbox native artifact is unavailable. ' +
+      "<path> Space\\resources\\app.asar.unpacked\\node_modules\\@kodax-ai\\kodax\\dist\\native\\win32-x64\\manifest.json: ENOENT: no such file or directory, lstat '<path>'",
+  };
+  const html = renderToStaticMarkup(
+    createElement(
+      I18nProvider as ComponentType<PropsWithChildren>,
+      {},
+      createElement(RuntimeStartupStatus),
+    ),
+  );
+  assert.match(html, /%LOCALAPPDATA%\\KodaXNativeArtifactsV3/);
+  assert.match(html, /security software|安全软件/);
+  assert.match(html, /native artifact is unavailable/);
+
+  // SDK 0.7.97-rc.3 names the quarantine case with its own non-retryable reason.
+  initial.runtimeConnection = {
+    ...initial.runtimeConnection,
+    reason:
+      'Runtime daemon launch failed: [native_artifact_removed_after_provision] KodaX native artifact <path> ' +
+      'disappeared right after it was written; security software (for example Windows Defender) likely quarantined it.',
+  };
+  assert.match(
+    renderToStaticMarkup(
+      createElement(
+        I18nProvider as ComponentType<PropsWithChildren>,
+        {},
+        createElement(RuntimeStartupStatus),
+      ),
+    ),
+    /%LOCALAPPDATA%\\KodaXNativeArtifactsV3/,
+  );
 });

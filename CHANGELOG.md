@@ -14,13 +14,21 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 
 ## [Unreleased]
 
+### Changed
+
+- KodaX SDK upgraded to `0.7.97-rc.3`. MCP tools a server declares read-only (`readOnlyHint` without a destructive hint) run without asking in Plan and Accept edits mode, for Coder and Partner alike; other MCP tools ask in Accept edits and stay blocked in Plan, and "Always allow" covers that MCP tool for any arguments. MCP calls can be cancelled, and server configs accept `enabledTools` / `disabledTools`. On Windows the native sandbox helper is provisioned without PowerShell, and a helper that security software removes right after it is written fails startup once instead of retrying (Issue 257).
+- Artifact tools can review MP4, MOV and WebM video (SDK `0.7.97-rc.3`) when ffmpeg is installed. Space passes ffmpeg only from fixed install locations, never from PATH or the workspace: on Windows the winget link, the Chocolatey and Scoop shims, or `Program Files\ffmpeg\bin`; on macOS Homebrew; on Linux `/usr/bin` or `/usr/local/bin`. Without ffmpeg, video stays unverified.
+
 ### Removed
 
 - Stop shipping the `huashu-design` builtin Skill. It was a pinned upstream snapshot that was no longer kept in sync, and its bundled background-music and specimen assets added about 37 MB to every installer. Users who want it can install it as a user or project Skill.
 
 ### Fixed
 
+- A long Run whose query has scrolled out of the live view no longer looks like a lone "Ran N commands" row: the saved-history boundary says the turn's query is in saved history, and the tool groups before the first query in view read "Ran at least N commands".
+- Upgrading an `.mcpb` extension keeps the `enabledTools` / `disabledTools` you set on its server instead of overwriting them.
 - Installer exclusions now apply to the app's own build output. electron-builder had moved them ahead of the `dist-electron` and `apps/desktop/dist` includes, so about 44 MB of renderer source maps shipped in `app.asar`. The renderer production build also stops emitting source maps, matching the main bundle.
+- On Windows, when the Coder service cannot start because a KodaX native security component could not be prepared, the startup banner now says that security software may have blocked or quarantined `kodax-windows-sandbox.exe` and which folders to trust before retrying (Issue 257).
 - Stop packaging `@napi-rs/canvas` (an optional pdfjs dependency, about 36 MB of native Skia) and the unused `pdfjs-dist/legacy` build. PDF rendering runs PDF.js inside Chromium, and PDF text extraction never draws a page. With the `huashu-design` removal, the Windows installer drops from 215 MB to 157 MB.
 
 ## [0.1.47-rc.2] - 2026-11-24

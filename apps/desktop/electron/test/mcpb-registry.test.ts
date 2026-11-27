@@ -97,6 +97,20 @@ test('bundle replacement upgrades only its matching previous server', async () =
   assert.ok(mcpConfigMatchesEntry(sync.store.filesystem, next));
 });
 
+test('bundle replacement keeps the user tool filters on its server', async () => {
+  const old = makeEntry(path.join(kodaxDir, 'old'));
+  const next = makeEntry(path.join(kodaxDir, 'next'));
+  const filters = { enabledTools: ['read_file', 'write_file'], disabledTools: ['write_file'] };
+  const sync = fakeSync({ filesystem: { ...toKodaxMcpServerConfig(old), ...filters } });
+  const result = await syncEntryToKodaxMcp(next, {
+    overwrite: true,
+    previousEntry: old,
+    deps: sync.deps,
+  });
+  assert.equal(result.kind, 'registered');
+  assert.deepEqual(sync.store.filesystem, { ...toKodaxMcpServerConfig(next), ...filters });
+});
+
 test('test onboarding mode keeps legacy path inside the isolated KodaX dir', () => {
   const previous = process.env.KODAX_TEST_ONBOARDING;
   process.env.KODAX_TEST_ONBOARDING = 'fixture';

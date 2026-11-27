@@ -25,6 +25,11 @@ const initializationLabels = {
   listener: 'runtime.startup.listener',
 } as const;
 
+// SDK Windows native artifact resolution/provisioning errors all contain this phrase. Security
+// software removing the provisioned copy is the observed cause (Issue 257); a raw path list alone
+// gives the user no action.
+const NATIVE_ARTIFACT_FAILURE = /native artifact/i;
+
 export function RuntimeStartupStatus() {
   const connection = useAppStore((state) => state.runtimeConnection);
   const { t } = useI18n();
@@ -55,6 +60,9 @@ export function RuntimeStartupStatus() {
         <div className="min-w-0 flex-1">
           <p>{t('runtime.startup.failed')}</p>
           <p className="mt-1 text-fg-muted">{t('runtime.startup.serviceDescription')}</p>
+          {connection.reason && NATIVE_ARTIFACT_FAILURE.test(connection.reason) && (
+            <p className="mt-1">{t('runtime.startup.nativeArtifactBlocked')}</p>
+          )}
           {connection.reason && (
             <details className="mt-1 break-words text-fg-muted">
               <summary>{t('runtime.startup.failureDetails')}</summary>

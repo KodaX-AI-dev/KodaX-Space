@@ -124,6 +124,8 @@ export type KodaxMcpServerConfig = {
   connect?: 'lazy' | 'prewarm' | 'disabled';
   startupTimeoutMs?: number;
   requestTimeoutMs?: number;
+  enabledTools?: string[];
+  disabledTools?: string[];
   auth?: unknown;
 };
 
@@ -607,7 +609,7 @@ export async function syncEntryToKodaxMcp(
     ) {
       return { kind: 'skipped-existing' };
     }
-    deps.upsertMcpServer(entry.name, next);
+    deps.upsertMcpServer(entry.name, current ? { ...next, ...userToolFilters(current) } : next);
     return { kind: 'registered' };
   } catch (err) {
     return { kind: 'error', message: err instanceof Error ? err.message : String(err) };
@@ -658,6 +660,14 @@ async function loadDefaultSyncDeps(): Promise<McpbKodaxMcpSyncDeps> {
       write();
       return true;
     },
+  };
+}
+
+/** Tool filters are the user's choice about a bundle's server; an upgrade keeps them. */
+function userToolFilters(config: KodaxMcpServerConfig): KodaxMcpServerConfig {
+  return {
+    ...(config.enabledTools ? { enabledTools: config.enabledTools.slice() } : {}),
+    ...(config.disabledTools ? { disabledTools: config.disabledTools.slice() } : {}),
   };
 }
 

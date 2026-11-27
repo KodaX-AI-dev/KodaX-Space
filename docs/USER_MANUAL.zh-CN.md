@@ -628,6 +628,8 @@ Space 在启动时验证已加载 SDK 的 `/experimental-memory` 导出和 polic
 
 MCP 面板展示 server 状态、命令/URL、start/stop、工具、日志/诊断和扩展卸载。Coder 工具目录与 reload 会同步 Runtime；server 进程、状态和日志仍由 Space MCP Manager 负责，不会启动第二套桌面 manager。只安装可信来源的扩展。
 
+Coder 和 Partner 调用 MCP 工具（`mcp_call`）的权限规则相同：server 把工具声明为只读（`readOnlyHint`，且未声明 destructive）时，Plan 和“接受编辑”模式下直接执行；其他工具在“接受编辑”模式下需要确认，Plan 模式下不执行。对某个 MCP 工具选择“始终允许”后，这个工具今后的调用都不再询问，不论参数。server 配置可用 `enabledTools` / `disabledTools` 按工具名限制暴露的工具；`.mcpb` 扩展升级时会保留这两项。
+
 当前 SDK 将集成配置从核心 `config.json` 分离，并为独立配置增加
 last-known-good 恢复、revisioned reload、watcher 状态和有界诊断：
 
