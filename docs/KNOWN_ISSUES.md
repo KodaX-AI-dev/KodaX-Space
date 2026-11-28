@@ -53,6 +53,7 @@ Last Updated: 2026-11-28
 | 256 | Medium   | ready - root cause traced on the macOS runner; fix not in 0.1.47-rc.4                                        | Closing the transcript search can leave macOS at the top of the live view instead of the newest messages                                                                                    | Space 0.1.47-rc.2 packaged macOS ARM acceptance; not seen through rc.1                                     | 2026-11-24 |
 | 257 | High     | Resolved in 0.1.47-rc.4; confirmation on the customer's security software pending                             | Windows Coder cannot start: the provisioned copy of `kodax-windows-sandbox.exe` disappears right after the SDK writes it                                                                    | Observed on Space 0.1.47-beta.4 and 0.1.47-rc.2 (SDK 0.7.97-rc.2), Windows; first affected version unknown | 2026-11-25 |
 | 258 | High     | Resolved in 0.1.47-rc.4; real-UAC acceptance on the customer machine pending                                   | Windows sandbox setup froze the window and failed when the UAC prompt was approved late                                                                                                      | Setup in Electron main since F143 (v0.1.35); SDK setups before 0.7.97-rc.4 (SDK Issue 448)                   | 2026-11-28 |
+| 259 | Medium   | In Progress - reproduced locally under load; the SDK reports only `storage_failed`                              | Windows: switching a Provider to the environment source can fail with "OAuth credential storage failed" under load                                                          | First seen in the 0.1.47-rc.4 candidate CI (SDK 0.7.97-rc.4); first affected version unknown                | 2026-11-28 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -3079,16 +3080,59 @@ ENOENT: no such file or directory, lstat '<path>'`. The customer's install folde
   English-only in the zh-CN UI; the launch offer never returns after "Later", even when a later
   upgrade needs setup again (Settings remains the entry).
 
+## Issue 259 — Windows: switching a Provider to the environment source can fail with "OAuth credential storage failed" under load
+
+- **Priority**: Medium (the card reports the failure and the action can be retried; seen once in
+  eight CI runs and reproduced locally only with every core busy).
+- **Status**: In Progress — reproduced locally. The SDK file credential store reports every
+  unexpected error as `storage_failed`, so the failing step is not yet identified.
+- **Introduced**: unknown. First seen in the candidate CI of Space 0.1.47-rc.4 (SDK
+  `0.7.97-rc.4`); the same case passed on its first attempt in the seven earlier runs.
+- **Created**: 2026-11-28.
+- **Original problem**: in Settings → Models & providers, clicking "Use environment:
+  ANTHROPIC_API_KEY" shortly after a key was saved can fail. The card shows
+  `[provider.useEnvironment] handler threw: OAuth credential storage failed.` and the source
+  stays at both values.
+- **Reproduction**:
+  - GitHub: [ci run 46097598306](https://github.com/KodaX-AI-dev/KodaX-Space/actions/runs/46097598306),
+    attempt 1, `windows-latest / E2E shard 1/2`. `tests/e2e/provider-file-credentials.spec.ts:36`
+    failed all three attempts in that run; the two other cases of the same file passed right
+    after. The re-run of that job (attempt 2) passed the case on its first attempt.
+  - Local Windows, 24 logical cores: without load the case passed 10 of 10. With one busy loop
+    per core and the CI timeouts (`CI=1`), 8 of 10 passed, 1 passed on retry and 1 failed all
+    three attempts with the same card error.
+  - A probe that drives the SDK store directly (`createFileProviderCredentialStore` on a
+    temporary `auth.json`, save then switch, 40 rounds under the same load) did not fail in 80
+    writes; `powershell.exe` took about 230 ms per start there, far below its 10-second budget.
+- **Code trace** (SDK `0.7.97-rc.4`, `dist/chunks/chunk-MPS3IGYU.js`,
+  `createFileProviderCredentialStore`): a write takes a `proper-lockfile` lock on `auth.json`
+  (300 retries 100 ms apart), reads and validates the document, writes a temporary file under
+  `auth.json.staging`, protects the staging directory and the temporary file with
+  `powershell.exe` (10-second timeout each) and renames the temporary file over `auth.json`.
+  Every unexpected error on this path — lock, read, rename, unlock — becomes
+  `OAuthCredentialError("storage_failed")`, rendered as "OAuth credential storage failed."
+  although the store is shared by API keys and OAuth sessions. In a real Session the same
+  `auth.json` is also opened by the Runtime client identity
+  (`apps/desktop/electron/kodax/runtime/runtime-client-secret-file.ts`) and by the shared Host.
+- **Missing information**: the underlying error code. The IPC wrapper returns only
+  `error.message` for a thrown handler and logs nothing.
+- **Proposed solution**: have the SDK keep the cause on the error or send it to its diagnostic
+  sink, and retry transient sharing violations and lock errors inside the transaction; log the
+  handler failure with its `code` in Space. Until then, a CI run that fails this case alone can
+  re-run the failed job.
+- **Not changed by**: the release-preparation commits `0cda9314` and `c373e7e8`, which touch
+  documents, versions and manual text only.
+
 ## Summary
 
-- Total: 35
+- Total: 36
 - Open: 2
 - Ready: 5
-- In Progress: 11
+- In Progress: 12
 - Resolved, awaiting release or verification: 15
 - Other (partially fixed / under investigation): 2
 - High: 17
-- Medium: 16
+- Medium: 17
 - Low: 2
 - Next ready to resolve: 222
 - Archived (resolved and delivered): see [ISSUES_ARCHIVED.md](ISSUES_ARCHIVED.md)

@@ -48,6 +48,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 ### Known issues
 
 - On macOS, opening the transcript search before a newly opened Session has scrolled to its newest messages, then closing it, can return the transcript to the top instead of the newest messages; "Return to newest messages" brings it back (Issue 256). The fix is not part of this release.
+- On Windows, switching a Provider to the environment source can fail with "OAuth credential storage failed" when the machine is heavily loaded; the card reports it and the action can be retried (Issue 259). The SDK's file credential store does not say which step failed, and the fix is not part of this release.
 
 ## [0.1.47-rc.2] - 2026-11-24
 
