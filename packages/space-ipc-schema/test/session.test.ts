@@ -1407,6 +1407,17 @@ test('session.fork + session.rewind channels are registered', () => {
   assert.ok(INVOKE_CHANNEL_NAMES.has('session.rewind'));
 });
 
+test('session.recover is registered and takes only the source sessionId', () => {
+  assert.ok(INVOKE_CHANNEL_NAMES.has('session.recover'));
+  const channel = invokeChannels['session.recover'];
+  assert.equal(channel.input.safeParse({ sessionId: 's_1' }).success, true);
+  assert.equal(channel.input.safeParse({ sessionId: '' }).success, false);
+  assert.equal(
+    channel.output.safeParse({ newSessionId: 's_2', createdAt: 1, title: 'Recovered' }).success,
+    true,
+  );
+});
+
 test('session.fork input requires sessionId + non-negative forkPointTurnIdx', () => {
   assert.equal(
     sessionForkChannel.input.safeParse({ sessionId: 's_1', forkPointTurnIdx: 0 }).success,

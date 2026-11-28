@@ -319,6 +319,9 @@ export const spaceRuntimeFailureDetailSchema = z
       })
       .strip()
       .optional(),
+    // SDK rc.5 (ADR-087): the same content rejection also ended the previous Run, so the
+    // history is the likely cause. Space offers session.recover; nothing changes automatically.
+    historyRejected: z.literal(true).optional(),
   })
   // Strip additive diagnostic fields instead of rejecting the complete safe fact.
   .strip();

@@ -44,6 +44,7 @@ import { ScrollCapBox } from '../../../components/ScrollCapBox.js';
 import { FileNameText } from '../../../components/FileNameText.js';
 import { EASE_EXPO, usePrefersReducedMotion } from '../../../lib/motion.js';
 import { openFileSmart, looksLikeFilePath } from '../../../lib/openPath.js';
+import { recoverSessionFromSummary } from '../../../lib/recoverSession.js';
 import { parseFileReferences, type ParsedFileReference } from '../../../lib/fileReferences.js';
 import { useI18n } from '../../../i18n/I18nProvider.js';
 import type { MessageKey } from '../../../i18n/messages.js';
@@ -1324,6 +1325,9 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
       : 'message.errorTitle';
   const NoticeIcon = cancelled ? CircleStop : CircleAlert;
   const actionDef = action && !recovering ? ACTION_BUTTONS[action] : undefined;
+  // SDK rc.5: the same content rejection ended two Runs, so the history is the likely cause.
+  const historyRejected = !neutral && message.failureDetail?.historyRejected === true;
+  const currentSessionId = useAppStore((state) => state.currentSessionId);
   const secondsLeft = useRetryCountdown(retryAvailableAt);
   const countdownActive = action === 'retry' && secondsLeft > 0;
   // Lines follow content length: title, message and actions share one row and only wrap when
@@ -1357,8 +1361,13 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
             {t('message.runtimeFailure.effects.unknown')}
           </div>
         )}
+        {historyRejected && (
+          <div className="text-fg-secondary" data-testid="history-rejected-hint">
+            {t('message.historyRejected')}
+          </div>
+        )}
       </div>
-      {(rows.length > 0 || actionDef) && (
+      {(rows.length > 0 || actionDef || historyRejected) && (
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {rows.length > 0 && (
             <button
@@ -1373,6 +1382,15 @@ function ErrorNotice(message: SystemNoticeMessage): JSX.Element {
                 className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-90' : ''}`}
                 aria-hidden
               />
+            </button>
+          )}
+          {historyRejected && currentSessionId && (
+            <button
+              type="button"
+              onClick={() => void recoverSessionFromSummary(currentSessionId, t)}
+              className="inline-flex h-7 items-center rounded-md border border-border-default bg-surface-1 px-2.5 text-xs font-medium text-fg-primary shadow-sm transition-colors hover:bg-hover-bg"
+            >
+              {t('message.action.recoverSession')}
             </button>
           )}
           {actionDef && (

@@ -730,6 +730,19 @@ export async function forkSessionForIpc(
   return result;
 }
 
+export async function recoverSessionForIpc(
+  input: ChannelInput<'session.recover'>,
+): Promise<ChannelOutput<'session.recover'>> {
+  if (!kodaxHost.get(input.sessionId)) {
+    await kodaxHost.tryResume(input.sessionId);
+  }
+  const result = await kodaxHost.recover(input.sessionId);
+  if (!result) {
+    throw new Error(`session not found: ${input.sessionId}`);
+  }
+  return result;
+}
+
 export async function rewindSessionForIpc(
   input: ChannelInput<'session.rewind'>,
 ): Promise<ChannelOutput<'session.rewind'>> {
@@ -1559,6 +1572,12 @@ export function registerSessionChannels(options: SessionChannelsOptions = {}): v
   // SDK loadSession 重放是 v0.1.7+ 优化）。
   registerChannel('session.fork', (input) =>
     runWithCoderAdmission(options, () => forkSessionForIpc(input)),
+  );
+
+  // session.recover — SDK rc.5 failureDetail.historyRejected 的恢复入口：
+  // Runtime 从源会话的确定性摘要派生新会话（不调用模型），源会话不变。
+  registerChannel('session.recover', (input) =>
+    runWithCoderAdmission(options, () => recoverSessionForIpc(input)),
   );
 
   // session.rewind — FEATURE_038 (持久化)

@@ -1285,6 +1285,22 @@ export const sessionForkChannel = {
   ]),
 } as const;
 
+// ---- Invoke: session.recover ----
+//
+// Runtime sessions.recover: a new Session seeded from a deterministic summary of the source
+// (no model call). Space offers it when failureDetail.historyRejected says the history keeps
+// being rejected. The source Session is left unchanged.
+export const sessionRecoverChannel = {
+  name: 'session.recover',
+  direction: 'invoke',
+  input: z.object({ sessionId: z.string().min(1) }),
+  output: z.object({
+    newSessionId: z.string().min(1),
+    createdAt: z.number().int().nonnegative(),
+    title: z.string().optional(),
+  }),
+} as const;
+
 // ---- Invoke: session.rewind ---- (FEATURE_033 in-memory)
 //
 // 把 session 回退到 rewindPastTurnIdx 处（保留 turns 0..idx 含）：

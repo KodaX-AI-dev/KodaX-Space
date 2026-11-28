@@ -12,6 +12,16 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 > v0.1.7 内容 (F011/F023/F024/F026/F038) 跟 v0.1.8 一起发。GitHub Releases 顶部仍是 v0.1.5，
 > 0.1.7 这条 section 留作历史记录、git log 引用入口。
 
+## [Unreleased]
+
+### Added
+
+- When a provider rejects a session's request twice in a row with the same 400, 413 or 422 (not an account or quota error), the "Run failed" card says the conversation history is the likely cause and offers "Continue in new session". The KodaX Host derives a new session from a summary of this one without a model call and Space switches to it; the original session stays unchanged and nothing happens without the click (KodaX SDK `0.7.97-rc.5`, `failureDetail.historyRejected`, SDK Issues 449/450).
+
+### Changed
+
+- KodaX SDK upgraded to `0.7.97-rc.5`. Requests scale images over 8000 px on a side (the file and the transcript keep the original), so one oversized screenshot no longer blocks every later request of a session. When a provider rejects a request, images that model never accepted are retried at 2000 px and then left out with the provider's reason, without a model call; images it already accepted keep their bytes and the prompt cache. A non-streaming Anthropic request with a large `max_tokens` is no longer refused locally, and a 4xx is no longer reported as a timeout.
+
 ## [0.1.47-rc.4] - 2026-11-28
 
 ### Added

@@ -200,6 +200,7 @@ export {
   sessionSetPermissionModeChannel,
   sessionSetAgentModeChannel,
   sessionForkChannel,
+  sessionRecoverChannel,
   sessionResolveHistoryTurnChannel,
   sessionRewindChannel,
   sessionAgentsMdChannel,

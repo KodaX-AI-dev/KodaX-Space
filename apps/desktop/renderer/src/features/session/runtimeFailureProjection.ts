@@ -20,6 +20,7 @@ function failureDetailsMatch(
     previous.upstreamErrorCode === next.upstreamErrorCode &&
     previous.requestId === next.requestId &&
     previous.retryAfterMs === next.retryAfterMs &&
+    previous.historyRejected === next.historyRejected &&
     previous.contextTokens?.required === next.contextTokens?.required &&
     previous.contextTokens?.available === next.contextTokens?.available
   );

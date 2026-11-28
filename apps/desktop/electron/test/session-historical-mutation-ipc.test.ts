@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { forkSessionForIpc, rewindSessionForIpc } from '../ipc/session.js';
+import { forkSessionForIpc, recoverSessionForIpc, rewindSessionForIpc } from '../ipc/session.js';
 import { kodaxHost } from '../kodax/host.js';
 import { runtimeHostAdapter } from '../kodax/runtime-host-adapter.js';
 import {
@@ -115,6 +115,38 @@ test('session.fork resumes a persisted-only Session and preserves its exact hist
   } finally {
     adapter.hasReadyRuntime = originalReady;
     adapter.forkSession = originalFork;
+  }
+});
+
+test('session.recover resumes a persisted-only Session and registers the Runtime-recovered child', async () => {
+  const sessionId = 's_persisted_recover_source';
+  mockState.seedTagged(sessionId, 'C:/proj/example', 'code', 'rejected history source');
+  await runtimeStore.set(sessionId, { provider: 'mock' });
+  assert.equal(kodaxHost.get(sessionId), undefined);
+
+  const adapter = runtimeHostAdapter as unknown as Record<string, unknown>;
+  const originalReady = adapter.hasReadyRuntime;
+  const originalRecover = adapter.recoverSession;
+  const received: unknown[] = [];
+  try {
+    adapter.hasReadyRuntime = () => true;
+    adapter.recoverSession = async (input: unknown) => {
+      received.push(input);
+      return { id: 's_recovered_child', title: 'Recovered: rejected history source' };
+    };
+
+    const result = await recoverSessionForIpc({ sessionId });
+
+    assert.equal(result.newSessionId, 's_recovered_child');
+    assert.equal(result.title, 'Recovered: rejected history source');
+    assert.deepEqual(received, [{ sessionId }]);
+    const child = kodaxHost.get('s_recovered_child');
+    assert.equal(child?.surface, 'code');
+    assert.equal(child?.projectRoot, kodaxHost.get(sessionId)?.projectRoot);
+    assert.equal(child?.title, 'Recovered: rejected history source');
+  } finally {
+    adapter.hasReadyRuntime = originalReady;
+    adapter.recoverSession = originalRecover;
   }
 });
 

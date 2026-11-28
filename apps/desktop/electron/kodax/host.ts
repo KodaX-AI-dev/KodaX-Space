@@ -1258,6 +1258,22 @@ class KodaXHost {
       await this.cleanupFailedFork(sessionId, usesRuntime);
       throw error;
     }
+    await this.adoptDerivedSession(src, sessionId, forkTitle, usesRuntime, forkPointTurnIdx);
+    return { newSessionId: sessionId, createdAt };
+  }
+
+  /**
+   * Registers a Session the SDK already wrote (fork or recover) with the source's runtime
+   * settings. A failed factory or metadata write deletes the new Session again, so callers
+   * either get a usable child or a definite failure.
+   */
+  private async adoptDerivedSession(
+    src: ManagedSession,
+    sessionId: string,
+    title: string | undefined,
+    usesRuntime: boolean,
+    forkPointTurnIdx?: number,
+  ): Promise<void> {
     // reviewer HIGH-1：factory 可能抛（MockKodaXSession / RealKodaXSession 构造路径）。
     // SDK 已经写盘，但 factory 失败时 in-memory 实例缺失 → 盘上 orphan session。
     // 用 try/catch 回滚：擦盘后重抛，调用方拿到的是确定的失败状态。
@@ -1277,8 +1293,8 @@ class KodaXHost {
         surface: src.surface,
         partnerExpert: src.partnerExpert,
         partnerConnectors: src.partnerConnectors,
-        parentSessionId: sourceSessionId,
-        forkPointTurnIdx,
+        parentSessionId: src.sessionId,
+        ...(forkPointTurnIdx !== undefined ? { forkPointTurnIdx } : {}),
         emit: (event: SessionEvent) => {
           pushToRenderer('session.event', event);
         },
@@ -1303,14 +1319,33 @@ class KodaXHost {
     }
     this.sessions.set(sessionId, session);
     session.thinking = src.thinking;
-    session.title = forkTitle ?? session.title;
+    session.title = title ?? session.title;
     if (!(await this.persistRuntime(sessionId))) {
       await session.dispose().catch(() => undefined);
       this.sessions.delete(sessionId);
       await this.cleanupFailedFork(sessionId, usesRuntime);
-      throw new Error('fork runtime metadata could not be persisted');
+      throw new Error('derived session runtime metadata could not be persisted');
     }
-    return { newSessionId: sessionId, createdAt };
+  }
+
+  /**
+   * SDK rc.5 history rejection: Runtime sessions.recover writes a new Session seeded from a
+   * deterministic summary (no model call); Space registers it like a fork child. The source
+   * Session is not changed. Only Runtime-backed Sessions can recover.
+   */
+  async recover(sourceSessionId: string): Promise<ChannelOutput<'session.recover'> | null> {
+    const src = this.sessions.get(sourceSessionId);
+    if (!src) return null;
+    if (!(src.surface === 'code' || src instanceof RealKodaXSession)) {
+      throw new Error('Only Runtime sessions can be recovered into a new session.');
+    }
+    if (!runtimeHostAdapter.hasReadyRuntime()) {
+      throw new Error('Runtime is unavailable for session recovery.');
+    }
+    const recovered = await runtimeHostAdapter.recoverSession({ sessionId: sourceSessionId });
+    const createdAt = Date.now();
+    await this.adoptDerivedSession(src, recovered.id, recovered.title, true);
+    return { newSessionId: recovered.id, createdAt, title: recovered.title };
   }
 
   /**

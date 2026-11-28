@@ -244,6 +244,19 @@ test('Runtime Run projection preserves credential-safe provider failure details'
   assert.equal(projected.action, 'check_network');
 });
 
+test('Runtime Run projection keeps the SDK rc.5 history rejection for the recovery offer', () => {
+  const detail = {
+    failureKind: 'request' as const,
+    stage: 'transport' as const,
+    providerErrorCode: 'upstream_client_error' as const,
+    safeMessage: 'The provider rejected the request.',
+    httpStatus: 400,
+    historyRejected: true as const,
+  };
+  const projected = projectRuntimeRun({ ...running, phase: 'failed', failureDetail: detail });
+  assert.deepEqual(projected.failureDetail, detail);
+});
+
 test('Runtime Run projection retains local Skill loading and policy failures', () => {
   for (const [stage, providerErrorCode] of [
     ['skill_load', 'skill_not_found'],
@@ -313,6 +326,8 @@ test('Runtime Run projection omits malformed optional identifiers', () => {
           retryAfterMs: -1,
           contextTokens: { required: -1, available: 10 },
           detail: '',
+          // A malformed Host value: the SDK contract only ever sends true.
+          historyRejected: false as unknown as true,
         },
       });
     } finally {
@@ -339,6 +354,7 @@ test('Runtime Run projection omits malformed optional identifiers', () => {
           'retryAfterMs',
           'contextTokens.required',
           'detail',
+          'historyRejected',
         ],
       },
     ],

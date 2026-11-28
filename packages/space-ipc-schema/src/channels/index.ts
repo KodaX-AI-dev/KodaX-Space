@@ -74,6 +74,7 @@ import {
   sessionSetPermissionModeChannel,
   sessionSetAgentModeChannel,
   sessionForkChannel,
+  sessionRecoverChannel,
   sessionResolveHistoryTurnChannel,
   sessionRewindChannel,
   sessionAgentsMdChannel,
@@ -361,6 +362,7 @@ const extensionInvokeChannels = {
 
 const historyTurnInvokeChannels = {
   [sessionForkChannel.name]: sessionForkChannel,
+  [sessionRecoverChannel.name]: sessionRecoverChannel,
   [sessionResolveHistoryTurnChannel.name]: sessionResolveHistoryTurnChannel,
   [sessionRewindChannel.name]: sessionRewindChannel,
 } as const;

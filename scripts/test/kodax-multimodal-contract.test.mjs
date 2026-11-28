@@ -25,7 +25,13 @@ test('published SDK decoder accepts PNG and rejects a JPEG with headers but no f
     'ffd8ffe000104a46494600010100000100010000ffe10008457869660000ffd9',
     'hex',
   );
-  assert.deepEqual(await validateImageBytes(pixel), { status: 'valid', mediaType: 'image/png' });
+  // rc.5: a decoded image also reports its pixel size (request scaling, Issue 449).
+  assert.deepEqual(await validateImageBytes(pixel), {
+    status: 'valid',
+    mediaType: 'image/png',
+    width: 1,
+    height: 1,
+  });
   assert.deepEqual(await validateImageBytes(broken), { status: 'invalid' });
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'space-sdk-image-'));
   t.after(async () => {

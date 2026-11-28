@@ -2973,6 +2973,8 @@ export const messages = {
       'The saved history is incomplete or ambiguous. The end of this turn could not be verified.',
     'session.turnNotOnBranch': 'This record has no verified position on the current branch.',
     'session.turnChanged': 'The selected history or active run changed. Select the turn again.',
+    'session.recoverCreated': 'Continued in a new session from a summary of the previous one.',
+    'session.recoverFailed': 'Could not continue in a new session: {message}',
     'session.turnForkBusy': 'Wait for the active run to finish before creating a branch.',
     'session.turnRewindBusy': 'Wait for the active work to finish before rewinding.',
     'session.turnIncomplete':
@@ -3030,6 +3032,9 @@ export const messages = {
     'message.retryIn': 'Retry in {seconds}s',
     'message.action.retry': 'Retry',
     'message.action.providerSettings': 'Provider settings',
+    'message.action.recoverSession': 'Continue in new session',
+    'message.historyRejected':
+      'This request was rejected twice in a row, so something in the conversation history is the likely cause. Continue in a new session that starts from a summary of this one; this session stays unchanged.',
     'message.errorTitle': 'Run failed',
     'message.sessionRecoveringTitle': 'Run stopped',
     'message.runCancelledTitle': 'Stopped',
@@ -6034,6 +6039,8 @@ export const messages = {
     'session.turnHistoryIncomplete': '已保存的历史不完整或存在歧义，无法确认这一轮的结尾。',
     'session.turnNotOnBranch': '无法确认这条记录在当前分支中的位置。',
     'session.turnChanged': '所选历史或当前运行已变化，请重新选择。',
+    'session.recoverCreated': '已在新会话中继续，新会话从原会话的摘要开始。',
+    'session.recoverFailed': '无法在新会话中继续：{message}',
     'session.turnForkBusy': '请等当前运行结束后再创建分支。',
     'session.turnRewindBusy': '请等当前工作结束后再回退。',
     'session.turnIncomplete': '这一轮还有未完成的工具调用，请选择一轮已完成的对话。',
@@ -6087,6 +6094,9 @@ export const messages = {
     'message.retryIn': '{seconds}s 后重试',
     'message.action.retry': '重试',
     'message.action.providerSettings': 'Provider 设置',
+    'message.action.recoverSession': '在新会话中继续',
+    'message.historyRejected':
+      '同一请求已连续两次被拒绝，原因很可能在会话历史里。可以在新会话中继续：新会话从本会话的摘要开始，本会话保持不变。',
     'message.errorTitle': '运行出错',
     'message.sessionRecoveringTitle': '运行已停止',
     'message.runCancelledTitle': '已停止',

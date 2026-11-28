@@ -47,6 +47,7 @@ const OPTIONAL_FAILURE_FIELDS = [
   ['contextTokens', spaceRuntimeFailureDetailSchema.shape.contextTokens],
   ['skillName', spaceRuntimeFailureDetailSchema.shape.skillName],
   ['detail', spaceRuntimeFailureDetailSchema.shape.detail],
+  ['historyRejected', spaceRuntimeFailureDetailSchema.shape.historyRejected],
 ] as const satisfies readonly (readonly [string, OptionalFailureFieldSchema])[];
 
 function sanitizeOptionalField(

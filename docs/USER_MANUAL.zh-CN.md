@@ -274,6 +274,13 @@ Run/Request ID、HTTP 状态、上游短错误码、建议等待时间和上下�
 SDK 提供时显示）。Space 根据稳定的 `providerErrorCode` 决定打开 Provider 设置、
 切换模型、检查网络或重试；连接旧 daemon 时继续使用 `failureKind` 和通用终态文案。
 
+SDK rc.5 起，同一会话连续两次被同一 Provider、同一模型以相同的 400/413/422
+内容错误拒绝（不是账号或额度问题）时，错误条会说明原因很可能在会话历史里，并提供
+“在新会话中继续”：Host 从本会话的摘要派生一个新会话（不调用模型），Space 切换过去，
+原会话保持不变；不点就什么都不会改变。成功的 Run 会清除该判断，Host 重启后需要再
+失败两次才会再次提示。超过 8000 像素边长的图片在请求中自动缩放（文件和记录保留原图），
+被拒绝时模型尚未接受过的图片会先缩到 2000 像素重试、再省略并写明原因。
+
 这些详情不会包含 API key、Authorization/Cookie、请求或响应正文、prompt、完整
 URL、本地路径、headers、stack 或原始 Error。测试连接成功只证明验证接口可用，
 不等于实际模型、对话 endpoint、streaming、tool-call/reasoning 格式及 daemon

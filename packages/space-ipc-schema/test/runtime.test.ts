@@ -195,6 +195,27 @@ test('run projection preserves bounded future provider diagnostics without forwa
   );
 });
 
+test('run projection carries the SDK rc.5 history rejection only as true', () => {
+  const run = (historyRejected: unknown) =>
+    spaceRuntimeRunProjectionSchema.safeParse({
+      runId: 'run_history_rejected',
+      sessionId: 'session_history_rejected',
+      phase: 'failed',
+      failureDetail: {
+        failureKind: 'request',
+        stage: 'transport',
+        providerErrorCode: 'upstream_client_error',
+        safeMessage: 'The provider rejected the request.',
+        httpStatus: 400,
+        historyRejected,
+      },
+    });
+  const accepted = run(true);
+  assert.equal(accepted.success, true);
+  if (accepted.success) assert.equal(accepted.data.failureDetail?.historyRejected, true);
+  assert.equal(run(false).success, false);
+});
+
 test('Runtime failure identifiers reject values outside the SDK safe character set', () => {
   for (const [field, value] of [
     ['upstreamErrorCode', 'gateway/model rejected=v2'],

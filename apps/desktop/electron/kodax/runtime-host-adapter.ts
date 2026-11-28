@@ -34,6 +34,7 @@ import type {
   RuntimeIntegrationHealth,
   RuntimeOwnerPolicyState,
   RuntimeOwnerState,
+  RuntimeRecoverSessionInput,
   RuntimeRewindSessionInput,
   RuntimeRunHandle,
   RuntimeRunResult,
@@ -4349,6 +4350,15 @@ export class RuntimeHostAdapter {
         );
       });
     if (result !== null) invalidatePersistedSessionCache(result.id);
+    return result;
+  }
+
+  /** Runtime-owned recovery: a new Session seeded from a summary; the source stays unchanged. */
+  async recoverSession(input: RuntimeRecoverSessionInput) {
+    const runtime = await this.requireRuntime();
+    await this.assertHostSession(runtime, input.sessionId);
+    const result = await runtime.sessions.recover(input);
+    invalidatePersistedSessionCache(result.id);
     return result;
   }
 
