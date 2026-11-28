@@ -4,7 +4,7 @@
   <img src="../resources/icon.png" alt="KodaX Space 应用图标" width="96">
 </p>
 
-> 本文描述当前工作树（`0.1.47-rc.2` 候选）的 Registry SDK `0.7.97-rc.2` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。rc.2 默认只启用基于 git 的仓库智能工具，语义索引需显式开启（许可证有效时 composer 上方的芯片显示 “Git”）；切换模型后不再把上一个模型的思考写进回复；对话中的压缩与模型切换显示为时间线标记。rc.1 在 beta.13 之上收敛工具卡显示：扩展内部嵌套工具调用不再单独生成工具卡，任务结束不再残留“正在运行”的卡片，重开旧会话移除残留；模型目录刷新（Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed、MiMo v2.6），灾备默认模型随之对齐。beta.13 把每次 Stop 一致收敛到最终结果：结算未持久化的 Run 以 `actor_settlement_not_persisted` 结束并在失败详情里显示 Provider 原文，Session 在后台自愈期间拒发新消息（composer 提示“会话恢复中”）；集成健康每 2 秒走 Host 轻量查询；新会话 ID 改用 UUIDv7，未命名会话以末 8 位标注。已发布 Space `v0.1.47-rc.1` 使用 SDK rc.1 构建。旧截图用于定位，以实际界面为准。
+> 本文描述当前工作树（`0.1.47-rc.4` 候选）的 Registry SDK `0.7.97-rc.4` 适配，见 [beta.9 接入记录](releases/kodax-beta9-space-adaptation.md)、[beta.8 接入记录](releases/kodax-beta8-space-adaptation.md)、[beta.7 接入记录](releases/kodax-beta7-space-adaptation.md)、[beta.4 接入记录](releases/kodax-beta4-space-adaptation.md) 与 [beta.3 验收](releases/kodax-beta3-space-adaptation.md)。rc.3 / rc.4 让 server 声明为只读的 MCP 工具在 Plan 和“接受编辑”下直接执行，MCP 调用可以取消；Windows 沙箱 setup 在独立进程中运行、整个过程只弹一次 UAC，启动后的卡片显示进度和失败原因；Windows 沙箱辅助程序不再经 PowerShell 写入，被安全软件拦截时启动横幅会给出提示；安装 ffmpeg 后 Artifact 工具可以审阅视频。文件查看器对无法显示的文件提供“用系统默认应用打开”，Linux 包可在 glibc 2.28 系统上运行。rc.2 默认只启用基于 git 的仓库智能工具，语义索引需显式开启（许可证有效时 composer 上方的芯片显示 “Git”）；切换模型后不再把上一个模型的思考写进回复；对话中的压缩与模型切换显示为时间线标记。rc.1 在 beta.13 之上收敛工具卡显示：扩展内部嵌套工具调用不再单独生成工具卡，任务结束不再残留“正在运行”的卡片，重开旧会话移除残留；模型目录刷新（Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed、MiMo v2.6），灾备默认模型随之对齐。beta.13 把每次 Stop 一致收敛到最终结果：结算未持久化的 Run 以 `actor_settlement_not_persisted` 结束并在失败详情里显示 Provider 原文，Session 在后台自愈期间拒发新消息（composer 提示“会话恢复中”）；集成健康每 2 秒走 Host 轻量查询；新会话 ID 改用 UUIDv7，未命名会话以末 8 位标注。已发布 Space `v0.1.47-rc.2` 使用 SDK rc.2 构建。旧截图用于定位，以实际界面为准。
 
 > Coder 默认 Coding，可独立选择 Agent / 实验性 Script；Partner 使用共享 Host 的 Agent 模式并保留正常 shell/write/子 Agent 能力。Provider/稳定客户端凭据默认使用权限受限的 auth.json，不依赖 Keychain。
 
@@ -259,7 +259,7 @@ flowchart LR
 唯一会话执行与历史写入者]
 ```
 
-Space 工作树锁定 KodaX SDK 0.7.97-beta.9。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
+Space 工作树锁定 KodaX SDK 0.7.97-rc.4。Partner 与专家由共享 Host 在实际准入和消费时核验 Agent 模式；默认 Skill 由 Host 准备，排队输入采用最后成功保存的专家和连接器配置。显式技能只覆盖本轮方法，专家角色保持。不可用的选择会阻断输入并保留原问题；旧任务无法证明原业务范围时不会自动套用当前选择。验收与限制见 [beta.3 接入记录](releases/kodax-beta3-space-adaptation.md)。
 
 Settings 会区分配置已保存与实际生效时点。正在执行的模式和 requested/sent effort 来自 Host；缺失时显示未知，`verified:false` 表示没有服务端采用强度证明。选择模型时按模型级图片能力判断新附件，不改写已有历史。统计 partial 保留不完整提示，未知费用不显示为零。
 
@@ -374,29 +374,25 @@ Windows setup 目录，运行 `kodax sandbox setup` 可恢复；`Sandbox fallbac
 正在重置或 backend 失败，本次工具仍按普通权限策略继续执行；`No sandbox` 表示本次没有选择沙箱。该状态只用于解释当前工具，
 不会写入对话正文，也不把命令级 containment 夸大为完整应用隔离。
 
-当前开发版可在 **Settings → Runtime → 命令沙箱（ASRT）** 查看机器级 readiness：
+可在 **Settings → 安全与沙箱 → 命令沙箱（ASRT）** 查看机器级 readiness：
 `已就绪`、`需要设置` 或 `不可用`，并显示 ASRT 版本、backend、最近检查时间、有界诊断和
 SDK 设置指引。刷新只运行 doctor，不会安装任何内容。Windows 仅在 doctor 明确返回
-`setup-required` 时显示“设置沙箱”；点击后还必须在 Space 内确认，随后系统显示一次 UAC
+`setup-required` 时显示“设置沙箱”；点击后先在 Space 内确认，随后系统显示一次 UAC
 提示（替换旧沙箱账户也只弹一次），最多等待 10 分钟批准。设置完成、取消或失败后都会重新运行
-doctor 并更新状态。Windows 需要设置时，启动几秒后右下角卡片会询问是否设置：“现在设置”直接
-开始，“以后再说”之后不再提示（上次设置中途停止时仍会提示“完成设置”）。设置进行中卡片显示
-已用时间和当前阶段：等待另一个设置（例如 `kodax sandbox setup`，最多 45 分钟）、等待 UAC
-（提示没有弹到前台时点击任务栏上闪烁的盾牌）、已批准正在完成，期间可以继续使用 Space，但不要
-关闭它。未完成时卡片和设置页用界面语言说明原因（UAC 10 分钟内未批准、另一个设置仍在进行、
-沙箱账户忙、原生文件缺失或被拦截、批准后某个步骤失败、ACL 清理未确认），并提供重试；原始
-错误写入诊断日志。macOS/Linux
+doctor 并更新状态；未完成时这里还会多一行“上次设置：…”说明结果。Windows 需要设置时，启动
+几秒后右下角卡片会询问是否设置：“现在设置”直接开始（不再弹应用内确认），“以后再说”之后
+不再提示，重启后也记得（上次设置中途停止时仍会提示“完成设置”）。设置在独立进程中进行，
+期间可以继续使用 Space，但不要关闭它；卡片显示已用时间和当前阶段：等待另一个设置（例如
+`kodax sandbox setup`，最多 45 分钟）、等待 UAC（提示没有弹到前台时点击任务栏上闪烁的
+盾牌）、已批准正在完成。未完成时卡片和设置页用界面语言说明原因（UAC 10 分钟内未批准、
+另一个设置仍在进行、沙箱账户忙、原生文件缺失或被拦截、批准后某个步骤失败、ACL 清理未确认、
+设置在完成前中止），并提供重试；原始错误写入诊断日志。macOS/Linux
 只显示依赖安装指引，Space 不会自动调用包管理器。启动、普通工具调用和打开诊断包都不会
 自动触发 setup。
 
-同一 Runtime 页面还提供“沙箱环境变量透传”。这里填写的是变量名 allow-list，而不是
-变量值；值只在模型命令实际执行的 host 上读取，不会写入 `config.json` 或发送给
-renderer。Space 会把这份显式列表（包括空列表）传给 共享 Host 的 Coder、Partner、
-legacy 与独立 Workflow Run。KodaX 始终阻止 `NODE_OPTIONS`、`BASH_ENV`、
-`RIPGREP_CONFIG_PATH` 和导入的 Bash 函数，即使把这些名字加入列表也不会透传。修改
-host 中的变量值后，需要安全重启已连接的长驻 daemon。CLI 可写入比 Space 编辑器更大的
-列表；若超过 128 项或单个名字超过 256 字符，Runtime 仍使用完整配置，但 Space 会禁用
-该编辑器并提示先在 KodaX 配置文件中缩减，避免把有界投影误存为完整列表。
+旧版的“沙箱环境变量透传”已经失效：KodaX 0.7.96 起命令沙箱默认继承宿主环境，同时继续阻止
+`NODE_OPTIONS`、`BASH_ENV`、`RIPGREP_CONFIG_PATH` 和导入的 Bash 函数等执行控制变量。Space
+不再提供这份变量名列表的编辑入口，`config.json#sandbox.envPass` 只作为迁移遗留读取。
 
 权限和 AskUser 请求按 Session 归属：权限 modal 只代表当前可见 Session；ask_user 提问卡渲染在该 Session 自己的对话流尾部，每个 reqId 独立结算，互不误答。后台 Session 的请求会留在耐久队列并在左侧栏显示等待标记；切换到对应 Session 后再处理。这样可以避免一个后台任务的确认盖住另一个正在阅读的会话。
 

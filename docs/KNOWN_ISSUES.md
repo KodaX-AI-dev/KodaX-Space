@@ -1,6 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-11-25
+Last Updated: 2026-11-28
+
+> 2026-11-28: Space 0.1.47-rc.4 pins Registry SDK `0.7.97-rc.4`. rc.3: read-only MCP tools run without asking in Plan and Accept edits; the Windows sandbox helper is provisioned without PowerShell and names security software in the startup hint (Issue 257). rc.4: Windows sandbox setup with one UAC prompt, a 10-minute wait, late approval, setup codes and phases, run by Space in a separate process (SDK Issue 448). Space 0.1.47-rc.3 was not released. The 0.1.47-rc.2 release used SDK `0.7.97-rc.2`.
 
 > 2026-11-24: the working tree pins Registry SDK `0.7.97-rc.2` (RepoIntel phase 0: the default `auto` mode offers only the git-based repo tools and the semantic index is opt-in; the previous model's thinking no longer leaks into replies, SDK Issue 441). The 0.1.47-rc.1 release used SDK `0.7.97-rc.1` (Issue 255, released).
 
@@ -10,7 +12,7 @@ Last Updated: 2026-11-25
 
 > 2026-11-08：工作树已安装 Registry SDK `0.7.97-beta.4`，见 [beta.4 接入记录](releases/kodax-beta4-space-adaptation.md)；beta.3 实测见 [适配与实测记录](releases/kodax-beta3-space-adaptation.md)。已发布 alpha.4 的 beta.1 构建记录用于追溯当次发布。SDK Issue 371 历史首读性能与客户环境验收继续单独记录。
 
-> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-rc.2 / SDK 0.7.97-rc.2 from the Registry (the rc.1 release used SDK 0.7.97-rc.1 and the beta.4 release SDK 0.7.97-beta.13; the beta.2 release used SDK 0.7.97-beta.11; [beta.9 adaptation](releases/kodax-beta9-space-adaptation.md), [beta.8 adaptation](releases/kodax-beta8-space-adaptation.md), [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the beta.1 release used SDK 0.7.97-beta.10; the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [rc.2 release status](releases/v0.1.47-rc.2-release-readiness.md); the published rc.1, beta.4, beta.2, beta.1 and alpha.4 records stay for those releases. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
+> Historical issue details retain their dated evidence. Current source baseline is Space 0.1.47-rc.4 / SDK 0.7.97-rc.4 from the Registry (the rc.2 release used SDK 0.7.97-rc.2, the rc.1 release SDK 0.7.97-rc.1 and the beta.4 release SDK 0.7.97-beta.13; the beta.2 release used SDK 0.7.97-beta.11; [beta.9 adaptation](releases/kodax-beta9-space-adaptation.md), [beta.8 adaptation](releases/kodax-beta8-space-adaptation.md), [beta.7 adaptation](releases/kodax-beta7-space-adaptation.md)); the beta.1 release used SDK 0.7.97-beta.10; the alpha.5 release used SDK 0.7.97-beta.4; stable remains v0.1.46. See [rc.4 release status](releases/v0.1.47-rc.4-release-readiness.md); the published rc.2, rc.1, beta.4, beta.2, beta.1 and alpha.4 records stay for those releases. Older publication-pending statements describe their original verification date; SDK/customer-only investigations are not closed by this release.
 
 ## Issue Index
 
@@ -48,8 +50,9 @@ Last Updated: 2026-11-25
 | 253 | Medium   | Resolved in 0.1.47-beta.3                                                                                    | Settings skill ZIP install rejects skills with more than 4,096 files and leaves partial `.install-tmp` data                                                                                 | Space 0.1.47-beta.1 (reported beta.1/beta.2, Windows 11 + macOS)                                           | 2026-11-19 |
 | 254 | Medium   | Deferred to the next major version                                                                           | During a Run, browsing older history can show a message twice, hide it briefly or place it out of order                                                                                     | KodaX 0.7.97 history pages / product view; Space 0.1.47                                                    | 2026-11-21 |
 | 255 | Medium   | Resolved in 0.1.47-rc.1                                                                                      | A finished task still shows tool cards as running, and the settled tool-group chip clips its tallies                                                                                        | SDK 0.7.97 extension nested tool calls; Space 0.1.30 receipt width cap                                     | 2026-11-22 |
-| 256 | Medium   | ready - root cause traced on the macOS runner; fix not in 0.1.47-rc.2                                        | Closing the transcript search can leave macOS at the top of the live view instead of the newest messages                                                                                    | Space 0.1.47-rc.2 packaged macOS ARM acceptance; not seen through rc.1                                     | 2026-11-24 |
-| 257 | High     | ready - Space failure hint in source; SDK fix in 0.7.97-rc.3 (SDK Issue 443); customer confirmation pending | Windows Coder cannot start: the provisioned copy of `kodax-windows-sandbox.exe` disappears right after the SDK writes it                                                                    | Observed on Space 0.1.47-beta.4 and 0.1.47-rc.2 (SDK 0.7.97-rc.2), Windows; first affected version unknown | 2026-11-25 |
+| 256 | Medium   | ready - root cause traced on the macOS runner; fix not in 0.1.47-rc.4                                        | Closing the transcript search can leave macOS at the top of the live view instead of the newest messages                                                                                    | Space 0.1.47-rc.2 packaged macOS ARM acceptance; not seen through rc.1                                     | 2026-11-24 |
+| 257 | High     | Resolved in 0.1.47-rc.4; confirmation on the customer's security software pending                             | Windows Coder cannot start: the provisioned copy of `kodax-windows-sandbox.exe` disappears right after the SDK writes it                                                                    | Observed on Space 0.1.47-beta.4 and 0.1.47-rc.2 (SDK 0.7.97-rc.2), Windows; first affected version unknown | 2026-11-25 |
+| 258 | High     | Resolved in 0.1.47-rc.4; real-UAC acceptance on the customer machine pending                                   | Windows sandbox setup froze the window and failed when the UAC prompt was approved late                                                                                                      | Setup in Electron main since F143 (v0.1.35); SDK setups before 0.7.97-rc.4 (SDK Issue 448)                   | 2026-11-28 |
 
 ## Issue 218 — Queue/history recovery (legacy fix superseded; intermittent switch case remains under investigation)
 
@@ -2916,7 +2919,7 @@ retryDelay: 200` and logs a failure through `console.warn` (captured by the diag
 ## Issue 256 — Closing the transcript search can leave macOS at the top of the live view instead of the newest messages
 
 - **Priority**: Medium (the visible "Return to newest messages" button recovers; observed on macOS only).
-- **Status**: ready — root cause traced on the macOS runner; the fix is not part of 0.1.47-rc.2.
+- **Status**: ready — root cause traced on the macOS runner; the fix is not part of 0.1.47-rc.2 or 0.1.47-rc.4.
 - **Introduced**: first seen in the packaged macOS ARM acceptance of Space 0.1.47-rc.2 (SDK 0.7.97-rc.2); the
   same acceptance passed on the same runner image for 0.1.47-beta.1 through rc.1.
 - **Created**: 2026-11-24.
@@ -2964,8 +2967,8 @@ retryDelay: 200` and logs a failure through `console.warn` (captured by the diag
 ## Issue 257 — Windows Coder cannot start: the provisioned copy of `kodax-windows-sandbox.exe` disappears right after the SDK writes it
 
 - **Priority**: High (no Coder at all on the affected machine; the only recovery is outside Space).
-- **Status**: ready — Space failure hint is in source; the SDK provisioning change shipped in 0.7.97-rc.3
-  (SDK Issue 443) and Space pins it; the security-software cause is not yet confirmed by the customer.
+- **Status**: resolved in 0.1.47-rc.4 — the Space failure hint and the SDK provisioning change of 0.7.97-rc.3
+  (SDK Issue 443) ship together; the security-software cause is not yet confirmed by the customer.
 - **Introduced**: observed on Space 0.1.47-beta.4 and again on 0.1.47-rc.2 (SDK 0.7.97-rc.2), one Windows
   customer; the first affected version is unknown (the provisioning path predates beta.4).
 - **Created**: 2026-11-25.
@@ -2995,7 +2998,7 @@ ENOENT: no such file or directory, lstat '<path>'`. The customer's install folde
   denies other writers. The daemon also outlives Space (upgrades, Portable runs from `%TEMP%`, a `kodax`
   CLI sharing the Host), so it cannot run from the install folder. The copy is needed; the way it is
   written is the problem.
-- **Space mitigation (in source, not released)**: when the startup failure reason contains
+- **Space mitigation (released in 0.1.47-rc.4)**: when the startup failure reason contains
   "native artifact", the failure banner adds a line naming security software and telling the user to
   trust the install folder and `%LOCALAPPDATA%\KodaXNativeArtifactsV3` (or restore the file from
   quarantine) and then press Retry startup.
@@ -3025,17 +3028,66 @@ ENOENT: no such file or directory, lstat '<path>'`. The customer's install folde
   written; security software ... likely quarantined it`, reason `native_artifact_removed_after_provision`,
   `retryable: false`, so `RuntimeHostAdapter` does not spend automatic retries on it. That text still
   contains "native artifact", so the Space hint shows for it too (covered by `RuntimeStartupStatus.test.ts`).
-- **Remaining work**: verify on a machine with the customer's security product with Space on SDK rc.3.
+- **Remaining work**: verify on a machine with the customer's security product with Space on SDK rc.4.
+
+## Issue 258 — Windows sandbox setup froze the window and failed when the UAC prompt was approved late
+
+- **Priority**: High (setup left Space not responding for minutes, and a prompt approved after
+  15–60 seconds failed the setup).
+- **Status**: Resolved in 0.1.47-rc.4 — setup runs in a separate process and SDK `0.7.97-rc.4`
+  (SDK Issue 448) asks for UAC once and waits up to 10 minutes; real-UAC acceptance on the customer
+  machine is pending.
+- **Introduced**: the setup action has run inside Electron main since F143 (v0.1.35); the
+  late-approval failure and the triple consent prompt come from SDK sandbox setups before
+  `0.7.97-rc.4`. The first affected Space version was not recorded.
+- **Created**: 2026-11-28.
+- **Original problem**: after the UAC prompt, setup kept running in the main process for minutes, so
+  the window stopped responding; closing it left the setup half done. The setup failed when the UAC
+  prompt only flashed in the taskbar and the user approved it after 15–60 seconds, and replacing an
+  old sandbox account asked for consent three times. A failure showed the raw SDK error.
+- **Resolution (2026-11-28, `d0f697fc`)**:
+  - Setup runs in a child process (`apps/desktop/electron/kodax/sandbox-setup-process.ts`; the
+    90-minute cap is a safety net), so the window keeps responding.
+  - The SDK's stable setup `code` maps to a bounded, localized `lastOperation.reason`; the raw error
+    and the SDK warnings go to the diagnostics log.
+  - `onProgress` phases reach the renderer on the new `sandbox.setupProgress` push channel, and
+    `setup.interrupted` is flagged from `[windows_setup_interrupted]`.
+  - A launch card offers setup on Windows ("Set up now", "Later", or "Finish setup" after an
+    interrupted setup) and shows the elapsed time, the phase and the reason when setup does not
+    finish.
+  - Files changed: `apps/desktop/electron/ipc/sandbox.ts`,
+    `apps/desktop/electron/kodax/sandbox-controller.ts`,
+    `apps/desktop/electron/kodax/sandbox-setup-process.ts`,
+    `apps/desktop/electron/kodax/space-manual-topics.ts`,
+    `apps/desktop/renderer/src/features/settings/SandboxSetupCard.tsx`, `SettingsModal.tsx`,
+    `apps/desktop/renderer/src/store/sandboxSetupStore.ts`,
+    `apps/desktop/renderer/src/shell/Shell.tsx`, `apps/desktop/renderer/src/i18n/messages.ts`,
+    `packages/space-ipc-schema/src/channels/sandbox.ts`, `channels/index.ts`, `package.json`,
+    `package-lock.json`.
+  - Tests added: `apps/desktop/electron/test/sandbox-setup-process.test.ts`, five cases in
+    `sandbox-controller.test.ts`, `apps/desktop/renderer/src/features/settings/SandboxSetupCard.test.ts`
+    (helpers and store) and `packages/space-ipc-schema/test/sandbox.test.ts`.
+- **Verification**: unit tests cover the child-process protocol, the code-to-reason mapping, the
+  single setup call, phase forwarding, the interrupted flag and the store. No Playwright spec
+  renders the card; `tests/e2e/fixtures.ts` sets the "Later" key for every launch, so the e2e suite
+  does not exercise it. Manual cases: the
+  [F143 v0.1.47 guide](test-guides/FEATURE_143_v0.1.47_TEST_GUIDE.md).
+- **Remaining work**: real-UAC acceptance on a machine with the customer's security software (the
+  SDK changelog lists it as pending). Known polish: the settings confirm dialog still says Windows
+  "may" show a UAC prompt while the setup notice says it shows one; `elevation_cancelled` and
+  `setup_failed` fall to the generic "incomplete" reason; a few sandbox diagnostics are
+  English-only in the zh-CN UI; the launch offer never returns after "Later", even when a later
+  upgrade needs setup again (Settings remains the entry).
 
 ## Summary
 
-- Total: 34
+- Total: 35
 - Open: 2
-- Ready: 6
+- Ready: 5
 - In Progress: 11
-- Resolved, awaiting release or verification: 13
+- Resolved, awaiting release or verification: 15
 - Other (partially fixed / under investigation): 2
-- High: 16
+- High: 17
 - Medium: 16
 - Low: 2
 - Next ready to resolve: 222

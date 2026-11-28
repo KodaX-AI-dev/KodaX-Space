@@ -1,5 +1,11 @@
 # FEATURE_143 v0.1.35 Human Test Guide
 
+> 2026-11-28: the Windows setup flow changed in the 0.1.47 line (setup runs out of process, a
+> launch card offers it, one UAC prompt with a 10-minute wait). Use the
+> [F143 v0.1.47 guide](FEATURE_143_v0.1.47_TEST_GUIDE.md) for those steps; the readiness,
+> guidance-only and fail-closed cases below still apply, with the section now under
+> **Settings → Safety & sandbox**.
+
 ## Preconditions
 
 - Install the exact published `@kodax-ai/kodax@0.7.80` dependency and verify

@@ -1,5 +1,7 @@
 # KodaX Space 产品需求文档（PRD）
 
+> 2026-11-28 发布准备：版本基线更新为 Space `0.1.47-rc.4` / npm Registry `@kodax-ai/kodax@0.7.97-rc.4`（自 rc.2 的 SDK rc.2 升级，含 rc.3 与 rc.4）。本候选对用户的可见变化：Windows 需要命令沙箱 setup 时，启动几秒后右下角卡片提供“现在设置 / 以后再说”，setup 在独立进程中进行、窗口保持响应，整个过程只弹一次 UAC（最多等 10 分钟，稍后批准不再失败），卡片显示已用时间、当前阶段和界面语言的失败原因；文件查看器对无法显示的文件提供“用系统默认应用打开”；长 Run 中途打开实时视图时说明本轮提问在历史消息中；安装包不再带 `huashu-design` 内置 Skill 与 pdfjs canvas（Windows 安装器 215 MB → 157 MB）；Linux x64 包的原生组件按 glibc 2.28 构建；MCP 工具按 server 的只读声明决定是否免确认，MCP 调用可取消；Windows 沙箱辅助程序被安全软件移除时启动横幅给出提示（Issue 257）；安装 ffmpeg 后 Artifact 工具可审阅视频。发布门与验证状态见 [rc.4 发布记录](releases/v0.1.47-rc.4-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境。
+
 > 2026-11-21 发布准备：版本基线更新为 Space `0.1.47-beta.3` / npm Registry `@kodax-ai/kodax@0.7.97-beta.13`，四个 workspace 与 lockfile 统一版本。本预发布在 beta.2 之上将 SDK 精确固定到 beta.13 并要求 `actorSettlementConvergence` v3：每次 Stop 都到达最终结果，结算未持久化时 Run 以 `actor_settlement_not_persisted` 结束、失败详情带 Provider 原文 `failureDetail.detail` 行、Session 后台自愈期间拒发消息（composer 显示 `session_recovering`，Stop 提示“会话恢复中”而不再红色失败重试）；集成健康（MCP/Skills/扩展）改为每 2 秒的 Host 轻量查询，不再反复全量预检；Session ID 改用 UUIDv7，未命名会话以末 8 位标注；SA 模式退役（每个根 Run 走托管 Worker）。随发：侧栏未列出的位置也提示“需要你”的会话、新打开项目置顶、Settings 技能 ZIP 安装上限 32,768 文件且超限零写入（Issue 253）、Partner 产物文件链接按唯一最优候选打开且 `@`/文件列表跟随 `.gitignore`（`locate` 可无忽略重扫）、每个子 Agent 行显示自己的 ↑/↓ token、Run 标记稳定显示且跟随不因窗口失焦丢失。当前公共接口以 [beta.9 适配](releases/kodax-beta9-space-adaptation.md)、[beta.8 适配](releases/kodax-beta8-space-adaptation.md)与 [beta.7 适配](releases/kodax-beta7-space-adaptation.md)为准；发布门与验证状态见 [beta.3 发布记录](releases/v0.1.47-beta.3-release-readiness.md)。本版为预发布，稳定版仍是 Space v0.1.46 / KodaX 0.7.96；带日期的旧记录保留原语境，本轮不替换公开标签或安装包。beta.4 历史契约 v2 与 AGENTS.md 精确路径编辑不变。
 
 > 2026-11-08 当前工作树：Registry SDK `0.7.97-beta.3`，见 [完整适配与验收](releases/kodax-beta3-space-adaptation.md)。工作模式仅首轮 Run 接纳前选择；历史定位与整轮操作按实际 Host 能力开放；规则片段保留独立来源。以下带日期的旧版本记录保持历史语境。
@@ -11,7 +13,7 @@
 
 Coder 与 Partner 通过 RuntimeHostAdapter 使用 SDK 公开 Product 输入、observeView、历史分页/搜索、statistics 与 lifecycle 契约。当前 view 与历史窗口独立，Main/Renderer 不从普通正文 delta 或 journal/replay 重建第二份聊天。普通 Coder 草稿在首个有效输入保存后持久化；侧栏使用真实消息时间，历史空记录只读确认后隐藏。Space 手册入口为 `space_manual`，内建 `kodax_manual` 保留 SDK/CLI 机制。
 
-SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发；保留已有凭据、权限和退出恢复；Partner 经同一共享 Host 使用 Agent 模式、消费时业务绑定和正常 shell/write/子 Agent 能力。Artifact 随主 SDK 包提供四个公共入口；DOCX/PPTX 可使用可信安装位置的 LibreOffice，渲染诊断和 Word/WPS 保真限制仍需保留。
+SDK 与 Host 分别校验 `productClient:1`、`sessionDrafts:1`、`sandboxRuntime:11`、`runtimeAutoModeGuardrail:6`、`sharedSessionSettings:2` 和 `effectiveConfig:1` 等所需契约；Host 还校验 `providerCredentialBroker:2`，不能以版本号代替能力检查。Windows native bundle 整体解包并校验 manifest hash，沙箱设置需用户显式触发（启动卡片只提供入口，setup 在独立子进程中运行）；保留已有凭据、权限和退出恢复；Partner 经同一共享 Host 使用 Agent 模式、消费时业务绑定和正常 shell/write/子 Agent 能力。Artifact 随主 SDK 包提供四个公共入口；DOCX/PPTX 可使用可信安装位置的 LibreOffice，渲染诊断和 Word/WPS 保真限制仍需保留。
 
 ## 0. 中文导读（一页摘要）
 

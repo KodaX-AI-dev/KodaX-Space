@@ -1,5 +1,7 @@
 # KodaX Space 运行与开发指南
 
+> 2026-11-28 发布准备：版本基线更新为 Space `0.1.47-rc.4` / npm Registry `@kodax-ai/kodax@0.7.97-rc.4`（自 SDK rc.2 升级，含 rc.3 与 rc.4）：Windows 沙箱 setup 在独立子进程中运行（主窗口不再卡死，整个 setup 只弹一次 UAC），启动后的卡片与设置页显示进度阶段和失败原因；server 声明为只读的 MCP 工具在 Plan 和“接受编辑”下直接执行，MCP 调用可取消、默认 300 秒超时；Windows 沙箱辅助程序不再经 PowerShell 写入；安装 ffmpeg 后可审阅视频。随发文件查看器“用系统默认应用打开”（新通道 `shell.openFile`）、PDF 上一页修复、长 Run 中途打开实时视图时的“至少运行了 N 个命令”标记、安装包瘦身，以及 Linux 原生模块的 glibc 2.28 构建（见第 7 节）。发布门见 [rc.4 发布记录](releases/v0.1.47-rc.4-release-readiness.md)；下方 rc.2 发布准备记录保留原语境。
+
 > 2026-11-24 发布准备：版本基线更新为 Space `0.1.47-rc.2` / npm Registry `@kodax-ai/kodax@0.7.97-rc.2`（自 SDK rc.1 升级）：默认 `auto` 仓库智能只提供基于 git 的工具，语义索引需 `repoIntelligenceMode` `full` / `light`（许可证有效时 Repointel 芯片显示 “Git”），跨模型推理不再泄漏为回复文本，`zhipu-coding` 新增 `glm-5.4`；对话中的压缩与模型切换显示为时间线标记，消息操作栏在悬停时显示，待确认的 Stop 重试入口在运行结束后自动清除。发布门见 [rc.2 发布记录](releases/v0.1.47-rc.2-release-readiness.md)；下方 rc.1 发布准备记录保留原语境。
 
 > 2026-11-23 发布准备：版本基线更新为 Space `0.1.47-rc.1` / npm Registry `@kodax-ai/kodax@0.7.97-rc.1`（自 beta.13 升级，SDK Issue 433 / Space Issue 255）：任务结束后不再残留“正在运行”的工具卡（扩展内部嵌套工具调用不再单独生成工具项、Run 终态结算残留卡片、重开旧会话移除残留），模型目录与灾备默认模型刷新（Claude Fable 5.2、GPT-6.x、Qwen3.8、GLM-5.3-highspeed、MiMo v2.6）；侧栏归档任务与项目收敛为底部单一 “Archived (N)” 分区，用户查询为紧凑浅蓝气泡、用户停止显示中性提示。发布门见 [rc.1 发布记录](releases/v0.1.47-rc.1-release-readiness.md)；下方 beta.3 发布准备记录保留原语境。
@@ -107,11 +109,13 @@ KodaX 0.7.96 的命令沙箱默认继承宿主环境，同时继续阻止固定�
 变量。旧 `config.json#sandbox.envPass` 输入已经失效；Space 不再编辑、写入或向任何 Run
 投影该字段。读取旧配置时只把它当迁移遗留，不恢复旧的环境 allow-list 语义。
 
-沙箱诊断必须从 Settings → Runtime 的宿主控制面直接执行，或在宿主终端运行
+沙箱诊断必须从 Settings → 安全与沙箱（宿主控制面）直接执行，或在宿主终端运行
 `kodax sandbox doctor`；不要让模型通过 Bash 工具嵌套执行 doctor。Windows 受限账号按设计
 不能读取宿主持有的 ASRT 状态，嵌套 doctor 因此不能代表机器级 readiness，也不应通过放宽
-控制状态权限来“修复”。Space 启动、后台检查和普通工具调用不会自动请求 UAC；只有用户
-显式确认 Setup 时才调用 SDK activation，完成后再以真实 target-start probe 验证结果。
+控制状态权限来“修复”。Space 启动、后台检查和普通工具调用不会自动请求 UAC，也不会自动开始
+Setup；只有用户在启动卡片点“现在设置 / 完成设置”或在设置页确认后，主进程才在独立子进程
+里调用一次 SDK activation（等待正在进行的 setup 和 UAC 提示由 SDK 负责），完成后再以真实
+target-start probe 验证结果。
 
 从旧版升级时，`config.json#mcpServers` 与 `config.json#extensions` 仍可只读回退，但不应继续作为新配置位置。Settings → Runtime 会调用当前 KodaX SDK 的 `planLegacyIntegrationMigration()` 展示迁移计划，并通过 `migrateLegacyIntegrationConfig()` 提供“迁移集成配置”按钮；它只创建缺失文件，不覆盖已有目标，也不删除旧字段，成功后会重载 MCP。命令行也可先运行 `kodax integrations migrate` 查看计划，再运行 `kodax integrations migrate --apply` 创建独立文件；确认独立文件有效后，才使用 `kodax integrations migrate --apply --cleanup-legacy` 显式清理旧字段。A2A 没有旧 `config.json` 迁移源，始终以 `integrations/a2a.json` 为权威配置。
 
@@ -269,7 +273,7 @@ native SQLite load、物理 sandbox helper/doctor、真实 packaged boot 和 Git
 | Runtime run 失败              | 版本信息、runId、`~/.kodax/space/logs`、Runtime status/capability snapshot                                               |
 | Packaged daemon 启动即退出    | `~/.kodax/space/logs`；必要时把 `scripts/diagnose-packaged-daemon.cmd` 复制到 extracted app 目录前台复现                 |
 | MCP 工具不可见                | MCP panel 的 Refresh/Reload、server diagnostics；MCP 子进程由 Space 管理                                                 |
-| ASRT 显示需要设置或不可用     | Settings → Runtime → 命令沙箱（ASRT）先刷新 doctor；Windows 按显式确认完成一次性设置，macOS/Linux 按指引安装依赖后再刷新 |
+| ASRT 显示需要设置或不可用     | Settings → 安全与沙箱 → 命令沙箱（ASRT）先刷新 doctor；Windows 可在启动后的卡片或此处完成一次性设置（卡片直接开始，设置页需先确认；只弹一次 UAC，最多等 10 分钟；进行中显示进度，未完成显示原因），macOS/Linux 按指引安装依赖后再刷新 |
 | E2E 启动失败且提到 native ABI | 结束并行测试，运行 `node scripts/ensure-sqlite-native.mjs electron`                                                      |
 | Node 单测提到 native ABI      | 运行 `node scripts/ensure-sqlite-native.mjs node`                                                                        |
 | UI 状态损坏                   | 先备份 `~/.kodax/space/`，检查日志；最后手段才重置 `state.json`                                                          |
