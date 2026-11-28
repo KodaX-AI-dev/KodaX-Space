@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 
 import {
   invokeChannels,
+  pushChannels,
   MAX_SANDBOX_DIAGNOSTICS,
   MAX_SANDBOX_GUIDANCE,
   MAX_SANDBOX_STATUS_TEXT,
   sandboxRefreshChannel,
   sandboxSetupChannel,
+  sandboxSetupProgressChannel,
   sandboxStatusChannel,
 } from '../src/index.js';
 
@@ -91,6 +93,40 @@ test('sandbox status is bounded and models setup outcome independently from read
     }).success,
     true,
   );
+  const failed = {
+    ...readyStatus,
+    readiness: 'setup-required',
+    lastOperation: {
+      kind: 'setup',
+      outcome: 'unavailable',
+      attempted: true,
+      reason: 'uac-timeout',
+    },
+  };
+  assert.equal(sandboxSetupChannel.output.safeParse(failed).success, true);
+  assert.equal(
+    sandboxSetupChannel.output.safeParse({
+      ...failed,
+      lastOperation: { ...failed.lastOperation, reason: 'ProgramData path' },
+    }).success,
+    false,
+  );
+  assert.equal(
+    sandboxSetupChannel.output.safeParse({
+      ...failed,
+      lastOperation: { ...failed.lastOperation, reason: 'step-failed' },
+      setup: { canSetup: true, mayElevate: true, requiresElevation: true, interrupted: true },
+    }).success,
+    true,
+  );
+  assert.equal(
+    sandboxStatusChannel.output.safeParse({
+      ...readyStatus,
+      setup: { ...readyStatus.setup, interrupted: false },
+    }).success,
+    false,
+    'interrupted is present only when true',
+  );
 
   assert.equal(
     sandboxStatusChannel.output.safeParse({
@@ -133,4 +169,12 @@ test('sandbox status rejects unsupported state and raw extra fields', () => {
     }).success,
     false,
   );
+});
+
+test('setup progress is pushed as one of the SDK setup phases', () => {
+  assert.equal(pushChannels['sandbox.setupProgress'], sandboxSetupProgressChannel);
+  for (const phase of ['waiting-for-other-setup', 'awaiting-elevation', 'elevated']) {
+    assert.equal(sandboxSetupProgressChannel.payload.safeParse({ phase }).success, true);
+  }
+  assert.equal(sandboxSetupProgressChannel.payload.safeParse({ phase: 'done' }).success, false);
 });

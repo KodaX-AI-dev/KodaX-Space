@@ -1621,7 +1621,7 @@ export const messages = {
     'settings.sandbox.setup': 'Set up sandbox',
     'settings.sandbox.settingUp': 'Setting up…',
     'settings.sandbox.setupNotice':
-      'Windows setup may show one UAC prompt to provision a restricted account and network policy. Space will not elevate until you explicitly confirm.',
+      'Windows setup shows one UAC prompt to provision a restricted account and network policy, and waits up to 10 minutes for you to approve it. Space will not elevate until you explicitly confirm. If the prompt does not come to the front, look for a flashing shield icon on the taskbar. Setup can take several minutes after you approve the prompt; keep Space open until it finishes.',
     'settings.sandbox.confirmTitle': 'Set up the KodaX command sandbox?',
     'settings.sandbox.confirmMessage':
       'Windows may show a UAC prompt for one-time restricted account and network policy provisioning. Setup will be verified by a fresh sandbox doctor check.',
@@ -1637,8 +1637,45 @@ export const messages = {
       'Sandbox setup could not start safely. The status was refreshed; review it before retrying.',
     'settings.sandbox.setupSucceeded': 'Command sandbox setup completed and doctor is ready.',
     'settings.sandbox.cancelled': 'Command sandbox setup was cancelled.',
-    'settings.sandbox.setupUnavailable':
-      'Setup finished without a ready doctor result. Review the guidance and retry.',
+    'settings.sandbox.lastSetup': 'Last setup: {message}',
+    'settings.sandbox.offer.title': 'Set up the command sandbox',
+    'settings.sandbox.offer.body':
+      'The command sandbox runs agent commands under a restricted Windows account. This computer needs a one-time setup (a sandbox upgrade can require it again): Windows shows one permission (UAC) prompt, then setup finishes within a few minutes while you keep using Space.',
+    'settings.sandbox.offer.start': 'Set up now',
+    'settings.sandbox.offer.later': 'Later',
+    'settings.sandbox.offer.resumeTitle': 'Finish setting up the command sandbox',
+    'settings.sandbox.offer.resumeBody':
+      'The last command sandbox setup stopped part-way, for example because Space was closed while it ran. Run it again to finish; Windows shows one permission (UAC) prompt.',
+    'settings.sandbox.offer.resume': 'Finish setup',
+    'settings.sandbox.offer.laterHint':
+      'You can set up the command sandbox any time in Settings → Safety & sandbox. Until then, commands use the normal permission prompts.',
+    'settings.sandbox.running.title': 'Setting up the command sandbox',
+    'settings.sandbox.running.body':
+      'Approve the Windows permission (UAC) prompt. If it does not come to the front, click the flashing shield icon on the taskbar. Setup then takes a few minutes; you can keep working, but do not close Space.',
+    'settings.sandbox.running.elapsed': 'Elapsed {time}',
+    'settings.sandbox.running.phase.waiting-for-other-setup':
+      'Another sandbox setup is running, for example from the kodax CLI. Space waits for it (up to 45 minutes) and uses its result.',
+    'settings.sandbox.running.phase.awaiting-elevation':
+      'Approve the Windows permission (UAC) prompt now. If it does not come to the front, click the flashing shield icon on the taskbar. The prompt waits up to 10 minutes.',
+    'settings.sandbox.running.phase.elevated':
+      'Approved. Setup is finishing, which can take a few minutes; you can keep working, but do not close Space.',
+    'settings.sandbox.failed.title': 'Command sandbox setup did not finish',
+    'settings.sandbox.failed.retry': 'Try again',
+    'settings.sandbox.failed.openSettings': 'Sandbox settings',
+    'settings.sandbox.reason.uac-timeout':
+      'The Windows permission (UAC) prompt was not approved within 10 minutes. If it did not come to the front, look for a flashing shield icon on the taskbar, then try again.',
+    'settings.sandbox.reason.setup-busy':
+      'Another sandbox setup (for example from the kodax CLI) was still running after 45 minutes. Wait for it to finish, then refresh.',
+    'settings.sandbox.reason.account-busy':
+      'Setup could not confirm that the sandbox account is idle. Close sandboxed shells, or restart Windows, then try again.',
+    'settings.sandbox.reason.native-blocked':
+      'A KodaX native sandbox file is missing or was blocked. Check Windows Security protection history, then try again.',
+    'settings.sandbox.reason.acl-restart':
+      'Windows sandbox permission cleanup is unconfirmed. Restart Windows, then refresh.',
+    'settings.sandbox.reason.step-failed':
+      'A setup step failed after you approved the permission prompt. Try again; if it fails again, export diagnostics from Settings → Troubleshooting for support.',
+    'settings.sandbox.reason.incomplete':
+      'Setup stopped before it completed. Review the guidance in sandbox settings, then try again.',
     'settings.integrationHealth.title': 'Runtime integration health',
     'settings.integrationHealth.description':
       'MCP, A2A, and Extension configuration fail independently, retain last-known-good state, and recover after a valid edit.',
@@ -3924,7 +3961,8 @@ export const messages = {
     'conversation.backToReading': '返回原处',
     'conversation.openSavedPage': '浏览历史消息',
     'conversation.savedPageDestination': '将定位到最近的历史消息，可返回原处。',
-    'conversation.savedPageTurnStart': '本轮的提问和较早的步骤在历史消息中。将定位到最近的历史消息，可返回原处。',
+    'conversation.savedPageTurnStart':
+      '本轮的提问和较早的步骤在历史消息中。将定位到最近的历史消息，可返回原处。',
     'conversation.loadEarlier': '加载更早消息',
     'conversation.scrollForEarlier': '向上滚动可继续阅读更早的消息。',
     'conversation.historyStart': '已到本会话开头',
@@ -6538,7 +6576,7 @@ export const messages = {
     'settings.sandbox.setup': '设置沙箱',
     'settings.sandbox.settingUp': '正在设置…',
     'settings.sandbox.setupNotice':
-      'Windows 设置可能显示一次 UAC 提示，用于配置受限账户和网络策略。只有你明确确认后，Space 才会请求提权。',
+      'Windows 设置会显示一次 UAC 提示，用于配置受限账户和网络策略，并最多等待 10 分钟让你批准。只有你明确确认后，Space 才会请求提权。如果提示没有出现在最前面，请看任务栏上闪烁的盾牌图标。批准提示后设置可能需要几分钟，请保持 Space 打开直到完成。',
     'settings.sandbox.confirmTitle': '设置 KodaX 命令沙箱？',
     'settings.sandbox.confirmMessage':
       'Windows 可能显示一次 UAC 提示，以完成受限账户和网络策略的一次性配置。完成后，Space 会重新运行 sandbox doctor 验证结果。',
@@ -6553,7 +6591,43 @@ export const messages = {
     'settings.sandbox.setupFailed': '无法安全启动沙箱设置。状态已重新检查，请确认后再重试。',
     'settings.sandbox.setupSucceeded': '命令沙箱设置完成，doctor 已确认就绪。',
     'settings.sandbox.cancelled': '已取消命令沙箱设置。',
-    'settings.sandbox.setupUnavailable': '设置结束后 doctor 仍未确认就绪，请按指引排查后重试。',
+    'settings.sandbox.lastSetup': '上次设置：{message}',
+    'settings.sandbox.offer.title': '设置命令沙箱',
+    'settings.sandbox.offer.body':
+      '命令沙箱让智能体执行的命令运行在受限的 Windows 账户下。这台电脑需要完成一次性设置（沙箱升级后也可能需要重新设置）：Windows 会弹出一次权限确认（UAC），之后几分钟内完成，期间可以继续使用 Space。',
+    'settings.sandbox.offer.start': '现在设置',
+    'settings.sandbox.offer.later': '以后再说',
+    'settings.sandbox.offer.resumeTitle': '完成命令沙箱设置',
+    'settings.sandbox.offer.resumeBody':
+      '上次的命令沙箱设置中途停止了（例如设置期间关闭了 Space）。再运行一次即可完成，Windows 会弹出一次权限确认（UAC）。',
+    'settings.sandbox.offer.resume': '完成设置',
+    'settings.sandbox.offer.laterHint':
+      '可以随时在“设置 → 安全与沙箱”中完成命令沙箱设置。在此之前，命令仍按普通权限确认执行。',
+    'settings.sandbox.running.title': '正在设置命令沙箱',
+    'settings.sandbox.running.body':
+      '请在 Windows 权限提示（UAC）中点“是”。如果提示没有弹到最前面，请点击任务栏上闪烁的盾牌图标。批准后还需要几分钟，期间可以继续使用 Space，但请不要关闭它。',
+    'settings.sandbox.running.elapsed': '已用 {time}',
+    'settings.sandbox.running.phase.waiting-for-other-setup':
+      '另一个沙箱设置正在进行（例如来自 kodax 命令行）。Space 会等它完成（最多 45 分钟）并沿用它的结果。',
+    'settings.sandbox.running.phase.awaiting-elevation':
+      '请现在在 Windows 权限提示（UAC）中点“是”。如果提示没有弹到最前面，请点击任务栏上闪烁的盾牌图标。提示最多等待 10 分钟。',
+    'settings.sandbox.running.phase.elevated':
+      '已批准，正在完成设置，可能还需要几分钟。期间可以继续使用 Space，但请不要关闭它。',
+    'settings.sandbox.failed.title': '命令沙箱设置未完成',
+    'settings.sandbox.failed.retry': '重试',
+    'settings.sandbox.failed.openSettings': '沙箱设置',
+    'settings.sandbox.reason.uac-timeout':
+      'Windows 权限提示（UAC）在 10 分钟内没有得到批准。如果提示没有弹到最前面，请留意任务栏上闪烁的盾牌图标，然后重试。',
+    'settings.sandbox.reason.setup-busy':
+      '另一个沙箱设置（例如来自 kodax 命令行）45 分钟后仍在进行。请等它完成后再刷新。',
+    'settings.sandbox.reason.account-busy':
+      '无法确认沙箱账户处于空闲状态。请关闭在沙箱中运行的命令窗口，或重启 Windows 后重试。',
+    'settings.sandbox.reason.native-blocked':
+      'KodaX 原生沙箱文件缺失或被拦截。请检查 Windows 安全中心的保护历史记录，然后重试。',
+    'settings.sandbox.reason.acl-restart': '沙箱权限清理尚未确认。请重启 Windows 后再刷新。',
+    'settings.sandbox.reason.step-failed':
+      '批准权限提示后，有一个设置步骤失败了。请重试；如果再次失败，请在“设置 → 故障排查”中导出诊断信息提交给支持人员。',
+    'settings.sandbox.reason.incomplete': '设置在完成前中止。请查看沙箱设置中的指引后重试。',
     'settings.integrationHealth.title': 'Runtime 集成健康状态',
     'settings.integrationHealth.description':
       'MCP、A2A 与 Extension 配置独立降级，保留最近有效状态，并在修复后自动恢复。',

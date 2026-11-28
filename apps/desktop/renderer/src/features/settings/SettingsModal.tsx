@@ -54,7 +54,6 @@ import {
   type LanguageModeT,
   type LicenseStatusT,
   type ProviderInfo,
-  type SandboxStatusT,
   type SupportedLocaleT,
   type TerminalShellPreferenceT,
   type WindowCloseBehaviorT,
@@ -64,6 +63,8 @@ import { localeDisplayName, useI18n } from '../../i18n/I18nProvider.js';
 import type { MessageKey } from '../../i18n/messages.js';
 import { pushToast } from '../../store/toastStore.js';
 import { requestConfirm } from '../../store/confirmStore.js';
+import { useSandboxSetupStore } from '../../store/sandboxSetupStore.js';
+import { sandboxSetupFailureText } from './SandboxSetupCard.js';
 import { ProviderCard } from '../provider/ProviderCard.js';
 import { CustomProviderForm } from '../provider/CustomProviderForm.js';
 import {
@@ -74,7 +75,6 @@ import {
 } from '../provider/providerEditorState.js';
 import { WorkflowPolicySection } from '../workflow/WorkflowPolicySection.js';
 import { setSpaceLanguage } from '../../space-control/semanticActions.js';
-import { requestSpaceVersionRefresh } from '../../lib/versionEvents.js';
 import { SpaceExtensionsProvider } from '../extensions/SpaceExtensionsProvider.js';
 import { ExtensionSettingsPanel } from '../extensions/ExtensionSettingsPanel.js';
 import { AppearanceSettings } from './AppearanceSettings.js';
@@ -1907,89 +1907,31 @@ function RuntimePanels({
 
 function SandboxReadinessSection(): JSX.Element {
   const { t, effectiveLocale } = useI18n();
-  const [status, setStatus] = useState<SandboxStatusT | null>(null);
-  const [busy, setBusy] = useState<'load' | 'refresh' | 'setup' | null>('load');
-  const [error, setError] = useState<string | null>(null);
-
-  const readStatus = useCallback(async (): Promise<void> => {
-    if (!window.kodaxSpace) return;
-    setBusy((current) => current ?? 'load');
-    setError(null);
-    try {
-      const result = await window.kodaxSpace.invoke('sandbox.status', undefined);
-      if (!result.ok) {
-        setError(t('settings.sandbox.loadFailed'));
-        return;
-      }
-      setStatus(result.data);
-    } catch {
-      setError(t('settings.sandbox.loadFailed'));
-    } finally {
-      setBusy(null);
-    }
-  }, [t]);
+  const status = useSandboxSetupStore((s) => s.status);
+  const busy = useSandboxSetupStore((s) => s.busy);
+  const requestError = useSandboxSetupStore((s) => s.error);
+  const load = useSandboxSetupStore((s) => s.load);
+  const refresh = useSandboxSetupStore((s) => s.refresh);
+  const runSetup = useSandboxSetupStore((s) => s.setup);
+  const error =
+    requestError === 'load'
+      ? t('settings.sandbox.loadFailed')
+      : requestError === 'refresh'
+        ? t('settings.sandbox.refreshFailed')
+        : null;
 
   useEffect(() => {
-    void readStatus();
-  }, [readStatus]);
-
-  async function refresh(): Promise<void> {
-    if (!window.kodaxSpace || busy !== null) return;
-    setBusy('refresh');
-    setError(null);
-    try {
-      const result = await window.kodaxSpace.invoke('sandbox.refresh', undefined);
-      if (!result.ok) {
-        setError(t('settings.sandbox.refreshFailed'));
-        return;
-      }
-      setStatus(result.data);
-      requestSpaceVersionRefresh();
-    } catch {
-      setError(t('settings.sandbox.refreshFailed'));
-    } finally {
-      setBusy(null);
-    }
-  }
+    void load();
+  }, [load]);
 
   async function setup(): Promise<void> {
-    if (!window.kodaxSpace || busy !== null || !status?.setup.canSetup) return;
+    if (busy !== null || !status?.setup.canSetup) return;
     const confirmed = await requestConfirm({
       title: t('settings.sandbox.confirmTitle'),
       message: t('settings.sandbox.confirmMessage'),
       confirmLabel: t('settings.sandbox.confirm'),
     });
-    if (!confirmed) return;
-
-    setBusy('setup');
-    setError(null);
-    try {
-      const result = await window.kodaxSpace.invoke('sandbox.setup', {
-        expectedRevision: status.revision,
-        confirmation: 'allow-sandbox-setup',
-      });
-      if (!result.ok) {
-        setError(t('settings.sandbox.setupFailed'));
-        const refreshed = await window.kodaxSpace.invoke('sandbox.refresh', undefined);
-        if (refreshed.ok) setStatus(refreshed.data);
-        requestSpaceVersionRefresh();
-        return;
-      }
-      setStatus(result.data);
-      requestSpaceVersionRefresh();
-      const outcome = result.data.lastOperation?.outcome;
-      if (outcome === 'ready') {
-        pushToast(t('settings.sandbox.setupSucceeded'), 'success', 2400);
-      } else if (outcome === 'cancelled') {
-        pushToast(t('settings.sandbox.cancelled'), 'warning', 2400);
-      } else {
-        pushToast(t('settings.sandbox.setupUnavailable'), 'warning', 3000);
-      }
-    } catch {
-      setError(t('settings.sandbox.setupFailed'));
-    } finally {
-      setBusy(null);
-    }
+    if (confirmed) await runSetup();
   }
 
   const readiness = status?.readiness ?? 'checking';
@@ -2082,6 +2024,21 @@ function SandboxReadinessSection(): JSX.Element {
           {error}
         </div>
       )}
+
+      {busy !== 'setup' &&
+        (requestError === 'setup' ||
+          (status?.lastOperation?.kind === 'setup' &&
+            status.readiness !== 'ready' &&
+            (status.lastOperation.reason ?? status.lastOperation.message))) && (
+          <div
+            data-testid="sandbox-last-setup"
+            className="mt-3 rounded-lg border border-danger/35 bg-danger/10 px-3 py-2 text-xs text-danger"
+          >
+            {t('settings.sandbox.lastSetup', {
+              message: sandboxSetupFailureText(t, status, requestError),
+            })}
+          </div>
+        )}
 
       {status?.setup.canSetup && (
         <div className="mt-3 rounded-lg border border-warn/35 bg-warn/8 px-3 py-2 text-[11px] leading-5 text-fg-secondary">

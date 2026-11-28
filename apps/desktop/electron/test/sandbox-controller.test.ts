@@ -229,7 +229,8 @@ test('confirmed Windows setup activates once and verifies a fresh ready doctor r
       result.ready ? ['KodaX sandbox is active.'] : ['Approve the one-time UAC prompt.'],
     activateKodaXSandbox: async (options) => {
       activationCount += 1;
-      assert.deepEqual(options, { allowElevation: true });
+      assert.equal(options?.allowElevation, true);
+      assert.equal(typeof options?.onProgress, 'function');
       ready = true;
       return {
         status: 'ready',
@@ -296,6 +297,159 @@ test('setup cancellation remains visible and retryable', async () => {
     attempted: true,
     message: 'Sandbox setup was cancelled.',
   });
+});
+
+test('SDK failure codes name the cause once, without retrying or leaking the raw error', async () => {
+  const cases = [
+    ['setup_lock_busy', 'setup-busy'],
+    ['elevation_timeout', 'uac-timeout'],
+    ['sandbox_account_busy', 'account-busy'],
+    ['idle_probe_failed', 'account-busy'],
+    ['native_artifact_unavailable', 'native-blocked'],
+    ['elevated_step_failed', 'step-failed'],
+    ['setup_failed', 'incomplete'],
+    [undefined, 'incomplete'],
+  ] as const;
+  for (const [code, reason] of cases) {
+    const error = `[${code ?? 'none'}] failed under C:\\ProgramData\\KodaX\\sandbox-runtime`;
+    let activationCount = 0;
+    const logged: string[] = [];
+    const controller = new SandboxController({
+      loadSdk: async () =>
+        fakeSdk({
+          doctorKodaXSandbox: async () => doctor({ ready: false, setupRequired: true }),
+          activateKodaXSandbox: async () => {
+            activationCount += 1;
+            return { status: 'unavailable', attempted: true, error, ...(code ? { code } : {}) };
+          },
+        }),
+      onSetupFailure: (raw) => logged.push(raw),
+      now: () => new Date('2026-11-28T08:00:00.000Z'),
+    });
+
+    const initial = await controller.status();
+    const result = await controller.setup({
+      expectedRevision: initial.revision,
+      confirmation: 'allow-sandbox-setup',
+    });
+
+    assert.equal(activationCount, 1, `${code} is not retried`);
+    assert.equal(result.lastOperation?.outcome, 'unavailable');
+    assert.equal(result.lastOperation?.reason, reason, String(code));
+    assert.equal(JSON.stringify(result).includes('ProgramData'), false);
+    assert.deepEqual(logged, [error]);
+  }
+});
+
+test('an unconfirmed ACL cleanup outranks the generic failure code', async () => {
+  const controller = new SandboxController({
+    loadSdk: async () =>
+      fakeSdk({
+        doctorKodaXSandbox: async () => doctor({ ready: false, setupRequired: true }),
+        activateKodaXSandbox: async () => ({
+          status: 'unavailable',
+          attempted: true,
+          code: 'setup_failed',
+          error: '[setup_failed] [acl_cleanup_unconfirmed] restart Windows before retrying.',
+        }),
+      }),
+    now: () => new Date('2026-11-28T08:00:00.000Z'),
+  });
+  const initial = await controller.status();
+  const result = await controller.setup({
+    expectedRevision: initial.revision,
+    confirmation: 'allow-sandbox-setup',
+  });
+  assert.equal(result.lastOperation?.reason, 'acl-restart');
+});
+
+test('a setup process that throws is named from its text and still logs the raw error', async () => {
+  let activationCount = 0;
+  const logged: string[] = [];
+  const controller = new SandboxController({
+    loadSdk: async () =>
+      fakeSdk({
+        doctorKodaXSandbox: async () => doctor({ ready: false, setupRequired: true }),
+        activateKodaXSandbox: async () => {
+          activationCount += 1;
+          throw new Error('Required KodaX native artifact srt-win.exe is missing.');
+        },
+      }),
+    onSetupFailure: (error) => {
+      logged.push(error);
+      throw new Error('logger failure must not change the result');
+    },
+    now: () => new Date('2026-11-27T08:00:00.000Z'),
+  });
+
+  const initial = await controller.status();
+  const result = await controller.setup({
+    expectedRevision: initial.revision,
+    confirmation: 'allow-sandbox-setup',
+  });
+
+  assert.equal(activationCount, 1);
+  assert.equal(result.lastOperation?.outcome, 'failed');
+  assert.match(
+    result.lastOperation?.message ?? '',
+    /native sandbox file is missing or was blocked/,
+  );
+  assert.equal(result.lastOperation?.reason, 'native-blocked');
+  assert.deepEqual(logged, ['Required KodaX native artifact srt-win.exe is missing.']);
+});
+
+test('setup forwards known SDK progress phases and drops anything else', async () => {
+  const phases: string[] = [];
+  const controller = new SandboxController({
+    loadSdk: async () =>
+      fakeSdk({
+        doctorKodaXSandbox: async () => doctor({ ready: false, setupRequired: true }),
+        activateKodaXSandbox: async (options) => {
+          for (const phase of [
+            'waiting-for-other-setup',
+            'awaiting-elevation',
+            'bogus',
+            'elevated',
+          ]) {
+            options?.onProgress?.(phase);
+          }
+          return { status: 'cancelled', attempted: true, code: 'elevation_cancelled' };
+        },
+      }),
+    onSetupProgress: (phase) => phases.push(phase),
+    now: () => new Date('2026-11-28T08:00:00.000Z'),
+  });
+  const initial = await controller.status();
+  await controller.setup({
+    expectedRevision: initial.revision,
+    confirmation: 'allow-sandbox-setup',
+  });
+  assert.deepEqual(phases, ['waiting-for-other-setup', 'awaiting-elevation', 'elevated']);
+});
+
+test('an interrupted setup is flagged so Space can offer to finish it', async () => {
+  const interrupted =
+    '[windows_setup_interrupted] The previous sandbox setup was interrupted. Run "kodax sandbox setup" again to finish it.';
+  const controller = new SandboxController({
+    loadSdk: async () =>
+      fakeSdk({
+        doctorKodaXSandbox: async () =>
+          doctor({ ready: false, setupRequired: true, diagnostics: [interrupted] }),
+      }),
+    now: () => new Date('2026-11-28T08:00:00.000Z'),
+  });
+  const status = await controller.status();
+  assert.equal(status.setup.canSetup, true);
+  assert.equal(status.setup.interrupted, true);
+  assert.deepEqual(status.diagnostics, [
+    'A previous sandbox setup was interrupted; run setup again to finish it.',
+  ]);
+
+  const plain = new SandboxController({
+    loadSdk: async () =>
+      fakeSdk({ doctorKodaXSandbox: async () => doctor({ ready: false, setupRequired: true }) }),
+  });
+  assert.equal('interrupted' in (await plain.status()).setup, false);
 });
 
 test('fresh doctor readiness is authoritative when activation reports unavailable or cancelled', async () => {

@@ -18,6 +18,24 @@ export const sandboxBackendSchema = z.enum([
   'unsupported',
 ]);
 
+// Why a setup stopped; the renderer localizes it and falls back to `message`.
+export const sandboxSetupFailureReasonSchema = z.enum([
+  'uac-timeout',
+  'setup-busy',
+  'account-busy',
+  'native-blocked',
+  'acl-restart',
+  'step-failed',
+  'incomplete',
+]);
+
+// Where a running Windows setup is, as the SDK reports it (KodaXSandboxSetupPhase).
+export const sandboxSetupPhaseSchema = z.enum([
+  'waiting-for-other-setup',
+  'awaiting-elevation',
+  'elevated',
+]);
+
 export const sandboxLastOperationSchema = z
   .object({
     kind: z.enum(['refresh', 'setup']),
@@ -31,6 +49,7 @@ export const sandboxLastOperationSchema = z
     ]),
     attempted: z.boolean(),
     message: z.string().min(1).max(MAX_SANDBOX_STATUS_TEXT).optional(),
+    reason: sandboxSetupFailureReasonSchema.optional(),
   })
   .strict();
 
@@ -50,6 +69,8 @@ export const sandboxStatusSchema = z
         canSetup: z.boolean(),
         mayElevate: z.boolean(),
         requiresElevation: z.boolean(),
+        /** A previous setup stopped part-way; running setup again finishes it. */
+        interrupted: z.literal(true).optional(),
       })
       .strict(),
     diagnosticCount: z.number().int().min(0).max(99),
@@ -126,7 +147,15 @@ export const sandboxSetupChannel = {
   output: sandboxStatusSchema,
 } as const;
 
+export const sandboxSetupProgressChannel = {
+  name: 'sandbox.setupProgress',
+  direction: 'push',
+  payload: z.object({ phase: sandboxSetupPhaseSchema }).strict(),
+} as const;
+
 export type SandboxReadinessT = z.infer<typeof sandboxReadinessSchema>;
 export type SandboxBackendT = z.infer<typeof sandboxBackendSchema>;
+export type SandboxSetupFailureReasonT = z.infer<typeof sandboxSetupFailureReasonSchema>;
+export type SandboxSetupPhaseT = z.infer<typeof sandboxSetupPhaseSchema>;
 export type SandboxLastOperationT = z.infer<typeof sandboxLastOperationSchema>;
 export type SandboxStatusT = z.infer<typeof sandboxStatusSchema>;

@@ -402,6 +402,11 @@ export async function launchSpace(
     // document before tests touch app localStorage or query app controls.
     await page.waitForLoadState('domcontentloaded');
     await waitForRendererRoot(app, page);
+    // Windows hosts without a set-up sandbox get a setup offer card a few seconds after
+    // launch; unrelated specs must not have it float over their controls.
+    await page.evaluate(() => {
+      localStorage.setItem('kodax-space.sandbox-setup-offer.dismissed', '1');
+    });
 
     // hook：把 project dir 注入 store + recent list + reload，让 textarea / ModeSelector 都活
     // 抽到这里避免 3 个 spec 都拷一份相同 4 行代码 (review LOW: dedup)

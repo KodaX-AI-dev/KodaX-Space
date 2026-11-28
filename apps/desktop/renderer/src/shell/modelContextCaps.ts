@@ -12,7 +12,7 @@
 
 type CapRule = { match: RegExp; cap: number };
 
-// 数值与 SDK 0.7.97-rc.3 对齐；同一 model 在多个 provider 上窗口不同时取最小值。
+// 数值与 SDK 0.7.97-rc.4 对齐；同一 model 在多个 provider 上窗口不同时取最小值。
 // model-context-caps.test.ts 逐条对照 SDK，任何过报都会失败。
 // **过报(over-claim)是危险方向**——会让用户误以为"还有大把空间"却提前压缩；这里逐条按 SDK 真值订正。
 // 顺序敏感：更具体的规则必须在通配前面（first-match wins）。

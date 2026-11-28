@@ -48,6 +48,7 @@ import { PopoutOverlay } from './popouts/PopoutOverlay.js';
 import { FilesPanel } from './popouts/FilesPanel.js';
 import { PermissionModal } from '../features/permission/PermissionModal.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
+import { SandboxSetupCard } from '../features/settings/SandboxSetupCard.js';
 import { ThemeToggle } from './ThemeToggle.js';
 import { VisualQualityToggle } from './VisualQualityToggle.js';
 import { GlassAurora } from './GlassAurora.js';
@@ -974,6 +975,9 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
   const openPreferencesSettings = useCallback((): void => {
     openSettingsAt('preferences');
   }, [openSettingsAt]);
+  const openSandboxSettings = useCallback((): void => {
+    openSettingsAt('sandbox');
+  }, [openSettingsAt]);
   const closeSettings = useCallback((): void => setSettingsOpen(false), []);
   const navigateWorkspace = useCallback((): void => {
     closeSettings();
@@ -1792,6 +1796,7 @@ function ShellContent({ version = null }: ShellProps): JSX.Element {
           }}
         />
       )}
+      <SandboxSetupCard onOpenSettings={openSandboxSettings} />
       <ConfirmDialog />
       {/* FEATURE_032 v2：max 模式下 center-pane 隐藏，停靠条在此兜底常驻
           （点击「查看」会退出 max 模式并定位到队首卡，见上方 FOCUS_ASK_USER_EVENT 监听） */}

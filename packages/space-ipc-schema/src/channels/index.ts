@@ -35,7 +35,12 @@ import {
   sessionPartnerExpertSetChannel,
   sessionPartnerExpertChangedChannel,
 } from './partner-expert.js';
-import { sandboxRefreshChannel, sandboxSetupChannel, sandboxStatusChannel } from './sandbox.js';
+import {
+  sandboxRefreshChannel,
+  sandboxSetupChannel,
+  sandboxSetupProgressChannel,
+  sandboxStatusChannel,
+} from './sandbox.js';
 import {
   runtimeConnectionChangedChannel,
   runtimeProfileChangedChannel,
@@ -652,6 +657,7 @@ export const pushChannels = {
   [workflowObservationChannel.name]: workflowObservationChannel,
   [workflowActivityChannel.name]: workflowActivityChannel,
   [handoffChangedChannel.name]: handoffChangedChannel,
+  [sandboxSetupProgressChannel.name]: sandboxSetupProgressChannel,
   [learningChangedChannel.name]: learningChangedChannel,
 } as const;
 

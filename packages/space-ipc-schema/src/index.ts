@@ -53,11 +53,16 @@ export {
   sandboxReadinessSchema,
   sandboxRefreshChannel,
   sandboxSetupChannel,
+  sandboxSetupFailureReasonSchema,
+  sandboxSetupPhaseSchema,
+  sandboxSetupProgressChannel,
   sandboxStatusChannel,
   sandboxStatusSchema,
   type SandboxBackendT,
   type SandboxLastOperationT,
   type SandboxReadinessT,
+  type SandboxSetupFailureReasonT,
+  type SandboxSetupPhaseT,
   type SandboxStatusT,
 } from './channels/sandbox.js';
 

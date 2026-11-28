@@ -2,7 +2,10 @@ import {
   MAX_SANDBOX_DIAGNOSTICS,
   MAX_SANDBOX_GUIDANCE,
   MAX_SANDBOX_STATUS_TEXT,
+  sandboxSetupPhaseSchema,
   type SandboxLastOperationT,
+  type SandboxSetupFailureReasonT,
+  type SandboxSetupPhaseT,
   type SandboxStatusT,
 } from '@kodax-space/space-ipc-schema';
 
@@ -19,7 +22,10 @@ export interface SandboxCapability {
   readonly asrtVersion: string;
   readonly platform: 'darwin' | 'linux' | 'win32';
   readonly backend:
-    'windows-restricted-user' | 'macos-seatbelt' | 'linux-bubblewrap' | 'unsupported';
+    | 'windows-restricted-user'
+    | 'macos-seatbelt'
+    | 'linux-bubblewrap'
+    | 'unsupported';
   readonly genericCommandExecution: true;
   readonly controls: readonly ['filesystem', 'network', 'environment', 'timeout', 'output'];
   readonly ordinaryCallsTriggerSetup: false;
@@ -37,7 +43,11 @@ export interface SandboxSetupOutcome {
   readonly doctor: SandboxDoctorResult;
   readonly guidance: readonly string[];
   readonly error?: string;
+  /** KodaXSandboxSetupErrorCode; kept as a string so a newer SDK code still parses. */
+  readonly code?: string;
 }
+
+type Activation = Pick<SandboxSetupOutcome, 'status' | 'attempted' | 'error' | 'code'>;
 
 export interface SandboxSdkFacade {
   readonly getKodaXSandboxCapability: () => unknown;
@@ -45,12 +55,17 @@ export interface SandboxSdkFacade {
   readonly getKodaXSandboxSetupGuidance: (doctor: SandboxDoctorResult) => unknown;
   readonly activateKodaXSandbox: (options?: {
     readonly allowElevation?: boolean;
+    readonly onProgress?: (phase: string) => void;
   }) => Promise<unknown>;
 }
 
 export interface SandboxControllerOptions {
   readonly loadSdk: () => Promise<SandboxSdkFacade>;
   readonly onDoctor?: (capability: SandboxCapability, doctor: SandboxDoctorResult) => void;
+  /** Receives the SDK's raw setup error so support can read it; the UI only gets a category. */
+  readonly onSetupFailure?: (error: string) => void;
+  /** Where a running setup is (another setup, the UAC prompt, the elevated steps). */
+  readonly onSetupProgress?: (phase: SandboxSetupPhaseT) => void;
   readonly now?: () => Date;
 }
 
@@ -83,8 +98,13 @@ export function isWindowsAclRecoveryText(value: string): boolean {
   );
 }
 
+const SETUP_INTERRUPTED_DIAGNOSTIC = '[windows_setup_interrupted]';
+
 function safeDiagnostic(value: string): string {
   const normalized = compactText(value).toLowerCase();
+  if (normalized.includes(SETUP_INTERRUPTED_DIAGNOSTIC)) {
+    return 'A previous sandbox setup was interrupted; run setup again to finish it.';
+  }
   if (isWindowsAclRecoveryText(normalized)) {
     return 'Windows sandbox ACL cleanup is unconfirmed.';
   }
@@ -198,9 +218,7 @@ function normalizeDoctor(value: unknown): SandboxDoctorResult | null {
   };
 }
 
-function normalizeActivation(
-  value: unknown,
-): Pick<SandboxSetupOutcome, 'status' | 'attempted'> | null {
+function normalizeActivation(value: unknown): Activation | null {
   if (
     !isRecord(value) ||
     (value.status !== 'ready' && value.status !== 'cancelled' && value.status !== 'unavailable') ||
@@ -211,7 +229,66 @@ function normalizeActivation(
   return {
     status: value.status,
     attempted: value.attempted,
+    ...(typeof value.error === 'string' && value.error.trim() ? { error: value.error } : {}),
+    ...(typeof value.code === 'string' ? { code: value.code } : {}),
   };
+}
+
+// The SDK names each setup failure with a stable code (KodaXSandboxSetupErrorCode). The text
+// fallbacks cover a setup process that threw before the SDK could return a code.
+const SETUP_FAILURES: Readonly<
+  Record<string, readonly [SandboxSetupFailureReasonT, string] | undefined>
+> = {
+  elevation_timeout: [
+    'uac-timeout',
+    'The Windows UAC prompt was not approved within 10 minutes. If it did not come to the front, look for a flashing shield icon on the taskbar, then try again.',
+  ],
+  setup_lock_busy: [
+    'setup-busy',
+    'Another sandbox setup was still running after 45 minutes. Wait for it to finish, then refresh.',
+  ],
+  sandbox_account_busy: [
+    'account-busy',
+    'Sandboxed processes are still running. Close sandboxed shells, or restart Windows, then try again.',
+  ],
+  idle_probe_failed: [
+    'account-busy',
+    'Setup could not confirm that the sandbox account is idle. Restart Windows, then try again.',
+  ],
+  native_artifact_unavailable: [
+    'native-blocked',
+    'A KodaX native sandbox file is missing or was blocked. Check Windows Security protection history, then try again.',
+  ],
+  elevated_step_failed: [
+    'step-failed',
+    'A setup step failed after the UAC prompt was approved. The diagnostics log has its output.',
+  ],
+};
+
+const INCOMPLETE_SETUP: readonly [SandboxSetupFailureReasonT, string] = [
+  'incomplete',
+  'Sandbox setup stopped before it completed. Review the guidance and try again.',
+];
+
+function setupFailure(activation: {
+  readonly code?: string;
+  readonly error?: string;
+}): Pick<SandboxLastOperationT, 'reason' | 'message'> {
+  const error = activation.error ?? '';
+  if (isWindowsAclRecoveryText(error)) {
+    return {
+      reason: 'acl-restart',
+      message:
+        'Windows sandbox ACL cleanup is unconfirmed. Restart Windows, then refresh sandbox readiness.',
+    };
+  }
+  const [reason, message] =
+    (activation.code === undefined ? undefined : SETUP_FAILURES[activation.code]) ??
+    (/native artifact|quarantin/i.test(error)
+      ? SETUP_FAILURES.native_artifact_unavailable
+      : undefined) ??
+    INCOMPLETE_SETUP;
+  return { reason, message };
 }
 
 function projectGuidanceLine(value: unknown): string | null {
@@ -308,7 +385,10 @@ function operationForReadiness(
 export class SandboxController {
   readonly #loadSdk: () => Promise<SandboxSdkFacade>;
   readonly #onDoctor:
-    ((capability: SandboxCapability, doctor: SandboxDoctorResult) => void) | undefined;
+    | ((capability: SandboxCapability, doctor: SandboxDoctorResult) => void)
+    | undefined;
+  readonly #onSetupFailure: ((error: string) => void) | undefined;
+  readonly #onSetupProgress: ((phase: SandboxSetupPhaseT) => void) | undefined;
   readonly #now: () => Date;
   #sdkPromise: Promise<SandboxSdkFacade> | null = null;
   #status: SandboxStatusT | null = null;
@@ -317,6 +397,8 @@ export class SandboxController {
   constructor(options: SandboxControllerOptions) {
     this.#loadSdk = options.loadSdk;
     this.#onDoctor = options.onDoctor;
+    this.#onSetupFailure = options.onSetupFailure;
+    this.#onSetupProgress = options.onSetupProgress;
     this.#now = options.now ?? (() => new Date());
   }
 
@@ -365,26 +447,33 @@ export class SandboxController {
       }
 
       const sdk = await this.#sdk();
-      let activation: Pick<SandboxSetupOutcome, 'status' | 'attempted'>;
+      let activation: Activation;
       try {
-        const rawActivation = await sdk.activateKodaXSandbox({ allowElevation: true });
-        const normalizedActivation = normalizeActivation(rawActivation);
-        if (normalizedActivation === null) {
-          throw new Error('Sandbox activation returned an incompatible result.');
-        }
-        activation = normalizedActivation;
-      } catch {
+        // The SDK waits for another setup and for the UAC prompt itself, so one call suffices.
+        const result = normalizeActivation(
+          await sdk.activateKodaXSandbox({
+            allowElevation: true,
+            onProgress: (phase) => this.#reportSetupProgress(phase),
+          }),
+        );
+        if (result === null) throw new Error('Sandbox activation returned an incompatible result.');
+        activation = result;
+      } catch (error: unknown) {
+        const reason = error instanceof Error ? error.message : String(error);
         const verified = await this.#runDoctor(true, null);
+        if (verified.readiness !== 'ready') this.#reportSetupFailure(reason);
         this.#status = {
           ...verified,
           lastOperation: {
             kind: 'setup',
             outcome: verified.readiness === 'ready' ? 'ready' : 'failed',
             attempted: true,
-            message:
-              verified.readiness === 'ready'
-                ? 'The activation helper failed, but a fresh readiness check confirms the sandbox is ready.'
-                : 'Sandbox setup failed. Review the guidance and try again.',
+            ...(verified.readiness === 'ready'
+              ? {
+                  message:
+                    'The activation helper failed, but a fresh readiness check confirms the sandbox is ready.',
+                }
+              : setupFailure({ error: reason })),
           },
         };
         return this.#status;
@@ -426,17 +515,38 @@ export class SandboxController {
         return this.#status;
       }
 
+      this.#reportSetupFailure(activation.error);
       this.#status = {
         ...verified,
         lastOperation: {
           kind: 'setup',
           outcome: 'unavailable',
           attempted: activation.attempted,
-          message: 'Sandbox setup did not produce a ready doctor result.',
+          ...setupFailure(activation),
         },
       };
       return this.#status;
     });
+  }
+
+  #reportSetupFailure(error: string | undefined): void {
+    try {
+      this.#onSetupFailure?.(
+        error?.slice(0, MAX_SANDBOX_RAW_TEXT) ?? 'Setup returned no error detail.',
+      );
+    } catch {
+      // Logging must not change the setup result the user sees.
+    }
+  }
+
+  #reportSetupProgress(phase: string): void {
+    const parsed = sandboxSetupPhaseSchema.safeParse(phase);
+    if (!parsed.success) return;
+    try {
+      this.#onSetupProgress?.(parsed.data);
+    } catch {
+      // Progress is informational; it must not change the setup result.
+    }
   }
 
   #sdk(): Promise<SandboxSdkFacade> {
@@ -547,6 +657,10 @@ export class SandboxController {
         canSetup,
         mayElevate: capability.setupMayElevate,
         requiresElevation: canSetup,
+        ...(canSetup &&
+        rawDiagnostics.some((diagnostic) => diagnostic.includes(SETUP_INTERRUPTED_DIAGNOSTIC))
+          ? { interrupted: true as const }
+          : {}),
       },
       diagnosticCount: Math.min(99, Math.max(rawDiagnostics.length, diagnostics.length)),
       diagnostics,

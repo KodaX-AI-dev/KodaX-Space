@@ -95,7 +95,17 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '',
       '后台与提醒：Windows 可最小化到托盘并保留 Runtime；有未读结果或待处理权限/提问的 Session 数显示在 Windows 任务栏覆盖图标与托盘、macOS Dock 和受支持的 Linux launcher 角标上，同一 Session 只计一次。关闭、托盘与彻底退出见 background-runtime。',
     ),
-    aliases: ['Space', 'KodaX Space', 'KodaX-Space', '桌面端', '客户端', '桌面客户端', '工作台', '是什么', '介绍'],
+    aliases: [
+      'Space',
+      'KodaX Space',
+      'KodaX-Space',
+      '桌面端',
+      '客户端',
+      '桌面客户端',
+      '工作台',
+      '是什么',
+      '介绍',
+    ],
     nextTopics: [
       'self-manual',
       'runtime-host',
@@ -161,7 +171,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '内容收敛：窗口可见时，Space 每 30 秒以及每次窗口重新获得焦点时都会重新核对当前 Coder 会话的最新内容，推送丢失最多让内容晚约 30 秒出现，正常使用不需要手动刷新。Provider 内部重试时只显示最终生效那次请求的输出。已知限制：Run 进行中向上浏览较早历史时，偶尔会看到消息重复、短暂消失或位置错乱；Run 结束后会自行恢复，磁盘上的历史不受影响。',
       '',
       '命令沙箱状态：活动条在当前工具旁显示沙箱标记，这只是活动状态，不写入对话。“沙箱中”（Sandboxed）表示命令在沙箱内运行；“沙箱受限”（Sandbox degraded）表示仍在沙箱内，但读不到列出的 Windows 目录，悬停提示运行 kodax sandbox setup；“未用沙箱”（Sandbox fallback）表示沙箱未就绪、准备失败或正在重置，该工具按普通权限策略继续执行，不等于命令失败；“无沙箱”（No sandbox）表示该工具未选择沙箱。',
-      '设置 → 安全与沙箱 → 命令沙箱（ASRT）显示 doctor 确认的状态（已就绪/需要设置/不可用）、ASRT 版本、后端、平台、有界诊断和设置指引；“刷新”只重跑 doctor。只有 Windows 且状态为“需要设置”时才出现“设置沙箱”，确认后可能出现一次 UAC，结束后重新运行 doctor 验证；macOS/Linux 只给指引，不自动调用包管理器。启动、普通工具调用和查看诊断都不会触发设置。不要让模型通过 Bash 工具嵌套运行 kodax sandbox doctor：沙箱内的受限账号按设计读不到宿主持有的 ASRT 状态。该命令沙箱只隔离受支持的命令执行，尚未覆盖全部文档与原生资源访问。',
+      '设置 → 安全与沙箱 → 命令沙箱（ASRT）显示 doctor 确认的状态（已就绪/需要设置/不可用）、ASRT 版本、后端、平台、有界诊断和设置指引；“刷新”只重跑 doctor。只有 Windows 且状态为“需要设置”时才出现“设置沙箱”，确认后整个设置只弹一次 UAC（替换旧沙箱账户也只弹一次），最多等 10 分钟批准，结束后重新运行 doctor 验证；macOS/Linux 只给指引，不自动调用包管理器。Windows 需要设置时，启动几秒后右下角卡片会询问是否设置：“现在设置”直接开始，“以后再说”不再提示（上次设置中途停止时仍会提示“完成设置”）。设置进行中卡片显示已用时间和当前阶段：等待另一个设置（例如 kodax 命令行，最多 45 分钟）、等待 UAC（提示没到前台时点任务栏闪烁的盾牌）、已批准正在完成；未完成时卡片和设置页说明原因（UAC 10 分钟内未批准、另一个设置仍在进行、沙箱账户忙、原生文件缺失或被拦截、批准后某步失败、ACL 清理未确认）并可重试。启动、普通工具调用和查看诊断都不会自动开始设置。不要让模型通过 Bash 工具嵌套运行 kodax sandbox doctor：沙箱内的受限账号按设计读不到宿主持有的 ASRT 状态。该命令沙箱只隔离受支持的命令执行，尚未覆盖全部文档与原生资源访问。',
       '',
       '诊断：设置 → 故障排查 →“导出诊断 ZIP”在 Host 不可用时也能使用，包含近期应用日志、助手启动与运行日志、日志缺失或截断说明、Runtime 能力状态、当前会话的 Run 生命周期元数据和版本/更新信息；Prompt、API Key、Authorization、文档正文和工具载荷会被排除或脱敏，不会自动上传。同页还显示扩展健康和“Runtime 集成健康状态”（MCP、A2A、Extension 配置各自降级，修复后自动恢复）。/repair-identity <source-entry> <target-entry> <revision> <run> <input> <event> <confirmation-ref> 是支持用命令，仅在诊断确认身份冲突后提交用户核实过的身份映射；SDK 验证并审计，版本冲突不自动重试，成功后重新加载历史。普通使用不需要它。',
       '',
@@ -584,7 +594,7 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
       '- MCP（配置来源）、Skills（安装位置）、Extensions & components（扩展与连接组件）。',
       '',
       '系统',
-      '- Safety & sandbox（安全与沙箱）：显示 doctor 确认的命令沙箱状态、后端、平台和检查时间。点“设置沙箱”才会配置；Windows 上可能在“继续并等待 UAC”后弹一次 UAC，完成后自动重跑沙箱 doctor。启动和普通工具调用不会触发设置；沙箱不覆盖所有文档/原生资源访问。',
+      '- Safety & sandbox（安全与沙箱）：显示 doctor 确认的命令沙箱状态、后端、平台和检查时间。点“设置沙箱”才会配置；Windows 上在“继续并等待 UAC”后只弹一次 UAC（最多等 10 分钟批准），完成后自动重跑沙箱 doctor；需要设置时启动后的右下角卡片也可直接开始，并显示进度与失败原因。启动和普通工具调用不会触发设置；沙箱不覆盖所有文档/原生资源访问。',
       '- Troubleshooting（故障排查）：导出诊断包（manifest、logs、capabilities、release、degradations，含隐私说明）、扩展健康、Runtime 集成健康状态，以及可展开的“Host、配置与迁移详情”（Runtime Host、保存设置后的生效时点、KodaX 配置）。',
       '',
       '页脚“关于”（About）：版本、软件更新（手动检查/下载/安装）与 License。',
@@ -1565,7 +1575,8 @@ const SPACE_MANUAL_TOPIC_OVERLAYS: readonly KodaXManualTopicInput[] = [
   {
     id: 'troubleshooting',
     title: 'Troubleshooting',
-    summary: '优先看 设置 → 模型与服务商 和 设置 → 故障排查 的诊断导出；本地 Coder 服务故障可重试启动。',
+    summary:
+      '优先看 设置 → 模型与服务商 和 设置 → 故障排查 的诊断导出；本地 Coder 服务故障可重试启动。',
     body: text(
       '先导出诊断：设置 → 故障排查 → 导出诊断 ZIP。服务不可用时也能导出，包含 Space 主进程日志、Runtime bootstrap/daemon 日志、已安装 SDK 版本和收集清单；缺失、不可读或截断的文件会明确标注，凭据已脱敏。反馈问题时附上它、复现步骤和截图。',
       '',
