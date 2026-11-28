@@ -5,7 +5,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const installerPattern = /(?:\.(exe|dmg|AppImage|deb|zip|blockmap)$|^latest.*\.yml$)/;
-const platforms = ['windows-latest', 'macos-15-intel', 'macos-latest', 'ubuntu-latest'];
+const platforms = [
+  'windows-latest',
+  'macos-15-intel',
+  'macos-latest',
+  'ubuntu-latest',
+  'ubuntu-24.04-arm',
+];
 
 async function checksum(root, name) {
   if (!name || /[/\\:]/.test(name) || name === '.' || name === '..')

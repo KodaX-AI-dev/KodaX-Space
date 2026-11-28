@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Rebuild the Linux native modules Space ships against glibc 2.28 so the package runs
 # on RHEL 8-family systems (e.g. Anolis OS 8). Run from the repo root, after `npm ci`,
-# inside quay.io/pypa/manylinux_2_28_x86_64 (AlmaLinux 8 + gcc-toolset, whose
-# libstdc++_nonshared keeps output within the system GCC 8 libstdc++).
+# inside quay.io/pypa/manylinux_2_28_x86_64 or manylinux_2_28_aarch64 (AlmaLinux 8 +
+# gcc-toolset, whose libstdc++_nonshared keeps output within the system GCC 8 libstdc++).
 # See docs/research/kodax-space-linux-glibc-2-28-build.md.
 set -euo pipefail
 
 node_version="$(cat .nvmrc)"
-node_dist="node-v${node_version}-linux-x64"
+case "$(uname -m)" in
+  x86_64) node_arch=x64 ;;
+  aarch64) node_arch=arm64 ;;
+  *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+node_dist="node-v${node_version}-linux-${node_arch}"
 node_root="$(mktemp -d)"
 (
   cd "$node_root"

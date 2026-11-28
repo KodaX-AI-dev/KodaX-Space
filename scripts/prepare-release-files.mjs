@@ -92,9 +92,17 @@ async function mergeMacManifests(manifestPaths, expectedVersion) {
   };
 }
 
+// electron-updater reads latest-linux-arm64.yml on Linux arm64 (Provider channel prefix).
+const UPDATER_MANIFESTS = [
+  'latest.yml',
+  'latest-linux.yml',
+  'latest-linux-arm64.yml',
+  'latest-mac.yml',
+];
+
 async function validateReleaseFiles(releaseDir, expectedVersion) {
   const names = new Set(await fs.readdir(releaseDir));
-  for (const manifestName of ['latest.yml', 'latest-linux.yml', 'latest-mac.yml']) {
+  for (const manifestName of UPDATER_MANIFESTS) {
     if (!names.has(manifestName)) throw new Error(`missing ${manifestName}`);
     const manifest = readManifest(
       await fs.readFile(path.join(releaseDir, manifestName), 'utf8'),
@@ -114,6 +122,8 @@ async function validateReleaseFiles(releaseDir, expectedVersion) {
     new RegExp(`^KodaX-Space-Portable-${escapedVersion}\\.exe$`),
     new RegExp(`^KodaX-Space-${escapedVersion}-x86_64\\.AppImage$`),
     new RegExp(`^KodaX-Space-${escapedVersion}-amd64\\.deb$`),
+    new RegExp(`^KodaX-Space-${escapedVersion}-arm64\\.AppImage$`),
+    new RegExp(`^KodaX-Space-${escapedVersion}-arm64\\.deb$`),
     new RegExp(`^KodaX-Space-${escapedVersion}-x64\\.dmg$`),
     new RegExp(`^KodaX-Space-${escapedVersion}-arm64\\.dmg$`),
     new RegExp(`^KodaX-Space-${escapedVersion}-x64\\.zip$`),
@@ -125,10 +135,7 @@ async function validateReleaseFiles(releaseDir, expectedVersion) {
     }
   }
   for (const name of names) {
-    if (
-      name.startsWith('latest') &&
-      !['latest.yml', 'latest-linux.yml', 'latest-mac.yml'].includes(name)
-    ) {
+    if (name.startsWith('latest') && !UPDATER_MANIFESTS.includes(name)) {
       throw new Error(`unexpected updater manifest: ${name}`);
     }
     if (!name.startsWith('latest') && (!name.startsWith('KodaX-Space-') || /\s/.test(name))) {

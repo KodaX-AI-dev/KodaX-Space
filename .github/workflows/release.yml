@@ -4,7 +4,7 @@
 #   1. workflow_dispatch (manual)：手动跑，artifact 上传到 workflow run（不发 Release）
 #   2. push tag v* (e.g. v0.1.0-alpha.0)：自动 build + 创建 GitHub Release，artifact 上传到 Release
 #
-# 矩阵：windows-latest + macOS x64 + macOS arm64 + ubuntu-latest
+# 矩阵：windows-latest + macOS x64 + macOS arm64 + Linux x64 (ubuntu-latest) + Linux arm64 (ubuntu-24.04-arm)
 # Source checks run concurrently in ci/build; publication requires the same SHA.
 # Build artifacts survive acceptance failures, so failed acceptance can be rerun.
 #
@@ -88,6 +88,12 @@ jobs:
           - os: ubuntu-latest
             build_script: build:linux
             unpacked: linux-unpacked
+            manylinux: manylinux_2_28_x86_64
+          # F150: native arm64 runner; there is no cross-compiled arm64 build.
+          - os: ubuntu-24.04-arm
+            build_script: build:linux:arm64
+            unpacked: linux-arm64-unpacked
+            manylinux: manylinux_2_28_aarch64
     steps:
       - uses: actions/checkout@v4
 
@@ -101,17 +107,17 @@ jobs:
         run: npm ci
 
       - name: Install Linux runtime test dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-wqy-zenhei xvfb gnome-keyring libsecret-1-0
 
       # The runner's glibc drifts with ubuntu-latest (2.42 by rc.2); RHEL 8-family
       # targets such as Anolis OS 8 have 2.28. Recompile the shipped native modules
       # in a glibc 2.28 container before packaging picks them up.
       - name: Rebuild Linux native modules for glibc 2.28
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: >-
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp
-          -v "$PWD:/work" -w /work quay.io/pypa/manylinux_2_28_x86_64
+          -v "$PWD:/work" -w /work quay.io/pypa/${{ matrix.manylinux }}
           bash scripts/linux-native-glibc228.sh
 
       - name: Configure npm script-shell (Windows)
@@ -144,7 +150,7 @@ jobs:
           npm_config_build_from_source: 'false'
 
       - name: Verify Linux glibc 2.28 compatibility
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: node scripts/check-linux-glibc.mjs "out/${{ matrix.unpacked }}"
 
       - name: Verify macOS application signature
@@ -237,6 +243,8 @@ jobs:
             executable: 'out/mac-arm64/KodaX Space.app/Contents/MacOS/KodaX Space'
           - os: ubuntu-latest
             executable: 'out/linux-unpacked/kodax-space'
+          - os: ubuntu-24.04-arm
+            executable: 'out/linux-arm64-unpacked/kodax-space'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -438,7 +446,7 @@ jobs:
             '- Windows: use `Setup.exe` for normal install, `Portable.exe` for no-install launch, or the matching `.zip` fallback if the browser blocks direct `.exe` downloads.',
             '- Windows SmartScreen: click "More info" -> "Run anyway"',
             '- macOS: Gatekeeper -> right-click -> Open -> confirm',
-            '- Linux: `chmod +x *.AppImage` then run; or `sudo dpkg -i *.deb`',
+            '- Linux (x64: `x86_64`/`amd64`; arm64: `arm64`): `chmod +x *.AppImage` then run; or `sudo dpkg -i *.deb`',
             '',
             'KodaX Space is a local-first tool for trusted users. Ad-hoc signing supports macOS notifications but does not establish Apple developer trust; allow notifications and icon badges in System Settings when requested.',
             '',

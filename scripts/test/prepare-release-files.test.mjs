@@ -17,7 +17,7 @@ async function fixture() {
   tempDirs.push(root);
   const artifactsDir = path.join(root, 'artifacts');
   const releaseDir = path.join(root, 'release');
-  for (const platform of ['win', 'linux', 'mac-x64', 'mac-arm64']) {
+  for (const platform of ['win', 'linux', 'linux-arm64', 'mac-x64', 'mac-arm64']) {
     await fs.mkdir(path.join(artifactsDir, platform), { recursive: true });
   }
   return { artifactsDir, releaseDir };
@@ -40,14 +40,22 @@ function manifest(files) {
 async function writeCompleteFixture(artifactsDir) {
   const windows = ['KodaX-Space-Setup-0.1.30.exe', 'KodaX-Space-Portable-0.1.30.exe'];
   const linux = ['KodaX-Space-0.1.30-x86_64.AppImage', 'KodaX-Space-0.1.30-amd64.deb'];
+  const linuxArm64 = ['KodaX-Space-0.1.30-arm64.AppImage', 'KodaX-Space-0.1.30-arm64.deb'];
   const macX64 = ['KodaX-Space-0.1.30-x64.zip', 'KodaX-Space-0.1.30-x64.dmg'];
   const macArm64 = ['KodaX-Space-0.1.30-arm64.zip', 'KodaX-Space-0.1.30-arm64.dmg'];
   for (const name of windows) await writeArtifact(artifactsDir, 'win', name);
   for (const name of linux) await writeArtifact(artifactsDir, 'linux', name);
+  for (const name of linuxArm64) await writeArtifact(artifactsDir, 'linux-arm64', name);
   for (const name of macX64) await writeArtifact(artifactsDir, 'mac-x64', name);
   for (const name of macArm64) await writeArtifact(artifactsDir, 'mac-arm64', name);
   await writeArtifact(artifactsDir, 'win', 'latest.yml', manifest([windows[0]]));
   await writeArtifact(artifactsDir, 'linux', 'latest-linux.yml', manifest(linux));
+  await writeArtifact(
+    artifactsDir,
+    'linux-arm64',
+    'latest-linux-arm64.yml',
+    manifest([linuxArm64[0]]),
+  );
   await writeArtifact(artifactsDir, 'mac-x64', 'latest-mac.yml', manifest(macX64));
   await writeArtifact(artifactsDir, 'mac-arm64', 'latest-mac.yml', manifest(macArm64));
 }
@@ -59,7 +67,8 @@ test('stages updater-compatible assets and merges both macOS architectures', asy
   const staged = await prepareReleaseFiles({ artifactsDir, releaseDir, expectedTag: 'v0.1.30' });
   const macManifest = parse(await fs.readFile(path.join(releaseDir, 'latest-mac.yml'), 'utf8'));
 
-  assert.equal(staged.length, 11);
+  assert.equal(staged.length, 14);
+  assert.ok(staged.includes('latest-linux-arm64.yml'));
   assert.deepEqual(
     macManifest.files.map((file) => file.url),
     [
@@ -101,6 +110,22 @@ test('rejects a macOS release without an updater ZIP for each architecture', asy
     prepareReleaseFiles({ artifactsDir, releaseDir, expectedTag: 'v0.1.30' }),
     /missing required updater file/,
   );
+});
+
+test('rejects a release without the Linux arm64 packages and updater manifest', async () => {
+  for (const missing of [
+    'KodaX-Space-0.1.30-arm64.deb',
+    'KodaX-Space-0.1.30-arm64.AppImage',
+    'latest-linux-arm64.yml',
+  ]) {
+    const { artifactsDir, releaseDir } = await fixture();
+    await writeCompleteFixture(artifactsDir);
+    await fs.rm(path.join(artifactsDir, 'linux-arm64', missing));
+    await assert.rejects(
+      prepareReleaseFiles({ artifactsDir, releaseDir, expectedTag: 'v0.1.30' }),
+      /missing required release asset|missing latest-linux-arm64\.yml|references missing release asset/,
+    );
+  }
 });
 
 test('rejects unexpected updater manifests instead of publishing them', async () => {

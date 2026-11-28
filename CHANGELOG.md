@@ -17,6 +17,7 @@ KodaX-Space is the Electron desktop client for the [KodaX SDK](https://github.co
 ### Added
 
 - When a provider rejects a session's request twice in a row with the same 400, 413 or 422 (not an account or quota error), the "Run failed" card says the conversation history is the likely cause and offers "Continue in new session". The KodaX Host derives a new session from a summary of this one without a model call and Space switches to it; the original session stays unchanged and nothing happens without the click (KodaX SDK `0.7.97-rc.5`, `failureDetail.historyRejected`, SDK Issues 449/450).
+- Linux arm64 (aarch64) packages: `KodaX-Space-<version>-arm64.AppImage` and `KodaX-Space-<version>-arm64.deb`, with the same glibc 2.28 floor as x64 (Anolis OS 8 and other RHEL 8-family systems). They are built and accepted on the native GitHub Actions arm64 runner, and arm64 installs update through `latest-linux-arm64.yml` (F150).
 
 ### Changed
 

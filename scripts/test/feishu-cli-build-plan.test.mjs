@@ -15,6 +15,15 @@ test('Feishu CLI build plan follows the selected package platform and architectu
     platform: 'darwin',
     targets: ['darwin-arm64'],
   });
+  // F150: Linux ships x64 and arm64, one architecture per runner.
+  assert.deepEqual(resolveFeishuCliBuildPlan(['--linux', '--arm64'], 'linux', 'arm64'), {
+    platform: 'linux',
+    targets: ['linux-arm64'],
+  });
+  assert.deepEqual(resolveFeishuCliBuildPlan(['--linux'], 'linux', 'arm64'), {
+    platform: 'linux',
+    targets: ['linux-arm64'],
+  });
 });
 
 test('Feishu CLI build plan rejects mixed platforms and unsupported release architectures', () => {
@@ -29,9 +38,5 @@ test('Feishu CLI build plan rejects mixed platforms and unsupported release arch
   assert.throws(
     () => resolveFeishuCliBuildPlan(['--win', '--arm64'], 'win32', 'x64'),
     /unsupported win32 package architecture/u,
-  );
-  assert.throws(
-    () => resolveFeishuCliBuildPlan(['--linux', '--arm64'], 'linux', 'x64'),
-    /unsupported linux package architecture/u,
   );
 });

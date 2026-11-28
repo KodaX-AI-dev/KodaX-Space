@@ -629,19 +629,19 @@ Space → CLI:
 
 ## 11. 技术栈决策（最终）
 
-| 层          | 选择                                                                                                                  |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Shell       | **Electron 30+** ([ADR-001](ADR/ADR-001-shell-electron.md))                                                           |
-| Renderer    | **React 19 + Vite 6 + TypeScript + Zustand 5 + Tailwind + shadcn-derived UI**                                         |
-| Editor 组件 | Monaco（只读 + diff）                                                                                                 |
-| 终端组件    | xterm.js + node-pty                                                                                                   |
-| KodaX 集成  | Coder/Partner 经 Runtime facade 使用共享 Host；均不走 ACP（[v0.1.32](features/v0.1.32.md)）                           |
-| Native 加速 | 仅按 profile 引入 NAPI-RS 热路径；无已承诺 native-helper feature ([ADR-002](ADR/ADR-002-rust-integration-napi.md))    |
-| IPC schema  | zod，验证所有 renderer↔main channel                                                                                   |
-| Keychain    | `@napi-rs/keyring`（Win Credential Manager / macOS Keychain / Linux Secret Service）                                  |
-| 自动更新    | Squirrel.Mac + Squirrel.Windows                                                                                       |
-| 安装包      | NSIS (Win) + DMG/ZIP (macOS x64/arm64) + AppImage/deb (Linux x64); signing/notarization/channel trust tracked by F101 |
-| 测试        | Vitest（unit）+ Playwright for Electron（E2E）                                                                        |
+| 层          | 选择                                                                                                                                    |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell       | **Electron 30+** ([ADR-001](ADR/ADR-001-shell-electron.md))                                                                             |
+| Renderer    | **React 19 + Vite 6 + TypeScript + Zustand 5 + Tailwind + shadcn-derived UI**                                                           |
+| Editor 组件 | Monaco（只读 + diff）                                                                                                                   |
+| 终端组件    | xterm.js + node-pty                                                                                                                     |
+| KodaX 集成  | Coder/Partner 经 Runtime facade 使用共享 Host；均不走 ACP（[v0.1.32](features/v0.1.32.md)）                                             |
+| Native 加速 | 仅按 profile 引入 NAPI-RS 热路径；无已承诺 native-helper feature ([ADR-002](ADR/ADR-002-rust-integration-napi.md))                      |
+| IPC schema  | zod，验证所有 renderer↔main channel                                                                                                     |
+| Keychain    | `@napi-rs/keyring`（Win Credential Manager / macOS Keychain / Linux Secret Service）                                                    |
+| 自动更新    | Squirrel.Mac + Squirrel.Windows                                                                                                         |
+| 安装包      | NSIS (Win) + DMG/ZIP (macOS x64/arm64) + AppImage/deb (Linux x64/arm64, glibc 2.28); signing/notarization/channel trust tracked by F101 |
+| 测试        | Vitest（unit）+ Playwright for Electron（E2E）                                                                                          |
 
 ### 11.1 不引入
 
@@ -762,14 +762,14 @@ Space-owned stores use their declared schemas/migrators. KodaX integration files
 
 ### 15.2 平台支持
 
-| Platform      | Current release artifact | Trust/coverage note                             |
-| ------------- | ------------------------ | ----------------------------------------------- |
-| macOS arm64   | DMG + updater ZIP        | signing/notarization policy tracked by F101     |
-| macOS x64     | DMG + updater ZIP        | signing/notarization policy tracked by F101     |
-| Windows x64   | NSIS EXE                 | signing policy tracked by F101                  |
-| Windows arm64 | not currently committed  | reopen through distribution evidence            |
-| Linux x64     | AppImage + deb           | existing release/staging path; keep smoke green |
-| Linux arm64   | not currently committed  | reopen through user/platform demand             |
+| Platform      | Current release artifact | Trust/coverage note                                                                               |
+| ------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
+| macOS arm64   | DMG + updater ZIP        | signing/notarization policy tracked by F101                                                       |
+| macOS x64     | DMG + updater ZIP        | signing/notarization policy tracked by F101                                                       |
+| Windows x64   | NSIS EXE                 | signing policy tracked by F101                                                                    |
+| Windows arm64 | not currently committed  | reopen through distribution evidence                                                              |
+| Linux x64     | AppImage + deb           | existing release/staging path; keep smoke green                                                   |
+| Linux arm64   | AppImage + deb           | F150: built and accepted on the GitHub `ubuntu-24.04-arm` runner, glibc 2.28 (Anolis OS 8 target) |
 
 ### 15.3 Native dependency policy
 

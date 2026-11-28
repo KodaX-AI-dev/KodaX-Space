@@ -9,6 +9,8 @@
 #               out/KodaX-Space-${version}-${arch}.zip     (auto-update, x64 + arm64)
 #   - Linux:    out/KodaX-Space-${version}-x86_64.AppImage (AppImage, x64)
 #               out/KodaX-Space-${version}-amd64.deb       (deb, x64)
+#               out/KodaX-Space-${version}-arm64.AppImage  (AppImage, arm64, F150)
+#               out/KodaX-Space-${version}-arm64.deb       (deb, arm64, F150)
 #
 # 体积目标：< 200 MB（排除 test/cache/source map 与运行时不用的依赖；Electron 本体约占一半）
 
@@ -296,13 +298,10 @@ portable:
 
 linux:
   category: Development
+  # F150: arch comes from the CLI (build:linux --x64 / build:linux:arm64 --arm64), as on macOS.
   target:
-    - target: AppImage
-      arch:
-        - x64
-    - target: deb
-      arch:
-        - x64
+    - AppImage
+    - deb
   icon: resources/icon.png
   artifactName: 'KodaX-Space-${version}-${arch}.${ext}'
   synopsis: Provider-neutral, local-first AI agent desktop client

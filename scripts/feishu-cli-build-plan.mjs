@@ -21,10 +21,10 @@ export function resolveFeishuCliBuildPlan(
   if (args.some((arg) => ['--ia32', '--armv7l'].includes(arg)))
     throw new Error('unsupported architecture for the bundled Feishu CLI');
   const selected = [...ARCH_FLAGS].filter(([flag]) => args.includes(flag)).map(([, arch]) => arch);
-  const arches = selected.length > 0 ? selected : platform === 'darwin' ? [hostArch] : ['x64'];
+  const arches = selected.length > 0 ? selected : platform === 'win32' ? ['x64'] : [hostArch];
   if (arches.some((arch) => !['arm64', 'x64'].includes(arch)))
     throw new Error('unsupported architecture for the bundled Feishu CLI');
-  if (platform !== 'darwin' && arches.some((arch) => arch !== 'x64'))
+  if (platform === 'win32' && arches.some((arch) => arch !== 'x64'))
     throw new Error(`unsupported ${platform} package architecture for this release`);
   return { platform, targets: arches.map((arch) => `${platform}-${arch}`) };
 }

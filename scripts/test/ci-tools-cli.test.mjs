@@ -90,10 +90,16 @@ test('report CLI preserves flaky metrics and emits a readable Actions summary', 
   assert.match(missing.stderr, /not produced/);
 });
 
-test('candidate CLI verifies four accepted platforms and rejects missing receipts', async (t) => {
+test('candidate CLI verifies five accepted platforms and rejects missing receipts', async (t) => {
   const root = await directory(t);
   await writeFile(path.join(root, 'package.json'), JSON.stringify({ version: '1.0.0' }));
-  for (const platform of ['windows-latest', 'macos-15-intel', 'macos-latest', 'ubuntu-latest']) {
+  for (const platform of [
+    'windows-latest',
+    'macos-15-intel',
+    'macos-latest',
+    'ubuntu-latest',
+    'ubuntu-24.04-arm',
+  ]) {
     const built = path.join(root, `installer-${platform}`);
     const accepted = path.join(root, `accepted-${platform}`);
     await mkdir(built);

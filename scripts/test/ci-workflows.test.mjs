@@ -20,12 +20,14 @@ test('release cannot publish without complete source and packaged acceptance, in
   assert.deepEqual(release.jobs.build.strategy.matrix.include.map((item) => item.os).sort(), [
     'macos-15-intel',
     'macos-latest',
+    'ubuntu-24.04-arm',
     'ubuntu-latest',
     'windows-latest',
   ]);
   assert.deepEqual(release.jobs.acceptance.strategy.matrix.include.map((item) => item.os).sort(), [
     'macos-15-intel',
     'macos-latest',
+    'ubuntu-24.04-arm',
     'ubuntu-latest',
     'windows-latest',
   ]);
@@ -125,15 +127,40 @@ test('source runners install Electron before entering bounded unit or UI tests',
 });
 
 test('Linux release packages glibc 2.28 native modules and gates every shipped ELF', async () => {
-  const steps = (await workflow('release.yml')).jobs.build.steps;
+  const build = (await workflow('release.yml')).jobs.build;
+  const steps = build.steps;
   const at = (name) => steps.findIndex((step) => step.name === name);
   const rebuild = at('Rebuild Linux native modules for glibc 2.28');
   const pack = at('Build installer');
   const gate = at('Verify Linux glibc 2.28 compatibility');
   assert.ok(at('Install dependencies') < rebuild && rebuild < pack && pack < gate);
-  assert.match(steps[rebuild].run, /manylinux_2_28_x86_64/);
+  assert.match(steps[rebuild].run, /quay\.io\/pypa\/\$\{\{ matrix\.manylinux \}\}/);
   assert.match(steps[rebuild].run, /scripts\/linux-native-glibc228\.sh/);
   assert.match(steps[gate].run, /check-linux-glibc\.mjs "out\/\$\{\{ matrix\.unpacked \}\}"/);
-  assert.equal(steps[rebuild].if, "matrix.os == 'ubuntu-latest'");
-  assert.equal(steps[gate].if, "matrix.os == 'ubuntu-latest'");
+  assert.equal(steps[rebuild].if, "runner.os == 'Linux'");
+  assert.equal(steps[gate].if, "runner.os == 'Linux'");
+  // F150: each Linux architecture builds natively in its own glibc 2.28 container.
+  const linux = build.strategy.matrix.include.filter((item) => item.os.startsWith('ubuntu-'));
+  assert.deepEqual(
+    linux.map(({ os, build_script, unpacked, manylinux }) => ({
+      os,
+      build_script,
+      unpacked,
+      manylinux,
+    })),
+    [
+      {
+        os: 'ubuntu-latest',
+        build_script: 'build:linux',
+        unpacked: 'linux-unpacked',
+        manylinux: 'manylinux_2_28_x86_64',
+      },
+      {
+        os: 'ubuntu-24.04-arm',
+        build_script: 'build:linux:arm64',
+        unpacked: 'linux-arm64-unpacked',
+        manylinux: 'manylinux_2_28_aarch64',
+      },
+    ],
+  );
 });

@@ -18,13 +18,19 @@ function digest(data) {
   return createHash('sha256').update(data).digest('hex');
 }
 
+const UNPACKED_DIR = {
+  'win32-x64': 'win-unpacked',
+  'linux-x64': 'linux-unpacked',
+  'linux-arm64': 'linux-arm64-unpacked',
+};
+
 async function fixture(target = 'darwin-arm64', options = {}) {
   const tempParent = options.tempParent ?? tmpdir();
   const root = await mkdtemp(path.join(tempParent, 'space-pack-feishu-smoke-'));
   const macDir = options.macDir ?? (target === 'darwin-arm64' ? 'mac-arm64' : 'mac');
   const resources = target.startsWith('darwin-')
     ? path.join(root, macDir, 'KodaX Space.app', 'Contents', 'Resources')
-    : path.join(root, target.startsWith('win32-') ? 'win-unpacked' : 'linux-unpacked', 'resources');
+    : path.join(root, UNPACKED_DIR[target], 'resources');
   const archive = Buffer.from('pinned Feishu CLI archive');
   const format = target.startsWith('win32-') ? 'zip' : 'tar.gz';
   const lock = {
@@ -79,7 +85,7 @@ async function fixture(target = 'darwin-arm64', options = {}) {
 }
 
 test('packaged Feishu CLI smoke accepts the one locked archive and license for every release target', async () => {
-  for (const target of ['darwin-arm64', 'darwin-x64', 'linux-x64', 'win32-x64']) {
+  for (const target of ['darwin-arm64', 'darwin-x64', 'linux-x64', 'linux-arm64', 'win32-x64']) {
     const f = await fixture(target);
     try {
       assert.deepEqual(

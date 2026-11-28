@@ -219,6 +219,7 @@ async function packagedFeishuCliTarget(asarPath) {
   const normalized = asarPath.replace(/\\/g, '/').toLowerCase();
   if (normalized.endsWith('/win-unpacked/resources/app.asar')) return 'win32-x64';
   if (normalized.endsWith('/linux-unpacked/resources/app.asar')) return 'linux-x64';
+  if (normalized.endsWith('/linux-arm64-unpacked/resources/app.asar')) return 'linux-arm64';
   if (/\/mac-arm64\/[^/]+\.app\/contents\/resources\/app\.asar$/u.test(normalized)) {
     return 'darwin-arm64';
   }
@@ -491,6 +492,9 @@ function nodePtyRuntimePatternsForAsar(asarPath) {
   } else if (normalizedPath.includes('/linux-unpacked/')) {
     platform = 'linux';
     arch = 'x64';
+  } else if (normalizedPath.includes('/linux-arm64-unpacked/')) {
+    platform = 'linux';
+    arch = 'arm64';
   } else if (normalizedPath.includes('/mac-arm64/')) {
     platform = 'darwin';
     arch = 'arm64';
@@ -654,13 +658,14 @@ async function findAsarPaths() {
   //   Win unpacked:   out/win-unpacked/resources/app.asar
   //   mac unpacked:   out/mac/KodaX Space.app/Contents/Resources/app.asar
   //   universal:      out/mac-universal/KodaX Space.app/Contents/Resources/app.asar
-  //   Linux unpacked: out/linux-unpacked/resources/app.asar
+  //   Linux unpacked: out/linux-unpacked/resources/app.asar (arm64: linux-arm64-unpacked)
   const candidates = [
     path.join(outDir, 'win-unpacked', 'resources', 'app.asar'),
     path.join(outDir, 'mac', 'KodaX Space.app', 'Contents', 'Resources', 'app.asar'),
     path.join(outDir, 'mac-arm64', 'KodaX Space.app', 'Contents', 'Resources', 'app.asar'),
     path.join(outDir, 'mac-universal', 'KodaX Space.app', 'Contents', 'Resources', 'app.asar'),
     path.join(outDir, 'linux-unpacked', 'resources', 'app.asar'),
+    path.join(outDir, 'linux-arm64-unpacked', 'resources', 'app.asar'),
   ];
   const asarPaths = [];
   for (const candidate of candidates) {
